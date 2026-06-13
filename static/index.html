@@ -796,75 +796,26 @@
     {name:"Import-eksport", ic:"🚢", c:"#1D4ED8", t:["Import","Eksport","Bojxona vositachiligi"]}
   ];
 
-  var SPEC = [
-    {id:201, name:"Bekzod Rahimov", kasb:"Taxi haydovchi", gov:false, on:true, narx:"15 000 so'm", rating:"4.8", dist:"0.5 km", c:"#2563EB", x:52, y:58},
-    {id:202, name:"Malika Olimova", kasb:"Terapevt-shifokor", gov:true, org:"12-son poliklinika", narx:"100 000 so'm", rating:"4.9", dist:"0.8 km", c:"#16A34A", x:34, y:44},
-    {id:203, name:"Jasur Aliyev", kasb:"Advokat", gov:false, narx:"200 000 so'm", rating:"4.7", dist:"1.1 km", c:"#475569", x:68, y:36},
-    {id:204, name:"Dilnoza Karimova", kasb:"Repetitor (ingliz tili)", gov:true, org:"45-maktab", narx:"80 000 so'm/dars", rating:"4.9", dist:"0.6 km", c:"#6366F1", x:26, y:70},
-    {id:205, name:"Olim aka", kasb:"Kunlik ishchi", gov:false, on:true, narx:"kelishilgan", rating:"4.6", dist:"0.4 km", c:"#F0A21B", x:74, y:66},
-    {id:206, name:"Nodira opa", kasb:"Uy tozalash", gov:false, narx:"300 000 so'm", rating:"4.8", dist:"0.9 km", c:"#EC4899", x:46, y:30}
-  ];
+  var SPEC = [];
 
-  /* biznesning o'z e'lonlari (namuna) */
-  var BIZELONS = {
-    1:[{ic:"🏠",c:"#0EA5E9",title:"Do'kon binosi ijaraga",price:"5 mln so'm/oy",vis:"🌍 Hammaga"},
-       {ic:"🛒",c:"#0E8C84",title:"Doimiy mijozlarga chegirma",price:"−10%",vis:"🏪 Faqat mehmonlarga"}],
-    2:[{ic:"💇",c:"#EC4899",title:"Yangi mijozlarga 1-tashrif",price:"−20%",vis:"🌍 Hammaga"}]
-  };
+  var BIZELONS = {};
 
-  /* faoliyat turi -> kimlar (namuna) */
-  var TYPEMAP = {
-    "Oziq-ovqat do'koni":{b:[1],s:[]}, "Kiyim-kechak":{b:[5],s:[]},
-    "Taxi":{b:[],s:[201]}, "Kunlik ishchi":{b:[],s:[205]}, "Uy tozalash":{b:[],s:[206]},
-    "Texnika ta'miri":{b:[4],s:[]}, "Santexnik":{b:[4],s:[]},
-    "Sartaroshxona":{b:[2],s:[]}, "Go'zallik saloni":{b:[2],s:[]},
-    "Klinika":{b:[3],s:[]}, "Shifokor konsultatsiyasi":{b:[],s:[202]},
-    "O'quv markazi":{b:[6],s:[]}, "Repetitor":{b:[],s:[204]}, "Til kurslari":{b:[6],s:[204]},
-    "Advokat":{b:[],s:[203]}
-  };
+  var TYPEMAP = {};
 
-  var BIZ = [
-    {id:1, name:"Anvar Market", cat:"Oziq-ovqat", ic:"🛒", c:"#EF4444", dist:"0.4 km", rating:"4.8", type:"shop",
-     desc:"Mahalla do'koni — oziq-ovqat, ichimliklar va kundalik tovarlar. Har kuni 8:00–23:00.",
-     items:[{n:"Non",p:"2 000 so'm"},{n:"Katta non",p:"3 000 so'm"},{n:"Sut, 1 L",p:"12 000 so'm"},{n:"Tuxum, 10 dona",p:"18 000 so'm"}], x:24, y:62},
-    {id:2, name:"Gulnoza Beauty", cat:"Go'zallik", ic:"💇", c:"#EC4899", dist:"0.7 km", rating:"4.9", type:"service",
-     desc:"Soch turmaklash, manikyur, kosmetologiya. Tajribali ustalar, oldindan yozilish.",
-     items:[{n:"Soch oldirish",p:"50 000 so'm"},{n:"Manikyur",p:"80 000 so'm"},{n:"Kosmetolog qabuli",p:"120 000 so'm"}], x:58, y:40},
-    {id:3, name:"Dr. Karimov klinikasi", cat:"Sog'liq", ic:"🩺", c:"#16A34A", dist:"1.2 km", rating:"4.7", type:"service",
-     desc:"Umumiy amaliyot shifokori, tahlillar va konsultatsiya. Navbatga yozilib boring.",
-     items:[{n:"Shifokor qabuli",p:"60 000 so'm"},{n:"Qon tahlili",p:"45 000 so'm"}], x:80, y:60},
-    {id:4, name:"Usta Shavkat", cat:"Ustalar", ic:"🔧", c:"#F0A21B", dist:"0.9 km", rating:"4.6", type:"service",
-     desc:"Santexnika, elektr ishlari va maishiy texnika ta'miri. Chaqiruv bo'yicha ishlaymiz.",
-     items:[{n:"Usta chaqiruvi",p:"30 000 so'm"},{n:"Santexnika ishi",p:"kelishilgan holda"}], x:43, y:78},
-    {id:5, name:"Style kiyim", cat:"Kiyim", ic:"👕", c:"#8B5CF6", dist:"1.5 km", rating:"4.5", type:"shop",
-     desc:"Erkaklar va ayollar uchun zamonaviy kiyimlar. Yangi to'plamlar har hafta.",
-     items:[{n:"Ko'ylak",p:"150 000 so'm"},{n:"Shim",p:"180 000 so'm"}], x:70, y:24},
-    {id:6, name:"Bilim o'quv markazi", cat:"Ta'lim", ic:"📚", c:"#6366F1", dist:"1.0 km", rating:"4.8", type:"service",
-     desc:"Ingliz tili, matematika va IT kurslari. Bolalar va kattalar uchun guruhlar.",
-     items:[{n:"Sinov darsi",p:"Bepul"},{n:"Oylik kurs",p:"450 000 so'm"}], x:30, y:30}
-  ];
+  var BIZ = [];
 
   var ELON_CATS = [
-    {key:"uy", name:"Uy-joy", ic:"🏠", c:"#0EA5E9", count:128},
-    {key:"ish", name:"Ish o'rinlari", ic:"💼", c:"#16A34A", count:64},
-    {key:"moshina", name:"Moshinalar", ic:"🚙", c:"#EF4444", count:212},
-    {key:"hayvon", name:"Hayvonlar", ic:"🐾", c:"#F59E0B", count:37},
-    {key:"texnika", name:"Texnika", ic:"📱", c:"#8B5CF6", count:90},
-    {key:"boshqa", name:"Boshqalar", ic:"📦", c:"#0E8C84", count:51}
+    {key:"uy", name:"Uy-joy", ic:"🏠", c:"#0EA5E9", count:0},
+    {key:"ish", name:"Ish o'rinlari", ic:"💼", c:"#16A34A", count:0},
+    {key:"moshina", name:"Moshinalar", ic:"🚙", c:"#EF4444", count:0},
+    {key:"hayvon", name:"Hayvonlar", ic:"🐾", c:"#F59E0B", count:0},
+    {key:"texnika", name:"Texnika", ic:"📱", c:"#8B5CF6", count:0},
+    {key:"boshqa", name:"Boshqalar", ic:"📦", c:"#0E8C84", count:0}
   ];
 
-  var ELONS = [
-    {id:101, cat:"uy", title:"3 xonali kvartira", price:"82 000 $", date:"2 kun oldin", area:"Yunusobod", ic:"🏠", c:"#0EA5E9", x:30, y:35, desc:"4/9-qavat, ta'mirli, jihozli. Metroga yaqin, hujjatlar tayyor."},
-    {id:102, cat:"uy", title:"Hovli uy, 5 sotix", price:"140 000 $", date:"bugun", area:"Yunusobod", ic:"🏠", c:"#0EA5E9", x:62, y:55, desc:"Hovli uy, barcha qulayliklar bilan. Keng hovli va garaj bor."},
-    {id:103, cat:"moshina", title:"Chevrolet Nexia 3", price:"9 800 $", date:"1 kun oldin", area:"Yunusobod", ic:"🚙", c:"#EF4444", x:46, y:70, desc:"2019-yil, 60 000 km yurgan, ideal holatda, bitta egasi."},
-    {id:104, cat:"moshina", title:"Chevrolet Cobalt", price:"12 500 $", date:"3 kun oldin", area:"Yunusobod", ic:"🚙", c:"#EF4444", x:72, y:26, desc:"2021-yil, avtomat korobka, kam yurgan."},
-    {id:105, cat:"ish", title:"Sotuvchi kerak", price:"oylik 4 mln so'm", date:"bugun", area:"Yunusobod", ic:"💼", c:"#16A34A", x:24, y:62, desc:"Do'konga sotuvchi kerak. Ish vaqti 9:00–19:00, tajriba shart emas."},
-    {id:106, cat:"ish", title:"Haydovchi kerak", price:"kelishilgan", date:"4 kun oldin", area:"Yunusobod", ic:"💼", c:"#16A34A", x:80, y:60, desc:"Shaxsiy haydovchi kerak. B toifa, tajribali."},
-    {id:107, cat:"hayvon", title:"Mushukcha (bepul)", price:"Bepul", date:"bugun", area:"Yunusobod", ic:"🐾", c:"#F59E0B", x:58, y:40, desc:"Sog'lom va o'ynoqi mushukchalar yangi egasini kutmoqda."},
-    {id:108, cat:"texnika", title:"iPhone 13, 128GB", price:"5 200 000 so'm", date:"2 kun oldin", area:"Yunusobod", ic:"📱", c:"#8B5CF6", x:36, y:48, desc:"Ideal holatda, hujjati va qutisi bor, almashtirilmagan."}
-  ];
+  var ELONS = [];
 
-  var MEDIA = {101:{p:4,v:true},102:{p:5,v:true},103:{p:3,v:true},104:{p:4,v:false},105:{p:1,v:false},106:{p:1,v:false},107:{p:3,v:true},108:{p:2,v:false}};
+  var MEDIA = {};
 
   var SORTMETA = {
     101:{pv:82000,km:1.0,dd:2}, 102:{pv:140000,km:1.5,dd:0},
@@ -986,11 +937,25 @@
   function selectMap(key){
     selElon = null;
     if(mapMode==="result") exitResults();
-    renderPins(key);
-    renderMapChip();
-    renderElonRow();
-    renderElonList(key);
-    if(key!=="biz") screensEl.scrollTo({top:0, behavior:"smooth"});
+    if(key==="biz"){
+      renderPins("biz"); renderMapChip(); renderElonRow(); el("elonList").innerHTML="";
+      return;
+    }
+    // toifa tanlandi — serverdan e'lonlarni yuklaymiz
+    el("elonList").innerHTML = '<div class="list-sub">Yuklanmoqda...</div>';
+    mapMode = key;
+    renderMapChip(); renderElonRow();
+    api("GET","/api/listings?cat="+encodeURIComponent(key)).then(function(list){
+      ELONS = list.map(function(e2){
+        var t = ELON_CATS.filter(function(c){return c.key===e2.cat;})[0] || {ic:"📦", c:"#0E8C84"};
+        return { id:e2.id, cat:e2.cat, title:e2.title, price:e2.price||"", date:"", area:e2.address||"",
+                 ic:t.ic, c:t.c, lat:e2.lat, lng:e2.lng, desc:e2.descr||"",
+                 media:e2.media||[] };
+      });
+      renderPins(key);
+      renderElonList(key);
+      screensEl.scrollTo({top:0, behavior:"smooth"});
+    }).catch(function(e){ el("elonList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function renderElonList(key){
     var box = el("elonList");
@@ -998,16 +963,21 @@
     var cat = ELON_CATS.filter(function(c){return c.key===key;})[0]||{name:"E'lonlar"};
     var arr = sortElons(ELONS.filter(function(e){ return e.cat===key; }).slice());
     var chips = SORTS.map(function(s){ return '<button class="sort-chip'+(elonSort===s.key?' on':'')+'" data-sort="'+s.key+'">'+s.label+'</button>'; }).join("");
+    if(!arr.length){
+      box.innerHTML = '<div class="empty" style="padding:24px 16px"><h3>Bu toifada e\'lon yo\'q</h3><p>'+esc(cat.name)+' bo\'yicha hozircha e\'lonlar joylanmagan.</p></div>';
+      return;
+    }
     box.innerHTML =
       '<div class="sort-row">'+chips+'</div>'+
-      '<div class="list-sub">'+cat.name+' — '+arr.length+' ta e\'lon</div>' +
+      '<div class="list-sub">'+esc(cat.name)+' — '+arr.length+' ta e\'lon</div>' +
       arr.map(function(e){
-        var m = MEDIA[e.id]||{p:1,v:false};
-        var badges = '📷 '+m.p + (m.v?' · ▶ video':'');
+        var nMedia = (e.media&&e.media.length)?e.media.length:0;
+        var hasVideo = (e.media||[]).some(function(m){return m.type==="video";});
+        var badges = nMedia ? ('📎 '+nMedia) : '';
         return '<div class="elon-item'+(e.id===selElon?' on':'')+'" data-li="'+e.id+'">'+
-          '<div class="li-thumb" style="background:linear-gradient(135deg,'+e.c+'33,'+e.c+'14)"><span>'+e.ic+'</span>'+(m.v?'<span class="vbadge">▶</span>':'')+'</div>'+
-          '<div class="li-main"><div class="li-title">'+e.title+'</div><div class="li-price">'+e.price+'</div>'+
-          '<div class="li-meta">'+e.area+' · '+e.date+' · '+badges+'</div></div>'+
+          '<div class="li-thumb" style="background:linear-gradient(135deg,'+e.c+'33,'+e.c+'14)"><span>'+e.ic+'</span>'+(hasVideo?'<span class="vbadge">▶</span>':'')+'</div>'+
+          '<div class="li-main"><div class="li-title">'+esc(e.title)+'</div><div class="li-price">'+esc(e.price)+'</div>'+
+          '<div class="li-meta">'+esc(e.area||"")+(badges?(' · '+badges):'')+'</div></div>'+
           '<button class="loc-btn" data-locate aria-label="Xaritada ko\'rsatish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg></button>'+
           '</div>';
       }).join("");
@@ -1018,25 +988,7 @@
     renderElonList(mapMode);
     screensEl.scrollTo({top:0, behavior:"smooth"});
   }
-  function renderElon(id){
-    var e = ELONS.filter(function(x){ return x.id===id; })[0];
-    if(!e) return;
-    var m = MEDIA[e.id] || {p:1,v:false};
-    var tiles = "";
-    for(var i=0;i<m.p;i++) tiles += '<div class="gal-tile" style="background:linear-gradient(135deg,'+e.c+'40,'+e.c+'12)"><span>'+e.ic+'</span></div>';
-    if(m.v) tiles += '<div class="gal-tile video" style="background:linear-gradient(135deg,'+e.c+'40,'+e.c+'12)"><span>'+e.ic+'</span><div class="play">▶</div><div class="vlabel">Video</div></div>';
-    el("bizBody").innerHTML =
-      '<div class="gallery">'+tiles+'</div>'+
-      '<div class="biz-title">'+e.title+'</div>'+
-      '<div class="biz-price">'+e.price+'</div>'+
-      '<div class="biz-sub"><span>'+e.area+'</span><span class="dot-sep"></span><span>'+e.date+'</span></div>'+
-      '<div class="biz-desc">'+e.desc+'</div>'+
-      '<div class="actionbar">'+
-        '<button class="btn btn-outline" style="flex:none;width:50px" data-act="save" aria-label="Saqlash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button>'+
-        '<button class="btn btn-primary" data-act="call">Bog\'lanish</button>'+
-      '</div>';
-  }
-  function openElon(id){ renderElon(id); var e=ELONS.filter(function(x){return x.id===id;})[0]||{}; nav("business"); el("tbTitle").textContent = e.title || "E'lon"; }
+  function openElon(id){ openElonSrv(id); }
 
   /* ---------- render: a business card ---------- */
   function card(b){
@@ -1608,10 +1560,36 @@
 
   /* manzil */
   el("locAuto").addEventListener("click", function(){
-    LOC="Yunusobod tumani";
-    renderMapChip();
-    alert("Joylashuv avtomatik aniqlandi: Toshkent, Yunusobod (namuna — haqiqiy versiyada telefon joylashuvidan olinadi).");
-    nav("home");
+    var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent="Aniqlanmoqda...";
+    function done(){ btn.disabled=false; btn.textContent=old; }
+    if(!navigator.geolocation){
+      done();
+      alert("Bu qurilmada avtomatik joylashuv mavjud emas. Iltimos, pastda qo'lda kiriting.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat=pos.coords.latitude, lng=pos.coords.longitude;
+      CENTER=[lat,lng];
+      if(LMAP){ try{ LMAP.setView(CENTER, 15); }catch(e){} }
+      // manzil nomini OpenStreetMap orqali aniqlaymiz (teskari geokodlash)
+      fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+lat+"&lon="+lng+"&accept-language=uz")
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var a=d.address||{};
+          var place = a.suburb || a.neighbourhood || a.city_district || a.county || a.city || a.town || a.village || "";
+          LOC = place ? place : "Joylashuvim";
+          renderMapChip(); done(); nav("home");
+        })
+        .catch(function(){
+          LOC = "Joylashuvim"; renderMapChip(); done(); nav("home");
+        });
+    }, function(err){
+      done();
+      var msg = "Joylashuvni aniqlab bo'lmadi. ";
+      if(err && err.code===1) msg += "Telegram sozlamalarida joylashuvga ruxsat bering yoki pastda qo'lda kiriting.";
+      else msg += "Iltimos, pastda qo'lda kiriting.";
+      alert(msg);
+    }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
   });
   el("locSave").addEventListener("click", function(){
     var t=(el("locTuman").value||"").trim();
