@@ -136,7 +136,7 @@ async def setup_bot():
     await tg_call("setWebhook", {
         "url": BASE_URL + "/webhook",
         "secret_token": WEBHOOK_SECRET,
-        "allowed_updates": ["message"],
+        "allowed_updates": ["message", "callback_query"],
     })
     await tg_call("setChatMenuButton", {
         "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
@@ -166,6 +166,46 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
         raise HTTPException(403, "forbidden")
     update = await request.json()
     msg = update.get("message")
+ 
+    # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
+    cq = update.get("callback_query")
+    if cq:
+        data = cq.get("data", "")
+        from_id = cq["from"]["id"]
+        cq_id = cq["id"]
+        action, _, rid = data.partition("_")
+        if action in ("approve", "reject") and rid.isdigit():
+            conn = db()
+            row = conn.execute("SELECT * FROM login_requests WHERE id=?", (int(rid),)).fetchone()
+            if not row:
+                conn.close()
+                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "So'rov topilmadi yoki muddati tugagan."})
+                return {"ok": True}
+            # faqat akkaunt egasi tasdiqlay oladi
+            user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+            if not user or user["tg_id"] != from_id:
+                conn.close()
+                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "Bu so'rov sizga tegishli emas."})
+                return {"ok": True}
+            new_status = "approved" if action == "approve" else "rejected"
+            conn.execute("UPDATE login_requests SET status=? WHERE id=?", (new_status, row["id"]))
+            conn.commit()
+            conn.close()
+            note = "✅ Tasdiqlandi. Endi yangi qurilmada kabinetga kirasiz." if action == "approve" \
+                   else "❌ Rad etildi. Kirishga ruxsat berilmadi."
+            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": note})
+            # xabar matnini yangilaymiz
+            try:
+                await tg_call("editMessageText", {
+                    "chat_id": from_id,
+                    "message_id": cq["message"]["message_id"],
+                    "text": cq["message"].get("text", "") + "\n\n" + note,
+                })
+            except Exception:
+                pass
+        else:
+            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id})
+        return {"ok": True}
  
     # Foto/video kelsa — e'lon uchun "pochta qutisi"ga olamiz
     if msg and (msg.get("photo") or msg.get("video")):
@@ -213,7 +253,16 @@ async def get_catalog():
     return {"yonalishlar": CATALOG, "elon_toifalari": LISTING_CATS}
  
  
-# ---------- Ro'yxatdan o'tish ----------
+# ---------- Login/parol generatori ----------
+def gen_login():
+    return "user" + "".join(secrets.choice("0123456789") for _ in range(6))
+ 
+def gen_pass():
+    alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+ 
+ 
+# ---------- Ro'yxatdan o'tish (platforma login/parol yaratadi) ----------
 @app.post("/api/auth/register")
 async def register(request: Request, x_telegram_init_data: str = Header(default="")):
     tg = require_tg(x_telegram_init_data)
@@ -222,102 +271,59 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     role = body.get("role")
     if role not in ("user", "business"):
         raise HTTPException(400, "Rol noto'g'ri (user yoki business).")
-    login = (body.get("login") or "").strip().lower()
-    password = body.get("password") or ""
     name = (body.get("name") or "").strip()
-    if len(login) < 4:
-        raise HTTPException(400, "Login kamida 4 belgi bo'lsin.")
-    if len(password) < 6:
-        raise HTTPException(400, "Parol kamida 6 belgi bo'lsin.")
     if not name:
         raise HTTPException(400, "Ism (yoki biznes nomi) kiritilishi shart.")
+    username = (body.get("username") or "").strip().lstrip("@")
  
     conn = db()
-    exists = conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone()
-    if exists:
-        conn.close()
-        raise HTTPException(400, "Bu login band. Boshqasini tanlang.")
- 
     # Shu Telegramda allaqachon akkaunt bo'lsa
     if current_user(conn, tg["id"]):
         conn.close()
-        raise HTTPException(400, "Bu Telegramga allaqachon akkaunt bog'langan. Kirish bo'limidan foydalaning.")
+        raise HTTPException(400, "Bu Telegramda allaqachon akkaunt bor. Kabinetga kiring.")
  
-    code = gen_code()
-    now = int(time.time())
-    payload = json.dumps({
-        "name": name,
-        "phone": (body.get("phone") or "").strip(),
-        "region": (body.get("region") or "").strip(),
-        "district": (body.get("district") or "").strip(),
-        "mahalla": (body.get("mahalla") or "").strip(),
-        # biznes maydonlari
-        "yon": (body.get("yon") or "").strip(),
-        "tur": (body.get("tur") or "").strip(),
-        "address": (body.get("address") or "").strip(),
-        "lat": body.get("lat"),
-        "lng": body.get("lng"),
-    })
-    # eski kutilayotgan arizalarini tozalaymiz
-    conn.execute("DELETE FROM pending_regs WHERE tg_id=?", (tg["id"],))
-    cur = conn.execute(
-        "INSERT INTO pending_regs(tg_id, role, login, pass_hash, payload, code, expires_at, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?)",
-        (tg["id"], role, login, hash_password(password), payload, code, now + CODE_TTL, now),
-    )
-    pending_id = cur.lastrowid
-    conn.commit()
-    conn.close()
+    # Login/parolni platforma o'zi yaratadi (noyob login)
+    for _ in range(20):
+        login = gen_login()
+        if not conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone():
+            break
+    password = gen_pass()
  
-    await send_code(tg["id"], code, "register")
-    return {"pending_id": pending_id, "message": "Tasdiqlash kodi Telegramingizga yuborildi."}
- 
- 
-@app.post("/api/auth/register/verify")
-async def register_verify(request: Request, x_telegram_init_data: str = Header(default="")):
-    tg = require_tg(x_telegram_init_data)
-    body = await request.json()
-    pending_id = body.get("pending_id")
-    code = (body.get("code") or "").strip()
- 
-    conn = db()
-    row = conn.execute(
-        "SELECT * FROM pending_regs WHERE id=? AND tg_id=?", (pending_id, tg["id"])
-    ).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(400, "Ariza topilmadi. Qaytadan ro'yxatdan o'ting.")
-    if row["expires_at"] < int(time.time()):
-        conn.close()
-        raise HTTPException(400, "Kod muddati tugagan. Qaytadan urinib ko'ring.")
-    if not hmac.compare_digest(row["code"], code):
-        conn.close()
-        raise HTTPException(400, "Kod noto'g'ri.")
- 
-    p = json.loads(row["payload"])
     now = int(time.time())
     cur = conn.execute(
-        "INSERT INTO users(tg_id, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?)",
-        (tg["id"], row["login"], row["pass_hash"], row["role"], p["name"],
-         p["phone"], p["region"], p["district"], p["mahalla"], now),
+        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (tg["id"], username, login, hash_password(password), role, name,
+         (body.get("phone") or "").strip(), (body.get("region") or "").strip(),
+         (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
     )
     user_id = cur.lastrowid
- 
-    if row["role"] == "business":
+    if role == "business":
         conn.execute(
             "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, created_at) "
             "VALUES(?,?,?,?,?,?,?,?,?)",
-            (user_id, p["name"], p["yon"], p["tur"], p["phone"], p["address"], p["lat"], p["lng"], now),
+            (user_id, name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
+             (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
+             body.get("lat"), body.get("lng"), now),
         )
- 
-    conn.execute("DELETE FROM pending_regs WHERE id=?", (row["id"],))
     conn.commit()
     conn.close()
-    return {"ok": True, "role": row["role"], "message": "Ro'yxatdan o'tish yakunlandi!"}
+ 
+    # Login va parolni foydalanuvchining Telegramiga yuboramiz
+    await tg_call("sendMessage", {
+        "chat_id": tg["id"],
+        "text": ("Platformaga xush kelibsiz! \u2705\n\n"
+                 "Kabinetingizga kirish ma'lumotlari:\n\n"
+                 "\U0001F511 Login: KOD: " + login + "\n"
+                 "\U0001F510 Parol: " + password + "\n\n"
+                 "Bu ma'lumotlarni saqlab qo'ying. Boshqa qurilmadan kirganda shu login va parol kerak bo'ladi."),
+    })
+    # Ro'yxatdan o'tgan qurilma to'g'ridan-to'g'ri kiradi
+    return {"ok": True, "role": role, "login": login, "password": password,
+            "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
  
  
-# ---------- Kirish ----------
+# ---------- Kirish (login/parol -> asosiy akkauntga tasdiqlash) ----------
 @app.post("/api/auth/login")
 async def login(request: Request, x_telegram_init_data: str = Header(default="")):
     tg = require_tg(x_telegram_init_data)
@@ -331,64 +337,70 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
         conn.close()
         raise HTTPException(401, "Login yoki parol noto'g'ri.")
  
-    # Kod akkauntning ASOSIY (ro'yxatdan o'tgan) Telegramiga yuboriladi — Telegram tartibi.
-    target_tg = user["tg_id"]
-    same_device = (target_tg == tg["id"])
-    if not target_tg:
-        # Akkaunt hech qaysi Telegramga bog'lanmagan (kamdan-kam holat) — joriy qurilmaga yuboramiz.
-        target_tg = tg["id"]
-        same_device = True
+    # Agar shu qurilmaning o'zidan kirilayotgan bo'lsa (asosiy akkaunt) — to'g'ridan-to'g'ri
+    if user["tg_id"] == tg["id"]:
+        conn.close()
+        return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
  
-    code = gen_code()
+    # Boshqa qurilma — asosiy akkauntga tasdiqlash so'rovi yuboramiz
+    if not user["tg_id"]:
+        # akkaunt hech qaysi telegramga bog'lanmagan — shu qurilmaga bog'laymiz
+        conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], user["id"]))
+        conn.commit(); conn.close()
+        return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
+ 
+    device_name = (tg.get("first_name") or "") + ((" @" + tg["username"]) if tg.get("username") else "")
     now = int(time.time())
-    conn.execute("DELETE FROM auth_codes WHERE user_id=?", (user["id"],))
+    conn.execute("DELETE FROM login_requests WHERE user_id=? AND status='pending'", (user["id"],))
     cur = conn.execute(
-        # device_tg — kirayotgan qurilma; tasdiqlashda shu tekshiriladi
-        "INSERT INTO auth_codes(user_id, tg_id, code, expires_at, created_at) VALUES(?,?,?,?,?)",
-        (user["id"], tg["id"], code, now + CODE_TTL, now),
+        "INSERT INTO login_requests(user_id, device_tg, device_name, status, expires_at, created_at) "
+        "VALUES(?,?,?,?,?,?)",
+        (user["id"], tg["id"], device_name.strip(), "pending", now + CODE_TTL, now),
     )
-    code_id = cur.lastrowid
+    req_id = cur.lastrowid
     conn.commit()
     conn.close()
  
-    await send_code(target_tg, code, "login")
-    if same_device:
-        msg = "Tasdiqlash kodi Telegramingizga yuborildi."
-    else:
-        msg = "Tasdiqlash kodi akkauntingiz ro'yxatdan o'tgan asosiy Telegramga yuborildi. Shu kodni kiriting."
-    return {"code_id": code_id, "message": msg, "same_device": same_device}
+    # Asosiy akkauntga tasdiqlash tugmali xabar
+    await tg_call("sendMessage", {
+        "chat_id": user["tg_id"],
+        "text": ("\U0001F510 Akkauntingizga boshqa qurilmadan kirishga urinilmoqda:\n\n"
+                 + (device_name.strip() or "Noma'lum qurilma") +
+                 "\n\nBu sizmidingizmi? Agar ha bo'lsa, tasdiqlang. Agar siz bo'lmasangiz, rad eting."),
+        "reply_markup": {"inline_keyboard": [[
+            {"text": "\u2705 Tasdiqlash", "callback_data": "approve_" + str(req_id)},
+            {"text": "\u274C Rad etish", "callback_data": "reject_" + str(req_id)},
+        ]]},
+    })
+    return {"request_id": req_id, "approved": False,
+            "message": "Asosiy Telegram akkauntingizga tasdiqlash so'rovi yuborildi. Iltimos, o'sha yerda tasdiqlang."}
  
  
-@app.post("/api/auth/login/verify")
-async def login_verify(request: Request, x_telegram_init_data: str = Header(default="")):
+@app.get("/api/auth/login/status")
+async def login_status(request_id: int, x_telegram_init_data: str = Header(default="")):
     tg = require_tg(x_telegram_init_data)
-    body = await request.json()
-    code_id = body.get("code_id")
-    code = (body.get("code") or "").strip()
- 
     conn = db()
     row = conn.execute(
-        "SELECT * FROM auth_codes WHERE id=? AND tg_id=? AND used=0", (code_id, tg["id"])
+        "SELECT * FROM login_requests WHERE id=? AND device_tg=?", (request_id, tg["id"])
     ).fetchone()
     if not row:
         conn.close()
-        raise HTTPException(400, "Kod topilmadi. Qaytadan kiring.")
-    if row["expires_at"] < int(time.time()):
+        raise HTTPException(404, "So'rov topilmadi.")
+    if row["status"] == "pending" and row["expires_at"] < int(time.time()):
         conn.close()
-        raise HTTPException(400, "Kod muddati tugagan.")
-    if not hmac.compare_digest(row["code"], code):
+        return {"status": "expired"}
+    if row["status"] == "approved":
+        # qurilmani akkauntga bog'laymiz (asosiy qurilma o'zgaradi)
+        user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=?", (tg["id"],))
+        conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], row["user_id"]))
+        conn.execute("DELETE FROM login_requests WHERE id=?", (row["id"],))
+        conn.commit()
         conn.close()
-        raise HTTPException(400, "Kod noto'g'ri.")
- 
-    # Akkauntni shu Telegramga bog'laymiz (eski bog'lanish bo'lsa, ko'chadi)
-    conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=?", (tg["id"],))
-    conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], row["user_id"]))
-    conn.execute("UPDATE auth_codes SET used=1 WHERE id=?", (row["id"],))
-    conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+        return {"status": "approved", "role": user["role"], "name": user["name"]}
+    status = row["status"]
     conn.close()
-    return {"ok": True, "role": user["role"], "name": user["name"]}
- 
+    return {"status": status}
  
 # ---------- Joriy foydalanuvchi ----------
 @app.get("/api/me")
