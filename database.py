@@ -1,6 +1,6 @@
 """
 Platforma — ma'lumotlar bazasi (SQLite).
-
+ 
 Jadval tuzilishi kelishilgan dizaynga mos:
   users         - barcha foydalanuvchilar (oddiy + biznes egalari), login/parol, Telegram bog'lanishi
   businesses    - biznes profillari (nomi, yo'nalishi, joyi, aloqa)
@@ -14,13 +14,13 @@ Jadval tuzilishi kelishilgan dizaynga mos:
   pending_regs  - ro'yxatdan o'tish kutilmoqda (kod tasdiqlangunicha)
   auth_codes    - kirishdagi tasdiqlash kodlari
 """
-
+ 
 import os
 import sqlite3
-
+ 
 DB_PATH = os.environ.get("DB_PATH", "platforma.db")
-
-
+ 
+ 
 def db():
     # Baza papkasi mavjudligini ta'minlaymiz (Railway volume uchun)
     folder = os.path.dirname(DB_PATH)
@@ -31,8 +31,8 @@ def db():
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     return conn
-
-
+ 
+ 
 def init_db():
     conn = db()
     conn.executescript(
@@ -40,6 +40,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             tg_id         INTEGER UNIQUE,
+            username      TEXT DEFAULT '',                  -- Telegram username (@siz)
             login         TEXT UNIQUE NOT NULL,
             pass_hash     TEXT NOT NULL,
             role          TEXT NOT NULL DEFAULT 'user',     -- 'user' | 'business'
@@ -51,7 +52,7 @@ def init_db():
             avatar_file   TEXT DEFAULT '',                  -- Telegram file_id
             created_at    INTEGER NOT NULL
         );
-
+ 
         CREATE TABLE IF NOT EXISTS businesses(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL UNIQUE,
@@ -70,7 +71,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS specialists(
             user_id       INTEGER PRIMARY KEY,
             kasb          TEXT DEFAULT '',
@@ -90,7 +91,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS items(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
@@ -102,7 +103,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS listings(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL,                 -- kim joylagan
@@ -119,7 +120,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS listing_media(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             listing_id    INTEGER NOT NULL,
@@ -128,7 +129,7 @@ def init_db():
             pos           INTEGER DEFAULT 0,
             FOREIGN KEY(listing_id) REFERENCES listings(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS follows(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             follower_id   INTEGER NOT NULL,                 -- kim obuna bo'ldi (user id)
@@ -138,7 +139,7 @@ def init_db():
             UNIQUE(follower_id, target_kind, target_id),
             FOREIGN KEY(follower_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS saved(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL,
@@ -148,7 +149,7 @@ def init_db():
             UNIQUE(user_id, target_kind, target_id),
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS debtors(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
@@ -159,7 +160,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS qarz_tx(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             debtor_id     INTEGER NOT NULL,
@@ -170,7 +171,7 @@ def init_db():
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(debtor_id) REFERENCES debtors(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS pending_regs(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             tg_id         INTEGER NOT NULL,
@@ -182,18 +183,18 @@ def init_db():
             expires_at    INTEGER NOT NULL,
             created_at    INTEGER NOT NULL
         );
-
-        CREATE TABLE IF NOT EXISTS auth_codes(
+ 
+        CREATE TABLE IF NOT EXISTS login_requests(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id       INTEGER NOT NULL,
-            tg_id         INTEGER NOT NULL,                 -- kod yuborilgan telegram
-            code          TEXT NOT NULL,
+            user_id       INTEGER NOT NULL,                 -- kimning akkauntiga kirilmoqchi
+            device_tg     INTEGER NOT NULL,                 -- kirayotgan qurilma Telegram ID
+            device_name   TEXT DEFAULT '',                  -- kirayotgan qurilma nomi (ko'rsatish uchun)
+            status        TEXT DEFAULT 'pending',           -- 'pending' | 'approved' | 'rejected'
             expires_at    INTEGER NOT NULL,
-            used          INTEGER DEFAULT 0,
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-
+ 
         CREATE TABLE IF NOT EXISTS media_inbox(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             tg_id         INTEGER NOT NULL,                 -- kim yuborgan
@@ -201,7 +202,7 @@ def init_db():
             mtype         TEXT DEFAULT 'photo',
             created_at    INTEGER NOT NULL
         );
-
+ 
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
@@ -217,3 +218,4 @@ def init_db():
     )
     conn.commit()
     conn.close()
+ 
