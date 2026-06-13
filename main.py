@@ -1,6 +1,6 @@
 """
 Platforma — asosiy server (FastAPI).
- 
+
 Bu bosqichda (B bo'lim, poydevor):
   * Telegram initData tekshiruvi (har bir so'rov imzosi)
   * Ro'yxatdan o'tish: forma -> Telegramga 6 xonali kod -> tasdiqlash -> akkaunt
@@ -9,12 +9,12 @@ Bu bosqichda (B bo'lim, poydevor):
   * /api/me — joriy foydalanuvchi
   * /api/catalog — 20 yo'nalish
   * Bot webhook: /start -> ilovani ochish tugmasi
- 
+
 Environment variables:
   BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET
   TEST_MODE=1  -> sinov rejimi (kod Telegramga emas, xotirada qoladi — faqat test uchun)
 """
- 
+
 import os
 import json
 import time
@@ -23,27 +23,27 @@ import secrets
 import hashlib
 from urllib.parse import parse_qsl
 from contextlib import asynccontextmanager
- 
+
 import httpx
 from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
- 
+
 from database import db, init_db
 from catalog_data import CATALOG, LISTING_CATS
- 
+
 # ---------- Sozlamalar ----------
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
 TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
- 
+
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
- 
+
 # Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
 _test_codes = {}
- 
- 
+
+
 # ---------- Telegram initData tekshiruvi ----------
 def verify_init_data(init_data):
     """Mini App so'rovi haqiqatan Telegramdan kelganini imzo orqali tekshiradi."""
@@ -66,41 +66,41 @@ def verify_init_data(init_data):
     except Exception:
         return None
     return user if "id" in user else None
- 
- 
+
+
 def require_tg(init_data):
     """Telegram foydalanuvchisini majburiy tekshiradi."""
     tg = verify_init_data(init_data)
     if not tg:
         raise HTTPException(401, "Iltimos, ilovani Telegram bot orqali oching.")
     return tg
- 
- 
+
+
 def current_user(conn, tg_id):
     """Shu Telegramga bog'langan akkauntni topadi (bo'lmasa None)."""
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
- 
- 
+
+
 # ---------- Parol (xavfsiz saqlash) ----------
 def hash_password(password, salt=None):
     if salt is None:
         salt = secrets.token_hex(16)
     h = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), 200_000)
     return salt + "$" + h.hex()
- 
- 
+
+
 def check_password(password, stored):
     try:
         salt, _ = stored.split("$", 1)
     except Exception:
         return False
     return hmac.compare_digest(hash_password(password, salt), stored)
- 
- 
+
+
 def gen_code():
     return "".join(secrets.choice("0123456789") for _ in range(6))
- 
- 
+
+
 # ---------- Telegram bot ----------
 async def tg_call(method, payload):
     if TEST_MODE:
@@ -118,8 +118,8 @@ async def tg_call(method, payload):
         except Exception as e:
             print("Telegram xatosi (" + method + "):", e)
             return None
- 
- 
+
+
 async def send_code(tg_id, code, purpose):
     title = "Ro'yxatdan o'tish" if purpose == "register" else "Kirish"
     await tg_call("sendMessage", {
@@ -127,12 +127,14 @@ async def send_code(tg_id, code, purpose):
         "text": title + " uchun tasdiqlash kodingiz — KOD: " + code +
                 "\n\nKod 10 daqiqa amal qiladi. Uni hech kimga bermang.",
     })
- 
- 
+
+
 async def setup_bot():
     if not (BOT_TOKEN and BASE_URL) or TEST_MODE:
         print("Bot sozlanmadi (BOT_TOKEN/BASE_URL yo'q yoki TEST_MODE).")
         return
+    # Avval eski webhook'ni o'chiramiz (toza qayta ro'yxatdan o'tkazish uchun)
+    await tg_call("deleteWebhook", {"drop_pending_updates": False})
     await tg_call("setWebhook", {
         "url": BASE_URL + "/webhook",
         "secret_token": WEBHOOK_SECRET,
@@ -142,23 +144,31 @@ async def setup_bot():
         "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
     })
     print("Bot sozlandi:", BASE_URL)
- 
- 
+
+
 # ---------- App ----------
 @asynccontextmanager
 async def lifespan(app):
     init_db()
     await setup_bot()
     yield
- 
- 
+
+
 app = FastAPI(lifespan=lifespan)
- 
+
 # Kabinet va platforma API'lari (api.py)
 from api import router as api_router
 app.include_router(api_router)
- 
- 
+
+
+@app.get("/api/_setup")
+async def manual_setup():
+    """Webhook'ni qo'lda qayta o'rnatish (brauzerda ochib ishlatiladi)."""
+    await setup_bot()
+    info = await tg_call("getWebhookInfo", {})
+    return {"ok": True, "webhook": info.get("result") if isinstance(info, dict) else info}
+
+
 # ---------- Webhook ----------
 @app.post("/webhook")
 async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(default="")):
@@ -166,7 +176,7 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
         raise HTTPException(403, "forbidden")
     update = await request.json()
     msg = update.get("message")
- 
+
     # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
     cq = update.get("callback_query")
     if cq:
@@ -206,7 +216,7 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
         else:
             await tg_call("answerCallbackQuery", {"callback_query_id": cq_id})
         return {"ok": True}
- 
+
     # Foto/video kelsa — e'lon uchun "pochta qutisi"ga olamiz
     if msg and (msg.get("photo") or msg.get("video")):
         tg_id = msg["chat"]["id"]
@@ -235,7 +245,7 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
                     " qabul qilindi ✅ Endi ilovadagi e'lon formasiga qaytsangiz, u yerda ko'rinadi.",
         })
         return {"ok": True}
- 
+
     if msg and isinstance(msg.get("text"), str) and msg["text"].split(" ")[0] == "/start":
         await tg_call("sendMessage", {
             "chat_id": msg["chat"]["id"],
@@ -245,29 +255,29 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
             ]]},
         })
     return {"ok": True}
- 
- 
+
+
 # ---------- Katalog ----------
 @app.get("/api/catalog")
 async def get_catalog():
     return {"yonalishlar": CATALOG, "elon_toifalari": LISTING_CATS}
- 
- 
+
+
 # ---------- Login/parol generatori ----------
 def gen_login():
     return "user" + "".join(secrets.choice("0123456789") for _ in range(6))
- 
+
 def gen_pass():
     alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(8))
- 
- 
+
+
 # ---------- Ro'yxatdan o'tish (platforma login/parol yaratadi) ----------
 @app.post("/api/auth/register")
 async def register(request: Request, x_telegram_init_data: str = Header(default="")):
     tg = require_tg(x_telegram_init_data)
     body = await request.json()
- 
+
     role = body.get("role")
     if role not in ("user", "business"):
         raise HTTPException(400, "Rol noto'g'ri (user yoki business).")
@@ -275,20 +285,20 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     if not name:
         raise HTTPException(400, "Ism (yoki biznes nomi) kiritilishi shart.")
     username = (body.get("username") or "").strip().lstrip("@")
- 
+
     conn = db()
     # Shu Telegramda allaqachon akkaunt bo'lsa
     if current_user(conn, tg["id"]):
         conn.close()
         raise HTTPException(400, "Bu Telegramda allaqachon akkaunt bor. Kabinetga kiring.")
- 
+
     # Login/parolni platforma o'zi yaratadi (noyob login)
     for _ in range(20):
         login = gen_login()
         if not conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone():
             break
     password = gen_pass()
- 
+
     now = int(time.time())
     cur = conn.execute(
         "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
@@ -308,7 +318,7 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
         )
     conn.commit()
     conn.close()
- 
+
     # Login va parolni foydalanuvchining Telegramiga yuboramiz
     await tg_call("sendMessage", {
         "chat_id": tg["id"],
@@ -321,8 +331,8 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     # Ro'yxatdan o'tgan qurilma to'g'ridan-to'g'ri kiradi
     return {"ok": True, "role": role, "login": login, "password": password,
             "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
- 
- 
+
+
 # ---------- Kirish (login/parol -> asosiy akkauntga tasdiqlash) ----------
 @app.post("/api/auth/login")
 async def login(request: Request, x_telegram_init_data: str = Header(default="")):
@@ -330,25 +340,25 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
     body = await request.json()
     login_v = (body.get("login") or "").strip().lower()
     password = body.get("password") or ""
- 
+
     conn = db()
     user = conn.execute("SELECT * FROM users WHERE login=?", (login_v,)).fetchone()
     if not user or not check_password(password, user["pass_hash"]):
         conn.close()
         raise HTTPException(401, "Login yoki parol noto'g'ri.")
- 
+
     # Agar shu qurilmaning o'zidan kirilayotgan bo'lsa (asosiy akkaunt) — to'g'ridan-to'g'ri
     if user["tg_id"] == tg["id"]:
         conn.close()
         return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
- 
+
     # Boshqa qurilma — asosiy akkauntga tasdiqlash so'rovi yuboramiz
     if not user["tg_id"]:
         # akkaunt hech qaysi telegramga bog'lanmagan — shu qurilmaga bog'laymiz
         conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], user["id"]))
         conn.commit(); conn.close()
         return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
- 
+
     device_name = (tg.get("first_name") or "") + ((" @" + tg["username"]) if tg.get("username") else "")
     now = int(time.time())
     conn.execute("DELETE FROM login_requests WHERE user_id=? AND status='pending'", (user["id"],))
@@ -360,7 +370,7 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
     req_id = cur.lastrowid
     conn.commit()
     conn.close()
- 
+
     # Asosiy akkauntga tasdiqlash tugmali xabar
     await tg_call("sendMessage", {
         "chat_id": user["tg_id"],
@@ -374,8 +384,8 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
     })
     return {"request_id": req_id, "approved": False,
             "message": "Asosiy Telegram akkauntingizga tasdiqlash so'rovi yuborildi. Iltimos, o'sha yerda tasdiqlang."}
- 
- 
+
+
 @app.get("/api/auth/login/status")
 async def login_status(request_id: int, x_telegram_init_data: str = Header(default="")):
     tg = require_tg(x_telegram_init_data)
@@ -401,7 +411,7 @@ async def login_status(request_id: int, x_telegram_init_data: str = Header(defau
     status = row["status"]
     conn.close()
     return {"status": status}
- 
+
 # ---------- Joriy foydalanuvchi ----------
 @app.get("/api/me")
 async def me(x_telegram_init_data: str = Header(default="")):
@@ -426,11 +436,11 @@ async def me(x_telegram_init_data: str = Header(default="")):
             }
     conn.close()
     return result
- 
- 
+
+
 # ---------- Media ko'prigi (Telegramdagi rasmni ilovaga uzatish) ----------
 _file_path_cache = {}
- 
+
 @app.get("/media/{file_id}")
 async def media_proxy(file_id: str):
     from fastapi.responses import StreamingResponse, Response
@@ -452,26 +462,25 @@ async def media_proxy(file_id: str):
         _file_path_cache.pop(file_id, None)
         raise HTTPException(404, "Fayl topilmadi.")
     ctype = "video/mp4" if path.endswith(".mp4") else "image/jpeg"
- 
+
     async def gen():
         try:
             async for chunk in resp.aiter_bytes():
                 yield chunk
         finally:
             await resp.aclose(); await client.aclose()
- 
+
     return StreamingResponse(gen(), media_type=ctype,
                              headers={"Cache-Control": "public, max-age=86400"})
- 
- 
+
+
 # ---------- Sinov yordamchisi (faqat TEST_MODE) ----------
 @app.get("/api/_test/last_code/{tg_id}")
 async def test_last_code(tg_id: int):
     if not TEST_MODE:
         raise HTTPException(404, "not found")
     return {"code": _test_codes.get(tg_id)}
- 
- 
+
+
 # ---------- Mini App (eng oxirida) ----------
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
- 
