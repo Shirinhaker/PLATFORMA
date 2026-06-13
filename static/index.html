@@ -399,10 +399,13 @@
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
           </div>
           <div id="loginStep2" hidden>
-            <div class="lead-sub">Telegramingizga yuborilgan 6 xonali kodni kiriting.</div>
-            <div class="field"><label>Kod</label><input class="input" id="loginCode" inputmode="numeric" placeholder="• • • • • •" style="text-align:center;letter-spacing:6px;font-size:20px;font-weight:700" /></div>
-            <button class="btn btn-primary btn-block" id="loginVerify">Tasdiqlash va kirish</button>
-            <div class="form-foot"><b id="loginBack">← Orqaga</b></div>
+            <div style="text-align:center;padding:20px 0">
+              <div style="font-size:46px;margin-bottom:12px">📲</div>
+              <div class="lead" style="font-size:18px">Tasdiqlash kutilmoqda</div>
+              <div class="lead-sub" style="margin-top:8px">Asosiy Telegram akkauntingizga tasdiqlash so'rovi yuborildi.<br>O'sha yerda <b>✅ Tasdiqlash</b> tugmasini bosing — keyin avtomatik kirasiz.</div>
+              <div class="dots" style="margin:18px 0;color:var(--primary);font-weight:700">• • •</div>
+            </div>
+            <div class="form-foot"><b id="loginBack">← Bekor qilish</b></div>
           </div>
         </div>
       </section>
@@ -690,16 +693,6 @@
       <section class="screen" data-screen="cab-report">
         <div class="empty"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
         <h3>Hisobot</h3><p>Bu bo'limning vazifasini keyingi bosqichda birga belgilaymiz.</p><span class="soon">Keyingi bosqich</span></div>
-      </section>
-
-      <!-- TASDIQLASH KODI -->
-      <section class="screen" data-screen="verify">
-        <div class="form-wrap">
-          <div class="lead">Tasdiqlash kodi</div>
-          <div class="lead-sub">Telegramingizga 6 xonali kod yuborildi. Shu kodni kiriting.</div>
-          <div class="field"><label>Kod</label><input class="input" id="regCode" inputmode="numeric" placeholder="• • • • • •" style="text-align:center;letter-spacing:6px;font-size:20px;font-weight:700"></div>
-          <button class="btn btn-primary btn-block" id="verifyDone">Tasdiqlash</button>
-        </div>
       </section>
 
       <!-- TAXI: HAYDOVCHI BO'LIMI -->
@@ -1277,31 +1270,22 @@
         '<div class="field"><label>Manzil</label><input class="input" id="rgAddr" placeholder="Tuman, mahalla, ko\'cha"></div>'+
         '<div class="field"><label>Telefon</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>'
       : '<div class="field"><label>Ism familiya</label><input class="input" id="rgName" placeholder="Ismingiz"></div>'+
-        '<div class="field"><label>Telefon</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>'+
-        '<div class="field"><label>Yashash tumani</label><input class="input" id="rgDistrict" placeholder="Masalan: Yunusobod"></div>';
+        '<div class="field"><label>Yashash tumani — ixtiyoriy</label><input class="input" id="rgDistrict" placeholder="Masalan: Yunusobod"></div>';
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">'+(isBiz?'Biznes ro\'yxati':'Foydalanuvchi ro\'yxati')+'</div>'+
-      '<div class="lead-sub">'+(isBiz?'Biznesingiz haqida ma\'lumot kiriting — sahifangiz shu asosda ochiladi.':'Bir necha qadamda ro\'yxatdan o\'tasiz.')+'</div>'+
+      '<div class="lead-sub">Telegram username\'ingizni kiriting. Login va parolni platforma o\'zi yaratib, Telegramingizga yuboradi.</div>'+
+      '<div class="field"><label>Telegram username</label><input class="input" id="rgUsername" placeholder="@username" autocapitalize="off"></div>'+
       fieldsHtml+
-      '<div class="field"><label>Login</label><input class="input" id="rgLogin" placeholder="Login o\'ylab toping (kamida 4 belgi)" autocapitalize="off"></div>'+
-      '<div class="field"><label>Parol</label><input class="input" id="rgPass" type="password" placeholder="Kamida 6 belgi"></div>'+
-      '<div class="field"><label>Parolni takrorlang</label><input class="input" id="rgPass2" type="password" placeholder="Qayta kiriting"></div>'+
-      '<button class="btn btn-primary btn-block" id="rgSubmit">Davom etish</button>'+
+      '<button class="btn btn-primary btn-block" id="rgSubmit">Ro\'yxatdan o\'tish</button>'+
       '</div>';
     el("rgSubmit").addEventListener("click", submitRegister);
   }
 
-  var pendingId = null;
   function submitRegister(){
     var name = (el("rgName").value||"").trim();
-    var login = (el("rgLogin").value||"").trim();
-    var pass = el("rgPass").value||"";
-    var pass2 = el("rgPass2").value||"";
-    if(!name){ alert("Ism (yoki biznes nomi) kiritilishi shart."); return; }
-    if(login.length<4){ alert("Login kamida 4 belgi bo'lsin."); return; }
-    if(pass.length<6){ alert("Parol kamida 6 belgi bo'lsin."); return; }
-    if(pass!==pass2){ alert("Parollar mos kelmadi."); return; }
-    var body = { role:regRole, login:login, password:pass, name:name,
+    if(!name){ alert(regRole==="business"?"Biznes nomi kiritilishi shart.":"Ism kiritilishi shart."); return; }
+    var body = { role:regRole, name:name,
+                 username:(el("rgUsername")?el("rgUsername").value.trim():""),
                  phone:(el("rgPhone")?el("rgPhone").value.trim():"") };
     if(regRole==="business"){
       body.yon = el("rgYon") ? el("rgYon").value : "";
@@ -1311,13 +1295,26 @@
     }
     var btn = el("rgSubmit"); btn.disabled = true; btn.textContent = "Yuborilmoqda...";
     api("POST", "/api/auth/register", body).then(function(r){
-      pendingId = r.pending_id;
-      nav("verify");
+      // Login va parolni foydalanuvchiga ko'rsatamiz (Telegramga ham yuborilgan)
+      showCredentials(r.login, r.password, r.role);
     }).catch(function(e){
       alert(e.message);
     }).finally(function(){
-      btn.disabled = false; btn.textContent = "Davom etish";
+      btn.disabled = false; btn.textContent = "Ro'yxatdan o'tish";
     });
+  }
+
+  function showCredentials(login, password, role){
+    el("regBody").innerHTML =
+      '<div class="form-wrap"><div class="lead">Ro\'yxatdan o\'tdingiz! ✅</div>'+
+      '<div class="lead-sub">Quyidagi login va parolni saqlab qo\'ying. Bu ma\'lumotlar Telegramingizga ham yuborildi. Boshqa qurilmadan kirganda shular kerak bo\'ladi.</div>'+
+      '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
+        '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🔑 Login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(login)+'</div></div>'+
+        '<div><div style="font-size:12px;color:var(--soft)">🔐 Parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(password)+'</div></div>'+
+      '</div>'+
+      '<button class="btn btn-primary btn-block" id="credDone">Kabinetimga o\'tish</button>'+
+      '</div>';
+    el("credDone").addEventListener("click", function(){ afterAuth(role); });
   }
 
   /* ---------- navigation ---------- */
@@ -1633,46 +1630,50 @@
     nav(role==="business" ? "cabinet" : "ucab");
   }
 
-  // KIRISH — 1-qadam: login+parol -> kod yuboriladi
-  var loginCodeId = null;
+  // KIRISH: login+parol -> agar shu qurilma asosiy bo'lsa to'g'ridan-to'g'ri kiradi;
+  // boshqa qurilma bo'lsa, asosiy akkauntga tasdiqlash so'rovi boradi va kutamiz
+  var loginPoll = null;
+  function stopPoll(){ if(loginPoll){ clearInterval(loginPoll); loginPoll=null; } }
   el("loginGo").addEventListener("click", function(){
     var login=(el("loginUser").value||"").trim();
     var pass=el("loginPass").value||"";
     if(!login || !pass){ alert("Login va parolni kiriting."); return; }
     var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
     api("POST","/api/auth/login",{login:login,password:pass}).then(function(r){
-      loginCodeId = r.code_id;
+      if(r.approved){
+        // asosiy qurilma — to'g'ridan-to'g'ri kirish
+        el("loginUser").value=""; el("loginPass").value="";
+        afterAuth(r.role);
+        return;
+      }
+      // boshqa qurilma — kutish ekrani + so'rov holatini tekshirib turamiz
       el("loginStep1").hidden=true; el("loginStep2").hidden=false;
+      var rid = r.request_id;
+      stopPoll();
+      loginPoll = setInterval(function(){
+        api("GET","/api/auth/login/status?request_id="+rid).then(function(s){
+          if(s.status==="approved"){
+            stopPoll();
+            el("loginUser").value=""; el("loginPass").value="";
+            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
+            afterAuth(s.role);
+          } else if(s.status==="rejected"){
+            stopPoll();
+            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
+            alert("Kirish rad etildi. Asosiy akkaunt egasi ruxsat bermadi.");
+          } else if(s.status==="expired"){
+            stopPoll();
+            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
+            alert("So'rov muddati tugadi. Qaytadan urinib ko'ring.");
+          }
+        }).catch(function(){});
+      }, 2500);
     }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Kirish"; });
   });
-  // KIRISH — 2-qadam: kod -> tasdiqlash
-  el("loginVerify").addEventListener("click", function(){
-    var code=(el("loginCode").value||"").trim();
-    if(!code){ alert("Kodni kiriting."); return; }
-    var btn=this; btn.disabled=true; btn.textContent="Kirilmoqda...";
-    api("POST","/api/auth/login/verify",{code_id:loginCodeId,code:code}).then(function(r){
-      el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-      el("loginUser").value=""; el("loginPass").value=""; el("loginCode").value="";
-      afterAuth(r.role);
-    }).catch(function(e){ alert(e.message); })
-      .finally(function(){ btn.disabled=false; btn.textContent="Tasdiqlash va kirish"; });
-  });
   el("loginBack").addEventListener("click", function(){
+    stopPoll();
     el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-  });
-
-  // RO'YXAT — kod tasdiqlash
-  el("verifyDone").addEventListener("click", function(){
-    var code=(el("regCode").value||"").trim();
-    if(!code){ alert("Kodni kiriting."); return; }
-    var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
-    api("POST","/api/auth/register/verify",{pending_id:pendingId,code:code}).then(function(r){
-      el("regCode").value="";
-      alert("Ro'yxatdan o'tish yakunlandi! Xush kelibsiz.");
-      afterAuth(r.role);
-    }).catch(function(e){ alert(e.message); })
-      .finally(function(){ btn.disabled=false; btn.textContent="Tasdiqlash"; });
   });
 
   document.addEventListener("click", function(e){
