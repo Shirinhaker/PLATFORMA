@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title>
+<title>Platforma</title><!-- BUILD: v1244 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -436,9 +436,9 @@
       <!-- CABINET (BIZNES) -->
       <section class="screen" data-screen="cabinet">
         <div class="cab-head">
-          <div class="cab-logo">🛒</div>
-          <div><div class="cab-name">Anvar Market</div><div class="cab-status">Faol · Oziq-ovqat</div>
-            <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>126</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>12</b> obuna</span></div></div>
+          <div class="cab-logo" id="cabLogo">🛒</div>
+          <div><div class="cab-name" id="cabName">—</div><div class="cab-status" id="cabStatus"></div>
+            <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>0</b> obuna</span></div></div>
         </div>
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -561,8 +561,8 @@
       <section class="screen" data-screen="ucab">
         <div class="cab-head">
           <div class="cab-logo" style="background:var(--amber-tint)">🙂</div>
-          <div><div class="cab-name">Aziz Toshmatov</div><div class="cab-status">Yunusobod tumani</div>
-            <div class="stat-chips"><span class="stat-chip" data-nav="ucab-followers"><b>8</b> obunachi</span><span class="stat-chip" data-nav="ucab-subs"><b>3</b> obuna</span></div></div>
+          <div><div class="cab-name" id="ucabName">—</div><div class="cab-status" id="ucabStatus"></div>
+            <div class="stat-chips"><span class="stat-chip" data-nav="ucab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="ucab-subs"><b>0</b> obuna</span></div></div>
         </div>
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1743,8 +1743,10 @@
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
       el("bpName").value=b.name||""; el("bpTur").value=b.tur||"";
+      el("bpDescr").value=b.descr||""; el("bpPhone").value=b.phone||"";
+      el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
+      el("bpAddr").value=b.address||"";
       fillYonSelect(el("bpYon"), b.yon||"");
-      // to'liq tafsilot uchun alohida emas — me yetarli; qolganini saqlashda yuboramiz
     }).catch(function(){});
   }
   function loadSpecialist(){
@@ -1822,12 +1824,19 @@
       if(f) f.textContent = (d.business_followers!=null?d.business_followers:d.followers);
       if(g) g.textContent = d.following;
     }).catch(function(){});
+    api("GET","/api/me").then(function(d){
+      var b=d.business||{};
+      if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
+      if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
+    }).catch(function(){});
   }
   function loadUcabCounts(){
     api("GET","/api/profile").then(function(d){
       var f=document.querySelector('[data-nav="ucab-followers"] b'), g=document.querySelector('[data-nav="ucab-subs"] b');
       if(f) f.textContent = d.followers;
       if(g) g.textContent = d.following;
+      if(el("ucabName")) el("ucabName").textContent = d.name || "Foydalanuvchi";
+      if(el("ucabStatus")) el("ucabStatus").textContent = d.district || "";
     }).catch(function(){});
   }
 
@@ -1837,19 +1846,30 @@
 
   bindSave("upSave", function(){
     var btn=this; btn.disabled=true;
-    api("PUT","/api/profile",{name:el("upName").value.trim(),phone:el("upPhone").value.trim(),district:el("upDistrict").value.trim()})
-      .then(function(){ alert("Saqlandi ✅"); }).catch(function(e){ alert(e.message); })
+    var nm = el("upName").value.trim();
+    api("PUT","/api/profile",{name:nm,phone:el("upPhone").value.trim(),district:el("upDistrict").value.trim()})
+      .then(function(){
+        ME.name = nm;
+        if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
+        if(el("ucabStatus")) el("ucabStatus").textContent = el("upDistrict").value.trim() || "";
+        alert("Saqlandi ✅");
+      }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
 
   bindSave("bpSave", function(){
     var btn=this; btn.disabled=true;
+    var nm=el("bpName").value.trim(), yon=el("bpYon").value;
     api("PUT","/api/business",{
-      name:el("bpName").value.trim(), yon:el("bpYon").value, tur:el("bpTur").value.trim(),
+      name:nm, yon:yon, tur:el("bpTur").value.trim(),
       descr:el("bpDescr").value.trim(), phone:el("bpPhone").value.trim(),
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim()
-    }).then(function(){ alert("Saqlandi ✅"); }).catch(function(e){ alert(e.message); })
+    }).then(function(){
+      if(el("cabName")) el("cabName").textContent = nm || "Biznes";
+      if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (yon?(" · "+yon):"");
+      alert("Saqlandi ✅");
+    }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
 
