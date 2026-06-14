@@ -161,6 +161,31 @@ from api import router as api_router
 app.include_router(api_router)
 
 
+@app.get("/api/_dbinfo")
+async def db_info():
+    """Baza diagnostikasi: nechta foydalanuvchi bor, baza qayerda, fayl o'lchami."""
+    import os as _os
+    info = {"DB_PATH": DB_PATH}
+    try:
+        info["fayl_bormi"] = _os.path.isfile(DB_PATH)
+        info["fayl_olchami_bayt"] = _os.path.getsize(DB_PATH) if _os.path.isfile(DB_PATH) else 0
+        info["papka_bormi"] = _os.path.isdir(_os.path.dirname(DB_PATH)) if _os.path.dirname(DB_PATH) else True
+    except Exception as e:
+        info["fayl_xato"] = str(e)
+    try:
+        conn = db()
+        info["foydalanuvchilar_soni"] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        info["bizneslar_soni"] = conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]
+        info["elonlar_soni"] = conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0]
+        # oxirgi 5 foydalanuvchi login va tg_id (parolsiz)
+        rows = conn.execute("SELECT login, tg_id, name FROM users ORDER BY id DESC LIMIT 5").fetchall()
+        info["oxirgi_foydalanuvchilar"] = [{"login": r["login"], "tg_id": r["tg_id"], "name": r["name"]} for r in rows]
+        conn.close()
+    except Exception as e:
+        info["baza_xato"] = str(e)
+    return info
+
+
 @app.get("/api/_setup")
 async def manual_setup():
     """Webhook'ni qo'lda qayta o'rnatish va Telegram javoblarini ko'rsatish (diagnostika)."""
