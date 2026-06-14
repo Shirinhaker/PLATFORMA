@@ -455,7 +455,8 @@ async def me(x_telegram_init_data: str = Header(default="")):
         if biz:
             result["business"] = {
                 "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
-                "address": biz["address"], "status": biz["status"],
+                "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
+                "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
             }
     conn.close()
     return result
