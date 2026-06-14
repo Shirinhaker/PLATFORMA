@@ -163,10 +163,33 @@ app.include_router(api_router)
 
 @app.get("/api/_setup")
 async def manual_setup():
-    """Webhook'ni qo'lda qayta o'rnatish (brauzerda ochib ishlatiladi)."""
-    await setup_bot()
-    info = await tg_call("getWebhookInfo", {})
-    return {"ok": True, "webhook": info.get("result") if isinstance(info, dict) else info}
+    """Webhook'ni qo'lda qayta o'rnatish va Telegram javoblarini ko'rsatish (diagnostika)."""
+    result = {"BOT_TOKEN_bormi": bool(BOT_TOKEN), "BASE_URL": BASE_URL,
+              "WEBHOOK_SECRET_uzunligi": len(WEBHOOK_SECRET or ""), "TEST_MODE": TEST_MODE}
+    try:
+        result["deleteWebhook"] = await tg_call("deleteWebhook", {"drop_pending_updates": False})
+    except Exception as e:
+        result["deleteWebhook_xato"] = str(e)
+    try:
+        result["setWebhook"] = await tg_call("setWebhook", {
+            "url": BASE_URL + "/webhook",
+            "secret_token": WEBHOOK_SECRET,
+            "allowed_updates": ["message", "callback_query"],
+        })
+    except Exception as e:
+        result["setWebhook_xato"] = str(e)
+    try:
+        result["menu"] = await tg_call("setChatMenuButton", {
+            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        })
+    except Exception as e:
+        result["menu_xato"] = str(e)
+    try:
+        info = await tg_call("getWebhookInfo", {})
+        result["getWebhookInfo"] = info.get("result") if isinstance(info, dict) else info
+    except Exception as e:
+        result["getWebhookInfo_xato"] = str(e)
+    return result
 
 
 # ---------- Webhook ----------
