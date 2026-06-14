@@ -4,13 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1244 -->
+<title>Platforma</title><!-- BUILD: v1633 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="regions.js"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -368,10 +369,10 @@
           <div class="lead">Manzilim</div>
           <div class="lead-sub">Manzilingizga qarab yaqin atrofdagi biznes va mutaxasislar ko'rsatiladi.</div>
           <button class="btn btn-primary btn-block" id="locAuto">📡 Avtomatik aniqlash</button>
-          <div class="list-sub" style="text-align:center;margin:14px 0 10px">yoki qo'lda kiriting:</div>
-          <div class="field"><label>Viloyat / shahar</label><input class="input" id="locViloyat" value="Toshkent shahri"></div>
-          <div class="field"><label>Tuman</label><input class="input" id="locTuman" value="Yunusobod"></div>
-          <div class="field"><label>Mahalla</label><input class="input" id="locMahalla" value="Bog'ishamol"></div>
+          <div class="list-sub" style="text-align:center;margin:14px 0 10px">yoki ro'yxatdan tanlang:</div>
+          <div class="field"><label>Viloyat / shahar</label><select class="input" id="locViloyat"></select></div>
+          <div class="field"><label>Tuman</label><select class="input" id="locTuman"></select></div>
+          <div class="field"><label>Mahalla — ixtiyoriy</label><input class="input" id="locMahalla" placeholder="Mahalla nomi (agar bilsangiz)"></div>
           <button class="btn btn-primary btn-block" id="locSave">Saqlash</button>
         </div>
       </section>
@@ -578,7 +579,6 @@
         <div class="form-wrap">
           <div class="field"><label>Ism familiya</label><input class="input" id="upName" placeholder="Ismingiz"></div>
           <div class="field"><label>Telefon</label><input class="input" id="upPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
-          <div class="field"><label>Yashash tumani</label><input class="input" id="upDistrict" placeholder="Masalan: Yunusobod"></div>
           <button class="btn btn-primary btn-block" id="upSave">Saqlash</button>
         </div>
       </section>
@@ -1269,8 +1269,7 @@
         '<div class="field"><label>Faoliyat yo\'nalishi</label><select class="input" id="rgYon">'+yonOptions+'</select></div>'+
         '<div class="field"><label>Manzil</label><input class="input" id="rgAddr" placeholder="Tuman, mahalla, ko\'cha"></div>'+
         '<div class="field"><label>Telefon</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>'
-      : '<div class="field"><label>Ism familiya</label><input class="input" id="rgName" placeholder="Ismingiz"></div>'+
-        '<div class="field"><label>Yashash tumani — ixtiyoriy</label><input class="input" id="rgDistrict" placeholder="Masalan: Yunusobod"></div>';
+      : '<div class="field"><label>Ism familiya</label><input class="input" id="rgName" placeholder="Ismingiz"></div>';
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">'+(isBiz?'Biznes ro\'yxati':'Foydalanuvchi ro\'yxati')+'</div>'+
       '<div class="lead-sub">Telegram username\'ingizni kiriting. Login va parolni platforma o\'zi yaratib, Telegramingizga yuboradi.</div>'+
@@ -1290,8 +1289,6 @@
     if(regRole==="business"){
       body.yon = el("rgYon") ? el("rgYon").value : "";
       body.address = el("rgAddr") ? el("rgAddr").value.trim() : "";
-    } else {
-      body.district = el("rgDistrict") ? el("rgDistrict").value.trim() : "";
     }
     var btn = el("rgSubmit"); btn.disabled = true; btn.textContent = "Yuborilmoqda...";
     api("POST", "/api/auth/register", body).then(function(r){
@@ -1588,9 +1585,37 @@
       alert(msg);
     }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
   });
+  /* ---------- MANZIL TANLASH (viloyat -> tuman) ---------- */
+  function fillRegionSelects(){
+    var R = window.UZ_REGIONS || [];
+    var vs = el("locViloyat");
+    if(!vs || vs.options.length) return; // bir marta to'ldiramiz
+    vs.innerHTML = R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
+    fillDistricts();
+    vs.addEventListener("change", fillDistricts);
+  }
+  function fillDistricts(){
+    var R = window.UZ_REGIONS || [];
+    var vi = parseInt(el("locViloyat").value||"0",10);
+    var v = R[vi]; if(!v) return;
+    el("locTuman").innerHTML = v.districts.map(function(d,j){ return '<option value="'+j+'">'+d.name+'</option>'; }).join("");
+  }
+  function selectedLoc(){
+    var R = window.UZ_REGIONS || [];
+    var vi = parseInt(el("locViloyat").value||"0",10);
+    var di = parseInt(el("locTuman").value||"0",10);
+    var v = R[vi]; if(!v) return null;
+    var d = v.districts[di] || v;
+    return { viloyat:v.name, tuman:d.name, lat:d.lat, lng:d.lng };
+  }
+
   el("locSave").addEventListener("click", function(){
-    var t=(el("locTuman").value||"").trim();
-    LOC = t ? (t+" tumani") : "Manzilim";
+    var s = selectedLoc();
+    if(!s){ nav("home"); return; }
+    var mahalla = (el("locMahalla").value||"").trim();
+    LOC = s.tuman + (mahalla ? (", "+mahalla) : "");
+    CENTER = [s.lat, s.lng];
+    if(LMAP){ try{ LMAP.setView(CENTER, 13); }catch(e){} }
     renderMapChip();
     nav("home");
   });
@@ -1735,7 +1760,7 @@
 
   function loadUserProfile(){
     api("GET","/api/profile").then(function(d){
-      if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; el("upDistrict").value=d.district||""; }
+      if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; }
     }).catch(function(){});
   }
   function loadBizProfile(){
@@ -1777,6 +1802,7 @@
     else if(screen==="ucab-saved") loadSaved();
     else if(screen==="cabinet") loadCabinetCounts();
     else if(screen==="ucab") loadUcabCounts();
+    else if(screen==="loc") fillRegionSelects();
   }
 
   function personRow(item){
@@ -1836,7 +1862,7 @@
       if(f) f.textContent = d.followers;
       if(g) g.textContent = d.following;
       if(el("ucabName")) el("ucabName").textContent = d.name || "Foydalanuvchi";
-      if(el("ucabStatus")) el("ucabStatus").textContent = d.district || "";
+      if(el("ucabStatus")) el("ucabStatus").textContent = LOC || "";
     }).catch(function(){});
   }
 
@@ -1847,11 +1873,10 @@
   bindSave("upSave", function(){
     var btn=this; btn.disabled=true;
     var nm = el("upName").value.trim();
-    api("PUT","/api/profile",{name:nm,phone:el("upPhone").value.trim(),district:el("upDistrict").value.trim()})
+    api("PUT","/api/profile",{name:nm,phone:el("upPhone").value.trim()})
       .then(function(){
         ME.name = nm;
         if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
-        if(el("ucabStatus")) el("ucabStatus").textContent = el("upDistrict").value.trim() || "";
         alert("Saqlandi ✅");
       }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; });
