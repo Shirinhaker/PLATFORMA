@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v2236 -->
+<title>Platforma</title><!-- BUILD: v1230 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -268,6 +268,17 @@
   @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important;} }
   .leaflet-control-zoom{margin:12px !important;}
   .leaflet-control-zoom a{border-radius:8px !important;}
+  .elon-wrap{margin-bottom:11px;}
+  .chev.down{transform:rotate(90deg);transition:transform .2s;}
+  .el-detail{background:var(--card);border:1px solid var(--line);border-top:none;border-radius:0 0 16px 16px;padding:12px;margin-top:-11px;box-shadow:var(--shadow);animation:elopen .2s ease;}
+  @keyframes elopen{from{opacity:0}to{opacity:1}}
+  .el-media{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:10px;scroll-snap-type:x mandatory;}
+  .el-media .el-m{height:180px;min-width:78%;width:78%;object-fit:cover;border-radius:12px;scroll-snap-align:center;background:var(--line);}
+  .el-price{font-size:19px;font-weight:800;color:var(--primary);margin-bottom:6px;}
+  .el-addr{font-size:13.5px;color:var(--soft);margin-bottom:8px;}
+  .el-desc{font-size:14px;line-height:1.55;color:var(--ink);margin-bottom:12px;white-space:pre-wrap;}
+  .el-actions{display:flex;gap:9px;}
+  .el-actions .btn{flex:1;height:46px;}
 </style>
 </head>
 <body>
@@ -874,6 +885,7 @@
   }
   function ensureMap(){
     if(LMAP) return LMAP;
+    if(typeof L === "undefined" || !el("leafletMap")) return null;
     LMAP = L.map("leafletMap", { zoomControl:true, attributionControl:false }).setView(CENTER, 14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19, attribution: "© OpenStreetMap"
@@ -882,16 +894,19 @@
     return LMAP;
   }
   function clearMarkers(){
+    if(!LMAP) return;
     LMARKERS.forEach(function(m){ try{ LMAP.removeLayer(m); }catch(e){} });
     LMARKERS = [];
   }
   function dotIcon(bg, inner, label, small){
+    if(typeof L === "undefined") return null;
     var lab = label ? '<div class="plabel">'+label+'</div>' : '';
     var fs = small ? 'font-size:12px;font-weight:800;color:#fff;' : '';
     var html = '<div class="pin">'+lab+'<div class="dot" style="background:'+bg+';'+fs+'">'+inner+'</div><div class="tail"></div></div>';
     return L.divIcon({ html:html, className:"leaflet-pin", iconSize:[40,48], iconAnchor:[20,46] });
   }
   function addMarker(lat, lng, icon, onClick){
+    if(!LMAP || !icon) return;
     if(lat==null || lng==null) return;
     var m = L.marker([lat,lng], { icon:icon }).addTo(LMAP);
     if(onClick) m.on("click", onClick);
@@ -901,7 +916,7 @@
 
   function renderPins(mode){
     mapMode = mode || "biz";
-    ensureMap();
+    if(!ensureMap()) return;
     clearMarkers();
     if(mapMode==="biz"){
       selElon=null;
@@ -927,7 +942,7 @@
       ELONS.filter(function(e){ return e.cat===mapMode; }).forEach(function(e){
         var sel=(e.id===selElon);
         var ll = (e.lat!=null) ? [e.lat,e.lng] : xyToLatLng(e.x,e.y);
-        addMarker(ll[0], ll[1], dotIcon(e.c, e.ic, sel?(e.title+' · '+e.price):"", false), function(){ selElon=e.id; openElon(e.id); });
+        addMarker(ll[0], ll[1], dotIcon(e.c, e.ic, sel?(e.title+' · '+e.price):"", false), function(){ toggleElon(e.id); });
       });
     }
   }
@@ -943,11 +958,19 @@
       chip.onclick = function(){ selectMap("biz"); };
     }
   }
+  var ELON_COUNTS = {};
+  function loadElonCounts(){
+    api("GET","/api/listings/counts").then(function(counts){
+      ELON_COUNTS = counts || {};
+      ELON_CATS.forEach(function(c){ c.count = ELON_COUNTS[c.key] || 0; });
+      renderElonRow();
+    }).catch(function(){});
+  }
   function renderElonRow(){
     el("elonRow").innerHTML = ELON_CATS.map(function(c){
       return '<div class="elon-card'+(mapMode===c.key?' on':'')+'" data-elon="'+c.key+'">'+
         '<div class="ec-ic" style="background:'+tint(c.c)+';color:'+c.c+'">'+c.ic+'</div>'+
-        '<div class="ec-name">'+c.name+'</div><div class="ec-count">'+c.count+' ta e\'lon</div></div>';
+        '<div class="ec-name">'+c.name+'</div><div class="ec-count">'+(c.count||0)+' ta e\'lon</div></div>';
     }).join("");
   }
   function selectMap(key){
@@ -964,14 +987,34 @@
     api("GET","/api/listings?cat="+encodeURIComponent(key)).then(function(list){
       ELONS = list.map(function(e2){
         var t = ELON_CATS.filter(function(c){return c.key===e2.cat;})[0] || {ic:"📦", c:"#0E8C84"};
-        return { id:e2.id, cat:e2.cat, title:e2.title, price:e2.price||"", date:"", area:e2.address||"",
+        return { id:e2.id, cat:e2.cat, title:e2.title, price:e2.price||"", area:e2.address||"",
                  ic:t.ic, c:t.c, lat:e2.lat, lng:e2.lng, desc:e2.descr||"",
-                 media:e2.media||[] };
+                 media:e2.media||[], is_saved:!!e2.is_saved, user_id:e2.user_id, owner_name:e2.owner_name||"" };
       });
-      renderPins(key);
+      renderPins(key);              // toifa metkalari avtomatik xaritada
       renderElonList(key);
       screensEl.scrollTo({top:0, behavior:"smooth"});
     }).catch(function(e){ el("elonList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  }
+  function elonDetailHtml(e){
+    // rasm/video — gorizontal suriladigan qator
+    var media = "";
+    if(e.media && e.media.length){
+      media = '<div class="el-media">'+ e.media.map(function(m){
+        if(m.type==="video") return '<video class="el-m" controls preload="metadata"><source src="'+mediaUrl(m.file_id)+'"></video>';
+        return '<img class="el-m" src="'+mediaUrl(m.file_id)+'" alt="">';
+      }).join("") +'</div>';
+    }
+    var saved = e.is_saved;
+    return '<div class="el-detail">'+
+      media +
+      '<div class="el-price">'+esc(e.price||"Narx kelishilgan")+'</div>'+
+      (e.area?'<div class="el-addr">📍 '+esc(e.area)+'</div>':'')+
+      (e.desc?'<div class="el-desc">'+esc(e.desc)+'</div>':'')+
+      '<div class="el-actions">'+
+        '<button class="btn btn-primary" data-contact="'+e.user_id+'">Bog\'lanish</button>'+
+        '<button class="btn '+(saved?"btn-soft":"btn-outline")+'" data-savel="'+e.id+'">'+(saved?"✓ Saqlangan":"🔖 Saqlash")+'</button>'+
+      '</div></div>';
   }
   function renderElonList(key){
     var box = el("elonList");
@@ -990,21 +1033,27 @@
         var nMedia = (e.media&&e.media.length)?e.media.length:0;
         var hasVideo = (e.media||[]).some(function(m){return m.type==="video";});
         var badges = nMedia ? ('📎 '+nMedia) : '';
-        return '<div class="elon-item'+(e.id===selElon?' on':'')+'" data-li="'+e.id+'">'+
-          '<div class="li-thumb" style="background:linear-gradient(135deg,'+e.c+'33,'+e.c+'14)"><span>'+e.ic+'</span>'+(hasVideo?'<span class="vbadge">▶</span>':'')+'</div>'+
-          '<div class="li-main"><div class="li-title">'+esc(e.title)+'</div><div class="li-price">'+esc(e.price)+'</div>'+
-          '<div class="li-meta">'+esc(e.area||"")+(badges?(' · '+badges):'')+'</div></div>'+
-          '<button class="loc-btn" data-locate aria-label="Xaritada ko\'rsatish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg></button>'+
+        var open = (e.id===selElon);
+        return '<div class="elon-wrap">'+
+          '<div class="elon-item'+(open?' on':'')+'" data-li="'+e.id+'">'+
+            '<div class="li-thumb" style="background:linear-gradient(135deg,'+e.c+'33,'+e.c+'14)"><span>'+e.ic+'</span>'+(hasVideo?'<span class="vbadge">▶</span>':'')+'</div>'+
+            '<div class="li-main"><div class="li-title">'+esc(e.title)+'</div><div class="li-price">'+esc(e.price)+'</div>'+
+            '<div class="li-meta">'+esc(e.area||"")+(badges?(' · '+badges):'')+'</div></div>'+
+            '<span class="chev'+(open?' down':'')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>'+
+          '</div>'+
+          (open ? elonDetailHtml(e) : "")+
           '</div>';
       }).join("");
   }
-  function highlightListing(id){
-    selElon = id;
-    renderPins(mapMode);
+  function toggleElon(id){
+    // akkordeon: ochiq bo'lsa yopamiz, yopiq bo'lsa ochamiz
+    selElon = (selElon===id) ? null : id;
+    renderPins(mapMode);          // ochilgan e'lon metkasi ajralib ko'rinadi
     renderElonList(mapMode);
-    screensEl.scrollTo({top:0, behavior:"smooth"});
   }
-  function openElon(id){ openElonSrv(id); }
+  function highlightListing(id){ toggleElon(id); }
+  function openElon(id){ toggleElon(id); }
+
 
   /* ---------- render: a business card ---------- */
   function card(b){
@@ -1646,8 +1695,29 @@
 
   el("elonList").addEventListener("click", function(e){
     var s=e.target.closest("[data-sort]"); if(s){ elonSort=s.getAttribute("data-sort"); renderElonList(mapMode); return; }
-    var loc=e.target.closest("[data-locate]"); if(loc){ var card=loc.closest("[data-li]"); if(card) highlightListing(parseInt(card.getAttribute("data-li"),10)); return; }
-    var c=e.target.closest("[data-li]"); if(c) openElon(parseInt(c.getAttribute("data-li"),10));
+    // saqlash tugmasi (detal ichida)
+    var sv=e.target.closest("[data-savel]");
+    if(sv){
+      e.stopPropagation();
+      if(!loggedIn){ showLogin("Saqlash"); return; }
+      var lid=parseInt(sv.getAttribute("data-savel"),10);
+      api("POST","/api/save",{target_kind:"listing",target_id:lid}).then(function(r){
+        var item=ELONS.filter(function(x){return x.id===lid;})[0];
+        if(item) item.is_saved = r.saved;
+        renderElonList(mapMode);
+      }).catch(function(err){ alert(err.message); });
+      return;
+    }
+    // bog'lanish tugmasi (detal ichida) -> e'lon egasi sahifasiga
+    var ct=e.target.closest("[data-contact]");
+    if(ct){
+      e.stopPropagation();
+      var uid=parseInt(ct.getAttribute("data-contact"),10);
+      personBack=current; openPersonSrv(uid);
+      return;
+    }
+    // karta ustiga bosilsa — akkordeon och/yop
+    var c=e.target.closest("[data-li]"); if(c) toggleElon(parseInt(c.getAttribute("data-li"),10));
   });
   el("listBody").addEventListener("click", function(e){
     var li=e.target.closest("[data-li]"); if(li){ openElon(parseInt(li.getAttribute("data-li"),10)); return; }
@@ -2097,6 +2167,7 @@
   var pickTarget = null;                       // 'be' yoki 'ue'
   function openPicker(prefix){
     pickTarget = prefix;
+    if(typeof L === "undefined"){ alert("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
     nav("pickloc");
     setTimeout(function(){
       var startC = pickedLatLng[prefix] || CENTER || [41.311, 69.280];
@@ -2196,9 +2267,11 @@
 
   /* ---------- init ---------- */
   function boot(){
-    renderMapChip(); renderElonRow(); renderYon(); setIcon(); nav("home");
-    ensureMap();
-    renderPins("biz");
+    try { renderMapChip(); renderElonRow(); renderYon(); setIcon(); } catch(e){}
+    nav("home");
+    loadElonCounts();
+    // Xarita Leaflet'ga bog'liq — agar u hali yuklanmagan bo'lsa, ilova baribir ishlasin
+    try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // serverdan joriy foydalanuvchini olamiz (kirgan bo'lsa)
     api("GET", "/api/me").then(function(d){
       if(d && d.registered){
@@ -2208,9 +2281,23 @@
       }
     }).catch(function(){});
   }
+  function bootWhenReady(){
+    boot();
+    // Agar Leaflet kech yuklansa, xaritani keyin bir marta tiklaymiz
+    if(typeof L === "undefined"){
+      var tries = 0;
+      var iv = setInterval(function(){
+        tries++;
+        if(typeof L !== "undefined"){
+          clearInterval(iv);
+          try { ensureMap(); renderPins(mapMode || "biz"); } catch(e){}
+        } else if(tries > 40){ clearInterval(iv); }
+      }, 250);
+    }
+  }
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", boot);
-  } else { boot(); }
+    document.addEventListener("DOMContentLoaded", bootWhenReady);
+  } else { bootWhenReady(); }
 })();
 </script>
 </body>
