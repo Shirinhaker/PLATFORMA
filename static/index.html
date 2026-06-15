@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1249 -->
+<title>Platforma</title><!-- BUILD: v1314 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -279,6 +279,22 @@
   .el-desc{font-size:14px;line-height:1.55;color:var(--ink);margin-bottom:12px;white-space:pre-wrap;}
   .el-actions{display:flex;gap:9px;}
   .el-actions .btn{flex:1;height:46px;}
+  /* CHAT */
+  .msg{max-width:78%;padding:9px 13px;border-radius:16px;margin-bottom:8px;font-size:14.5px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap;}
+  .msg.them{background:var(--card);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px;margin-right:auto;}
+  .msg.me{background:var(--primary);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
+  .msg-time{font-size:10.5px;opacity:.6;margin-top:2px;display:block;}
+  .chat-day{text-align:center;font-size:12px;color:var(--soft);margin:10px 0;}
+  .chat-bar{position:fixed;left:0;right:0;bottom:0;max-width:var(--appw,520px);margin:0 auto;display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line);}
+  .chat-input{flex:1;border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-size:15px;background:var(--bg);color:var(--ink);outline:none;}
+  .chat-send{width:46px;height:46px;flex:none;border:none;border-radius:50%;background:var(--primary);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .chat-send svg{width:20px;height:20px;}
+  .conv{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .conv-av{width:48px;height:48px;flex:none;border-radius:50%;background:var(--amber-tint);display:flex;align-items:center;justify-content:center;font-weight:800;color:#8a5a06;font-size:17px;}
+  .conv-main{flex:1;min-width:0;}
+  .conv-name{font-weight:700;font-size:15px;color:var(--ink);}
+  .conv-last{font-size:13px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .conv-badge{flex:none;min-width:20px;height:20px;border-radius:10px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;}
 </style>
 </head>
 <body>
@@ -455,6 +471,7 @@
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p>Kelgan buyurtma va yozilishlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
@@ -582,6 +599,7 @@
         </div>
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxasisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxasis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p>Yozilishlarim · Menga yozilganlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -674,6 +692,20 @@
       <!-- PERSON: MUTAXASIS SAHIFASI -->
       <section class="screen" data-screen="person">
         <div id="personBody"></div>
+      </section>
+
+      <!-- SUHBATLAR RO'YXATI -->
+      <section class="screen" data-screen="chats">
+        <div id="chatsList" style="padding:6px 0"></div>
+      </section>
+
+      <!-- CHAT OYNASI -->
+      <section class="screen" data-screen="chat">
+        <div id="chatThread" style="padding:10px 14px 90px;min-height:calc(100vh - 200px)"></div>
+        <div class="chat-bar">
+          <input class="chat-input" id="chatInput" placeholder="Xabar yozing..." autocomplete="off">
+          <button class="chat-send" id="chatSend" aria-label="Yuborish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
       </section>
 
       <!-- UCAB: OBUNALARIM -->
@@ -1424,6 +1456,7 @@
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
+    chats:"Suhbatlar", chat:"Suhbat",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "cab-admin":"Ma'muriyat", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
@@ -1443,6 +1476,7 @@
     nav("login");
   }
   function nav(screen){
+    if(screen!=="chat" && typeof stopChatPoll==="function") stopChatPoll();
     current = screen;
     var secs = document.querySelectorAll(".screen");
     for(var i=0;i<secs.length;i++) secs[i].classList.toggle("active", secs[i].getAttribute("data-screen")===screen);
@@ -1491,6 +1525,85 @@
       bindPageFollow();
     }).catch(function(e){ alert(e.message); });
   }
+  /* ---------- CHAT / XABARLAR ---------- */
+  var chatPeer = null;       // {id, name}
+  var chatPoll = null;
+  var chatBack = "home";
+  function chatInitials(name){ return (name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase(); }
+  function stopChatPoll(){ if(chatPoll){ clearInterval(chatPoll); chatPoll=null; } }
+  function openChat(userId, name){
+    if(!loggedIn){ showLogin("Xabar yozish"); return; }
+    chatPeer = { id:userId, name:name||"Suhbat" };
+    chatBack = current;
+    el("tbTitle").textContent = name || "Suhbat";
+    el("chatThread").innerHTML = '<div class="chat-day">Yuklanmoqda...</div>';
+    nav("chat");
+    el("tbTitle").textContent = name || "Suhbat";
+    loadChat(true);
+    stopChatPoll();
+    chatPoll = setInterval(function(){ if(current==="chat") loadChat(false); else stopChatPoll(); }, 3000);
+  }
+  function loadChat(scroll){
+    if(!chatPeer) return;
+    api("GET","/api/messages/with/"+chatPeer.id).then(function(d){
+      if(d.other && d.other.name){ chatPeer.name=d.other.name; el("tbTitle").textContent=d.other.name; }
+      renderChatThread(d.messages||[]);
+      if(scroll) scrollChatBottom();
+    }).catch(function(){});
+  }
+  function renderChatThread(msgs){
+    if(!msgs.length){
+      el("chatThread").innerHTML = '<div class="chat-day">Hozircha xabar yo\'q. Birinchi bo\'lib yozing!</div>';
+      return;
+    }
+    var prevDay = "";
+    var html = "";
+    msgs.forEach(function(m){
+      var d = new Date(m.created_at*1000);
+      var day = d.toLocaleDateString();
+      if(day!==prevDay){ html += '<div class="chat-day">'+day+'</div>'; prevDay=day; }
+      var t = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      html += '<div class="msg '+(m.mine?"me":"them")+'">'+esc(m.text)+'<span class="msg-time">'+t+'</span></div>';
+    });
+    var atBottom = isChatAtBottom();
+    el("chatThread").innerHTML = html;
+    if(atBottom) scrollChatBottom();
+  }
+  function isChatAtBottom(){
+    var s = screensEl;
+    return (s.scrollHeight - s.scrollTop - s.clientHeight) < 120;
+  }
+  function scrollChatBottom(){
+    setTimeout(function(){ screensEl.scrollTo({top:screensEl.scrollHeight, behavior:"smooth"}); }, 60);
+  }
+  function sendChat(){
+    var inp = el("chatInput");
+    var text = (inp.value||"").trim();
+    if(!text || !chatPeer) return;
+    inp.value="";
+    api("POST","/api/messages/send",{to:chatPeer.id, text:text}).then(function(){
+      loadChat(true);
+    }).catch(function(e){ alert(e.message); inp.value=text; });
+  }
+  function openChats(){
+    if(!loggedIn){ showLogin("Suhbatlar"); return; }
+    chatBack = current;
+    el("tbTitle").textContent = "Suhbatlar";
+    el("chatsList").innerHTML = '<div class="chat-day">Yuklanmoqda...</div>';
+    nav("chats");
+    el("tbTitle").textContent = "Suhbatlar";
+    api("GET","/api/messages/conversations").then(function(list){
+      if(!list.length){ el("chatsList").innerHTML='<div class="empty" style="padding:30px 16px"><h3>Suhbatlar yo\'q</h3><p>E\'lon yoki sahifadan «Xabar yozish» orqali suhbat boshlang.</p></div>'; return; }
+      el("chatsList").innerHTML = list.map(function(c){
+        return '<div class="conv" data-chat="'+c.user_id+'" data-name="'+esc(c.name)+'">'+
+          '<div class="conv-av">'+chatInitials(c.name)+'</div>'+
+          '<div class="conv-main"><div class="conv-name">'+esc(c.name)+'</div><div class="conv-last">'+esc(c.last||"")+'</div></div>'+
+          (c.unread>0 ? '<span class="conv-badge">'+c.unread+'</span>' : '')+
+          '</div>';
+      }).join("");
+    }).catch(function(e){ el("chatsList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  }
+
   function openPersonSrv(id){
     api("GET","/api/person/"+id).then(function(p){
       curFollow = {kind:"user", id:p.id};
@@ -1500,6 +1613,7 @@
         '<div><div class="cab-name">'+esc(p.name)+'</div><div class="cab-status">'+(sp?esc(sp.kasb):"Foydalanuvchi")+'</div>'+
         '<div class="stat-chips"><span class="stat-chip"><b>'+p.followers+'</b> obunachi</span></div></div></div>';
       var body = head;
+      body += '<button class="btn btn-primary btn-block" style="margin-bottom:10px" id="pageMsg">✍️ Xabar yozish</button>';
       if(sp){
         if(sp.is_gov){
           body += '<div class="biz-desc" style="margin-bottom:12px"><b>🏛 Davlat ishchisi:</b> '+esc(sp.org||"")+(sp.dept?' · '+esc(sp.dept):'')+(sp.lavozim?' · '+esc(sp.lavozim):'')+'.'+(sp.descr?'<br>'+esc(sp.descr):'')+'</div>';
@@ -1529,6 +1643,8 @@
       nav("person");
       el("tbTitle").textContent = p.name;
       bindPageFollow();
+      var pm = el("pageMsg");
+      if(pm) pm.addEventListener("click", function(){ openChat(p.id, p.name); });
     }).catch(function(e){ alert(e.message); });
   }
   function openElonSrv(id){
@@ -1749,6 +1865,13 @@
     // karta ustiga bosilsa — akkordeon och/yop
     var c=e.target.closest("[data-li]"); if(c) toggleElon(parseInt(c.getAttribute("data-li"),10));
   });
+  // CHAT hodisalari
+  el("chatSend").addEventListener("click", sendChat);
+  el("chatInput").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sendChat(); } });
+  el("chatsList").addEventListener("click", function(e){
+    var c=e.target.closest("[data-chat]"); if(c) openChat(parseInt(c.getAttribute("data-chat"),10), c.getAttribute("data-name"));
+  });
+
   el("listBody").addEventListener("click", function(e){
     var li=e.target.closest("[data-li]"); if(li){ openElon(parseInt(li.getAttribute("data-li"),10)); return; }
     var c=e.target.closest(".biz-card"); if(!c || c.hasAttribute("data-person")) return; openBiz(parseInt(c.getAttribute("data-id"),10));
@@ -1857,6 +1980,8 @@
       if(v.hasAttribute("data-gov")){ var gf=el("govFields"); if(gf) gf.style.display = v.getAttribute("data-gov")==="ha" ? "" : "none"; }
       return;
     }
+    var ch=e.target.closest("[data-chats]");
+    if(ch){ openChats(); return; }
     var n=e.target.closest("[data-nav]");
     if(n){ nav(n.getAttribute("data-nav")); return; }
     var a=e.target.closest("[data-alert]");
