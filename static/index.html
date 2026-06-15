@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1633 -->
+<title>Platforma</title><!-- BUILD: v2236 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -508,7 +508,11 @@
             <div class="upload" id="beMediaBtn">📷 Rasm/video qo'shish</div>
             <div id="beMediaList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
           </div>
-          <div class="field"><label>Joylashuv</label><input class="input" id="beAddr" placeholder="Manzil"></div>
+          <div class="field"><label>Joylashuv</label>
+            <button class="upload" id="bePickBtn" style="text-align:center;cursor:pointer">📍 Xaritada joy belgilash</button>
+            <div id="bePickInfo" style="font-size:12.5px;color:var(--soft);margin-top:6px">Joy hali belgilanmagan</div>
+            <input class="input" id="beAddr" placeholder="Manzil nomi (ixtiyoriy)" style="margin-top:8px">
+          </div>
           <div class="field"><label>Kimlarga ko'rinadi?</label>
             <div class="vis-card on" data-bevis="all"><span class="v-ic">🌍</span><div><h5>Butun platformaga</h5><p>Bosh sahifa, xarita va qidiruvda hammaga ko'rinadi.</p></div></div>
             <div class="vis-card" data-bevis="own"><span class="v-ic">🏪</span><div><h5>Faqat sahifam mehmonlariga</h5><p>Faqat sahifangizga kirganlar ko'radi.</p></div></div>
@@ -602,8 +606,27 @@
             <div class="upload" id="ueMediaBtn">📷 Rasm/video qo'shish</div>
             <div id="ueMediaList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
           </div>
-          <div class="field"><label>Joylashuv</label><input class="input" id="ueAddr" placeholder="Manzil"></div>
+          <div class="field"><label>Joylashuv</label>
+            <button class="upload" id="uePickBtn" style="text-align:center;cursor:pointer">📍 Xaritada joy belgilash</button>
+            <div id="uePickInfo" style="font-size:12.5px;color:var(--soft);margin-top:6px">Joy hali belgilanmagan</div>
+            <input class="input" id="ueAddr" placeholder="Manzil nomi (ixtiyoriy)" style="margin-top:8px">
+          </div>
           <button class="btn btn-primary btn-block" id="ueSubmit">Joylash</button>
+        </div>
+      </section>
+
+      <!-- XARITADA JOY TANLASH -->
+      <section class="screen" data-screen="pickloc">
+        <div style="position:relative">
+          <div id="pickMap" style="width:100%;height:calc(100vh - 180px);min-height:340px;background:var(--map-land)"></div>
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none">📍</div>
+          <div style="position:absolute;left:0;right:0;top:12px;text-align:center;z-index:500;pointer-events:none">
+            <span style="background:var(--card);color:var(--ink);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:var(--shadow)">Xaritani suring — markerni joyga to'g'rilang</span>
+          </div>
+        </div>
+        <div style="padding:14px 16px">
+          <button class="btn btn-primary btn-block" id="pickConfirm">✅ Shu joyni tanlash</button>
+          <button class="btn btn-soft btn-block" style="margin-top:9px" id="pickCancel">Bekor qilish</button>
         </div>
       </section>
 
@@ -2068,8 +2091,43 @@
     }).catch(function(e){ alert(e.message); });
   }
 
+  /* ---------- E'LON JOYINI XARITADA TANLASH ---------- */
+  var PMAP = null;
+  var pickedLatLng = { be:null, ue:null };   // har forma uchun tanlangan koordinata
+  var pickTarget = null;                       // 'be' yoki 'ue'
+  function openPicker(prefix){
+    pickTarget = prefix;
+    nav("pickloc");
+    setTimeout(function(){
+      var startC = pickedLatLng[prefix] || CENTER || [41.311, 69.280];
+      if(!PMAP){
+        PMAP = L.map("pickMap", { zoomControl:true, attributionControl:false }).setView(startC, 14);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(PMAP);
+      } else {
+        PMAP.setView(startC, 14);
+      }
+      setTimeout(function(){ try{ PMAP.invalidateSize(); }catch(e){} }, 150);
+    }, 60);
+  }
+  function setPicked(prefix, lat, lng){
+    pickedLatLng[prefix] = [lat, lng];
+    var info = el(prefix+"PickInfo");
+    if(info){ info.innerHTML = "✅ Joy belgilandi"; info.style.color = "var(--primary)"; }
+  }
+  el("pickConfirm").addEventListener("click", function(){
+    if(PMAP && pickTarget){
+      var c = PMAP.getCenter();
+      setPicked(pickTarget, c.lat, c.lng);
+    }
+    nav(pickTarget==="be" ? "cab-elon-form" : "ucab-elon-form");
+  });
+  el("pickCancel").addEventListener("click", function(){
+    nav(pickTarget==="be" ? "cab-elon-form" : "ucab-elon-form");
+  });
+
   function bindElonForm(prefix, listId, catsId, getVisibility){
     el(prefix+"MediaBtn").addEventListener("click", function(){ pickMedia(listId); });
+    el(prefix+"PickBtn").addEventListener("click", function(){ openPicker(prefix); });
     el(listId).addEventListener("click", function(e){
       var rm=e.target.closest("[data-rmmedia]"); if(rm){ selMedia.splice(parseInt(rm.getAttribute("data-rmmedia"),10),1); renderMediaList(listId); }
     });
@@ -2080,15 +2138,19 @@
     el(prefix+"Submit").addEventListener("click", function(){
       var title=(el(prefix+"Title").value||"").trim();
       if(!title){ alert("Sarlavha kiritilishi shart."); return; }
+      if(!pickedLatLng[prefix]){ alert("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash)."); return; }
       var catOn=el(catsId).querySelector("[data-elcat].on");
       var cat=catOn?catOn.getAttribute("data-elcat"):"boshqa";
+      var ll = pickedLatLng[prefix];
       var body={ cat:cat, title:title, price:(el(prefix+"Price").value||"").trim(),
                  descr:(el(prefix+"Descr").value||"").trim(), address:(el(prefix+"Addr").value||"").trim(),
-                 media:selMedia.slice() };
+                 lat: ll[0], lng: ll[1], media:selMedia.slice() };
       if(getVisibility) body.visibility=getVisibility();
       var btn=this; btn.disabled=true;
       api("POST","/api/listings",body).then(function(){
         selMedia=[]; renderMediaList(listId);
+        pickedLatLng[prefix]=null;
+        var info=el(prefix+"PickInfo"); if(info){ info.innerHTML="Joy hali belgilanmagan"; info.style.color="var(--soft)"; }
         el(prefix+"Title").value=""; el(prefix+"Price").value=""; el(prefix+"Descr").value=""; el(prefix+"Addr").value="";
         alert("E'lon joylandi ✅");
         nav(prefix==="be" ? "cab-elon" : "ucab-elon");
