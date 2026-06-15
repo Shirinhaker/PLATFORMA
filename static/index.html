@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1230 -->
+<title>Platforma</title><!-- BUILD: v1249 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -946,6 +946,20 @@
       });
     }
   }
+  function fitElonBounds(key){
+    if(!LMAP || typeof L === "undefined") return;
+    var pts = ELONS.filter(function(e){ return e.cat===key && e.lat!=null && e.lng!=null; })
+                   .map(function(e){ return [e.lat, e.lng]; });
+    if(!pts.length) return;
+    try{
+      if(pts.length===1){
+        LMAP.setView(pts[0], 14, { animate:true });
+      } else {
+        LMAP.fitBounds(pts, { padding:[40,40], maxZoom:15, animate:true });
+      }
+      setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 120);
+    }catch(e){}
+  }
   function pinHtml(){ return ""; }  /* eski chaqiruvlar uchun zararsiz qoldiq */
   function renderMapChip(){
     var chip = el("mapChip");
@@ -993,6 +1007,7 @@
       });
       renderPins(key);              // toifa metkalari avtomatik xaritada
       renderElonList(key);
+      fitElonBounds(key);           // xarita barcha metkalarni qamrab oladigan hududga moslashadi
       screensEl.scrollTo({top:0, behavior:"smooth"});
     }).catch(function(e){ el("elonList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
@@ -1050,6 +1065,21 @@
     selElon = (selElon===id) ? null : id;
     renderPins(mapMode);          // ochilgan e'lon metkasi ajralib ko'rinadi
     renderElonList(mapMode);
+    // ochilgan e'lon metkasiga xaritani avtomatik suramiz
+    if(selElon!=null && LMAP){
+      var e = ELONS.filter(function(x){ return x.id===selElon; })[0];
+      if(e && e.lat!=null && e.lng!=null){
+        try{ LMAP.setView([e.lat, e.lng], 15, { animate:true }); }catch(err){}
+        setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(err){} }, 120);
+        // xarita ko'rinmayotgan bo'lsagina yuqoriga suramiz (aks holda detaldan uzoqlashmaymiz)
+        var mp = el("leafletMap");
+        if(mp && mp.getBoundingClientRect){
+          var rect = mp.getBoundingClientRect();
+          var korinmayapti = (rect.bottom < 80 || rect.top > (window.innerHeight - 120));
+          if(korinmayapti && mp.scrollIntoView){ mp.scrollIntoView({ behavior:"smooth", block:"start" }); }
+        }
+      }
+    }
   }
   function highlightListing(id){ toggleElon(id); }
   function openElon(id){ toggleElon(id); }
