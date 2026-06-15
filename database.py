@@ -203,6 +203,15 @@ def init_db():
             created_at    INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS messages(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id     INTEGER NOT NULL,
+            receiver_id   INTEGER NOT NULL,
+            text          TEXT DEFAULT '',
+            is_read       INTEGER DEFAULT 0,
+            created_at    INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
@@ -239,3 +248,15 @@ def _migrate(conn):
             created_at INTEGER NOT NULL
         )"""
     )
+    # Chat xabarlari jadvali — kim kimga, matn, o'qilgan/o'qilmagan
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS messages(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id   INTEGER NOT NULL,      -- yuboruvchi user id
+            receiver_id INTEGER NOT NULL,      -- qabul qiluvchi user id
+            text        TEXT DEFAULT '',
+            is_read     INTEGER DEFAULT 0,     -- qabul qiluvchi o'qiganmi
+            created_at  INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages(sender_id, receiver_id, created_at)")
