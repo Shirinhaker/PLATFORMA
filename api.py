@@ -835,3 +835,126 @@ async def person_page(user_id: int, x_telegram_init_data: str = Header(default="
         }
     conn.close()
     return result
+
+
+# ====================================================================
+# CHAT / XABARLAR
+# ====================================================================
+def _user_brief(conn, uid):
+    u = conn.execute("SELECT id, name, role FROM users WHERE id=?", (uid,)).fetchone()
+    if not u:
+        return {"id": uid, "name": "Foydalanuvchi", "role": "user"}
+    name = u["name"]
+    if u["role"] == "business":
+        biz = conn.execute("SELECT name FROM businesses WHERE user_id=?", (uid,)).fetchone()
+        if biz and biz["name"]:
+            name = biz["name"]
+    return {"id": u["id"], "name": name or "Foydalanuvchi", "role": u["role"]}
+
+
+@router.post("/messages/send")
+async def send_message(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    to_id = b.get("to")
+    text = (b.get("text") or "").strip()
+    if not to_id or not text:
+        conn.close()
+        raise HTTPException(400, "Qabul qiluvchi va matn kiritilishi shart.")
+    if int(to_id) == me["id"]:
+        conn.close()
+        raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
+    receiver = conn.execute("SELECT id, tg_id FROM users WHERE id=?", (to_id,)).fetchone()
+    if not receiver:
+        conn.close()
+        raise HTTPException(404, "Qabul qiluvchi topilmadi.")
+    now = int(time.time())
+    cur = conn.execute(
+        "INSERT INTO messages(sender_id, receiver_id, text, is_read, created_at) VALUES(?,?,?,0,?)",
+        (me["id"], receiver["id"], text, now),
+    )
+    mid = cur.lastrowid
+    conn.commit()
+
+    # Telegram bildirishnomasi (qabul qiluvchining asosiy akkauntiga)
+    sender_name = _user_brief(conn, me["id"])["name"]
+    conn.close()
+    if receiver["tg_id"]:
+        try:
+            from main import tg_call, BASE_URL
+            await tg_call("sendMessage", {
+                "chat_id": receiver["tg_id"],
+                "text": "💬 Sizga yangi xabar: " + sender_name + "\n\n" + (text[:200]),
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+    return {"ok": True, "id": mid, "created_at": now}
+
+
+@router.get("/messages/with/{user_id}")
+async def conversation_with(user_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    rows = conn.execute(
+        """SELECT * FROM messages
+           WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)
+           ORDER BY created_at ASC, id ASC LIMIT 500""",
+        (me["id"], user_id, user_id, me["id"]),
+    ).fetchall()
+    # kelgan xabarlarni o'qilgan deb belgilaymiz
+    conn.execute(
+        "UPDATE messages SET is_read=1 WHERE receiver_id=? AND sender_id=? AND is_read=0",
+        (me["id"], user_id),
+    )
+    conn.commit()
+    other = _user_brief(conn, user_id)
+    msgs = [{"id": r["id"], "text": r["text"], "mine": (r["sender_id"] == me["id"]),
+             "created_at": r["created_at"]} for r in rows]
+    conn.close()
+    return {"other": other, "messages": msgs}
+
+
+@router.get("/messages/conversations")
+async def conversations(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    # suhbatdoshlar ro'yxati — har biri bilan oxirgi xabar
+    rows = conn.execute(
+        """SELECT * FROM messages
+           WHERE sender_id=? OR receiver_id=?
+           ORDER BY created_at DESC, id DESC""",
+        (me["id"], me["id"]),
+    ).fetchall()
+    seen = {}
+    order = []
+    for r in rows:
+        other_id = r["receiver_id"] if r["sender_id"] == me["id"] else r["sender_id"]
+        if other_id not in seen:
+            seen[other_id] = {"last": r["text"], "created_at": r["created_at"], "unread": 0}
+            order.append(other_id)
+        # o'qilmagan: menga kelgan va o'qilmagan
+        if r["receiver_id"] == me["id"] and not r["is_read"]:
+            seen[other_id]["unread"] += 1
+    result = []
+    for oid in order:
+        info = seen[oid]
+        brief = _user_brief(conn, oid)
+        result.append({"user_id": oid, "name": brief["name"], "role": brief["role"],
+                       "last": info["last"], "created_at": info["created_at"], "unread": info["unread"]})
+    conn.close()
+    return result
+
+
+@router.get("/messages/unread_count")
+async def unread_count(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    n = conn.execute(
+        "SELECT COUNT(*) FROM messages WHERE receiver_id=? AND is_read=0", (me["id"],)
+    ).fetchone()[0]
+    conn.close()
+    return {"count": n}
