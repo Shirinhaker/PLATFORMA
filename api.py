@@ -399,10 +399,26 @@ async def delete_listing(listing_id: int, x_telegram_init_data: str = Header(def
     return {"ok": True}
 
 
+@router.get("/listings/counts")
+async def listing_counts(x_telegram_init_data: str = Header(default="")):
+    """Har toifadagi ochiq e'lonlar soni (bosh sahifa kartochkalari uchun)."""
+    conn = db()
+    rows = conn.execute(
+        "SELECT cat, COUNT(*) AS n FROM listings WHERE status='active' AND visibility='all' GROUP BY cat"
+    ).fetchall()
+    conn.close()
+    return {r["cat"]: r["n"] for r in rows}
+
+
 @router.get("/listings")
 async def public_listings(cat: str = "", q: str = "", x_telegram_init_data: str = Header(default="")):
     """Ochiq e'lonlar (faqat 'butun platforma' ko'rinishidagilar)."""
     conn = db()
+    me = optional_user(conn, x_telegram_init_data)
+    saved_ids = set()
+    if me:
+        for s in conn.execute("SELECT target_id FROM saved WHERE user_id=? AND target_kind='listing'", (me["id"],)).fetchall():
+            saved_ids.add(s["target_id"])
     sql = "SELECT * FROM listings WHERE status='active' AND visibility='all'"
     args = []
     if cat:
@@ -413,7 +429,11 @@ async def public_listings(cat: str = "", q: str = "", x_telegram_init_data: str 
         args.append("%" + q + "%")
     sql += " ORDER BY created_at DESC LIMIT 100"
     rows = conn.execute(sql, args).fetchall()
-    result = [listing_to_dict(conn, r) for r in rows]
+    result = []
+    for r in rows:
+        d = listing_to_dict(conn, r)
+        d["is_saved"] = r["id"] in saved_ids
+        result.append(d)
     conn.close()
     return result
 
