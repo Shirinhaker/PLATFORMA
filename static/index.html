@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1939 -->
+<title>Platforma</title><!-- BUILD: v2001 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1650,23 +1650,29 @@
       }).join("");
     }).catch(function(e){ el("notifyList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
+  function fillNfDistricts(){
+    var R = window.UZ_REGIONS || [];
+    var vi = el("nfRegion").value;
+    var box = el("nfDistrict");
+    if(vi===""){ box.innerHTML='<option value="">Istalgan tuman</option>'; return; }
+    var v = R[parseInt(vi,10)];
+    if(!v){ box.innerHTML='<option value="">Istalgan tuman</option>'; return; }
+    box.innerHTML = '<option value="">Istalgan tuman</option>' +
+      v.districts.map(function(d){ return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>'; }).join("");
+  }
   function openNotifyForm(){
     // viloyat/tuman ro'yxatini to'ldiramiz (UZ_REGIONS)
     var R = window.UZ_REGIONS || [];
     var rs = el("nfRegion");
+    if(!R.length){ alert("Hududlar ro'yxati yuklanmadi. Internetni tekshirib, qayta urinib ko'ring."); }
     rs.innerHTML = '<option value="">Istalgan viloyat</option>' + R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
     el("nfDistrict").innerHTML = '<option value="">Istalgan tuman</option>';
-    rs.onchange = function(){
-      var vi = this.value;
-      if(vi===""){ el("nfDistrict").innerHTML='<option value="">Istalgan tuman</option>'; return; }
-      var v = R[parseInt(vi,10)];
-      el("nfDistrict").innerHTML = '<option value="">Istalgan tuman</option>' + v.districts.map(function(d){ return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>'; }).join("");
-    };
     el("nfCat").value="uy"; el("nfPriceMin").value=""; el("nfPriceMax").value=""; el("nfKeyword").value="";
     el("tbTitle").textContent="Yangi filtr";
     nav("notify-form");
     el("tbTitle").textContent="Yangi filtr";
   }
+  el("nfRegion") && el("nfRegion").addEventListener("change", fillNfDistricts);
   el("notifyAdd") && el("notifyAdd").addEventListener("click", openNotifyForm);
   el("nfSave") && el("nfSave").addEventListener("click", function(){
     var R = window.UZ_REGIONS || [];
