@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1314 -->
+<title>Platforma</title><!-- BUILD: v0639 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="regions.js"></script>
+<style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
     --primary:#0E8C84; --primary-ink:#FFFFFF; --primary-tint:#E2F3F1;
@@ -419,10 +420,11 @@
           <div class="lead">Kabinetga kirish</div>
           <div class="lead-sub" id="loginReason" style="display:none;color:var(--primary);font-weight:600"></div>
           <div id="loginStep1">
-            <div class="lead-sub">Login va parolingizni kiriting. Tasdiqlash kodi Telegramingizga yuboriladi.</div>
+            <div class="lead-sub">Login va parolingizni kiriting.</div>
             <div class="field"><label>Login</label><input class="input" id="loginUser" placeholder="Loginingiz" autocapitalize="off" /></div>
             <div class="field"><label>Parol</label><input class="input" id="loginPass" type="password" placeholder="Parolingiz" /></div>
             <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Kirish</button>
+            <div class="form-foot" style="margin-top:10px"><b id="forgotPass" style="color:var(--primary)">Parolni unutdingizmi?</b></div>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
           </div>
           <div id="loginStep2" hidden>
@@ -582,7 +584,6 @@
       <!-- CAB: SOZLAMALAR -->
       <section class="screen" data-screen="cab-settings">
         <div style="height:6px"></div>
-        <div class="set-row" data-alert="Login/parolni o'zgartirish (namuna).">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Bildirishnomalar (namuna).">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -726,7 +727,6 @@
       <!-- UCAB: SOZLAMALAR -->
       <section class="screen" data-screen="ucab-settings">
         <div style="height:6px"></div>
-        <div class="set-row" data-alert="Login/parolni o'zgartirish (namuna).">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Bildirishnomalar (namuna).">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1435,16 +1435,28 @@
   }
 
   function showCredentials(login, password, role){
+    var isReset = !role;
     el("regBody").innerHTML =
-      '<div class="form-wrap"><div class="lead">Ro\'yxatdan o\'tdingiz! ✅</div>'+
+      '<div class="form-wrap"><div class="lead">'+(isReset?"Parol yangilandi! ✅":"Ro'yxatdan o'tdingiz! ✅")+'</div>'+
       '<div class="lead-sub">Quyidagi login va parolni saqlab qo\'ying. Bu ma\'lumotlar Telegramingizga ham yuborildi. Boshqa qurilmadan kirganda shular kerak bo\'ladi.</div>'+
       '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
         '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🔑 Login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(login)+'</div></div>'+
         '<div><div style="font-size:12px;color:var(--soft)">🔐 Parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(password)+'</div></div>'+
       '</div>'+
-      '<button class="btn btn-primary btn-block" id="credDone">Kabinetimga o\'tish</button>'+
+      '<button class="btn btn-primary btn-block" id="credDone">'+(isReset?"Kirishga o'tish":"Kabinetimga o'tish")+'</button>'+
       '</div>';
-    el("credDone").addEventListener("click", function(){ afterAuth(role); });
+    nav("register");
+    el("tbTitle").textContent = isReset ? "Yangi parol" : "Ro'yxatdan o'tish";
+    el("credDone").addEventListener("click", function(){
+      if(isReset){
+        // login ekraniga qaytamiz, loginni avtomatik to'ldiramiz
+        if(el("loginUser")) el("loginUser").value = login;
+        if(el("loginPass")) el("loginPass").value = "";
+        nav("login");
+      } else {
+        afterAuth(role);
+      }
+    });
   }
 
   /* ---------- navigation ---------- */
@@ -1886,6 +1898,15 @@
   });
 
   el("goRegister").addEventListener("click", function(){ nav("register"); });
+  el("forgotPass").addEventListener("click", function(){
+    if(!confirm("Yangi parol yaratilib, Telegramingizga yuboriladi. Davom etamizmi?")) return;
+    var b=this; b.style.pointerEvents="none"; b.textContent="Yuborilmoqda...";
+    api("POST","/api/auth/reset",{}).then(function(r){
+      showCredentials(r.login, r.password, null);
+      el("tbTitle").textContent="Yangi parol";
+    }).catch(function(e){ alert(e.message); })
+      .finally(function(){ b.style.pointerEvents=""; b.textContent="Parolni unutdingizmi?"; });
+  });
 
   function afterAuth(role){
     loggedIn = true;
@@ -2431,7 +2452,6 @@
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
                business_id: d.business ? d.business.id : null };
-        loggedIn = true;
       }
     }).catch(function(){});
   }
@@ -2455,4 +2475,3 @@
 })();
 </script>
 </body>
-</html>
