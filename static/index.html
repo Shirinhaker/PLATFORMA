@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1332 -->
+<title>Platforma</title><!-- BUILD: v1939 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -472,6 +472,7 @@
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p>Kelgan buyurtma va yozilishlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
@@ -600,6 +601,7 @@
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxasisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxasis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p>Yozilishlarim · Menga yozilganlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -705,6 +707,43 @@
         <div class="chat-bar">
           <input class="chat-input" id="chatInput" placeholder="Xabar yozing..." autocomplete="off">
           <button class="chat-send" id="chatSend" aria-label="Yuborish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
+      </section>
+
+      <!-- BILDIRISHNOMA FILTRLARI -->
+      <section class="screen" data-screen="notify">
+        <div class="form-wrap">
+          <div class="lead">Bildirishnomalarim</div>
+          <div class="lead-sub">Qiziqishlaringizni belgilang. Mos e'lon joylanganda Telegramingizga xabar keladi.</div>
+          <button class="btn btn-primary btn-block" id="notifyAdd">➕ Yangi filtr qo'shish</button>
+          <div id="notifyList" style="margin-top:14px"></div>
+        </div>
+      </section>
+
+      <!-- YANGI BILDIRISHNOMA FILTRI -->
+      <section class="screen" data-screen="notify-form">
+        <div class="form-wrap">
+          <div class="lead">Yangi filtr</div>
+          <div class="lead-sub">Faqat sizga kerakli e'lonlar haqida xabar olasiz.</div>
+          <div class="field"><label>Tur (majburiy)</label><select class="input" id="nfCat">
+            <option value="uy">🏠 Uy-joy</option>
+            <option value="ish">💼 Ish o'rinlari</option>
+            <option value="moshina">🚙 Moshinalar</option>
+            <option value="hayvon">🐾 Hayvonlar</option>
+            <option value="texnika">📱 Texnika</option>
+            <option value="boshqa">📦 Boshqalar</option>
+          </select></div>
+          <div class="field"><label>Viloyat — ixtiyoriy</label><select class="input" id="nfRegion"></select></div>
+          <div class="field"><label>Tuman — ixtiyoriy</label><select class="input" id="nfDistrict"></select></div>
+          <div class="field"><label>Narx oralig'i — ixtiyoriy</label>
+            <div style="display:flex;gap:8px">
+              <input class="input" id="nfPriceMin" inputmode="numeric" placeholder="dan (masalan 1000)">
+              <input class="input" id="nfPriceMax" inputmode="numeric" placeholder="gacha (masalan 5000)">
+            </div>
+            <div style="font-size:12px;color:var(--soft);margin-top:5px">Raqamlarda kiriting (dollar yoki so'm — e'lon narxiga qarab)</div>
+          </div>
+          <div class="field"><label>Kalit so'z — ixtiyoriy</label><input class="input" id="nfKeyword" placeholder="masalan: mushuk, Nexia, dasturchi"></div>
+          <button class="btn btn-primary btn-block" id="nfSave">Saqlash</button>
         </div>
       </section>
 
@@ -1456,7 +1495,7 @@
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
-    chats:"Suhbatlar", chat:"Suhbat",
+    chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "cab-admin":"Ma'muriyat", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
@@ -1585,6 +1624,76 @@
       loadChat(true);
     }).catch(function(e){ alert(e.message); inp.value=text; });
   }
+  /* ---------- BILDIRISHNOMA FILTRLARI ---------- */
+  var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
+  function openNotify(){
+    if(!loggedIn){ showLogin("Bildirishnomalar"); return; }
+    el("tbTitle").textContent="Bildirishnomalarim";
+    el("notifyList").innerHTML='<div class="list-sub">Yuklanmoqda...</div>';
+    nav("notify");
+    el("tbTitle").textContent="Bildirishnomalarim";
+    loadNotifyFilters();
+  }
+  function loadNotifyFilters(){
+    api("GET","/api/notify/filters").then(function(list){
+      if(!list.length){ el("notifyList").innerHTML='<div class="empty" style="padding:24px 16px"><h3>Filtr yo\'q</h3><p>«Yangi filtr» orqali qiziqishlaringizni belgilang.</p></div>'; return; }
+      el("notifyList").innerHTML = list.map(function(f){
+        var parts = [];
+        if(f.district) parts.push(f.district);
+        else if(f.region) parts.push(f.region);
+        if(f.price_min || f.price_max) parts.push((f.price_min||"0")+"–"+(f.price_max||"∞"));
+        if(f.keyword) parts.push("«"+f.keyword+"»");
+        var sub = parts.length ? parts.join(" · ") : "Barcha e'lonlar";
+        return '<div class="menu-card" style="cursor:default"><div class="menu-ic">'+((NF_CATS[f.cat]||"📦").split(" ")[0])+'</div>'+
+          '<div class="menu-main"><h4>'+esc((NF_CATS[f.cat]||f.cat).replace(/^\S+\s/,""))+'</h4><p>'+esc(sub)+'</p></div>'+
+          '<button class="panel-x" data-delnf="'+f.id+'" style="position:static">✕</button></div>';
+      }).join("");
+    }).catch(function(e){ el("notifyList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  }
+  function openNotifyForm(){
+    // viloyat/tuman ro'yxatini to'ldiramiz (UZ_REGIONS)
+    var R = window.UZ_REGIONS || [];
+    var rs = el("nfRegion");
+    rs.innerHTML = '<option value="">Istalgan viloyat</option>' + R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
+    el("nfDistrict").innerHTML = '<option value="">Istalgan tuman</option>';
+    rs.onchange = function(){
+      var vi = this.value;
+      if(vi===""){ el("nfDistrict").innerHTML='<option value="">Istalgan tuman</option>'; return; }
+      var v = R[parseInt(vi,10)];
+      el("nfDistrict").innerHTML = '<option value="">Istalgan tuman</option>' + v.districts.map(function(d){ return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>'; }).join("");
+    };
+    el("nfCat").value="uy"; el("nfPriceMin").value=""; el("nfPriceMax").value=""; el("nfKeyword").value="";
+    el("tbTitle").textContent="Yangi filtr";
+    nav("notify-form");
+    el("tbTitle").textContent="Yangi filtr";
+  }
+  el("notifyAdd") && el("notifyAdd").addEventListener("click", openNotifyForm);
+  el("nfSave") && el("nfSave").addEventListener("click", function(){
+    var R = window.UZ_REGIONS || [];
+    var ri = el("nfRegion").value;
+    var region = (ri!=="") ? R[parseInt(ri,10)].name : "";
+    var body = {
+      cat: el("nfCat").value,
+      region: region,
+      district: el("nfDistrict").value || "",
+      price_min: parseInt(el("nfPriceMin").value||"0",10)||0,
+      price_max: parseInt(el("nfPriceMax").value||"0",10)||0,
+      keyword: (el("nfKeyword").value||"").trim()
+    };
+    var btn=this; btn.disabled=true;
+    api("POST","/api/notify/filters",body).then(function(){
+      alert("Filtr saqlandi ✅");
+      openNotify();
+    }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
+  });
+  el("notifyList") && el("notifyList").addEventListener("click", function(e){
+    var d=e.target.closest("[data-delnf]");
+    if(d){
+      if(!confirm("Bu filtrni o'chirasizmi?")) return;
+      api("DELETE","/api/notify/filters/"+d.getAttribute("data-delnf")).then(function(){ loadNotifyFilters(); }).catch(function(err){ alert(err.message); });
+    }
+  });
+
   function openChats(){
     if(!loggedIn){ showLogin("Suhbatlar"); return; }
     chatBack = current;
@@ -1982,6 +2091,8 @@
     }
     var ch=e.target.closest("[data-chats]");
     if(ch){ openChats(); return; }
+    var nt=e.target.closest("[data-notify]");
+    if(nt){ openNotify(); return; }
     var n=e.target.closest("[data-nav]");
     if(n){ nav(n.getAttribute("data-nav")); return; }
     var a=e.target.closest("[data-alert]");
