@@ -381,6 +381,32 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
             "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
 
 
+# ---------- Parolni tiklash (Telegram ID orqali avtomatik) ----------
+@app.post("/api/auth/reset")
+async def reset_password(request: Request, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
+    conn = db()
+    user = conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(404, "Bu Telegramda akkaunt topilmadi. Avval ro'yxatdan o'ting.")
+    new_pass = gen_pass()
+    conn.execute("UPDATE users SET pass_hash=? WHERE id=?", (hash_password(new_pass), user["id"]))
+    conn.commit()
+    login_v = user["login"]
+    conn.close()
+
+    # Telegramga yangi ma'lumotlarni yuboramiz
+    await tg_call("sendMessage", {
+        "chat_id": tg["id"],
+        "text": ("\U0001F511 Kirish ma'lumotlaringiz yangilandi:\n\n"
+                 "Login: " + login_v + "\n"
+                 "Yangi parol: " + new_pass + "\n\n"
+                 "Bu ma'lumotlar bilan kabinetingizga kiring. Saqlab qo'ying."),
+    })
+    return {"ok": True, "login": login_v, "password": new_pass}
+
+
 # ---------- Kirish (login/parol -> asosiy akkauntga tasdiqlash) ----------
 @app.post("/api/auth/login")
 async def login(request: Request, x_telegram_init_data: str = Header(default="")):
