@@ -212,6 +212,18 @@ def init_db():
             created_at    INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS notify_filters(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL,
+            cat           TEXT NOT NULL,
+            region        TEXT DEFAULT '',
+            district      TEXT DEFAULT '',
+            price_min     INTEGER DEFAULT 0,
+            price_max     INTEGER DEFAULT 0,
+            keyword       TEXT DEFAULT '',
+            created_at    INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
@@ -260,3 +272,18 @@ def _migrate(conn):
         )"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages(sender_id, receiver_id, created_at)")
+    # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS notify_filters(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id   INTEGER NOT NULL,
+            cat       TEXT NOT NULL,            -- e'lon turi (uy/ish/moshina/hayvon/texnika/boshqa)
+            region    TEXT DEFAULT '',          -- viloyat ('' = istalgan)
+            district  TEXT DEFAULT '',          -- tuman ('' = istalgan)
+            price_min INTEGER DEFAULT 0,        -- 0 = chegara yo'q
+            price_max INTEGER DEFAULT 0,        -- 0 = chegara yo'q
+            keyword   TEXT DEFAULT '',          -- kalit so'z ('' = istalgan)
+            created_at INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_nf_cat ON notify_filters(cat)")
