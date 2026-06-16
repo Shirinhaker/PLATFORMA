@@ -346,8 +346,99 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
                 (listing_id, fid, "video" if m.get("type") == "video" else "photo", i),
             )
     conn.commit()
+
+    # Bildirishnoma: shu e'longa mos filtri bor foydalanuvchilarga xabar
+    targets = []
+    if visibility == "all":
+        try:
+            targets = _match_notify_filters(conn, {
+                "cat": cat,
+                "title": title,
+                "descr": (b.get("descr") or ""),
+                "address": (b.get("address") or ""),
+                "price_num": _price_to_number(b.get("price") or ""),
+                "owner_id": user["id"],
+            })
+        except Exception:
+            targets = []
     conn.close()
+
+    # Telegram xabarlarini yuboramiz (o'ziga emas)
+    for t in targets:
+        try:
+            from main import tg_call, BASE_URL
+            await tg_call("sendMessage", {
+                "chat_id": t["tg_id"],
+                "text": "📢 Yangi e'lon — " + _cat_name(cat) + ":\n" + title +
+                        ((" — " + (b.get("price") or "")) if b.get("price") else ""),
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ko'rish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
     return {"id": listing_id}
+
+
+# --- Bildirishnoma yordamchilari ---
+_CAT_NAMES = {"uy": "Uy-joy", "ish": "Ish o'rinlari", "moshina": "Moshinalar",
+              "hayvon": "Hayvonlar", "texnika": "Texnika", "boshqa": "Boshqalar"}
+def _cat_name(cat):
+    return _CAT_NAMES.get(cat, cat)
+
+def _price_to_number(price_text):
+    """Narx matnidan raqamni ajratadi: '9 800 $' -> 9800, '5 mln so'm' -> 5000000. Topilmasa None."""
+    import re
+    if not price_text:
+        return None
+    t = price_text.lower().replace("\u00a0", " ")
+    m = re.search(r"[\d][\d\s]*", t)
+    if not m:
+        return None
+    base = int(re.sub(r"\s", "", m.group(0)) or 0)
+    if base == 0:
+        return None
+    if "mln" in t or "million" in t:
+        base *= 1_000_000
+    elif "ming" in t:
+        base *= 1_000
+    return base
+
+def _match_notify_filters(conn, listing):
+    """E'longa mos keladigan filtrlar egalarini topadi (o'zidan tashqari)."""
+    rows = conn.execute(
+        "SELECT nf.*, u.tg_id AS u_tg FROM notify_filters nf JOIN users u ON u.id=nf.user_id WHERE nf.cat=?",
+        (listing["cat"],),
+    ).fetchall()
+    text_blob = (listing["title"] + " " + listing["descr"] + " " + listing["address"]).lower()
+    seen = set()
+    out = []
+    for f in rows:
+        if f["user_id"] == listing["owner_id"]:
+            continue  # o'ziga yubormaymiz
+        if not f["u_tg"]:
+            continue  # Telegramga bog'lanmagan
+        # hudud
+        if f["region"] and f["region"].lower() not in text_blob and (f["district"] or "").lower() not in text_blob:
+            # agar tuman ham mos kelmasa, o'tkazamiz
+            if not (f["district"] and f["district"].lower() in text_blob):
+                continue
+        if f["district"] and f["district"].lower() not in text_blob:
+            continue
+        # narx
+        pn = listing["price_num"]
+        if f["price_min"] and (pn is None or pn < f["price_min"]):
+            continue
+        if f["price_max"] and (pn is None or pn > f["price_max"]):
+            continue
+        # kalit so'z
+        if f["keyword"] and f["keyword"].lower() not in text_blob:
+            continue
+        if f["u_tg"] in seen:
+            continue
+        seen.add(f["u_tg"])
+        out.append({"tg_id": f["u_tg"]})
+    return out
 
 
 @router.get("/listings/my")
@@ -958,3 +1049,56 @@ async def unread_count(x_telegram_init_data: str = Header(default="")):
     ).fetchone()[0]
     conn.close()
     return {"count": n}
+
+
+# ====================================================================
+# BILDIRISHNOMA FILTRLARI
+# ====================================================================
+@router.get("/notify/filters")
+async def get_notify_filters(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    rows = conn.execute(
+        "SELECT * FROM notify_filters WHERE user_id=? ORDER BY id DESC", (me["id"],)
+    ).fetchall()
+    out = [{"id": r["id"], "cat": r["cat"], "region": r["region"], "district": r["district"],
+            "price_min": r["price_min"], "price_max": r["price_max"], "keyword": r["keyword"]} for r in rows]
+    conn.close()
+    return out
+
+
+@router.post("/notify/filters")
+async def add_notify_filter(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    cat = (b.get("cat") or "").strip()
+    if not cat:
+        conn.close()
+        raise HTTPException(400, "Tur tanlanishi shart.")
+    def _int(v):
+        try:
+            return int(v)
+        except Exception:
+            return 0
+    cur = conn.execute(
+        """INSERT INTO notify_filters(user_id, cat, region, district, price_min, price_max, keyword, created_at)
+           VALUES(?,?,?,?,?,?,?,?)""",
+        (me["id"], cat, (b.get("region") or "").strip(), (b.get("district") or "").strip(),
+         _int(b.get("price_min")), _int(b.get("price_max")), (b.get("keyword") or "").strip(),
+         int(time.time())),
+    )
+    fid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": fid}
+
+
+@router.delete("/notify/filters/{filter_id}")
+async def delete_notify_filter(filter_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    conn.execute("DELETE FROM notify_filters WHERE id=? AND user_id=?", (filter_id, me["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
