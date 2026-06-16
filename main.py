@@ -429,6 +429,8 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
     # Boshqa qurilma — asosiy akkauntga tasdiqlash so'rovi yuboramiz
     if not user["tg_id"]:
         # akkaunt hech qaysi telegramga bog'lanmagan — shu qurilmaga bog'laymiz
+        # (avval shu qurilma boshqa akkauntga bog'langan bo'lsa, uni bo'shatamiz)
+        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], user["id"]))
         conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], user["id"]))
         conn.commit(); conn.close()
         return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
@@ -474,9 +476,10 @@ async def login_status(request_id: int, x_telegram_init_data: str = Header(defau
         conn.close()
         return {"status": "expired"}
     if row["status"] == "approved":
-        # qurilmani akkauntga bog'laymiz (asosiy qurilma o'zgaradi)
+        # qurilmani akkauntga bog'laymiz (Telegram tartibi: oxirgi kirgan qurilma asosiy bo'ladi)
         user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
-        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=?", (tg["id"],))
+        # shu qurilma boshqa akkauntga bog'langan bo'lsa, faqat o'shani bo'shatamiz (target'dan tashqari)
+        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], row["user_id"]))
         conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], row["user_id"]))
         conn.execute("DELETE FROM login_requests WHERE id=?", (row["id"],))
         conn.commit()
