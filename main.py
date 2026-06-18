@@ -315,6 +315,9 @@ async def get_catalog():
 def gen_login():
     return "user" + "".join(secrets.choice("0123456789") for _ in range(6))
 
+def gen_biz_login():
+    return "biz" + "".join(secrets.choice("0123456789") for _ in range(6))
+
 def gen_pass():
     alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(8))
@@ -390,6 +393,45 @@ async def login(request: Request, x_telegram_init_data: str = Header(default="")
     password = body.get("password") or ""
 
     conn = db()
+    # Avval biznes login bo'lsa (biznes kabinetga alohida kirish)
+    biz = conn.execute("SELECT * FROM businesses WHERE biz_login=?", (login_v,)).fetchone()
+    if biz:
+        if not biz["biz_pass_hash"] or not check_password(password, biz["biz_pass_hash"]):
+            conn.close()
+            raise HTTPException(401, "Login yoki parol noto'g'ri.")
+        owner = conn.execute("SELECT * FROM users WHERE id=?", (biz["user_id"],)).fetchone()
+        # qurilmani biznes egasiga bog'laymiz (agar bo'sh yoki shu qurilma bo'lsa)
+        if owner and (not owner["tg_id"] or owner["tg_id"] == tg["id"]):
+            if not owner["tg_id"]:
+                conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], owner["id"]))
+                conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], owner["id"]))
+                conn.commit()
+            conn.close()
+            return {"ok": True, "approved": True, "role": "business", "name": biz["name"], "mode": "business"}
+        # boshqa qurilma — egasiga tasdiqlash so'rovi
+        if owner and owner["tg_id"]:
+            device_name = (tg.get("first_name") or "") + ((" @" + tg["username"]) if tg.get("username") else "")
+            now = int(time.time())
+            conn.execute("DELETE FROM login_requests WHERE user_id=? AND status='pending'", (owner["id"],))
+            cur = conn.execute(
+                "INSERT INTO login_requests(user_id, device_tg, device_name, status, expires_at, created_at) VALUES(?,?,?,?,?,?)",
+                (owner["id"], tg["id"], device_name, "pending", now + 600, now),
+            )
+            rid = cur.lastrowid
+            conn.commit()
+            conn.close()
+            await tg_call("sendMessage", {
+                "chat_id": owner["tg_id"],
+                "text": "🔐 Biznes kabinetingizga yangi qurilmadan kirish urinilmoqda:\n" + (device_name or "Noma'lum qurilma") + "\n\nSiz kiryapsizmi?",
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "✅ Ha, kirish", "callback_data": "approve_" + str(rid)},
+                    {"text": "❌ Yo'q", "callback_data": "reject_" + str(rid)},
+                ]]},
+            })
+            return {"ok": True, "approved": False, "request_id": rid}
+        conn.close()
+        raise HTTPException(400, "Biznes egasi topilmadi.")
+
     user = conn.execute("SELECT * FROM users WHERE login=?", (login_v,)).fetchone()
     if not user or not check_password(password, user["pass_hash"]):
         conn.close()
@@ -478,19 +520,72 @@ async def me(x_telegram_init_data: str = Header(default="")):
         "phone": user["phone"], "region": user["region"],
         "district": user["district"], "mahalla": user["mahalla"],
     }
-    if user["role"] == "business":
-        biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-        if biz:
-            result["business"] = {
-                "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
-                "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
-                "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
-            }
+    # Biznes ma'lumotini rol nima bo'lishidan qat'i nazar qaytaramiz (agar businesses yozuvi bo'lsa)
+    biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    result["has_business"] = bool(biz)
+    if biz:
+        result["business"] = {
+            "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
+            "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
+            "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
+        }
     conn.close()
     return result
 
 
-# ---------- Media ko'prigi (Telegramdagi rasmni ilovaga uzatish) ----------
+# ---------- Biznes ochish (mavjud akkauntga biznes profil qo'shish) ----------
+@app.post("/api/business/open")
+async def open_business(request: Request, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
+    conn = db()
+    user = current_user(conn, tg["id"])
+    if not user:
+        conn.close()
+        raise HTTPException(401, "Avval ro'yxatdan o'ting.")
+    # allaqachon biznes bormi?
+    exists = conn.execute("SELECT id FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    if exists:
+        conn.close()
+        raise HTTPException(400, "Sizda allaqachon biznes profil bor.")
+    b = await request.json()
+    name = (b.get("name") or "").strip()
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Biznes nomi kiritilishi shart.")
+    now = int(time.time())
+    # biznes uchun alohida login/parol yaratamiz
+    for _ in range(20):
+        biz_login = gen_biz_login()
+        clash = conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone()
+        clash2 = conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone()
+        if not clash and not clash2:
+            break
+    biz_pass = gen_pass()
+    conn.execute(
+        """INSERT INTO businesses(user_id, name, yon, tur, descr, phone, telegram, work_hours, address, lat, lng, biz_login, biz_pass_hash, status, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (user["id"], name, (b.get("yon") or "").strip(), (b.get("tur") or "").strip(),
+         (b.get("descr") or "").strip(), (b.get("phone") or "").strip(), (b.get("telegram") or "").strip(),
+         (b.get("work_hours") or "").strip(), (b.get("address") or "").strip(),
+         b.get("lat"), b.get("lng"), biz_login, hash_password(biz_pass), "active", now),
+    )
+    # rolni biznesga ham o'tkazamiz (lekin oddiy profil ham qoladi — bir akkaunt ikkala rejim)
+    conn.execute("UPDATE users SET role='business' WHERE id=?", (user["id"],))
+    conn.commit()
+    conn.close()
+
+    # biznes login/parolni Telegramga yuboramiz
+    try:
+        await tg_call("sendMessage", {
+            "chat_id": tg["id"],
+            "text": ("\U0001F3EA Biznes kabinetingiz ochildi!\n\n"
+                     "Biznes login: " + biz_login + "\n"
+                     "Biznes parol: " + biz_pass + "\n\n"
+                     "Bu login/parol bilan biznes kabinetingizga alohida kirishingiz mumkin. Saqlab qo'ying."),
+        })
+    except Exception:
+        pass
+    return {"ok": True, "biz_login": biz_login, "biz_password": biz_pass}
 _file_path_cache = {}
 
 @app.get("/media/{file_id}")
