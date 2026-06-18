@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v0614 -->
+<title>Platforma</title><!-- BUILD: v1605 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -889,6 +889,7 @@
 
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
   var ME = { registered:false, role:null, name:"", id:null, business_id:null };
+  var activeMode = "user";   // hozir qaysi kabinetdamiz: "user" yoki "business"
 
 
   var YON = [
@@ -1701,8 +1702,8 @@
     }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
-  function goBiz(){ nav("cabinet"); }
-  function goUser(){ nav("ucab"); }
+  function goBiz(){ activeMode="business"; nav("cabinet"); }
+  function goUser(){ activeMode="user"; nav("ucab"); }
 
 
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
@@ -1884,7 +1885,11 @@
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
   el("cartBtn").addEventListener("click", function(){ nav("cart"); });
   el("cabBtn").addEventListener("click", function(){
-    if(loggedIn && ME.registered){ nav(ME.role==="business" ? "cabinet" : "ucab"); }
+    if(loggedIn && ME.registered){
+      // biznesi bo'lmasa doim oddiy; bo'lsa hozirgi faol rejimga qarab
+      if(!ME.has_business){ nav("ucab"); }
+      else { nav(activeMode==="business" ? "cabinet" : "ucab"); }
+    }
     else { el("loginReason").style.display="none"; nav("login"); }
   });
   el("elonRow").addEventListener("click", function(e){ var c=e.target.closest("[data-elon]"); if(c) selectMap(c.getAttribute("data-elon")); });
@@ -2085,6 +2090,7 @@
 
   function afterAuth(role){
     loggedIn = true;
+    activeMode = (role==="business") ? "business" : "user";
     el("loginReason").style.display="none";
     // serverdan to'liq profilni yangilaymiz
     api("GET","/api/me").then(function(d){
