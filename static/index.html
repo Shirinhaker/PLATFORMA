@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v0527 -->
+<title>Platforma</title><!-- BUILD: v0614 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -493,6 +493,11 @@
           <div class="field"><label>Telegram</label><input class="input" id="bpTg" placeholder="@username"></div>
           <div class="field"><label>Ish vaqti</label><input class="input" id="bpHours" placeholder="8:00 – 23:00"></div>
           <div class="field"><label>Manzil</label><input class="input" id="bpAddr" placeholder="Tuman, mahalla, ko'cha"></div>
+          <div class="field">
+            <label>Xaritadagi joy</label>
+            <button class="btn btn-outline btn-block" id="bpPickBtn" type="button">📍 Xaritada joy belgilash</button>
+            <div id="bpPickInfo" style="font-size:13px;color:var(--soft);margin-top:6px">Biznesingiz xaritada shu joyda ko'rinadi</div>
+          </div>
           <button class="btn btn-primary btn-block" id="bpSave">Saqlash</button>
         </div>
       </section>
@@ -2206,6 +2211,8 @@
   }
   function loadBizProfile(){
     fillYonSelect(el("bpYon"), "");
+    pickedLatLng.bp = null;
+    if(el("bpPickInfo")){ el("bpPickInfo").innerHTML="Biznesingiz xaritada shu joyda ko'rinadi"; el("bpPickInfo").style.color="var(--soft)"; }
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
       el("bpName").value=b.name||""; el("bpTur").value=b.tur||"";
@@ -2213,6 +2220,11 @@
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
       fillYonSelect(el("bpYon"), b.yon||"");
+      // saqlangan joyni tiklaymiz
+      if(b.lat!=null && b.lng!=null){
+        pickedLatLng.bp=[b.lat, b.lng];
+        if(el("bpPickInfo")){ el("bpPickInfo").innerHTML="✅ Joy belgilangan"; el("bpPickInfo").style.color="var(--primary)"; }
+      }
     }).catch(function(){});
   }
   function loadSpecialist(){
@@ -2329,15 +2341,18 @@
       .finally(function(){ btn.disabled=false; });
   });
 
+  el("bpPickBtn") && el("bpPickBtn").addEventListener("click", function(){ openPicker("bp"); });
   bindSave("bpSave", function(){
     var btn=this; btn.disabled=true;
     var nm=el("bpName").value.trim(), yon=el("bpYon").value;
-    api("PUT","/api/business",{
+    var body={
       name:nm, yon:yon, tur:el("bpTur").value.trim(),
       descr:el("bpDescr").value.trim(), phone:el("bpPhone").value.trim(),
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim()
-    }).then(function(){
+    };
+    if(pickedLatLng.bp){ body.lat=pickedLatLng.bp[0]; body.lng=pickedLatLng.bp[1]; }
+    api("PUT","/api/business",body).then(function(){
       if(el("cabName")) el("cabName").textContent = nm || "Biznes";
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (yon?(" · "+yon):"");
       alert("Saqlandi ✅");
@@ -2517,7 +2532,7 @@
 
   /* ---------- E'LON JOYINI XARITADA TANLASH ---------- */
   var PMAP = null;
-  var pickedLatLng = { be:null, ue:null };   // har forma uchun tanlangan koordinata
+  var pickedLatLng = { be:null, ue:null, bp:null };   // har forma uchun tanlangan koordinata
   var pickTarget = null;                       // 'be' yoki 'ue'
   function openPicker(prefix){
     pickTarget = prefix;
@@ -2539,15 +2554,21 @@
     var info = el(prefix+"PickInfo");
     if(info){ info.innerHTML = "✅ Joy belgilandi"; info.style.color = "var(--primary)"; }
   }
+  function pickReturnScreen(){
+    if(pickTarget==="be") return "cab-elon-form";
+    if(pickTarget==="ue") return "ucab-elon-form";
+    if(pickTarget==="bp") return "cab-profil";
+    return "home";
+  }
   el("pickConfirm").addEventListener("click", function(){
     if(PMAP && pickTarget){
       var c = PMAP.getCenter();
       setPicked(pickTarget, c.lat, c.lng);
     }
-    nav(pickTarget==="be" ? "cab-elon-form" : "ucab-elon-form");
+    nav(pickReturnScreen());
   });
   el("pickCancel").addEventListener("click", function(){
-    nav(pickTarget==="be" ? "cab-elon-form" : "ucab-elon-form");
+    nav(pickReturnScreen());
   });
 
   function bindElonForm(prefix, listId, catsId, getVisibility){
