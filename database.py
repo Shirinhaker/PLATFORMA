@@ -67,6 +67,8 @@ def init_db():
             lat           REAL,
             lng           REAL,
             logo_file     TEXT DEFAULT '',
+            biz_login     TEXT,                             -- biznes uchun alohida login
+            biz_pass_hash TEXT,                             -- biznes uchun alohida parol
             status        TEXT DEFAULT 'active',
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -287,3 +289,9 @@ def _migrate(conn):
         )"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_nf_cat ON notify_filters(cat)")
+    # businesses uchun alohida login/parol ustunlari
+    bcols = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if "biz_login" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN biz_login TEXT")
+    if "biz_pass_hash" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN biz_pass_hash TEXT")
