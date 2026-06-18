@@ -338,10 +338,51 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     username = (body.get("username") or "").strip().lstrip("@")
 
     conn = db()
-    # Shu Telegramda allaqachon akkaunt bo'lsa
-    if current_user(conn, tg["id"]):
-        conn.close()
-        raise HTTPException(400, "Bu Telegramda allaqachon akkaunt bor. Kabinetga kiring.")
+    existing = current_user(conn, tg["id"])
+
+    # Shu Telegramda allaqachon akkaunt bor — ikkinchi profilni qo'shamiz (xato emas)
+    if existing:
+        if role == "business":
+            # biznesi bormi?
+            has_biz = conn.execute("SELECT id FROM businesses WHERE user_id=?", (existing["id"],)).fetchone()
+            if has_biz:
+                conn.close()
+                raise HTTPException(400, "Sizda allaqachon biznes kabinet bor. Kabinetingizdan «Biznes kabinetga o'tish» orqali kiring.")
+            # biznes profil + alohida biznes login qo'shamiz
+            for _ in range(20):
+                biz_login = gen_biz_login()
+                if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and \
+                   not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
+                    break
+            biz_pass = gen_pass()
+            now = int(time.time())
+            conn.execute(
+                "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, biz_login, biz_pass_hash, status, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (existing["id"], name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
+                 (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
+                 body.get("lat"), body.get("lng"), biz_login, hash_password(biz_pass), "active", now),
+            )
+            conn.execute("UPDATE users SET role='business' WHERE id=?", (existing["id"],))
+            conn.commit()
+            conn.close()
+            try:
+                await tg_call("sendMessage", {
+                    "chat_id": tg["id"],
+                    "text": ("\U0001F3EA Biznes kabinetingiz ochildi!\n\n"
+                             "Biznes login: " + biz_login + "\n"
+                             "Biznes parol: " + biz_pass + "\n\n"
+                             "Bu login/parol bilan biznes kabinetga alohida kirishingiz mumkin. Saqlab qo'ying."),
+                })
+            except Exception:
+                pass
+            return {"ok": True, "role": "business", "added_business": True,
+                    "biz_login": biz_login, "biz_password": biz_pass,
+                    "message": "Biznes kabinet ochildi!"}
+        else:
+            # oddiy kabinet allaqachon bor (har bir akkaunt oddiy asosga ega)
+            conn.close()
+            raise HTTPException(400, "Sizda oddiy kabinet allaqachon bor. Kabinetingizga kiring.")
 
     # Login/parolni platforma o'zi yaratadi (noyob login)
     for _ in range(20):
@@ -359,28 +400,38 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
          (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
     )
     user_id = cur.lastrowid
+    biz_login = None; biz_pass = None
     if role == "business":
+        # biznes uchun alohida login/parol
+        for _ in range(20):
+            biz_login = gen_biz_login()
+            if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and \
+               not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
+                break
+        biz_pass = gen_pass()
         conn.execute(
-            "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, biz_login, biz_pass_hash, status, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (user_id, name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
              (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
-             body.get("lat"), body.get("lng"), now),
+             body.get("lat"), body.get("lng"), biz_login, hash_password(biz_pass), "active", now),
         )
     conn.commit()
     conn.close()
 
     # Login va parolni foydalanuvchining Telegramiga yuboramiz
-    await tg_call("sendMessage", {
-        "chat_id": tg["id"],
-        "text": ("Platformaga xush kelibsiz! \u2705\n\n"
-                 "Kabinetingizga kirish ma'lumotlari:\n\n"
-                 "\U0001F511 Login: KOD: " + login + "\n"
-                 "\U0001F510 Parol: " + password + "\n\n"
-                 "Bu ma'lumotlarni saqlab qo'ying. Boshqa qurilmadan kirganda shu login va parol kerak bo'ladi."),
-    })
+    msg = ("Platformaga xush kelibsiz! \u2705\n\n"
+           "Kabinetingizga kirish ma'lumotlari:\n\n"
+           "\U0001F511 Login: " + login + "\n"
+           "\U0001F510 Parol: " + password + "\n\n"
+           "Bu ma'lumotlarni saqlab qo'ying. Boshqa qurilmadan kirganda shu login va parol kerak bo'ladi.")
+    if role == "business" and biz_login:
+        msg += ("\n\n\U0001F3EA Biznes kabinet uchun alohida:\n"
+                "Biznes login: " + biz_login + "\nBiznes parol: " + biz_pass)
+    await tg_call("sendMessage", {"chat_id": tg["id"], "text": msg})
     # Ro'yxatdan o'tgan qurilma to'g'ridan-to'g'ri kiradi
     return {"ok": True, "role": role, "login": login, "password": password,
+            "biz_login": biz_login, "biz_password": biz_pass,
             "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
 
 
