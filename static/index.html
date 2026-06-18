@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v2001 -->
+<title>Platforma</title><!-- BUILD: v0107 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -479,6 +479,7 @@
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <button class="btn btn-outline btn-block" style="margin-top:10px" id="toUserBtn">👤 Oddiy kabinetga qaytish</button>
       </section>
 
       <!-- CAB: PROFIL -->
@@ -606,7 +607,7 @@
         <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p>Yozilishlarim · Menga yozilganlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <button class="btn btn-amber btn-block" style="margin-top:10px" data-alert="Biznes ma'lumotlarini to'ldirib, biznes kabinetiga ega bo'lasiz (namuna).">🏪 Biznes ochish</button>
+        <button class="btn btn-amber btn-block" style="margin-top:10px" id="bizOpenBtn">🏪 Biznes ochish</button>
       </section>
 
       <!-- UCAB: PROFIL -->
@@ -707,6 +708,20 @@
         <div class="chat-bar">
           <input class="chat-input" id="chatInput" placeholder="Xabar yozing..." autocomplete="off">
           <button class="chat-send" id="chatSend" aria-label="Yuborish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
+      </section>
+
+      <!-- BIZNES OCHISH -->
+      <section class="screen" data-screen="biz-open">
+        <div class="form-wrap">
+          <div class="lead">Biznes ochish</div>
+          <div class="lead-sub">Biznes ma'lumotlaringizni to'ldiring. Biznes profil shu akkauntingizga qo'shiladi — oddiy va biznes kabinet o'rtasida almashtirib turasiz.</div>
+          <div class="field"><label>Biznes nomi *</label><input class="input" id="boName" placeholder="Masalan: Anvar Market"></div>
+          <div class="field"><label>Yo'nalish</label><select class="input" id="boYon"></select></div>
+          <div class="field"><label>Faoliyat turi</label><input class="input" id="boTur" placeholder="Masalan: Oziq-ovqat do'koni"></div>
+          <div class="field"><label>Telefon</label><input class="input" id="boPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
+          <div class="field"><label>Manzil</label><input class="input" id="boAddr" placeholder="Tuman, mahalla, ko'cha"></div>
+          <button class="btn btn-primary btn-block" id="boSave">Biznes ochish</button>
         </div>
       </section>
 
@@ -1495,7 +1510,7 @@
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
-    chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr",
+    chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "cab-admin":"Ma'muriyat", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
@@ -1624,7 +1639,51 @@
       loadChat(true);
     }).catch(function(e){ alert(e.message); inp.value=text; });
   }
-  /* ---------- BILDIRISHNOMA FILTRLARI ---------- */
+  /* ---------- BIZNES OCHISH + ODDIY/BIZNES ALMASHTIRISH ---------- */
+  function openBizOpenForm(){
+    if(!loggedIn){ showLogin("Biznes ochish"); return; }
+    fillYonSelect(el("boYon"), "");
+    el("boName").value=""; el("boTur").value=""; el("boPhone").value=""; el("boAddr").value="";
+    el("tbTitle").textContent="Biznes ochish";
+    nav("biz-open");
+    el("tbTitle").textContent="Biznes ochish";
+  }
+  el("bizOpenBtn") && el("bizOpenBtn").addEventListener("click", function(){
+    // agar biznes allaqachon bor bo'lsa, to'g'ridan-to'g'ri biznes kabinetga
+    if(ME && ME.has_business){ goBiz(); return; }
+    openBizOpenForm();
+  });
+  el("boSave") && el("boSave").addEventListener("click", function(){
+    var name=(el("boName").value||"").trim();
+    if(!name){ alert("Biznes nomini kiriting."); return; }
+    var body={ name:name, yon:el("boYon").value||"", tur:(el("boTur").value||"").trim(),
+               phone:(el("boPhone").value||"").trim(), address:(el("boAddr").value||"").trim() };
+    var btn=this; btn.disabled=true;
+    api("POST","/api/business/open",body).then(function(r){
+      // ME ni fonda yangilaymiz
+      api("GET","/api/me").then(function(d){
+        if(d&&d.registered){ ME={registered:true, role:d.role, name:d.name, id:d.id, has_business:!!d.has_business, business_id:d.business?d.business.id:null}; }
+      }).catch(function(){});
+      // biznes login/parolni ko'rsatamiz (registratsiya uslubidagi ekran)
+      el("regBody").innerHTML =
+        '<div class="form-wrap"><div class="lead">Biznes ochildi! ✅</div>'+
+        '<div class="lead-sub">Biznes kabinetingiz uchun alohida login va parol. Saqlab qo\'ying — Telegramingizga ham yuborildi.</div>'+
+        '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
+          '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🏪 Biznes login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(r.biz_login)+'</div></div>'+
+          '<div><div style="font-size:12px;color:var(--soft)">🔐 Biznes parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(r.biz_password)+'</div></div>'+
+        '</div>'+
+        '<button class="btn btn-primary btn-block" id="bizCredDone">Biznes kabinetga o\'tish</button></div>';
+      el("tbTitle").textContent="Biznes ochildi";
+      nav("register");
+      el("tbTitle").textContent="Biznes ochildi";
+      var dn=el("bizCredDone"); if(dn) dn.addEventListener("click", function(){ goBiz(); });
+    }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
+  });
+  el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
+  function goBiz(){ nav("cabinet"); }
+  function goUser(){ nav("ucab"); }
+
+
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
   function openNotify(){
     if(!loggedIn){ showLogin("Bildirishnomalar"); return; }
@@ -2010,6 +2069,7 @@
     api("GET","/api/me").then(function(d){
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
+               has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null };
       }
     }).catch(function(){});
@@ -2229,6 +2289,12 @@
       if(el("ucabName")) el("ucabName").textContent = d.name || "Foydalanuvchi";
       if(el("ucabStatus")) el("ucabStatus").textContent = LOC || "";
     }).catch(function(){});
+    // biznes ochilgan bo'lsa, tugma matnini o'zgartiramiz
+    var bo = el("bizOpenBtn");
+    if(bo){
+      if(ME && ME.has_business){ bo.textContent="🏪 Biznes kabinetga o'tish"; }
+      else { bo.textContent="🏪 Biznes ochish"; }
+    }
   }
 
 
@@ -2548,6 +2614,7 @@
     api("GET", "/api/me").then(function(d){
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
+               has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null };
         loggedIn = true;
       }
