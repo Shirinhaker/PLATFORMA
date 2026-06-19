@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1332 -->
+<title>Platforma</title><!-- BUILD: v1342 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2615,19 +2615,50 @@
     if(pickTarget==="bp") return "cab-profil";
     return "home";
   }
+  function buildAddrText(a){
+    // nominatim address obyektidan o'qiladigan manzil yasaymiz
+    var parts = [];
+    var tuman = a.city_district || a.county || a.suburb || a.town || a.village || "";
+    var viloyat = a.state || a.region || "";
+    var ko = a.road || a.neighbourhood || "";
+    if(ko) parts.push(ko);
+    if(tuman) parts.push(tuman);
+    if(viloyat && viloyat!==tuman) parts.push(viloyat);
+    return parts.join(", ");
+  }
   el("pickConfirm").addEventListener("click", function(){
     if(PMAP && pickTarget){
       var c = PMAP.getCenter();
       setPicked(pickTarget, c.lat, c.lng);
-      // biznes joyni DARROV serverga saqlaymiz (alohida Saqlash kerak emas)
+      // biznes joyni DARROV serverga saqlaymiz + manzilni xaritadan avtomatik aniqlaymiz
       if(pickTarget==="bp"){
-        api("PUT","/api/business",{ lat:c.lat, lng:c.lng }).then(function(){
-          // kabinet boshidagi holatni yangilab qo'yamiz
-        }).catch(function(e){ alert("Joyni saqlashda xato: "+e.message); });
+        var saveBody = { lat:c.lat, lng:c.lng };
+        // avval koordinatadan manzilni aniqlaymiz
+        fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+c.lat+"&lon="+c.lng+"&accept-language=uz")
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            var addr = buildAddrText(d.address||{});
+            if(addr){ saveBody.address = addr; if(el("bpAddr")) el("bpAddr").value = addr; }
+            return api("PUT","/api/business", saveBody);
+          })
+          .then(function(){ updateCabAddr(); })
+          .catch(function(){
+            // manzil aniqlanmasa, hech bo'lmasa koordinatani saqlaymiz
+            api("PUT","/api/business",{ lat:c.lat, lng:c.lng }).then(updateCabAddr).catch(function(){});
+          });
       }
     }
     nav(pickReturnScreen());
   });
+  function updateCabAddr(){
+    api("GET","/api/me").then(function(d){
+      var b=d.business||{};
+      if(el("cabAddr")){
+        if(b.address){ el("cabAddr").textContent="📍 "+b.address; el("cabAddr").style.display=""; }
+        else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
+      }
+    }).catch(function(){});
+  }
   el("pickCancel").addEventListener("click", function(){
     nav(pickReturnScreen());
   });
