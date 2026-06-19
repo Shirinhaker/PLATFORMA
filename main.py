@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
@@ -40,8 +41,8 @@ TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 
-# ---------- Botdan foydalanishga ruxsat berilgan Telegram IDlar ----------
-# Faqat shu ID egalariga bot va Mini App ishlaydi.
+# ---------- Bot va Mini App uchun ruxsat berilgan Telegram IDlar ----------
+# Faqat shu ID egalari botdan va platformadan foydalana oladi.
 ALLOWED_TG_IDS = {1423181561, 607563067}
 
 CLOSED_MESSAGE = (
@@ -52,11 +53,12 @@ CLOSED_MESSAGE = (
 
 
 def is_allowed_tg_id(tg_id):
-    """Telegram ID whitelist ichidami — tekshiradi."""
+    """Telegram ID ruxsat berilganlar ro'yxatidami — tekshiradi."""
     try:
         return int(tg_id) in ALLOWED_TG_IDS
     except Exception:
         return False
+
 
 # Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
 _test_codes = {}
@@ -160,9 +162,20 @@ async def setup_bot():
         "secret_token": WEBHOOK_SECRET,
         "allowed_updates": ["message", "callback_query"],
     })
+    # Hamma uchun pastdagi global "Platforma" tugmasini o'chiramiz.
+    # Aks holda ruxsatsiz odam ham asosiy sahifani ochib ko'rishi mumkin.
     await tg_call("setChatMenuButton", {
-        "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        "menu_button": {"type": "commands"},
     })
+
+    # Faqat ruxsat berilgan Telegram IDlar uchun alohida Web App tugmasi qo'yamiz.
+    # Telegram Bot API bu yerda user_id emas, chat_id kutadi.
+    for uid in ALLOWED_TG_IDS:
+        await tg_call("setChatMenuButton", {
+            "chat_id": uid,
+            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        })
+
     print("Bot sozlandi:", BASE_URL)
 
 
@@ -175,6 +188,35 @@ async def lifespan(app):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def whitelist_middleware(request: Request, call_next):
+    """
+    /api/... so'rovlarini global tekshiradi.
+    Bu api.py ichidagi alohida endpointlarni ham ruxsatsiz foydalanuvchilardan yopadi.
+    Static sahifa server tomonda Telegram IDni bilmaydi, shuning uchun frontend guard ham kerak.
+    """
+    path = request.url.path
+
+    # Telegram webhookni bloklamaymiz: u Telegram serveridan keladi.
+    if path == "/webhook":
+        return await call_next(request)
+
+    # Faqat API so'rovlarini server tomonda himoya qilamiz.
+    if path.startswith("/api/"):
+        init_data = request.headers.get("x-telegram-init-data", "")
+        tg = verify_init_data(init_data)
+        if not tg:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
+            )
+        if not is_allowed_tg_id(tg.get("id")):
+            return JSONResponse(status_code=403, content={"detail": CLOSED_MESSAGE})
+
+    return await call_next(request)
+
 
 # Kabinet va platforma API'lari (api.py)
 from api import router as api_router
@@ -224,9 +266,15 @@ async def manual_setup():
     except Exception as e:
         result["setWebhook_xato"] = str(e)
     try:
-        result["menu"] = await tg_call("setChatMenuButton", {
-            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        result["menu_global"] = await tg_call("setChatMenuButton", {
+            "menu_button": {"type": "commands"},
         })
+        result["menu_allowed"] = []
+        for uid in ALLOWED_TG_IDS:
+            result["menu_allowed"].append(await tg_call("setChatMenuButton", {
+                "chat_id": uid,
+                "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+            }))
     except Exception as e:
         result["menu_xato"] = str(e)
     try:
