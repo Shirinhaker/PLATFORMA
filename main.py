@@ -638,6 +638,38 @@ async def open_business(request: Request, x_telegram_init_data: str = Header(def
     except Exception:
         pass
     return {"ok": True, "biz_login": biz_login, "biz_password": biz_pass}
+
+
+# ---------- Koordinatadan manzil aniqlash (server orqali — ishonchli) ----------
+@app.get("/api/geocode")
+async def geocode(lat: float, lng: float):
+    """Koordinatadan o'qiladigan manzil qaytaradi (OpenStreetMap orqali)."""
+    if TEST_MODE:
+        return {"address": "Sinov manzili"}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"format": "json", "lat": lat, "lon": lng, "accept-language": "uz"},
+                headers={"User-Agent": "PlatformaApp/1.0"},
+            )
+            d = r.json()
+    except Exception:
+        return {"address": ""}
+    a = d.get("address", {}) if isinstance(d, dict) else {}
+    parts = []
+    ko = a.get("road") or a.get("neighbourhood") or ""
+    tuman = a.get("city_district") or a.get("county") or a.get("suburb") or a.get("town") or a.get("village") or ""
+    viloyat = a.get("state") or a.get("region") or ""
+    if ko:
+        parts.append(ko)
+    if tuman:
+        parts.append(tuman)
+    if viloyat and viloyat != tuman:
+        parts.append(viloyat)
+    return {"address": ", ".join(parts)}
+
+
 _file_path_cache = {}
 
 @app.get("/media/{file_id}")
