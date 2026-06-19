@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1605 -->
+<title>Platforma</title><!-- BUILD: v0101 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1990,6 +1990,11 @@
           var a=d.address||{};
           var place = a.suburb || a.neighbourhood || a.city_district || a.county || a.city || a.town || a.village || "";
           LOC = place ? place : "Joylashuvim";
+          var viloyat = a.state || a.region || "";
+          var tuman = a.county || a.city_district || a.city || a.town || "";
+          if(loggedIn){
+            api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:tuman, mahalla:place }).catch(function(){});
+          }
           renderMapChip(); done(); nav("home");
         })
         .catch(function(){
@@ -2035,6 +2040,10 @@
     CENTER = [s.lat, s.lng];
     if(LMAP){ try{ LMAP.setView(CENTER, 13); }catch(e){} }
     renderMapChip();
+    // serverga ham saqlaymiz (qayta kirganda yo'qolmasligi uchun)
+    if(loggedIn){
+      api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla }).catch(function(){});
+    }
     nav("home");
   });
 
@@ -2660,6 +2669,12 @@
                has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null };
         loggedIn = true;
+        // saqlangan manzilni tiklaymiz (bosh ekrandagi "Manzilim")
+        if(d.district || d.mahalla){
+          LOC = (d.district || "") + ((d.district && d.mahalla) ? (", "+d.mahalla) : (d.mahalla||""));
+          if(!LOC) LOC = d.region || LOC;
+          try{ renderMapChip(); }catch(e){}
+        }
       }
     }).catch(function(){});
   }
