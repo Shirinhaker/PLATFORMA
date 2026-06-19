@@ -103,14 +103,17 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
+    # Yuborilmagan maydonlar eskisicha qoladi (bo'sh yozilmaydi)
+    def keep(key, old):
+        return b[key].strip() if (key in b and isinstance(b[key], str)) else old
+    new_name = keep("name", user["name"])
+    new_phone = keep("phone", user["phone"])
+    new_region = keep("region", user["region"])
+    new_district = keep("district", user["district"])
+    new_mahalla = keep("mahalla", user["mahalla"])
     conn.execute(
         "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=? WHERE id=?",
-        ((b.get("name") or user["name"]).strip(),
-         (b.get("phone") or "").strip(),
-         (b.get("region") or "").strip(),
-         (b.get("district") or "").strip(),
-         (b.get("mahalla") or "").strip(),
-         user["id"]),
+        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -200,14 +203,24 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     b = await request.json()
+    def keep(key, old):
+        return b[key].strip() if (key in b and isinstance(b[key], str)) else old
+    new_name = keep("name", biz["name"]) or biz["name"]
+    new_yon = keep("yon", biz["yon"])
+    new_tur = keep("tur", biz["tur"])
+    new_descr = keep("descr", biz["descr"])
+    new_phone = keep("phone", biz["phone"])
+    new_tg = keep("telegram", biz["telegram"])
+    new_hours = keep("work_hours", biz["work_hours"])
+    new_addr = keep("address", biz["address"])
+    # lat/lng: faqat yuborilgan bo'lsa yangilaymiz, aks holda eskisi qoladi
+    new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else biz["lat"]
+    new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
     conn.execute(
         """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
            work_hours=?, address=?, lat=?, lng=? WHERE id=?""",
-        ((b.get("name") or biz["name"]).strip(), (b.get("yon") or "").strip(),
-         (b.get("tur") or "").strip(), (b.get("descr") or "").strip(),
-         (b.get("phone") or "").strip(), (b.get("telegram") or "").strip(),
-         (b.get("work_hours") or "").strip(), (b.get("address") or "").strip(),
-         b.get("lat"), b.get("lng"), biz["id"]),
+        (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
+         new_hours, new_addr, new_lat, new_lng, biz["id"]),
     )
     conn.commit()
     conn.close()
