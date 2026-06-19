@@ -2249,11 +2249,40 @@
       }catch(e){}
     }, 80);
   }
+  function bizLatLngFromData(b){
+    b = b || {};
+    var lat = (b.lat != null) ? b.lat : ((b.latitude != null) ? b.latitude : null);
+    var lng = (b.lng != null) ? b.lng : ((b.longitude != null) ? b.longitude : ((b.lon != null) ? b.lon : null));
+    lat = Number(lat);
+    lng = Number(lng);
+    if(!isFinite(lat) || !isFinite(lng)) return null;
+    return [lat, lng];
+  }
+  function saveBizPointLocal(lat, lng){
+    try{ localStorage.setItem("business_pick_point", JSON.stringify({lat:Number(lat), lng:Number(lng)})); }catch(e){}
+  }
+  function loadBizPointLocal(){
+    try{
+      var p = JSON.parse(localStorage.getItem("business_pick_point") || "null");
+      if(!p) return null;
+      var lat = Number(p.lat), lng = Number(p.lng);
+      if(!isFinite(lat) || !isFinite(lng)) return null;
+      return [lat, lng];
+    }catch(e){ return null; }
+  }
+  function showBizPickInfo(hasPoint){
+    if(!el("bpPickInfo")) return;
+    if(hasPoint){
+      el("bpPickInfo").innerHTML = "✅ Joy belgilangan";
+      el("bpPickInfo").style.color = "var(--primary)";
+    } else {
+      el("bpPickInfo").innerHTML = "Biznesingiz xaritada shu joyda ko'rinadi";
+      el("bpPickInfo").style.color = "var(--soft)";
+    }
+  }
   function loadBizProfile(){
     fillYonSelect(el("bpYon"), "");
-    pickedLatLng.bp = null;
-    if(el("bpPickInfo")){ el("bpPickInfo").innerHTML="Biznesingiz xaritada shu joyda ko'rinadi"; el("bpPickInfo").style.color="var(--soft)"; }
-    renderBizMini(null,null);
+
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
       el("bpName").value=b.name||""; el("bpTur").value=b.tur||"";
@@ -2261,13 +2290,31 @@
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
       fillYonSelect(el("bpYon"), b.yon||"");
-      // saqlangan joyni tiklaymiz
-      if(b.lat!=null && b.lng!=null){
-        pickedLatLng.bp=[b.lat, b.lng];
-        if(el("bpPickInfo")){ el("bpPickInfo").innerHTML="✅ Joy belgilangan"; el("bpPickInfo").style.color="var(--primary)"; }
-        renderBizMini(b.lat, b.lng);
+
+      // Muhim: xaritada tanlangan joyni bekorga o'chirmaymiz.
+      // 1) avval serverdan kelgan joy, 2) bo'lmasa hozir tanlangan joy, 3) bo'lmasa localStorage'dagi joy.
+      var point = bizLatLngFromData(b) || pickedLatLng.bp || loadBizPointLocal();
+      if(point){
+        pickedLatLng.bp = [Number(point[0]), Number(point[1])];
+        saveBizPointLocal(pickedLatLng.bp[0], pickedLatLng.bp[1]);
+        showBizPickInfo(true);
+        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
+      } else {
+        showBizPickInfo(false);
+        renderBizMini(null,null);
       }
-    }).catch(function(){});
+    }).catch(function(){
+      // Server javob bermasa ham, shu sessiyada tanlangan joy yo'qolmasin.
+      var point = pickedLatLng.bp || loadBizPointLocal();
+      if(point){
+        pickedLatLng.bp = [Number(point[0]), Number(point[1])];
+        showBizPickInfo(true);
+        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
+      } else {
+        showBizPickInfo(false);
+        renderBizMini(null,null);
+      }
+    });
   }
   function loadSpecialist(){
     api("GET","/api/specialist").then(function(d){
@@ -2398,8 +2445,16 @@
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim()
     };
-    if(pickedLatLng.bp){ body.lat=pickedLatLng.bp[0]; body.lng=pickedLatLng.bp[1]; }
+    if(pickedLatLng.bp){
+      body.lat = Number(pickedLatLng.bp[0]);
+      body.lng = Number(pickedLatLng.bp[1]);
+    }
     api("PUT","/api/business",body).then(function(){
+      if(pickedLatLng.bp){
+        saveBizPointLocal(pickedLatLng.bp[0], pickedLatLng.bp[1]);
+        showBizPickInfo(true);
+        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
+      }
       if(el("cabName")) el("cabName").textContent = nm || "Biznes";
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (yon?(" · "+yon):"");
       if(el("cabAddr")){
@@ -2591,8 +2646,9 @@
     if(typeof L === "undefined"){ alert("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
     nav("pickloc");
     setTimeout(function(){
-      // bp (biznes) bosh sahifa manziliga bog'lanmaydi — o'z joyi yoki Toshkent markazi
-      var fallback = (prefix==="bp") ? [41.311, 69.280] : (CENTER || [41.311, 69.280]);
+      // bp (biznes) avval tanlangan/saqlangan joydan ochiladi. Bo'lmasa umumiy markazdan ochiladi.
+      if(prefix==="bp" && !pickedLatLng.bp){ pickedLatLng.bp = loadBizPointLocal(); }
+      var fallback = CENTER || [41.311, 69.280];
       var startC = pickedLatLng[prefix] || fallback;
       if(!PMAP){
         PMAP = L.map("pickMap", { zoomControl:true, attributionControl:false }).setView(startC, 14);
@@ -2604,10 +2660,15 @@
     }, 60);
   }
   function setPicked(prefix, lat, lng){
+    lat = Number(lat);
+    lng = Number(lng);
     pickedLatLng[prefix] = [lat, lng];
     var info = el(prefix+"PickInfo");
     if(info){ info.innerHTML = "✅ Joy belgilandi"; info.style.color = "var(--primary)"; }
-    if(prefix==="bp"){ renderBizMini(lat, lng); }
+    if(prefix==="bp"){
+      saveBizPointLocal(lat, lng);
+      renderBizMini(lat, lng);
+    }
   }
   function pickReturnScreen(){
     if(pickTarget==="be") return "cab-elon-form";
@@ -2630,17 +2691,16 @@
     if(PMAP && pickTarget){
       var c = PMAP.getCenter();
       setPicked(pickTarget, c.lat, c.lng);
-      // biznes joyni DARROV serverga saqlaymiz + manzilni server orqali aniqlaymiz
+
+      // Biznes profil joyi profil formasida saqlanadi.
+      // Avvalgi kod server javobini kutmasdan qaytib ketgani uchun loadBizProfile() koordinatani yo'qotib,
+      // xarita yana Toshkentga qaytib qolayotgan edi.
       if(pickTarget==="bp"){
-        var saveBody = { lat:c.lat, lng:c.lng };
-        // manzilni SERVER orqali aniqlaymiz (Telegram ichidan tashqi saytga ulanmasligi mumkin)
-        api("GET","/api/geocode?lat="+c.lat+"&lng="+c.lng).then(function(g){
-          if(g && g.address){ saveBody.address = g.address; if(el("bpAddr")) el("bpAddr").value = g.address; }
-          return api("PUT","/api/business", saveBody);
-        }).then(function(){ updateCabAddr(); })
-          .catch(function(){
-            api("PUT","/api/business",{ lat:c.lat, lng:c.lng }).then(updateCabAddr).catch(function(){});
-          });
+        api("GET","/api/geocode?lat="+encodeURIComponent(c.lat)+"&lng="+encodeURIComponent(c.lng)).then(function(g){
+          if(g && g.address && el("bpAddr")){ el("bpAddr").value = g.address; }
+        }).catch(function(){});
+        nav("cab-profil");
+        return;
       }
     }
     nav(pickReturnScreen());
