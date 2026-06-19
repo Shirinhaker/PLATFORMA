@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v0150 -->
+<title>Platforma</title><!-- BUILD: v1332 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2619,6 +2619,12 @@
     if(PMAP && pickTarget){
       var c = PMAP.getCenter();
       setPicked(pickTarget, c.lat, c.lng);
+      // biznes joyni DARROV serverga saqlaymiz (alohida Saqlash kerak emas)
+      if(pickTarget==="bp"){
+        api("PUT","/api/business",{ lat:c.lat, lng:c.lng }).then(function(){
+          // kabinet boshidagi holatni yangilab qo'yamiz
+        }).catch(function(e){ alert("Joyni saqlashda xato: "+e.message); });
+      }
     }
     nav(pickReturnScreen());
   });
