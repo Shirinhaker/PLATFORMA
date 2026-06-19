@@ -2249,39 +2249,23 @@
       }catch(e){}
     }, 80);
   }
-  function bizLatLngFromData(b){
-    b = b || {};
-    var lat = (b.lat != null) ? b.lat : ((b.latitude != null) ? b.latitude : null);
-    var lng = (b.lng != null) ? b.lng : ((b.longitude != null) ? b.longitude : ((b.lon != null) ? b.lon : null));
-    lat = Number(lat);
-    lng = Number(lng);
-    if(!isFinite(lat) || !isFinite(lng)) return null;
-    return [lat, lng];
-  }
-  function saveBizPointLocal(lat, lng){
-    try{ localStorage.setItem("business_pick_point", JSON.stringify({lat:Number(lat), lng:Number(lng)})); }catch(e){}
-  }
-  function loadBizPointLocal(){
-    try{
-      var p = JSON.parse(localStorage.getItem("business_pick_point") || "null");
-      if(!p) return null;
-      var lat = Number(p.lat), lng = Number(p.lng);
-      if(!isFinite(lat) || !isFinite(lng)) return null;
-      return [lat, lng];
-    }catch(e){ return null; }
-  }
-  function showBizPickInfo(hasPoint){
-    if(!el("bpPickInfo")) return;
-    if(hasPoint){
-      el("bpPickInfo").innerHTML = "✅ Joy belgilangan";
-      el("bpPickInfo").style.color = "var(--primary)";
-    } else {
-      el("bpPickInfo").innerHTML = "Biznesingiz xaritada shu joyda ko'rinadi";
-      el("bpPickInfo").style.color = "var(--soft)";
-    }
-  }
   function loadBizProfile(){
     fillYonSelect(el("bpYon"), "");
+
+    // Muhim: bu yerda pickedLatLng.bp ni null qilmaymiz.
+    // Aks holda xaritada tanlangan metka profilga qaytganda yo'qoladi.
+    var localPoint = pickedLatLng.bp || getBpPointFromStorage();
+
+    if(el("bpPickInfo")){
+      el("bpPickInfo").innerHTML = localPoint ? "✅ Joy belgilangan" : "Biznesingiz xaritada shu joyda ko'rinadi";
+      el("bpPickInfo").style.color = localPoint ? "var(--primary)" : "var(--soft)";
+    }
+    if(localPoint){
+      pickedLatLng.bp = localPoint;
+      renderBizMini(localPoint[0], localPoint[1]);
+    } else {
+      renderBizMini(null,null);
+    }
 
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
@@ -2291,30 +2275,18 @@
       el("bpAddr").value=b.address||"";
       fillYonSelect(el("bpYon"), b.yon||"");
 
-      // Muhim: xaritada tanlangan joyni bekorga o'chirmaymiz.
-      // 1) avval serverdan kelgan joy, 2) bo'lmasa hozir tanlangan joy, 3) bo'lmasa localStorage'dagi joy.
-      var point = bizLatLngFromData(b) || pickedLatLng.bp || loadBizPointLocal();
-      if(point){
-        pickedLatLng.bp = [Number(point[0]), Number(point[1])];
-        saveBizPointLocal(pickedLatLng.bp[0], pickedLatLng.bp[1]);
-        showBizPickInfo(true);
-        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
-      } else {
-        showBizPickInfo(false);
-        renderBizMini(null,null);
+      // Backend lat/lng yoki latitude/longitude qaytarsa, saqlangan joyni tiklaymiz
+      var srvPoint = normalizeLatLng(
+        b.lat != null ? b.lat : b.latitude,
+        b.lng != null ? b.lng : b.longitude
+      );
+
+      if(srvPoint){
+        saveBpPoint(srvPoint[0], srvPoint[1]);
+        if(el("bpPickInfo")){ el("bpPickInfo").innerHTML="✅ Joy belgilangan"; el("bpPickInfo").style.color="var(--primary)"; }
+        renderBizMini(srvPoint[0], srvPoint[1]);
       }
-    }).catch(function(){
-      // Server javob bermasa ham, shu sessiyada tanlangan joy yo'qolmasin.
-      var point = pickedLatLng.bp || loadBizPointLocal();
-      if(point){
-        pickedLatLng.bp = [Number(point[0]), Number(point[1])];
-        showBizPickInfo(true);
-        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
-      } else {
-        showBizPickInfo(false);
-        renderBizMini(null,null);
-      }
-    });
+    }).catch(function(){});
   }
   function loadSpecialist(){
     api("GET","/api/specialist").then(function(d){
@@ -2445,16 +2417,12 @@
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim()
     };
-    if(pickedLatLng.bp){
-      body.lat = Number(pickedLatLng.bp[0]);
-      body.lng = Number(pickedLatLng.bp[1]);
-    }
+    var bpLL = normalizeLatLng(
+      pickedLatLng.bp && pickedLatLng.bp[0],
+      pickedLatLng.bp && pickedLatLng.bp[1]
+    );
+    if(bpLL){ body.lat = bpLL[0]; body.lng = bpLL[1]; saveBpPoint(bpLL[0], bpLL[1]); }
     api("PUT","/api/business",body).then(function(){
-      if(pickedLatLng.bp){
-        saveBizPointLocal(pickedLatLng.bp[0], pickedLatLng.bp[1]);
-        showBizPickInfo(true);
-        renderBizMini(pickedLatLng.bp[0], pickedLatLng.bp[1]);
-      }
       if(el("cabName")) el("cabName").textContent = nm || "Biznes";
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (yon?(" · "+yon):"");
       if(el("cabAddr")){
@@ -2641,15 +2609,57 @@
   var PMAP = null;
   var pickedLatLng = { be:null, ue:null, bp:null };   // har forma uchun tanlangan koordinata
   var pickTarget = null;                       // 'be' yoki 'ue'
+
+  function safeNum(v){
+    var n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+
+  function normalizeLatLng(lat, lng){
+    lat = safeNum(lat);
+    lng = safeNum(lng);
+    if(lat==null || lng==null) return null;
+
+    // Agar backend tasodifan lng/lat qilib yuborsa, avtomatik almashtiramiz
+    if(Math.abs(lat) > 90 && Math.abs(lng) <= 90){
+      var t = lat; lat = lng; lng = t;
+    }
+
+    if(Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return [lat, lng];
+  }
+
+  function saveBpPoint(lat, lng){
+    var ll = normalizeLatLng(lat, lng);
+    if(!ll) return null;
+    pickedLatLng.bp = ll;
+    try{ localStorage.setItem("business_pick_point", JSON.stringify({lat:ll[0], lng:ll[1]})); }catch(e){}
+    return ll;
+  }
+
+  function getBpPointFromStorage(){
+    try{
+      var raw = localStorage.getItem("business_pick_point");
+      if(!raw) return null;
+      var o = JSON.parse(raw);
+      return normalizeLatLng(o.lat, o.lng);
+    }catch(e){ return null; }
+  }
   function openPicker(prefix){
     pickTarget = prefix;
     if(typeof L === "undefined"){ alert("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
+
+    // bp uchun avval saqlangan koordinatani tiklab olamiz
+    if(prefix === "bp" && !pickedLatLng.bp){
+      pickedLatLng.bp = getBpPointFromStorage();
+    }
+
     nav("pickloc");
     setTimeout(function(){
-      // bp (biznes) avval tanlangan/saqlangan joydan ochiladi. Bo'lmasa umumiy markazdan ochiladi.
-      if(prefix==="bp" && !pickedLatLng.bp){ pickedLatLng.bp = loadBizPointLocal(); }
-      var fallback = CENTER || [41.311, 69.280];
+      // bp (biznes) bosh sahifa manziliga bog'lanmaydi — o'z joyi yoki Toshkent markazi
+      var fallback = (prefix==="bp") ? [41.311, 69.280] : (CENTER || [41.311, 69.280]);
       var startC = pickedLatLng[prefix] || fallback;
+
       if(!PMAP){
         PMAP = L.map("pickMap", { zoomControl:true, attributionControl:false }).setView(startC, 14);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(PMAP);
@@ -2660,15 +2670,15 @@
     }, 60);
   }
   function setPicked(prefix, lat, lng){
-    lat = Number(lat);
-    lng = Number(lng);
-    pickedLatLng[prefix] = [lat, lng];
+    var ll = normalizeLatLng(lat, lng);
+    if(!ll) return;
+
+    pickedLatLng[prefix] = ll;
+    if(prefix === "bp"){ saveBpPoint(ll[0], ll[1]); }
+
     var info = el(prefix+"PickInfo");
     if(info){ info.innerHTML = "✅ Joy belgilandi"; info.style.color = "var(--primary)"; }
-    if(prefix==="bp"){
-      saveBizPointLocal(lat, lng);
-      renderBizMini(lat, lng);
-    }
+    if(prefix==="bp"){ renderBizMini(ll[0], ll[1]); }
   }
   function pickReturnScreen(){
     if(pickTarget==="be") return "cab-elon-form";
@@ -2688,21 +2698,44 @@
     return parts.join(", ");
   }
   el("pickConfirm").addEventListener("click", function(){
-    if(PMAP && pickTarget){
-      var c = PMAP.getCenter();
-      setPicked(pickTarget, c.lat, c.lng);
-
-      // Biznes profil joyi profil formasida saqlanadi.
-      // Avvalgi kod server javobini kutmasdan qaytib ketgani uchun loadBizProfile() koordinatani yo'qotib,
-      // xarita yana Toshkentga qaytib qolayotgan edi.
-      if(pickTarget==="bp"){
-        api("GET","/api/geocode?lat="+encodeURIComponent(c.lat)+"&lng="+encodeURIComponent(c.lng)).then(function(g){
-          if(g && g.address && el("bpAddr")){ el("bpAddr").value = g.address; }
-        }).catch(function(){});
-        nav("cab-profil");
-        return;
-      }
+    if(!PMAP || !pickTarget){
+      nav(pickReturnScreen());
+      return;
     }
+
+    var c = PMAP.getCenter();
+    var ll = normalizeLatLng(c.lat, c.lng);
+    if(!ll){
+      alert("Xarita koordinatasi noto'g'ri. Iltimos, boshqa joyni tanlang.");
+      return;
+    }
+
+    setPicked(pickTarget, ll[0], ll[1]);
+
+    // Biznes joyini tanlaganda: lat/lng + address ni birga saqlaymiz.
+    // Profilga qaytishdan oldin PUT tugashini kutamiz, shunda /api/me eski ma'lumotni olib kelmaydi.
+    if(pickTarget === "bp"){
+      var saveBody = { lat:ll[0], lng:ll[1] };
+
+      api("GET","/api/geocode?lat="+ll[0]+"&lng="+ll[1]).then(function(g){
+        if(g && g.address){
+          saveBody.address = g.address;
+          if(el("bpAddr")) el("bpAddr").value = g.address;
+        }
+        return api("PUT","/api/business", saveBody);
+      }).catch(function(){
+        // Geocode ishlamasa ham koordinatani saqlaymiz
+        return api("PUT","/api/business", saveBody);
+      }).then(function(){
+        updateCabAddr();
+        nav("cab-profil");
+      }).catch(function(e){
+        alert((e && e.message) ? e.message : "Joyni saqlashda xatolik bo'ldi");
+        nav("cab-profil");
+      });
+      return;
+    }
+
     nav(pickReturnScreen());
   });
   function updateCabAddr(){
