@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v0130 -->
+<title>Platforma</title><!-- BUILD: v0150 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -466,6 +466,7 @@
         <div class="cab-head">
           <div class="cab-logo" id="cabLogo">🛒</div>
           <div><div class="cab-name" id="cabName">—</div><div class="cab-status" id="cabStatus"></div>
+            <div class="cab-status" id="cabAddr" style="color:var(--soft);font-size:13px;margin-top:2px"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>0</b> obuna</span></div></div>
         </div>
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -2348,6 +2349,11 @@
       var b=d.business||{};
       if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
+      // biznes manzili kabinet boshida ko'rsatiladi
+      if(el("cabAddr")){
+        if(b.address){ el("cabAddr").textContent = "📍 " + b.address; el("cabAddr").style.display=""; }
+        else { el("cabAddr").textContent = ""; el("cabAddr").style.display="none"; }
+      }
     }).catch(function(){});
   }
   function loadUcabCounts(){
@@ -2396,6 +2402,11 @@
     api("PUT","/api/business",body).then(function(){
       if(el("cabName")) el("cabName").textContent = nm || "Biznes";
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (yon?(" · "+yon):"");
+      if(el("cabAddr")){
+        var ad=el("bpAddr").value.trim();
+        if(ad){ el("cabAddr").textContent="📍 "+ad; el("cabAddr").style.display=""; }
+        else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
+      }
       alert("Saqlandi ✅");
     }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; });
@@ -2580,7 +2591,9 @@
     if(typeof L === "undefined"){ alert("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
     nav("pickloc");
     setTimeout(function(){
-      var startC = pickedLatLng[prefix] || CENTER || [41.311, 69.280];
+      // bp (biznes) bosh sahifa manziliga bog'lanmaydi — o'z joyi yoki Toshkent markazi
+      var fallback = (prefix==="bp") ? [41.311, 69.280] : (CENTER || [41.311, 69.280]);
+      var startC = pickedLatLng[prefix] || fallback;
       if(!PMAP){
         PMAP = L.map("pickMap", { zoomControl:true, attributionControl:false }).setView(startC, 14);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(PMAP);
