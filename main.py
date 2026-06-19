@@ -40,6 +40,24 @@ TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 
+# ---------- Botdan foydalanishga ruxsat berilgan Telegram IDlar ----------
+# Faqat shu ID egalariga bot va Mini App ishlaydi.
+ALLOWED_TG_IDS = {1423181561, 607563067}
+
+CLOSED_MESSAGE = (
+    "Loyihamiz to\'liq ishga tushmadi. "
+    "Loyihamiz to\'liq ishga tushganda barcha uchun ochiladi. "
+    "Iltimos kutib turing."
+)
+
+
+def is_allowed_tg_id(tg_id):
+    """Telegram ID whitelist ichidami — tekshiradi."""
+    try:
+        return int(tg_id) in ALLOWED_TG_IDS
+    except Exception:
+        return False
+
 # Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
 _test_codes = {}
 
@@ -73,6 +91,8 @@ def require_tg(init_data):
     tg = verify_init_data(init_data)
     if not tg:
         raise HTTPException(401, "Iltimos, ilovani Telegram bot orqali oching.")
+    if not is_allowed_tg_id(tg.get("id")):
+        raise HTTPException(403, CLOSED_MESSAGE)
     return tg
 
 
@@ -224,9 +244,33 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
         raise HTTPException(403, "forbidden")
     update = await request.json()
     msg = update.get("message")
+    cq = update.get("callback_query")
+
+    # Whitelist: ruxsat berilmagan Telegram IDlar botdan foydalana olmaydi.
+    incoming_tg_id = None
+    incoming_chat_id = None
+    if msg:
+        incoming_tg_id = (msg.get("from") or {}).get("id") or (msg.get("chat") or {}).get("id")
+        incoming_chat_id = (msg.get("chat") or {}).get("id")
+    elif cq:
+        incoming_tg_id = (cq.get("from") or {}).get("id")
+        incoming_chat_id = ((cq.get("message") or {}).get("chat") or {}).get("id") or incoming_tg_id
+
+    if incoming_tg_id is not None and not is_allowed_tg_id(incoming_tg_id):
+        if cq:
+            await tg_call("answerCallbackQuery", {
+                "callback_query_id": cq.get("id"),
+                "text": CLOSED_MESSAGE,
+                "show_alert": True,
+            })
+        elif incoming_chat_id:
+            await tg_call("sendMessage", {
+                "chat_id": incoming_chat_id,
+                "text": CLOSED_MESSAGE,
+            })
+        return {"ok": True}
 
     # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
-    cq = update.get("callback_query")
     if cq:
         data = cq.get("data", "")
         from_id = cq["from"]["id"]
