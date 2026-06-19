@@ -6,6 +6,121 @@
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
 <title>Platforma</title><!-- BUILD: v1356 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
+<style id="accessLockStyle">
+  body { display: none !important; }
+</style>
+<script>
+(function () {
+  const ALLOWED_TG_IDS = [1423181561, 607563067];
+
+  const CLOSED_MESSAGE =
+    "Loyihamiz to'liq ishga tushmadi. " +
+    "Loyihamiz to'liq ishga tushganda barcha uchun ochiladi. " +
+    "Iltimos kutib turing.";
+
+  function closePage() {
+    document.documentElement.setAttribute("data-access-denied", "1");
+
+    document.body.innerHTML = `
+      <div style="
+        min-height:100vh;
+        min-height:100dvh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:linear-gradient(180deg,#eef8f6 0%,#ffffff 100%);
+        padding:24px;
+        box-sizing:border-box;
+        font-family:Arial, Helvetica, sans-serif;
+        text-align:center;
+      ">
+        <div style="
+          width:100%;
+          max-width:390px;
+          background:#ffffff;
+          border-radius:22px;
+          padding:26px 22px;
+          box-shadow:0 12px 35px rgba(0,0,0,0.10);
+          border:1px solid rgba(0,0,0,0.06);
+        ">
+          <div style="
+            width:58px;
+            height:58px;
+            border-radius:50%;
+            margin:0 auto 16px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#e9f7f5;
+            color:#0f8f86;
+            font-size:28px;
+          ">⏳</div>
+
+          <h2 style="
+            margin:0 0 12px;
+            font-size:22px;
+            line-height:1.25;
+            color:#16222a;
+          ">Iltimos kutib turing</h2>
+
+          <p style="
+            margin:0;
+            font-size:15px;
+            line-height:1.55;
+            color:#42515c;
+          ">${CLOSED_MESSAGE}</p>
+        </div>
+      </div>
+    `;
+
+    const lockStyle = document.getElementById("accessLockStyle");
+    if (lockStyle) lockStyle.remove();
+  }
+
+  function getTelegramUserId() {
+    try {
+      const tg = window.Telegram && window.Telegram.WebApp;
+      if (!tg) return null;
+
+      tg.ready();
+      tg.expand();
+
+      const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+      if (!user || !user.id) return null;
+
+      return Number(user.id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const userId = getTelegramUserId();
+
+  if (!ALLOWED_TG_IDS.includes(userId)) {
+    window.__ACCESS_DENIED__ = true;
+
+    // Ruxsatsiz holatda API so'rovlarini ham frontend tomondan to'xtatamiz.
+    const deniedFetch = function () {
+      return Promise.reject(new Error(CLOSED_MESSAGE));
+    };
+    try { window.fetch = deniedFetch; } catch (e) {}
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", closePage);
+    } else {
+      closePage();
+    }
+  } else {
+    window.__ACCESS_DENIED__ = false;
+
+    const lockStyle = document.getElementById("accessLockStyle");
+    if (lockStyle) lockStyle.remove();
+  }
+})();
+</script>
+<!-- /ACCESS GUARD -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
