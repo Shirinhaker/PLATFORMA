@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1342 -->
+<title>Platforma</title><!-- BUILD: v1356 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2630,20 +2630,15 @@
     if(PMAP && pickTarget){
       var c = PMAP.getCenter();
       setPicked(pickTarget, c.lat, c.lng);
-      // biznes joyni DARROV serverga saqlaymiz + manzilni xaritadan avtomatik aniqlaymiz
+      // biznes joyni DARROV serverga saqlaymiz + manzilni server orqali aniqlaymiz
       if(pickTarget==="bp"){
         var saveBody = { lat:c.lat, lng:c.lng };
-        // avval koordinatadan manzilni aniqlaymiz
-        fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat="+c.lat+"&lon="+c.lng+"&accept-language=uz")
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            var addr = buildAddrText(d.address||{});
-            if(addr){ saveBody.address = addr; if(el("bpAddr")) el("bpAddr").value = addr; }
-            return api("PUT","/api/business", saveBody);
-          })
-          .then(function(){ updateCabAddr(); })
+        // manzilni SERVER orqali aniqlaymiz (Telegram ichidan tashqi saytga ulanmasligi mumkin)
+        api("GET","/api/geocode?lat="+c.lat+"&lng="+c.lng).then(function(g){
+          if(g && g.address){ saveBody.address = g.address; if(el("bpAddr")) el("bpAddr").value = g.address; }
+          return api("PUT","/api/business", saveBody);
+        }).then(function(){ updateCabAddr(); })
           .catch(function(){
-            // manzil aniqlanmasa, hech bo'lmasa koordinatani saqlaymiz
             api("PUT","/api/business",{ lat:c.lat, lng:c.lng }).then(updateCabAddr).catch(function(){});
           });
       }
