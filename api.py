@@ -634,6 +634,110 @@ async def my_followers(x_telegram_init_data: str = Header(default="")):
     return result
 
 
+
+# ====================================================================
+# XARITA (bosh ekran): platforma ko'rsatadiganlar + obunalar
+# ====================================================================
+def _map_business_dict(row, source, following=False):
+    """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "yon": row["yon"],
+        "tur": row["tur"],
+        "address": row["address"],
+        "lat": row["lat"],
+        "lng": row["lng"],
+        "source": source,
+        "following": following,
+    }
+
+
+def _map_specialist_dict(row):
+    """Bosh xarita uchun mutaxasis/foydalanuvchini ixcham ko'rinishga o'tkazadi."""
+    return {
+        "user_id": row["user_id"],
+        "name": row["name"],
+        "kasb": row["kasb"],
+        "narx": row["narx"],
+        "is_gov": bool(row["is_gov"]),
+        "available": bool(row["available"]),
+        "district": row["district"],
+        "lat": row["lat"],
+        "lng": row["lng"],
+        "source": "obuna",
+    }
+
+
+@router.get("/map")
+async def home_map(x_telegram_init_data: str = Header(default="")):
+    """
+    Bosh sahifa xaritasi uchun obyektlar.
+
+    Bu endpoint HAMMA biznesni qaytarmaydi. Faqat:
+      1) platforma tomonidan bosh xaritada ko'rsatishga belgilangan bizneslar;
+      2) joriy foydalanuvchi obuna bo'lgan, joylashuvi bor bizneslar;
+      3) joriy foydalanuvchi obuna bo'lgan, ko'rinadigan va joylashuvi bor mutaxasislar.
+    """
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+
+    # 1) Platforma tomonidan ko'rsatiladigan bizneslar
+    platform_rows = conn.execute(
+        """SELECT * FROM businesses
+           WHERE status='active'
+             AND lat IS NOT NULL AND lng IS NOT NULL
+             AND COALESCE(map_visible, 0)=1
+           ORDER BY created_at DESC
+           LIMIT 200"""
+    ).fetchall()
+
+    business_map = {}
+    for b in platform_rows:
+        business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
+
+    # 2) Foydalanuvchi obuna bo'lgan bizneslar
+    followed_rows = conn.execute(
+        """SELECT b.* FROM follows f
+           JOIN businesses b ON b.id=f.target_id
+           WHERE f.follower_id=?
+             AND f.target_kind='business'
+             AND b.status='active'
+             AND b.lat IS NOT NULL AND b.lng IS NOT NULL
+           ORDER BY f.created_at DESC
+           LIMIT 200""",
+        (user["id"],),
+    ).fetchall()
+
+    for b in followed_rows:
+        if b["id"] in business_map:
+            business_map[b["id"]]["source"] = "platforma+obuna"
+            business_map[b["id"]]["following"] = True
+        else:
+            business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
+
+    # 3) Foydalanuvchi obuna bo'lgan mutaxasislar/foydalanuvchilar
+    specialist_rows = conn.execute(
+        """SELECT s.*, u.name, u.district
+           FROM follows f
+           JOIN specialists s ON s.user_id=f.target_id
+           JOIN users u ON u.id=s.user_id
+           WHERE f.follower_id=?
+             AND f.target_kind='user'
+             AND s.visible=1
+             AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+           ORDER BY f.created_at DESC
+           LIMIT 200""",
+        (user["id"],),
+    ).fetchall()
+
+    result = {
+        "businesses": list(business_map.values()),
+        "specialists": [_map_specialist_dict(s) for s in specialist_rows],
+    }
+    conn.close()
+    return result
+
 # ====================================================================
 # SAQLANGANLAR
 # ====================================================================
