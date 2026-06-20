@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1356 -->
+<title>Platforma</title><!-- BUILD: v1357 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1134,11 +1134,16 @@
       selElon=null;
       BIZ.forEach(function(b){
         var ll = (b.lat!=null) ? [b.lat,b.lng] : xyToLatLng(b.x,b.y);
-        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false), function(){ openBiz(b.id); });
+        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false), function(){
+          if(b.srv){ openBizSrv(b.id); } else { openBiz(b.id); }
+        });
       });
       SPEC.forEach(function(sp){
         var ll = (sp.lat!=null) ? [sp.lat,sp.lng] : xyToLatLng(sp.x,sp.y);
-        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), "", true), function(){ personBack=current; openPerson(sp.id); });
+        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), "", true), function(){
+          personBack=current;
+          if(sp.srv){ openPersonSrv(sp.id); } else { openPerson(sp.id); }
+        });
       });
     } else if(mapMode==="result"){
       RES.pins.forEach(function(r){
@@ -1199,11 +1204,41 @@
         '<div class="ec-name">'+c.name+'</div><div class="ec-count">'+(c.count||0)+' ta e\'lon</div></div>';
     }).join("");
   }
+  function yonMeta(name){
+    var y = YON.filter(function(x){ return x.name === name; })[0];
+    return y || { ic:"🏪", c:"#0E8C84", name:name||"Biznes" };
+  }
+  function loadHomeMap(){
+    if(mapMode!=="biz") return;
+    api("GET","/api/map").then(function(data){
+      data = data || {};
+      BIZ = (data.businesses||[]).map(function(b){
+        var m = yonMeta(b.yon);
+        return {
+          id:b.id, name:b.name||"Biznes", cat:b.yon||"Biznes", tur:b.tur||"",
+          ic:m.ic||"🏪", c:m.c||"#0E8C84", lat:b.lat, lng:b.lng,
+          address:b.address||"", source:b.source||"", srv:true
+        };
+      });
+      SPEC = (data.specialists||[]).map(function(sp){
+        return {
+          id:sp.user_id, name:sp.name||"Foydalanuvchi", kasb:sp.kasb||"Mutaxasis",
+          c:sp.is_gov ? "#2563EB" : "#16A34A", lat:sp.lat, lng:sp.lng,
+          source:sp.source||"obuna", srv:true
+        };
+      });
+      renderPins("biz");
+    }).catch(function(){
+      BIZ = []; SPEC = [];
+      renderPins("biz");
+    });
+  }
   function selectMap(key){
     selElon = null;
     if(mapMode==="result") exitResults();
     if(key==="biz"){
-      renderPins("biz"); renderMapChip(); renderElonRow(); el("elonList").innerHTML="";
+      renderMapChip(); renderElonRow(); el("elonList").innerHTML="";
+      loadHomeMap();
       return;
     }
     // toifa tanlandi — serverdan e'lonlarni yuklaymiz
@@ -1429,7 +1464,7 @@
     el("centerPin").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
     homePartsHide(false);
-    renderPins("biz");
+    loadHomeMap();
   }
   function driverFound(){
     callState="found"; renderCallPanel();
@@ -1993,6 +2028,7 @@
       if(!curFollow) return;
       api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id}).then(function(r){
         btn.textContent = r.following ? "✓ Obunadasiz" : "+ Obuna";
+        if(mapMode==="biz") loadHomeMap();
       }).catch(function(e){ alert(e.message); });
     });
   }
@@ -2955,8 +2991,9 @@
           if(!LOC) LOC = d.region || LOC;
           try{ renderMapChip(); }catch(e){}
         }
+        loadHomeMap();
       }
-    }).catch(function(){});
+    }).catch(function(){ loadHomeMap(); });
   }
   function bootWhenReady(){
     boot();
@@ -2967,7 +3004,7 @@
         tries++;
         if(typeof L !== "undefined"){
           clearInterval(iv);
-          try { ensureMap(); renderPins(mapMode || "biz"); } catch(e){}
+          try { ensureMap(); if((mapMode||"biz")==="biz"){ loadHomeMap(); } else { renderPins(mapMode || "biz"); } } catch(e){}
         } else if(tries > 40){ clearInterval(iv); }
       }, 250);
     }
