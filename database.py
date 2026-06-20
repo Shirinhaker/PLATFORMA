@@ -70,6 +70,7 @@ def init_db():
             biz_login     TEXT,                             -- biznes uchun alohida login
             biz_pass_hash TEXT,                             -- biznes uchun alohida parol
             status        TEXT DEFAULT 'active',
+            map_visible   INTEGER DEFAULT 0,                -- bosh xaritada platforma ko'rsatadigan biznesmi
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -295,3 +296,5 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN biz_login TEXT")
     if "biz_pass_hash" not in bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN biz_pass_hash TEXT")
+    if "map_visible" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN map_visible INTEGER DEFAULT 0")
