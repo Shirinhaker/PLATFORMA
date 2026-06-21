@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1359 -->
+<title>Platforma</title><!-- BUILD: v1360 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1089,6 +1089,7 @@
   /* ---------- Leaflet xaritasi ---------- */
   var LMAP = null, LMARKERS = [];
   var CENTER = [41.3111, 69.2797];           // Toshkent markazi (boshlang'ich)
+  var MY_LOC = null;                         // oddiy foydalanuvchining bosh sahifadagi aniq manzil metkasi
   function xyToLatLng(x, y){
     // demo ma'lumotidagi foiz koordinatani Toshkent atrofidagi nuqtaga moslaymiz
     var lat = CENTER[0] + (50 - y) * 0.0012;
@@ -1132,6 +1133,13 @@
     clearMarkers();
     if(mapMode==="biz"){
       selElon=null;
+      // Bosh sahifada foydalanuvchining o'z manzili alohida marker bo'lib turadi.
+      // Bu marker faqat shu foydalanuvchining o'z ilovasida ko'rinadi, boshqa foydalanuvchilarga berilmaydi.
+      if(MY_LOC && MY_LOC.lat!=null && MY_LOC.lng!=null){
+        addMarker(MY_LOC.lat, MY_LOC.lng, dotIcon("var(--primary)", "📍", "Manzilim", false), function(){
+          if(LOC) alert("Manzilim: " + LOC);
+        });
+      }
       BIZ.forEach(function(b){
         var ll = (b.lat!=null) ? [b.lat,b.lng] : xyToLatLng(b.x,b.y);
         addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false), function(){
@@ -2146,110 +2154,6 @@
     var t=e.target.closest("[data-type]"); if(t) openType(t.getAttribute("data-type"));
   });
 
-  /* ---------- BOSH SAHIFA MANZILI YORDAMCHILARI ---------- */
-  function locNorm(s){
-    return String(s||"").toLowerCase()
-      .replace(/['‘’`]/g,"")
-      .replace(/\s+(tumani|tuman|shahri|shahar|viloyati|viloyat)$/g,"")
-      .replace(/\s+/g," ")
-      .trim();
-  }
-  function findRegionDistrictPoint(region, district){
-    var R = window.UZ_REGIONS || [];
-    var rn = locNorm(region), dn = locNorm(district);
-    var vi = -1, di = -1;
-
-    if(rn){
-      for(var i=0;i<R.length;i++){
-        var vr = locNorm(R[i].name);
-        if(vr===rn || vr.indexOf(rn)>=0 || rn.indexOf(vr)>=0){ vi=i; break; }
-      }
-    }
-
-    if(vi < 0 && dn){
-      for(var i2=0;i2<R.length;i2++){
-        var ds = R[i2].districts || [];
-        for(var j2=0;j2<ds.length;j2++){
-          var dd2 = locNorm(ds[j2].name);
-          if(dd2===dn || dd2.indexOf(dn)>=0 || dn.indexOf(dd2)>=0){ vi=i2; di=j2; break; }
-        }
-        if(vi >= 0) break;
-      }
-    }
-
-    if(vi < 0) return null;
-    var v = R[vi];
-    if(dn && di < 0){
-      var ds2 = v.districts || [];
-      for(var j=0;j<ds2.length;j++){
-        var dd = locNorm(ds2[j].name);
-        if(dd===dn || dd.indexOf(dn)>=0 || dn.indexOf(dd)>=0){ di=j; break; }
-      }
-    }
-    var d = di >= 0 ? v.districts[di] : null;
-    return { vi:vi, di:di, region:v.name, district:d?d.name:"", lat:(d?d.lat:v.lat), lng:(d?d.lng:v.lng) };
-  }
-  function homeLocText(region, district, mahalla){
-    region = (region||"").trim();
-    district = (district||"").trim();
-    mahalla = (mahalla||"").trim();
-    var base = district || region || "Manzilim";
-    return base + (mahalla ? (", " + mahalla) : "");
-  }
-  function setHomeLocation(region, district, mahalla, lat, lng, zoom){
-    region = (region||"").trim();
-    district = (district||"").trim();
-    mahalla = (mahalla||"").trim();
-
-    LOC = homeLocText(region, district, mahalla);
-
-    var p = null;
-    if(typeof normalizeLatLng === "function") p = normalizeLatLng(lat, lng);
-    if(!p){
-      var found = findRegionDistrictPoint(region, district);
-      if(found) p = [found.lat, found.lng];
-    }
-    if(p){
-      CENTER = p;
-      if(LMAP){ try{ LMAP.setView(CENTER, zoom || 13); }catch(e){} }
-    }
-
-    if(ME){
-      ME.region = region;
-      ME.district = district;
-      ME.mahalla = mahalla;
-    }
-    renderMapChip();
-  }
-  function syncLocSelectsFromMe(){
-    var vs = el("locViloyat"), ds = el("locTuman"), mh = el("locMahalla");
-    if(!vs || !ds || !ME) return;
-    var found = findRegionDistrictPoint(ME.region || "", ME.district || "");
-    if(found){
-      vs.value = String(found.vi);
-      fillDistricts();
-      if(found.di >= 0) ds.value = String(found.di);
-    }
-    if(mh) mh.value = ME.mahalla || "";
-  }
-  function refreshHomeLocationFromMe(silent){
-    if(!loggedIn) return Promise.resolve(null);
-    return api("GET","/api/me").then(function(d){
-      if(d && d.registered){
-        ME.region = d.region || "";
-        ME.district = d.district || "";
-        ME.mahalla = d.mahalla || "";
-        if(d.region || d.district || d.mahalla){
-          setHomeLocation(d.region, d.district, d.mahalla, null, null, 13);
-        }
-      }
-      return d;
-    }).catch(function(e){
-      if(!silent) alert(e.message || "Manzilni qayta yuklashda xato.");
-      return null;
-    });
-  }
-
   /* manzil */
   el("locAuto").addEventListener("click", function(){
     var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent="Aniqlanmoqda...";
@@ -2261,38 +2165,27 @@
     }
     navigator.geolocation.getCurrentPosition(function(pos){
       var lat=pos.coords.latitude, lng=pos.coords.longitude;
-      setHomeLocation("", "", "Joylashuvim", lat, lng, 15);
-
-      // Telegram ichida tashqi Nominatimga bevosita chiqmaymiz.
-      // Serverdagi /api/geocode orqali manzilni olamiz.
-      api("GET","/api/geocode?lat="+encodeURIComponent(lat)+"&lng="+encodeURIComponent(lng))
-        .then(function(d){
-          d = d || {};
-          var viloyat = (d.region || "").trim();
-          var tuman = (d.district || "").trim();
-          var addr = (d.address || "").trim();
-          var mahalla = addr || "Joylashuvim";
-
-          setHomeLocation(viloyat, tuman, mahalla, lat, lng, 15);
-
-          if(loggedIn){
-            return api("PUT","/api/profile",{
-              name:(ME.name||""),
-              region:viloyat,
-              district:tuman,
-              mahalla:mahalla
-            }).then(function(){
-              ME.region = viloyat; ME.district = tuman; ME.mahalla = mahalla;
-              done(); nav("home");
-            });
-          }
+      applyHomeLocation("", "Joylashuvim", "", lat, lng, 15);
+      api("GET","/api/geocode?lat="+lat+"&lng="+lng).then(function(g){
+        g = g || {};
+        var viloyat = g.region || "";
+        var tuman = g.district || "";
+        var place = g.address || tuman || "Joylashuvim";
+        applyHomeLocation(viloyat, tuman || place, "", lat, lng, 15);
+        if(loggedIn){
+          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:(tuman||place), mahalla:"", lat:lat, lng:lng });
+        }
+      }).then(function(){
+        done(); nav("home");
+      }).catch(function(){
+        // Geocode ishlamasa ham koordinata saqlanadi va marker ko'rinadi.
+        if(loggedIn){
+          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng })
+            .finally(function(){ done(); nav("home"); });
+        } else {
           done(); nav("home");
-        })
-        .catch(function(e){
-          done();
-          alert((e && e.message) ? e.message : "Manzilni aniqlashda xato bo'ldi. Iltimos, ro'yxatdan qo'lda tanlang.");
-          nav("home");
-        });
+        }
+      });
     }, function(err){
       done();
       var msg = "Joylashuvni aniqlab bo'lmadi. ";
@@ -2305,13 +2198,10 @@
   function fillRegionSelects(){
     var R = window.UZ_REGIONS || [];
     var vs = el("locViloyat");
-    if(!vs) return;
-    if(!vs.options.length){
-      vs.innerHTML = R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
-      vs.addEventListener("change", fillDistricts);
-    }
+    if(!vs || vs.options.length) return; // bir marta to'ldiramiz
+    vs.innerHTML = R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
     fillDistricts();
-    syncLocSelectsFromMe();
+    vs.addEventListener("change", fillDistricts);
   }
   function fillDistricts(){
     var R = window.UZ_REGIONS || [];
@@ -2327,28 +2217,99 @@
     var d = v.districts[di] || v;
     return { viloyat:v.name, tuman:d.name, lat:d.lat, lng:d.lng };
   }
+  function normLocText(v){
+    return String(v||"").toLowerCase()
+      .replace(/[’‘`]/g,"'")
+      .replace(/\s+/g," ")
+      .replace(/ tumani/g,"")
+      .replace(/ viloyati/g,"")
+      .trim();
+  }
+  function findLocPoint(region, district){
+    var R = window.UZ_REGIONS || [];
+    var nr = normLocText(region), nd = normLocText(district);
+    var fallback = null;
+    for(var i=0;i<R.length;i++){
+      var v = R[i];
+      if(!fallback && nr && normLocText(v.name).indexOf(nr)>=0) fallback = {lat:v.lat, lng:v.lng};
+      if(nr && normLocText(v.name).indexOf(nr)<0 && nr.indexOf(normLocText(v.name))<0) continue;
+      for(var j=0;j<(v.districts||[]).length;j++){
+        var d = v.districts[j];
+        var dn = normLocText(d.name);
+        if(nd && (dn.indexOf(nd)>=0 || nd.indexOf(dn)>=0)) return {lat:d.lat, lng:d.lng};
+      }
+      if(fallback) return fallback;
+    }
+    return fallback;
+  }
+  function setLocSelects(region, district, mahalla){
+    fillRegionSelects();
+    var R = window.UZ_REGIONS || [];
+    var nr = normLocText(region), nd = normLocText(district);
+    var vi = -1, di = -1;
+    for(var i=0;i<R.length;i++){
+      var vn = normLocText(R[i].name);
+      if(nr && (vn.indexOf(nr)>=0 || nr.indexOf(vn)>=0)){ vi=i; break; }
+    }
+    if(vi<0 && nd){
+      for(var a=0;a<R.length;a++){
+        for(var b=0;b<(R[a].districts||[]).length;b++){
+          var dnx = normLocText(R[a].districts[b].name);
+          if(dnx.indexOf(nd)>=0 || nd.indexOf(dnx)>=0){ vi=a; di=b; break; }
+        }
+        if(vi>=0) break;
+      }
+    }
+    if(vi>=0 && el("locViloyat")){
+      el("locViloyat").value = String(vi);
+      fillDistricts();
+      if(di<0 && nd){
+        var ds = R[vi].districts || [];
+        for(var j=0;j<ds.length;j++){
+          var dn = normLocText(ds[j].name);
+          if(dn.indexOf(nd)>=0 || nd.indexOf(dn)>=0){ di=j; break; }
+        }
+      }
+      if(di>=0 && el("locTuman")) el("locTuman").value = String(di);
+    }
+    if(el("locMahalla")) el("locMahalla").value = mahalla || "";
+  }
+  function applyHomeLocation(region, district, mahalla, lat, lng, zoom){
+    if(district || mahalla){
+      LOC = (district || "") + ((district && mahalla) ? (", "+mahalla) : (mahalla||""));
+    } else if(region){
+      LOC = region;
+    }
+    var p = null;
+    if(lat!=null && lng!=null && !isNaN(Number(lat)) && !isNaN(Number(lng))){
+      p = {lat:Number(lat), lng:Number(lng)};
+    } else {
+      p = findLocPoint(region, district);
+    }
+    if(p){
+      MY_LOC = {lat:p.lat, lng:p.lng};
+      CENTER = [p.lat, p.lng];
+      if(LMAP){ try{ LMAP.setView(CENTER, zoom || 13); }catch(e){} }
+    }
+    try{ renderMapChip(); }catch(e){}
+    if((mapMode||"biz")==="biz"){
+      try{ renderPins("biz"); }catch(e){}
+    }
+  }
 
   el("locSave").addEventListener("click", function(){
     var s = selectedLoc();
     if(!s){ nav("home"); return; }
     var mahalla = (el("locMahalla").value||"").trim();
-    setHomeLocation(s.viloyat, s.tuman, mahalla, s.lat, s.lng, 13);
-
-    // serverga ham saqlaymiz (qayta kirganda yo'qolmasligi uchun)
+    applyHomeLocation(s.viloyat, s.tuman, mahalla, s.lat, s.lng, 13);
+    // serverga ham matn + koordinatani saqlaymiz (qayta kirganda marker yo'qolmasligi uchun)
     if(loggedIn){
-      var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent="Saqlanmoqda...";
-      api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla })
-        .then(function(){
-          ME.region = s.viloyat; ME.district = s.tuman; ME.mahalla = mahalla;
-          btn.disabled=false; btn.textContent=old; nav("home");
-        })
-        .catch(function(e){
-          btn.disabled=false; btn.textContent=old;
-          alert((e && e.message) ? e.message : "Manzil serverga saqlanmadi.");
-        });
-      return;
+      api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:s.lat, lng:s.lng })
+        .then(function(){ nav("home"); })
+        .catch(function(e){ alert((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
+    } else {
+      nav("home");
     }
-    nav("home");
   });
 
 
@@ -2615,7 +2576,7 @@
     else if(screen==="ucab-saved") loadSaved();
     else if(screen==="cabinet") loadCabinetCounts();
     else if(screen==="ucab") loadUcabCounts();
-    else if(screen==="loc") fillRegionSelects();
+    else if(screen==="loc") setLocSelects(ME.region || "", ME.district || "", ME.mahalla || "");
   }
 
   function personRow(item){
@@ -2729,7 +2690,6 @@
         if(ad){ el("cabAddr").textContent="📍 "+ad; el("cabAddr").style.display=""; }
         else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
       }
-      refreshHomeLocationFromMe(true);
       alert("Saqlandi ✅");
     }).catch(function(e){ alert(e.message); })
       .finally(function(){ btn.disabled=false; });
@@ -3045,6 +3005,10 @@
         if(b.address){ el("cabAddr").textContent="📍 "+b.address; el("cabAddr").style.display=""; }
         else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
       }
+      if(d && (d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null))){
+        ME.region=d.region||""; ME.district=d.district||""; ME.mahalla=d.mahalla||""; ME.lat=d.lat; ME.lng=d.lng;
+        applyHomeLocation(ME.region, ME.district, ME.mahalla, ME.lat, ME.lng, 13);
+      }
     }).catch(function(){});
   }
   el("pickCancel").addEventListener("click", function(){
@@ -3131,12 +3095,14 @@
     api("GET", "/api/me").then(function(d){
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
+               phone:d.phone || "", region:d.region || "", district:d.district || "", mahalla:d.mahalla || "",
+               lat:d.lat, lng:d.lng,
                has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null };
         loggedIn = true;
-        // saqlangan manzilni tiklaymiz (bosh ekrandagi "Manzilim")
-        if(d.region || d.district || d.mahalla){
-          setHomeLocation(d.region || "", d.district || "", d.mahalla || "", null, null, 13);
+        // saqlangan manzilni tiklaymiz: matn ham, xaritadagi aniq marker ham qaytadi.
+        if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
+          applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
         }
         loadHomeMap();
       }
