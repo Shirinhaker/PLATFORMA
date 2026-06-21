@@ -111,9 +111,13 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     new_region = keep("region", user["region"])
     new_district = keep("district", user["district"])
     new_mahalla = keep("mahalla", user["mahalla"])
+    # lat/lng: yuborilgan bo'lsa yangilanadi, yuborilmasa eskisi qoladi.
+    # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
+    new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else user["lat"]
+    new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else user["lng"]
     conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, user["id"]),
+        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=? WHERE id=?",
+        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -127,6 +131,7 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
     result = {
         "id": user["id"], "role": user["role"], "name": user["name"], "phone": user["phone"],
         "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
+        "lat": user["lat"], "lng": user["lng"],
         "followers": follower_count(conn, "user", user["id"]),
         "following": following_count(conn, user["id"]),
     }
@@ -233,7 +238,7 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
         gr = (geo.get("region") or "").strip()
         gd = (geo.get("district") or "").strip()
         if gr or gd:
-            conn.execute("UPDATE users SET region=?, district=? WHERE id=?", (gr, gd, user["id"]))
+            conn.execute("UPDATE users SET region=?, district=?, lat=?, lng=? WHERE id=?", (gr, gd, new_lat, new_lng, user["id"]))
     conn.commit()
     conn.close()
     return {"ok": True}
