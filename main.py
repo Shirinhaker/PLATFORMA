@@ -733,11 +733,12 @@ async def open_business(request: Request, x_telegram_init_data: str = Header(def
 
 
 # ---------- Koordinatadan manzil aniqlash (server orqali — ishonchli) ----------
-@app.get("/api/geocode")
-async def geocode(lat: float, lng: float):
-    """Koordinatadan o'qiladigan manzil qaytaradi (OpenStreetMap orqali)."""
+async def reverse_geocode(lat: float, lng: float):
+    """Koordinatadan manzil aniqlaydi: address (matn) + region/district (alohida) qaytaradi."""
     if TEST_MODE:
-        return {"address": "Sinov manzili"}
+        # Sinov rejimi uchun soxta natija (haqiqiy rejimda Nominatim ishlaydi)
+        return {"address": "Yunusobod tumani, Toshkent shahri",
+                "region": "Toshkent shahri", "district": "Yunusobod tumani"}
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             r = await client.get(
@@ -747,7 +748,7 @@ async def geocode(lat: float, lng: float):
             )
             d = r.json()
     except Exception:
-        return {"address": ""}
+        return {"address": "", "region": "", "district": ""}
     a = d.get("address", {}) if isinstance(d, dict) else {}
     parts = []
     ko = a.get("road") or a.get("neighbourhood") or ""
@@ -759,7 +760,13 @@ async def geocode(lat: float, lng: float):
         parts.append(tuman)
     if viloyat and viloyat != tuman:
         parts.append(viloyat)
-    return {"address": ", ".join(parts)}
+    return {"address": ", ".join(parts), "region": viloyat, "district": tuman}
+
+
+@app.get("/api/geocode")
+async def geocode(lat: float, lng: float):
+    """Koordinatadan o'qiladigan manzil qaytaradi (OpenStreetMap orqali)."""
+    return await reverse_geocode(lat, lng)
 
 
 _file_path_cache = {}
