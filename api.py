@@ -222,6 +222,18 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
         (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
          new_hours, new_addr, new_lat, new_lng, biz["id"]),
     )
+    # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
+    # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
+    # B variant: faqat birinchi marta (bo'sh bo'lsa). Keyin foydalanuvchi qo'lda o'zgartira oladi.
+    marker_sent = ("lat" in b and b["lat"] is not None) and ("lng" in b and b["lng"] is not None)
+    home_empty = not ((user["region"] or "").strip() or (user["district"] or "").strip())
+    if marker_sent and home_empty and new_lat is not None and new_lng is not None:
+        from main import reverse_geocode
+        geo = await reverse_geocode(new_lat, new_lng)
+        gr = (geo.get("region") or "").strip()
+        gd = (geo.get("district") or "").strip()
+        if gr or gd:
+            conn.execute("UPDATE users SET region=?, district=? WHERE id=?", (gr, gd, user["id"]))
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -907,45 +919,137 @@ async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: st
 # ====================================================================
 # QIDIRUV (mahsulot + e'lon + mutaxasis + biznes)
 # ====================================================================
+def _search_terms(q):
+    """Qidiruv uchun asosiy so'z va oddiy sinonimlarni tayyorlaydi."""
+    base = (q or "").strip()
+    norm = (base.lower()
+            .replace("’", "'")
+            .replace("‘", "'")
+            .replace("`", "'")
+            .replace("ʻ", "'")
+            .replace("ʼ", "'"))
+    variants = []
+
+    def add(x):
+        x = (x or "").strip().lower()
+        if len(x) >= 2 and x not in variants:
+            variants.append(x)
+
+    add(base)
+    add(norm)
+    add(norm.replace("'", ""))
+    add(norm.replace("-", " "))
+    add(norm.replace("'", " "))
+
+    for part in norm.replace("-", " ").replace("'", " ").split():
+        add(part)
+
+    syns = {
+        "muhr": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
+        "tamga": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
+        "pechat": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
+        "shtamp": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
+        "taxi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
+        "taksi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
+        "dori": ["dori", "dorixona", "apteka", "farmatsevtika"],
+        "dorixona": ["dori", "dorixona", "apteka", "farmatsevtika"],
+        "apteka": ["dori", "dorixona", "apteka", "farmatsevtika"],
+        "usta": ["usta", "ta'mir", "tamir", "santexnik", "elektrik", "montaj", "quruvchi"],
+        "repetitor": ["repetitor", "o'qituvchi", "ustoz", "ta'lim", "kurs"],
+        "advokat": ["advokat", "yurist", "huquq", "konsalting"],
+    }
+    for key, arr in syns.items():
+        if key in norm:
+            for x in arr:
+                add(x)
+
+    return variants[:18]
+
+
+def _like_where(columns, terms):
+    """Berilgan ustunlar bo'yicha xavfsiz LIKE shartini quradi."""
+    clauses = []
+    params = []
+    for col in columns:
+        for term in terms:
+            clauses.append("COALESCE(" + col + ", '') LIKE ?")
+            params.append("%" + term + "%")
+    if not clauses:
+        return "1=0", []
+    return "(" + " OR ".join(clauses) + ")", params
+
+
 @router.get("/search")
-async def search(q: str = "", x_telegram_init_data: str = Header(default="")):
+async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
-    like = "%" + q + "%"
+    terms = _search_terms(q)
     conn = db()
 
+    product_where, product_params = _like_where(
+        ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
+        terms,
+    )
     products = conn.execute(
-        """SELECT i.id, i.name, i.price, b.id biz_id, b.name biz_name, b.lat, b.lng
+        """SELECT i.id, i.name, i.price, i.note, i.kind,
+                  b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
            FROM items i JOIN businesses b ON b.id=i.business_id
-           WHERE i.name LIKE ? AND b.status='active' LIMIT 50""", (like,)
+           WHERE b.status='active' AND """ + product_where + """
+           ORDER BY i.created_at DESC LIMIT 50""",
+        product_params,
     ).fetchall()
 
+    listing_where, listing_params = _like_where(
+        ["title", "cat", "price", "descr", "address"],
+        terms,
+    )
     listings = conn.execute(
-        "SELECT * FROM listings WHERE status='active' AND visibility='all' AND title LIKE ? "
-        "ORDER BY created_at DESC LIMIT 50", (like,)
+        "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
+        " ORDER BY created_at DESC LIMIT 50",
+        listing_params,
     ).fetchall()
 
+    specialist_where, specialist_params = _like_where(
+        ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
+         "u.name", "u.region", "u.district", "u.mahalla"],
+        terms,
+    )
     specialists = conn.execute(
-        """SELECT s.*, u.name, u.district FROM specialists s JOIN users u ON u.id=s.user_id
-           WHERE s.visible=1 AND (s.kasb LIKE ? OR u.name LIKE ?) LIMIT 50""", (like, like)
+        """SELECT s.*, u.name, u.region, u.district, u.mahalla
+           FROM specialists s JOIN users u ON u.id=s.user_id
+           WHERE s.visible=1 AND """ + specialist_where + """
+           ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
+        specialist_params,
     ).fetchall()
 
+    business_where, business_params = _like_where(
+        ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
+        terms,
+    )
     businesses = conn.execute(
-        "SELECT * FROM businesses WHERE status='active' AND (name LIKE ? OR yon LIKE ? OR tur LIKE ?) LIMIT 50",
-        (like, like, like),
+        "SELECT * FROM businesses WHERE status='active' AND " + business_where +
+        " ORDER BY created_at DESC LIMIT 50",
+        business_params,
     ).fetchall()
 
     result = {
+        "q": q,
+        "scope": scope,
+        "terms": terms,
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"],
+                      "note": p["note"], "kind": p["kind"],
                       "business_id": p["biz_id"], "business_name": p["biz_name"],
-                      "lat": p["lat"], "lng": p["lng"]} for p in products],
+                      "business_yon": p["biz_yon"], "business_tur": p["biz_tur"],
+                      "address": p["address"], "lat": p["lat"], "lng": p["lng"]} for p in products],
         "listings": [listing_to_dict(conn, r, with_media=False) for r in listings],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
-                         "narx": s["narx"], "is_gov": bool(s["is_gov"]),
-                         "available": bool(s["available"]), "district": s["district"],
+                         "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
+                         "available": bool(s["available"]), "region": s["region"],
+                         "district": s["district"], "mahalla": s["mahalla"],
                          "lat": s["lat"], "lng": s["lng"]} for s in specialists],
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
+                        "descr": b["descr"], "address": b["address"],
                         "lat": b["lat"], "lng": b["lng"]} for b in businesses],
     }
     conn.close()
@@ -958,21 +1062,35 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
     tur = (tur or "").strip()
     if not tur:
         raise HTTPException(400, "Faoliyat turi kiritilmadi.")
-    like = "%" + tur + "%"
+    terms = _search_terms(tur)
     conn = db()
+
+    business_where, business_params = _like_where(["tur", "yon", "name", "descr"], terms)
     businesses = conn.execute(
-        "SELECT * FROM businesses WHERE status='active' AND tur=? LIMIT 100", (tur,)
+        "SELECT * FROM businesses WHERE status='active' AND " + business_where +
+        " ORDER BY created_at DESC LIMIT 100",
+        business_params,
     ).fetchall()
+
+    specialist_where, specialist_params = _like_where(
+        ["s.kasb", "s.descr", "s.hudud", "s.org", "s.lavozim", "u.name", "u.district"],
+        terms,
+    )
     specialists = conn.execute(
-        """SELECT s.*, u.name, u.district FROM specialists s JOIN users u ON u.id=s.user_id
-           WHERE s.visible=1 AND s.kasb LIKE ? LIMIT 100""", (like,)
+        """SELECT s.*, u.name, u.region, u.district, u.mahalla
+           FROM specialists s JOIN users u ON u.id=s.user_id
+           WHERE s.visible=1 AND """ + specialist_where + """
+           ORDER BY s.available DESC, s.created_at DESC LIMIT 100""",
+        specialist_params,
     ).fetchall()
     result = {
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
+                        "descr": b["descr"], "address": b["address"],
                         "lat": b["lat"], "lng": b["lng"]} for b in businesses],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
-                         "narx": s["narx"], "is_gov": bool(s["is_gov"]),
-                         "available": bool(s["available"]), "district": s["district"],
+                         "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
+                         "available": bool(s["available"]), "region": s["region"],
+                         "district": s["district"], "mahalla": s["mahalla"],
                          "lat": s["lat"], "lng": s["lng"]} for s in specialists],
     }
     conn.close()
