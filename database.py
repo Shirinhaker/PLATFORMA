@@ -49,6 +49,8 @@ def init_db():
             region        TEXT DEFAULT '',                  -- viloyat/shahar
             district      TEXT DEFAULT '',                  -- tuman
             mahalla       TEXT DEFAULT '',
+            lat           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
+            lng           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             avatar_file   TEXT DEFAULT '',                  -- Telegram file_id
             created_at    INTEGER NOT NULL
         );
@@ -251,6 +253,10 @@ def _migrate(conn):
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "username" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN username TEXT DEFAULT ''")
+    if "lat" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN lat REAL")
+    if "lng" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN lng REAL")
     # login_requests jadvali bormi? (CREATE TABLE IF NOT EXISTS yuqorida bor, lekin ishonch uchun)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS login_requests(
