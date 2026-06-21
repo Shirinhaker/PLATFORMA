@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1357 -->
+<title>Platforma</title><!-- BUILD: v1358 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1183,6 +1183,9 @@
     if(mapMode==="biz"){
       chip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg> ' + LOC;
       chip.onclick = null;
+    } else if(mapMode==="result"){
+      chip.innerHTML = '🔎 Qidiruv natijalari <span class="x">✕</span>';
+      chip.onclick = function(){ exitResults(); };
     } else {
       var c = ELON_CATS.filter(function(x){ return x.key===mapMode; })[0] || {name:"E'lonlar", ic:"📍"};
       chip.innerHTML = c.ic + ' ' + c.name + ' <span class="x">✕</span>';
@@ -1379,27 +1382,43 @@
   }
 
   /* ---------- qidiruv (matn bo'yicha, biznes + mutaxasis) ---------- */
+  function fitResultBounds(pins){
+    if(!LMAP || typeof L === "undefined") return;
+    var pts = (pins||[]).filter(function(r){ return r.lat!=null && r.lng!=null; })
+                       .map(function(r){ return [r.lat, r.lng]; });
+    if(!pts.length) return;
+    try{
+      if(pts.length===1){ LMAP.setView(pts[0], 14, { animate:true }); }
+      else { LMAP.fitBounds(pts, { padding:[40,40], maxZoom:15, animate:true }); }
+      setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 120);
+    }catch(e){}
+  }
   function enterResults(list_html, pins, count){
     RES = {pins:pins, html:list_html, count:count};
     renderPins("result");
+    renderMapChip();
+    fitResultBounds(pins);
     el("clearSearch").hidden = false;
     el("elonHead").style.display="none"; el("elonHint").style.display="none";
     el("elonRow").style.display="none"; el("elonList").style.display="none";
     el("resWrap").hidden = false;
     el("resCount").textContent = "Natijalar \u2014 " + count + " ta";
     el("resList").innerHTML = list_html;
-    el("resList").hidden = true;
+    el("resList").hidden = false;
     nav("home");
     screensEl.scrollTop = 0;
   }
   function exitResults(){
     el("searchInput").value = "";
+    el("catSearch").value = "";
     el("clearSearch").hidden = true;
     el("elonHead").style.display=""; el("elonHint").style.display="";
     el("elonRow").style.display=""; el("elonList").style.display="";
     el("resWrap").hidden = true;
     el("resList").innerHTML = "";
-    renderPins("biz");
+    mapMode = "biz";
+    renderMapChip();
+    loadHomeMap();
   }
   /* ---------- TAXI CHAQIRUV ---------- */
   var callMode=false, callTab="taxi", ozim=false, callState="form";
@@ -1550,7 +1569,8 @@
     q=(q||"").trim();
     if(!q){ exitResults(); nav("home"); return; }
     el("searchInput").value = q;
-    api("GET","/api/search?q="+encodeURIComponent(q)).then(function(data){
+    el("catSearch").value = q;
+    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)).then(function(data){
       var r = buildResults(data, '"'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
