@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1360 -->
+<title>Platforma</title><!-- BUILD: v1361 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1089,7 +1089,7 @@
   /* ---------- Leaflet xaritasi ---------- */
   var LMAP = null, LMARKERS = [];
   var CENTER = [41.3111, 69.2797];           // Toshkent markazi (boshlang'ich)
-  var MY_LOC = null;                         // oddiy foydalanuvchining bosh sahifadagi aniq manzil metkasi
+  var HOME_POINT = null;                     // bosh xarita markazi: foydalanuvchi tanlagan viloyat/tuman
   function xyToLatLng(x, y){
     // demo ma'lumotidagi foiz koordinatani Toshkent atrofidagi nuqtaga moslaymiz
     var lat = CENTER[0] + (50 - y) * 0.0012;
@@ -1133,13 +1133,6 @@
     clearMarkers();
     if(mapMode==="biz"){
       selElon=null;
-      // Bosh sahifada foydalanuvchining o'z manzili alohida marker bo'lib turadi.
-      // Bu marker faqat shu foydalanuvchining o'z ilovasida ko'rinadi, boshqa foydalanuvchilarga berilmaydi.
-      if(MY_LOC && MY_LOC.lat!=null && MY_LOC.lng!=null){
-        addMarker(MY_LOC.lat, MY_LOC.lng, dotIcon("var(--primary)", "📍", "Manzilim", false), function(){
-          if(LOC) alert("Manzilim: " + LOC);
-        });
-      }
       BIZ.forEach(function(b){
         var ll = (b.lat!=null) ? [b.lat,b.lng] : xyToLatLng(b.x,b.y);
         addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false), function(){
@@ -2178,7 +2171,7 @@
       }).then(function(){
         done(); nav("home");
       }).catch(function(){
-        // Geocode ishlamasa ham koordinata saqlanadi va marker ko'rinadi.
+        // Geocode ishlamasa ham koordinata saqlanadi; xarita pin chiqarmasdan shu joyga yaqinlashadi.
         if(loggedIn){
           api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng })
             .finally(function(){ done(); nav("home"); });
@@ -2280,14 +2273,14 @@
     } else if(region){
       LOC = region;
     }
-    var p = null;
-    if(lat!=null && lng!=null && !isNaN(Number(lat)) && !isNaN(Number(lng))){
+    // Bosh sahifada oddiy foydalanuvchining manzili pin/metka bo'lib chiqmaydi.
+    // Xaritani faqat tanlangan viloyat/tuman markaziga olib boramiz.
+    var p = findLocPoint(region, district);
+    if(!p && lat!=null && lng!=null && !isNaN(Number(lat)) && !isNaN(Number(lng))){
       p = {lat:Number(lat), lng:Number(lng)};
-    } else {
-      p = findLocPoint(region, district);
     }
     if(p){
-      MY_LOC = {lat:p.lat, lng:p.lng};
+      HOME_POINT = {lat:p.lat, lng:p.lng};
       CENTER = [p.lat, p.lng];
       if(LMAP){ try{ LMAP.setView(CENTER, zoom || 13); }catch(e){} }
     }
@@ -2302,7 +2295,7 @@
     if(!s){ nav("home"); return; }
     var mahalla = (el("locMahalla").value||"").trim();
     applyHomeLocation(s.viloyat, s.tuman, mahalla, s.lat, s.lng, 13);
-    // serverga ham matn + koordinatani saqlaymiz (qayta kirganda marker yo'qolmasligi uchun)
+    // serverga ham matn + koordinatani saqlaymiz (qayta kirganda xarita shu tuman/viloyatga qaytishi uchun)
     if(loggedIn){
       api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:s.lat, lng:s.lng })
         .then(function(){ nav("home"); })
@@ -3100,7 +3093,7 @@
                has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null };
         loggedIn = true;
-        // saqlangan manzilni tiklaymiz: matn ham, xaritadagi aniq marker ham qaytadi.
+        // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
         if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
         }
