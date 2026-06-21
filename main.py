@@ -662,6 +662,7 @@ async def me(x_telegram_init_data: str = Header(default="")):
         "id": user["id"], "role": user["role"], "name": user["name"],
         "phone": user["phone"], "region": user["region"],
         "district": user["district"], "mahalla": user["mahalla"],
+        "lat": user["lat"], "lng": user["lng"],
     }
     # Biznes ma'lumotini rol nima bo'lishidan qat'i nazar qaytaramiz (agar businesses yozuvi bo'lsa)
     biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
