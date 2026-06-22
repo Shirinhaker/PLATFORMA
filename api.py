@@ -16,6 +16,7 @@ Bo'limlar:
 
 import json
 import time
+import re
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
@@ -1440,11 +1441,98 @@ async def unread_count(actor_type: str = "user", x_telegram_init_data: str = Hea
 # ====================================================================
 # BUYURTMALAR / NAVBATLAR
 # ====================================================================
-def _order_title(conn, body, provider, item_id=None, listing_id=None):
+def _price_to_int(text):
+    """Narx matnidan taxminiy so'm qiymatini oladi: '12 000 so'm' -> 12000."""
+    raw = str(text or "")
+    digits = re.sub(r"[^0-9]", "", raw)
+    if not digits:
+        return 0
+    try:
+        return int(digits[:12])
+    except Exception:
+        return 0
+
+
+def _fmt_summa(n):
+    try:
+        n = int(n or 0)
+    except Exception:
+        n = 0
+    if n <= 0:
+        return ""
+    return f"{n:,}".replace(",", " ") + " so'm"
+
+
+def _clean_qty(v):
+    try:
+        q = int(v or 1)
+    except Exception:
+        q = 1
+    if q < 1:
+        q = 1
+    if q > 999:
+        q = 999
+    return q
+
+
+def _load_order_items_payload(conn, body, provider, item_id=None):
+    """Frontend yuborgan items ro'yxatini tekshiradi va normal ko'rinishga keltiradi."""
+    raw_items = body.get("items") if isinstance(body, dict) else None
+    items = []
+    if isinstance(raw_items, list):
+        for x in raw_items[:50]:
+            if not isinstance(x, dict):
+                continue
+            iid = x.get("item_id") or x.get("id")
+            try:
+                iid = int(iid)
+            except Exception:
+                continue
+            q = _clean_qty(x.get("qty"))
+            items.append({"item_id": iid, "qty": q})
+    elif item_id:
+        items.append({"item_id": int(item_id), "qty": _clean_qty(body.get("qty"))})
+
+    if not items:
+        return []
+    if provider["kind"] != "business":
+        raise HTTPException(400, "Mahsulot/xizmatli buyurtma faqat biznesga yuboriladi.")
+
+    normalized = []
+    seen = {}
+    for x in items:
+        iid = int(x["item_id"])
+        seen[iid] = seen.get(iid, 0) + _clean_qty(x.get("qty"))
+    for iid, qty in seen.items():
+        it = conn.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone()
+        if not it:
+            raise HTTPException(404, "Mahsulot/xizmat topilmadi.")
+        if int(it["business_id"]) != int(provider["actor_id"]):
+            raise HTTPException(400, "Mahsulot/xizmat bu biznesga tegishli emas.")
+        price_text = it["price"] or ""
+        price_val = _price_to_int(price_text)
+        normalized.append({
+            "item_id": int(it["id"]),
+            "item_name": it["name"] or "Mahsulot/xizmat",
+            "price_text": price_text,
+            "qty": qty,
+            "line_total": price_val * qty if price_val else 0,
+            "note": it["note"] or "",
+        })
+    return normalized
+
+
+def _order_title(conn, body, provider, item_id=None, listing_id=None, order_items=None):
     """Buyurtma kartasida ko'rinadigan nomni aniqlaydi."""
     title = (body.get("title") or "").strip() if isinstance(body, dict) else ""
     if title:
         return title[:180]
+    order_items = order_items or []
+    if order_items:
+        first = order_items[0]["item_name"]
+        if len(order_items) > 1:
+            return (first + " + " + str(len(order_items)-1) + " ta")[:180]
+        return first[:180]
     if item_id:
         it = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
         if it and it["name"]:
@@ -1458,9 +1546,26 @@ def _order_title(conn, body, provider, item_id=None, listing_id=None):
     return "Qabul / xizmatga yozilish"
 
 
+def _order_items_to_dict(conn, order_id):
+    rows = conn.execute(
+        "SELECT * FROM order_items WHERE order_id=? ORDER BY id ASC", (order_id,)
+    ).fetchall()
+    return [{
+        "id": r["id"],
+        "item_id": r["item_id"],
+        "name": r["item_name"],
+        "price": r["price_text"] or "",
+        "qty": r["qty"] or 1,
+        "line_total": r["line_total"] or 0,
+        "note": r["note"] or "",
+    } for r in rows]
+
+
 def _order_to_dict(conn, r, view="customer"):
     customer = _actor_brief(conn, r["customer_kind"], r["customer_actor_id"])
     provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
+    items = _order_items_to_dict(conn, r["id"])
+    total_amount = sum(int(x.get("line_total") or 0) for x in items)
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -1475,6 +1580,9 @@ def _order_to_dict(conn, r, view="customer"):
         "note": r["note"] or "",
         "phone": r["phone"] or "",
         "qty": r["qty"] or 1,
+        "items": items,
+        "total_amount": total_amount,
+        "total_text": _fmt_summa(total_amount),
         "status": r["status"],
         "created_at": r["created_at"],
         "updated_at": r["updated_at"],
@@ -1498,7 +1606,6 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     provider = _resolve_target_actor(conn, provider_kind, provider_id)
 
     # Faqat aynan bir aktyor o'ziga o'zi buyurtma berishi bloklanadi.
-    # User -> o'z biznesi boshqa aktyor sifatida ajraladi va tizimni test qilishga xalaqit bermaydi.
     if customer_kind == provider["kind"] and customer_actor_id == provider["actor_id"]:
         conn.close()
         raise HTTPException(400, "O'zingizga buyurtma bera olmaysiz.")
@@ -1514,15 +1621,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     except Exception:
         listing_id = None
 
-    # Agar item_id yuborilsa, u provider biznesga tegishli ekanini tekshiramiz.
-    if item_id:
-        it = conn.execute("SELECT business_id FROM items WHERE id=?", (item_id,)).fetchone()
-        if not it:
-            conn.close()
-            raise HTTPException(404, "Mahsulot/xizmat topilmadi.")
-        if provider["kind"] != "business" or int(it["business_id"]) != int(provider["actor_id"]):
-            conn.close()
-            raise HTTPException(400, "Mahsulot/xizmat bu biznesga tegishli emas.")
+    # Mahsulot/xizmatlar ro'yxatini tekshiramiz.
+    try:
+        order_items = _load_order_items_payload(conn, b, provider, item_id)
+    except HTTPException:
+        conn.close()
+        raise
 
     # Agar listing_id yuborilsa, providerga mosligini imkon qadar tekshiramiz.
     if listing_id:
@@ -1539,16 +1643,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
 
     note = (b.get("note") or "").strip()[:1000]
     phone = (b.get("phone") or "").strip()[:80]
-    try:
-        qty = int(b.get("qty") or 1)
-    except Exception:
-        qty = 1
-    if qty < 1:
-        qty = 1
-    if qty > 999:
-        qty = 999
+    qty = _clean_qty(b.get("qty"))
+    if order_items:
+        qty = sum(int(x["qty"] or 1) for x in order_items)
+        item_id = order_items[0]["item_id"] if len(order_items) == 1 else None
 
-    title = _order_title(conn, b, provider, item_id, listing_id)
+    title = _order_title(conn, b, provider, item_id, listing_id, order_items)
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
@@ -1560,18 +1660,34 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
          item_id, listing_id, title, note, phone, qty, "new", now, now),
     )
     oid = cur.lastrowid
+    for oi in order_items:
+        conn.execute(
+            """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, line_total, note, created_at)
+               VALUES(?,?,?,?,?,?,?,?)""",
+            (oid, oi["item_id"], oi["item_name"], oi["price_text"], oi["qty"], oi["line_total"], oi["note"], now),
+        )
     conn.commit()
 
     customer_name = _actor_brief(conn, customer_kind, customer_actor_id)["name"]
+    total_amount = sum(int(x.get("line_total") or 0) for x in order_items)
+    total_text = _fmt_summa(total_amount)
+    items_text = ""
+    if order_items:
+        items_text = "\n" + "\n".join(["• " + x["item_name"] + " × " + str(x["qty"]) for x in order_items[:8]])
     provider_tg = provider.get("tg_id")
     conn.close()
 
     if provider_tg:
         try:
             from main import tg_call, BASE_URL
+            msg = "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + items_text
+            if total_text:
+                msg += "\nJami: " + total_text
+            if note:
+                msg += "\n\nIzoh: " + note[:200]
             await tg_call("sendMessage", {
                 "chat_id": provider_tg,
-                "text": "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + ("\n" + note[:200] if note else ""),
+                "text": msg,
                 "reply_markup": {"inline_keyboard": [[
                     {"text": "Ochish", "web_app": {"url": BASE_URL}}
                 ]]},
