@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1361 -->
+<title>Platforma</title><!-- BUILD: v1362 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1010,6 +1010,9 @@
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
   var ME = { registered:false, role:null, name:"", id:null, business_id:null };
   var activeMode = "user";   // hozir qaysi kabinetdamiz: "user" yoki "business"
+  function actorType(){ return activeMode === "business" ? "business" : "user"; }
+  function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
+  function withActor(body, type){ body = body || {}; body.actor_type = type || actorType(); return body; }
 
 
   var YON = [
@@ -2047,7 +2050,7 @@
     btn.addEventListener("click", function(){
       if(!loggedIn){ showLogin("Obuna bo'lish"); return; }
       if(!curFollow) return;
-      api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id}).then(function(r){
+      api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id, actor_type:"user"}).then(function(r){
         btn.textContent = r.following ? "✓ Obunadasiz" : "+ Obuna";
         if(mapMode==="biz") loadHomeMap();
       }).catch(function(e){ alert(e.message); });
@@ -2314,7 +2317,7 @@
       e.stopPropagation();
       if(!loggedIn){ showLogin("Saqlash"); return; }
       var lid=parseInt(sv.getAttribute("data-savel"),10);
-      api("POST","/api/save",{target_kind:"listing",target_id:lid}).then(function(r){
+      api("POST","/api/save",{target_kind:"listing",target_id:lid, actor_type:"user"}).then(function(r){
         var item=ELONS.filter(function(x){return x.id===lid;})[0];
         if(item) item.is_saved = r.saved;
         renderElonList(mapMode);
@@ -2562,10 +2565,10 @@
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-qarz") loadDebtors();
-    else if(screen==="cab-elon") renderMyElons("bizElonList");
-    else if(screen==="ucab-elon") renderMyElons("userElonList");
-    else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList");
-    else if(screen==="ucab-followers" || screen==="cab-followers") loadFollowers(screen==="ucab-followers"?"uFollowersList":"cabFollowersList");
+    else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
+    else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
+    else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList", screen==="ucab-subs"?"user":"business");
+    else if(screen==="ucab-followers" || screen==="cab-followers") loadFollowers(screen==="ucab-followers"?"uFollowersList":"cabFollowersList", screen==="ucab-followers"?"user":"business");
     else if(screen==="ucab-saved") loadSaved();
     else if(screen==="cabinet") loadCabinetCounts();
     else if(screen==="ucab") loadUcabCounts();
@@ -2582,15 +2585,15 @@
       '<div class="li-main"><div class="li-title">'+esc(item.name)+'</div><div class="li-meta">'+sub+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
-  function loadFollowing(boxId){
-    api("GET","/api/follows/my").then(function(list){
+  function loadFollowing(boxId, atype){
+    api("GET","/api/follows/my?"+actorQuery(atype)).then(function(list){
       var box=el(boxId);
       if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Obunalar yo\'q</h3><p>Biznes yoki mutaxasislarga obuna bo\'lganingizda shu yerda ko\'rinadi.</p></div>'; return; }
       box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta obuna</div>' + list.map(personRow).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  function loadFollowers(boxId){
-    api("GET","/api/followers/my").then(function(list){
+  function loadFollowers(boxId, atype){
+    api("GET","/api/followers/my?"+actorQuery(atype)).then(function(list){
       var box=el(boxId);
       if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Obunachilar yo\'q</h3><p>Sizga obuna bo\'lganlar shu yerda ko\'rinadi.</p></div>'; return; }
       box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta obunachi</div>' +
@@ -2598,7 +2601,7 @@
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function loadSaved(){
-    api("GET","/api/saved").then(function(list){
+    api("GET","/api/saved?"+actorQuery("user")).then(function(list){
       var box=el("savedList");
       if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Saqlanganlar yo\'q</h3><p>E\'lon yoki bizneslarni 🔖 bilan saqlasangiz, shu yerda turadi.</p></div>'; return; }
       box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta saqlangan</div>' + list.map(function(it){
@@ -2615,7 +2618,7 @@
     api("GET","/api/profile").then(function(d){
       var f=document.querySelector('[data-nav="cab-followers"] b'), g=document.querySelector('[data-nav="cab-following"] b');
       if(f) f.textContent = (d.business_followers!=null?d.business_followers:d.followers);
-      if(g) g.textContent = d.following;
+      if(g) g.textContent = (d.business_following!=null?d.business_following:0);
     }).catch(function(){});
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
@@ -2818,8 +2821,8 @@
   function elonCatsHtml(){
     return ELON_TOIFA.map(function(c,i){ return '<button class="sort-chip'+(i===0?' on':'')+'" data-elcat="'+c.key+'">'+c.name+'</button>'; }).join("");
   }
-  function renderMyElons(containerId, editPrefix){
-    api("GET","/api/listings/my").then(function(list){
+  function renderMyElons(containerId, atype){
+    api("GET","/api/listings/my?"+actorQuery(atype)).then(function(list){
       var box=el(containerId);
       if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Hozircha e\'lon yo\'q</h3><p>Yuqoridagi tugma orqali joylang.</p></div>'; return; }
       box.innerHTML = list.map(function(e2){
@@ -3027,7 +3030,7 @@
       var ll = pickedLatLng[prefix];
       var body={ cat:cat, title:title, price:(el(prefix+"Price").value||"").trim(),
                  descr:(el(prefix+"Descr").value||"").trim(), address:(el(prefix+"Addr").value||"").trim(),
-                 lat: ll[0], lng: ll[1], media:selMedia.slice() };
+                 lat: ll[0], lng: ll[1], media:selMedia.slice(), actor_type:(prefix==="be"?"business":"user") };
       if(getVisibility) body.visibility=getVisibility();
       var btn=this; btn.disabled=true;
       api("POST","/api/listings",body).then(function(){
@@ -3067,7 +3070,7 @@
   // E'lon o'chirish (ikkala ro'yxat uchun)
   document.addEventListener("click", function(e){
     var dl=e.target.closest("[data-eldel]");
-    if(dl){ if(confirm("Bu e'lon o'chirilsinmi?")){ api("DELETE","/api/listings/"+dl.getAttribute("data-eldel")).then(function(){ renderMyElons(current==="cab-elon"?"bizElonList":"userElonList"); }).catch(function(e){ alert(e.message); }); } }
+    if(dl){ if(confirm("Bu e'lon o'chirilsinmi?")){ api("DELETE","/api/listings/"+dl.getAttribute("data-eldel")+"?"+actorQuery(current==="cab-elon"?"business":"user")).then(function(){ renderMyElons(current==="cab-elon"?"bizElonList":"userElonList", current==="cab-elon"?"business":"user"); }).catch(function(e){ alert(e.message); }); } }
   });
 
 
