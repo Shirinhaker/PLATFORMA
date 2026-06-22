@@ -1230,16 +1230,58 @@ async def person_page(user_id: int, x_telegram_init_data: str = Header(default="
 # ====================================================================
 # CHAT / XABARLAR
 # ====================================================================
-def _user_brief(conn, uid):
-    u = conn.execute("SELECT id, name, role FROM users WHERE id=?", (uid,)).fetchone()
-    if not u:
-        return {"id": uid, "name": "Foydalanuvchi", "role": "user"}
-    name = u["name"]
-    if u["role"] == "business":
-        biz = conn.execute("SELECT name FROM businesses WHERE user_id=?", (uid,)).fetchone()
-        if biz and biz["name"]:
-            name = biz["name"]
-    return {"id": u["id"], "name": name or "Foydalanuvchi", "role": u["role"]}
+def _actor_identity(actor):
+    """resolve_actor() natijasini chat uchun (kind, actor_id, owner_user_id) ko'rinishiga keltiradi."""
+    if actor["type"] == "business":
+        return "business", int(actor["business_id"]), int(actor["user_id"])
+    return "user", int(actor["user_id"]), int(actor["user_id"])
+
+
+def _resolve_target_actor(conn, target_kind, target_id):
+    """Xabar qabul qiluvchi aktyorni topadi: oddiy user yoki biznes."""
+    kind = (target_kind or "user").strip().lower()
+    try:
+        aid = int(target_id)
+    except Exception:
+        raise HTTPException(400, "Qabul qiluvchi noto'g'ri.")
+
+    if kind == "user":
+        u = conn.execute("SELECT id, tg_id, name, role FROM users WHERE id=?", (aid,)).fetchone()
+        if not u:
+            raise HTTPException(404, "Qabul qiluvchi topilmadi.")
+        return {
+            "kind": "user",
+            "actor_id": int(u["id"]),
+            "owner_user_id": int(u["id"]),
+            "tg_id": u["tg_id"],
+            "name": u["name"] or "Foydalanuvchi",
+            "role": "user",
+        }
+
+    if kind == "business":
+        biz = conn.execute(
+            """SELECT b.id, b.user_id, b.name, u.tg_id
+               FROM businesses b JOIN users u ON u.id=b.user_id
+               WHERE b.id=?""",
+            (aid,),
+        ).fetchone()
+        if not biz:
+            raise HTTPException(404, "Biznes topilmadi.")
+        return {
+            "kind": "business",
+            "actor_id": int(biz["id"]),
+            "owner_user_id": int(biz["user_id"]),
+            "tg_id": biz["tg_id"],
+            "name": biz["name"] or "Biznes",
+            "role": "business",
+        }
+
+    raise HTTPException(400, "Qabul qiluvchi turi noto'g'ri.")
+
+
+def _actor_brief(conn, kind, actor_id):
+    """Chat ro'yxati uchun aktyor nomi: user bo'lsa user nomi, business bo'lsa biznes nomi."""
+    return _resolve_target_actor(conn, kind, actor_id)
 
 
 @router.post("/messages/send")
@@ -1247,34 +1289,43 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
     conn = db()
     me = require_user(conn, x_telegram_init_data)
     b = await request.json()
-    to_id = b.get("to")
     text = (b.get("text") or "").strip()
+    to_id = b.get("to") or b.get("target_id")
+    to_kind = b.get("to_kind") or b.get("target_kind") or b.get("target_type") or "user"
     if not to_id or not text:
         conn.close()
         raise HTTPException(400, "Qabul qiluvchi va matn kiritilishi shart.")
-    if int(to_id) == me["id"]:
+
+    actor = actor_from_body(conn, me, b)
+    sender_kind, sender_actor_id, sender_owner_id = _actor_identity(actor)
+    receiver = _resolve_target_actor(conn, to_kind, to_id)
+
+    # Faqat aynan bir aktyor o'ziga o'zi yozishi bloklanadi.
+    # Masalan user -> o'z biznesi boshqa aktyor hisoblanadi va test uchun ruxsatli bo'lishi mumkin.
+    if sender_kind == receiver["kind"] and sender_actor_id == receiver["actor_id"]:
         conn.close()
         raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
-    receiver = conn.execute("SELECT id, tg_id FROM users WHERE id=?", (to_id,)).fetchone()
-    if not receiver:
-        conn.close()
-        raise HTTPException(404, "Qabul qiluvchi topilmadi.")
+
     now = int(time.time())
     cur = conn.execute(
-        "INSERT INTO messages(sender_id, receiver_id, text, is_read, created_at) VALUES(?,?,?,0,?)",
-        (me["id"], receiver["id"], text, now),
+        """INSERT INTO messages(sender_id, receiver_id, sender_kind, sender_actor_id,
+                                  receiver_kind, receiver_actor_id, text, is_read, created_at)
+           VALUES(?,?,?,?,?,?,?,0,?)""",
+        (sender_owner_id, receiver["owner_user_id"], sender_kind, sender_actor_id,
+         receiver["kind"], receiver["actor_id"], text, now),
     )
     mid = cur.lastrowid
     conn.commit()
 
-    # Telegram bildirishnomasi (qabul qiluvchining asosiy akkauntiga)
-    sender_name = _user_brief(conn, me["id"])["name"]
+    # Telegram bildirishnomasi qabul qiluvchining egasi akkauntiga boradi.
+    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
+    receiver_tg = receiver["tg_id"]
     conn.close()
-    if receiver["tg_id"]:
+    if receiver_tg:
         try:
             from main import tg_call, BASE_URL
             await tg_call("sendMessage", {
-                "chat_id": receiver["tg_id"],
+                "chat_id": receiver_tg,
                 "text": "💬 Sizga yangi xabar: " + sender_name + "\n\n" + (text[:200]),
                 "reply_markup": {"inline_keyboard": [[
                     {"text": "Ochish", "web_app": {"url": BASE_URL}}
@@ -1285,66 +1336,100 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
     return {"ok": True, "id": mid, "created_at": now}
 
 
-@router.get("/messages/with/{user_id}")
-async def conversation_with(user_id: int, x_telegram_init_data: str = Header(default="")):
+@router.get("/messages/with/{target_id}")
+async def conversation_with(target_id: int, target_kind: str = "user", actor_type: str = "user",
+                            x_telegram_init_data: str = Header(default="")):
     conn = db()
     me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
+    other = _resolve_target_actor(conn, target_kind, target_id)
+
     rows = conn.execute(
         """SELECT * FROM messages
-           WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)
+           WHERE (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
+              OR (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
            ORDER BY created_at ASC, id ASC LIMIT 500""",
-        (me["id"], user_id, user_id, me["id"]),
+        (my_kind, my_actor_id, other["kind"], other["actor_id"],
+         other["kind"], other["actor_id"], my_kind, my_actor_id),
     ).fetchall()
-    # kelgan xabarlarni o'qilgan deb belgilaymiz
+
+    # Shu kabinetga kelgan xabarlar o'qilgan deb belgilanadi.
     conn.execute(
-        "UPDATE messages SET is_read=1 WHERE receiver_id=? AND sender_id=? AND is_read=0",
-        (me["id"], user_id),
+        """UPDATE messages SET is_read=1
+           WHERE receiver_kind=? AND receiver_actor_id=?
+             AND sender_kind=? AND sender_actor_id=? AND is_read=0""",
+        (my_kind, my_actor_id, other["kind"], other["actor_id"]),
     )
     conn.commit()
-    other = _user_brief(conn, user_id)
-    msgs = [{"id": r["id"], "text": r["text"], "mine": (r["sender_id"] == me["id"]),
-             "created_at": r["created_at"]} for r in rows]
+
+    msgs = []
+    for r in rows:
+        mine = (r["sender_kind"] == my_kind and int(r["sender_actor_id"]) == my_actor_id)
+        msgs.append({"id": r["id"], "text": r["text"], "mine": mine, "created_at": r["created_at"]})
     conn.close()
     return {"other": other, "messages": msgs}
 
 
 @router.get("/messages/conversations")
-async def conversations(x_telegram_init_data: str = Header(default="")):
+async def conversations(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     me = require_user(conn, x_telegram_init_data)
-    # suhbatdoshlar ro'yxati — har biri bilan oxirgi xabar
+    actor = resolve_actor(conn, me, actor_type)
+    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
+
+    # Shu kabinetga tegishli suhbatlar ro'yxati — oddiy va biznes chatlari aralashmaydi.
     rows = conn.execute(
         """SELECT * FROM messages
-           WHERE sender_id=? OR receiver_id=?
+           WHERE (sender_kind=? AND sender_actor_id=?) OR (receiver_kind=? AND receiver_actor_id=?)
            ORDER BY created_at DESC, id DESC""",
-        (me["id"], me["id"]),
+        (my_kind, my_actor_id, my_kind, my_actor_id),
     ).fetchall()
+
     seen = {}
     order = []
     for r in rows:
-        other_id = r["receiver_id"] if r["sender_id"] == me["id"] else r["sender_id"]
-        if other_id not in seen:
-            seen[other_id] = {"last": r["text"], "created_at": r["created_at"], "unread": 0}
-            order.append(other_id)
-        # o'qilmagan: menga kelgan va o'qilmagan
-        if r["receiver_id"] == me["id"] and not r["is_read"]:
-            seen[other_id]["unread"] += 1
+        sent_by_me = (r["sender_kind"] == my_kind and int(r["sender_actor_id"]) == my_actor_id)
+        if sent_by_me:
+            other_kind = r["receiver_kind"]
+            other_id = int(r["receiver_actor_id"])
+        else:
+            other_kind = r["sender_kind"]
+            other_id = int(r["sender_actor_id"])
+        key = other_kind + ":" + str(other_id)
+        if key not in seen:
+            seen[key] = {"kind": other_kind, "id": other_id, "last": r["text"], "created_at": r["created_at"], "unread": 0}
+            order.append(key)
+        if (r["receiver_kind"] == my_kind and int(r["receiver_actor_id"]) == my_actor_id and not r["is_read"]):
+            seen[key]["unread"] += 1
+
     result = []
-    for oid in order:
-        info = seen[oid]
-        brief = _user_brief(conn, oid)
-        result.append({"user_id": oid, "name": brief["name"], "role": brief["role"],
-                       "last": info["last"], "created_at": info["created_at"], "unread": info["unread"]})
+    for key in order:
+        info = seen[key]
+        brief = _actor_brief(conn, info["kind"], info["id"])
+        result.append({
+            "target_kind": info["kind"],
+            "target_id": info["id"],
+            "user_id": brief["owner_user_id"],  # eski frontendlar uchun moslik
+            "name": brief["name"],
+            "role": brief["role"],
+            "last": info["last"],
+            "created_at": info["created_at"],
+            "unread": info["unread"],
+        })
     conn.close()
     return result
 
 
 @router.get("/messages/unread_count")
-async def unread_count(x_telegram_init_data: str = Header(default="")):
+async def unread_count(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
     n = conn.execute(
-        "SELECT COUNT(*) FROM messages WHERE receiver_id=? AND is_read=0", (me["id"],)
+        "SELECT COUNT(*) FROM messages WHERE receiver_kind=? AND receiver_actor_id=? AND is_read=0",
+        (my_kind, my_actor_id),
     ).fetchone()[0]
     conn.close()
     return {"count": n}
