@@ -209,12 +209,16 @@ def init_db():
         );
 
         CREATE TABLE IF NOT EXISTS messages(
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_id     INTEGER NOT NULL,
-            receiver_id   INTEGER NOT NULL,
-            text          TEXT DEFAULT '',
-            is_read       INTEGER DEFAULT 0,
-            created_at    INTEGER NOT NULL
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id         INTEGER NOT NULL,                 -- yuboruvchining egasi user id (moslik uchun)
+            receiver_id       INTEGER NOT NULL,                 -- qabul qiluvchining egasi user id (moslik uchun)
+            sender_kind       TEXT DEFAULT 'user',              -- 'user' | 'business'
+            sender_actor_id   INTEGER,                          -- user.id yoki businesses.id
+            receiver_kind     TEXT DEFAULT 'user',              -- 'user' | 'business'
+            receiver_actor_id INTEGER,                          -- user.id yoki businesses.id
+            text              TEXT DEFAULT '',
+            is_read           INTEGER DEFAULT 0,
+            created_at        INTEGER NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS notify_filters(
@@ -269,18 +273,38 @@ def _migrate(conn):
             created_at INTEGER NOT NULL
         )"""
     )
-    # Chat xabarlari jadvali — kim kimga, matn, o'qilgan/o'qilmagan
+    # Chat xabarlari jadvali — user va biznes aktyorlari ajratilgan holda
     conn.execute(
         """CREATE TABLE IF NOT EXISTS messages(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_id   INTEGER NOT NULL,      -- yuboruvchi user id
-            receiver_id INTEGER NOT NULL,      -- qabul qiluvchi user id
-            text        TEXT DEFAULT '',
-            is_read     INTEGER DEFAULT 0,     -- qabul qiluvchi o'qiganmi
-            created_at  INTEGER NOT NULL
+            sender_id         INTEGER NOT NULL,      -- yuboruvchi egasi user id (moslik uchun)
+            receiver_id       INTEGER NOT NULL,      -- qabul qiluvchi egasi user id (moslik uchun)
+            sender_kind       TEXT DEFAULT 'user',   -- 'user' | 'business'
+            sender_actor_id   INTEGER,               -- user.id yoki businesses.id
+            receiver_kind     TEXT DEFAULT 'user',   -- 'user' | 'business'
+            receiver_actor_id INTEGER,               -- user.id yoki businesses.id
+            text              TEXT DEFAULT '',
+            is_read           INTEGER DEFAULT 0,     -- qabul qiluvchi aktyor o'qiganmi
+            created_at        INTEGER NOT NULL
         )"""
     )
+    mcols = [r["name"] for r in conn.execute("PRAGMA table_info(messages)").fetchall()]
+    if "sender_kind" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN sender_kind TEXT DEFAULT 'user'")
+    if "sender_actor_id" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN sender_actor_id INTEGER")
+    if "receiver_kind" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN receiver_kind TEXT DEFAULT 'user'")
+    if "receiver_actor_id" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN receiver_actor_id INTEGER")
+    # Eski xabarlar user -> user deb belgilab qo'yiladi, ma'lumot yo'qolmaydi.
+    conn.execute("UPDATE messages SET sender_kind='user' WHERE sender_kind IS NULL OR sender_kind=''")
+    conn.execute("UPDATE messages SET receiver_kind='user' WHERE receiver_kind IS NULL OR receiver_kind=''")
+    conn.execute("UPDATE messages SET sender_actor_id=sender_id WHERE sender_actor_id IS NULL")
+    conn.execute("UPDATE messages SET receiver_actor_id=receiver_id WHERE receiver_actor_id IS NULL")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages(sender_id, receiver_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_actor_pair ON messages(sender_kind, sender_actor_id, receiver_kind, receiver_actor_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_receiver_actor ON messages(receiver_kind, receiver_actor_id, is_read)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS notify_filters(
