@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1362 -->
+<title>Platforma</title><!-- BUILD: v1363 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1772,35 +1772,47 @@
         '<div class="actionbar">'+
           (b.phone?'<button class="btn btn-outline" style="flex:none;width:50px" data-callphone="'+esc(b.phone)+'" aria-label="Bog\'lanish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></button>':'')+
           '<button class="btn btn-soft" style="flex:none;padding:0 16px" id="pageFollow">'+(b.is_following?"✓ Obunadasiz":"+ Obuna")+'</button>'+
-          '<button class="btn btn-primary" data-need="Buyurtma berish">Buyurtma berish</button>'+
+          '<button class="btn btn-primary" id="bizMsgBtn">✍️ Xabar</button>'+
+          '<button class="btn btn-amber" data-need="Buyurtma berish">Buyurtma</button>'+
         '</div>';
       el("tbTitle").textContent = b.name;
       nav("business");
       el("tbTitle").textContent = b.name;
       bindPageFollow();
+      var bm = el("bizMsgBtn");
+      if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
     }).catch(function(e){ alert(e.message); });
   }
   /* ---------- CHAT / XABARLAR ---------- */
-  var chatPeer = null;       // {id, name}
+  var chatPeer = null;       // {kind, id, name}
   var chatPoll = null;
   var chatBack = "home";
   function chatInitials(name){ return (name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase(); }
   function stopChatPoll(){ if(chatPoll){ clearInterval(chatPoll); chatPoll=null; } }
-  function openChat(userId, name){
+  function openChat(kindOrId, idOrName, nameMaybe){
     if(!loggedIn){ showLogin("Xabar yozish"); return; }
-    chatPeer = { id:userId, name:name||"Suhbat" };
+    var kind = "user", peerId, peerName;
+    if(typeof kindOrId === "string"){
+      kind = kindOrId || "user";
+      peerId = idOrName;
+      peerName = nameMaybe || "Suhbat";
+    } else {
+      peerId = kindOrId;
+      peerName = idOrName || "Suhbat";
+    }
+    chatPeer = { kind:kind, id:parseInt(peerId,10), name:peerName };
     chatBack = current;
-    el("tbTitle").textContent = name || "Suhbat";
+    el("tbTitle").textContent = peerName || "Suhbat";
     el("chatThread").innerHTML = '<div class="chat-day">Yuklanmoqda...</div>';
     nav("chat");
-    el("tbTitle").textContent = name || "Suhbat";
+    el("tbTitle").textContent = peerName || "Suhbat";
     loadChat(true);
     stopChatPoll();
     chatPoll = setInterval(function(){ if(current==="chat") loadChat(false); else stopChatPoll(); }, 3000);
   }
   function loadChat(scroll){
     if(!chatPeer) return;
-    api("GET","/api/messages/with/"+chatPeer.id).then(function(d){
+    api("GET","/api/messages/with/"+chatPeer.id+"?"+actorQuery()+"&target_kind="+encodeURIComponent(chatPeer.kind||"user")).then(function(d){
       if(d.other && d.other.name){ chatPeer.name=d.other.name; el("tbTitle").textContent=d.other.name; }
       renderChatThread(d.messages||[]);
       if(scroll) scrollChatBottom();
@@ -1836,7 +1848,7 @@
     var text = (inp.value||"").trim();
     if(!text || !chatPeer) return;
     inp.value="";
-    api("POST","/api/messages/send",{to:chatPeer.id, text:text}).then(function(){
+    api("POST","/api/messages/send",withActor({to:chatPeer.id, to_kind:(chatPeer.kind||"user"), text:text})).then(function(){
       loadChat(true);
     }).catch(function(e){ alert(e.message); inp.value=text; });
   }
@@ -1967,10 +1979,12 @@
     el("chatsList").innerHTML = '<div class="chat-day">Yuklanmoqda...</div>';
     nav("chats");
     el("tbTitle").textContent = "Suhbatlar";
-    api("GET","/api/messages/conversations").then(function(list){
+    api("GET","/api/messages/conversations?"+actorQuery()).then(function(list){
       if(!list.length){ el("chatsList").innerHTML='<div class="empty" style="padding:30px 16px"><h3>Suhbatlar yo\'q</h3><p>E\'lon yoki sahifadan «Xabar yozish» orqali suhbat boshlang.</p></div>'; return; }
       el("chatsList").innerHTML = list.map(function(c){
-        return '<div class="conv" data-chat="'+c.user_id+'" data-name="'+esc(c.name)+'">'+
+        var k = c.target_kind || "user";
+        var id = c.target_id || c.user_id;
+        return '<div class="conv" data-chat="'+id+'" data-chat-kind="'+esc(k)+'" data-name="'+esc(c.name)+'">'+
           '<div class="conv-av">'+chatInitials(c.name)+'</div>'+
           '<div class="conv-main"><div class="conv-name">'+esc(c.name)+'</div><div class="conv-last">'+esc(c.last||"")+'</div></div>'+
           (c.unread>0 ? '<span class="conv-badge">'+c.unread+'</span>' : '')+
@@ -2019,7 +2033,7 @@
       el("tbTitle").textContent = p.name;
       bindPageFollow();
       var pm = el("pageMsg");
-      if(pm) pm.addEventListener("click", function(){ openChat(p.id, p.name); });
+      if(pm) pm.addEventListener("click", function(){ openChat("user", p.id, p.name); });
     }).catch(function(e){ alert(e.message); });
   }
   function openElonSrv(id){
@@ -2339,7 +2353,7 @@
   el("chatSend").addEventListener("click", sendChat);
   el("chatInput").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sendChat(); } });
   el("chatsList").addEventListener("click", function(e){
-    var c=e.target.closest("[data-chat]"); if(c) openChat(parseInt(c.getAttribute("data-chat"),10), c.getAttribute("data-name"));
+    var c=e.target.closest("[data-chat]"); if(c) openChat(c.getAttribute("data-chat-kind")||"user", parseInt(c.getAttribute("data-chat"),10), c.getAttribute("data-name"));
   });
 
   el("listBody").addEventListener("click", function(e){
