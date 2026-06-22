@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1364 -->
+<title>Platforma</title><!-- BUILD: v1365 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1751,8 +1751,9 @@
   function openBizSrv(id){
     api("GET","/api/business/"+id).then(function(b){
       curFollow = {kind:"business", id:b.id};
+      resetOrderDraft(b.id, b.name);
       var items = (b.items||[]).map(function(it){
-        return '<div class="item"><div><div class="iname">'+esc(it.name)+'</div>'+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div><div class="iprice">'+esc(it.price||"")+'</div></div>';
+        return '<div class="item order-item-row" data-order-item-row="'+it.id+'"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div>'+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div><div style="display:flex;align-items:center;gap:8px;flex:none"><div class="iprice">'+esc(it.price||"")+'</div><button class="mini-btn" style="height:38px;padding:0 10px" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">Qo\'shish</button></div></div>';
       }).join("") || '<p class="elon-hint">Hozircha mahsulot yo\'q.</p>';
       var elons = (b.listings||[]).map(function(e2){
         var vis = e2.visibility==="own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma";
@@ -1767,6 +1768,7 @@
         (b.descr?'<div class="biz-desc">'+esc(b.descr)+'</div>':'')+
         '<div class="sec-head"><h2>Mahsulot va xizmatlar</h2><span class="link">'+(b.items?b.items.length:0)+' ta</span></div>'+items+
         elonsBlock+
+        '<div id="orderDraftBox" class="panel-card" style="display:none;margin-top:14px"></div>'+
         '<div class="actionbar">'+
           (b.phone?'<button class="btn btn-outline" style="flex:none;width:50px" data-callphone="'+esc(b.phone)+'" aria-label="Bog\'lanish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></button>':'')+
           '<button class="btn btn-soft" style="flex:none;padding:0 16px" id="pageFollow">'+(b.is_following?"✓ Obunadasiz":"+ Obuna")+'</button>'+
@@ -1783,6 +1785,55 @@
   }
 
   /* ---------- BUYURTMALAR / NAVBATLAR ---------- */
+
+  var orderDraft = { business_id:null, business_name:"", items:{} };
+  function resetOrderDraft(bid, bname){
+    orderDraft = { business_id:bid||null, business_name:bname||"", items:{} };
+    setTimeout(renderOrderDraftBox, 0);
+  }
+  function parsePriceAmount(text){
+    var d = String(text||"").replace(/[^0-9]/g, "");
+    if(!d) return 0;
+    var n = parseInt(d, 10);
+    return isNaN(n) ? 0 : n;
+  }
+  function moneyText(n){
+    n = parseInt(n||0,10);
+    if(!n) return "";
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ") + " so'm";
+  }
+  function draftItems(){
+    return Object.keys(orderDraft.items||{}).map(function(k){ return orderDraft.items[k]; });
+  }
+  function draftTotal(){
+    return draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0);
+  }
+  function addOrderItem(id, name, price, bid, bname){
+    if(orderDraft.business_id && Number(orderDraft.business_id)!==Number(bid)) resetOrderDraft(bid, bname);
+    if(!orderDraft.business_id) resetOrderDraft(bid, bname);
+    var k=String(id);
+    if(!orderDraft.items[k]) orderDraft.items[k]={ item_id:parseInt(id,10), name:name||"Mahsulot/xizmat", price:price||"", qty:0 };
+    orderDraft.items[k].qty += 1;
+    renderOrderDraftBox();
+  }
+  function changeOrderItem(id, delta){
+    var k=String(id), it=orderDraft.items[k];
+    if(!it) return;
+    it.qty += delta;
+    if(it.qty<=0) delete orderDraft.items[k];
+    renderOrderDraftBox();
+  }
+  function renderOrderDraftBox(){
+    var box=el("orderDraftBox");
+    if(!box) return;
+    var list=draftItems();
+    if(!list.length){ box.style.display="none"; box.innerHTML=""; return; }
+    box.style.display="block";
+    var total=draftTotal();
+    box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><div><b>Tanlanganlar</b><div class="idesc">'+list.length+' xil mahsulot/xizmat</div></div><div class="iprice">'+esc(moneyText(total)||"Narx kelishiladi")+'</div></div>'+
+      list.map(function(it){ return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+esc(it.price||"Narx kelishiladi")+'</div></div><div style="display:flex;align-items:center;gap:6px"><button class="mini-btn" style="height:34px;padding:0 10px" data-order-minus="'+it.item_id+'">−</button><b>'+it.qty+'</b><button class="mini-btn" style="height:34px;padding:0 10px" data-order-plus="'+it.item_id+'">+</button></div></div>'; }).join("")+
+      '<button class="btn btn-amber btn-block" data-order-checkout="'+orderDraft.business_id+'" data-order-name="'+esc(orderDraft.business_name)+'">Tanlanganlarni buyurtma qilish</button>';
+  }
   function orderStatusText(st){
     var m={new:"Yangi",accepted:"Qabul qilindi",rejected:"Rad etildi",done:"Yakunlandi",cancelled:"Bekor qilindi"};
     return m[st] || st || "—";
@@ -1793,14 +1844,21 @@
     return "";
   }
   function createBusinessOrder(bid, bname){
-    var note = prompt("Buyurtma izohi (ixtiyoriy):", "");
+    var selected = draftItems();
+    var useItems = selected.length && Number(orderDraft.business_id)===Number(bid);
+    var note = prompt(useItems ? "Buyurtma izohi (ixtiyoriy):" : "Buyurtma izohi (ixtiyoriy):", "");
     if(note===null) return;
-    api("POST","/api/orders", withActor({
+    var body = {
       provider_kind:"business",
       provider_id:bid,
-      title:"Buyurtma: "+(bname||"Biznes"),
+      title: useItems ? "Buyurtma: "+(bname||"Biznes") : "Buyurtma: "+(bname||"Biznes"),
       note:note||""
-    }, actorType())).then(function(){
+    };
+    if(useItems){
+      body.items = selected.map(function(it){ return { item_id:it.item_id, qty:it.qty }; });
+    }
+    api("POST","/api/orders", withActor(body, actorType())).then(function(){
+      if(useItems){ resetOrderDraft(bid, bname); }
       alert("Buyurtma yuborildi.");
       if(activeMode==="user") loadMyOrders();
     }).catch(function(e){ alert(e.message); });
@@ -1809,6 +1867,11 @@
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
     var subtitle = mode==="inbox" ? "Mijoz" : "Qabul qiluvchi";
     var st = '<span class="tx-amt '+orderStatusClass(o.status)+'">'+orderStatusText(o.status)+'</span>';
+    var items = (o.items||[]);
+    var itemsHtml = items.length ? '<div style="margin-top:9px;border-top:1px solid var(--line);padding-top:8px">'+items.map(function(it){
+      var line = it.line_total ? moneyText(it.line_total) : (it.price||"");
+      return '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-top:4px"><span>'+esc(it.name)+' × '+esc(it.qty||1)+'</span><b style="color:var(--ink)">'+esc(line||"—")+'</b></div>';
+    }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:7px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
     var note = o.note ? '<div class="idesc" style="margin-top:5px">'+esc(o.note)+'</div>' : '';
     var phone = o.phone ? '<div class="idesc">☎ '+esc(o.phone)+'</div>' : '';
     var actions = '';
@@ -1819,7 +1882,7 @@
       if(o.status==="new" || o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
     return '<div class="item" style="display:block">'+
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+phone+note+'</div>'+st+'</div>'+actions+'</div>';
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+phone+note+'</div>'+st+'</div>'+itemsHtml+actions+'</div>';
   }
   function loadMyOrders(){
     api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
@@ -2429,6 +2492,22 @@
   });
   el("bizBody").addEventListener("click", function(e){
     if(e.target.closest(".gal-tile.video")){ alert("Video (namunada faqat ko'rsatilgan)."); return; }
+    var oi=e.target.closest("[data-order-item]");
+    if(oi){
+      if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
+      addOrderItem(parseInt(oi.getAttribute("data-order-item"),10), oi.getAttribute("data-item-name")||"Mahsulot/xizmat", oi.getAttribute("data-item-price")||"", parseInt(oi.getAttribute("data-business-id"),10), oi.getAttribute("data-business-name")||"Biznes");
+      return;
+    }
+    var om=e.target.closest("[data-order-minus]");
+    if(om){ changeOrderItem(parseInt(om.getAttribute("data-order-minus"),10), -1); return; }
+    var op=e.target.closest("[data-order-plus]");
+    if(op){ changeOrderItem(parseInt(op.getAttribute("data-order-plus"),10), 1); return; }
+    var oc=e.target.closest("[data-order-checkout]");
+    if(oc){
+      if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
+      createBusinessOrder(parseInt(oc.getAttribute("data-order-checkout"),10), oc.getAttribute("data-order-name")||"Biznes");
+      return;
+    }
     var ob=e.target.closest("[data-order-biz]");
     if(ob){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
