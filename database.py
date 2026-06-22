@@ -10,6 +10,7 @@ Jadval tuzilishi kelishilgan dizaynga mos:
   listing_media - e'lon rasm/videolari (Telegram file_id sifatida — serverga yuk tushmaydi)
   follows       - obunalar (odamga ham, biznesga ham)
   saved         - saqlanganlar
+  orders        - buyurtma va navbat yozuvlari (user/business aktyorlar bo'yicha)
   debtors/qarz_tx - qarz daftari (biznes kabineti bo'limi)
   pending_regs  - ro'yxatdan o'tish kutilmoqda (kod tasdiqlangunicha)
   auth_codes    - kirishdagi tasdiqlash kodlari
@@ -155,6 +156,27 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS orders(
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_kind      TEXT NOT NULL DEFAULT 'user',      -- 'user' | 'business'
+            customer_actor_id  INTEGER NOT NULL,                 -- user.id yoki businesses.id
+            customer_user_id   INTEGER NOT NULL,                 -- Telegram egasi user.id
+            provider_kind      TEXT NOT NULL DEFAULT 'business',  -- 'user' | 'business'
+            provider_actor_id  INTEGER NOT NULL,                 -- user.id yoki businesses.id
+            provider_user_id   INTEGER NOT NULL,                 -- Telegram egasi user.id
+            item_id            INTEGER,
+            listing_id         INTEGER,
+            title              TEXT DEFAULT '',                  -- buyurtma nomi
+            note               TEXT DEFAULT '',                  -- mijoz izohi
+            phone              TEXT DEFAULT '',
+            qty                INTEGER DEFAULT 1,
+            status             TEXT DEFAULT 'new',               -- new/accepted/rejected/done/cancelled
+            created_at         INTEGER NOT NULL,
+            updated_at         INTEGER NOT NULL,
+            FOREIGN KEY(customer_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(provider_user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS debtors(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
@@ -242,6 +264,9 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_media_list     ON listing_media(listing_id);
         CREATE INDEX IF NOT EXISTS idx_follows_t      ON follows(target_kind, target_id);
         CREATE INDEX IF NOT EXISTS idx_saved_u        ON saved(user_id);
+        CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(status, created_at);
         CREATE INDEX IF NOT EXISTS idx_debtors_biz    ON debtors(business_id);
         CREATE INDEX IF NOT EXISTS idx_qtx_debtor     ON qarz_tx(debtor_id);
         """
@@ -305,6 +330,30 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages(sender_id, receiver_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_actor_pair ON messages(sender_kind, sender_actor_id, receiver_kind, receiver_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_receiver_actor ON messages(receiver_kind, receiver_actor_id, is_read)")
+    # Buyurtmalar / navbatlar — user va biznes aktyorlari ajratilgan holda
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS orders(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_kind      TEXT NOT NULL DEFAULT 'user',
+            customer_actor_id  INTEGER NOT NULL,
+            customer_user_id   INTEGER NOT NULL,
+            provider_kind      TEXT NOT NULL DEFAULT 'business',
+            provider_actor_id  INTEGER NOT NULL,
+            provider_user_id   INTEGER NOT NULL,
+            item_id            INTEGER,
+            listing_id         INTEGER,
+            title              TEXT DEFAULT '',
+            note               TEXT DEFAULT '',
+            phone              TEXT DEFAULT '',
+            qty                INTEGER DEFAULT 1,
+            status             TEXT DEFAULT 'new',
+            created_at         INTEGER NOT NULL,
+            updated_at         INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS notify_filters(
