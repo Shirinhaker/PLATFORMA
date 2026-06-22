@@ -8,6 +8,7 @@ Bo'limlar:
   E'LONLAR      - joylash (rasm/video Telegram file_id bilan), tahrirlash, ko'rinish turi
   OBUNA         - follow/followers (odamga ham, biznesga ham)
   SAQLANGANLAR  - e'lon va bizneslarni saqlash
+  BUYURTMALAR   - buyurtma/navbatlar (user/business aktyorlar bo'yicha)
   QARZ DAFTARI  - biznes kabineti bo'limi
   QIDIRUV       - mahsulot + e'lon + mutaxasis + biznes (hammasi birga)
   SAHIFALAR     - biznes sahifasi va mutaxasis (odam) sahifasi
@@ -1434,6 +1435,220 @@ async def unread_count(actor_type: str = "user", x_telegram_init_data: str = Hea
     conn.close()
     return {"count": n}
 
+
+
+# ====================================================================
+# BUYURTMALAR / NAVBATLAR
+# ====================================================================
+def _order_title(conn, body, provider, item_id=None, listing_id=None):
+    """Buyurtma kartasida ko'rinadigan nomni aniqlaydi."""
+    title = (body.get("title") or "").strip() if isinstance(body, dict) else ""
+    if title:
+        return title[:180]
+    if item_id:
+        it = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
+        if it and it["name"]:
+            return it["name"][:180]
+    if listing_id:
+        li = conn.execute("SELECT title FROM listings WHERE id=?", (listing_id,)).fetchone()
+        if li and li["title"]:
+            return li["title"][:180]
+    if provider and provider.get("kind") == "business":
+        return "Biznesga buyurtma"
+    return "Qabul / xizmatga yozilish"
+
+
+def _order_to_dict(conn, r, view="customer"):
+    customer = _actor_brief(conn, r["customer_kind"], r["customer_actor_id"])
+    provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
+    return {
+        "id": r["id"],
+        "customer_kind": r["customer_kind"],
+        "customer_actor_id": r["customer_actor_id"],
+        "provider_kind": r["provider_kind"],
+        "provider_actor_id": r["provider_actor_id"],
+        "customer_name": customer["name"],
+        "provider_name": provider["name"],
+        "item_id": r["item_id"],
+        "listing_id": r["listing_id"],
+        "title": r["title"] or "Buyurtma",
+        "note": r["note"] or "",
+        "phone": r["phone"] or "",
+        "qty": r["qty"] or 1,
+        "status": r["status"],
+        "created_at": r["created_at"],
+        "updated_at": r["updated_at"],
+        "view": view,
+    }
+
+
+@router.post("/orders")
+async def create_order(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    actor = actor_from_body(conn, me, b)
+    customer_kind, customer_actor_id, customer_user_id = _actor_identity(actor)
+
+    provider_kind = b.get("provider_kind") or b.get("target_kind") or "business"
+    provider_id = b.get("provider_id") or b.get("target_id") or b.get("business_id") or b.get("user_id")
+    if not provider_id:
+        conn.close()
+        raise HTTPException(400, "Buyurtma qabul qiluvchi topilmadi.")
+    provider = _resolve_target_actor(conn, provider_kind, provider_id)
+
+    # Faqat aynan bir aktyor o'ziga o'zi buyurtma berishi bloklanadi.
+    # User -> o'z biznesi boshqa aktyor sifatida ajraladi va tizimni test qilishga xalaqit bermaydi.
+    if customer_kind == provider["kind"] and customer_actor_id == provider["actor_id"]:
+        conn.close()
+        raise HTTPException(400, "O'zingizga buyurtma bera olmaysiz.")
+
+    item_id = b.get("item_id")
+    listing_id = b.get("listing_id")
+    try:
+        item_id = int(item_id) if item_id else None
+    except Exception:
+        item_id = None
+    try:
+        listing_id = int(listing_id) if listing_id else None
+    except Exception:
+        listing_id = None
+
+    # Agar item_id yuborilsa, u provider biznesga tegishli ekanini tekshiramiz.
+    if item_id:
+        it = conn.execute("SELECT business_id FROM items WHERE id=?", (item_id,)).fetchone()
+        if not it:
+            conn.close()
+            raise HTTPException(404, "Mahsulot/xizmat topilmadi.")
+        if provider["kind"] != "business" or int(it["business_id"]) != int(provider["actor_id"]):
+            conn.close()
+            raise HTTPException(400, "Mahsulot/xizmat bu biznesga tegishli emas.")
+
+    # Agar listing_id yuborilsa, providerga mosligini imkon qadar tekshiramiz.
+    if listing_id:
+        li = conn.execute("SELECT user_id, business_id FROM listings WHERE id=? AND status='active'", (listing_id,)).fetchone()
+        if not li:
+            conn.close()
+            raise HTTPException(404, "E'lon topilmadi.")
+        if provider["kind"] == "business" and li["business_id"] and int(li["business_id"]) != int(provider["actor_id"]):
+            conn.close()
+            raise HTTPException(400, "E'lon bu biznesga tegishli emas.")
+        if provider["kind"] == "user" and int(li["user_id"]) != int(provider["actor_id"]):
+            conn.close()
+            raise HTTPException(400, "E'lon bu foydalanuvchiga tegishli emas.")
+
+    note = (b.get("note") or "").strip()[:1000]
+    phone = (b.get("phone") or "").strip()[:80]
+    try:
+        qty = int(b.get("qty") or 1)
+    except Exception:
+        qty = 1
+    if qty < 1:
+        qty = 1
+    if qty > 999:
+        qty = 999
+
+    title = _order_title(conn, b, provider, item_id, listing_id)
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
+                              provider_kind, provider_actor_id, provider_user_id,
+                              item_id, listing_id, title, note, phone, qty, status, created_at, updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (customer_kind, customer_actor_id, customer_user_id,
+         provider["kind"], provider["actor_id"], provider["owner_user_id"],
+         item_id, listing_id, title, note, phone, qty, "new", now, now),
+    )
+    oid = cur.lastrowid
+    conn.commit()
+
+    customer_name = _actor_brief(conn, customer_kind, customer_actor_id)["name"]
+    provider_tg = provider.get("tg_id")
+    conn.close()
+
+    if provider_tg:
+        try:
+            from main import tg_call, BASE_URL
+            await tg_call("sendMessage", {
+                "chat_id": provider_tg,
+                "text": "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + ("\n" + note[:200] if note else ""),
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+    return {"ok": True, "id": oid, "status": "new", "created_at": now}
+
+
+@router.get("/orders/my")
+async def my_orders(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    """Joriy kabinet nomidan berilgan buyurtmalar."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, _owner = _actor_identity(actor)
+    rows = conn.execute(
+        """SELECT * FROM orders
+           WHERE customer_kind=? AND customer_actor_id=?
+           ORDER BY created_at DESC, id DESC LIMIT 200""",
+        (kind, actor_id),
+    ).fetchall()
+    out = [_order_to_dict(conn, r, "customer") for r in rows]
+    conn.close()
+    return out
+
+
+@router.get("/orders/inbox")
+async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str = Header(default="")):
+    """Joriy kabinetga kelgan buyurtmalar."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, _owner = _actor_identity(actor)
+    rows = conn.execute(
+        """SELECT * FROM orders
+           WHERE provider_kind=? AND provider_actor_id=?
+           ORDER BY created_at DESC, id DESC LIMIT 200""",
+        (kind, actor_id),
+    ).fetchall()
+    out = [_order_to_dict(conn, r, "provider") for r in rows]
+    conn.close()
+    return out
+
+
+@router.put("/orders/{order_id}/status")
+async def update_order_status(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, _owner = _actor_identity(actor)
+    new_status = (b.get("status") or "").strip().lower()
+    allowed = {"accepted", "rejected", "done", "cancelled"}
+    if new_status not in allowed:
+        conn.close()
+        raise HTTPException(400, "Buyurtma holati noto'g'ri.")
+
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+
+    is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
+    is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
+    if new_status in ("accepted", "rejected", "done") and not is_provider:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma holatini faqat qabul qiluvchi kabinet o'zgartira oladi.")
+    if new_status == "cancelled" and not (is_customer or is_provider):
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    now = int(time.time())
+    conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "status": new_status, "updated_at": now}
 
 # ====================================================================
 # BILDIRISHNOMA FILTRLARI
