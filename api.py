@@ -78,6 +78,27 @@ def optional_user(conn, init_data):
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
 
 
+def resolve_actor(conn, user, actor_type="user"):
+    """
+    Hozirgi amal qaysi kabinet nomidan qilinyapti: oddiy user yoki biznes.
+    Frontend yuborgan actor_type tekshiriladi; business bo'lsa, biznes shu userniki bo'lishi shart.
+    """
+    at = (actor_type or "user").strip().lower()
+    if at not in ("user", "business"):
+        raise HTTPException(400, "Kabinet turi noto'g'ri.")
+    if at == "user":
+        return {"type": "user", "user_id": user["id"], "business_id": None, "business": None}
+
+    biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    if not biz:
+        raise HTTPException(403, "Biznes kabinet topilmadi.")
+    return {"type": "business", "user_id": user["id"], "business_id": biz["id"], "business": biz}
+
+
+def actor_from_body(conn, user, body):
+    return resolve_actor(conn, user, (body or {}).get("actor_type") or "user")
+
+
 def listing_to_dict(conn, r, with_media=True):
     d = {
         "id": r["id"], "cat": r["cat"], "title": r["title"], "price": r["price"],
@@ -139,6 +160,7 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
         biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
         if biz:
             result["business_followers"] = follower_count(conn, "business", biz["id"])
+            result["business_following"] = 0  # biznes nomidan obuna tizimi hozircha alohida qilinmagan
             result["business_id"] = biz["id"]
     conn.close()
     return result
@@ -351,13 +373,13 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
         conn.close()
         raise HTTPException(400, "Sarlavha va toifa kiritilishi shart.")
 
+    actor = actor_from_body(conn, user, b)
     visibility = "all"
     business_id = None
-    if user["role"] == "business":
-        biz = conn.execute("SELECT id FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-        business_id = biz["id"] if biz else None
-        if b.get("visibility") == "own" and business_id:
-            visibility = "own"  # faqat sahifa mehmonlariga
+    if actor["type"] == "business":
+        business_id = actor["business_id"]
+        if b.get("visibility") == "own":
+            visibility = "own"  # faqat biznes sahifasi mehmonlariga
 
     cur = conn.execute(
         """INSERT INTO listings(user_id, business_id, cat, title, price, descr, address,
@@ -472,12 +494,20 @@ def _match_notify_filters(conn, listing):
 
 
 @router.get("/listings/my")
-async def my_listings(x_telegram_init_data: str = Header(default="")):
+async def my_listings(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT * FROM listings WHERE user_id=? ORDER BY created_at DESC", (user["id"],)
-    ).fetchall()
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] == "business":
+        rows = conn.execute(
+            "SELECT * FROM listings WHERE business_id=? ORDER BY created_at DESC",
+            (actor["business_id"],),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL ORDER BY created_at DESC",
+            (user["id"],),
+        ).fetchall()
     result = [listing_to_dict(conn, r) for r in rows]
     conn.close()
     return result
@@ -487,16 +517,24 @@ async def my_listings(x_telegram_init_data: str = Header(default="")):
 async def edit_listing(listing_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    row = conn.execute(
-        "SELECT * FROM listings WHERE id=? AND user_id=?", (listing_id, user["id"])
-    ).fetchone()
+    b = await request.json()
+    actor = actor_from_body(conn, user, b)
+    if actor["type"] == "business":
+        row = conn.execute(
+            "SELECT * FROM listings WHERE id=? AND business_id=?",
+            (listing_id, actor["business_id"]),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT * FROM listings WHERE id=? AND user_id=? AND business_id IS NULL",
+            (listing_id, user["id"]),
+        ).fetchone()
     if not row:
         conn.close()
         raise HTTPException(404, "E'lon topilmadi.")
-    b = await request.json()
     status = b.get("status") if b.get("status") in ("active", "inactive") else row["status"]
     visibility = row["visibility"]
-    if user["role"] == "business" and b.get("visibility") in ("all", "own"):
+    if actor["type"] == "business" and b.get("visibility") in ("all", "own"):
         visibility = b["visibility"]
     conn.execute(
         """UPDATE listings SET title=?, price=?, descr=?, address=?, lat=?, lng=?,
@@ -511,10 +549,14 @@ async def edit_listing(listing_id: int, request: Request, x_telegram_init_data: 
 
 
 @router.delete("/listings/{listing_id}")
-async def delete_listing(listing_id: int, x_telegram_init_data: str = Header(default="")):
+async def delete_listing(listing_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    conn.execute("DELETE FROM listings WHERE id=? AND user_id=?", (listing_id, user["id"]))
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] == "business":
+        conn.execute("DELETE FROM listings WHERE id=? AND business_id=?", (listing_id, actor["business_id"]))
+    else:
+        conn.execute("DELETE FROM listings WHERE id=? AND user_id=? AND business_id IS NULL", (listing_id, user["id"]))
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -579,6 +621,10 @@ async def toggle_follow(request: Request, x_telegram_init_data: str = Header(def
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
+    actor = actor_from_body(conn, user, b)
+    if actor["type"] != "user":
+        conn.close()
+        raise HTTPException(400, "Obuna hozircha oddiy kabinet orqali bajariladi.")
     kind = b.get("target_kind")
     target_id = b.get("target_id")
     if kind not in ("user", "business") or not target_id:
@@ -608,10 +654,14 @@ async def toggle_follow(request: Request, x_telegram_init_data: str = Header(def
 
 
 @router.get("/follows/my")
-async def my_follows(x_telegram_init_data: str = Header(default="")):
+async def my_follows(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     """Men obuna bo'lganlarim (obunalarim)."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] == "business":
+        conn.close()
+        return []
     rows = conn.execute(
         "SELECT * FROM follows WHERE follower_id=? ORDER BY created_at DESC", (user["id"],)
     ).fetchall()
@@ -630,14 +680,15 @@ async def my_follows(x_telegram_init_data: str = Header(default="")):
 
 
 @router.get("/followers/my")
-async def my_followers(x_telegram_init_data: str = Header(default="")):
-    """Menga obuna bo'lganlar (obunachilarim) — shaxs va biznes sifatida."""
+async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    """Menga obuna bo'lganlar (obunachilarim) — kabinet turi bo'yicha alohida."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    targets = [("user", user["id"])]
-    biz = conn.execute("SELECT id FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-    if biz:
-        targets.append(("business", biz["id"]))
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] == "business":
+        targets = [("business", actor["business_id"])]
+    else:
+        targets = [("user", user["id"])]
     result = []
     for kind, tid in targets:
         rows = conn.execute(
@@ -763,6 +814,10 @@ async def toggle_save(request: Request, x_telegram_init_data: str = Header(defau
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
+    actor = actor_from_body(conn, user, b)
+    if actor["type"] != "user":
+        conn.close()
+        raise HTTPException(400, "Saqlanganlar hozircha oddiy kabinet uchun.")
     kind = b.get("target_kind")
     target_id = b.get("target_id")
     if kind not in ("listing", "business") or not target_id:
@@ -787,9 +842,13 @@ async def toggle_save(request: Request, x_telegram_init_data: str = Header(defau
 
 
 @router.get("/saved")
-async def my_saved(x_telegram_init_data: str = Header(default="")):
+async def my_saved(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] != "user":
+        conn.close()
+        return []
     rows = conn.execute(
         "SELECT * FROM saved WHERE user_id=? ORDER BY created_at DESC", (user["id"],)
     ).fetchall()
@@ -1147,7 +1206,7 @@ async def person_page(user_id: int, x_telegram_init_data: str = Header(default="
         raise HTTPException(404, "Foydalanuvchi topilmadi.")
     sp = conn.execute("SELECT * FROM specialists WHERE user_id=? AND visible=1", (user_id,)).fetchone()
     listings = conn.execute(
-        "SELECT * FROM listings WHERE user_id=? AND status='active' AND visibility='all' "
+        "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' AND visibility='all' "
         "ORDER BY created_at DESC", (user_id,),
     ).fetchall()
     result = {
