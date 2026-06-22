@@ -177,6 +177,19 @@ def init_db():
             FOREIGN KEY(provider_user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS order_items(
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id    INTEGER NOT NULL,
+            item_id     INTEGER,
+            item_name   TEXT NOT NULL,
+            price_text  TEXT DEFAULT '',
+            qty         INTEGER DEFAULT 1,
+            line_total  INTEGER DEFAULT 0,
+            note        TEXT DEFAULT '',
+            created_at  INTEGER NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS debtors(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
@@ -354,6 +367,21 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS order_items(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id    INTEGER NOT NULL,
+            item_id     INTEGER,
+            item_name   TEXT NOT NULL,
+            price_text  TEXT DEFAULT '',
+            qty         INTEGER DEFAULT 1,
+            line_total  INTEGER DEFAULT 0,
+            note        TEXT DEFAULT '',
+            created_at  INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_order_items_item ON order_items(item_id)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS notify_filters(
