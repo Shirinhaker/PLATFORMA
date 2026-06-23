@@ -169,6 +169,9 @@ def init_db():
             title              TEXT DEFAULT '',                  -- buyurtma nomi
             note               TEXT DEFAULT '',                  -- mijoz izohi
             phone              TEXT DEFAULT '',
+            order_type         TEXT DEFAULT 'delivery',          -- delivery/pickup/booking
+            address            TEXT DEFAULT '',                  -- yetkazib berish manzili yoki joy
+            desired_time       TEXT DEFAULT '',                  -- mijoz xohlagan vaqt
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',               -- new/accepted/rejected/done/cancelled
             created_at         INTEGER NOT NULL,
@@ -358,12 +361,23 @@ def _migrate(conn):
             title              TEXT DEFAULT '',
             note               TEXT DEFAULT '',
             phone              TEXT DEFAULT '',
+            order_type         TEXT DEFAULT 'delivery',
+            address            TEXT DEFAULT '',
+            desired_time       TEXT DEFAULT '',
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',
             created_at         INTEGER NOT NULL,
             updated_at         INTEGER NOT NULL
         )"""
     )
+    ocols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+    if "order_type" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'delivery'")
+    if "address" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN address TEXT DEFAULT ''")
+    if "desired_time" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN desired_time TEXT DEFAULT ''")
+    conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
