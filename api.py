@@ -1546,6 +1546,16 @@ def _order_title(conn, body, provider, item_id=None, listing_id=None, order_item
     return "Qabul / xizmatga yozilish"
 
 
+def _clean_order_type(value):
+    v = (value or "delivery").strip().lower()
+    aliases = {
+        "1": "delivery", "yetkazish": "delivery", "yetkazib": "delivery", "delivery": "delivery",
+        "2": "pickup", "olib": "pickup", "pickup": "pickup",
+        "3": "booking", "navbat": "booking", "qabul": "booking", "booking": "booking", "service": "booking",
+    }
+    return aliases.get(v, "delivery")
+
+
 def _order_items_to_dict(conn, order_id):
     rows = conn.execute(
         "SELECT * FROM order_items WHERE order_id=? ORDER BY id ASC", (order_id,)
@@ -1579,6 +1589,9 @@ def _order_to_dict(conn, r, view="customer"):
         "title": r["title"] or "Buyurtma",
         "note": r["note"] or "",
         "phone": r["phone"] or "",
+        "order_type": r["order_type"] or "delivery",
+        "address": r["address"] or "",
+        "desired_time": r["desired_time"] or "",
         "qty": r["qty"] or 1,
         "items": items,
         "total_amount": total_amount,
@@ -1643,6 +1656,9 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
 
     note = (b.get("note") or "").strip()[:1000]
     phone = (b.get("phone") or "").strip()[:80]
+    order_type = _clean_order_type(b.get("order_type"))
+    address = (b.get("address") or "").strip()[:500]
+    desired_time = (b.get("desired_time") or "").strip()[:160]
     qty = _clean_qty(b.get("qty"))
     if order_items:
         qty = sum(int(x["qty"] or 1) for x in order_items)
@@ -1653,11 +1669,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     cur = conn.execute(
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
-                              item_id, listing_id, title, note, phone, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                              item_id, listing_id, title, note, phone, order_type, address, desired_time,
+                              qty, status, created_at, updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, qty, "new", now, now),
+         item_id, listing_id, title, note, phone, order_type, address, desired_time, qty, "new", now, now),
     )
     oid = cur.lastrowid
     for oi in order_items:
@@ -1683,6 +1700,17 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
             msg = "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + items_text
             if total_text:
                 msg += "\nJami: " + total_text
+            detail_lines = []
+            if order_type:
+                detail_lines.append("Turi: " + ({"delivery":"Yetkazib berish", "pickup":"Olib ketish", "booking":"Navbat/qabul"}.get(order_type, order_type)))
+            if phone:
+                detail_lines.append("Telefon: " + phone)
+            if address:
+                detail_lines.append("Manzil: " + address[:160])
+            if desired_time:
+                detail_lines.append("Vaqt: " + desired_time[:120])
+            if detail_lines:
+                msg += "\n" + "\n".join(detail_lines)
             if note:
                 msg += "\n\nIzoh: " + note[:200]
             await tg_call("sendMessage", {
