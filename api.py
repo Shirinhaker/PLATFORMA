@@ -1581,6 +1581,20 @@ def _order_items_to_dict(conn, order_id):
     } for r in rows]
 
 
+def _row_val(row, key, default=None):
+    try:
+        v = row[key]
+        return default if v is None else v
+    except Exception:
+        return default
+
+
+def _order_seen_value(r, view):
+    if view == "provider":
+        return int(_row_val(r, "provider_seen_at", 0) or 0)
+    return int(_row_val(r, "customer_seen_at", 0) or 0)
+
+
 def _order_to_dict(conn, r, view="customer"):
     customer = _actor_brief(conn, r["customer_kind"], r["customer_actor_id"])
     provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
@@ -1604,8 +1618,6 @@ def _order_to_dict(conn, r, view="customer"):
         "desired_time": r["desired_time"] or "",
         "delivery_lat": r["delivery_lat"],
         "delivery_lng": r["delivery_lng"],
-        "provider_seen_at": r["provider_seen_at"] if "provider_seen_at" in r.keys() else 0,
-        "unread": (view == "provider" and (r["status"] == "new") and not (r["provider_seen_at"] if "provider_seen_at" in r.keys() else 0)),
         "qty": r["qty"] or 1,
         "items": items,
         "total_amount": total_amount,
@@ -1613,6 +1625,9 @@ def _order_to_dict(conn, r, view="customer"):
         "status": r["status"],
         "created_at": r["created_at"],
         "updated_at": r["updated_at"],
+        "provider_seen_at": _row_val(r, "provider_seen_at", 0),
+        "customer_seen_at": _row_val(r, "customer_seen_at", 0),
+        "is_unread": _order_seen_value(r, view) <= 0,
         "view": view,
     }
 
@@ -1686,14 +1701,15 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
                               item_id, listing_id, title, note, phone, order_type, address, desired_time,
-                              delivery_lat, delivery_lng, provider_seen_at, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                              delivery_lat, delivery_lng, qty, status, created_at, updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
          item_id, listing_id, title, note, phone, order_type, address, desired_time,
-         delivery_lat, delivery_lng, 0, qty, "new", now, now),
+         delivery_lat, delivery_lng, qty, "new", now, now),
     )
     oid = cur.lastrowid
+    conn.execute("UPDATE orders SET customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, oid))
     for oi in order_items:
         conn.execute(
             """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, line_total, note, created_at)
@@ -1780,47 +1796,33 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
     return out
 
 
-@router.get("/orders/inbox/unread")
-async def unread_inbox_orders(actor_type: str = "business", x_telegram_init_data: str = Header(default="")):
-    """Biznes kabinet uchun ko'rilmagan yangi buyurtmalar soni."""
+@router.put("/orders/{order_id}/seen")
+async def mark_order_seen(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Joriy kabinet buyurtmani ko'rdi deb belgilaydi."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    kind, actor_id, _owner = _actor_identity(actor)
-    row = conn.execute(
-        """SELECT COUNT(*) c FROM orders
-           WHERE provider_kind=? AND provider_actor_id=?
-             AND status='new' AND (provider_seen_at IS NULL OR provider_seen_at=0)""",
-        (kind, actor_id),
-    ).fetchone()
-    conn.close()
-    return {"count": row["c"] if row else 0}
-
-
-@router.get("/orders/{order_id}")
-async def get_order_detail(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Buyurtmani batafsil ko'rish. Qabul qiluvchi ochsa ko'rildi deb belgilanadi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
+    b = await request.json()
+    actor = actor_from_body(conn, me, b)
     kind, actor_id, _owner = _actor_identity(actor)
     row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not row:
         conn.close()
         raise HTTPException(404, "Buyurtma topilmadi.")
+
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
     if not (is_provider or is_customer):
         conn.close()
         raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-    if is_provider and not (row["provider_seen_at"] if "provider_seen_at" in row.keys() else 0):
-        now = int(time.time())
+
+    now = int(time.time())
+    if is_provider:
         conn.execute("UPDATE orders SET provider_seen_at=? WHERE id=?", (now, order_id))
-        conn.commit()
-        row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    out = _order_to_dict(conn, row, "provider" if is_provider else "customer")
+    if is_customer:
+        conn.execute("UPDATE orders SET customer_seen_at=? WHERE id=?", (now, order_id))
+    conn.commit()
     conn.close()
-    return out
+    return {"ok": True, "seen_at": now}
 
 
 @router.put("/orders/{order_id}/status")
@@ -1851,12 +1853,51 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
 
     now = int(time.time())
-    if is_provider:
-        conn.execute("UPDATE orders SET provider_seen_at=?, status=?, updated_at=? WHERE id=?", (now, new_status, now, order_id))
+    notify_tg = None
+    notify_text = ""
+
+    if new_status in ("accepted", "rejected", "done") or (new_status == "cancelled" and is_provider):
+        # Qabul qiluvchi/biznes statusni o'zgartirdi — mijoz tomonda yangilanish belgisi chiqadi.
+        conn.execute(
+            "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=? WHERE id=?",
+            (new_status, now, now, order_id),
+        )
+        cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
+        notify_tg = cu["tg_id"] if cu else None
+        notify_text = "🔔 Buyurtma holati: " + {
+            "accepted": "Qabul qilindi",
+            "rejected": "Rad etildi",
+            "done": "Yakunlandi",
+            "cancelled": "Bekor qilindi",
+        }.get(new_status, new_status) + "\n\n" + (row["title"] or "Buyurtma")
+    elif new_status == "cancelled" and is_customer:
+        # Mijoz bekor qildi — biznes tomonda yangi o'zgarish sifatida ko'rinadi.
+        conn.execute(
+            "UPDATE orders SET status=?, updated_at=?, provider_seen_at=0, customer_seen_at=? WHERE id=?",
+            (new_status, now, now, order_id),
+        )
+        pu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["provider_user_id"],)).fetchone()
+        notify_tg = pu["tg_id"] if pu else None
+        notify_text = "⚠️ Mijoz buyurtmani bekor qildi\n\n" + (row["title"] or "Buyurtma")
     else:
         conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
+
     conn.commit()
     conn.close()
+
+    if notify_tg:
+        try:
+            from main import tg_call, BASE_URL
+            await tg_call("sendMessage", {
+                "chat_id": notify_tg,
+                "text": notify_text,
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+
     return {"ok": True, "status": new_status, "updated_at": now}
 
 # ====================================================================
