@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1365 -->
+<title>Platforma</title><!-- BUILD: v1366 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1843,16 +1843,49 @@
     if(st==="rejected" || st==="cancelled") return "debit";
     return "";
   }
+  function orderTypeText(t){
+    var m={delivery:"Yetkazib berish",pickup:"Olib ketish",booking:"Navbat/qabul"};
+    return m[t] || t || "—";
+  }
+  function defaultOrderAddress(){
+    return [ME.region, ME.district, ME.mahalla].filter(function(x){return !!(x||"").trim();}).join(", ");
+  }
+  function askOrderDetails(useItems){
+    var t = prompt("Buyurtma turi:\n1 - Yetkazib berish\n2 - Olib ketish\n3 - Navbat / qabulga yozilish", "1");
+    if(t===null) return null;
+    t = String(t||"1").trim().toLowerCase();
+    var orderType = (t==="2" || t.indexOf("olib")>=0 || t.indexOf("pickup")>=0) ? "pickup" : ((t==="3" || t.indexOf("navbat")>=0 || t.indexOf("qabul")>=0 || t.indexOf("booking")>=0) ? "booking" : "delivery");
+    var phone = prompt("Aloqa telefon raqami:", ME.phone || "");
+    if(phone===null) return null;
+    phone = (phone||"").trim();
+    if(!phone){ alert("Telefon raqam kiritish kerak."); return null; }
+    var address = "";
+    if(orderType==="delivery"){
+      address = prompt("Yetkazib berish manzili:", defaultOrderAddress());
+      if(address===null) return null;
+      address = (address||"").trim();
+      if(!address){ alert("Yetkazib berish uchun manzil kiritish kerak."); return null; }
+    }
+    var desiredTime = prompt(orderType==="booking" ? "Qaysi vaqtga yozilmoqchisiz? (ixtiyoriy)" : "Qachonga kerak? (ixtiyoriy)", "");
+    if(desiredTime===null) return null;
+    var note = prompt(useItems ? "Qo'shimcha izoh (ixtiyoriy):" : "Buyurtma izohi (ixtiyoriy):", "");
+    if(note===null) return null;
+    return { order_type:orderType, phone:phone, address:address, desired_time:(desiredTime||"").trim(), note:note||"" };
+  }
   function createBusinessOrder(bid, bname){
     var selected = draftItems();
     var useItems = selected.length && Number(orderDraft.business_id)===Number(bid);
-    var note = prompt(useItems ? "Buyurtma izohi (ixtiyoriy):" : "Buyurtma izohi (ixtiyoriy):", "");
-    if(note===null) return;
+    var details = askOrderDetails(useItems);
+    if(!details) return;
     var body = {
       provider_kind:"business",
       provider_id:bid,
       title: useItems ? "Buyurtma: "+(bname||"Biznes") : "Buyurtma: "+(bname||"Biznes"),
-      note:note||""
+      note:details.note||"",
+      phone:details.phone||"",
+      order_type:details.order_type||"delivery",
+      address:details.address||"",
+      desired_time:details.desired_time||""
     };
     if(useItems){
       body.items = selected.map(function(it){ return { item_id:it.item_id, qty:it.qty }; });
@@ -1874,6 +1907,9 @@
     }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:7px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
     var note = o.note ? '<div class="idesc" style="margin-top:5px">'+esc(o.note)+'</div>' : '';
     var phone = o.phone ? '<div class="idesc">☎ '+esc(o.phone)+'</div>' : '';
+    var detail = '<div class="idesc">Turi: '+esc(orderTypeText(o.order_type))+'</div>' +
+      (o.address ? '<div class="idesc">📍 '+esc(o.address)+'</div>' : '') +
+      (o.desired_time ? '<div class="idesc">🕒 '+esc(o.desired_time)+'</div>' : '');
     var actions = '';
     if(mode==="inbox"){
       if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
@@ -1882,7 +1918,7 @@
       if(o.status==="new" || o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
     return '<div class="item" style="display:block">'+
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+phone+note+'</div>'+st+'</div>'+itemsHtml+actions+'</div>';
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+detail+phone+note+'</div>'+st+'</div>'+itemsHtml+actions+'</div>';
   }
   function loadMyOrders(){
     api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
