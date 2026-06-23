@@ -197,6 +197,18 @@ def init_db():
             FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS order_messages(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id        INTEGER NOT NULL,                  -- qaysi buyurtmaga tegishli
+            sender_kind     TEXT NOT NULL DEFAULT 'user',      -- 'user' | 'business'
+            sender_actor_id INTEGER NOT NULL,                  -- user.id yoki businesses.id
+            sender_user_id  INTEGER NOT NULL,                  -- Telegram egasi user.id
+            text            TEXT DEFAULT '',
+            created_at      INTEGER NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS debtors(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
@@ -414,6 +426,20 @@ def _migrate(conn):
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_items_item ON order_items(item_id)")
+
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS order_messages(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id        INTEGER NOT NULL,
+            sender_kind     TEXT NOT NULL DEFAULT 'user',
+            sender_actor_id INTEGER NOT NULL,
+            sender_user_id  INTEGER NOT NULL,
+            text            TEXT DEFAULT '',
+            created_at      INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_sender ON order_messages(sender_kind, sender_actor_id, created_at)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS notify_filters(
