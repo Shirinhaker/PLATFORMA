@@ -172,6 +172,8 @@ def init_db():
             order_type         TEXT DEFAULT 'delivery',          -- delivery/pickup/booking
             address            TEXT DEFAULT '',                  -- yetkazib berish manzili yoki joy
             desired_time       TEXT DEFAULT '',                  -- mijoz xohlagan vaqt
+            delivery_lat       REAL,                             -- yetkazib berish metkasi latitude
+            delivery_lng       REAL,                             -- yetkazib berish metkasi longitude
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',               -- new/accepted/rejected/done/cancelled
             created_at         INTEGER NOT NULL,
@@ -364,6 +366,8 @@ def _migrate(conn):
             order_type         TEXT DEFAULT 'delivery',
             address            TEXT DEFAULT '',
             desired_time       TEXT DEFAULT '',
+            delivery_lat       REAL,
+            delivery_lng       REAL,
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',
             created_at         INTEGER NOT NULL,
@@ -377,6 +381,10 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN address TEXT DEFAULT ''")
     if "desired_time" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN desired_time TEXT DEFAULT ''")
+    if "delivery_lat" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN delivery_lat REAL")
+    if "delivery_lng" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN delivery_lng REAL")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
