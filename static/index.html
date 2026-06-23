@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1368 -->
+<title>Platforma</title><!-- BUILD: v1369 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -394,9 +394,6 @@
   .order-center-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none;}
   .order-map-help{position:absolute;left:10px;right:10px;top:10px;z-index:501;text-align:center;pointer-events:none;}
   .order-map-help span{display:inline-block;background:var(--card);color:var(--ink);padding:7px 10px;border-radius:11px;font-size:12px;font-weight:700;box-shadow:var(--shadow);}
-  .order-unread{border-color:var(--amber)!important;box-shadow:0 0 0 2px rgba(240,162,27,.14),var(--shadow)!important;}
-  .order-new-dot{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;background:var(--amber);color:#3a2603;border-radius:8px;padding:2px 7px;font-size:10.5px;font-weight:800;vertical-align:middle;}
-  .order-detail-map{height:230px;border-radius:16px;overflow:hidden;background:var(--map-land);border:1px solid var(--line);box-shadow:var(--shadow);margin-top:8px;}
   .order-close{position:absolute;right:14px;top:14px;width:32px;height:32px;border:none;border-radius:50%;background:var(--line);color:var(--ink);font-size:18px;cursor:pointer;}
   @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important;} }
   .leaflet-control-zoom{margin:12px !important;}
@@ -428,6 +425,23 @@
   .conv-name{font-weight:700;font-size:15px;color:var(--ink);}
   .conv-last{font-size:13px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .conv-badge{flex:none;min-width:20px;height:20px;border-radius:10px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;}
+  .order-badge{flex:none;min-width:22px;height:22px;border-radius:12px;background:#DC2626;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 7px;box-shadow:0 5px 12px rgba(220,38,38,.25);}
+  .order-badge[hidden]{display:none;}
+  .order-card{cursor:pointer;border-width:1.5px;}
+  .order-card.order-new{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,140,132,.10),var(--shadow);}
+  .order-card.order-unread{border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.10),var(--shadow);}
+  .order-unread-pill{display:inline-flex;align-items:center;gap:5px;background:#FEE2E2;color:#B91C1C;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;margin-top:6px;}
+  [data-theme="dark"] .order-unread-pill{background:#3A1515;color:#FCA5A5;}
+  .order-notice{display:flex;align-items:center;gap:10px;background:var(--primary-tint);color:var(--primary);border:1.5px solid var(--primary);border-radius:16px;padding:12px 14px;margin:6px 0 12px;font-weight:800;box-shadow:var(--shadow);}
+  .order-notice small{display:block;color:var(--soft);font-weight:600;margin-top:2px;}
+  .order-detail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:3100;display:none;}
+  .order-detail-backdrop.on{display:block;}
+  .order-detail-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,105%);width:100%;max-width:420px;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:24px 24px 0 0;box-shadow:0 -18px 50px rgba(0,0,0,.30);z-index:3101;padding:16px 14px 18px;transition:transform .2s ease;}
+  .order-detail-sheet.on{transform:translate(-50%,0);}
+  .order-detail-map{height:240px;border-radius:16px;overflow:hidden;background:var(--map-land);border:1px solid var(--line);box-shadow:var(--shadow);margin:10px 0 12px;}
+  .detail-line{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;font-size:13.5px;}
+  .detail-line b{font-size:13px;color:var(--soft);font-weight:700;}
+  .detail-line span{text-align:right;font-weight:600;}
 </style>
 </head>
 <body>
@@ -607,7 +621,7 @@
         <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="orderMenuSub">Kelgan buyurtma va yozilishlar</p></div><span class="soon-mini" id="orderUnreadBadge" style="display:none;background:#DC2626;color:#fff">0 yangi</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
@@ -746,7 +760,7 @@
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxasisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxasis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p>Men bergan buyurtma va yozilishlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p id="ucabOrderHint">Men bergan buyurtma va yozilishlar</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <button class="btn btn-amber btn-block" style="margin-top:10px" id="bizOpenBtn">🏪 Biznes ochish</button>
@@ -1805,6 +1819,9 @@
   /* ---------- BUYURTMALAR / NAVBATLAR ---------- */
 
   var orderDraft = { business_id:null, business_name:"", items:{} };
+  var ORDERS_MINE = [];
+  var ORDERS_INBOX = [];
+  var ORDER_DETAIL_MAP = null;
   function resetOrderDraft(bid, bname){
     orderDraft = { business_id:bid||null, business_name:bname||"", items:{} };
     setTimeout(renderOrderDraftBox, 0);
@@ -1869,7 +1886,6 @@
     return [ME.region, ME.district, ME.mahalla].filter(function(x){return !!(x||"").trim();}).join(", ");
   }
   var ORDERMAP = null, ORDER_POINT = null, orderSheetResolve = null, orderSheetType = "delivery";
-  var ORDER_DETAIL_MAP = null, ORDER_DETAIL_MARKER = null, ORDER_DETAIL_CURRENT = null;
   function orderPointText(){
     if(!ORDER_POINT) return "Joy hali belgilanmagan";
     return "✅ Metka belgilandi: " + ORDER_POINT.lat.toFixed(6) + ", " + ORDER_POINT.lng.toFixed(6);
@@ -2019,15 +2035,37 @@
         if(useItems){ resetOrderDraft(bid, bname); }
         alert("Buyurtma yuborildi.");
         if(activeMode==="user") loadMyOrders();
+        refreshOrderBadges();
       }).catch(function(e){ alert(e.message); });
     });
+  }
+  function setBadge(id, n, textId, textWhenOn, textWhenOff){
+    var b=el(id);
+    if(b){
+      n = parseInt(n||0,10)||0;
+      b.hidden = n<=0;
+      b.textContent = n>99 ? "99+" : String(n);
+    }
+    if(textId && el(textId)) el(textId).textContent = n>0 ? textWhenOn.replace("{n}", n) : textWhenOff;
+  }
+  function orderIsActive(o){ return o && ["new","accepted"].indexOf(o.status)>=0; }
+  function updateOrderBadges(){
+    var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !!o.is_unread; }).length;
+    var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !!o.is_unread; }).length;
+    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Kelgan buyurtma va yozilishlar");
+    setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Men bergan buyurtma va yozilishlar");
+  }
+  function refreshOrderBadges(){
+    if(!loggedIn) return;
+    api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){ ORDERS_MINE = list||[]; updateOrderBadges(); }).catch(function(){});
+    if(ME && ME.has_business){
+      api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){ ORDERS_INBOX = list||[]; updateOrderBadges(); }).catch(function(){});
+    }
   }
   function orderCard(o, mode){
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
     var subtitle = mode==="inbox" ? "Mijoz" : "Qabul qiluvchi";
     var st = '<span class="tx-amt '+orderStatusClass(o.status)+'">'+orderStatusText(o.status)+'</span>';
-    var unread = (mode==="inbox" && o.unread);
-    var newDot = unread ? '<span class="order-new-dot">Yangi</span>' : '';
     var items = (o.items||[]);
     var itemsHtml = items.length ? '<div style="margin-top:9px;border-top:1px solid var(--line);padding-top:8px">'+items.map(function(it){
       var line = it.line_total ? moneyText(it.line_total) : (it.price||"");
@@ -2046,117 +2084,138 @@
     } else {
       if(o.status==="new" || o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
-    return '<div class="item '+(unread?'order-unread':'')+'" style="display:block" data-odetail="'+o.id+'" data-omode="'+mode+'">'+
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+newDot+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+detail+phone+note+'</div>'+st+'</div>'+itemsHtml+
-      '<button class="mini-btn" style="margin-top:10px" data-odetail="'+o.id+'" data-omode="'+mode+'">Batafsil ko‘rish</button>'+actions+'</div>';
+    var cls = 'item order-card' + (o.status==="new" ? ' order-new' : '') + (o.is_unread ? ' order-unread' : '');
+    var unread = o.is_unread ? '<div class="order-unread-pill">🔔 '+(mode==="inbox"?'Yangi buyurtma':'Status yangilandi')+'</div>' : '';
+    var hint = '<div class="idesc" style="margin-top:8px;color:var(--primary);font-weight:700">Batafsil ko‘rish uchun bosing</div>';
+    return '<div class="'+cls+'" style="display:block" data-order-open="'+o.id+'" data-order-mode="'+mode+'">'+
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+itemsHtml+actions+hint+'</div>';
   }
-  function loadMyOrders(){
-    api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
-      var box=el("myOrdersList");
-      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>Biznes sahifasidan buyurtma yoki navbatga yozilish yuborsangiz, shu yerda ko\'rinadi.</p></div>'; return; }
-      box.innerHTML='<div class="list-sub" style="margin-top:8px">'+list.length+' ta buyurtma</div>'+list.map(function(o){return orderCard(o,"mine");}).join("");
-    }).catch(function(e){ el("myOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  function orderActionButtons(o, mode){
+    if(!o) return "";
+    if(mode==="inbox"){
+      if(o.status==="new") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
+      if(o.status==="accepted") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+    } else if(o.status==="new" || o.status==="accepted"){
+      return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+    }
+    return "";
   }
-  function loadBizOrders(){
-    api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){
-      var box=el("bizOrdersList");
-      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>Biznesingizga kelgan buyurtma va yozilishlar shu yerda ko\'rinadi.</p></div>'; refreshOrderUnreadBadge(); return; }
-      box.innerHTML='<div class="list-sub" style="margin-top:8px">'+list.length+' ta kelgan buyurtma</div>'+list.map(function(o){return orderCard(o,"inbox");}).join("");
-      refreshOrderUnreadBadge();
-    }).catch(function(e){ el("bizOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
-  }
-  function refreshOrderUnreadBadge(){
-    var badge = el("orderUnreadBadge");
-    var sub = el("orderMenuSub");
-    if(!badge) return;
-    if(!loggedIn || !ME || !ME.has_business){ badge.style.display="none"; if(sub) sub.textContent="Kelgan buyurtma va yozilishlar"; return; }
-    api("GET","/api/orders/inbox/unread?"+actorQuery("business")).then(function(d){
-      var n = Number((d&&d.count)||0);
-      if(n>0){ badge.textContent = n + " yangi"; badge.style.display="inline-flex"; if(sub) sub.textContent = "Yangi buyurtmalar bor"; }
-      else { badge.style.display="none"; if(sub) sub.textContent="Kelgan buyurtma va yozilishlar"; }
-    }).catch(function(){});
+  function findOrderById(id, mode){
+    var arr = mode==="inbox" ? ORDERS_INBOX : ORDERS_MINE;
+    id = parseInt(id,10);
+    return (arr||[]).filter(function(o){ return Number(o.id)===id; })[0] || null;
   }
   function ensureOrderDetailSheet(){
     if(el("orderDetailSheet")) return;
-    var back=document.createElement("div"); back.className="sheet-backdrop"; back.id="orderDetailBackdrop";
-    var sh=document.createElement("div"); sh.className="order-sheet"; sh.id="orderDetailSheet";
-    sh.innerHTML = '<button class="order-close" id="orderDetailClose" aria-label="Yopish">×</button><div class="order-grip"></div><div id="orderDetailBody"></div>';
-    document.body.appendChild(back); document.body.appendChild(sh);
-    function close(){ closeOrderDetail(); }
-    el("orderDetailClose").addEventListener("click", close);
-    el("orderDetailBackdrop").addEventListener("click", close);
-    sh.addEventListener("click", function(e){
-      var b=e.target.closest("[data-odetail-status]");
-      if(!b) return;
-      updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-odetail-status"), b.getAttribute("data-omode")||"inbox");
-      closeOrderDetail();
-    });
+    var back=document.createElement("div");
+    back.id="orderDetailBackdrop";
+    back.className="order-detail-backdrop";
+    var sh=document.createElement("div");
+    sh.id="orderDetailSheet";
+    sh.className="order-detail-sheet";
+    document.body.appendChild(back);
+    document.body.appendChild(sh);
+    back.addEventListener("click", closeOrderDetail);
   }
   function closeOrderDetail(){
     if(el("orderDetailBackdrop")) el("orderDetailBackdrop").classList.remove("on");
     if(el("orderDetailSheet")) el("orderDetailSheet").classList.remove("on");
+    if(ORDER_DETAIL_MAP){ try{ ORDER_DETAIL_MAP.remove(); }catch(e){} ORDER_DETAIL_MAP=null; }
   }
-  function orderActionsHtml(o, mode, detail){
-    var attr = detail ? "data-odetail-status" : "data-ostatus";
-    var html = "";
-    if(mode==="inbox"){
-      if(o.status==="new") html = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" '+attr+'="accepted" data-oid="'+o.id+'" data-omode="inbox">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" '+attr+'="rejected" data-oid="'+o.id+'" data-omode="inbox">Rad etish</button></div>';
-      else if(o.status==="accepted") html = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" '+attr+'="done" data-oid="'+o.id+'" data-omode="inbox">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" '+attr+'="cancelled" data-oid="'+o.id+'" data-omode="inbox">Bekor qilish</button></div>';
-    } else {
-      if(o.status==="new" || o.status==="accepted") html = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" '+attr+'="cancelled" data-oid="'+o.id+'" data-omode="mine">Bekor qilish</button></div>';
-    }
-    return html;
+  function renderOrderDetailMap(o){
+    if(!o || o.delivery_lat==null || o.delivery_lng==null || typeof L==="undefined" || !el("orderDetailMap")) return;
+    var lat=Number(o.delivery_lat), lng=Number(o.delivery_lng);
+    if(isNaN(lat) || isNaN(lng)) return;
+    setTimeout(function(){
+      try{
+        if(ORDER_DETAIL_MAP){ ORDER_DETAIL_MAP.remove(); ORDER_DETAIL_MAP=null; }
+        ORDER_DETAIL_MAP=L.map("orderDetailMap", { zoomControl:true, attributionControl:false }).setView([lat,lng], 16);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(ORDER_DETAIL_MAP);
+        L.marker([lat,lng]).addTo(ORDER_DETAIL_MAP);
+        setTimeout(function(){ try{ ORDER_DETAIL_MAP.invalidateSize(); }catch(e){} }, 180);
+      }catch(e){}
+    }, 120);
   }
-  function renderOrderDetail(o, mode){
-    var other = mode==="inbox" ? o.customer_name : o.provider_name;
-    var subtitle = mode==="inbox" ? "Mijoz" : "Qabul qiluvchi";
-    var items = (o.items||[]);
-    var itemsHtml = items.length ? '<div class="panel-card"><div class="iname" style="margin-bottom:8px">Mahsulot/xizmatlar</div>'+items.map(function(it){
-      var line = it.line_total ? moneyText(it.line_total) : (it.price||"—");
-      return '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-top:6px"><span>'+esc(it.name)+' × '+esc(it.qty||1)+'</span><b style="color:var(--ink)">'+esc(line)+'</b></div>';
-    }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:10px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
-    var mapHtml = (o.delivery_lat!=null && o.delivery_lng!=null) ? '<div class="panel-card"><div class="iname">Xaritadagi manzil</div><div id="orderDetailMap" class="order-detail-map"></div><div class="idesc" style="margin-top:7px">'+esc(Number(o.delivery_lat).toFixed(6)+", "+Number(o.delivery_lng).toFixed(6))+'</div></div>' : '';
-    var html = '<div class="lead" style="font-size:21px;margin-top:0">Buyurtma №'+esc(o.id)+'</div>'+ 
-      '<div class="lead-sub" style="margin-bottom:12px">'+subtitle+': '+esc(other||"—")+'</div>'+ 
-      '<div class="panel-card">'+
-        '<div style="display:flex;justify-content:space-between;gap:12px"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">Turi: '+esc(orderTypeText(o.order_type))+'</div></div><span class="tx-amt '+orderStatusClass(o.status)+'">'+orderStatusText(o.status)+'</span></div>'+ 
-        (o.phone?'<div class="idesc" style="margin-top:8px">☎ '+esc(o.phone)+'</div>':'')+
-        (o.address?'<div class="idesc" style="margin-top:4px">📍 '+esc(o.address)+'</div>':'')+
-        (o.desired_time?'<div class="idesc" style="margin-top:4px">🕒 '+esc(o.desired_time)+'</div>':'')+
-        (o.note?'<div class="biz-desc" style="margin-top:10px;box-shadow:none">'+esc(o.note)+'</div>':'')+
-      '</div>'+itemsHtml+mapHtml+orderActionsHtml(o, mode, true);
-    el("orderDetailBody").innerHTML = html;
-    if(o.delivery_lat!=null && o.delivery_lng!=null) setTimeout(function(){ initOrderDetailMap(o); }, 120);
-  }
-  function initOrderDetailMap(o){
-    if(typeof L === "undefined" || !el("orderDetailMap")) return;
-    var pt=[Number(o.delivery_lat), Number(o.delivery_lng)];
-    try{
-      if(ORDER_DETAIL_MAP){ ORDER_DETAIL_MAP.remove(); ORDER_DETAIL_MAP=null; ORDER_DETAIL_MARKER=null; }
-      ORDER_DETAIL_MAP = L.map("orderDetailMap", { zoomControl:true, attributionControl:false }).setView(pt, 16);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(ORDER_DETAIL_MAP);
-      ORDER_DETAIL_MARKER = L.marker(pt).addTo(ORDER_DETAIL_MAP);
-      setTimeout(function(){ try{ ORDER_DETAIL_MAP.invalidateSize(); }catch(e){} }, 160);
-    }catch(e){}
+  function markOrderSeen(id, mode){
+    var o=findOrderById(id, mode);
+    if(!o || !o.is_unread) return;
+    o.is_unread = false;
+    updateOrderBadges();
+    var atype = mode==="inbox" ? "business" : "user";
+    api("PUT","/api/orders/"+id+"/seen", withActor({}, atype)).then(function(){
+      refreshOrderBadges();
+    }).catch(function(){});
   }
   function openOrderDetail(id, mode){
+    var o=findOrderById(id, mode);
+    if(!o) return;
+    markOrderSeen(id, mode);
     ensureOrderDetailSheet();
-    el("orderDetailBody").innerHTML = '<div class="lead" style="font-size:21px;margin-top:0">Buyurtma yuklanmoqda...</div>';
+    var other = mode==="inbox" ? o.customer_name : o.provider_name;
+    var title = mode==="inbox" ? "Kelgan buyurtma" : "Mening buyurtmam";
+    var items=(o.items||[]);
+    var itemsHtml = items.length ? '<div class="panel-card" style="margin:10px 0"><b>Mahsulot/xizmatlar</b>'+items.map(function(it){
+      var line = it.line_total ? moneyText(it.line_total) : (it.price||"Narx kelishiladi");
+      return '<div class="detail-line"><b>'+esc(it.name)+' × '+esc(it.qty||1)+'</b><span>'+esc(line||"—")+'</span></div>';
+    }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:8px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
+    var mapHtml = (o.delivery_lat!=null && o.delivery_lng!=null) ? '<div class="panel-card"><b>Yetkazib berish metkasi</b><div id="orderDetailMap" class="order-detail-map"></div><div class="idesc">🗺 '+esc(Number(o.delivery_lat).toFixed(6)+", "+Number(o.delivery_lng).toFixed(6))+'</div></div>' : '';
+    var sh=el("orderDetailSheet");
+    sh.innerHTML = '<button class="order-close" id="orderDetailClose">×</button><div class="order-grip"></div>'+ 
+      '<div class="lead" style="font-size:20px;margin-bottom:4px">'+title+' №'+esc(o.id)+'</div>'+ 
+      '<div class="lead-sub" style="margin-bottom:12px">'+esc(o.title||"Buyurtma")+'</div>'+ 
+      '<div class="panel-card">'+
+        '<div class="detail-line"><b>Status</b><span>'+esc(orderStatusText(o.status))+'</span></div>'+ 
+        '<div class="detail-line"><b>'+(mode==="inbox"?'Mijoz':'Qabul qiluvchi')+'</b><span>'+esc(other||"—")+'</span></div>'+ 
+        '<div class="detail-line"><b>Turi</b><span>'+esc(orderTypeText(o.order_type))+'</span></div>'+ 
+        (o.phone?'<div class="detail-line"><b>Telefon</b><span>'+esc(o.phone)+'</span></div>':'')+
+        (o.address?'<div class="detail-line"><b>Manzil</b><span>'+esc(o.address)+'</span></div>':'')+
+        (o.desired_time?'<div class="detail-line"><b>Vaqt</b><span>'+esc(o.desired_time)+'</span></div>':'')+
+        (o.note?'<div style="margin-top:10px"><b>Izoh</b><div class="idesc" style="margin-top:5px;white-space:pre-wrap">'+esc(o.note)+'</div></div>':'')+
+      '</div>'+itemsHtml+mapHtml+orderActionButtons(o, mode)+'<button class="btn btn-soft btn-block" style="margin-top:10px" id="orderDetailClose2">Yopish</button>';
     el("orderDetailBackdrop").classList.add("on");
-    el("orderDetailSheet").classList.add("on");
-    var atype = mode==="inbox" ? "business" : "user";
-    api("GET","/api/orders/"+id+"?"+actorQuery(atype)).then(function(o){
-      ORDER_DETAIL_CURRENT = o;
-      renderOrderDetail(o, mode);
-      if(mode==="inbox"){ refreshOrderUnreadBadge(); loadBizOrders(); }
-    }).catch(function(e){ el("orderDetailBody").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+    sh.classList.add("on");
+    el("orderDetailClose").addEventListener("click", closeOrderDetail);
+    el("orderDetailClose2").addEventListener("click", closeOrderDetail);
+    sh.querySelectorAll("[data-ostatus]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        updateOrderStatus(parseInt(btn.getAttribute("data-oid"),10), btn.getAttribute("data-ostatus"), mode);
+        closeOrderDetail();
+      });
+    });
+    renderOrderDetailMap(o);
+  }
+  function loadMyOrders(){
+    api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
+      ORDERS_MINE = list||[];
+      updateOrderBadges();
+      var box=el("myOrdersList");
+      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>Biznes sahifasidan buyurtma yoki navbatga yozilish yuborsangiz, shu yerda ko\'rinadi.</p></div>'; return; }
+      var updates = list.filter(function(o){return !!o.is_unread;}).length;
+      var active = list.filter(orderIsActive).length;
+      var notice = updates ? '<div class="order-notice">🔔 <div>'+updates+' ta buyurtma yangilanishi<small>Buyurtmani ochsangiz yangilanish ko‘rildi bo‘ladi.</small></div></div>' : (active ? '<div class="order-notice">📌 <div>'+active+' ta faol buyurtma<small>Status o‘zgarishi shu ro‘yxatda ko‘rinadi.</small></div></div>' : '');
+      box.innerHTML=notice+'<div class="list-sub" style="margin-top:8px">'+list.length+' ta buyurtma</div>'+list.map(function(o){return orderCard(o,"mine");}).join("");
+    }).catch(function(e){ el("myOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  }
+  function loadBizOrders(){
+    api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){
+      ORDERS_INBOX = list||[];
+      updateOrderBadges();
+      var box=el("bizOrdersList");
+      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>Biznesingizga kelgan buyurtma va yozilishlar shu yerda ko\'rinadi.</p></div>'; return; }
+      var newCount = list.filter(function(o){return !!o.is_unread;}).length;
+      var notice = newCount ? '<div class="order-notice">🔔 <div>'+newCount+' ta yangi/o‘zgargan buyurtma<small>Buyurtmani ochib tafsilot, telefon va xaritadagi metkani ko‘ring.</small></div></div>' : '';
+      box.innerHTML=notice+'<div class="list-sub" style="margin-top:8px">'+list.length+' ta kelgan buyurtma</div>'+list.map(function(o){return orderCard(o,"inbox");}).join("");
+    }).catch(function(e){ el("bizOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
     api("PUT","/api/orders/"+id+"/status", withActor({status:status}, atype)).then(function(){
-      if(mode==="inbox"){ loadBizOrders(); refreshOrderUnreadBadge(); } else loadMyOrders();
+      if(mode==="inbox") loadBizOrders(); else loadMyOrders();
+      refreshOrderBadges();
     }).catch(function(e){ alert(e.message); });
   }
+
 
   /* ---------- CHAT / XABARLAR ---------- */
   var chatPeer = null;       // {kind, id, name}
@@ -2732,15 +2791,15 @@
   });
   el("bizOrdersList").addEventListener("click", function(e){
     var b=e.target.closest("[data-ostatus]");
-    if(b){ e.stopPropagation(); updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "inbox"); return; }
-    var d=e.target.closest("[data-odetail]");
-    if(d){ openOrderDetail(parseInt(d.getAttribute("data-odetail"),10), d.getAttribute("data-omode")||"inbox"); }
+    if(b){ updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "inbox"); return; }
+    var c=e.target.closest("[data-order-open]");
+    if(c) openOrderDetail(parseInt(c.getAttribute("data-order-open"),10), c.getAttribute("data-order-mode")||"inbox");
   });
   el("myOrdersList").addEventListener("click", function(e){
     var b=e.target.closest("[data-ostatus]");
-    if(b){ e.stopPropagation(); updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "mine"); return; }
-    var d=e.target.closest("[data-odetail]");
-    if(d){ openOrderDetail(parseInt(d.getAttribute("data-odetail"),10), d.getAttribute("data-omode")||"mine"); }
+    if(b){ updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "mine"); return; }
+    var c=e.target.closest("[data-order-open]");
+    if(c) openOrderDetail(parseInt(c.getAttribute("data-order-open"),10), c.getAttribute("data-order-mode")||"mine");
   });
 
   el("listBody").addEventListener("click", function(e){
@@ -2995,7 +3054,7 @@
     else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList", screen==="ucab-subs"?"user":"business");
     else if(screen==="ucab-followers" || screen==="cab-followers") loadFollowers(screen==="ucab-followers"?"uFollowersList":"cabFollowersList", screen==="ucab-followers"?"user":"business");
     else if(screen==="ucab-saved") loadSaved();
-    else if(screen==="cabinet"){ loadCabinetCounts(); refreshOrderUnreadBadge(); }
+    else if(screen==="cabinet") loadCabinetCounts();
     else if(screen==="ucab") loadUcabCounts();
     else if(screen==="loc") setLocSelects(ME.region || "", ME.district || "", ME.mahalla || "");
   }
@@ -3040,6 +3099,7 @@
     }).catch(function(e){ el("savedList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function loadCabinetCounts(){
+    refreshOrderBadges();
     api("GET","/api/profile").then(function(d){
       var f=document.querySelector('[data-nav="cab-followers"] b'), g=document.querySelector('[data-nav="cab-following"] b');
       if(f) f.textContent = (d.business_followers!=null?d.business_followers:d.followers);
@@ -3057,6 +3117,7 @@
     }).catch(function(){});
   }
   function loadUcabCounts(){
+    refreshOrderBadges();
     api("GET","/api/profile").then(function(d){
       var f=document.querySelector('[data-nav="ucab-followers"] b'), g=document.querySelector('[data-nav="ucab-subs"] b');
       if(f) f.textContent = d.followers;
@@ -3526,6 +3587,7 @@
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
         }
         loadHomeMap();
+        refreshOrderBadges();
       }
     }).catch(function(){ loadHomeMap(); });
   }
