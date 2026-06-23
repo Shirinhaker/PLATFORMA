@@ -1475,6 +1475,16 @@ def _clean_qty(v):
     return q
 
 
+def _clean_coord(v, minv, maxv):
+    try:
+        n = float(v)
+    except Exception:
+        return None
+    if n < minv or n > maxv:
+        return None
+    return n
+
+
 def _load_order_items_payload(conn, body, provider, item_id=None):
     """Frontend yuborgan items ro'yxatini tekshiradi va normal ko'rinishga keltiradi."""
     raw_items = body.get("items") if isinstance(body, dict) else None
@@ -1592,6 +1602,8 @@ def _order_to_dict(conn, r, view="customer"):
         "order_type": r["order_type"] or "delivery",
         "address": r["address"] or "",
         "desired_time": r["desired_time"] or "",
+        "delivery_lat": r["delivery_lat"],
+        "delivery_lng": r["delivery_lng"],
         "qty": r["qty"] or 1,
         "items": items,
         "total_amount": total_amount,
@@ -1659,6 +1671,8 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     order_type = _clean_order_type(b.get("order_type"))
     address = (b.get("address") or "").strip()[:500]
     desired_time = (b.get("desired_time") or "").strip()[:160]
+    delivery_lat = _clean_coord(b.get("delivery_lat"), -90, 90)
+    delivery_lng = _clean_coord(b.get("delivery_lng"), -180, 180)
     qty = _clean_qty(b.get("qty"))
     if order_items:
         qty = sum(int(x["qty"] or 1) for x in order_items)
@@ -1670,11 +1684,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
                               item_id, listing_id, title, note, phone, order_type, address, desired_time,
-                              qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                              delivery_lat, delivery_lng, qty, status, created_at, updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, order_type, address, desired_time, qty, "new", now, now),
+         item_id, listing_id, title, note, phone, order_type, address, desired_time,
+         delivery_lat, delivery_lng, qty, "new", now, now),
     )
     oid = cur.lastrowid
     for oi in order_items:
@@ -1707,6 +1722,8 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
                 detail_lines.append("Telefon: " + phone)
             if address:
                 detail_lines.append("Manzil: " + address[:160])
+            if delivery_lat is not None and delivery_lng is not None:
+                detail_lines.append("Xarita: " + str(round(delivery_lat, 6)) + ", " + str(round(delivery_lng, 6)))
             if desired_time:
                 detail_lines.append("Vaqt: " + desired_time[:120])
             if detail_lines:
