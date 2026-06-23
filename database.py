@@ -174,6 +174,7 @@ def init_db():
             desired_time       TEXT DEFAULT '',                  -- mijoz xohlagan vaqt
             delivery_lat       REAL,                             -- yetkazib berish metkasi latitude
             delivery_lng       REAL,                             -- yetkazib berish metkasi longitude
+            provider_seen_at   INTEGER DEFAULT 0,                -- biznes kabinet ko'rgan vaqti
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',               -- new/accepted/rejected/done/cancelled
             created_at         INTEGER NOT NULL,
@@ -368,6 +369,7 @@ def _migrate(conn):
             desired_time       TEXT DEFAULT '',
             delivery_lat       REAL,
             delivery_lng       REAL,
+            provider_seen_at   INTEGER DEFAULT 0,
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',
             created_at         INTEGER NOT NULL,
@@ -385,6 +387,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN delivery_lat REAL")
     if "delivery_lng" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN delivery_lng REAL")
+    if "provider_seen_at" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN provider_seen_at INTEGER DEFAULT 0")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
