@@ -174,11 +174,12 @@ def init_db():
             desired_time       TEXT DEFAULT '',                  -- mijoz xohlagan vaqt
             delivery_lat       REAL,                             -- yetkazib berish metkasi latitude
             delivery_lng       REAL,                             -- yetkazib berish metkasi longitude
-            provider_seen_at   INTEGER DEFAULT 0,                -- biznes kabinet ko'rgan vaqti
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',               -- new/accepted/rejected/done/cancelled
             created_at         INTEGER NOT NULL,
             updated_at         INTEGER NOT NULL,
+            provider_seen_at   INTEGER DEFAULT 0,                  -- biznes egasi ko'rgan vaqt
+            customer_seen_at   INTEGER DEFAULT 0,                  -- mijoz status yangilanishini ko'rgan vaqt
             FOREIGN KEY(customer_user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY(provider_user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -369,11 +370,12 @@ def _migrate(conn):
             desired_time       TEXT DEFAULT '',
             delivery_lat       REAL,
             delivery_lng       REAL,
-            provider_seen_at   INTEGER DEFAULT 0,
             qty                INTEGER DEFAULT 1,
             status             TEXT DEFAULT 'new',
             created_at         INTEGER NOT NULL,
-            updated_at         INTEGER NOT NULL
+            updated_at         INTEGER NOT NULL,
+            provider_seen_at   INTEGER DEFAULT 0,
+            customer_seen_at   INTEGER DEFAULT 0
         )"""
     )
     ocols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
@@ -389,10 +391,14 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN delivery_lng REAL")
     if "provider_seen_at" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN provider_seen_at INTEGER DEFAULT 0")
+    if "customer_seen_at" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN customer_seen_at INTEGER DEFAULT 0")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider_seen ON orders(provider_kind, provider_actor_id, provider_seen_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer_seen ON orders(customer_kind, customer_actor_id, customer_seen_at)")
     conn.execute(
         """CREATE TABLE IF NOT EXISTS order_items(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
