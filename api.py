@@ -1600,6 +1600,8 @@ def _order_to_dict(conn, r, view="customer"):
     provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
+    chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
+    last_chat = conn.execute("SELECT text, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -1628,6 +1630,9 @@ def _order_to_dict(conn, r, view="customer"):
         "provider_seen_at": _row_val(r, "provider_seen_at", 0),
         "customer_seen_at": _row_val(r, "customer_seen_at", 0),
         "is_unread": _order_seen_value(r, view) <= 0,
+        "chat_count": chat_count,
+        "last_chat": (last_chat["text"] if last_chat else ""),
+        "last_chat_at": (last_chat["created_at"] if last_chat else 0),
         "view": view,
     }
 
@@ -1899,6 +1904,147 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             pass
 
     return {"ok": True, "status": new_status, "updated_at": now}
+
+
+def _order_actor_side(row, kind, actor_id):
+    """Joriy aktyor buyurtmaning mijozimi yoki qabul qiluvchisimi — aniqlaydi."""
+    if row["customer_kind"] == kind and int(row["customer_actor_id"]) == int(actor_id):
+        return "customer"
+    if row["provider_kind"] == kind and int(row["provider_actor_id"]) == int(actor_id):
+        return "provider"
+    return ""
+
+
+def _order_other_side_info(conn, row, side):
+    """Buyurtma chatidagi qarshi tomonni qaytaradi."""
+    if side == "customer":
+        brief = _actor_brief(conn, row["provider_kind"], row["provider_actor_id"])
+        return {
+            "side": "provider",
+            "kind": row["provider_kind"],
+            "actor_id": row["provider_actor_id"],
+            "owner_user_id": row["provider_user_id"],
+            "tg_id": brief.get("tg_id"),
+            "name": brief.get("name") or "Qabul qiluvchi",
+        }
+    brief = _actor_brief(conn, row["customer_kind"], row["customer_actor_id"])
+    return {
+        "side": "customer",
+        "kind": row["customer_kind"],
+        "actor_id": row["customer_actor_id"],
+        "owner_user_id": row["customer_user_id"],
+        "tg_id": brief.get("tg_id"),
+        "name": brief.get("name") or "Mijoz",
+    }
+
+
+def _mark_order_seen_for_side(conn, order_id, side, now=None):
+    now = now or int(time.time())
+    if side == "provider":
+        conn.execute("UPDATE orders SET provider_seen_at=? WHERE id=?", (now, order_id))
+    elif side == "customer":
+        conn.execute("UPDATE orders SET customer_seen_at=? WHERE id=?", (now, order_id))
+    return now
+
+
+@router.get("/orders/{order_id}/chat")
+async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    """Buyurtma ichidagi alohida chat xabarlari. Umumiy chatga aralashmaydi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, _owner = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    side = _order_actor_side(row, kind, actor_id)
+    if not side:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    rows = conn.execute(
+        "SELECT * FROM order_messages WHERE order_id=? ORDER BY created_at ASC, id ASC LIMIT 500",
+        (order_id,),
+    ).fetchall()
+    now = _mark_order_seen_for_side(conn, order_id, side)
+    conn.commit()
+
+    msgs = []
+    for r in rows:
+        mine = (r["sender_kind"] == kind and int(r["sender_actor_id"]) == int(actor_id))
+        sender = _actor_brief(conn, r["sender_kind"], r["sender_actor_id"])
+        msgs.append({
+            "id": r["id"],
+            "text": r["text"] or "",
+            "mine": mine,
+            "sender_name": sender.get("name") or "",
+            "sender_kind": r["sender_kind"],
+            "created_at": r["created_at"],
+        })
+    other = _order_other_side_info(conn, row, side)
+    order = _order_to_dict(conn, row, "provider" if side == "provider" else "customer")
+    conn.close()
+    return {"ok": True, "side": side, "seen_at": now, "other": other, "order": order, "messages": msgs}
+
+
+@router.post("/orders/{order_id}/chat")
+async def send_order_chat_message(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Buyurtma ichida xabar yuborish. Xabar faqat shu buyurtmaga bog'lanadi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    text = (b.get("text") or "").strip()
+    if not text:
+        conn.close()
+        raise HTTPException(400, "Xabar matni kiritilishi shart.")
+    if len(text) > 2000:
+        text = text[:2000]
+
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, owner_user_id = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    side = _order_actor_side(row, kind, actor_id)
+    if not side:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id, text, created_at)
+           VALUES(?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, text, now),
+    )
+    mid = cur.lastrowid
+    # Xabar yuborgan tomon ko'rdi, qarshi tomonda esa yangilanish belgisi chiqadi.
+    if side == "provider":
+        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
+    else:
+        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+
+    sender_name = _actor_brief(conn, kind, actor_id)["name"]
+    other = _order_other_side_info(conn, row, side)
+    notify_tg = other.get("tg_id")
+    order_title = row["title"] or "Buyurtma"
+    conn.commit()
+    conn.close()
+
+    if notify_tg:
+        try:
+            from main import tg_call, BASE_URL
+            await tg_call("sendMessage", {
+                "chat_id": notify_tg,
+                "text": "💬 Buyurtma bo'yicha yangi xabar: " + sender_name + "\n\n" + order_title + "\n" + text[:300],
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+    return {"ok": True, "id": mid, "created_at": now}
 
 # ====================================================================
 # BILDIRISHNOMA FILTRLARI
