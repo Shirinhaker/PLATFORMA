@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1366 -->
+<title>Platforma</title><!-- BUILD: v1367 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -380,6 +380,21 @@
   .call-price{background:var(--primary-tint);color:var(--primary);font-weight:800;border-radius:12px;padding:12px;text-align:center;font-size:14.5px;margin-bottom:12px;line-height:1.45;}
   .panel-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow);margin-bottom:14px;position:relative;}
   .panel-x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:none;background:var(--line);color:var(--ink);font-size:13px;cursor:pointer;}
+  .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:3000;display:none;}
+  .sheet-backdrop.on{display:block;}
+  .order-sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,105%);width:100%;max-width:420px;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:24px 24px 0 0;box-shadow:0 -18px 50px rgba(0,0,0,.28);z-index:3001;padding:16px 14px 18px;transition:transform .2s ease;}
+  .order-sheet.on{transform:translate(-50%,0);}
+  .order-grip{width:44px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 12px;}
+  .order-type-row{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px;}
+  .order-type-btn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:12px;text-align:left;font:inherit;font-weight:700;cursor:pointer;box-shadow:var(--shadow);}
+  .order-type-btn span{display:block;font-size:12px;font-weight:500;color:var(--soft);margin-top:2px;}
+  .order-type-btn.on{border-color:var(--primary);background:var(--primary-tint);color:var(--primary);}
+  .order-map-wrap{position:relative;height:240px;border-radius:16px;overflow:hidden;background:var(--map-land);border:1px solid var(--line);box-shadow:var(--shadow);margin-top:8px;}
+  #orderMap{width:100%;height:100%;}
+  .order-center-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none;}
+  .order-map-help{position:absolute;left:10px;right:10px;top:10px;z-index:501;text-align:center;pointer-events:none;}
+  .order-map-help span{display:inline-block;background:var(--card);color:var(--ink);padding:7px 10px;border-radius:11px;font-size:12px;font-weight:700;box-shadow:var(--shadow);}
+  .order-close{position:absolute;right:14px;top:14px;width:32px;height:32px;border:none;border-radius:50%;background:var(--line);color:var(--ink);font-size:18px;cursor:pointer;}
   @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important;} }
   .leaflet-control-zoom{margin:12px !important;}
   .leaflet-control-zoom a{border-radius:8px !important;}
@@ -1850,51 +1865,158 @@
   function defaultOrderAddress(){
     return [ME.region, ME.district, ME.mahalla].filter(function(x){return !!(x||"").trim();}).join(", ");
   }
-  function askOrderDetails(useItems){
-    var t = prompt("Buyurtma turi:\n1 - Yetkazib berish\n2 - Olib ketish\n3 - Navbat / qabulga yozilish", "1");
-    if(t===null) return null;
-    t = String(t||"1").trim().toLowerCase();
-    var orderType = (t==="2" || t.indexOf("olib")>=0 || t.indexOf("pickup")>=0) ? "pickup" : ((t==="3" || t.indexOf("navbat")>=0 || t.indexOf("qabul")>=0 || t.indexOf("booking")>=0) ? "booking" : "delivery");
-    var phone = prompt("Aloqa telefon raqami:", ME.phone || "");
-    if(phone===null) return null;
-    phone = (phone||"").trim();
-    if(!phone){ alert("Telefon raqam kiritish kerak."); return null; }
-    var address = "";
-    if(orderType==="delivery"){
-      address = prompt("Yetkazib berish manzili:", defaultOrderAddress());
-      if(address===null) return null;
-      address = (address||"").trim();
-      if(!address){ alert("Yetkazib berish uchun manzil kiritish kerak."); return null; }
+  var ORDERMAP = null, ORDER_POINT = null, orderSheetResolve = null, orderSheetType = "delivery";
+  function orderPointText(){
+    if(!ORDER_POINT) return "Joy hali belgilanmagan";
+    return "✅ Metka belgilandi: " + ORDER_POINT.lat.toFixed(6) + ", " + ORDER_POINT.lng.toFixed(6);
+  }
+  function ensureOrderSheet(){
+    if(el("orderSheet")) return;
+    var back = document.createElement("div");
+    back.className = "sheet-backdrop";
+    back.id = "orderSheetBackdrop";
+    var sh = document.createElement("div");
+    sh.className = "order-sheet";
+    sh.id = "orderSheet";
+    sh.innerHTML = ''+
+      '<button class="order-close" id="orderSheetClose" aria-label="Yopish">×</button>'+
+      '<div class="order-grip"></div>'+
+      '<div class="lead" style="font-size:21px;margin-top:0">Buyurtma berish</div>'+
+      '<div class="lead-sub" id="orderSheetSub" style="margin-bottom:14px"></div>'+
+      '<div class="order-type-row">'+
+        '<button class="order-type-btn on" data-order-type="delivery">🚚 Yetkazib berish<span>Manzilni xaritada metka qilib belgilang</span></button>'+
+        '<button class="order-type-btn" data-order-type="pickup">🏪 Olib ketish<span>O‘zingiz borib olib ketasiz</span></button>'+
+        '<button class="order-type-btn" data-order-type="booking">🗓 Navbat / qabulga yozilish<span>Xizmat yoki qabul vaqtiga yozilasiz</span></button>'+
+      '</div>'+
+      '<div class="field"><label>Aloqa telefon raqami *</label><input class="input" id="orderPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>'+
+      '<div class="field"><label id="orderTimeLabel">Qachonga kerak? — ixtiyoriy</label><input class="input" id="orderTime" placeholder="Masalan: bugun 18:00"></div>'+
+      '<div id="orderDeliveryBlock">'+
+        '<div class="field"><label>Yetkazib berish manzili</label><input class="input" id="orderAddress" placeholder="Tuman, mahalla, ko‘cha, uy"></div>'+
+        '<div class="field"><label>Xaritada metka belgilang</label>'+
+          '<div class="order-map-wrap"><div id="orderMap"></div><div class="order-center-pin">📍</div><div class="order-map-help"><span>Xaritani suring — metka markazda turadi</span></div></div>'+
+          '<div id="orderMapInfo" class="idesc" style="margin-top:7px">Joy hali belgilanmagan</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="field"><label>Izoh — ixtiyoriy</label><textarea class="textarea" id="orderNote" placeholder="Masalan: qo‘ng‘iroq qilib keling, 2-qavat..."></textarea></div>'+
+      '<button class="btn btn-primary btn-block" id="orderSubmit">✅ Buyurtma yuborish</button>'+
+      '<button class="btn btn-soft btn-block" style="margin-top:9px" id="orderCancel">Bekor qilish</button>';
+    document.body.appendChild(back);
+    document.body.appendChild(sh);
+
+    function closeNull(){ closeOrderSheet(null); }
+    el("orderSheetClose").addEventListener("click", closeNull);
+    el("orderCancel").addEventListener("click", closeNull);
+    el("orderSheetBackdrop").addEventListener("click", closeNull);
+    sh.addEventListener("click", function(e){
+      var t=e.target.closest("[data-order-type]");
+      if(t){ setOrderSheetType(t.getAttribute("data-order-type")); return; }
+    });
+    el("orderSubmit").addEventListener("click", submitOrderSheet);
+  }
+  function setOrderSheetType(t){
+    orderSheetType = (t==="pickup" || t==="booking") ? t : "delivery";
+    document.querySelectorAll("#orderSheet [data-order-type]").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-order-type")===orderSheetType); });
+    var block=el("orderDeliveryBlock");
+    if(block) block.style.display = orderSheetType==="delivery" ? "block" : "none";
+    var lab=el("orderTimeLabel");
+    if(lab) lab.textContent = orderSheetType==="booking" ? "Qaysi vaqtga yozilmoqchisiz? — ixtiyoriy" : "Qachonga kerak? — ixtiyoriy";
+    if(orderSheetType==="delivery") setTimeout(initOrderMap, 80);
+  }
+  function initOrderMap(){
+    if(orderSheetType!=="delivery") return;
+    if(typeof L === "undefined" || !el("orderMap")){
+      var info=el("orderMapInfo"); if(info) info.textContent="Xarita yuklanmoqda. Birozdan keyin qayta urinib ko‘ring.";
+      return;
     }
-    var desiredTime = prompt(orderType==="booking" ? "Qaysi vaqtga yozilmoqchisiz? (ixtiyoriy)" : "Qachonga kerak? (ixtiyoriy)", "");
-    if(desiredTime===null) return null;
-    var note = prompt(useItems ? "Qo'shimcha izoh (ixtiyoriy):" : "Buyurtma izohi (ixtiyoriy):", "");
-    if(note===null) return null;
-    return { order_type:orderType, phone:phone, address:address, desired_time:(desiredTime||"").trim(), note:note||"" };
+    var start = ORDER_POINT ? [ORDER_POINT.lat, ORDER_POINT.lng] : (HOME_POINT ? [HOME_POINT.lat, HOME_POINT.lng] : (CENTER || [41.311, 69.280]));
+    if(!ORDERMAP){
+      ORDERMAP = L.map("orderMap", { zoomControl:true, attributionControl:false }).setView(start, 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(ORDERMAP);
+      ORDERMAP.on("moveend", updateOrderPointFromMap);
+      ORDERMAP.on("click", function(e){ ORDERMAP.setView(e.latlng, ORDERMAP.getZoom()); });
+    } else {
+      ORDERMAP.setView(start, 15);
+    }
+    setTimeout(function(){ try{ ORDERMAP.invalidateSize(); updateOrderPointFromMap(); }catch(e){} }, 160);
+  }
+  function updateOrderPointFromMap(){
+    if(!ORDERMAP) return;
+    var c = ORDERMAP.getCenter();
+    ORDER_POINT = { lat:c.lat, lng:c.lng };
+    if(el("orderMapInfo")) el("orderMapInfo").textContent = orderPointText();
+  }
+  function openOrderSheet(useItems, bname){
+    ensureOrderSheet();
+    return new Promise(function(resolve){
+      orderSheetResolve = resolve;
+      ORDER_POINT = null;
+      el("orderSheetSub").textContent = (bname||"Biznes") + (useItems ? " — tanlangan mahsulot/xizmatlar bo‘yicha" : " — umumiy buyurtma");
+      el("orderPhone").value = ME.phone || "";
+      el("orderAddress").value = defaultOrderAddress();
+      el("orderTime").value = "";
+      el("orderNote").value = "";
+      if(el("orderMapInfo")) el("orderMapInfo").textContent = "Joy hali belgilanmagan";
+      setOrderSheetType("delivery");
+      el("orderSheetBackdrop").classList.add("on");
+      el("orderSheet").classList.add("on");
+      setTimeout(initOrderMap, 160);
+    });
+  }
+  function closeOrderSheet(value){
+    if(el("orderSheetBackdrop")) el("orderSheetBackdrop").classList.remove("on");
+    if(el("orderSheet")) el("orderSheet").classList.remove("on");
+    var r = orderSheetResolve; orderSheetResolve = null;
+    if(r) r(value);
+  }
+  function submitOrderSheet(){
+    var phone = (el("orderPhone").value||"").trim();
+    if(!phone){ alert("Telefon raqam kiritish kerak."); el("orderPhone").focus(); return; }
+    var address = (el("orderAddress").value||"").trim();
+    var deliveryLat = null, deliveryLng = null;
+    if(orderSheetType==="delivery"){
+      if(!ORDER_POINT){ alert("Yetkazib berish joyini xaritada belgilang."); return; }
+      deliveryLat = ORDER_POINT.lat; deliveryLng = ORDER_POINT.lng;
+      if(!address){ address = "Xaritada belgilandi: "+deliveryLat.toFixed(6)+", "+deliveryLng.toFixed(6); }
+    }
+    closeOrderSheet({
+      order_type:orderSheetType,
+      phone:phone,
+      address:address,
+      desired_time:(el("orderTime").value||"").trim(),
+      note:(el("orderNote").value||"").trim(),
+      delivery_lat:deliveryLat,
+      delivery_lng:deliveryLng
+    });
+  }
+  function askOrderDetails(useItems, bname){
+    return openOrderSheet(useItems, bname);
   }
   function createBusinessOrder(bid, bname){
     var selected = draftItems();
     var useItems = selected.length && Number(orderDraft.business_id)===Number(bid);
-    var details = askOrderDetails(useItems);
-    if(!details) return;
-    var body = {
-      provider_kind:"business",
-      provider_id:bid,
-      title: useItems ? "Buyurtma: "+(bname||"Biznes") : "Buyurtma: "+(bname||"Biznes"),
-      note:details.note||"",
-      phone:details.phone||"",
-      order_type:details.order_type||"delivery",
-      address:details.address||"",
-      desired_time:details.desired_time||""
-    };
-    if(useItems){
-      body.items = selected.map(function(it){ return { item_id:it.item_id, qty:it.qty }; });
-    }
-    api("POST","/api/orders", withActor(body, actorType())).then(function(){
-      if(useItems){ resetOrderDraft(bid, bname); }
-      alert("Buyurtma yuborildi.");
-      if(activeMode==="user") loadMyOrders();
-    }).catch(function(e){ alert(e.message); });
+    askOrderDetails(useItems, bname).then(function(details){
+      if(!details) return;
+      var body = {
+        provider_kind:"business",
+        provider_id:bid,
+        title: useItems ? "Buyurtma: "+(bname||"Biznes") : "Buyurtma: "+(bname||"Biznes"),
+        note:details.note||"",
+        phone:details.phone||"",
+        order_type:details.order_type||"delivery",
+        address:details.address||"",
+        desired_time:details.desired_time||"",
+        delivery_lat:details.delivery_lat,
+        delivery_lng:details.delivery_lng
+      };
+      if(useItems){
+        body.items = selected.map(function(it){ return { item_id:it.item_id, qty:it.qty }; });
+      }
+      api("POST","/api/orders", withActor(body, actorType())).then(function(){
+        if(useItems){ resetOrderDraft(bid, bname); }
+        alert("Buyurtma yuborildi.");
+        if(activeMode==="user") loadMyOrders();
+      }).catch(function(e){ alert(e.message); });
+    });
   }
   function orderCard(o, mode){
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
@@ -1907,8 +2029,9 @@
     }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:7px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
     var note = o.note ? '<div class="idesc" style="margin-top:5px">'+esc(o.note)+'</div>' : '';
     var phone = o.phone ? '<div class="idesc">☎ '+esc(o.phone)+'</div>' : '';
+    var coord = (o.delivery_lat!=null && o.delivery_lng!=null) ? '<div class="idesc">🗺 '+esc(Number(o.delivery_lat).toFixed(6)+", "+Number(o.delivery_lng).toFixed(6))+'</div>' : '';
     var detail = '<div class="idesc">Turi: '+esc(orderTypeText(o.order_type))+'</div>' +
-      (o.address ? '<div class="idesc">📍 '+esc(o.address)+'</div>' : '') +
+      (o.address ? '<div class="idesc">📍 '+esc(o.address)+'</div>' : '') + coord +
       (o.desired_time ? '<div class="idesc">🕒 '+esc(o.desired_time)+'</div>' : '');
     var actions = '';
     if(mode==="inbox"){
