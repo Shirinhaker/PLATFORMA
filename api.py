@@ -1604,6 +1604,8 @@ def _order_to_dict(conn, r, view="customer"):
         "desired_time": r["desired_time"] or "",
         "delivery_lat": r["delivery_lat"],
         "delivery_lng": r["delivery_lng"],
+        "provider_seen_at": r["provider_seen_at"] if "provider_seen_at" in r.keys() else 0,
+        "unread": (view == "provider" and (r["status"] == "new") and not (r["provider_seen_at"] if "provider_seen_at" in r.keys() else 0)),
         "qty": r["qty"] or 1,
         "items": items,
         "total_amount": total_amount,
@@ -1684,12 +1686,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
                               item_id, listing_id, title, note, phone, order_type, address, desired_time,
-                              delivery_lat, delivery_lng, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                              delivery_lat, delivery_lng, provider_seen_at, qty, status, created_at, updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
          item_id, listing_id, title, note, phone, order_type, address, desired_time,
-         delivery_lat, delivery_lng, qty, "new", now, now),
+         delivery_lat, delivery_lng, 0, qty, "new", now, now),
     )
     oid = cur.lastrowid
     for oi in order_items:
@@ -1778,6 +1780,49 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
     return out
 
 
+@router.get("/orders/inbox/unread")
+async def unread_inbox_orders(actor_type: str = "business", x_telegram_init_data: str = Header(default="")):
+    """Biznes kabinet uchun ko'rilmagan yangi buyurtmalar soni."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, _owner = _actor_identity(actor)
+    row = conn.execute(
+        """SELECT COUNT(*) c FROM orders
+           WHERE provider_kind=? AND provider_actor_id=?
+             AND status='new' AND (provider_seen_at IS NULL OR provider_seen_at=0)""",
+        (kind, actor_id),
+    ).fetchone()
+    conn.close()
+    return {"count": row["c"] if row else 0}
+
+
+@router.get("/orders/{order_id}")
+async def get_order_detail(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    """Buyurtmani batafsil ko'rish. Qabul qiluvchi ochsa ko'rildi deb belgilanadi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, _owner = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
+    is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
+    if not (is_provider or is_customer):
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+    if is_provider and not (row["provider_seen_at"] if "provider_seen_at" in row.keys() else 0):
+        now = int(time.time())
+        conn.execute("UPDATE orders SET provider_seen_at=? WHERE id=?", (now, order_id))
+        conn.commit()
+        row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    out = _order_to_dict(conn, row, "provider" if is_provider else "customer")
+    conn.close()
+    return out
+
+
 @router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1806,7 +1851,10 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
 
     now = int(time.time())
-    conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
+    if is_provider:
+        conn.execute("UPDATE orders SET provider_seen_at=?, status=?, updated_at=? WHERE id=?", (now, new_status, now, order_id))
+    else:
+        conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
     conn.commit()
     conn.close()
     return {"ok": True, "status": new_status, "updated_at": now}
