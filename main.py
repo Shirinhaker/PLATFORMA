@@ -202,7 +202,15 @@ async def whitelist_middleware(request: Request, call_next):
 
     # Telegram webhookni bloklamaymiz: u Telegram serveridan keladi.
     if path == "/webhook":
-        return await call_next(request)
+        response = await call_next(request)
+
+    # Telegram WebApp/WebView ba'zan eski index.html ni keshda ushlab qoladi.
+    # Mini App HTML va statik frontend fayllari doim yangi versiyada ochilishi uchun keshni o'chiramiz.
+    if path == "/" or path.endswith(".html") or path in ("/index.html",):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
     # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
