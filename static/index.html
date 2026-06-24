@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1370 -->
+<title>Platforma</title><!-- BUILD: v1371 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -398,10 +398,15 @@
   .order-chat-box{margin-top:12px;}
   .order-chat-list{max-height:260px;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:9px;}
   .order-chat-empty{text-align:center;font-size:12.5px;color:var(--soft);padding:18px 8px;}
-  .order-chat-send{display:flex;gap:8px;margin-top:9px;}
-  .order-chat-send input{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 13px;font:inherit;outline:none;}
+  .order-chat-send{display:flex;gap:8px;margin-top:9px;align-items:center;}
+  .order-chat-send input[type="text"], .order-chat-send input:not([type]){flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 13px;font:inherit;outline:none;min-width:0;}
   .order-chat-send button{height:44px;border:none;border-radius:22px;background:var(--primary);color:#fff;font-weight:800;padding:0 14px;cursor:pointer;}
+  .order-chat-img-btn{flex:none;width:44px!important;padding:0!important;background:var(--primary-tint)!important;color:var(--primary)!important;border:1px solid var(--line)!important;font-size:18px!important;}
   .order-chat-meta{font-size:11px;color:var(--soft);margin-top:2px;}
+  .order-chat-upload-status{font-size:12px;color:var(--soft);margin-top:6px;min-height:16px;}
+  .msg-img{display:block;max-width:220px;max-height:260px;border-radius:12px;margin-bottom:5px;object-fit:cover;background:rgba(0,0,0,.06);}
+  .msg.me .msg-img{margin-left:auto;}
+  .msg .msg-text{white-space:pre-wrap;}
   @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important;} }
   .leaflet-control-zoom{margin:12px !important;}
   .leaflet-control-zoom a{border-radius:8px !important;}
@@ -2187,6 +2192,12 @@
     loadOrderChat(o.id, mode);
     if(el("orderChatSend")) el("orderChatSend").addEventListener("click", function(){ sendOrderChat(o.id, mode); });
     if(el("orderChatInput")) el("orderChatInput").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sendOrderChat(o.id, mode); } });
+    if(el("orderChatImagePick")) el("orderChatImagePick").addEventListener("click", function(){ if(el("orderChatImageInput")) el("orderChatImageInput").click(); });
+    if(el("orderChatImageInput")) el("orderChatImageInput").addEventListener("change", function(){
+      var f = this.files && this.files[0] ? this.files[0] : null;
+      this.value = "";
+      if(f) uploadAndSendOrderChatImage(o.id, mode, f);
+    });
     sh.querySelectorAll("[data-ostatus]").forEach(function(btn){
       btn.addEventListener("click", function(e){
         e.stopPropagation();
@@ -2200,7 +2211,8 @@
     return '<div class="panel-card order-chat-box">'+
       '<b>💬 Buyurtma chati</b><div class="idesc" style="margin-top:3px">Bu suhbat faqat shu buyurtmaga bog‘langan. Umumiy chatga aralashmaydi.</div>'+
       '<div class="order-chat-list" id="orderChatList"><div class="order-chat-empty">Xabarlar yuklanmoqda...</div></div>'+
-      '<div class="order-chat-send"><input id="orderChatInput" placeholder="Buyurtma bo‘yicha xabar yozing..." autocomplete="off"><button id="orderChatSend">Yuborish</button></div>'+
+      '<div class="order-chat-send"><button id="orderChatImagePick" class="order-chat-img-btn" type="button" title="Rasm yuborish">🖼</button><input id="orderChatImageInput" type="file" accept="image/*" style="display:none"><input id="orderChatInput" type="text" placeholder="Buyurtma bo‘yicha xabar yozing..." autocomplete="off"><button id="orderChatSend" type="button">Yuborish</button></div>'+
+      '<div class="order-chat-upload-status" id="orderChatUploadStatus"></div>'+
       '</div>';
   }
   function orderChatActor(mode){ return mode==="inbox" ? "business" : "user"; }
@@ -2213,7 +2225,9 @@
       var d=new Date((m.created_at||0)*1000);
       var t=d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       var name = m.mine ? "Siz" : (m.sender_name || "Qarshi tomon");
-      return '<div class="msg '+(m.mine?'me':'them')+'">'+esc(m.text||"")+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
+      var img = m.media_url ? '<img class="msg-img" src="'+esc(m.media_url)+'" alt="Rasm">' : '';
+      var txt = m.text ? '<div class="msg-text">'+esc(m.text||"")+'</div>' : '';
+      return '<div class="msg '+(m.mine?'me':'them')+'">'+img+txt+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
     }).join("");
     box.scrollTop = box.scrollHeight;
   }
@@ -2225,6 +2239,91 @@
       return d;
     }).catch(function(e){ if(el("orderChatList")) el("orderChatList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
+  function setOrderChatUploadStatus(txt){
+    if(el("orderChatUploadStatus")) el("orderChatUploadStatus").textContent = txt || "";
+  }
+  function guessImageMime(file){
+    var t=(file && file.type ? file.type : "").toLowerCase();
+    if(t) return t;
+    var n=(file && file.name ? file.name : "").toLowerCase();
+    if(/\.jpe?g$/.test(n)) return "image/jpeg";
+    if(/\.png$/.test(n)) return "image/png";
+    if(/\.webp$/.test(n)) return "image/webp";
+    if(/\.gif$/.test(n)) return "image/gif";
+    return "";
+  }
+  function readFileDataUrl(file){
+    return new Promise(function(resolve, reject){
+      var r=new FileReader();
+      r.onload=function(){ resolve(String(r.result||"")); };
+      r.onerror=function(){ reject(new Error("Rasmni o‘qib bo‘lmadi.")); };
+      r.readAsDataURL(file);
+    });
+  }
+  function resizeImageForChat(file, dataUrl, mime){
+    return new Promise(function(resolve){
+      if(mime === "image/gif"){
+        resolve({dataUrl:dataUrl, mime:mime});
+        return;
+      }
+      var img=new Image();
+      img.onload=function(){
+        var max=1280;
+        var w=img.width, h=img.height;
+        var need=(file.size > 900000 || w > max || h > max);
+        if(!need){ resolve({dataUrl:dataUrl, mime:mime}); return; }
+        var scale=Math.min(max/w, max/h, 1);
+        var nw=Math.max(1, Math.round(w*scale));
+        var nh=Math.max(1, Math.round(h*scale));
+        var c=document.createElement("canvas");
+        c.width=nw; c.height=nh;
+        var ctx=c.getContext("2d");
+        ctx.drawImage(img,0,0,nw,nh);
+        resolve({dataUrl:c.toDataURL("image/jpeg", .82), mime:"image/jpeg"});
+      };
+      img.onerror=function(){ resolve({dataUrl:dataUrl, mime:mime}); };
+      img.src=dataUrl;
+    });
+  }
+  function orderImagePayload(file){
+    var mime=guessImageMime(file);
+    if(!/^image\//.test(mime)) throw new Error("Faqat rasm yuborish mumkin.");
+    if(file.size > 12*1024*1024) throw new Error("Rasm hajmi juda katta. 12 MB dan kichik rasm tanlang.");
+    return readFileDataUrl(file).then(function(dataUrl){
+      return resizeImageForChat(file, dataUrl, mime);
+    }).then(function(res){
+      var base64=(res.dataUrl.indexOf(",")>=0 ? res.dataUrl.split(",").pop() : res.dataUrl);
+      return { file_name:file.name||"rasm", mime_type:res.mime, data_base64:base64 };
+    });
+  }
+  function uploadAndSendOrderChatImage(id, mode, file){
+    var pick=el("orderChatImagePick"), send=el("orderChatSend"), inp=el("orderChatInput");
+    var caption=(inp && inp.value ? inp.value.trim() : "");
+    if(pick) pick.disabled=true;
+    if(send) send.disabled=true;
+    setOrderChatUploadStatus("Rasm tayyorlanmoqda...");
+    orderImagePayload(file).then(function(payload){
+      setOrderChatUploadStatus("Rasm yuklanmoqda...");
+      return api("POST", "/api/uploads/order-chat-image", payload);
+    }).then(function(up){
+      setOrderChatUploadStatus("Chatga yuborilmoqda...");
+      var atype=orderChatActor(mode);
+      return api("POST","/api/orders/"+id+"/chat", withActor({text:caption, media_type:"photo", media_url:up.media_url, media_name:file.name||"rasm"}, atype));
+    }).then(function(){
+      if(inp) inp.value="";
+      setOrderChatUploadStatus("");
+      return loadOrderChat(id, mode);
+    }).then(function(){
+      if(mode==="inbox") loadBizOrders(); else loadMyOrders();
+    }).catch(function(e){
+      setOrderChatUploadStatus("");
+      alert(e.message || "Rasm yuborishda xatolik.");
+    }).finally(function(){
+      if(pick) pick.disabled=false;
+      if(send) send.disabled=false;
+    });
+  }
+
   function sendOrderChat(id, mode){
     var inp=el("orderChatInput");
     var btn=el("orderChatSend");
