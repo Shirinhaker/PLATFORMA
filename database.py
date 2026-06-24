@@ -11,6 +11,7 @@ Jadval tuzilishi kelishilgan dizaynga mos:
   follows       - obunalar (odamga ham, biznesga ham)
   saved         - saqlanganlar
   orders        - buyurtma va navbat yozuvlari (user/business aktyorlar bo'yicha)
+  order_messages - buyurtma ichidagi chat xabarlari (matn/rasm)
   debtors/qarz_tx - qarz daftari (biznes kabineti bo'limi)
   pending_regs  - ro'yxatdan o'tish kutilmoqda (kod tasdiqlangunicha)
   auth_codes    - kirishdagi tasdiqlash kodlari
@@ -204,6 +205,9 @@ def init_db():
             sender_actor_id INTEGER NOT NULL,                  -- user.id yoki businesses.id
             sender_user_id  INTEGER NOT NULL,                  -- Telegram egasi user.id
             text            TEXT DEFAULT '',
+            media_type      TEXT DEFAULT '',                   -- 'photo' yoki bo'sh
+            media_url       TEXT DEFAULT '',                   -- ilova ichida yuklangan rasm URL manzili
+            media_name      TEXT DEFAULT '',                   -- asl fayl nomi
             created_at      INTEGER NOT NULL,
             FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
             FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -435,9 +439,19 @@ def _migrate(conn):
             sender_actor_id INTEGER NOT NULL,
             sender_user_id  INTEGER NOT NULL,
             text            TEXT DEFAULT '',
+            media_type      TEXT DEFAULT '',
+            media_url       TEXT DEFAULT '',
+            media_name      TEXT DEFAULT '',
             created_at      INTEGER NOT NULL
         )"""
     )
+    omcols = [r["name"] for r in conn.execute("PRAGMA table_info(order_messages)").fetchall()]
+    if "media_type" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN media_type TEXT DEFAULT ''")
+    if "media_url" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN media_url TEXT DEFAULT ''")
+    if "media_name" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN media_name TEXT DEFAULT ''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_sender ON order_messages(sender_kind, sender_actor_id, created_at)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
