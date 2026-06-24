@@ -38,7 +38,6 @@ BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
 TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join(os.path.dirname(DB_PATH) or ".", "uploads"))
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 
@@ -202,15 +201,7 @@ async def whitelist_middleware(request: Request, call_next):
 
     # Telegram webhookni bloklamaymiz: u Telegram serveridan keladi.
     if path == "/webhook":
-        response = await call_next(request)
-
-    # Telegram WebApp/WebView ba'zan eski index.html ni keshda ushlab qoladi.
-    # Mini App HTML va statik frontend fayllari doim yangi versiyada ochilishi uchun keshni o'chiramiz.
-    if path == "/" or path.endswith(".html") or path in ("/index.html",):
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-    return response
+        return await call_next(request)
 
     # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
@@ -821,10 +812,6 @@ async def test_last_code(tg_id: int):
         raise HTTPException(404, "not found")
     return {"code": _test_codes.get(tg_id)}
 
-
-# ---------- Yuklangan rasm/fayllar ----------
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ---------- Mini App (eng oxirida) ----------
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
