@@ -17,63 +17,12 @@ Bo'limlar:
 import json
 import time
 import re
-import os
-import base64
-import uuid
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
-from database import db, DB_PATH
+from database import db
 
 router = APIRouter(prefix="/api")
-
-
-# ---------- Buyurtma chat rasm yuklash yordamchilari ----------
-ORDER_CHAT_IMAGE_MAX_BYTES = int(os.environ.get("ORDER_CHAT_IMAGE_MAX_BYTES", str(5 * 1024 * 1024)))
-_ALLOWED_ORDER_IMAGE_MIMES = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-}
-
-
-def _upload_root():
-    root = os.environ.get("UPLOAD_DIR")
-    if not root:
-        base = os.path.dirname(DB_PATH) or "."
-        root = os.path.join(base, "uploads")
-    os.makedirs(os.path.join(root, "order_chat"), exist_ok=True)
-    return root
-
-
-def _strip_data_url(data):
-    data = (data or "").strip()
-    if data.startswith("data:") and "," in data:
-        return data.split(",", 1)[1]
-    return data
-
-
-def _image_magic_ok(raw, mime):
-    if mime == "image/jpeg":
-        return raw.startswith(b"\xff\xd8")
-    if mime == "image/png":
-        return raw.startswith(b"\x89PNG\r\n\x1a\n")
-    if mime == "image/webp":
-        return raw.startswith(b"RIFF") and raw[8:12] == b"WEBP"
-    if mime == "image/gif":
-        return raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a")
-    return False
-
-
-def _safe_media_url(url):
-    url = (url or "").strip()
-    # Faqat o'zimiz yuklagan order chat rasmlariga ruxsat beramiz.
-    if not url.startswith("/uploads/order_chat/"):
-        return ""
-    if ".." in url or "\\" in url:
-        return ""
-    return url[:500]
 
 
 # ---------- Yordamchilar ----------
@@ -1652,7 +1601,7 @@ def _order_to_dict(conn, r, view="customer"):
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
-    last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+    last_chat = conn.execute("SELECT text, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -1682,7 +1631,7 @@ def _order_to_dict(conn, r, view="customer"):
         "customer_seen_at": _row_val(r, "customer_seen_at", 0),
         "is_unread": _order_seen_value(r, view) <= 0,
         "chat_count": chat_count,
-        "last_chat": ((last_chat["text"] if last_chat and last_chat["text"] else ("📷 Rasm" if last_chat and last_chat["media_type"] else ""))),
+        "last_chat": (last_chat["text"] if last_chat else ""),
         "last_chat_at": (last_chat["created_at"] if last_chat else 0),
         "view": view,
     }
@@ -1998,42 +1947,6 @@ def _mark_order_seen_for_side(conn, order_id, side, now=None):
     return now
 
 
-@router.post("/uploads/order-chat-image")
-async def upload_order_chat_image(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Buyurtma chatiga telefon galereyasidan tanlangan rasmni yuklash."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    conn.close()
-    b = await request.json()
-    mime = (b.get("mime_type") or "").strip().lower()
-    if mime == "image/jpg":
-        mime = "image/jpeg"
-    if mime not in _ALLOWED_ORDER_IMAGE_MIMES:
-        raise HTTPException(400, "Faqat JPG, PNG, WEBP yoki GIF rasm yuborish mumkin.")
-    encoded = _strip_data_url(b.get("data_base64") or b.get("data") or "")
-    if not encoded:
-        raise HTTPException(400, "Rasm ma'lumoti yuborilmadi.")
-    try:
-        raw = base64.b64decode(encoded, validate=True)
-    except Exception:
-        raise HTTPException(400, "Rasm formati noto'g'ri.")
-    if not raw:
-        raise HTTPException(400, "Bo'sh rasm yuborildi.")
-    if len(raw) > ORDER_CHAT_IMAGE_MAX_BYTES:
-        raise HTTPException(400, "Rasm hajmi 5 MB dan oshmasin.")
-    if not _image_magic_ok(raw, mime):
-        raise HTTPException(400, "Rasm fayli buzilgan yoki formati mos emas.")
-
-    ext = _ALLOWED_ORDER_IMAGE_MIMES[mime]
-    fname = "oc_{}_{}_{}.{}".format(me["id"], int(time.time()), uuid.uuid4().hex[:12], ext)
-    root = _upload_root()
-    folder = os.path.join(root, "order_chat")
-    path = os.path.join(folder, fname)
-    with open(path, "wb") as f:
-        f.write(raw)
-    return {"ok": True, "media_url": "/uploads/order_chat/" + fname, "media_type": "photo", "mime_type": mime, "size": len(raw)}
-
-
 @router.get("/orders/{order_id}/chat")
 async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     """Buyurtma ichidagi alohida chat xabarlari. Umumiy chatga aralashmaydi."""
@@ -2064,9 +1977,6 @@ async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegra
         msgs.append({
             "id": r["id"],
             "text": r["text"] or "",
-            "media_type": _row_val(r, "media_type", "") or "",
-            "media_url": _row_val(r, "media_url", "") or "",
-            "media_name": _row_val(r, "media_name", "") or "",
             "mine": mine,
             "sender_name": sender.get("name") or "",
             "sender_kind": r["sender_kind"],
@@ -2085,17 +1995,9 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
     me = require_user(conn, x_telegram_init_data)
     b = await request.json()
     text = (b.get("text") or "").strip()
-    media_type = (b.get("media_type") or "").strip().lower()
-    media_url = _safe_media_url(b.get("media_url") or "")
-    media_name = (b.get("media_name") or "").strip()[:160]
-    if media_type and media_type != "photo":
-        media_type = ""
-    if media_type == "photo" and not media_url:
+    if not text:
         conn.close()
-        raise HTTPException(400, "Rasm manzili noto'g'ri.")
-    if not text and not media_url:
-        conn.close()
-        raise HTTPException(400, "Xabar matni yoki rasm kiritilishi shart.")
+        raise HTTPException(400, "Xabar matni kiritilishi shart.")
     if len(text) > 2000:
         text = text[:2000]
 
@@ -2112,10 +2014,9 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
 
     now = int(time.time())
     cur = conn.execute(
-        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
-                                      text, media_type, media_url, media_name, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, text, media_type, media_url, media_name, now),
+        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id, text, created_at)
+           VALUES(?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, text, now),
     )
     mid = cur.lastrowid
     # Xabar yuborgan tomon ko'rdi, qarshi tomonda esa yangilanish belgisi chiqadi.
