@@ -38,6 +38,7 @@ BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
 TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join(os.path.dirname(DB_PATH) or ".", "uploads"))
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 
@@ -812,6 +813,10 @@ async def test_last_code(tg_id: int):
         raise HTTPException(404, "not found")
     return {"code": _test_codes.get(tg_id)}
 
+
+# ---------- Yuklangan rasm/fayllar ----------
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ---------- Mini App (eng oxirida) ----------
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
