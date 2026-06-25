@@ -1603,7 +1603,7 @@ def _order_to_dict(conn, r, view="customer"):
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
-    last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+    last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -1949,6 +1949,33 @@ def _mark_order_seen_for_side(conn, order_id, side, now=None):
     return now
 
 
+def _clean_order_reply_to_id(conn, order_id, value):
+    """Reply qilinayotgan xabar shu buyurtmaga tegishli ekanini tekshiradi."""
+    try:
+        mid = int(value or 0)
+    except Exception:
+        return None
+    if mid <= 0:
+        return None
+    r = conn.execute(
+        "SELECT id FROM order_messages WHERE id=? AND order_id=?",
+        (mid, order_id),
+    ).fetchone()
+    if not r:
+        raise HTTPException(400, "Javob berilayotgan xabar topilmadi.")
+    return mid
+
+
+def _mark_order_changed_for_side(conn, order_id, side, now=None):
+    """Chatdagi o'zgarishda yuborgan tomon ko'rdi, qarshi tomonda yangilanish belgisi chiqadi."""
+    now = now or int(time.time())
+    if side == "provider":
+        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
+    else:
+        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+    return now
+
+
 @router.get("/orders/{order_id}/chat")
 async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     """Buyurtma ichidagi alohida chat xabarlari. Umumiy chatga aralashmaydi."""
@@ -1972,6 +1999,26 @@ async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegra
     now = _mark_order_seen_for_side(conn, order_id, side)
     conn.commit()
 
+    row_by_id = {int(r["id"]): r for r in rows}
+
+    def msg_reply_preview(reply_id):
+        try:
+            rid = int(reply_id or 0)
+        except Exception:
+            rid = 0
+        rr = row_by_id.get(rid)
+        if not rr:
+            return None
+        rs = _actor_brief(conn, rr["sender_kind"], rr["sender_actor_id"])
+        return {
+            "id": rr["id"],
+            "text": rr["text"] or "",
+            "media_type": _row_val(rr, "media_type", "text") or "text",
+            "media_url": _row_val(rr, "media_url", "") or "",
+            "is_deleted": bool(_row_val(rr, "is_deleted", 0) or 0),
+            "sender_name": rs.get("name") or "",
+        }
+
     msgs = []
     for r in rows:
         mine = (r["sender_kind"] == kind and int(r["sender_actor_id"]) == int(actor_id))
@@ -1982,6 +2029,11 @@ async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegra
             "media_type": _row_val(r, "media_type", "text") or "text",
             "media_url": _row_val(r, "media_url", "") or "",
             "file_name": _row_val(r, "file_name", "") or "",
+            "reply_to_id": _row_val(r, "reply_to_id", None),
+            "reply": msg_reply_preview(_row_val(r, "reply_to_id", None)),
+            "edited_at": int(_row_val(r, "edited_at", 0) or 0),
+            "deleted_at": int(_row_val(r, "deleted_at", 0) or 0),
+            "is_deleted": bool(_row_val(r, "is_deleted", 0) or 0),
             "mine": mine,
             "sender_name": sender.get("name") or "",
             "sender_kind": r["sender_kind"],
@@ -2017,18 +2069,16 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
         conn.close()
         raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
 
+    reply_to_id = _clean_order_reply_to_id(conn, order_id, b.get("reply_to_id"))
     now = int(time.time())
     cur = conn.execute(
-        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id, text, media_type, media_url, file_name, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, text, "text", "", "", now),
+        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
+                                      text, media_type, media_url, file_name, reply_to_id, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, text, "text", "", "", reply_to_id, now),
     )
     mid = cur.lastrowid
-    # Xabar yuborgan tomon ko'rdi, qarshi tomonda esa yangilanish belgisi chiqadi.
-    if side == "provider":
-        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
-    else:
-        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+    _mark_order_changed_for_side(conn, order_id, side, now)
 
     sender_name = _actor_brief(conn, kind, actor_id)["name"]
     other = _order_other_side_info(conn, row, side)
@@ -2054,7 +2104,8 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
 
 @router.post("/orders/{order_id}/chat/image")
 async def send_order_chat_image(order_id: int, request: Request, actor_type: str = "user",
-                                text: str = "", x_telegram_init_data: str = Header(default="")):
+                                text: str = "", reply_to_id: int = 0,
+                                x_telegram_init_data: str = Header(default="")):
     """Buyurtma chatiga rasm yuborish. Rasm UPLOAD_DIR/order_chat papkasiga saqlanadi."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
@@ -2103,20 +2154,17 @@ async def send_order_chat_image(order_id: int, request: Request, actor_type: str
 
     media_url = "/uploads/order_chat/" + safe_name
     caption = (text or "").strip()[:1000]
+    reply_to_id = _clean_order_reply_to_id(conn, order_id, reply_to_id)
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
-                                      text, media_type, media_url, file_name, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, caption, "photo", media_url, safe_name, now),
+                                      text, media_type, media_url, file_name, reply_to_id, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, caption, "photo", media_url, safe_name, reply_to_id, now),
     )
     mid = cur.lastrowid
 
-    # Rasm yuborgan tomon ko'rdi, qarshi tomonda esa buyurtma yangilanish belgisi chiqadi.
-    if side == "provider":
-        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
-    else:
-        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+    _mark_order_changed_for_side(conn, order_id, side, now)
 
     sender_name = _actor_brief(conn, kind, actor_id)["name"]
     other = _order_other_side_info(conn, row, side)
@@ -2141,6 +2189,103 @@ async def send_order_chat_image(order_id: int, request: Request, actor_type: str
         except Exception:
             pass
     return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
+
+
+@router.put("/orders/{order_id}/chat/{message_id}")
+async def edit_order_chat_message(order_id: int, message_id: int, request: Request,
+                                  x_telegram_init_data: str = Header(default="")):
+    """Buyurtma chatidagi o'z xabarini tahrirlash."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    text = (b.get("text") or "").strip()
+    if not text:
+        conn.close()
+        raise HTTPException(400, "Tahrirlash uchun matn kiriting.")
+    if len(text) > 2000:
+        text = text[:2000]
+
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, _owner_user_id = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    side = _order_actor_side(row, kind, actor_id)
+    if not side:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    msg = conn.execute(
+        "SELECT * FROM order_messages WHERE id=? AND order_id=?",
+        (message_id, order_id),
+    ).fetchone()
+    if not msg:
+        conn.close()
+        raise HTTPException(404, "Xabar topilmadi.")
+    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
+        conn.close()
+        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.")
+    if int(_row_val(msg, "is_deleted", 0) or 0):
+        conn.close()
+        raise HTTPException(400, "O'chirilgan xabarni tahrirlab bo'lmaydi.")
+    if not (msg["text"] or "").strip():
+        conn.close()
+        raise HTTPException(400, "Bu xabarda tahrirlanadigan matn yo'q.")
+
+    now = int(time.time())
+    conn.execute("UPDATE order_messages SET text=?, edited_at=? WHERE id=?", (text, now, message_id))
+    _mark_order_changed_for_side(conn, order_id, side, now)
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": message_id, "edited_at": now}
+
+
+@router.delete("/orders/{order_id}/chat/{message_id}")
+async def delete_order_chat_message(order_id: int, message_id: int, request: Request,
+                                    x_telegram_init_data: str = Header(default="")):
+    """Buyurtma chatidagi o'z xabarini xavfsiz o'chirish: xabar o'rnida 'Xabar o'chirildi' qoladi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    try:
+        b = await request.json()
+    except Exception:
+        b = {}
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, _owner_user_id = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    side = _order_actor_side(row, kind, actor_id)
+    if not side:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    msg = conn.execute(
+        "SELECT * FROM order_messages WHERE id=? AND order_id=?",
+        (message_id, order_id),
+    ).fetchone()
+    if not msg:
+        conn.close()
+        raise HTTPException(404, "Xabar topilmadi.")
+    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
+        conn.close()
+        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.")
+    if int(_row_val(msg, "is_deleted", 0) or 0):
+        conn.close()
+        return {"ok": True, "id": message_id, "already_deleted": True}
+
+    now = int(time.time())
+    conn.execute(
+        "UPDATE order_messages SET is_deleted=1, deleted_at=?, text='' WHERE id=?",
+        (now, message_id),
+    )
+    _mark_order_changed_for_side(conn, order_id, side, now)
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": message_id, "deleted_at": now}
+
 
 # ====================================================================
 # BILDIRISHNOMA FILTRLARI
