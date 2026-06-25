@@ -207,6 +207,10 @@ def init_db():
             media_type      TEXT DEFAULT 'text',             -- 'text' | 'photo'
             media_url       TEXT DEFAULT '',                 -- serverdagi rasm manzili
             file_name       TEXT DEFAULT '',                 -- asl fayl nomi
+            reply_to_id     INTEGER,                         -- qaysi xabarga javob berilgan
+            edited_at       INTEGER DEFAULT 0,                -- tahrirlangan vaqt
+            deleted_at      INTEGER DEFAULT 0,                -- o'chirilgan vaqt
+            is_deleted      INTEGER DEFAULT 0,                -- 1 bo'lsa xabar o'chirilgan
             created_at      INTEGER NOT NULL,
             FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
             FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -441,6 +445,10 @@ def _migrate(conn):
             media_type      TEXT DEFAULT 'text',
             media_url       TEXT DEFAULT '',
             file_name       TEXT DEFAULT '',
+            reply_to_id     INTEGER,
+            edited_at       INTEGER DEFAULT 0,
+            deleted_at      INTEGER DEFAULT 0,
+            is_deleted      INTEGER DEFAULT 0,
             created_at      INTEGER NOT NULL
         )"""
     )
@@ -451,9 +459,21 @@ def _migrate(conn):
         conn.execute("ALTER TABLE order_messages ADD COLUMN media_url TEXT DEFAULT ''")
     if "file_name" not in omcols:
         conn.execute("ALTER TABLE order_messages ADD COLUMN file_name TEXT DEFAULT ''")
+    if "reply_to_id" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN reply_to_id INTEGER")
+    if "edited_at" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN edited_at INTEGER DEFAULT 0")
+    if "deleted_at" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN deleted_at INTEGER DEFAULT 0")
+    if "is_deleted" not in omcols:
+        conn.execute("ALTER TABLE order_messages ADD COLUMN is_deleted INTEGER DEFAULT 0")
     conn.execute("UPDATE order_messages SET media_type='text' WHERE media_type IS NULL OR media_type=''")
+    conn.execute("UPDATE order_messages SET edited_at=0 WHERE edited_at IS NULL")
+    conn.execute("UPDATE order_messages SET deleted_at=0 WHERE deleted_at IS NULL")
+    conn.execute("UPDATE order_messages SET is_deleted=0 WHERE is_deleted IS NULL")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_order ON order_messages(order_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_sender ON order_messages(sender_kind, sender_actor_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_order_messages_reply ON order_messages(reply_to_id)")
     # Bildirishnoma filtrlari — foydalanuvchi qiziqishlari (tur+hudud+narx+kalit so'z)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS notify_filters(
