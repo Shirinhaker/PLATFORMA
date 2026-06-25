@@ -1288,6 +1288,40 @@ def _actor_brief(conn, kind, actor_id):
     return _resolve_target_actor(conn, kind, actor_id)
 
 
+def _clean_message_reply_to_id(conn, my_kind, my_actor_id, other_kind, other_actor_id, value):
+    """Umumiy chatda reply qilinayotgan xabar aynan shu ikki aktyor suhbatiga tegishlimi — tekshiradi."""
+    try:
+        mid = int(value or 0)
+    except Exception:
+        return None
+    if mid <= 0:
+        return None
+    r = conn.execute(
+        """SELECT id FROM messages
+           WHERE id=? AND (
+             (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
+             OR
+             (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
+           )""",
+        (mid, my_kind, my_actor_id, other_kind, other_actor_id,
+         other_kind, other_actor_id, my_kind, my_actor_id),
+    ).fetchone()
+    if not r:
+        raise HTTPException(400, "Javob berilayotgan xabar topilmadi.")
+    return mid
+
+
+def _message_preview_text(row):
+    """Suhbatlar ro'yxatida oxirgi xabarni qisqa ko'rsatish."""
+    if int(_row_val(row, "is_deleted", 0) or 0):
+        return "Xabar o'chirildi"
+    media_type = _row_val(row, "media_type", "text") or "text"
+    text = (_row_val(row, "text", "") or "").strip()
+    if media_type == "photo":
+        return text if text else "📷 Rasm"
+    return text
+
+
 @router.post("/messages/send")
 async def send_message(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1299,6 +1333,8 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
     if not to_id or not text:
         conn.close()
         raise HTTPException(400, "Qabul qiluvchi va matn kiritilishi shart.")
+    if len(text) > 2000:
+        text = text[:2000]
 
     actor = actor_from_body(conn, me, b)
     sender_kind, sender_actor_id, sender_owner_id = _actor_identity(actor)
@@ -1310,13 +1346,15 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
         conn.close()
         raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
 
+    reply_to_id = _clean_message_reply_to_id(conn, sender_kind, sender_actor_id, receiver["kind"], receiver["actor_id"], b.get("reply_to_id"))
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO messages(sender_id, receiver_id, sender_kind, sender_actor_id,
-                                  receiver_kind, receiver_actor_id, text, is_read, created_at)
-           VALUES(?,?,?,?,?,?,?,0,?)""",
+                                  receiver_kind, receiver_actor_id, text, media_type, media_url,
+                                  file_name, reply_to_id, is_read, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,0,?)""",
         (sender_owner_id, receiver["owner_user_id"], sender_kind, sender_actor_id,
-         receiver["kind"], receiver["actor_id"], text, now),
+         receiver["kind"], receiver["actor_id"], text, "text", "", "", reply_to_id, now),
     )
     mid = cur.lastrowid
     conn.commit()
@@ -1338,6 +1376,90 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
         except Exception:
             pass
     return {"ok": True, "id": mid, "created_at": now}
+
+
+@router.post("/messages/image")
+async def send_message_image(request: Request, to: int, to_kind: str = "user", actor_type: str = "user",
+                             text: str = "", reply_to_id: int = 0,
+                             x_telegram_init_data: str = Header(default="")):
+    """Umumiy Suhbatlarim chatiga rasm yuborish. Rasm UPLOAD_DIR/chat papkasiga saqlanadi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    sender_kind, sender_actor_id, sender_owner_id = _actor_identity(actor)
+    receiver = _resolve_target_actor(conn, to_kind, to)
+
+    if sender_kind == receiver["kind"] and int(sender_actor_id) == int(receiver["actor_id"]):
+        conn.close()
+        raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
+
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/heic": ".heic",
+        "image/heif": ".heif",
+    }
+    if ctype not in allowed:
+        conn.close()
+        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
+
+    raw = await request.body()
+    max_size = 8 * 1024 * 1024
+    if not raw:
+        conn.close()
+        raise HTTPException(400, "Rasm fayli topilmadi.")
+    if len(raw) > max_size:
+        conn.close()
+        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
+
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "chat")
+    os.makedirs(folder, exist_ok=True)
+    ext = allowed[ctype]
+    safe_name = "chat_" + str(sender_kind) + "_" + str(sender_actor_id) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
+    path = os.path.join(folder, safe_name)
+    with open(path, "wb") as f:
+        f.write(raw)
+
+    media_url = "/uploads/chat/" + safe_name
+    caption = (text or "").strip()[:1000]
+    clean_reply_to_id = _clean_message_reply_to_id(conn, sender_kind, sender_actor_id, receiver["kind"], receiver["actor_id"], reply_to_id)
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO messages(sender_id, receiver_id, sender_kind, sender_actor_id,
+                                  receiver_kind, receiver_actor_id, text, media_type, media_url,
+                                  file_name, reply_to_id, is_read, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,0,?)""",
+        (sender_owner_id, receiver["owner_user_id"], sender_kind, sender_actor_id,
+         receiver["kind"], receiver["actor_id"], caption, "photo", media_url, safe_name, clean_reply_to_id, now),
+    )
+    mid = cur.lastrowid
+
+    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
+    receiver_tg = receiver["tg_id"]
+    conn.commit()
+    conn.close()
+
+    if receiver_tg:
+        try:
+            from main import tg_call, BASE_URL
+            msg = "📷 Sizga yangi rasm: " + sender_name
+            if caption:
+                msg += "\n\n" + caption[:300]
+            await tg_call("sendMessage", {
+                "chat_id": receiver_tg,
+                "text": msg,
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+    return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
 
 
 @router.get("/messages/with/{target_id}")
@@ -1367,10 +1489,46 @@ async def conversation_with(target_id: int, target_kind: str = "user", actor_typ
     )
     conn.commit()
 
+    row_by_id = {int(r["id"]): r for r in rows}
+
+    def msg_reply_preview(reply_id):
+        try:
+            rid = int(reply_id or 0)
+        except Exception:
+            rid = 0
+        rr = row_by_id.get(rid)
+        if not rr:
+            return None
+        rs = _actor_brief(conn, rr["sender_kind"], rr["sender_actor_id"])
+        return {
+            "id": rr["id"],
+            "text": rr["text"] or "",
+            "media_type": _row_val(rr, "media_type", "text") or "text",
+            "media_url": _row_val(rr, "media_url", "") or "",
+            "is_deleted": bool(_row_val(rr, "is_deleted", 0) or 0),
+            "sender_name": rs.get("name") or "",
+        }
+
     msgs = []
     for r in rows:
         mine = (r["sender_kind"] == my_kind and int(r["sender_actor_id"]) == my_actor_id)
-        msgs.append({"id": r["id"], "text": r["text"], "mine": mine, "created_at": r["created_at"]})
+        sender = _actor_brief(conn, r["sender_kind"], r["sender_actor_id"])
+        msgs.append({
+            "id": r["id"],
+            "text": r["text"] or "",
+            "media_type": _row_val(r, "media_type", "text") or "text",
+            "media_url": _row_val(r, "media_url", "") or "",
+            "file_name": _row_val(r, "file_name", "") or "",
+            "reply_to_id": _row_val(r, "reply_to_id", None),
+            "reply": msg_reply_preview(_row_val(r, "reply_to_id", None)),
+            "edited_at": int(_row_val(r, "edited_at", 0) or 0),
+            "deleted_at": int(_row_val(r, "deleted_at", 0) or 0),
+            "is_deleted": bool(_row_val(r, "is_deleted", 0) or 0),
+            "mine": mine,
+            "sender_name": sender.get("name") or "",
+            "sender_kind": r["sender_kind"],
+            "created_at": r["created_at"],
+        })
     conn.close()
     return {"other": other, "messages": msgs}
 
@@ -1402,7 +1560,7 @@ async def conversations(actor_type: str = "user", x_telegram_init_data: str = He
             other_id = int(r["sender_actor_id"])
         key = other_kind + ":" + str(other_id)
         if key not in seen:
-            seen[key] = {"kind": other_kind, "id": other_id, "last": r["text"], "created_at": r["created_at"], "unread": 0}
+            seen[key] = {"kind": other_kind, "id": other_id, "last": _message_preview_text(r), "created_at": r["created_at"], "unread": 0}
             order.append(key)
         if (r["receiver_kind"] == my_kind and int(r["receiver_actor_id"]) == my_actor_id and not r["is_read"]):
             seen[key]["unread"] += 1
@@ -1423,6 +1581,74 @@ async def conversations(actor_type: str = "user", x_telegram_init_data: str = He
         })
     conn.close()
     return result
+
+
+@router.put("/messages/{message_id}")
+async def edit_message(message_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Suhbatlarim bo'limidagi o'z matnli xabarini tahrirlash."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    text = (b.get("text") or "").strip()
+    if not text:
+        conn.close()
+        raise HTTPException(400, "Tahrirlash uchun matn kiriting.")
+    if len(text) > 2000:
+        text = text[:2000]
+
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, _owner_user_id = _actor_identity(actor)
+    msg = conn.execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
+    if not msg:
+        conn.close()
+        raise HTTPException(404, "Xabar topilmadi.")
+    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
+        conn.close()
+        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.")
+    if int(_row_val(msg, "is_deleted", 0) or 0):
+        conn.close()
+        raise HTTPException(400, "O'chirilgan xabarni tahrirlab bo'lmaydi.")
+    if not (msg["text"] or "").strip():
+        conn.close()
+        raise HTTPException(400, "Bu xabarda tahrirlanadigan matn yo'q.")
+
+    now = int(time.time())
+    conn.execute("UPDATE messages SET text=?, edited_at=?, is_read=0 WHERE id=?", (text, now, message_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": message_id, "edited_at": now}
+
+
+@router.delete("/messages/{message_id}")
+async def delete_message(message_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Suhbatlarim bo'limidagi o'z xabarini xavfsiz o'chirish: o'rnida 'Xabar o'chirildi' qoladi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    try:
+        b = await request.json()
+    except Exception:
+        b = {}
+    actor = actor_from_body(conn, me, b)
+    kind, actor_id, _owner_user_id = _actor_identity(actor)
+    msg = conn.execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
+    if not msg:
+        conn.close()
+        raise HTTPException(404, "Xabar topilmadi.")
+    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
+        conn.close()
+        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.")
+    if int(_row_val(msg, "is_deleted", 0) or 0):
+        conn.close()
+        return {"ok": True, "id": message_id, "already_deleted": True}
+
+    now = int(time.time())
+    conn.execute(
+        "UPDATE messages SET is_deleted=1, deleted_at=?, text='', is_read=0 WHERE id=?",
+        (now, message_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": message_id, "deleted_at": now}
 
 
 @router.get("/messages/unread_count")
