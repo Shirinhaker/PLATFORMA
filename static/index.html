@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1372 -->
+<title>Platforma</title><!-- BUILD: v1373 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -402,13 +402,11 @@
   .order-chat-attach-btn{width:100%;height:44px;border:1.5px dashed var(--primary);border-radius:14px;background:var(--primary-tint);color:var(--primary);font:inherit;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;}
   .order-chat-attach-btn:active{transform:scale(.98);}
   .order-chat-file{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
-  .order-chat-preview{display:none;margin-top:9px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;}
+  .order-chat-preview{display:none;position:relative;margin-top:9px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;}
   .order-chat-preview.on{display:block;}
   .order-chat-preview img{width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:rgba(0,0,0,.06);display:block;}
-  .order-chat-preview-actions{display:flex;gap:8px;margin-top:9px;}
-  .order-chat-preview-actions button{flex:1;height:40px;border-radius:12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;}
-  .order-chat-preview-send{border:none;background:var(--primary);color:var(--primary-ink);}
-  .order-chat-preview-cancel{border:1px solid var(--line);background:var(--card);color:var(--ink);}
+  .order-chat-preview-x{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.30);background:rgba(0,0,0,.62);color:#fff;font-size:19px;font-weight:900;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:2;}
+  .order-chat-preview-x:active{transform:scale(.94);}
   .order-chat-send{display:flex;gap:8px;margin-top:9px;}
   .order-chat-send input{flex:1;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 13px;font:inherit;outline:none;}
   .order-chat-send button{height:44px;border:none;border-radius:22px;background:var(--primary);color:#fff;font-weight:800;padding:0 14px;cursor:pointer;}
@@ -2215,7 +2213,7 @@
       '<b>💬 Buyurtma chati</b><div class="idesc" style="margin-top:3px">Bu suhbat faqat shu buyurtmaga bog‘langan. Umumiy chatga aralashmaydi.</div>'+
       '<div class="order-chat-list" id="orderChatList"><div class="order-chat-empty">Xabarlar yuklanmoqda...</div></div>'+
       '<div class="order-chat-attach-row"><label class="order-chat-attach-btn" for="orderChatImageInput">📎 Rasm qo‘shish</label><input class="order-chat-file" id="orderChatImageInput" type="file" accept="image/*"></div>'+
-      '<div class="order-chat-preview" id="orderChatImagePreview"><img id="orderChatImagePreviewImg" alt="Tanlangan rasm"><div class="order-chat-preview-actions"><button class="order-chat-preview-send" id="orderChatImageSend" type="button">Yuborish</button><button class="order-chat-preview-cancel" id="orderChatImageCancel" type="button">Bekor qilish</button></div><div class="idesc" style="margin-top:7px">Bu 2-bosqich: rasm hozircha serverga yuborilmaydi.</div></div>'+
+      '<div class="order-chat-preview" id="orderChatImagePreview"><button class="order-chat-preview-x" id="orderChatImageCancel" type="button" aria-label="Rasmni bekor qilish">×</button><img id="orderChatImagePreviewImg" alt="Tanlangan rasm"><div class="idesc" style="margin-top:7px">Rasm tanlandi. Yuborish uchun chatdagi “Yuborish” tugmasini bosing.</div></div>'+
       '<div class="order-chat-send"><input id="orderChatInput" placeholder="Buyurtma bo‘yicha xabar yozing..." autocomplete="off"><button id="orderChatSend">Yuborish</button></div>'+
       '</div>';
   }
@@ -2232,10 +2230,13 @@
     if(img) img.removeAttribute("src");
     if(box) box.classList.remove("on");
   }
+  function hasOrderChatImagePreview(){
+    var inp=el("orderChatImageInput");
+    return !!(inp && inp.files && inp.files[0]);
+  }
   function bindOrderChatImagePreview(){
     var inp=el("orderChatImageInput");
     var cancel=el("orderChatImageCancel");
-    var send=el("orderChatImageSend");
     if(inp) inp.addEventListener("change", function(){
       var file = inp.files && inp.files[0];
       if(!file){ clearOrderChatImagePreview(); return; }
@@ -2254,10 +2255,6 @@
     if(cancel) cancel.addEventListener("click", function(e){
       e.preventDefault();
       clearOrderChatImagePreview();
-    });
-    if(send) send.addEventListener("click", function(e){
-      e.preventDefault();
-      alert("Rasm yuborish keyingi bosqichda qo‘shiladi.");
     });
   }
   function renderOrderChatMessages(msgs){
@@ -2286,6 +2283,10 @@
     var btn=el("orderChatSend");
     if(!inp) return;
     var text=(inp.value||"").trim();
+    if(hasOrderChatImagePreview()){
+      alert("Rasm yuborish keyingi bosqichda qo‘shiladi. Hozircha rasm serverga yuborilmaydi.");
+      return;
+    }
     if(!text) return;
     if(btn) btn.disabled=true;
     var atype=orderChatActor(mode);
