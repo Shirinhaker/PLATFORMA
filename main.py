@@ -12,6 +12,7 @@ Bu bosqichda (B bo'lim, poydevor):
 
 Environment variables:
   BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET
+  UPLOAD_DIR=/data/uploads  -> Railway Volume uchun doimiy rasm papkasi
   TEST_MODE=1  -> sinov rejimi (kod Telegramga emas, xotirada qoladi — faqat test uchun)
 """
 
@@ -38,7 +39,28 @@ BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
 TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "uploads")
+
+
+def resolve_upload_dir():
+    """
+    Rasm/fayllar saqlanadigan papkani aniqlaydi.
+
+    Railway'da rasm yo'qolmasligi uchun eng to'g'ri yo'l:
+      1) Railway Volume'ni /data ga ulash
+      2) UPLOAD_DIR=/data/uploads qilib qo'yish
+
+    Agar UPLOAD_DIR berilmagan bo'lsa, lekin /data papka mavjud bo'lsa,
+    avtomatik /data/uploads ishlatiladi. Lokal kompyuterda esa eski uploads papkasi qoladi.
+    """
+    env_dir = (os.environ.get("UPLOAD_DIR") or "").strip()
+    if env_dir:
+        return env_dir
+    if os.path.isdir("/data"):
+        return "/data/uploads"
+    return "uploads"
+
+
+UPLOAD_DIR = resolve_upload_dir()
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 
@@ -816,6 +838,7 @@ async def test_last_code(tg_id: int):
 
 # ---------- Yuklangan fayllar ----------
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+print("UPLOAD_DIR:", os.path.abspath(UPLOAD_DIR))
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ---------- Mini App (eng oxirida) ----------
