@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1374 -->
+<title>Platforma</title><!-- BUILD: v1375 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -430,8 +430,14 @@
   .msg.them{background:var(--card);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px;margin-right:auto;}
   .msg.me{background:var(--primary);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
   .msg-time{font-size:10.5px;opacity:.6;margin-top:2px;display:block;}
-  .order-chat-photo{display:block;width:100%;max-width:230px;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:6px;background:rgba(0,0,0,.08);}
+  .order-chat-photo{display:block;width:100%;max-width:230px;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:6px;background:rgba(0,0,0,.08);cursor:pointer;}
+  .order-chat-photo:active{transform:scale(.98);}
   .msg.me .order-chat-photo{margin-left:auto;}
+  .order-photo-viewer{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;padding:18px;}
+  .order-photo-viewer.on{display:flex;}
+  .order-photo-viewer img{max-width:100%;max-height:86vh;object-fit:contain;border-radius:14px;background:#111;box-shadow:0 14px 45px rgba(0,0,0,.45);}
+  .order-photo-viewer-x{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.55);color:#fff;font-size:25px;font-weight:900;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:2;}
+  .order-photo-viewer-x:active{transform:scale(.94);}
   .chat-day{text-align:center;font-size:12px;color:var(--soft);margin:10px 0;}
   .chat-bar{position:fixed;left:0;right:0;bottom:0;max-width:var(--appw,520px);margin:0 auto;display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line);}
   .chat-input{flex:1;border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-size:15px;background:var(--bg);color:var(--ink);outline:none;}
@@ -2155,6 +2161,7 @@
   }
   function closeOrderDetail(){
     clearOrderChatImagePreview();
+    closeOrderChatPhotoViewer();
     if(el("orderDetailBackdrop")) el("orderDetailBackdrop").classList.remove("on");
     if(el("orderDetailSheet")) el("orderDetailSheet").classList.remove("on");
     if(ORDER_DETAIL_MAP){ try{ ORDER_DETAIL_MAP.remove(); }catch(e){} ORDER_DETAIL_MAP=null; }
@@ -2275,6 +2282,53 @@
       clearOrderChatImagePreview();
     });
   }
+  function ensureOrderChatPhotoViewer(){
+    var viewer=el("orderChatPhotoViewer");
+    if(viewer) return viewer;
+    viewer=document.createElement("div");
+    viewer.id="orderChatPhotoViewer";
+    viewer.className="order-photo-viewer";
+    viewer.innerHTML='<button class="order-photo-viewer-x" id="orderChatPhotoViewerClose" type="button" aria-label="Rasmni yopish">×</button><img id="orderChatPhotoViewerImg" alt="Buyurtma chati rasmi">';
+    document.body.appendChild(viewer);
+    viewer.addEventListener("click", function(e){
+      if(e.target === viewer) closeOrderChatPhotoViewer();
+    });
+    if(el("orderChatPhotoViewerClose")){
+      el("orderChatPhotoViewerClose").addEventListener("click", function(e){
+        e.preventDefault();
+        closeOrderChatPhotoViewer();
+      });
+    }
+    if(!window.__ORDER_CHAT_PHOTO_ESC_BOUND__){
+      window.__ORDER_CHAT_PHOTO_ESC_BOUND__ = true;
+      document.addEventListener("keydown", function(e){
+        if(e.key === "Escape") closeOrderChatPhotoViewer();
+      });
+    }
+    return viewer;
+  }
+  function openOrderChatPhotoViewer(url){
+    if(!url) return;
+    var viewer=ensureOrderChatPhotoViewer();
+    var img=el("orderChatPhotoViewerImg");
+    if(img) img.src=url;
+    viewer.classList.add("on");
+  }
+  function closeOrderChatPhotoViewer(){
+    var viewer=el("orderChatPhotoViewer");
+    var img=el("orderChatPhotoViewerImg");
+    if(img) img.removeAttribute("src");
+    if(viewer) viewer.classList.remove("on");
+  }
+  function bindOrderChatPhotoOpeners(){
+    var box=el("orderChatList");
+    if(!box) return;
+    box.querySelectorAll(".order-chat-photo[data-photo-url]").forEach(function(img){
+      img.addEventListener("click", function(){
+        openOrderChatPhotoViewer(img.getAttribute("data-photo-url"));
+      });
+    });
+  }
   function renderOrderChatMessages(msgs){
     var box=el("orderChatList");
     if(!box) return;
@@ -2284,10 +2338,11 @@
       var d=new Date((m.created_at||0)*1000);
       var t=d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       var name = m.mine ? "Siz" : (m.sender_name || "Qarshi tomon");
-      var photo = (m.media_type === "photo" && m.media_url) ? '<img class="order-chat-photo" src="'+esc(m.media_url)+'" alt="Rasm">' : '';
+      var photo = (m.media_type === "photo" && m.media_url) ? '<img class="order-chat-photo" src="'+esc(m.media_url)+'" data-photo-url="'+esc(m.media_url)+'" alt="Rasm" title="Rasmni ochish">' : '';
       var text = m.text ? '<div>'+esc(m.text||"")+'</div>' : '';
       return '<div class="msg '+(m.mine?'me':'them')+'">'+photo+text+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
     }).join("");
+    bindOrderChatPhotoOpeners();
     box.scrollTop = box.scrollHeight;
   }
   function loadOrderChat(id, mode){
