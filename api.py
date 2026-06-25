@@ -17,6 +17,8 @@ Bo'limlar:
 import json
 import time
 import re
+import os
+import secrets
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
@@ -1601,7 +1603,7 @@ def _order_to_dict(conn, r, view="customer"):
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
-    last_chat = conn.execute("SELECT text, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+    last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -1631,7 +1633,7 @@ def _order_to_dict(conn, r, view="customer"):
         "customer_seen_at": _row_val(r, "customer_seen_at", 0),
         "is_unread": _order_seen_value(r, view) <= 0,
         "chat_count": chat_count,
-        "last_chat": (last_chat["text"] if last_chat else ""),
+        "last_chat": ((last_chat["text"] if last_chat and last_chat["text"] else "📷 Rasm") if last_chat else ""),
         "last_chat_at": (last_chat["created_at"] if last_chat else 0),
         "view": view,
     }
@@ -1977,6 +1979,9 @@ async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegra
         msgs.append({
             "id": r["id"],
             "text": r["text"] or "",
+            "media_type": _row_val(r, "media_type", "text") or "text",
+            "media_url": _row_val(r, "media_url", "") or "",
+            "file_name": _row_val(r, "file_name", "") or "",
             "mine": mine,
             "sender_name": sender.get("name") or "",
             "sender_kind": r["sender_kind"],
@@ -2014,9 +2019,9 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
 
     now = int(time.time())
     cur = conn.execute(
-        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id, text, created_at)
-           VALUES(?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, text, now),
+        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id, text, media_type, media_url, file_name, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, text, "text", "", "", now),
     )
     mid = cur.lastrowid
     # Xabar yuborgan tomon ko'rdi, qarshi tomonda esa yangilanish belgisi chiqadi.
@@ -2045,6 +2050,97 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
         except Exception:
             pass
     return {"ok": True, "id": mid, "created_at": now}
+
+
+@router.post("/orders/{order_id}/chat/image")
+async def send_order_chat_image(order_id: int, request: Request, actor_type: str = "user",
+                                text: str = "", x_telegram_init_data: str = Header(default="")):
+    """Buyurtma chatiga rasm yuborish. Rasm serverdagi uploads/order_chat papkasiga saqlanadi."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type)
+    kind, actor_id, owner_user_id = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    side = _order_actor_side(row, kind, actor_id)
+    if not side:
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
+
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/heic": ".heic",
+        "image/heif": ".heif",
+    }
+    if ctype not in allowed:
+        conn.close()
+        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
+
+    raw = await request.body()
+    max_size = 8 * 1024 * 1024
+    if not raw:
+        conn.close()
+        raise HTTPException(400, "Rasm fayli topilmadi.")
+    if len(raw) > max_size:
+        conn.close()
+        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
+
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "order_chat")
+    os.makedirs(folder, exist_ok=True)
+    ext = allowed[ctype]
+    safe_name = "order_" + str(order_id) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
+    path = os.path.join(folder, safe_name)
+    with open(path, "wb") as f:
+        f.write(raw)
+
+    media_url = "/uploads/order_chat/" + safe_name
+    caption = (text or "").strip()[:1000]
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
+                                      text, media_type, media_url, file_name, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?)""",
+        (order_id, kind, actor_id, owner_user_id, caption, "photo", media_url, safe_name, now),
+    )
+    mid = cur.lastrowid
+
+    # Rasm yuborgan tomon ko'rdi, qarshi tomonda esa buyurtma yangilanish belgisi chiqadi.
+    if side == "provider":
+        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
+    else:
+        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+
+    sender_name = _actor_brief(conn, kind, actor_id)["name"]
+    other = _order_other_side_info(conn, row, side)
+    notify_tg = other.get("tg_id")
+    order_title = row["title"] or "Buyurtma"
+    conn.commit()
+    conn.close()
+
+    if notify_tg:
+        try:
+            from main import tg_call, BASE_URL
+            msg = "📷 Buyurtma bo'yicha yangi rasm: " + sender_name + "\n\n" + order_title
+            if caption:
+                msg += "\n" + caption[:300]
+            await tg_call("sendMessage", {
+                "chat_id": notify_tg,
+                "text": msg,
+                "reply_markup": {"inline_keyboard": [[
+                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
+                ]]},
+            })
+        except Exception:
+            pass
+    return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
 
 # ====================================================================
 # BILDIRISHNOMA FILTRLARI
