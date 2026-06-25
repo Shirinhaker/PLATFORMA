@@ -2055,7 +2055,7 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
 @router.post("/orders/{order_id}/chat/image")
 async def send_order_chat_image(order_id: int, request: Request, actor_type: str = "user",
                                 text: str = "", x_telegram_init_data: str = Header(default="")):
-    """Buyurtma chatiga rasm yuborish. Rasm serverdagi uploads/order_chat papkasiga saqlanadi."""
+    """Buyurtma chatiga rasm yuborish. Rasm UPLOAD_DIR/order_chat papkasiga saqlanadi."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
     actor = resolve_actor(conn, me, actor_type)
