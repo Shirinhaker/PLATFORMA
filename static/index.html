@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1373 -->
+<title>Platforma</title><!-- BUILD: v1374 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -430,6 +430,8 @@
   .msg.them{background:var(--card);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px;margin-right:auto;}
   .msg.me{background:var(--primary);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
   .msg-time{font-size:10.5px;opacity:.6;margin-top:2px;display:block;}
+  .order-chat-photo{display:block;width:100%;max-width:230px;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:6px;background:rgba(0,0,0,.08);}
+  .msg.me .order-chat-photo{margin-left:auto;}
   .chat-day{text-align:center;font-size:12px;color:var(--soft);margin:10px 0;}
   .chat-bar{position:fixed;left:0;right:0;bottom:0;max-width:var(--appw,520px);margin:0 auto;display:flex;gap:8px;padding:10px 12px;background:var(--card);border-top:1px solid var(--line);}
   .chat-input{flex:1;border:1px solid var(--line);border-radius:22px;padding:11px 16px;font-size:15px;background:var(--bg);color:var(--ink);outline:none;}
@@ -1052,6 +1054,22 @@
     });
   }
   function mediaUrl(fileId){ return "/media/" + fileId; }
+  function uploadRaw(method, path, file){
+    var opts = { method: method, headers: { "X-Telegram-Init-Data": INIT_DATA } };
+    if(file){
+      opts.headers["Content-Type"] = file.type || "application/octet-stream";
+      opts.body = file;
+    }
+    return fetch(path, opts).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(data){
+        if(!r.ok){
+          var msg = (data && data.detail) ? data.detail : ("Xatolik (" + r.status + ")");
+          throw new Error(msg);
+        }
+        return data;
+      });
+    });
+  }
 
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
   var ME = { registered:false, role:null, name:"", id:null, business_id:null };
@@ -2266,7 +2284,9 @@
       var d=new Date((m.created_at||0)*1000);
       var t=d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       var name = m.mine ? "Siz" : (m.sender_name || "Qarshi tomon");
-      return '<div class="msg '+(m.mine?'me':'them')+'">'+esc(m.text||"")+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
+      var photo = (m.media_type === "photo" && m.media_url) ? '<img class="order-chat-photo" src="'+esc(m.media_url)+'" alt="Rasm">' : '';
+      var text = m.text ? '<div>'+esc(m.text||"")+'</div>' : '';
+      return '<div class="msg '+(m.mine?'me':'them')+'">'+photo+text+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
     }).join("");
     box.scrollTop = box.scrollHeight;
   }
@@ -2278,13 +2298,31 @@
       return d;
     }).catch(function(e){ if(el("orderChatList")) el("orderChatList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
+  function uploadOrderChatImage(id, mode, file, text){
+    var atype=orderChatActor(mode);
+    var q = actorQuery(atype) + "&text=" + encodeURIComponent((text || "").slice(0, 1000));
+    return uploadRaw("POST", "/api/orders/"+id+"/chat/image?"+q, file);
+  }
   function sendOrderChat(id, mode){
     var inp=el("orderChatInput");
     var btn=el("orderChatSend");
     if(!inp) return;
     var text=(inp.value||"").trim();
-    if(hasOrderChatImagePreview()){
-      alert("Rasm yuborish keyingi bosqichda qo‘shiladi. Hozircha rasm serverga yuborilmaydi.");
+    var imgInput=el("orderChatImageInput");
+    var imageFile = imgInput && imgInput.files ? imgInput.files[0] : null;
+    if(imageFile){
+      if(imageFile.size > 8 * 1024 * 1024){
+        alert("Rasm hajmi 8 MB dan oshmasin.");
+        return;
+      }
+      if(btn) btn.disabled=true;
+      uploadOrderChatImage(id, mode, imageFile, text).then(function(){
+        inp.value="";
+        clearOrderChatImagePreview();
+        return loadOrderChat(id, mode);
+      }).then(function(){
+        if(mode==="inbox") loadBizOrders(); else loadMyOrders();
+      }).catch(function(e){ alert(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
       return;
     }
     if(!text) return;
