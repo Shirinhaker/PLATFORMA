@@ -278,6 +278,13 @@ def init_db():
             receiver_kind     TEXT DEFAULT 'user',              -- 'user' | 'business'
             receiver_actor_id INTEGER,                          -- user.id yoki businesses.id
             text              TEXT DEFAULT '',
+            media_type        TEXT DEFAULT 'text',               -- 'text' | 'photo'
+            media_url         TEXT DEFAULT '',                   -- rasm server manzili
+            file_name         TEXT DEFAULT '',                   -- serverdagi fayl nomi
+            reply_to_id       INTEGER,                           -- qaysi xabarga javob
+            edited_at         INTEGER DEFAULT 0,                 -- tahrirlangan vaqt
+            deleted_at        INTEGER DEFAULT 0,                 -- o'chirilgan vaqt
+            is_deleted        INTEGER DEFAULT 0,                 -- xavfsiz o'chirish belgisi
             is_read           INTEGER DEFAULT 0,
             created_at        INTEGER NOT NULL
         );
@@ -348,6 +355,13 @@ def _migrate(conn):
             receiver_kind     TEXT DEFAULT 'user',   -- 'user' | 'business'
             receiver_actor_id INTEGER,               -- user.id yoki businesses.id
             text              TEXT DEFAULT '',
+            media_type        TEXT DEFAULT 'text',   -- 'text' | 'photo'
+            media_url         TEXT DEFAULT '',       -- rasm server manzili
+            file_name         TEXT DEFAULT '',       -- serverdagi fayl nomi
+            reply_to_id       INTEGER,               -- qaysi xabarga javob
+            edited_at         INTEGER DEFAULT 0,     -- tahrirlangan vaqt
+            deleted_at        INTEGER DEFAULT 0,     -- o'chirilgan vaqt
+            is_deleted        INTEGER DEFAULT 0,     -- xavfsiz o'chirish belgisi
             is_read           INTEGER DEFAULT 0,     -- qabul qiluvchi aktyor o'qiganmi
             created_at        INTEGER NOT NULL
         )"""
@@ -361,14 +375,35 @@ def _migrate(conn):
         conn.execute("ALTER TABLE messages ADD COLUMN receiver_kind TEXT DEFAULT 'user'")
     if "receiver_actor_id" not in mcols:
         conn.execute("ALTER TABLE messages ADD COLUMN receiver_actor_id INTEGER")
+    if "media_type" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN media_type TEXT DEFAULT 'text'")
+    if "media_url" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN media_url TEXT DEFAULT ''")
+    if "file_name" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN file_name TEXT DEFAULT ''")
+    if "reply_to_id" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN reply_to_id INTEGER")
+    if "edited_at" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN edited_at INTEGER DEFAULT 0")
+    if "deleted_at" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN deleted_at INTEGER DEFAULT 0")
+    if "is_deleted" not in mcols:
+        conn.execute("ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0")
     # Eski xabarlar user -> user deb belgilab qo'yiladi, ma'lumot yo'qolmaydi.
     conn.execute("UPDATE messages SET sender_kind='user' WHERE sender_kind IS NULL OR sender_kind=''")
     conn.execute("UPDATE messages SET receiver_kind='user' WHERE receiver_kind IS NULL OR receiver_kind=''")
     conn.execute("UPDATE messages SET sender_actor_id=sender_id WHERE sender_actor_id IS NULL")
     conn.execute("UPDATE messages SET receiver_actor_id=receiver_id WHERE receiver_actor_id IS NULL")
+    conn.execute("UPDATE messages SET media_type='text' WHERE media_type IS NULL OR media_type=''")
+    conn.execute("UPDATE messages SET media_url='' WHERE media_url IS NULL")
+    conn.execute("UPDATE messages SET file_name='' WHERE file_name IS NULL")
+    conn.execute("UPDATE messages SET edited_at=0 WHERE edited_at IS NULL")
+    conn.execute("UPDATE messages SET deleted_at=0 WHERE deleted_at IS NULL")
+    conn.execute("UPDATE messages SET is_deleted=0 WHERE is_deleted IS NULL")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages(sender_id, receiver_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_actor_pair ON messages(sender_kind, sender_actor_id, receiver_kind, receiver_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_receiver_actor ON messages(receiver_kind, receiver_actor_id, is_read)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_reply ON messages(reply_to_id)")
     # Buyurtmalar / navbatlar — user va biznes aktyorlari ajratilgan holda
     conn.execute(
         """CREATE TABLE IF NOT EXISTS orders(
