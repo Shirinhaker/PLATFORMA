@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1376 -->
+<title>Platforma</title><!-- BUILD: v1377 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -426,10 +426,31 @@
   .el-actions{display:flex;gap:9px;}
   .el-actions .btn{flex:1;height:46px;}
   /* CHAT */
-  .msg{max-width:78%;padding:9px 13px;border-radius:16px;margin-bottom:8px;font-size:14.5px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap;}
+  .msg{max-width:78%;padding:9px 38px 9px 13px;border-radius:16px;margin-bottom:8px;font-size:14.5px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap;position:relative;}
   .msg.them{background:var(--card);border:1px solid var(--line);color:var(--ink);border-bottom-left-radius:5px;margin-right:auto;}
   .msg.me{background:var(--primary);color:#fff;border-bottom-right-radius:5px;margin-left:auto;}
   .msg-time{font-size:10.5px;opacity:.6;margin-top:2px;display:block;}
+  .order-chat-state{display:none;margin-top:9px;border:1px solid var(--line);background:var(--primary-tint);color:var(--primary);border-radius:13px;padding:9px 38px 9px 11px;position:relative;font-size:12.5px;font-weight:700;line-height:1.35;}
+  .order-chat-state.on{display:block;}
+  .order-chat-state.edit{background:var(--amber-tint);color:#8a5a06;}
+  [data-theme="dark"] .order-chat-state.edit{color:var(--amber);}
+  .order-chat-state small{display:block;font-weight:600;color:var(--soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .order-chat-state button{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;border:none;background:rgba(0,0,0,.10);color:inherit;font-size:17px;font-weight:900;cursor:pointer;}
+  .order-chat-reply-preview{border-left:3px solid rgba(255,255,255,.65);padding:4px 7px;margin:0 0 6px;border-radius:7px;background:rgba(255,255,255,.16);font-size:12px;line-height:1.25;opacity:.95;white-space:normal;}
+  .msg.them .order-chat-reply-preview{border-left-color:var(--primary);background:var(--primary-tint);color:var(--ink);}
+  .order-chat-reply-preview b{display:block;font-size:11px;margin-bottom:1px;}
+  .order-chat-text{white-space:pre-wrap;}
+  .order-chat-deleted{font-style:italic;opacity:.72;}
+  .order-msg-menu-btn{position:absolute;right:6px;top:5px;width:27px;height:27px;border-radius:50%;border:none;background:rgba(0,0,0,.07);color:inherit;font-size:18px;font-weight:900;line-height:1;display:grid;place-items:center;cursor:pointer;}
+  .msg.me .order-msg-menu-btn{background:rgba(255,255,255,.18);color:#fff;}
+  .order-msg-menu-btn:active{transform:scale(.92);}
+  .order-chat-action-menu{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-lg);padding:8px;z-index:4900;display:none;}
+  .order-chat-action-menu.on{display:block;}
+  .order-chat-action-menu button{width:100%;height:44px;border:none;background:transparent;color:var(--ink);font:inherit;font-weight:700;text-align:left;border-radius:12px;padding:0 12px;cursor:pointer;}
+  .order-chat-action-menu button:active{background:var(--primary-tint);color:var(--primary);}
+  .order-chat-action-menu button.danger{color:#DC2626;}
+  [data-theme="dark"] .order-chat-action-menu button.danger{color:#F87171;}
+
   .order-chat-photo{display:block;width:100%;max-width:230px;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:6px;background:rgba(0,0,0,.08);cursor:pointer;}
   .order-chat-photo:active{transform:scale(.98);}
   .msg.me .order-chat-photo{margin-left:auto;}
@@ -1863,6 +1884,9 @@
   var ORDERS_INBOX = [];
   var ORDER_DETAIL_MAP = null;
   var ORDER_CHAT_IMAGE_PREVIEW_URL = "";
+  var ORDER_CHAT_MESSAGES = [];
+  var ORDER_CHAT_REPLY = null;
+  var ORDER_CHAT_EDIT = null;
   function resetOrderDraft(bid, bname){
     orderDraft = { business_id:bid||null, business_name:bname||"", items:{} };
     setTimeout(renderOrderDraftBox, 0);
@@ -2161,6 +2185,9 @@
   }
   function closeOrderDetail(){
     clearOrderChatImagePreview();
+    clearOrderChatReply();
+    clearOrderChatEdit();
+    closeOrderChatActionMenu();
     closeOrderChatPhotoViewer();
     if(el("orderDetailBackdrop")) el("orderDetailBackdrop").classList.remove("on");
     if(el("orderDetailSheet")) el("orderDetailSheet").classList.remove("on");
@@ -2220,10 +2247,13 @@
     sh.classList.add("on");
     el("orderDetailClose").addEventListener("click", closeOrderDetail);
     el("orderDetailClose2").addEventListener("click", closeOrderDetail);
+    clearOrderChatReply();
+    clearOrderChatEdit();
     loadOrderChat(o.id, mode);
     if(el("orderChatSend")) el("orderChatSend").addEventListener("click", function(){ sendOrderChat(o.id, mode); });
     if(el("orderChatInput")) el("orderChatInput").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sendOrderChat(o.id, mode); } });
     bindOrderChatImagePreview();
+    bindOrderChatComposerControls();
     sh.querySelectorAll("[data-ostatus]").forEach(function(btn){
       btn.addEventListener("click", function(e){
         e.stopPropagation();
@@ -2239,6 +2269,8 @@
       '<div class="order-chat-list" id="orderChatList"><div class="order-chat-empty">Xabarlar yuklanmoqda...</div></div>'+
       '<div class="order-chat-attach-row"><label class="order-chat-attach-btn" for="orderChatImageInput">📎 Rasm qo‘shish</label><input class="order-chat-file" id="orderChatImageInput" type="file" accept="image/*"></div>'+
       '<div class="order-chat-preview" id="orderChatImagePreview"><button class="order-chat-preview-x" id="orderChatImageCancel" type="button" aria-label="Rasmni bekor qilish">×</button><img id="orderChatImagePreviewImg" alt="Tanlangan rasm"><div class="idesc" style="margin-top:7px">Rasm tanlandi. Yuborish uchun chatdagi “Yuborish” tugmasini bosing.</div></div>'+
+      '<div class="order-chat-state" id="orderChatReplyBox"></div>'+
+      '<div class="order-chat-state edit" id="orderChatEditBox"></div>'+
       '<div class="order-chat-send"><input id="orderChatInput" placeholder="Buyurtma bo‘yicha xabar yozing..." autocomplete="off"><button id="orderChatSend">Yuborish</button></div>'+
       '</div>';
   }
@@ -2281,6 +2313,167 @@
       e.preventDefault();
       clearOrderChatImagePreview();
     });
+  }
+
+  function orderChatPreviewText(m){
+    if(!m) return "";
+    if(m.is_deleted) return "Xabar o‘chirildi";
+    var txt = (m.text || "").trim();
+    var base = (m.media_type === "photo") ? "📷 Rasm" + (txt ? ": " + txt : "") : txt;
+    if(!base) base = "Xabar";
+    return base.length > 70 ? base.slice(0, 70) + "…" : base;
+  }
+  function findOrderChatMessage(mid){
+    mid = parseInt(mid, 10);
+    for(var i=0;i<ORDER_CHAT_MESSAGES.length;i++){
+      if(parseInt(ORDER_CHAT_MESSAGES[i].id,10) === mid) return ORDER_CHAT_MESSAGES[i];
+    }
+    return null;
+  }
+  function renderOrderChatComposerState(){
+    var rb=el("orderChatReplyBox");
+    var eb=el("orderChatEditBox");
+    var send=el("orderChatSend");
+    if(rb){
+      if(ORDER_CHAT_REPLY){
+        rb.innerHTML='Javob berilyapti<small>'+esc(orderChatPreviewText(ORDER_CHAT_REPLY))+'</small><button type="button" data-order-chat-cancel="reply" aria-label="Javobni bekor qilish">×</button>';
+        rb.classList.add("on");
+      }else{
+        rb.innerHTML="";
+        rb.classList.remove("on");
+      }
+    }
+    if(eb){
+      if(ORDER_CHAT_EDIT){
+        eb.innerHTML='Xabar tahrirlanyapti<small>'+esc(orderChatPreviewText(ORDER_CHAT_EDIT))+'</small><button type="button" data-order-chat-cancel="edit" aria-label="Tahrirlashni bekor qilish">×</button>';
+        eb.classList.add("on");
+      }else{
+        eb.innerHTML="";
+        eb.classList.remove("on");
+      }
+    }
+    if(send) send.textContent = ORDER_CHAT_EDIT ? "Saqlash" : "Yuborish";
+  }
+  function setOrderChatReply(m){
+    if(!m || m.is_deleted) return;
+    ORDER_CHAT_REPLY = { id:m.id, text:m.text||"", media_type:m.media_type||"text", is_deleted:!!m.is_deleted };
+    renderOrderChatComposerState();
+    if(el("orderChatInput")) el("orderChatInput").focus();
+  }
+  function clearOrderChatReply(){
+    ORDER_CHAT_REPLY = null;
+    renderOrderChatComposerState();
+  }
+  function setOrderChatEdit(m){
+    if(!m || !m.mine || m.is_deleted) return;
+    if(!(m.text || "").trim()){
+      alert("Bu xabarda tahrirlanadigan matn yo‘q.");
+      return;
+    }
+    clearOrderChatImagePreview();
+    ORDER_CHAT_EDIT = { id:m.id, text:m.text||"", media_type:m.media_type||"text" };
+    ORDER_CHAT_REPLY = null;
+    if(el("orderChatInput")){
+      el("orderChatInput").value = m.text || "";
+      el("orderChatInput").focus();
+    }
+    renderOrderChatComposerState();
+  }
+  function clearOrderChatEdit(){
+    ORDER_CHAT_EDIT = null;
+    renderOrderChatComposerState();
+  }
+  function bindOrderChatComposerControls(){
+    var sheet=el("orderDetailSheet");
+    if(!sheet || sheet.__orderChatComposerControlsBound) return;
+    sheet.__orderChatComposerControlsBound = true;
+    sheet.addEventListener("click", function(e){
+      var btn=e.target && e.target.closest ? e.target.closest("[data-order-chat-cancel]") : null;
+      if(!btn) return;
+      e.preventDefault();
+      if(btn.getAttribute("data-order-chat-cancel") === "reply") clearOrderChatReply();
+      if(btn.getAttribute("data-order-chat-cancel") === "edit") clearOrderChatEdit();
+    });
+  }
+  function ensureOrderChatActionMenu(){
+    var menu=el("orderChatActionMenu");
+    if(menu) return menu;
+    menu=document.createElement("div");
+    menu.id="orderChatActionMenu";
+    menu.className="order-chat-action-menu";
+    document.body.appendChild(menu);
+    if(!window.__ORDER_CHAT_ACTION_ESC_BOUND__){
+      window.__ORDER_CHAT_ACTION_ESC_BOUND__ = true;
+      document.addEventListener("keydown", function(e){ if(e.key === "Escape") closeOrderChatActionMenu(); });
+      document.addEventListener("click", function(e){
+        var m=el("orderChatActionMenu");
+        if(!m || !m.classList.contains("on")) return;
+        if(e.target && e.target.closest && (e.target.closest("#orderChatActionMenu") || e.target.closest(".order-msg-menu-btn"))) return;
+        closeOrderChatActionMenu();
+      });
+    }
+    return menu;
+  }
+  function closeOrderChatActionMenu(){
+    var menu=el("orderChatActionMenu");
+    if(menu){ menu.classList.remove("on"); menu.innerHTML=""; }
+  }
+  function openOrderChatActionMenu(mid, orderId, mode){
+    var m=findOrderChatMessage(mid);
+    if(!m || m.is_deleted) return;
+    var menu=ensureOrderChatActionMenu();
+    var buttons=[];
+    buttons.push('<button type="button" data-chat-act="reply" data-mid="'+m.id+'">↩️ Javob berish</button>');
+    buttons.push('<button type="button" data-chat-act="copy" data-mid="'+m.id+'">📋 Nusxalash</button>');
+    if(m.mine && (m.text||"").trim()) buttons.push('<button type="button" data-chat-act="edit" data-mid="'+m.id+'">✏️ Tahrirlash</button>');
+    if(m.mine) buttons.push('<button type="button" class="danger" data-chat-act="delete" data-mid="'+m.id+'">🗑 O‘chirish</button>');
+    menu.innerHTML=buttons.join("");
+    menu.classList.add("on");
+    menu.querySelectorAll("[data-chat-act]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        var act=btn.getAttribute("data-chat-act");
+        var msg=findOrderChatMessage(btn.getAttribute("data-mid"));
+        closeOrderChatActionMenu();
+        if(!msg) return;
+        if(act==="reply") setOrderChatReply(msg);
+        if(act==="copy") copyOrderChatMessage(msg);
+        if(act==="edit") setOrderChatEdit(msg);
+        if(act==="delete") deleteOrderChatMessage(orderId, mode, msg);
+      });
+    });
+  }
+  function bindOrderChatActionButtons(orderId, mode){
+    var box=el("orderChatList");
+    if(!box) return;
+    box.querySelectorAll(".order-msg-menu-btn[data-mid]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        openOrderChatActionMenu(btn.getAttribute("data-mid"), orderId, mode);
+      });
+    });
+  }
+  function copyOrderChatMessage(m){
+    var text=(m && m.text ? m.text : "").trim();
+    if(!text){ alert("Nusxalanadigan matn yo‘q."); return; }
+    function done(){ alert("Matn nusxalandi."); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopyOrderText(text, done); });
+    }else{
+      fallbackCopyOrderText(text, done);
+    }
+  }
+  function fallbackCopyOrderText(text, done){
+    var ta=document.createElement("textarea");
+    ta.value=text;
+    ta.style.position="fixed";
+    ta.style.left="-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try{ document.execCommand("copy"); if(done) done(); }catch(e){ alert("Nusxalab bo‘lmadi. Matnni qo‘lda belgilang."); }
+    document.body.removeChild(ta);
   }
   function ensureOrderChatPhotoViewer(){
     var viewer=el("orderChatPhotoViewer");
@@ -2329,26 +2522,37 @@
       });
     });
   }
-  function renderOrderChatMessages(msgs){
+  function renderOrderChatMessages(msgs, orderId, mode){
     var box=el("orderChatList");
     if(!box) return;
     msgs = msgs || [];
+    ORDER_CHAT_MESSAGES = msgs;
     if(!msgs.length){ box.innerHTML='<div class="order-chat-empty">Hozircha buyurtma bo‘yicha xabar yo‘q.</div>'; return; }
     box.innerHTML = msgs.map(function(m){
       var d=new Date((m.created_at||0)*1000);
       var t=d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       var name = m.mine ? "Siz" : (m.sender_name || "Qarshi tomon");
-      var photo = (m.media_type === "photo" && m.media_url) ? '<img class="order-chat-photo" src="'+esc(m.media_url)+'" data-photo-url="'+esc(m.media_url)+'" alt="Rasm" title="Rasmni ochish">' : '';
-      var text = m.text ? '<div>'+esc(m.text||"")+'</div>' : '';
-      return '<div class="msg '+(m.mine?'me':'them')+'">'+photo+text+'<span class="msg-time">'+esc(name)+' · '+t+'</span></div>';
+      var deleted = !!m.is_deleted;
+      var menu = deleted ? "" : '<button class="order-msg-menu-btn" type="button" data-mid="'+m.id+'" aria-label="Xabar amallari">⋯</button>';
+      var reply = "";
+      if(!deleted && m.reply){
+        var rname = m.reply.sender_name || "Xabar";
+        reply = '<div class="order-chat-reply-preview"><b>↩ '+esc(rname)+'</b>'+esc(orderChatPreviewText(m.reply))+'</div>';
+      }
+      var photo = (!deleted && m.media_type === "photo" && m.media_url) ? '<img class="order-chat-photo" src="'+esc(m.media_url)+'" data-photo-url="'+esc(m.media_url)+'" alt="Rasm" title="Rasmni ochish">' : '';
+      var text = (!deleted && m.text) ? '<div class="order-chat-text">'+esc(m.text||"")+'</div>' : '';
+      var body = deleted ? '<div class="order-chat-deleted">Xabar o‘chirildi</div>' : (reply + photo + text);
+      var edited = (!deleted && m.edited_at) ? ' · Tahrirlangan' : '';
+      return '<div class="msg '+(m.mine?'me':'them')+'" data-msg-id="'+m.id+'">'+menu+body+'<span class="msg-time">'+esc(name)+' · '+t+edited+'</span></div>';
     }).join("");
     bindOrderChatPhotoOpeners();
+    bindOrderChatActionButtons(orderId, mode);
     box.scrollTop = box.scrollHeight;
   }
   function loadOrderChat(id, mode){
     var atype=orderChatActor(mode);
     return api("GET","/api/orders/"+id+"/chat?"+actorQuery(atype)).then(function(d){
-      renderOrderChatMessages(d.messages||[]);
+      renderOrderChatMessages(d.messages||[], id, mode);
       refreshOrderBadges();
       return d;
     }).catch(function(e){ if(el("orderChatList")) el("orderChatList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
@@ -2356,7 +2560,24 @@
   function uploadOrderChatImage(id, mode, file, text){
     var atype=orderChatActor(mode);
     var q = actorQuery(atype) + "&text=" + encodeURIComponent((text || "").slice(0, 1000));
+    if(ORDER_CHAT_REPLY && ORDER_CHAT_REPLY.id) q += "&reply_to_id=" + encodeURIComponent(ORDER_CHAT_REPLY.id);
     return uploadRaw("POST", "/api/orders/"+id+"/chat/image?"+q, file);
+  }
+  function editOrderChatMessage(id, mode, msgId, text){
+    var atype=orderChatActor(mode);
+    return api("PUT","/api/orders/"+id+"/chat/"+msgId, withActor({text:text}, atype));
+  }
+  function deleteOrderChatMessage(id, mode, msg){
+    if(!msg || !msg.mine) return;
+    if(!confirm("Bu xabar o‘chirilsinmi?")) return;
+    var atype=orderChatActor(mode);
+    api("DELETE","/api/orders/"+id+"/chat/"+msg.id, withActor({}, atype)).then(function(){
+      clearOrderChatReply();
+      if(ORDER_CHAT_EDIT && parseInt(ORDER_CHAT_EDIT.id,10) === parseInt(msg.id,10)) clearOrderChatEdit();
+      return loadOrderChat(id, mode);
+    }).then(function(){
+      if(mode==="inbox") loadBizOrders(); else loadMyOrders();
+    }).catch(function(e){ alert(e.message); });
   }
   function sendOrderChat(id, mode){
     var inp=el("orderChatInput");
@@ -2365,6 +2586,23 @@
     var text=(inp.value||"").trim();
     var imgInput=el("orderChatImageInput");
     var imageFile = imgInput && imgInput.files ? imgInput.files[0] : null;
+    if(ORDER_CHAT_EDIT){
+      if(imageFile){
+        alert("Tahrirlash paytida rasm yuborilmaydi. Avval tahrirlashni yakunlang yoki X bilan bekor qiling.");
+        return;
+      }
+      if(!text){ alert("Tahrirlash uchun matn kiriting."); return; }
+      if(btn) btn.disabled=true;
+      var editId=ORDER_CHAT_EDIT.id;
+      editOrderChatMessage(id, mode, editId, text).then(function(){
+        inp.value="";
+        clearOrderChatEdit();
+        return loadOrderChat(id, mode);
+      }).then(function(){
+        if(mode==="inbox") loadBizOrders(); else loadMyOrders();
+      }).catch(function(e){ alert(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
+      return;
+    }
     if(imageFile){
       if(imageFile.size > 8 * 1024 * 1024){
         alert("Rasm hajmi 8 MB dan oshmasin.");
@@ -2374,6 +2612,7 @@
       uploadOrderChatImage(id, mode, imageFile, text).then(function(){
         inp.value="";
         clearOrderChatImagePreview();
+        clearOrderChatReply();
         return loadOrderChat(id, mode);
       }).then(function(){
         if(mode==="inbox") loadBizOrders(); else loadMyOrders();
@@ -2383,13 +2622,17 @@
     if(!text) return;
     if(btn) btn.disabled=true;
     var atype=orderChatActor(mode);
-    api("POST","/api/orders/"+id+"/chat", withActor({text:text}, atype)).then(function(){
+    var body={text:text};
+    if(ORDER_CHAT_REPLY && ORDER_CHAT_REPLY.id) body.reply_to_id = ORDER_CHAT_REPLY.id;
+    api("POST","/api/orders/"+id+"/chat", withActor(body, atype)).then(function(){
       inp.value="";
+      clearOrderChatReply();
       return loadOrderChat(id, mode);
     }).then(function(){
       if(mode==="inbox") loadBizOrders(); else loadMyOrders();
     }).catch(function(e){ alert(e.message); inp.value=text; }).finally(function(){ if(btn) btn.disabled=false; });
   }
+
 
   function loadMyOrders(){
     api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
