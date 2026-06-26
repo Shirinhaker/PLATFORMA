@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1378 -->
+<title>Platforma</title><!-- BUILD: v1379 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -335,6 +335,33 @@
   .loc-btn{flex:none;width:38px;height:38px;border-radius:11px;border:1.5px solid var(--line);background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;cursor:pointer;}
   .loc-btn svg{width:19px;height:19px;}
   .loc-btn:active{transform:scale(.94);}
+  /* item groups — v1379 */
+  .item-group-block{margin:6px 0 18px;}
+  .item-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 9px;}
+  .item-group-title{min-width:0;}
+  .item-group-title h3{font-family:var(--font-d);font-size:15.5px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .item-group-title p{font-size:11.5px;color:var(--soft);margin-top:2px;}
+  .item-group-actions{position:relative;flex:none;}
+  .item-menu-btn{width:34px;height:34px;border-radius:11px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);display:grid;place-items:center;font-size:20px;font-weight:900;line-height:1;cursor:pointer;box-shadow:var(--shadow);}
+  .item-menu{display:none;position:absolute;right:0;top:40px;z-index:50;min-width:170px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;}
+  .item-menu.on{display:block;}
+  .item-menu button{width:100%;border:none;background:none;color:var(--ink);font:inherit;font-size:13px;font-weight:700;text-align:left;padding:10px;border-radius:10px;cursor:pointer;}
+  .item-menu button:active{background:var(--primary-tint);color:var(--primary);}
+  .item-menu button.danger{color:#DC2626;}
+  [data-theme="dark"] .item-menu button.danger{color:#F87171;}
+  .item-hrow{display:flex;gap:11px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .item-hrow::-webkit-scrollbar{display:none;}
+  .item-card2{position:relative;flex:none;width:152px;min-height:132px;scroll-snap-align:start;background:var(--card);border:1.5px solid var(--line);border-radius:17px;padding:13px 12px 12px;box-shadow:var(--shadow);}
+  .item-card2 .name{font-family:var(--font-d);font-size:14px;font-weight:800;line-height:1.25;margin-right:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .item-card2 .price{font-size:13.5px;font-weight:800;color:var(--primary);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .item-card2 .note{font-size:11.5px;color:var(--soft);line-height:1.35;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .item-card2 .kind{display:inline-flex;margin-top:8px;font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 8px;background:var(--primary-tint);color:var(--primary);}
+  .item-card-menu{position:absolute;right:8px;top:8px;}
+  .item-card2>.item-menu{position:static;right:auto;top:auto;min-width:0;margin-top:10px;box-shadow:none;background:var(--bg);}
+  .item-add-card{flex:none;width:116px;min-height:132px;scroll-snap-align:start;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);border-radius:17px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;}
+  .item-add-card .plus{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--card);font-size:24px;box-shadow:var(--shadow);}
+  .item-group-add-btn{width:100%;height:50px;border-radius:15px;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);font-family:var(--font-d);font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;margin:6px 0 4px;}
+  .item-auto-kind{font-size:12.5px;color:var(--soft);background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;margin-top:7px;}
   /* cabinet */
   .cab-head{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-top:4px;margin-bottom:16px;}
   .cab-logo{flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px;}
@@ -707,7 +734,7 @@
 
       <!-- CAB: MAHSULOTLAR -->
       <section class="screen" data-screen="cab-items">
-        <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="itemAddBtn">+ Qo'shish</button>
+        <div class="elon-hint" style="margin:4px 4px 12px">Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida chiqadi.</div>
         <div id="itemsList"></div>
       </section>
 
@@ -716,14 +743,16 @@
         <div class="form-wrap">
           <div class="field"><label>Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
-          <div class="field"><label>Qisqa izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
-          <div class="field"><label>Turi</label>
+          <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
+          <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
+          <div class="field" id="itKindWrap"><label>Turi</label>
             <div style="display:flex;gap:9px" id="itKindRow">
               <button class="sort-chip on" data-kind="product">Mahsulot</button>
               <button class="sort-chip" data-kind="service">Xizmat</button>
             </div>
           </div>
           <button class="btn btn-primary btn-block" id="itSave">Saqlash</button>
+          <button class="btn btn-outline btn-block" id="itDeleteBtn" style="display:none;margin-top:10px;color:#DC2626">O'chirish</button>
         </div>
       </section>
 
@@ -3934,28 +3963,164 @@
 
   /* ---------- MAHSULOTLAR ---------- */
   var editItemId = null;
+  var itemGroupsCache = [];
+  var itemListCache = [];
+
+  function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
+  function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
+  function itemGroupById(gid){
+    gid = itemGroupValue(gid);
+    return itemGroupsCache.find(function(g){ return String(g.id) === gid; }) || null;
+  }
+  function itemById(id){
+    id = String(id);
+    return itemListCache.find(function(it){ return String(it.id) === id; }) || null;
+  }
+  function closeItemMenus(){
+    document.querySelectorAll("#itemsList .item-menu.on").forEach(function(m){ m.classList.remove("on"); });
+  }
+
+  function itemMenuHtml(kind, id){
+    if(kind === "group"){
+      return '<div class="item-group-actions"><button class="item-menu-btn" data-group-menu="'+id+'">⋯</button>'+ 
+        '<div class="item-menu" data-group-menu-box="'+id+'">'+
+          '<button data-group-edit="'+id+'">Nomini o\'zgartirish</button>'+ 
+          '<button class="danger" data-group-del="'+id+'">O\'chirish</button>'+ 
+        '</div></div>';
+    }
+    return '<button class="item-menu-btn item-card-menu" data-item-menu="'+id+'">⋯</button>';
+  }
+
+  function itemActionMenuHtml(id){
+    return '<div class="item-menu" data-item-menu-box="'+id+'">'+
+      '<button data-itedit="'+id+'">Tahrirlash</button>'+ 
+      '<button data-itmove="'+id+'">Guruhini o\'zgartirish</button>'+ 
+      '<button class="danger" data-itdel="'+id+'">O\'chirish</button>'+ 
+    '</div>';
+  }
+
+  function itemCardHtml(it){
+    return '<div class="item-card2" data-item-card="'+it.id+'">'+
+      itemMenuHtml("item", it.id)+
+      '<div class="name">'+esc(it.name)+'</div>'+ 
+      '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+ 
+      (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>')+
+      '<span class="kind">'+itemKindText(it.kind)+'</span>'+ 
+      itemActionMenuHtml(it.id)+
+    '</div>';
+  }
+
+  function addItemCardHtml(groupId){
+    return '<button class="item-add-card" data-add-to-group="'+esc(itemGroupValue(groupId))+'"><span class="plus">+</span><span>Tovar</span></button>';
+  }
+
+  function groupBlockHtml(group, items){
+    var isReal = !!group;
+    var gid = isReal ? String(group.id) : "";
+    var title = isReal ? group.name : "Guruhsiz";
+    var subtitle = isReal ? (itemKindText(group.kind)+" guruhi · "+items.length+" ta") : ("Guruh tanlanmagan · "+items.length+" ta");
+    return '<div class="item-group-block" data-group-block="'+esc(gid || 'none')+'">'+
+      '<div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+esc(subtitle)+'</p></div>'+
+      (isReal ? itemMenuHtml("group", gid) : '')+'</div>'+ 
+      '<div class="item-hrow">'+items.map(itemCardHtml).join("")+addItemCardHtml(gid)+'</div>'+ 
+    '</div>';
+  }
+
+  function renderItems(){
+    var html = "";
+    var used = {};
+    itemGroupsCache.forEach(function(g){
+      var arr = itemListCache.filter(function(it){ return String(it.group_id || "") === String(g.id); });
+      used[String(g.id)] = true;
+      html += groupBlockHtml(g, arr);
+    });
+    var ungrouped = itemListCache.filter(function(it){ return !it.group_id || !used[String(it.group_id)]; });
+    if(ungrouped.length || !itemGroupsCache.length){
+      html += groupBlockHtml(null, ungrouped);
+    }
+    html += '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>';
+    if(!itemGroupsCache.length && !itemListCache.length){
+      html = '<div class="empty" style="padding:25px 16px"><h3>Hozircha tovar yo\'q</h3><p>Avval guruh qo\'shing yoki Guruhsiz bo\'limidagi + Tovar orqali boshlang.</p></div>' + html;
+    }
+    el("itemsList").innerHTML = html;
+  }
+
   function loadItems(){
-    api("GET","/api/items").then(function(list){
-      if(!list.length){ el("itemsList").innerHTML='<div class="empty" style="padding:30px 16px"><h3>Hozircha mahsulot yo\'q</h3><p>Yuqoridagi tugma orqali qo\'shing.</p></div>'; return; }
-      el("itemsList").innerHTML = list.map(function(it){
-        return '<div class="item"><div><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+(it.kind==="service"?"Xizmat":"Mahsulot")+(it.note?(" · "+esc(it.note)):"")+'</div></div>'+
-          '<div style="display:flex;align-items:center;gap:8px"><span class="iprice">'+esc(it.price||"")+'</span>'+
-          '<span class="mini-ic" data-itedit="'+it.id+'" data-name="'+esc(it.name)+'" data-price="'+esc(it.price||"")+'" data-note="'+esc(it.note||"")+'" data-kind="'+it.kind+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></span>'+
-          '<span class="mini-ic" data-itdel="'+it.id+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></span></div></div>';
-      }).join("");
+    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+      itemGroupsCache = res[0] || [];
+      itemListCache = res[1] || [];
+      renderItems();
     }).catch(function(e){ el("itemsList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  function openItemForm(data){
+
+  function refreshItemGroupSelect(selectedGroupId){
+    selectedGroupId = itemGroupValue(selectedGroupId);
+    var html = '<option value="">Guruhsiz</option>' + itemGroupsCache.map(function(g){
+      return '<option value="'+g.id+'">'+esc(g.name)+' — '+itemKindText(g.kind)+'</option>';
+    }).join("");
+    el("itGroup").innerHTML = html;
+    el("itGroup").value = selectedGroupId;
+    updateItemKindVisibility();
+  }
+
+  function setItemKind(kind){
+    kind = kind === "service" ? "service" : "product";
+    el("itKindRow").querySelectorAll("[data-kind]").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-kind") === kind); });
+  }
+
+  function updateItemKindVisibility(){
+    var g = itemGroupById(el("itGroup").value);
+    if(g){
+      el("itKindWrap").style.display = "none";
+      el("itAutoKindInfo").style.display = "block";
+      el("itAutoKindInfo").textContent = "Tur avtomatik: " + itemKindText(g.kind) + " (" + g.name + " guruhi bo'yicha)";
+      setItemKind(g.kind);
+    }else{
+      el("itKindWrap").style.display = "block";
+      el("itAutoKindInfo").style.display = "none";
+      el("itAutoKindInfo").textContent = "";
+    }
+  }
+
+  function openItemForm(data, presetGroupId){
     editItemId = data ? data.id : null;
     el("itName").value = data ? data.name : "";
-    el("itPrice").value = data ? data.price : "";
-    el("itNote").value = data ? data.note : "";
-    var kind = data ? data.kind : "product";
-    el("itKindRow").querySelectorAll("[data-kind]").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-kind")===kind); });
+    el("itPrice").value = data ? (data.price || "") : "";
+    el("itNote").value = data ? (data.note || "") : "";
+    setItemKind(data ? data.kind : "product");
+    refreshItemGroupSelect(data ? data.group_id : presetGroupId);
+    el("itDeleteBtn").style.display = data ? "flex" : "none";
     nav("cab-item-form");
-    el("tbTitle").textContent = data ? "Tahrirlash" : "Yangi mahsulot";
+    el("tbTitle").textContent = data ? "Tovarni tahrirlash" : "Yangi tovar";
   }
-  el("itemAddBtn").addEventListener("click", function(){ openItemForm(null); });
+
+  function addItemGroup(){
+    var name = prompt("Guruh nomini kiriting:");
+    if(name == null) return;
+    name = name.trim();
+    if(!name){ alert("Guruh nomi kiritilishi shart."); return; }
+    var isProduct = confirm("Bu guruh Mahsulot guruhi bo'lsinmi?\n\nOK — Mahsulot guruhi\nBekor qilish — Xizmat guruhi");
+    api("POST","/api/item-groups",{name:name, kind:isProduct ? "product" : "service"}).then(loadItems).catch(function(e){ alert(e.message); });
+  }
+
+  function editItemGroup(groupId){
+    var g = itemGroupById(groupId);
+    if(!g) return;
+    var name = prompt("Guruh nomini o'zgartiring:", g.name);
+    if(name == null) return;
+    name = name.trim();
+    if(!name){ alert("Guruh nomi kiritilishi shart."); return; }
+    api("PUT","/api/item-groups/"+groupId,{name:name}).then(loadItems).catch(function(e){ alert(e.message); });
+  }
+
+  function deleteItemGroup(groupId){
+    var g = itemGroupById(groupId);
+    if(!g) return;
+    if(!confirm("'"+g.name+"' guruhi o'chirilsinmi?\n\nIchidagi tovarlar o'chmaydi, Guruhsiz bo'limiga o'tadi.")) return;
+    api("DELETE","/api/item-groups/"+groupId).then(loadItems).catch(function(e){ alert(e.message); });
+  }
+
+  el("itGroup").addEventListener("change", updateItemKindVisibility);
   el("itKindRow").addEventListener("click", function(e){
     var c=e.target.closest("[data-kind]"); if(!c) return;
     this.querySelectorAll("[data-kind]").forEach(function(x){ x.classList.toggle("on", x===c); });
@@ -3965,16 +4130,56 @@
     if(!name){ alert("Nomi kiritilishi shart."); return; }
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
-    var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind};
+    var gid = itemGroupValue(el("itGroup").value);
+    var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null};
     var btn=this; btn.disabled=true;
     var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
     p.then(function(){ nav("cab-items"); }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
   });
+  el("itDeleteBtn").addEventListener("click", function(){
+    if(!editItemId) return;
+    if(confirm("Bu tovar o'chirilsinmi?")){
+      api("DELETE","/api/items/"+editItemId).then(function(){ nav("cab-items"); }).catch(function(e){ alert(e.message); });
+    }
+  });
+
   el("itemsList").addEventListener("click", function(e){
+    var menuBtn = e.target.closest("[data-item-menu]");
+    if(menuBtn){
+      var mid = menuBtn.getAttribute("data-item-menu");
+      var box = this.querySelector('[data-item-menu-box="'+mid+'"]');
+      var on = box && box.classList.contains("on");
+      closeItemMenus();
+      if(box && !on) box.classList.add("on");
+      return;
+    }
+    var groupMenuBtn = e.target.closest("[data-group-menu]");
+    if(groupMenuBtn){
+      var gidm = groupMenuBtn.getAttribute("data-group-menu");
+      var gbox = this.querySelector('[data-group-menu-box="'+gidm+'"]');
+      var gon = gbox && gbox.classList.contains("on");
+      closeItemMenus();
+      if(gbox && !gon) gbox.classList.add("on");
+      return;
+    }
+    var addGroup = e.target.closest("[data-add-group]");
+    if(addGroup){ closeItemMenus(); addItemGroup(); return; }
+    var addToGroup = e.target.closest("[data-add-to-group]");
+    if(addToGroup){ closeItemMenus(); openItemForm(null, addToGroup.getAttribute("data-add-to-group")); return; }
+    var ge=e.target.closest("[data-group-edit]");
+    if(ge){ closeItemMenus(); editItemGroup(ge.getAttribute("data-group-edit")); return; }
+    var gd=e.target.closest("[data-group-del]");
+    if(gd){ closeItemMenus(); deleteItemGroup(gd.getAttribute("data-group-del")); return; }
     var ed=e.target.closest("[data-itedit]");
-    if(ed){ openItemForm({id:ed.getAttribute("data-itedit"),name:ed.getAttribute("data-name"),price:ed.getAttribute("data-price"),note:ed.getAttribute("data-note"),kind:ed.getAttribute("data-kind")}); return; }
+    if(ed){ closeItemMenus(); var it=itemById(ed.getAttribute("data-itedit")); if(it) openItemForm(it); return; }
+    var mv=e.target.closest("[data-itmove]");
+    if(mv){ closeItemMenus(); var mit=itemById(mv.getAttribute("data-itmove")); if(mit) openItemForm(mit); return; }
     var dl=e.target.closest("[data-itdel]");
-    if(dl){ if(confirm("Bu mahsulot o'chirilsinmi?")){ api("DELETE","/api/items/"+dl.getAttribute("data-itdel")).then(loadItems).catch(function(e){ alert(e.message); }); } }
+    if(dl){ closeItemMenus(); if(confirm("Bu tovar o'chirilsinmi?")){ api("DELETE","/api/items/"+dl.getAttribute("data-itdel")).then(loadItems).catch(function(e){ alert(e.message); }); } return; }
+  });
+
+  document.addEventListener("click", function(e){
+    if(!e.target.closest("#itemsList .item-menu-btn") && !e.target.closest("#itemsList .item-menu")) closeItemMenus();
   });
 
   /* ---------- QARZ DAFTARI ---------- */
