@@ -270,16 +270,127 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     return {"ok": True}
 
 
+def _item_group_for_business(conn, biz_id, group_id):
+    """Guruh shu biznesnikimi — tekshiradi. group_id bo'sh bo'lsa None qaytadi."""
+    if group_id in (None, "", 0, "0"):
+        return None
+    try:
+        gid = int(group_id)
+    except Exception:
+        raise HTTPException(400, "Guruh noto'g'ri tanlangan.")
+    g = conn.execute(
+        "SELECT * FROM item_groups WHERE id=? AND business_id=?",
+        (gid, biz_id),
+    ).fetchone()
+    if not g:
+        raise HTTPException(400, "Tanlangan guruh topilmadi.")
+    return g
+
+
+def _item_kind_and_group(conn, biz_id, body):
+    """
+    v1379 qoidasi: agar haqiqiy guruh tanlansa, tovar turini guruh hal qiladi.
+    Guruhsiz bo'lsa, frontend yuborgan kind ishlaydi.
+    """
+    g = _item_group_for_business(conn, biz_id, (body or {}).get("group_id"))
+    if g:
+        return g["kind"], g["id"]
+    kind = (body or {}).get("kind") if (body or {}).get("kind") in ("product", "service") else "product"
+    return kind, None
+
+
+@router.get("/item-groups")
+async def item_groups(x_telegram_init_data: str = Header(default="")):
+    """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        "SELECT * FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
+        (biz["id"],),
+    ).fetchall()
+    conn.close()
+    return [{"id": r["id"], "name": r["name"], "kind": r["kind"], "created_at": r["created_at"]} for r in rows]
+
+
+@router.post("/item-groups")
+async def add_item_group(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Yangi guruh qo'shadi. Guruh turi faqat yaratilganda belgilanadi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    b = await request.json()
+    name = (b.get("name") or "").strip()
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Guruh nomi kiritilishi shart.")
+    kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
+    cur = conn.execute(
+        "INSERT INTO item_groups(business_id, name, kind, created_at) VALUES(?,?,?,?)",
+        (biz["id"], name, kind, int(time.time())),
+    )
+    conn.commit()
+    gid = cur.lastrowid
+    conn.close()
+    return {"id": gid, "name": name, "kind": kind}
+
+
+@router.put("/item-groups/{group_id}")
+async def edit_item_group(group_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Guruhning faqat nomini o'zgartiradi. kind o'zgartirilmaydi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    row = conn.execute(
+        "SELECT * FROM item_groups WHERE id=? AND business_id=?",
+        (group_id, biz["id"]),
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    b = await request.json()
+    name = (b.get("name") or "").strip()
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Guruh nomi kiritilishi shart.")
+    conn.execute("UPDATE item_groups SET name=? WHERE id=? AND business_id=?", (name, group_id, biz["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/item-groups/{group_id}")
+async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(default="")):
+    """Guruhni xavfsiz o'chiradi: avval ichidagi tovarlar Guruhsizga o'tadi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    row = conn.execute(
+        "SELECT id FROM item_groups WHERE id=? AND business_id=?",
+        (group_id, biz["id"]),
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    conn.execute("UPDATE items SET group_id=NULL WHERE group_id=? AND business_id=?", (group_id, biz["id"]))
+    conn.execute("DELETE FROM item_groups WHERE id=? AND business_id=?", (group_id, biz["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @router.get("/items")
 async def my_items(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     rows = conn.execute(
-        "SELECT * FROM items WHERE business_id=? ORDER BY created_at DESC", (biz["id"],)
+        """SELECT i.*, g.name AS group_name, g.kind AS group_kind
+           FROM items i
+           LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
+           WHERE i.business_id=?
+           ORDER BY i.created_at DESC""",
+        (biz["id"],),
     ).fetchall()
     conn.close()
     return [{"id": r["id"], "name": r["name"], "price": r["price"],
-             "note": r["note"], "kind": r["kind"]} for r in rows]
+             "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
+             "group_name": r["group_name"], "group_kind": r["group_kind"]} for r in rows]
 
 
 @router.post("/items")
@@ -291,10 +402,10 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     if not name:
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
-    kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
+    kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     cur = conn.execute(
-        "INSERT INTO items(business_id, name, price, note, kind, created_at) VALUES(?,?,?,?,?,?)",
-        (biz["id"], name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
+        "INSERT INTO items(business_id, group_id, name, price, note, kind, created_at) VALUES(?,?,?,?,?,?,?)",
+        (biz["id"], group_id, name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
          kind, int(time.time())),
     )
     conn.commit()
@@ -314,11 +425,15 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
         conn.close()
         raise HTTPException(404, "Mahsulot topilmadi.")
     b = await request.json()
+    name = (b.get("name") or "").strip()
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
+    kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     conn.execute(
-        "UPDATE items SET name=?, price=?, note=?, kind=? WHERE id=?",
-        ((b.get("name") or "").strip(), (b.get("price") or "").strip(),
-         (b.get("note") or "").strip(),
-         b.get("kind") if b.get("kind") in ("product", "service") else "product", item_id),
+        "UPDATE items SET name=?, price=?, note=?, kind=?, group_id=? WHERE id=? AND business_id=?",
+        (name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
+         kind, group_id, item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
