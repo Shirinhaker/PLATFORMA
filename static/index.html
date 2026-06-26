@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1379.1 -->
+<title>Platforma</title><!-- BUILD: v1380 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -520,19 +520,6 @@
   .detail-line{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;font-size:13.5px;}
   .detail-line b{font-size:13px;color:var(--soft);font-weight:700;}
   .detail-line span{text-align:right;font-weight:600;}
-  /* === Ilova ichidagi vositalar (tizim oynasi alert/prompt/confirm o'rniga) === */
-  .app-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);width:calc(100% - 48px);max-width:360px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:13px;font-size:14px;font-weight:600;text-align:center;line-height:1.4;box-shadow:var(--shadow-lg);z-index:6000;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
-  .app-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
-  .app-modal-back{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:5200;display:none;}
-  .app-modal-back.on{display:block;}
-  .app-confirm{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 56px);max-width:340px;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:18px;z-index:5201;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;}
-  .app-confirm.on{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}
-  .acf-title{font-family:var(--font-d);font-weight:800;font-size:17px;margin-bottom:8px;}
-  .acf-text{font-size:14.5px;line-height:1.5;color:var(--ink);white-space:pre-wrap;margin-bottom:16px;}
-  .acf-btns{display:flex;gap:10px;}
-  .acf-btns button{flex:1;height:46px;border-radius:13px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;}
-  .acf-ok{border-color:var(--primary);background:var(--primary);color:#fff;}
-  .acf-ok.danger{border-color:#DC2626;background:#DC2626;color:#fff;}
 </style>
 </head>
 <body>
@@ -748,6 +735,17 @@
       <!-- CAB: MAHSULOTLAR -->
       <section class="screen" data-screen="cab-items">
         <div class="elon-hint" style="margin:4px 4px 12px">Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida chiqadi.</div>
+        <div class="sort-row" id="itemFilterRow" style="padding-bottom:9px">
+          <button class="sort-chip on" data-item-filter="all">Barchasi</button>
+          <button class="sort-chip" data-item-filter="product">Mahsulotlar</button>
+          <button class="sort-chip" data-item-filter="service">Xizmatlar</button>
+        </div>
+        <div class="search" id="itemSearchBox" style="margin:0 0 10px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="itemSearchInput" placeholder="Tovar qidirish..." />
+          <button id="itemSearchClear" hidden aria-label="Tozalash" style="flex:none;width:24px;height:24px;border-radius:50%;border:none;background:var(--line);color:var(--ink);font-size:12px;cursor:pointer">✕</button>
+        </div>
+        <div class="elon-hint" id="itemResultHint" style="margin:0 4px 12px"></div>
         <div id="itemsList"></div>
       </section>
 
@@ -3978,6 +3976,8 @@
   var editItemId = null;
   var itemGroupsCache = [];
   var itemListCache = [];
+  var itemFilterKind = "all";
+  var itemSearchText = "";
 
   function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
   function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
@@ -3989,129 +3989,30 @@
     id = String(id);
     return itemListCache.find(function(it){ return String(it.id) === id; }) || null;
   }
+  function itemMatchesFilter(it){
+    if(itemFilterKind !== "all" && it.kind !== itemFilterKind) return false;
+    var q = (itemSearchText || "").trim().toLowerCase();
+    if(q){
+      var blob = [it.name, it.price, it.note, it.group_name, itemKindText(it.kind)].join(" ").toLowerCase();
+      if(blob.indexOf(q) === -1) return false;
+    }
+    return true;
+  }
+  function updateItemFilterButtons(){
+    el("itemFilterRow").querySelectorAll("[data-item-filter]").forEach(function(btn){
+      btn.classList.toggle("on", btn.getAttribute("data-item-filter") === itemFilterKind);
+    });
+  }
+  function updateItemResultHint(count){
+    var parts = [];
+    if(itemFilterKind === "product") parts.push("Mahsulotlar");
+    else if(itemFilterKind === "service") parts.push("Xizmatlar");
+    else parts.push("Barchasi");
+    if(itemSearchText) parts.push("qidiruv: “" + itemSearchText + "”");
+    el("itemResultHint").textContent = parts.join(" · ") + " · " + count + " ta natija";
+  }
   function closeItemMenus(){
     document.querySelectorAll("#itemsList .item-menu.on").forEach(function(m){ m.classList.remove("on"); });
-  }
-
-  /* ============================================================
-     ILOVA ICHIDAGI VOSITALAR — tizim oynasi (alert/prompt/confirm) o'rniga
-     ============================================================ */
-  // Kichik xabar (toast) — alert o'rniga. Ilova ichida chiqib, o'zi yo'qoladi.
-  function showMsg(text){
-    var box = document.getElementById("appToast");
-    if(!box){
-      box = document.createElement("div");
-      box.id = "appToast";
-      box.className = "app-toast";
-      document.body.appendChild(box);
-    }
-    box.textContent = text || "";
-    box.classList.add("on");
-    clearTimeout(box._t);
-    box._t = setTimeout(function(){ box.classList.remove("on"); }, 2600);
-  }
-
-  // Ilova ichidagi tasdiq (Ha/Yo'q) — confirm o'rniga. Promise<boolean> qaytaradi.
-  function askConfirm(opts){
-    opts = opts || {};
-    return new Promise(function(resolve){
-      var back = document.getElementById("appConfirmBack");
-      var sheet = document.getElementById("appConfirmSheet");
-      if(!back){
-        back = document.createElement("div");
-        back.id = "appConfirmBack";
-        back.className = "app-modal-back";
-        sheet = document.createElement("div");
-        sheet.id = "appConfirmSheet";
-        sheet.className = "app-confirm";
-        document.body.appendChild(back);
-        document.body.appendChild(sheet);
-      }
-      var okText = opts.okText || "Ha";
-      var cancelText = opts.cancelText || "Bekor qilish";
-      var danger = opts.danger ? " danger" : "";
-      sheet.innerHTML =
-        (opts.title ? '<div class="acf-title">'+esc(opts.title)+'</div>' : '') +
-        '<div class="acf-text">'+esc(opts.text||"")+'</div>'+
-        '<div class="acf-btns">'+
-          '<button class="acf-cancel">'+esc(cancelText)+'</button>'+
-          '<button class="acf-ok'+danger+'">'+esc(okText)+'</button>'+
-        '</div>';
-      function close(val){
-        back.classList.remove("on");
-        sheet.classList.remove("on");
-        resolve(val);
-      }
-      sheet.querySelector(".acf-cancel").onclick = function(){ close(false); };
-      sheet.querySelector(".acf-ok").onclick = function(){ close(true); };
-      back.onclick = function(){ close(false); };
-      back.classList.add("on");
-      sheet.classList.add("on");
-    });
-  }
-
-  // Guruh formasi (qo'shish/tahrirlash) — prompt o'rniga. Mavjud order-sheet uslubidan foydalanadi.
-  function openGroupForm(group){
-    var isEdit = !!group;
-    var back = document.getElementById("groupFormBack");
-    var sheet = document.getElementById("groupFormSheet");
-    if(!back){
-      back = document.createElement("div");
-      back.id = "groupFormBack";
-      back.className = "sheet-backdrop";
-      sheet = document.createElement("div");
-      sheet.id = "groupFormSheet";
-      sheet.className = "order-sheet";
-      document.body.appendChild(back);
-      document.body.appendChild(sheet);
-      back.addEventListener("click", closeGroupForm);
-    }
-    sheet.innerHTML =
-      '<button class="order-close" id="groupFormClose" aria-label="Yopish">×</button>'+
-      '<div class="order-grip"></div>'+
-      '<div class="lead" style="font-size:21px;margin-top:0">'+(isEdit ? "Guruh nomini o'zgartirish" : "Yangi guruh")+'</div>'+
-      '<div class="field" style="margin-top:12px"><label>Guruh nomi</label><input class="input" id="groupFormName" placeholder="Masalan: Ho\'l mevalar"></div>'+
-      (isEdit ? '' :
-        '<div class="field"><label>Tur</label><div style="display:flex;gap:9px" id="groupFormKind">'+
-          '<button class="sort-chip on" data-gkind="product">Mahsulot</button>'+
-          '<button class="sort-chip" data-gkind="service">Xizmat</button>'+
-        '</div></div>')+
-      '<button class="btn btn-primary btn-block" id="groupFormSave">Saqlash</button>'+
-      '<button class="btn btn-soft btn-block" style="margin-top:9px" id="groupFormCancel">Bekor qilish</button>';
-    el("groupFormName").value = isEdit ? (group.name || "") : "";
-    if(!isEdit){
-      el("groupFormKind").addEventListener("click", function(e){
-        var c=e.target.closest("[data-gkind]"); if(!c) return;
-        this.querySelectorAll("[data-gkind]").forEach(function(x){ x.classList.toggle("on", x===c); });
-      });
-    }
-    el("groupFormClose").addEventListener("click", closeGroupForm);
-    el("groupFormCancel").addEventListener("click", closeGroupForm);
-    el("groupFormSave").addEventListener("click", function(){
-      var name=(el("groupFormName").value||"").trim();
-      if(!name){ showMsg("Guruh nomi kiritilishi shart."); return; }
-      var btn=this; btn.disabled=true;
-      if(isEdit){
-        api("PUT","/api/item-groups/"+group.id,{name:name}).then(function(){
-          closeGroupForm(); loadItems(); showMsg("Guruh nomi o'zgartirildi.");
-        }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
-      } else {
-        var kOn = el("groupFormKind").querySelector("[data-gkind].on");
-        var kind = kOn ? kOn.getAttribute("data-gkind") : "product";
-        api("POST","/api/item-groups",{name:name, kind:kind}).then(function(){
-          closeGroupForm(); loadItems(); showMsg("Guruh qo'shildi.");
-        }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
-      }
-    });
-    back.classList.add("on");
-    sheet.classList.add("on");
-    setTimeout(function(){ try{ el("groupFormName").focus(); }catch(e){} }, 220);
-  }
-  function closeGroupForm(){
-    var back=document.getElementById("groupFormBack");
-    var sheet=document.getElementById("groupFormSheet");
-    if(back) back.classList.remove("on");
-    if(sheet) sheet.classList.remove("on");
   }
 
   function itemMenuHtml(kind, id){
@@ -4161,21 +4062,34 @@
   }
 
   function renderItems(){
+    updateItemFilterButtons();
+    var filteredItems = itemListCache.filter(itemMatchesFilter);
     var html = "";
-    var used = {};
+    var knownGroups = {};
+    var hasSearch = !!(itemSearchText || "").trim();
+    itemGroupsCache.forEach(function(g){ knownGroups[String(g.id)] = true; });
+
     itemGroupsCache.forEach(function(g){
-      var arr = itemListCache.filter(function(it){ return String(it.group_id || "") === String(g.id); });
-      used[String(g.id)] = true;
+      if(itemFilterKind !== "all" && g.kind !== itemFilterKind) return;
+      var arr = filteredItems.filter(function(it){ return String(it.group_id || "") === String(g.id); });
+      // Qidiruv paytida bo'sh guruhlarni yashiramiz, oddiy holatda esa + Tovar uchun qoldiramiz.
+      if(hasSearch && !arr.length) return;
       html += groupBlockHtml(g, arr);
     });
-    var ungrouped = itemListCache.filter(function(it){ return !it.group_id || !used[String(it.group_id)]; });
-    if(ungrouped.length || !itemGroupsCache.length){
+
+    var ungrouped = filteredItems.filter(function(it){ return !it.group_id || !knownGroups[String(it.group_id)]; });
+    if(ungrouped.length || (!itemGroupsCache.length && !hasSearch && itemFilterKind === "all")){
       html += groupBlockHtml(null, ungrouped);
     }
+
+    if(!html){
+      html = '<div class="empty" style="padding:25px 16px"><h3>Natija topilmadi</h3><p>Qidiruv matnini o\'zgartiring yoki boshqa filter tanlang.</p></div>';
+    }
     html += '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>';
-    if(!itemGroupsCache.length && !itemListCache.length){
+    if(!itemGroupsCache.length && !itemListCache.length && !hasSearch && itemFilterKind === "all"){
       html = '<div class="empty" style="padding:25px 16px"><h3>Hozircha tovar yo\'q</h3><p>Avval guruh qo\'shing yoki Guruhsiz bo\'limidagi + Tovar orqali boshlang.</p></div>' + html;
     }
+    updateItemResultHint(filteredItems.length);
     el("itemsList").innerHTML = html;
   }
 
@@ -4229,31 +4143,29 @@
   }
 
   function addItemGroup(){
-    // Tizim oynasi o'rniga ilova ichidagi forma
-    openGroupForm(null);
+    var name = prompt("Guruh nomini kiriting:");
+    if(name == null) return;
+    name = name.trim();
+    if(!name){ alert("Guruh nomi kiritilishi shart."); return; }
+    var isProduct = confirm("Bu guruh Mahsulot guruhi bo'lsinmi?\n\nOK — Mahsulot guruhi\nBekor qilish — Xizmat guruhi");
+    api("POST","/api/item-groups",{name:name, kind:isProduct ? "product" : "service"}).then(loadItems).catch(function(e){ alert(e.message); });
   }
 
   function editItemGroup(groupId){
     var g = itemGroupById(groupId);
     if(!g) return;
-    // Tizim oynasi o'rniga ilova ichidagi forma
-    openGroupForm(g);
+    var name = prompt("Guruh nomini o'zgartiring:", g.name);
+    if(name == null) return;
+    name = name.trim();
+    if(!name){ alert("Guruh nomi kiritilishi shart."); return; }
+    api("PUT","/api/item-groups/"+groupId,{name:name}).then(loadItems).catch(function(e){ alert(e.message); });
   }
 
   function deleteItemGroup(groupId){
     var g = itemGroupById(groupId);
     if(!g) return;
-    // Tizim oynasi o'rniga ilova ichidagi tasdiq
-    askConfirm({
-      title: "Guruhni o'chirish",
-      text: "'" + g.name + "' guruhi o'chirilsinmi?\n\nIchidagi tovarlar o'chmaydi, Guruhsiz bo'limiga o'tadi.",
-      okText: "O'chirish", danger: true
-    }).then(function(ok){
-      if(!ok) return;
-      api("DELETE","/api/item-groups/"+groupId).then(function(){
-        loadItems(); showMsg("Guruh o'chirildi.");
-      }).catch(function(e){ showMsg(e.message); });
-    });
+    if(!confirm("'"+g.name+"' guruhi o'chirilsinmi?\n\nIchidagi tovarlar o'chmaydi, Guruhsiz bo'limiga o'tadi.")) return;
+    api("DELETE","/api/item-groups/"+groupId).then(loadItems).catch(function(e){ alert(e.message); });
   }
 
   el("itGroup").addEventListener("change", updateItemKindVisibility);
@@ -4263,23 +4175,41 @@
   });
   el("itSave").addEventListener("click", function(){
     var name=(el("itName").value||"").trim();
-    if(!name){ showMsg("Nomi kiritilishi shart."); return; }
+    if(!name){ alert("Nomi kiritilishi shart."); return; }
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
     var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null};
-    var wasEdit = !!editItemId;
     var btn=this; btn.disabled=true;
     var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
-    p.then(function(){ nav("cab-items"); showMsg(wasEdit ? "Saqlandi." : "Tovar qo'shildi."); }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
+    p.then(function(){ nav("cab-items"); }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("itDeleteBtn").addEventListener("click", function(){
     if(!editItemId) return;
-    var delId = editItemId;
-    askConfirm({ title:"Tovarni o'chirish", text:"Bu tovar o'chirilsinmi?", okText:"O'chirish", danger:true }).then(function(ok){
-      if(!ok) return;
-      api("DELETE","/api/items/"+delId).then(function(){ nav("cab-items"); showMsg("Tovar o'chirildi."); }).catch(function(e){ showMsg(e.message); });
-    });
+    if(confirm("Bu tovar o'chirilsinmi?")){
+      api("DELETE","/api/items/"+editItemId).then(function(){ nav("cab-items"); }).catch(function(e){ alert(e.message); });
+    }
+  });
+
+  el("itemFilterRow").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-item-filter]");
+    if(!btn) return;
+    itemFilterKind = btn.getAttribute("data-item-filter") || "all";
+    renderItems();
+  });
+
+  el("itemSearchInput").addEventListener("input", function(){
+    itemSearchText = (this.value || "").trim().toLowerCase();
+    el("itemSearchClear").hidden = !itemSearchText;
+    renderItems();
+  });
+
+  el("itemSearchClear").addEventListener("click", function(){
+    el("itemSearchInput").value = "";
+    itemSearchText = "";
+    this.hidden = true;
+    renderItems();
+    el("itemSearchInput").focus();
   });
 
   el("itemsList").addEventListener("click", function(e){
@@ -4314,15 +4244,7 @@
     var mv=e.target.closest("[data-itmove]");
     if(mv){ closeItemMenus(); var mit=itemById(mv.getAttribute("data-itmove")); if(mit) openItemForm(mit); return; }
     var dl=e.target.closest("[data-itdel]");
-    if(dl){
-      closeItemMenus();
-      var delItemId = dl.getAttribute("data-itdel");
-      askConfirm({ title:"Tovarni o'chirish", text:"Bu tovar o'chirilsinmi?", okText:"O'chirish", danger:true }).then(function(ok){
-        if(!ok) return;
-        api("DELETE","/api/items/"+delItemId).then(function(){ loadItems(); showMsg("Tovar o'chirildi."); }).catch(function(e){ showMsg(e.message); });
-      });
-      return;
-    }
+    if(dl){ closeItemMenus(); if(confirm("Bu tovar o'chirilsinmi?")){ api("DELETE","/api/items/"+dl.getAttribute("data-itdel")).then(loadItems).catch(function(e){ alert(e.message); }); } return; }
   });
 
   document.addEventListener("click", function(e){
