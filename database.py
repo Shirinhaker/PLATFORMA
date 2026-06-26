@@ -98,9 +98,19 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS item_groups(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id   INTEGER NOT NULL,
+            name          TEXT NOT NULL,                    -- guruh nomi
+            kind          TEXT DEFAULT 'product',           -- 'product' | 'service'
+            created_at    INTEGER NOT NULL,
+            FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS items(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             business_id   INTEGER NOT NULL,
+            group_id      INTEGER,                          -- NULL bo'lsa: Guruhsiz
             name          TEXT NOT NULL,
             price         TEXT DEFAULT '',
             note          TEXT DEFAULT '',
@@ -304,6 +314,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
+        CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_items_biz      ON items(business_id);
         CREATE INDEX IF NOT EXISTS idx_list_user      ON listings(user_id);
         CREATE INDEX IF NOT EXISTS idx_list_cat       ON listings(cat, status);
@@ -324,6 +335,23 @@ def init_db():
 
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
+    # Mahsulot/xizmat guruhlari — v1379. CASCADE qo'ymaymiz: guruh o'chsa, tovarlar Guruhsizga o'tadi.
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS item_groups(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            kind TEXT DEFAULT 'product',
+            created_at INTEGER NOT NULL
+        )"""
+    )
+    icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "group_id" not in icols:
+        # Eski mahsulotlar avtomatik Guruhsiz bo'lib qolishi uchun NULL ustun qo'shamiz.
+        conn.execute("ALTER TABLE items ADD COLUMN group_id INTEGER")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_items_group ON items(group_id)")
+
     # users.username ustuni bormi?
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "username" not in cols:
