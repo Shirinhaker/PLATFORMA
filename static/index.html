@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1382.1 -->
+<title>Platforma</title><!-- BUILD: v1383 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -372,6 +372,8 @@
   .biz-prod-card .item-card2-img .noimg{font-size:30px;opacity:.45;}
   .biz-prod-card .biz-add-btn{display:block;width:100%;margin-top:11px;height:38px;border:none;border-radius:11px;background:var(--primary);color:#fff;font:inherit;font-size:13px;font-weight:800;line-height:1;white-space:nowrap;cursor:pointer;}
   .biz-prod-card .biz-add-btn:active{opacity:.85;}
+  /* === v1383: taxi haydovchi — majburiy maydon belgisi === */
+  .dreq{color:#DC2626;font-weight:700;}
   .item-card-menu{position:absolute;right:8px;top:8px;}
   .item-card2>.item-menu{position:static;right:auto;top:auto;min-width:0;margin-top:10px;box-shadow:none;background:var(--bg);}
   .item-add-card{flex:none;width:116px;min-height:132px;scroll-snap-align:start;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);border-radius:17px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;}
@@ -1105,29 +1107,9 @@
         <h3>Hisobot</h3><p>Bu bo'limning vazifasini keyingi bosqichda birga belgilaymiz.</p><span class="soon">Keyingi bosqich</span></div>
       </section>
 
-      <!-- TAXI: HAYDOVCHI BO'LIMI -->
+      <!-- TAXI: HAYDOVCHI BO'LIMI (dinamik — JS to'ldiradi) -->
       <section class="screen" data-screen="taxidrv">
-        <div class="cab-head">
-          <div class="cab-logo" style="background:var(--amber-tint)">🚖</div>
-          <div><div class="cab-name">Bekzod Rahimov</div><div class="cab-status" style="color:var(--soft)">Cobalt, oq · 01 A 123 BC · ⭐ 4.8</div>
-            <div class="stat-chips"><span class="stat-chip"><b>Hisobim:</b> 25 000 so'm</span><span class="stat-chip" data-alert="Hisob to'ldirish — to'lov tizimi keyingi bosqichda (namuna)." style="color:var(--primary)">+ To'ldirish</span></div></div>
-        </div>
-        <div class="biz-desc" style="margin-bottom:12px;font-size:12.5px;color:var(--soft)">Bu bo'lim Platforma Taxi profiliga obuna bo'lgan va ma'lumotlarini to'ldirgan haydovchilarga ochiladi. Har zakazdan platforma ulushi hisobingizdan yechiladi. Tariflar — Platforma Taxi profilida.</div>
-        <div class="field"><label>Holatim</label>
-          <div class="vis-card on"><span class="v-ic">🟢</span><div><h5>Bo'shman</h5><p>Yangi zakazlar menga ko'rinadi.</p></div></div>
-          <div class="vis-card"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Zakazlar kelmaydi.</p></div></div>
-        </div>
-        <div class="mini-map" style="height:130px">
-          <svg viewBox="0 0 320 130" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:100%">
-            <rect width="320" height="130" fill="var(--map-land)"/>
-            <g stroke="var(--map-road)" stroke-width="7" stroke-linecap="round"><path d="M40,-10 L60,140"/><path d="M-10,70 L330,60"/><path d="M220,-10 L240,140"/></g>
-            <g fill="var(--map-block)" opacity=".7"><rect x="90" y="15" width="30" height="24" rx="3"/><rect x="130" y="85" width="34" height="26" rx="3"/><rect x="255" y="20" width="28" height="24" rx="3"/></g>
-          </svg>
-          <div class="pin" style="left:30%;top:55%"><div class="dot" style="background:var(--primary)">🚖</div><div class="tail"></div></div>
-          <div class="pin" style="left:62%;top:40%"><div class="dot" style="background:#F0A21B">📍</div><div class="tail"></div></div>
-        </div>
-        <div class="sec-head"><h2>Kelayotgan zakazlar</h2><span class="link">3 ta</span></div>
-        <div id="drvOrders"></div>
+        <div id="taxidrvBody"></div>
       </section>
 
       <!-- CART (stub) -->
@@ -3384,7 +3366,7 @@
   el("catSearch").addEventListener("keyup", function(e){ if(e.key==="Enter") runSearch(this.value); });
   el("clearSearch").addEventListener("click", exitResults);
   el("taxiBtn").addEventListener("click", function(){ if(callMode) exitCall(); else enterCall(); });
-  el("taxiCabBtn").addEventListener("click", function(){ renderDrvOrders(); nav("taxidrv"); });
+  el("taxiCabBtn").addEventListener("click", function(){ if(!loggedIn){ showLogin("Taxi bo'limi"); return; } openTaxiDriver(); nav("taxidrv"); });
 
   el("callPanel").addEventListener("click", function(e){
     var t;
@@ -3407,36 +3389,98 @@
     if(e.target.closest("[data-ccancel]")){ exitCall(); }
   });
 
-  /* haydovchi zakazlari */
-  function renderDrvOrders(){
-    el("drvOrders").innerHTML =
-      '<div class="panel-card"><b>\ud83d\ude96 Taxi</b> \u00b7 18 500 so\u02bcm \u00b7 9 km'+
-      '<div class="list-sub" style="margin:5px 0 10px">Bog\u02bcishamol \u2192 Chorsu bozori</div>'+
-      '<button class="btn btn-primary btn-block" style="height:44px" data-accept="18 500 so\u02bcm">Qabul qilish</button></div>'+
-      '<div class="panel-card"><b>\ud83d\ude96 Taxi</b> \u00b7 narx: masofa bo\u02bcyicha'+
-      '<div class="list-sub" style="margin:5px 0 10px">Bog\u02bcishamol \u2192 \ud83d\udde3 manzil og\u02bczaki aytiladi</div>'+
-      '<button class="btn btn-primary btn-block" style="height:44px" data-accept="taksometr">Qabul qilish</button></div>'+
-      '<div class="panel-card"><b>\ud83d\udce6 Dostavka</b> \u00b7 21 000 so\u02bcm \u00b7 Yengil yuk'+
-      '<div class="list-sub" style="margin:5px 0 10px">Yunusobod \u2192 Sergeli \u00b7 Yuk: mebel</div>'+
-      '<button class="btn btn-primary btn-block" style="height:44px" data-accept="21 000 so\u02bcm">Qabul qilish</button></div>';
+  /* ---------- TAXI: HAYDOVCHI RO'YXATI VA PROFILI (v1383) ---------- */
+  var drvState = null;       // joriy haydovchi holati (serverdan)
+  var drvService = "taxi";   // formada tanlangan xizmat: taxi | dostavka | both
+
+  function openTaxiDriver(){
+    el("taxidrvBody").innerHTML = '<div class="empty" style="padding:30px 16px"><p>Yuklanmoqda...</p></div>';
+    api("GET","/api/driver").then(function(d){
+      drvState = d;
+      if(d.exists) renderDriverProfile(d); else renderDriverForm(d);
+    }).catch(function(e){ el("taxidrvBody").innerHTML = '<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  el("drvOrders").addEventListener("click", function(e){
-    var a=e.target.closest("[data-accept]");
-    if(a){
-      var pr=a.getAttribute("data-accept");
-      el("drvOrders").innerHTML = '<div class="panel-card"><b>\u2705 Zakaz qabul qilindi \u2014 holatingiz: \ud83d\udd34 Band</b>'+
-        '<div class="list-sub" style="margin:5px 0 10px">'+(pr==="taksometr" ? "Narx safar oxirida masofa bo\u02bcyicha hisoblanadi" : "Narx: "+pr)+'</div>'+
-        '<button class="btn btn-amber btn-block" style="height:44px" data-finish="'+pr+'">Safarni yakunlash</button></div>';
+
+  // Mashina maydonlari majburiymi (Taxi yoki Ikkalasi) — qizil * va izohni yangilaydi
+  function syncDrvRequired(){
+    var req = (drvService==="taxi" || drvService==="both");
+    document.querySelectorAll("#taxidrvBody .dreq").forEach(function(s){ s.style.display = req ? "" : "none"; });
+    var note = el("dCarNote");
+    if(note) note.textContent = req ? "Taxi uchun mashina rusumi, raqami va rangi majburiy."
+                                    : "Faqat dostavka — mashina ma\'lumoti ixtiyoriy.";
+  }
+
+  function renderDriverForm(d){
+    d = d || {};
+    drvService = d.service || "taxi";
+    var isEdit = !!d.exists;
+    el("taxidrvBody").innerHTML =
+      '<div class="biz-desc" style="margin-bottom:14px;font-size:12.5px;color:var(--soft)">Ma\'lumotlaringizni to\'ldiring. Tasdiqlangach, yaqin zakazlar sizga ko\'rinadi. To\'lov mijoz bilan naqd.</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px"><div class="cab-logo" style="background:var(--primary-tint);width:36px;height:36px;flex:none">👤</div><div><b>'+esc(d.name||"")+'</b><div class="list-sub">Akkaunt ismingiz — shu ishlatiladi</div></div></div>'+
+      '<div class="field"><label>Telefon</label><input class="input" id="dPhone" value="'+esc(d.phone||"")+'" placeholder="+998 ..."></div>'+
+      '<div class="field"><label>Nima bilan ishlaysiz</label><div class="sort-row" style="padding-bottom:0">'+
+        '<button class="sort-chip'+(drvService==="taxi"?" on":"")+'" data-dsvc="taxi">🚖 Taxi</button>'+
+        '<button class="sort-chip'+(drvService==="dostavka"?" on":"")+'" data-dsvc="dostavka">📦 Dostavka</button>'+
+        '<button class="sort-chip'+(drvService==="both"?" on":"")+'" data-dsvc="both">Ikkalasi</button>'+
+      '</div></div>'+
+      '<div class="field"><label>Mashina rusumi <span class="dreq">*</span></label><input class="input" id="dModel" value="'+esc(d.car_model||"")+'" placeholder="Masalan: Cobalt"></div>'+
+      '<div class="field"><label>Davlat raqami <span class="dreq">*</span></label><input class="input" id="dPlate" value="'+esc(d.car_plate||"")+'" placeholder="01 A 123 BC"></div>'+
+      '<div class="field"><label>Rangi <span class="dreq">*</span></label><input class="input" id="dColor" value="'+esc(d.car_color||"")+'" placeholder="Masalan: oq"></div>'+
+      '<div class="elon-hint" id="dCarNote" style="margin:0 2px 14px"></div>'+
+      '<button class="btn btn-primary btn-block" id="dSave">'+(isEdit?"Saqlash":"Ro\'yxatdan o\'tish")+'</button>';
+    syncDrvRequired();
+  }
+
+  function renderDriverProfile(d){
+    var svcLabel = d.service==="both" ? "🚖 Taxi · 📦 Dostavka" : (d.service==="dostavka" ? "📦 Dostavka" : "🚖 Taxi");
+    var carLine = d.car_model ? (esc(d.car_model)+(d.car_color?", "+esc(d.car_color):"")+(d.car_plate?" · "+esc(d.car_plate):"")+" · "+svcLabel) : svcLabel;
+    var avail = !!d.available;
+    el("taxidrvBody").innerHTML =
+      '<div class="cab-head"><div class="cab-logo" style="background:var(--amber-tint)">🚖</div>'+
+        '<div><div class="cab-name">'+esc(d.name||"")+'</div><div class="cab-status" style="color:var(--soft)">'+carLine+'</div></div></div>'+
+      '<div class="field"><label>Holatim</label>'+
+        '<div class="vis-card'+(avail?" on":"")+'" data-davail="1"><span class="v-ic">🟢</span><div><h5>Bo\'shman</h5><p>Yangi zakazlar menga ko\'rinadi.</p></div></div>'+
+        '<div class="vis-card'+(!avail?" on":"")+'" data-davail="0"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Zakazlar kelmaydi.</p></div></div>'+
+      '</div>'+
+      '<button class="btn btn-soft btn-block" id="dEdit" style="margin-bottom:4px">✎ Ma\'lumotlarni tahrirlash</button>'+
+      '<div class="sec-head"><h2>Kelayotgan zakazlar</h2></div>'+
+      '<div class="empty" style="padding:24px 14px"><h3>Hozircha zakaz yo\'q</h3><p>Mijoz zakaz bersa, shu yerda ko\'rinadi.</p></div>';
+  }
+
+  function submitDriver(){
+    var phone=(el("dPhone").value||"").trim();
+    if(!phone){ showMsg("Telefon raqamini kiriting."); return; }
+    var model=(el("dModel")?el("dModel").value:"").trim();
+    var plate=(el("dPlate")?el("dPlate").value:"").trim();
+    var color=(el("dColor")?el("dColor").value:"").trim();
+    if((drvService==="taxi"||drvService==="both") && !(model&&plate&&color)){ showMsg("Taxi uchun mashina rusumi, raqami va rangini to'ldiring."); return; }
+    var btn=el("dSave"); btn.disabled=true;
+    api("POST","/api/driver",{phone:phone, car_model:model, car_plate:plate, car_color:color, service:drvService}).then(function(){
+      showMsg("Saqlandi."); openTaxiDriver();
+    }).catch(function(e){ showMsg(e.message); btn.disabled=false; });
+  }
+
+  function toggleDriverAvail(avail){
+    api("PUT","/api/driver/available",{available:avail}).then(function(){
+      if(drvState){ drvState.available = avail; renderDriverProfile(drvState); }
+      showMsg(avail ? "Holatingiz: Bo'shman" : "Holatingiz: Bandman");
+    }).catch(function(e){ showMsg(e.message); });
+  }
+
+  el("taxidrvBody").addEventListener("click", function(e){
+    var svc=e.target.closest("[data-dsvc]");
+    if(svc){
+      drvService=svc.getAttribute("data-dsvc");
+      this.querySelectorAll("[data-dsvc]").forEach(function(x){ x.classList.toggle("on", x===svc); });
+      syncDrvRequired();
       return;
     }
-    var f=e.target.closest("[data-finish]");
-    if(f){
-      var pr2=f.getAttribute("data-finish");
-      var sum = pr2==="taksometr" ? "17 200 so\u02bcm (11,5 km bo\u02bcyicha hisoblandi)" : pr2;
-      alert("Safar yakunlandi! Narx: "+sum+". Platforma ulushi hisobingizdan yechildi (namuna). Holatingiz yana \ud83d\udfe2 Bo\u02bcsh.");
-      renderDrvOrders();
-    }
+    if(e.target.closest("#dSave")){ submitDriver(); return; }
+    if(e.target.closest("#dEdit")){ renderDriverForm(drvState); return; }
+    var av=e.target.closest("[data-davail]");
+    if(av){ toggleDriverAvail(av.getAttribute("data-davail")==="1" ? 1 : 0); return; }
   });
+
   el("resBar").addEventListener("click", function(){ var r=el("resList"); r.hidden=!r.hidden; });
 
   el("scopeRow").addEventListener("click", function(e){
