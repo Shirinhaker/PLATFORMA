@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1379.1 -->
+<title>Platforma</title><!-- BUILD: v1380 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -520,6 +520,13 @@
   .detail-line{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;font-size:13.5px;}
   .detail-line b{font-size:13px;color:var(--soft);font-weight:700;}
   .detail-line span{text-align:right;font-weight:600;}
+  /* === v1380: filtr va qidiruv === */
+  .item-tools{margin:0 4px 14px;}
+  .item-search{display:flex;align-items:center;gap:8px;height:46px;border:1.5px solid var(--line);border-radius:13px;background:var(--card);padding:0 14px;margin-bottom:10px;}
+  .item-search input{flex:1;border:none;background:transparent;outline:none;font:inherit;font-size:15px;color:var(--ink);}
+  .item-search .ic{color:var(--soft);font-size:15px;}
+  .item-filter{display:flex;gap:8px;}
+  .item-filter .sort-chip{flex:1;text-align:center;}
   /* === Ilova ichidagi vositalar (tizim oynasi alert/prompt/confirm o'rniga) === */
   .app-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);width:calc(100% - 48px);max-width:360px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:13px;font-size:14px;font-weight:600;text-align:center;line-height:1.4;box-shadow:var(--shadow-lg);z-index:6000;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
   .app-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -748,6 +755,14 @@
       <!-- CAB: MAHSULOTLAR -->
       <section class="screen" data-screen="cab-items">
         <div class="elon-hint" style="margin:4px 4px 12px">Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida chiqadi.</div>
+        <div class="item-tools">
+          <div class="item-search"><span class="ic">🔍</span><input id="itemSearchInput" type="text" placeholder="Tovar qidirish..." autocomplete="off"></div>
+          <div class="item-filter" id="itemFilterRow">
+            <button class="sort-chip on" data-item-filter="all">Barchasi</button>
+            <button class="sort-chip" data-item-filter="product">Mahsulotlar</button>
+            <button class="sort-chip" data-item-filter="service">Xizmatlar</button>
+          </div>
+        </div>
         <div id="itemsList"></div>
       </section>
 
@@ -3978,6 +3993,8 @@
   var editItemId = null;
   var itemGroupsCache = [];
   var itemListCache = [];
+  var itemFilter = "all";   // joriy filtr: all | product | service
+  var itemSearch = "";      // qidiruv matni
 
   function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
   function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
@@ -4148,7 +4165,8 @@
     return '<button class="item-add-card" data-add-to-group="'+esc(itemGroupValue(groupId))+'"><span class="plus">+</span><span>Tovar</span></button>';
   }
 
-  function groupBlockHtml(group, items){
+  function groupBlockHtml(group, items, showAdd){
+    if(showAdd === undefined) showAdd = true;
     var isReal = !!group;
     var gid = isReal ? String(group.id) : "";
     var title = isReal ? group.name : "Guruhsiz";
@@ -4156,30 +4174,66 @@
     return '<div class="item-group-block" data-group-block="'+esc(gid || 'none')+'">'+
       '<div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+esc(subtitle)+'</p></div>'+
       (isReal ? itemMenuHtml("group", gid) : '')+'</div>'+ 
-      '<div class="item-hrow">'+items.map(itemCardHtml).join("")+addItemCardHtml(gid)+'</div>'+ 
+      '<div class="item-hrow">'+items.map(itemCardHtml).join("")+(showAdd ? addItemCardHtml(gid) : '')+'</div>'+ 
     '</div>';
   }
 
+  function itemMatchesSearch(it, q){
+    if(!q) return true;
+    var hay = ((it.name || "") + " " + (it.note || "")).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
   function renderItems(){
-    var html = "";
+    var q = (itemSearch || "").trim().toLowerCase();
+    var searchActive = q.length > 0;
+    var filter = itemFilter || "all";
+    var showAdd = !searchActive;            // qidiruv paytida "+ Tovar" va "+ Guruh" yashiriladi
+
+    // mavjud guruh id'lari (yetim tovarlarni Guruhsizga tushirish uchun)
     var used = {};
+    itemGroupsCache.forEach(function(g){ used[String(g.id)] = true; });
+
+    var blocks = "";
     itemGroupsCache.forEach(function(g){
+      if(filter !== "all" && g.kind !== filter) return;          // tur filtri: guruh turi mos kelmasa
       var arr = itemListCache.filter(function(it){ return String(it.group_id || "") === String(g.id); });
-      used[String(g.id)] = true;
-      html += groupBlockHtml(g, arr);
+      if(searchActive) arr = arr.filter(function(it){ return itemMatchesSearch(it, q); });
+      if(searchActive && arr.length === 0) return;               // qidiruvda bo'sh guruh ko'rinmaydi
+      blocks += groupBlockHtml(g, arr, showAdd);
     });
+
     var ungrouped = itemListCache.filter(function(it){ return !it.group_id || !used[String(it.group_id)]; });
-    if(ungrouped.length || !itemGroupsCache.length){
-      html += groupBlockHtml(null, ungrouped);
+    if(filter !== "all") ungrouped = ungrouped.filter(function(it){ return it.kind === filter; });
+    if(searchActive) ungrouped = ungrouped.filter(function(it){ return itemMatchesSearch(it, q); });
+    var showEmptyUngrouped = (!searchActive && filter === "all" && !itemGroupsCache.length);
+    if(ungrouped.length || showEmptyUngrouped){
+      blocks += groupBlockHtml(null, ungrouped, showAdd);
     }
-    html += '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>';
-    if(!itemGroupsCache.length && !itemListCache.length){
-      html = '<div class="empty" style="padding:25px 16px"><h3>Hozircha tovar yo\'q</h3><p>Avval guruh qo\'shing yoki Guruhsiz bo\'limidagi + Tovar orqali boshlang.</p></div>' + html;
+
+    var html = blocks;
+    if(showAdd){
+      html += '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>';
+    }
+    if(!blocks){
+      if(searchActive){
+        html = '<div class="empty" style="padding:25px 16px"><h3>Hech narsa topilmadi</h3><p>«'+esc(itemSearch.trim())+'» bo\'yicha tovar topilmadi.</p></div>' + html;
+      } else if(filter === "service"){
+        html = '<div class="empty" style="padding:25px 16px"><h3>Xizmat yo\'q</h3><p>Bu turda hozircha tovar yo\'q.</p></div>' + html;
+      } else if(filter === "product"){
+        html = '<div class="empty" style="padding:25px 16px"><h3>Mahsulot yo\'q</h3><p>Bu turda hozircha tovar yo\'q.</p></div>' + html;
+      } else {
+        html = '<div class="empty" style="padding:25px 16px"><h3>Hozircha tovar yo\'q</h3><p>Avval guruh qo\'shing yoki Guruhsiz bo\'limidagi + Tovar orqali boshlang.</p></div>' + html;
+      }
     }
     el("itemsList").innerHTML = html;
   }
 
   function loadItems(){
+    // Har kirishda filtr va qidiruvni boshlang'ich holatga qaytaramiz
+    itemFilter = "all"; itemSearch = "";
+    var si = el("itemSearchInput"); if(si) si.value = "";
+    var fr = el("itemFilterRow"); if(fr) fr.querySelectorAll("[data-item-filter]").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-item-filter") === "all"); });
     Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
       itemGroupsCache = res[0] || [];
       itemListCache = res[1] || [];
@@ -4323,6 +4377,19 @@
       });
       return;
     }
+  });
+
+  // Qidiruv: yozilgan zahoti ro'yxatni filtrlash
+  el("itemSearchInput").addEventListener("input", function(){
+    itemSearch = this.value || "";
+    renderItems();
+  });
+  // Filtr tugmalari: Barchasi / Mahsulotlar / Xizmatlar
+  el("itemFilterRow").addEventListener("click", function(e){
+    var c = e.target.closest("[data-item-filter]"); if(!c) return;
+    itemFilter = c.getAttribute("data-item-filter");
+    this.querySelectorAll("[data-item-filter]").forEach(function(x){ x.classList.toggle("on", x === c); });
+    renderItems();
   });
 
   document.addEventListener("click", function(e){
