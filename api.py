@@ -1330,7 +1330,15 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
     items = conn.execute(
-        "SELECT id, name, price, note, kind FROM items WHERE business_id=? ORDER BY created_at DESC",
+        """SELECT i.id, i.name, i.price, i.note, i.kind, i.group_id, i.photo_file,
+                  g.name AS group_name, g.kind AS group_kind
+           FROM items i
+           LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
+           WHERE i.business_id=? ORDER BY i.created_at DESC""",
+        (business_id,),
+    ).fetchall()
+    item_groups = conn.execute(
+        "SELECT id, name, kind FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
         (business_id,),
     ).fetchall()
     # Biznes sahifasida HAMMA e'lonlari ko'rinadi (shu jumladan 'own' — faqat mehmonlarga)
@@ -1345,8 +1353,11 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
         "lat": biz["lat"], "lng": biz["lng"],
         "followers": follower_count(conn, "business", biz["id"]),
         "is_following": is_following(conn, viewer["id"] if viewer else None, "business", biz["id"]),
+        "item_groups": [{"id": g["id"], "name": g["name"], "kind": g["kind"]} for g in item_groups],
         "items": [{"id": i["id"], "name": i["name"], "price": i["price"],
-                   "note": i["note"], "kind": i["kind"]} for i in items],
+                   "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
+                   "group_name": i["group_name"], "group_kind": i["group_kind"],
+                   "photo_file": i["photo_file"]} for i in items],
         "listings": [listing_to_dict(conn, r) for r in listings],
     }
     conn.close()
