@@ -390,7 +390,8 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
     conn.close()
     return [{"id": r["id"], "name": r["name"], "price": r["price"],
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
-             "group_name": r["group_name"], "group_kind": r["group_kind"]} for r in rows]
+             "group_name": r["group_name"], "group_kind": r["group_kind"],
+             "photo_file": r["photo_file"]} for r in rows]
 
 
 @router.post("/items")
@@ -403,10 +404,11 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
+    photo = (b.get("photo_file") or "").strip()
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, note, kind, created_at) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
-         kind, int(time.time())),
+         kind, photo, int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -430,14 +432,50 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
+    photo = (b.get("photo_file") or "").strip()
     conn.execute(
-        "UPDATE items SET name=?, price=?, note=?, kind=?, group_id=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
-         kind, group_id, item_id, biz["id"]),
+         kind, group_id, photo, item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@router.post("/items/image")
+async def upload_item_image(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Tovar rasmini yuklash. Rasm UPLOAD_DIR/items papkasiga saqlanadi va /uploads/items/... URL qaytariladi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    conn.close()
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/heic": ".heic",
+        "image/heif": ".heif",
+    }
+    if ctype not in allowed:
+        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
+    raw = await request.body()
+    max_size = 8 * 1024 * 1024
+    if not raw:
+        raise HTTPException(400, "Rasm fayli topilmadi.")
+    if len(raw) > max_size:
+        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "items")
+    os.makedirs(folder, exist_ok=True)
+    ext = allowed[ctype]
+    safe_name = "item_" + str(biz["id"]) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
+    path = os.path.join(folder, safe_name)
+    with open(path, "wb") as f:
+        f.write(raw)
+    return {"ok": True, "photo_file": "/uploads/items/" + safe_name}
 
 
 @router.delete("/items/{item_id}")
