@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1381 -->
+<title>Platforma</title><!-- BUILD: v1382 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -365,6 +365,10 @@
   .item-photo-preview{position:relative;width:100%;border-radius:14px;overflow:hidden;}
   .item-photo-preview img{width:100%;max-height:230px;object-fit:cover;display:block;}
   .item-photo-remove{position:absolute;top:9px;right:9px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;}
+  /* === v1382: mijoz biznes sahifasidagi tovar kartochkasi === */
+  .biz-card .name{margin-right:0;}
+  .biz-card .biz-add-btn{width:100%;margin-top:10px;height:36px;border:none;border-radius:11px;background:var(--primary);color:#fff;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;}
+  .biz-card .biz-add-btn:active{opacity:.85;}
   .item-card-menu{position:absolute;right:8px;top:8px;}
   .item-card2>.item-menu{position:static;right:auto;top:auto;min-width:0;margin-top:10px;box-shadow:none;background:var(--bg);}
   .item-add-card{flex:none;width:116px;min-height:132px;scroll-snap-align:start;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);border-radius:17px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;}
@@ -1924,13 +1928,53 @@
   function followBtnHtml(isFollowing){
     return '<button class="btn btn-soft btn-block" id="pageFollow" style="margin-top:9px">'+(isFollowing?"✓ Obunadasiz":"+ Obuna")+'</button>';
   }
+  // Mijoz biznes sahifasi: bitta tovar kartochkasi (rasm + nom + narx + "Savatga" tugmasi)
+  // "Savatga" tugmasi eski "Qo'shish" mexanizmini saqlaydi: data-order-item + ma'lumotlar.
+  function bizItemCardHtml(it, b){
+    return '<div class="item-card2 biz-card">'+
+      (it.photo_file ? '<div class="item-card2-img"><img src="'+esc(it.photo_file)+'" alt="" loading="lazy"></div>' : '')+
+      '<div class="name">'+esc(it.name)+'</div>'+
+      '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+
+      (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
+      '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>'+
+    '</div>';
+  }
+  function bizGroupBlockHtml(group, items, b){
+    var title = group ? group.name : "Boshqa";
+    return '<div class="item-group-block"><div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+items.length+' ta</p></div></div>'+
+      '<div class="item-hrow">'+items.map(function(it){ return bizItemCardHtml(it, b); }).join("")+'</div>'+
+    '</div>';
+  }
+  function bizItemsHtml(b){
+    var groups = b.item_groups || [];
+    var all = b.items || [];
+    var used = {};
+    groups.forEach(function(g){ used[String(g.id)] = true; });
+    var blocks = "";
+    var groupBlocks = 0;
+    groups.forEach(function(g){
+      var arr = all.filter(function(it){ return String(it.group_id || "") === String(g.id); });
+      if(!arr.length) return;                 // mijozga bo'sh guruh ko'rsatilmaydi
+      blocks += bizGroupBlockHtml(g, arr, b);
+      groupBlocks++;
+    });
+    var ungrouped = all.filter(function(it){ return !it.group_id || !used[String(it.group_id)]; });
+    if(ungrouped.length){
+      if(groupBlocks > 0){
+        blocks += bizGroupBlockHtml(null, ungrouped, b);   // "Boshqa" sarlavhasi bilan
+      } else {
+        // hech qanday guruh yo'q — sarlavhasiz oddiy kartochka qatori
+        blocks += '<div class="item-hrow">'+ungrouped.map(function(it){ return bizItemCardHtml(it, b); }).join("")+'</div>';
+      }
+    }
+    return blocks || '<p class="elon-hint">Hozircha mahsulot yo\'q.</p>';
+  }
+
   function openBizSrv(id){
     api("GET","/api/business/"+id).then(function(b){
       curFollow = {kind:"business", id:b.id};
       resetOrderDraft(b.id, b.name);
-      var items = (b.items||[]).map(function(it){
-        return '<div class="item order-item-row" data-order-item-row="'+it.id+'"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div>'+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div><div style="display:flex;align-items:center;gap:8px;flex:none"><div class="iprice">'+esc(it.price||"")+'</div><button class="mini-btn" style="height:38px;padding:0 10px" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">Qo\'shish</button></div></div>';
-      }).join("") || '<p class="elon-hint">Hozircha mahsulot yo\'q.</p>';
+      var items = bizItemsHtml(b);
       var elons = (b.listings||[]).map(function(e2){
         var vis = e2.visibility==="own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma";
         return '<div class="elon-item" data-lsrv="'+e2.id+'"><div class="li-thumb" style="background:var(--primary-tint)"><span>📦</span></div>'+
