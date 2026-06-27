@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1380 -->
+<title>Platforma</title><!-- BUILD: v1381 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -349,13 +349,22 @@
   .item-menu button:active{background:var(--primary-tint);color:var(--primary);}
   .item-menu button.danger{color:#DC2626;}
   [data-theme="dark"] .item-menu button.danger{color:#F87171;}
-  .item-hrow{display:flex;gap:11px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .item-hrow{display:flex;align-items:flex-start;gap:11px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;}
   .item-hrow::-webkit-scrollbar{display:none;}
   .item-card2{position:relative;flex:none;width:152px;min-height:132px;scroll-snap-align:start;background:var(--card);border:1.5px solid var(--line);border-radius:17px;padding:13px 12px 12px;box-shadow:var(--shadow);}
   .item-card2 .name{font-family:var(--font-d);font-size:14px;font-weight:800;line-height:1.25;margin-right:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   .item-card2 .price{font-size:13.5px;font-weight:800;color:var(--primary);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .item-card2 .note{font-size:11.5px;color:var(--soft);line-height:1.35;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   .item-card2 .kind{display:inline-flex;margin-top:8px;font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 8px;background:var(--primary-tint);color:var(--primary);}
+  /* === v1381: tovar rasmi === */
+  .item-card2-img{margin:-13px -12px 11px;height:108px;border-radius:15px 15px 0 0;overflow:hidden;background:var(--primary-tint);}
+  .item-card2-img img{width:100%;height:100%;object-fit:cover;display:block;}
+  .item-photo-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:100%;height:150px;border:1.5px dashed var(--line);border-radius:14px;background:var(--card);color:var(--soft);font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+  .item-photo-add .ic{font-size:30px;}
+  .item-photo-add.busy{opacity:.6;pointer-events:none;}
+  .item-photo-preview{position:relative;width:100%;border-radius:14px;overflow:hidden;}
+  .item-photo-preview img{width:100%;max-height:230px;object-fit:cover;display:block;}
+  .item-photo-remove{position:absolute;top:9px;right:9px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;}
   .item-card-menu{position:absolute;right:8px;top:8px;}
   .item-card2>.item-menu{position:static;right:auto;top:auto;min-width:0;margin-top:10px;box-shadow:none;background:var(--bg);}
   .item-add-card{flex:none;width:116px;min-height:132px;scroll-snap-align:start;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);border-radius:17px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;}
@@ -769,6 +778,11 @@
       <!-- CAB: MAHSULOT FORMASI -->
       <section class="screen" data-screen="cab-item-form">
         <div class="form-wrap">
+          <div class="field"><label>Rasm — ixtiyoriy</label>
+            <input type="file" accept="image/*" id="itPhotoFile" style="display:none">
+            <button type="button" class="item-photo-add" id="itPhotoAdd"><span class="ic">📷</span><span id="itPhotoAddText">Rasm qo'shish</span></button>
+            <div class="item-photo-preview" id="itPhotoPreview" style="display:none"><img id="itPhotoImg" alt=""><button type="button" class="item-photo-remove" id="itPhotoRemove" aria-label="Rasmni olib tashlash">×</button></div>
+          </div>
           <div class="field"><label>Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
@@ -3991,6 +4005,7 @@
 
   /* ---------- MAHSULOTLAR ---------- */
   var editItemId = null;
+  var itemPhotoUrl = "";   // tanlangan/yuklangan tovar rasmining URL manzili
   var itemGroupsCache = [];
   var itemListCache = [];
   var itemFilter = "all";   // joriy filtr: all | product | service
@@ -4153,6 +4168,7 @@
   function itemCardHtml(it){
     return '<div class="item-card2" data-item-card="'+it.id+'">'+
       itemMenuHtml("item", it.id)+
+      (it.photo_file ? '<div class="item-card2-img"><img src="'+esc(it.photo_file)+'" alt="" loading="lazy"></div>' : '')+
       '<div class="name">'+esc(it.name)+'</div>'+ 
       '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+ 
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>')+
@@ -4270,6 +4286,14 @@
     }
   }
 
+  // Forma rasm holatini chizish: rasm bo'lsa preview, bo'lmasa "Rasm qo'shish" tugmasi
+  function renderItemPhoto(){
+    var has = !!itemPhotoUrl;
+    el("itPhotoPreview").style.display = has ? "block" : "none";
+    el("itPhotoAdd").style.display = has ? "none" : "flex";
+    if(has) el("itPhotoImg").src = itemPhotoUrl;
+  }
+
   function openItemForm(data, presetGroupId){
     editItemId = data ? data.id : null;
     el("itName").value = data ? data.name : "";
@@ -4278,6 +4302,8 @@
     setItemKind(data ? data.kind : "product");
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
     el("itDeleteBtn").style.display = data ? "flex" : "none";
+    itemPhotoUrl = data ? (data.photo_file || "") : "";
+    renderItemPhoto();
     nav("cab-item-form");
     el("tbTitle").textContent = data ? "Tovarni tahrirlash" : "Yangi tovar";
   }
@@ -4321,7 +4347,7 @@
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null};
+    var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
     var wasEdit = !!editItemId;
     var btn=this; btn.disabled=true;
     var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
@@ -4333,6 +4359,31 @@
     askConfirm({ title:"Tovarni o'chirish", text:"Bu tovar o'chirilsinmi?", okText:"O'chirish", danger:true }).then(function(ok){
       if(!ok) return;
       api("DELETE","/api/items/"+delId).then(function(){ nav("cab-items"); showMsg("Tovar o'chirildi."); }).catch(function(e){ showMsg(e.message); });
+    });
+  });
+
+  // Rasm: "Rasm qo'shish" tugmasi fayl tanlashni ochadi
+  el("itPhotoAdd").addEventListener("click", function(){ el("itPhotoFile").click(); });
+  // Rasmni olib tashlash
+  el("itPhotoRemove").addEventListener("click", function(){ itemPhotoUrl=""; el("itPhotoFile").value=""; renderItemPhoto(); });
+  // Fayl tanlanganda rasmni yuklaymiz (mavjud uploadRaw orqali, chat naqshidek)
+  el("itPhotoFile").addEventListener("change", function(){
+    var inp = this;
+    var f = inp.files && inp.files[0];
+    if(!f) return;
+    if(f.size > 8*1024*1024){ showMsg("Rasm hajmi 8 MB dan oshmasin."); inp.value=""; return; }
+    var addBtn = el("itPhotoAdd");
+    var t = el("itPhotoAddText");
+    var oldText = t ? t.textContent : "";
+    addBtn.classList.add("busy");
+    if(t) t.textContent = "Yuklanmoqda...";
+    uploadRaw("POST","/api/items/image", f).then(function(res){
+      itemPhotoUrl = res.photo_file || "";
+      renderItemPhoto();
+    }).catch(function(e){ showMsg(e.message); }).finally(function(){
+      addBtn.classList.remove("busy");
+      if(t) t.textContent = oldText || "Rasm qo'shish";
+      inp.value = "";
     });
   });
 
