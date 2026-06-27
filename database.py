@@ -311,6 +311,23 @@ def init_db():
             created_at    INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS drivers(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL UNIQUE,           -- haydovchi (foydalanuvchi)
+            phone         TEXT DEFAULT '',
+            car_model     TEXT DEFAULT '',                   -- mashina rusumi
+            car_color     TEXT DEFAULT '',                   -- rangi
+            car_plate     TEXT DEFAULT '',                   -- davlat raqami
+            service       TEXT DEFAULT 'taxi',               -- 'taxi' | 'dostavka' | 'both'
+            available     INTEGER DEFAULT 1,                 -- 1 = bo'shman, 0 = bandman
+            rating_sum    INTEGER DEFAULT 0,                 -- reyting yig'indisi (keyin)
+            rating_cnt    INTEGER DEFAULT 0,                 -- baholar soni (keyin)
+            balance       INTEGER DEFAULT 0,                 -- hisob (keyin, to'lov uchun)
+            status        TEXT DEFAULT 'active',
+            created_at    INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
@@ -326,6 +343,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(status, created_at);
         CREATE INDEX IF NOT EXISTS idx_debtors_biz    ON debtors(business_id);
         CREATE INDEX IF NOT EXISTS idx_qtx_debtor     ON qarz_tx(debtor_id);
+        CREATE INDEX IF NOT EXISTS idx_drivers_user   ON drivers(user_id);
         """
     )
     _migrate(conn)
@@ -351,6 +369,26 @@ def _migrate(conn):
         conn.execute("ALTER TABLE items ADD COLUMN group_id INTEGER")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_items_group ON items(group_id)")
+
+    # Taxi haydovchilari — v1383
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS drivers(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            phone TEXT DEFAULT '',
+            car_model TEXT DEFAULT '',
+            car_color TEXT DEFAULT '',
+            car_plate TEXT DEFAULT '',
+            service TEXT DEFAULT 'taxi',
+            available INTEGER DEFAULT 1,
+            rating_sum INTEGER DEFAULT 0,
+            rating_cnt INTEGER DEFAULT 0,
+            balance INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active',
+            created_at INTEGER NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_drivers_user ON drivers(user_id)")
 
     # users.username ustuni bormi?
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
