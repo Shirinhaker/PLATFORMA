@@ -227,6 +227,81 @@ async def update_specialist(request: Request, x_telegram_init_data: str = Header
 
 
 # ====================================================================
+# TAXI HAYDOVCHISI (v1383)
+# ====================================================================
+
+@router.get("/driver")
+async def get_driver(x_telegram_init_data: str = Header(default="")):
+    """Joriy foydalanuvchining haydovchi profili. Ro'yxatdan o'tmagan bo'lsa, formani
+    oldindan to'ldirish uchun akkaunt ismi va telefoni qaytariladi."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
+    name = user["name"]
+    phone = user["phone"]
+    conn.close()
+    if not d:
+        return {"exists": False, "name": name, "phone": phone}
+    rating = round(d["rating_sum"] / d["rating_cnt"], 1) if d["rating_cnt"] else 0
+    return {
+        "exists": True, "name": name,
+        "phone": d["phone"], "car_model": d["car_model"], "car_color": d["car_color"],
+        "car_plate": d["car_plate"], "service": d["service"], "available": bool(d["available"]),
+        "rating": rating, "rating_cnt": d["rating_cnt"], "balance": d["balance"],
+    }
+
+
+@router.post("/driver")
+async def save_driver(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Haydovchi ro'yxatdan o'tadi yoki ma'lumotini tahrirlaydi (upsert).
+    Taxi yoki Ikkalasi bo'lsa, mashina ma'lumoti majburiy."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    service = (b.get("service") or "taxi").strip().lower()
+    if service not in ("taxi", "dostavka", "both"):
+        service = "taxi"
+    phone = (b.get("phone") or "").strip()
+    car_model = (b.get("car_model") or "").strip()
+    car_color = (b.get("car_color") or "").strip()
+    car_plate = (b.get("car_plate") or "").strip()
+    if not phone:
+        conn.close()
+        raise HTTPException(400, "Telefon raqamini kiriting.")
+    # Taxi yoki Ikkalasi — yo'lovchi tashish uchun mashina ma'lumoti majburiy
+    if service in ("taxi", "both") and not (car_model and car_color and car_plate):
+        conn.close()
+        raise HTTPException(400, "Taxi uchun mashina rusumi, raqami va rangini to'ldiring.")
+    now = int(time.time())
+    conn.execute(
+        """INSERT INTO drivers(user_id, phone, car_model, car_color, car_plate, service, available, created_at)
+           VALUES(?,?,?,?,?,?,1,?)
+           ON CONFLICT(user_id) DO UPDATE SET
+             phone=excluded.phone, car_model=excluded.car_model, car_color=excluded.car_color,
+             car_plate=excluded.car_plate, service=excluded.service""",
+        (user["id"], phone, car_model, car_color, car_plate, service, now),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.put("/driver/available")
+async def set_driver_available(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Haydovchi holatini o'zgartiradi: bo'shman (1) / bandman (0)."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    avail = 1 if b.get("available") else 0
+    cur = conn.execute("UPDATE drivers SET available=? WHERE user_id=?", (avail, user["id"]))
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "Avval haydovchi sifatida ro'yxatdan o'ting.")
+    return {"ok": True, "available": bool(avail)}
+
+
+# ====================================================================
 # BIZNES PROFILI VA MAHSULOTLAR
 # ====================================================================
 @router.put("/business")
