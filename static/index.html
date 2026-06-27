@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1382 -->
+<title>Platforma</title><!-- BUILD: v1382.1 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -365,10 +365,13 @@
   .item-photo-preview{position:relative;width:100%;border-radius:14px;overflow:hidden;}
   .item-photo-preview img{width:100%;max-height:230px;object-fit:cover;display:block;}
   .item-photo-remove{position:absolute;top:9px;right:9px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;}
-  /* === v1382: mijoz biznes sahifasidagi tovar kartochkasi === */
-  .biz-card .name{margin-right:0;}
-  .biz-card .biz-add-btn{width:100%;margin-top:10px;height:36px;border:none;border-radius:11px;background:var(--primary);color:#fff;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;}
-  .biz-card .biz-add-btn:active{opacity:.85;}
+  /* === v1382: mijoz biznes sahifasidagi tovar kartochkasi (vertikal: rasm, nom, narx, izoh, savatga) === */
+  .biz-prod-card{display:flex;flex-direction:column;}
+  .biz-prod-card .name{margin-right:0;}
+  .biz-prod-card .item-card2-img{display:flex;align-items:center;justify-content:center;}
+  .biz-prod-card .item-card2-img .noimg{font-size:30px;opacity:.45;}
+  .biz-prod-card .biz-add-btn{display:block;width:100%;margin-top:11px;height:38px;border:none;border-radius:11px;background:var(--primary);color:#fff;font:inherit;font-size:13px;font-weight:800;line-height:1;white-space:nowrap;cursor:pointer;}
+  .biz-prod-card .biz-add-btn:active{opacity:.85;}
   .item-card-menu{position:absolute;right:8px;top:8px;}
   .item-card2>.item-menu{position:static;right:auto;top:auto;min-width:0;margin-top:10px;box-shadow:none;background:var(--bg);}
   .item-add-card{flex:none;width:116px;min-height:132px;scroll-snap-align:start;border:1.7px dashed var(--primary);background:var(--primary-tint);color:var(--primary);border-radius:17px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;font-family:var(--font-d);font-size:13px;font-weight:900;cursor:pointer;}
@@ -1931,8 +1934,8 @@
   // Mijoz biznes sahifasi: bitta tovar kartochkasi (rasm + nom + narx + "Savatga" tugmasi)
   // "Savatga" tugmasi eski "Qo'shish" mexanizmini saqlaydi: data-order-item + ma'lumotlar.
   function bizItemCardHtml(it, b){
-    return '<div class="item-card2 biz-card">'+
-      (it.photo_file ? '<div class="item-card2-img"><img src="'+esc(it.photo_file)+'" alt="" loading="lazy"></div>' : '')+
+    return '<div class="item-card2 biz-prod-card">'+
+      '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
       '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
