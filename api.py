@@ -302,6 +302,179 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
 
 
 # ====================================================================
+# TAXI ZAKAZLARI (v1384)
+# ====================================================================
+
+def _ride_dict(r):
+    return {
+        "id": r["id"], "kind": r["kind"], "from_addr": r["from_addr"], "to_addr": r["to_addr"],
+        "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
+        "status": r["status"], "created_at": r["created_at"],
+    }
+
+
+def _require_driver(conn, init_data):
+    user = require_user(conn, init_data)
+    d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
+    if not d:
+        conn.close()
+        raise HTTPException(403, "Avval haydovchi sifatida ro'yxatdan o'ting.")
+    return user, d
+
+
+@router.post("/rides")
+async def create_ride(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Mijoz yangi zakaz beradi (taxi yoki dostavka)."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    b = await request.json()
+    kind = (b.get("kind") or "taxi").strip().lower()
+    if kind not in ("taxi", "dostavka"):
+        kind = "taxi"
+    ozim = 1 if b.get("ozim") else 0
+    to_addr = (b.get("to_addr") or "").strip()
+    if not ozim and not to_addr:
+        conn.close()
+        raise HTTPException(400, "Qayerga borishni kiriting yoki 'O'zim aytaman'ni tanlang.")
+    active = conn.execute(
+        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted') LIMIT 1",
+        (user["id"],),
+    ).fetchone()
+    if active:
+        conn.close()
+        raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO rides(customer_id, kind, from_addr, to_addr, ozim, cargo, car_type, note, status, created_at)
+           VALUES(?,?,?,?,?,?,?,?, 'pending', ?)""",
+        (user["id"], kind, (b.get("from_addr") or "").strip(), to_addr, ozim,
+         (b.get("cargo") or "").strip(), (b.get("car_type") or "").strip(), (b.get("note") or "").strip(), now),
+    )
+    rid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": rid, "status": "pending"}
+
+
+@router.get("/rides/my")
+async def my_ride(x_telegram_init_data: str = Header(default="")):
+    """Mijozning joriy (tugamagan) zakazi + qabul qilingan bo'lsa haydovchi ma'lumoti."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    r = conn.execute(
+        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted') ORDER BY id DESC LIMIT 1",
+        (user["id"],),
+    ).fetchone()
+    if not r:
+        conn.close()
+        return {"ride": None}
+    out = _ride_dict(r)
+    if r["status"] == "accepted" and r["driver_id"]:
+        d = conn.execute("SELECT * FROM drivers WHERE id=?", (r["driver_id"],)).fetchone()
+        if d:
+            du = conn.execute("SELECT name FROM users WHERE id=?", (d["user_id"],)).fetchone()
+            out["driver"] = {
+                "name": du["name"] if du else "", "phone": d["phone"],
+                "car_model": d["car_model"], "car_color": d["car_color"], "car_plate": d["car_plate"],
+            }
+    conn.close()
+    return {"ride": out}
+
+
+@router.post("/rides/{ride_id}/cancel")
+async def cancel_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
+    """Mijoz o'z zakazini bekor qiladi (pending yoki accepted)."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    cur = conn.execute(
+        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted')",
+        (ride_id, user["id"]),
+    )
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "Zakaz topilmadi yoki allaqachon yakunlangan.")
+    return {"ok": True}
+
+
+@router.get("/rides/pending")
+async def pending_rides(x_telegram_init_data: str = Header(default="")):
+    """Haydovchi uchun: joriy qabul qilingan zakazi + xizmatiga mos kutilayotgan zakazlar."""
+    conn = db()
+    user, d = _require_driver(conn, x_telegram_init_data)
+    cur_ride = conn.execute(
+        "SELECT * FROM rides WHERE driver_id=? AND status='accepted' ORDER BY id DESC LIMIT 1",
+        (d["id"],),
+    ).fetchone()
+    current = None
+    if cur_ride:
+        current = _ride_dict(cur_ride)
+        cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (cur_ride["customer_id"],)).fetchone()
+        current["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
+    pend = []
+    if d["available"] and not current:
+        if d["service"] == "both":
+            rows = conn.execute("SELECT * FROM rides WHERE status='pending' ORDER BY created_at ASC").fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM rides WHERE status='pending' AND kind=? ORDER BY created_at ASC",
+                (d["service"],),
+            ).fetchall()
+        for r in rows:
+            item = _ride_dict(r)
+            cu = conn.execute("SELECT name FROM users WHERE id=?", (r["customer_id"],)).fetchone()
+            item["customer_name"] = cu["name"] if cu else ""
+            pend.append(item)
+    conn.close()
+    return {"available": bool(d["available"]), "current": current, "pending": pend}
+
+
+@router.post("/rides/{ride_id}/accept")
+async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
+    """Haydovchi zakazni qabul qiladi (faqat birinchi bo'lib ulgurgan oladi)."""
+    conn = db()
+    user, d = _require_driver(conn, x_telegram_init_data)
+    if not d["available"]:
+        conn.close()
+        raise HTTPException(400, "Avval 'Bo'shman' holatiga o'ting.")
+    busy = conn.execute("SELECT id FROM rides WHERE driver_id=? AND status='accepted' LIMIT 1", (d["id"],)).fetchone()
+    if busy:
+        conn.close()
+        raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
+    now = int(time.time())
+    cur = conn.execute(
+        "UPDATE rides SET status='accepted', driver_id=?, accepted_at=? WHERE id=? AND status='pending'",
+        (d["id"], now, ride_id),
+    )
+    conn.commit()
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
+    r = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
+    out = _ride_dict(r)
+    cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (r["customer_id"],)).fetchone()
+    out["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
+    conn.close()
+    return {"ok": True, "ride": out}
+
+
+@router.post("/rides/{ride_id}/complete")
+async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
+    """Haydovchi safarni yakunlaydi."""
+    conn = db()
+    user, d = _require_driver(conn, x_telegram_init_data)
+    cur = conn.execute(
+        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND status='accepted'",
+        (ride_id, d["id"]),
+    )
+    conn.commit()
+    conn.close()
+    if cur.rowcount == 0:
+        raise HTTPException(404, "Zakaz topilmadi.")
+    return {"ok": True}
+
+
+# ====================================================================
 # BIZNES PROFILI VA MAHSULOTLAR
 # ====================================================================
 @router.put("/business")
