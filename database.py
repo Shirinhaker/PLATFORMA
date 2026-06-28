@@ -334,6 +334,12 @@ def init_db():
             kind            TEXT NOT NULL DEFAULT 'taxi',    -- 'taxi' | 'dostavka'
             from_addr       TEXT DEFAULT '',
             to_addr         TEXT DEFAULT '',
+            from_lat        REAL,                            -- xaritadan: boshlanish koordinatasi
+            from_lng        REAL,
+            to_lat          REAL,                            -- xaritadan: manzil koordinatasi
+            to_lng          REAL,
+            dist_km         REAL,                            -- masofa (km)
+            dur_min         INTEGER,                         -- taxminiy vaqt (daqiqa)
             ozim            INTEGER DEFAULT 0,               -- 1 = manzilni og'zaki aytadi
             cargo           TEXT DEFAULT '',                 -- dostavka: yuk turi
             car_type        TEXT DEFAULT '',                 -- dostavka: yengil/katta yuk
@@ -415,6 +421,12 @@ def _migrate(conn):
             kind TEXT NOT NULL DEFAULT 'taxi',
             from_addr TEXT DEFAULT '',
             to_addr TEXT DEFAULT '',
+            from_lat REAL,
+            from_lng REAL,
+            to_lat REAL,
+            to_lng REAL,
+            dist_km REAL,
+            dur_min INTEGER,
             ozim INTEGER DEFAULT 0,
             cargo TEXT DEFAULT '',
             car_type TEXT DEFAULT '',
@@ -428,6 +440,12 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_status ON rides(status, kind, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_customer ON rides(customer_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_driver ON rides(driver_id, status)")
+    # rides: xaritadan koordinata ustunlari — v1386 (eski jadvalga xavfsiz qo'shamiz)
+    rcols = [r["name"] for r in conn.execute("PRAGMA table_info(rides)").fetchall()]
+    for _c, _t in (("from_lat", "REAL"), ("from_lng", "REAL"), ("to_lat", "REAL"),
+                   ("to_lng", "REAL"), ("dist_km", "REAL"), ("dur_min", "INTEGER")):
+        if _c not in rcols:
+            conn.execute("ALTER TABLE rides ADD COLUMN %s %s" % (_c, _t))
 
     # users.username ustuni bormi?
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
