@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1383 -->
+<title>Platforma</title><!-- BUILD: v1384 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1269,6 +1269,7 @@
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19, attribution: "© OpenStreetMap"
     }).addTo(LMAP);
+    LMAP.on("moveend", onOrderMapMove);   // zakaz formasida markaz manzilini kuzatadi
     setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 200);
     return LMAP;
   }
@@ -1589,6 +1590,12 @@
   }
   /* ---------- TAXI CHAQIRUV ---------- */
   var callMode=false, callTab="taxi", ozim=false, callState="form";
+  /* --- v1384: zakaz xaritasi holati (boshlanish/manzil/yo'l) --- */
+  var cFromText="", cToText="";                 // "Qayerdan"/"Qayerga" matnlari (qayta chizishda saqlanadi)
+  var FROM_LL=null, TO_LL=null;                 // boshlanish va manzil koordinatalari [lat,lng]
+  var FROM_PIN=null, ROUTE_LINE=null;           // yashil belgi va yo'l chizig'i (xarita qatlamlari)
+  var ORDER_DIST_KM=0, ORDER_DUR_MIN=0;         // hisoblangan masofa/vaqt
+  var _toGeoTimer=null, _routeTimer=null;       // debounce taymerlari
   function homePartsHide(h){
     ["adBox","adDots","pinEyebrow","elonHead","elonHint","elonRow","elonList"].forEach(function(id){
       var x=el(id); if(x) x.style.display = h ? "none" : "";
@@ -1596,9 +1603,11 @@
   }
   function priceText(){
     if(ozim) return "Manzil haydovchiga og\u02bczaki aytiladi.<br>Narx bosib o\u02bctilgan masofa bo\u02bcyicha hisoblanadi \ud83e\udded";
-    var to = el("cTo") ? el("cTo").value.trim() : "";
-    if(to) return "Taxminiy narx: <span style=\"font-size:18px\">18 500 so\u02bcm</span> \u00b7 ~9 km";
-    return "Manzillarni kiriting \u2014 narx shu yerda chiqadi";
+    if(TO_LL && ORDER_DIST_KM>0){
+      return "Masofa: <span style=\"font-size:18px\">"+ORDER_DIST_KM.toFixed(1)+" km</span> \u00b7 ~"+ORDER_DUR_MIN+" daq<br><span style=\"font-size:12px;color:var(--soft)\">Narx haydovchi bilan kelishiladi (naqd)</span>";
+    }
+    if(TO_LL) return "Yo\u02bcl hisoblanmoqda...";
+    return "Boradigan joyni xaritada belgilang \u2014 yo\u02bcl shu yerda chiziladi";
   }
   function renderCallPanel(){
     var pnl = el("callPanel");
@@ -1622,8 +1631,8 @@
         '<button class="sort-chip'+(isTaxi?" on":"")+'" data-ctab="taxi">\ud83d\ude96 Taxi</button>'+
         '<button class="sort-chip'+(!isTaxi?" on":"")+'" data-ctab="dostavka">\ud83d\udce6 Dostavka</button>'+
       '</div>'+
-      '<div class="field"><label>Qayerdan</label><input class="input" id="cFrom" value="\ud83d\udccd Joriy manzilim (xaritada belgilang)"></div>'+
-      '<div class="field"><label>Qayerga</label><input class="input" id="cTo" placeholder="Manzil yoki xaritadan belgilang"'+(ozim?' disabled style="opacity:.5"':'')+'></div>'+
+      '<div class="field"><label>Qayerdan</label><input class="input" id="cFrom" readonly value="'+esc(cFromText||"\ud83d\udccd Joylashuv aniqlanmoqda...")+'"></div>'+
+      '<div class="field"><label>Qayerga</label><input class="input" id="cTo" readonly placeholder="Xaritani surib boradigan joyni belgilang" value="'+esc(cToText)+'"'+(ozim?' disabled style="opacity:.5"':'')+'></div>'+
       '<button class="sort-chip'+(ozim?" on":"")+'" data-ozim style="margin-bottom:12px">\ud83d\udde3 O\u02bczim aytaman</button>'+
       (!isTaxi ? '<div class="field"><label>Mashina turi</label><div style="display:flex;gap:8px">'+
         '<button class="sort-chip on" data-mt>Yengil yuk</button><button class="sort-chip" data-mt>Katta yuk</button></div></div>'+
@@ -1634,6 +1643,7 @@
   function enterCall(){
     if(mapMode==="result") exitResults();
     callMode=true; callState="form";
+    cFromText=""; cToText=""; clearOrderMap();   // oldingi zakaz qoldiqlarini tozalaymiz
     homePartsHide(true);
     el("resWrap").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
@@ -1643,12 +1653,14 @@
     renderCallPanel();
     nav("home");
     screensEl.scrollTop=0;
+    orderDetectFrom();   // boshlanishni GPS bilan aniqlaymiz
   }
   function exitCall(){
     callMode=false; callState="form"; ozim=false; callTab="taxi";
     el("callPanel").hidden=true; el("callPanel").innerHTML="";
     el("centerPin").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
+    cFromText=""; cToText=""; clearOrderMap();   // xarita qatlamlarini va holatni tozalaymiz
     homePartsHide(false);
     loadHomeMap();
   }
@@ -1668,6 +1680,99 @@
         '<button class="btn btn-outline" style="height:44px" data-ccancel>Bekor qilish</button>'+
       '</div></div>';
     el("driverCard").hidden=false;
+  }
+
+  /* ---------- v1384: ZAKAZ XARITASI (boshlanish, manzil, yo'l chizig'i) ---------- */
+  function distMeters(lat1,lng1,lat2,lng2){
+    var R=6371000, k=Math.PI/180;
+    var dLat=(lat2-lat1)*k, dLng=(lng2-lng1)*k;
+    var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*k)*Math.cos(lat2*k)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+  // Boshlanish nuqtasini belgilaymiz (yashil belgi)
+  function setOrderFrom(lat,lng,text){
+    FROM_LL=[lat,lng];
+    if(FROM_PIN){ try{ LMAP.removeLayer(FROM_PIN); }catch(e){} FROM_PIN=null; }
+    if(LMAP && typeof L!=="undefined"){
+      FROM_PIN=L.marker([lat,lng], { icon:dotIcon("#16A34A","","",false) }).addTo(LMAP);
+    }
+    if(text){ cFromText=text; if(el("cFrom")) el("cFrom").value=text; }
+  }
+  // Boshlanishni GPS bilan aniqlaymiz (bo'lmasa joriy xarita markazi)
+  function orderDetectFrom(){
+    function fallback(){
+      var c = LMAP ? LMAP.getCenter() : {lat:CENTER[0], lng:CENTER[1]};
+      setOrderFrom(c.lat, c.lng, "📍 Xaritadagi joy");
+    }
+    if(!navigator.geolocation){ fallback(); return; }
+    if(el("cFrom")) el("cFrom").value="📍 Joylashuv aniqlanmoqda...";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat=pos.coords.latitude, lng=pos.coords.longitude;
+      if(LMAP){ try{ LMAP.setView([lat,lng], 16); }catch(e){} }
+      setOrderFrom(lat,lng,"📍 Joriy manzilim");
+      api("GET","/api/geocode?lat="+lat+"&lng="+lng).then(function(g){
+        g=g||{}; var t=g.address||g.district||g.region||"Joriy manzilim";
+        cFromText=t; if(el("cFrom")) el("cFrom").value=t;
+      }).catch(function(){});
+    }, function(){ fallback(); }, { enableHighAccuracy:true, timeout:8000, maximumAge:60000 });
+  }
+  // Xarita markazi siljiganda boradigan joyni yangilaymiz (faqat zakaz formasida)
+  function onOrderMapMove(){
+    if(!(callMode && callState==="form")) return;
+    if(ozim){ TO_LL=null; clearRoute(); return; }
+    if(!FROM_LL || !LMAP) return;
+    var c=LMAP.getCenter();
+    var d=distMeters(FROM_LL[0],FROM_LL[1],c.lat,c.lng);
+    if(d<40){
+      TO_LL=null; cToText=""; clearRoute();
+      if(el("cTo")) el("cTo").value="";
+      if(el("cPrice")) el("cPrice").innerHTML=priceText();
+      return;
+    }
+    TO_LL=[c.lat,c.lng];
+    setOrderToAddrDebounced(c.lat,c.lng);
+    drawRouteDebounced();
+  }
+  function setOrderToAddrDebounced(lat,lng){
+    if(_toGeoTimer) clearTimeout(_toGeoTimer);
+    cToText="Manzil aniqlanmoqda...";
+    if(el("cTo")) el("cTo").value=cToText;
+    _toGeoTimer=setTimeout(function(){
+      api("GET","/api/geocode?lat="+lat+"&lng="+lng).then(function(g){
+        g=g||{}; var t=g.address||g.district||g.region||(lat.toFixed(5)+", "+lng.toFixed(5));
+        if(TO_LL){ cToText=t; if(el("cTo")) el("cTo").value=t; if(el("cPrice")) el("cPrice").innerHTML=priceText(); }
+      }).catch(function(){
+        if(TO_LL){ cToText=lat.toFixed(5)+", "+lng.toFixed(5); if(el("cTo")) el("cTo").value=cToText; }
+      });
+    }, 600);
+  }
+  function drawRouteDebounced(){
+    if(_routeTimer) clearTimeout(_routeTimer);
+    _routeTimer=setTimeout(drawRoute, 500);
+  }
+  // Eng qulay yo'lni hisoblab chizamiz (bepul OSRM xizmati)
+  function drawRoute(){
+    if(!FROM_LL || !TO_LL || ozim || !LMAP){ clearRoute(); return; }
+    var url="https://router.project-osrm.org/route/v1/driving/"+FROM_LL[1]+","+FROM_LL[0]+";"+TO_LL[1]+","+TO_LL[0]+"?overview=full&geometries=geojson";
+    fetch(url).then(function(r){ return r.json(); }).then(function(j){
+      if(!TO_LL){ clearRoute(); return; }
+      if(!j || !j.routes || !j.routes.length){ clearRoute(); return; }
+      var route=j.routes[0];
+      if(ROUTE_LINE){ try{ LMAP.removeLayer(ROUTE_LINE); }catch(e){} ROUTE_LINE=null; }
+      ROUTE_LINE=L.geoJSON(route.geometry, { style:{ color:"#2563EB", weight:5, opacity:0.85 } }).addTo(LMAP);
+      ORDER_DIST_KM=route.distance/1000;
+      ORDER_DUR_MIN=Math.round(route.duration/60);
+      if(el("cPrice")) el("cPrice").innerHTML=priceText();
+    }).catch(function(){ clearRoute(); });
+  }
+  function clearRoute(){
+    if(ROUTE_LINE){ try{ LMAP.removeLayer(ROUTE_LINE); }catch(e){} ROUTE_LINE=null; }
+    ORDER_DIST_KM=0; ORDER_DUR_MIN=0;
+  }
+  function clearOrderMap(){
+    clearRoute();
+    if(FROM_PIN){ try{ LMAP.removeLayer(FROM_PIN); }catch(e){} FROM_PIN=null; }
+    FROM_LL=null; TO_LL=null;
   }
 
     function dedupePins(pins){
@@ -3373,7 +3478,7 @@
     if(e.target.closest("[data-cexit]")){ exitCall(); return; }
     if(e.target.closest("[data-ccancel]")){ exitCall(); return; }
     if(t=e.target.closest("[data-ctab]")){ callTab=t.getAttribute("data-ctab"); renderCallPanel(); return; }
-    if(e.target.closest("[data-ozim]")){ ozim=!ozim; renderCallPanel(); return; }
+    if(e.target.closest("[data-ozim]")){ ozim=!ozim; if(ozim){ TO_LL=null; cToText=""; clearRoute(); } else { onOrderMapMove(); } renderCallPanel(); return; }
     if(t=e.target.closest("[data-mt]")){ this.querySelectorAll("[data-mt]").forEach(function(x){ x.classList.toggle("on", x===t); }); return; }
     if(e.target.closest("[data-zakaz]")){
       if(!loggedIn){ showLogin("Zakaz qilish"); return; }
