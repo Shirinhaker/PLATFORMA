@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1385 -->
+<title>Platforma</title><!-- BUILD: v1386 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1644,7 +1644,7 @@
       '<button class="sort-chip'+(ozim?" on":"")+'" data-ozim style="margin-bottom:12px">\ud83d\udde3 O\u02bczim aytaman</button>'+
       (!isTaxi ? '<div class="field"><label>Mashina turi</label><div style="display:flex;gap:8px">'+
         '<button class="sort-chip on" data-mt>Yengil yuk</button><button class="sort-chip" data-mt>Katta yuk</button></div></div>'+
-        '<div class="field"><label>Yuk turi</label><input class="input" placeholder="Masalan: mebel, quti, texnika"></div>' : '')+
+        '<div class="field"><label>Yuk turi</label><input class="input" id="cCargo" placeholder="Masalan: mebel, quti, texnika"></div>' : '')+
       '<button class="btn btn-primary btn-block" data-zakaz>Zakaz qilish</button>'+
       '</div>';
   }
@@ -1662,9 +1662,11 @@
     nav("home");
     screensEl.scrollTop=0;
     orderDetectFrom();   // boshlanishni GPS bilan aniqlaymiz
+    resumeActiveRide();  // tugamagan zakaz bo'lsa, davom ettiramiz
   }
   function exitCall(){
     callMode=false; callState="form"; ozim=false; callTab="taxi"; pickMode="to";
+    stopRidePoll(); CUR_RIDE=null;
     el("callPanel").hidden=true; el("callPanel").innerHTML="";
     el("centerPin").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
@@ -1837,6 +1839,95 @@
     if(FROM_PIN){ try{ LMAP.removeLayer(FROM_PIN); }catch(e){} FROM_PIN=null; }
     if(TO_PIN){ try{ LMAP.removeLayer(TO_PIN); }catch(e){} TO_PIN=null; }
     FROM_LL=null; TO_LL=null;
+  }
+
+  /* ---------- v1386: HAQIQIY ZAKAZNI SERVERGA YUBORISH ---------- */
+  var CUR_RIDE=null, ridePollTimer=null;
+  // "Zakaz qilish" — ma'lumotlarni yig'ib serverga yuboramiz
+  function submitRide(){
+    if(!FROM_LL){ showMsg("Boshlanish joyini belgilang (GPS yoki xaritadan)."); return; }
+    if(!ozim && !TO_LL){ showMsg("Boradigan joyni xaritada belgilang yoki O'zim aytaman tugmasini bosing."); return; }
+    var body = {
+      kind: callTab,
+      from_addr: cFromText || "",
+      to_addr: ozim ? "" : (cToText || ""),
+      from_lat: FROM_LL[0], from_lng: FROM_LL[1],
+      to_lat: ozim ? null : (TO_LL ? TO_LL[0] : null),
+      to_lng: ozim ? null : (TO_LL ? TO_LL[1] : null),
+      dist_km: (TO_LL && ORDER_DIST_KM>0) ? ORDER_DIST_KM : null,
+      dur_min: (TO_LL && ORDER_DUR_MIN>0) ? ORDER_DUR_MIN : null,
+      ozim: ozim ? 1 : 0
+    };
+    if(callTab==="dostavka"){
+      var pnl=el("callPanel");
+      var mt=pnl ? pnl.querySelector("[data-mt].on") : null;
+      body.car_type = mt ? mt.textContent.trim() : "Yengil yuk";
+      body.cargo = el("cCargo") ? el("cCargo").value.trim() : "";
+    }
+    callState="search"; renderCallPanel();
+    api("POST","/api/rides", body).then(function(res){
+      CUR_RIDE = { id: res.id, status: res.status || "pending" };
+      startRidePoll();
+    }).catch(function(err){
+      showMsg(err && err.message ? err.message : "Zakaz yuborilmadi. Internetni tekshiring.");
+      callState="form"; renderCallPanel();
+    });
+  }
+  function startRidePoll(){ stopRidePoll(); ridePollTimer=setInterval(pollRide, 3000); }
+  function stopRidePoll(){ if(ridePollTimer){ clearInterval(ridePollTimer); ridePollTimer=null; } }
+  // Har 3 soniyada zakaz holatini tekshiramiz (haydovchi qabul qildimi?)
+  function pollRide(){
+    if(!callMode || (callState!=="search" && callState!=="found")){ stopRidePoll(); return; }
+    api("GET","/api/rides/my").then(function(res){
+      var r = res && res.ride;
+      if(!r){
+        stopRidePoll(); CUR_RIDE=null;
+        if(callMode && callState!=="form"){ callState="form"; renderCallPanel(); }
+        return;
+      }
+      CUR_RIDE=r;
+      if(r.status==="accepted"){ stopRidePoll(); showAcceptedDriver(r); }
+    }).catch(function(){});
+  }
+  // Haydovchi qabul qilgach — haqiqiy haydovchi ma'lumotini ko'rsatamiz
+  function showAcceptedDriver(r){
+    callState="found"; renderCallPanel();
+    var d = r.driver || {};
+    var car = [d.car_color, d.car_model].filter(Boolean).map(esc).join(" ");
+    var plate = d.car_plate ? (" \u00b7 "+esc(d.car_plate)) : "";
+    var phone = (d.phone||"").trim();
+    el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
+      '<div style="display:flex;gap:12px;align-items:center">'+
+        '<div class="cab-logo" style="background:var(--amber-tint);flex:none">🚖</div>'+
+        '<div style="flex:1;min-width:0"><b>'+esc(d.name||"Haydovchi")+'</b>'+
+        '<div class="list-sub" style="margin:3px 0 0">'+(car||"Mashina")+plate+'</div>'+
+        (r.ozim?'<div class="list-sub" style="margin:3px 0 0">Manzilni og\u02bczaki aytasiz</div>':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:9px;margin-top:12px">'+
+        (phone?'<a class="btn btn-primary" style="height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none" href="tel:'+esc(phone)+'">📞 Qo\u02bcng\u02bciroq</a>':'')+
+        '<button class="btn btn-outline" style="height:44px;flex:1" data-ccancel>Bekor qilish</button>'+
+      '</div></div>';
+    el("driverCard").hidden=false;
+  }
+  // Zakazni bekor qilish (serverda ham yopiladi)
+  function cancelRide(){
+    stopRidePoll();
+    var rid = CUR_RIDE && CUR_RIDE.id;
+    CUR_RIDE=null;
+    if(rid){ api("POST","/api/rides/"+rid+"/cancel", {}).catch(function(){}); }
+    exitCall();
+  }
+  // Taxi ekraniga kirganda — tugamagan zakaz bo'lsa, uni davom ettiramiz
+  function resumeActiveRide(){
+    if(!loggedIn) return;
+    api("GET","/api/rides/my").then(function(res){
+      var r = res && res.ride;
+      if(r && callMode){
+        CUR_RIDE=r;
+        if(r.status==="accepted"){ showAcceptedDriver(r); }
+        else { callState="search"; renderCallPanel(); startRidePoll(); }
+      }
+    }).catch(function(){});
   }
 
     function dedupePins(pins){
@@ -3540,7 +3631,7 @@
   el("callPanel").addEventListener("click", function(e){
     var t;
     if(e.target.closest("[data-cexit]")){ exitCall(); return; }
-    if(e.target.closest("[data-ccancel]")){ exitCall(); return; }
+    if(e.target.closest("[data-ccancel]")){ cancelRide(); return; }
     if(t=e.target.closest("[data-ctab]")){ callTab=t.getAttribute("data-ctab"); renderCallPanel(); return; }
     if(e.target.closest("[data-gps]")){ orderDetectFrom(); return; }
     if(t=e.target.closest("[data-pick]")){ var _pm=t.getAttribute("data-pick"); if(_pm==="to"&&ozim) return; setPickMode(_pm); return; }
@@ -3556,8 +3647,7 @@
     if(t=e.target.closest("[data-mt]")){ this.querySelectorAll("[data-mt]").forEach(function(x){ x.classList.toggle("on", x===t); }); return; }
     if(e.target.closest("[data-zakaz]")){
       if(!loggedIn){ showLogin("Zakaz qilish"); return; }
-      callState="search"; renderCallPanel();
-      setTimeout(function(){ if(callMode && callState==="search") driverFound(); }, 1800);
+      submitRide();
       return;
     }
   });
@@ -3565,7 +3655,7 @@
     if(e.target.id==="cTo" && el("cPrice")) el("cPrice").innerHTML = priceText();
   });
   el("driverCard").addEventListener("click", function(e){
-    if(e.target.closest("[data-ccancel]")){ exitCall(); }
+    if(e.target.closest("[data-ccancel]")){ cancelRide(); }
   });
 
   /* ---------- TAXI: HAYDOVCHI RO'YXATI VA PROFILI (v1383) ---------- */
