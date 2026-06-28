@@ -328,6 +328,23 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS rides(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id     INTEGER NOT NULL,                -- mijoz (foydalanuvchi)
+            kind            TEXT NOT NULL DEFAULT 'taxi',    -- 'taxi' | 'dostavka'
+            from_addr       TEXT DEFAULT '',
+            to_addr         TEXT DEFAULT '',
+            ozim            INTEGER DEFAULT 0,               -- 1 = manzilni og'zaki aytadi
+            cargo           TEXT DEFAULT '',                 -- dostavka: yuk turi
+            car_type        TEXT DEFAULT '',                 -- dostavka: yengil/katta yuk
+            note            TEXT DEFAULT '',
+            status          TEXT NOT NULL DEFAULT 'pending', -- pending|accepted|completed|canceled
+            driver_id       INTEGER,                         -- qabul qilgan haydovchi
+            created_at      INTEGER NOT NULL,
+            accepted_at     INTEGER,
+            FOREIGN KEY(customer_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_inbox_tg       ON media_inbox(tg_id);
         CREATE INDEX IF NOT EXISTS idx_users_tg       ON users(tg_id);
         CREATE INDEX IF NOT EXISTS idx_biz_user       ON businesses(user_id);
@@ -389,6 +406,28 @@ def _migrate(conn):
         )"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_drivers_user ON drivers(user_id)")
+
+    # Taxi zakazlari — v1384
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS rides(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'taxi',
+            from_addr TEXT DEFAULT '',
+            to_addr TEXT DEFAULT '',
+            ozim INTEGER DEFAULT 0,
+            cargo TEXT DEFAULT '',
+            car_type TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending',
+            driver_id INTEGER,
+            created_at INTEGER NOT NULL,
+            accepted_at INTEGER
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_status ON rides(status, kind, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_customer ON rides(customer_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rides_driver ON rides(driver_id, status)")
 
     # users.username ustuni bormi?
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
