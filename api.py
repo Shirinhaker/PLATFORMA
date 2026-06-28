@@ -306,8 +306,15 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
 # ====================================================================
 
 def _ride_dict(r):
+    def g(k):
+        try:
+            return r[k]
+        except Exception:
+            return None
     return {
         "id": r["id"], "kind": r["kind"], "from_addr": r["from_addr"], "to_addr": r["to_addr"],
+        "from_lat": g("from_lat"), "from_lng": g("from_lng"), "to_lat": g("to_lat"), "to_lng": g("to_lng"),
+        "dist_km": g("dist_km"), "dur_min": g("dur_min"),
         "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
         "status": r["status"], "created_at": r["created_at"],
     }
@@ -343,11 +350,21 @@ async def create_ride(request: Request, x_telegram_init_data: str = Header(defau
     if active:
         conn.close()
         raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
+    def _num(v):
+        try:
+            return float(v) if v is not None and v != "" else None
+        except Exception:
+            return None
+    from_lat = _num(b.get("from_lat")); from_lng = _num(b.get("from_lng"))
+    to_lat = _num(b.get("to_lat")); to_lng = _num(b.get("to_lng"))
+    dist_km = _num(b.get("dist_km"))
+    _dm = _num(b.get("dur_min"))
+    dur_min = int(_dm) if _dm is not None else None
     now = int(time.time())
     cur = conn.execute(
-        """INSERT INTO rides(customer_id, kind, from_addr, to_addr, ozim, cargo, car_type, note, status, created_at)
-           VALUES(?,?,?,?,?,?,?,?, 'pending', ?)""",
-        (user["id"], kind, (b.get("from_addr") or "").strip(), to_addr, ozim,
+        """INSERT INTO rides(customer_id, kind, from_addr, to_addr, from_lat, from_lng, to_lat, to_lng, dist_km, dur_min, ozim, cargo, car_type, note, status, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending', ?)""",
+        (user["id"], kind, (b.get("from_addr") or "").strip(), to_addr, from_lat, from_lng, to_lat, to_lng, dist_km, dur_min, ozim,
          (b.get("cargo") or "").strip(), (b.get("car_type") or "").strip(), (b.get("note") or "").strip(), now),
     )
     rid = cur.lastrowid
