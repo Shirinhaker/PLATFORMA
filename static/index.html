@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1387 -->
+<title>Platforma</title><!-- BUILD: v1388 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1623,7 +1623,8 @@
       return;
     }
     if(callState==="found"){
-      pnl.innerHTML = '<div class="panel-card" style="text-align:center"><b>\ud83d\ude96 Haydovchi yo\u02bclda \u00b7 ~4 daqiqa</b><button class="panel-x" data-ccancel>\u2715</button></div>';
+      var _st = (CUR_RIDE && CUR_RIDE.status) || "accepted";
+      pnl.innerHTML = '<div class="panel-card" style="text-align:center"><b>'+rideStatusLabel(_st)+'</b><button class="panel-x" data-ccancel>\u2715</button></div>';
       return;
     }
     var isTaxi = callTab==="taxi";
@@ -1666,30 +1667,13 @@
   }
   function exitCall(){
     callMode=false; callState="form"; ozim=false; callTab="taxi"; pickMode="to";
-    stopRidePoll(); CUR_RIDE=null;
+    stopRidePoll(); CUR_RIDE=null; _shownRideStatus=null;
     el("callPanel").hidden=true; el("callPanel").innerHTML="";
     el("centerPin").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
     cFromText=""; cToText=""; clearOrderMap();   // xarita qatlamlarini va holatni tozalaymiz
     homePartsHide(false);
     loadHomeMap();
-  }
-  function driverFound(){
-    callState="found"; renderCallPanel();
-    ensureMap(); clearMarkers();
-    addMarker(CENTER[0], CENTER[1], dotIcon("var(--primary)", "🚖", "", false), null);
-    var priceLine = ozim ? "Narx: masofa bo\u02bcyicha (safar oxirida)" : "Narx: <b>18 500 so\u02bcm</b>";
-    el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
-      '<div style="display:flex;gap:12px;align-items:center">'+
-        '<div class="cab-logo" style="background:var(--amber-tint);flex:none">\ud83d\ude96</div>'+
-        '<div style="flex:1;min-width:0"><b>Bekzod Rahimov</b><div class="list-sub" style="margin:3px 0 0">Cobalt, oq \u00b7 01 A 123 BC \u00b7 \u2b50 4.8</div>'+
-        '<div class="list-sub" style="margin:3px 0 0">'+priceLine+' \u00b7 ~4 daqiqada yetib keladi</div></div>'+
-      '</div>'+
-      '<div style="display:flex;gap:9px;margin-top:12px">'+
-        '<button class="btn btn-primary" style="height:44px" data-alert="Qo\u02bcng\u02bciroq (namuna).">\ud83d\udcde Qo\u02bcng\u02bciroq</button>'+
-        '<button class="btn btn-outline" style="height:44px" data-ccancel>Bekor qilish</button>'+
-      '</div></div>';
-    el("driverCard").hidden=false;
   }
 
   /* ---------- v1385: ZAKAZ XARITASI (boshlanish/manzil — qo'lda yoki GPS) ---------- */
@@ -1842,7 +1826,13 @@
   }
 
   /* ---------- v1386: HAQIQIY ZAKAZNI SERVERGA YUBORISH ---------- */
-  var CUR_RIDE=null, ridePollTimer=null;
+  var CUR_RIDE=null, ridePollTimer=null, _shownRideStatus=null;
+  // Mijozga ko'rinadigan holat yorlig'i
+  function rideStatusLabel(st){
+    if(st==="arrived") return "📍 Haydovchi yetib keldi!";
+    if(st==="ongoing") return "🛣️ Safardasiz";
+    return "🚗 Haydovchi yo'lda kelmoqda";
+  }
   // "Zakaz qilish" — ma'lumotlarni yig'ib serverga yuboramiz
   function submitRide(){
     if(!FROM_LL){ showMsg("Boshlanish joyini belgilang (GPS yoki xaritadan)."); return; }
@@ -1882,7 +1872,7 @@
       var r = res && res.ride;
       if(!r){
         var wasFound = (callState==="found");
-        stopRidePoll(); CUR_RIDE=null;
+        stopRidePoll(); CUR_RIDE=null; _shownRideStatus=null;
         if(callMode && callState!=="form"){
           if(wasFound) showMsg("Safar yakunlandi. Rahmat!");
           callState="form"; renderCallPanel();
@@ -1890,16 +1880,26 @@
         return;
       }
       CUR_RIDE=r;
-      if(r.status==="accepted" && callState!=="found"){ showAcceptedDriver(r); }
+      if(["accepted","arrived","ongoing"].indexOf(r.status)>=0){
+        if(callState!=="found" || _shownRideStatus!==r.status){
+          if(_shownRideStatus && _shownRideStatus!==r.status){
+            if(r.status==="arrived") showMsg("Haydovchi yetib keldi! 📍");
+            else if(r.status==="ongoing") showMsg("Safar boshlandi 🛣️");
+          }
+          showAcceptedDriver(r);
+        }
+      }
     }).catch(function(){});
   }
   // Haydovchi qabul qilgach — haqiqiy haydovchi ma'lumotini ko'rsatamiz
   function showAcceptedDriver(r){
+    _shownRideStatus = r.status;
     callState="found"; renderCallPanel();
     var d = r.driver || {};
     var car = [d.car_color, d.car_model].filter(Boolean).map(esc).join(" ");
     var plate = d.car_plate ? (" \u00b7 "+esc(d.car_plate)) : "";
     var phone = (d.phone||"").trim();
+    var canCancel = (r.status==="accepted" || r.status==="arrived");
     el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
       '<div style="display:flex;gap:12px;align-items:center">'+
         '<div class="cab-logo" style="background:var(--amber-tint);flex:none">🚖</div>'+
@@ -1909,7 +1909,7 @@
       '</div>'+
       '<div style="display:flex;gap:9px;margin-top:12px">'+
         (phone?'<a class="btn btn-primary" style="height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none" href="tel:'+esc(phone)+'">📞 Qo\u02bcng\u02bciroq</a>':'')+
-        '<button class="btn btn-outline" style="height:44px;flex:1" data-ccancel>Bekor qilish</button>'+
+        (canCancel?'<button class="btn btn-outline" style="height:44px;flex:1" data-ccancel>Bekor qilish</button>':'')+
       '</div></div>';
     el("driverCard").hidden=false;
   }
@@ -1928,8 +1928,9 @@
       var r = res && res.ride;
       if(r && callMode){
         CUR_RIDE=r;
-        if(r.status==="accepted"){ showAcceptedDriver(r); }
-        else { callState="search"; renderCallPanel(); startRidePoll(); }
+        if(r.status==="pending"){ callState="search"; renderCallPanel(); }
+        else { showAcceptedDriver(r); }
+        startRidePoll();
       }
     }).catch(function(){});
   }
@@ -3757,13 +3758,14 @@
     data=data||{}; var html="";
     if(data.current){
       var c=data.current, cust=c.customer||{};
+      var act=drvActionFor(c.status);
       html='<div class="panel-card" style="margin-bottom:10px;border:1.5px solid var(--primary)">'+
-        '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">🟢 Joriy zakaz · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
+        '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">'+drvStatusLabel(c.status)+' · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
         rideLinesHtml(c)+
         '<div class="list-sub" style="margin-top:6px">Mijoz: '+esc(cust.name||"—")+'</div>'+
         '<div style="display:flex;gap:9px;margin-top:10px">'+
-          (cust.phone?'<a class="btn btn-primary" style="height:42px;display:flex;align-items:center;justify-content:center;text-decoration:none" href="tel:'+esc(cust.phone)+'">📞 Qo\'ng\'iroq</a>':'')+
-          '<button class="btn btn-outline" style="height:42px;flex:1" data-complete-ride="'+c.id+'">✓ Yakunlash</button>'+
+          (cust.phone?'<a class="btn btn-soft" style="height:42px;display:flex;align-items:center;justify-content:center;text-decoration:none;flex:0 0 auto;padding:0 16px" href="tel:'+esc(cust.phone)+'">📞</a>':'')+
+          (act?'<button class="btn btn-primary" style="height:42px;flex:1" data-ride-status="'+act.next+'" data-ride-id="'+c.id+'">'+act.label+'</button>':'')+
         '</div></div>';
       box.innerHTML=html; return;
     }
@@ -3808,14 +3810,28 @@
       loadDriverOrders();
     });
   }
-  function completeRide(id){
-    askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){
-      if(!ok) return;
-      api("POST","/api/rides/"+id+"/complete", {}).then(function(){
-        showMsg("Zakaz yakunlandi. Rahmat!");
+  function drvStatusLabel(st){
+    if(st==="arrived") return "📍 Yetib keldingiz — mijozni kuting";
+    if(st==="ongoing") return "🛣️ Safardasiz";
+    return "🟢 Joriy zakaz — mijoz oldiga boring";
+  }
+  function drvActionFor(st){
+    if(st==="accepted") return {label:"🚗 Yetib keldim", next:"arrived"};
+    if(st==="arrived") return {label:"▶️ Safarni boshlash", next:"ongoing"};
+    if(st==="ongoing") return {label:"✓ Yakunlash", next:"completed"};
+    return null;
+  }
+  // Safar bosqichini oldinga suramiz (yakunlashda tasdiq so'raymiz)
+  function setRideStatus(id, newStatus){
+    function go(){
+      api("POST","/api/rides/"+id+"/status", {status:newStatus}).then(function(){
+        if(newStatus==="completed") showMsg("Zakaz yakunlandi. Rahmat!");
         loadDriverOrders();
-      }).catch(function(e){ showMsg((e&&e.message)?e.message:"Xatolik."); });
-    });
+      }).catch(function(e){ showMsg((e&&e.message)?e.message:"Xatolik."); loadDriverOrders(); });
+    }
+    if(newStatus==="completed"){
+      askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){ if(ok) go(); });
+    } else { go(); }
   }
 
   el("taxidrvBody").addEventListener("click", function(e){
@@ -3831,8 +3847,8 @@
     if(e.target.closest("#drvRefresh")){ loadDriverOrders(); return; }
     var _ar=e.target.closest("[data-accept-ride]");
     if(_ar){ acceptRide(_ar.getAttribute("data-accept-ride")); return; }
-    var _cr=e.target.closest("[data-complete-ride]");
-    if(_cr){ completeRide(_cr.getAttribute("data-complete-ride")); return; }
+    var _rs=e.target.closest("[data-ride-status]");
+    if(_rs){ setRideStatus(_rs.getAttribute("data-ride-id"), _rs.getAttribute("data-ride-status")); return; }
     var av=e.target.closest("[data-davail]");
     if(av){ toggleDriverAvail(av.getAttribute("data-davail")==="1" ? 1 : 0); return; }
   });
