@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1390 -->
+<title>Platforma</title><!-- BUILD: v1391 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1605,7 +1605,7 @@
     });
   }
   /* ---------- v1389: MASOFA BO'YICHA TAXMINIY NARX ---------- */
-  var PRICING_CFG = { taxi:{base:5000,per_km:2000,min:12000}, dostavka:{base:10000,per_km:2500,min:15000} };
+  var PRICING_CFG = { taxi:{base:5000,per_km:2000,min:9000}, dostavka:{base:10000,per_km:2500,min:15000} };
   var _pricingLoaded=false;
   function loadPricing(){
     if(_pricingLoaded) return;
@@ -3746,6 +3746,7 @@
   }
 
   function renderDriverProfile(d){
+    teardownDrvMap();   // eski xaritani tozalaymiz (innerHTML yangilanishidan oldin)
     var svcLabel = d.service==="both" ? "🚖 Taxi · 📦 Dostavka" : (d.service==="dostavka" ? "📦 Dostavka" : "🚖 Taxi");
     var carLine = d.car_model ? (esc(d.car_model)+(d.car_color?", "+esc(d.car_color):"")+(d.car_plate?" · "+esc(d.car_plate):"")+" · "+svcLabel) : svcLabel;
     var avail = !!d.available;
@@ -3758,7 +3759,13 @@
       '</div>'+
       '<button class="btn btn-soft btn-block" id="dEdit" style="margin-bottom:4px">✎ Ma\'lumotlarni tahrirlash</button>'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px"><h2 style="margin:0;font-size:17px">Kelayotgan zakazlar</h2><button class="sort-chip" id="drvRefresh" style="padding:4px 12px">↻ Yangilash</button></div>'+
-      '<div id="drvOrders"><div class="empty" style="padding:24px 14px"><p>Yuklanmoqda...</p></div></div>';
+      '<div id="drvOrders"><div class="empty" style="padding:24px 14px"><p>Yuklanmoqda...</p></div></div>'+
+      '<div id="drvMapWrap" hidden style="margin-top:10px">'+
+        '<div style="font-weight:700;font-size:13px;color:var(--soft);margin-bottom:6px">🗺️ Yo\'l xaritasi</div>'+
+        '<div id="drvMap" style="height:220px;border:1px solid var(--line);border-radius:12px;overflow:hidden"></div>'+
+        '<button class="btn btn-soft btn-block" id="drvNavBtn" style="margin-top:8px">🧭 Yo\'lni ochish (Google Maps)</button>'+
+      '</div>';
+    loadPricing();
     loadDriverOrders();
     startDriverOrdersPoll();
   }
@@ -3802,6 +3809,18 @@
     // Jonli hisoblagichni boshqarish: faqat safar davom etayotgan "o'zim aytaman" zakazda ishlaydi
     var cur=data.current;
     if(cur && cur.status==="ongoing" && cur.ozim){ startMeter(cur.id, cur.kind); } else { stopMeter(); }
+    // Haydovchi xaritasi: joriy zakaz koordinatasi bo'lsa ko'rsatamiz
+    var mapWrap=el("drvMapWrap");
+    if(mapWrap){
+      if(cur && cur.from_lat!=null){
+        mapWrap.hidden=false; _drvNavRide=cur;
+        var nb=el("drvNavBtn");
+        if(nb) nb.textContent = (!cur.ozim && cur.to_lat!=null) ? "🧭 Yo'lni ochish (Google Maps)" : "🧭 Mijozgacha yo'l (Google Maps)";
+        updateDrvMap(cur);
+      } else {
+        mapWrap.hidden=true; _drvNavRide=null; _drvMapRideId=null;
+      }
+    }
     if(data.current){
       var c=data.current, cust=c.customer||{};
       var act=drvActionFor(c.status);
@@ -3860,6 +3879,75 @@
     }, 4000);
   }
   function stopDriverOrdersPoll(){ if(drvOrdersTimer){ clearInterval(drvOrdersTimer); drvOrdersTimer=null; } }
+
+  /* ---------- v1391: HAYDOVCHI XARITASI (ichki xarita + Google Maps tugmasi) ---------- */
+  var DRVMAP=null, DRVMAP_LAYERS=[], _drvMapRideId=null, _drvNavRide=null;
+  function ensureDrvMap(){
+    if(DRVMAP) return DRVMAP;
+    if(typeof L==="undefined" || !el("drvMap")) return null;
+    DRVMAP=L.map("drvMap", { zoomControl:true, attributionControl:false }).setView(CENTER, 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(DRVMAP);
+    setTimeout(function(){ try{ DRVMAP.invalidateSize(); }catch(e){} }, 200);
+    return DRVMAP;
+  }
+  // Xaritani butunlay tozalash (profil qayta chizilganda — eski div o'rniga yangisi keladi)
+  function teardownDrvMap(){
+    if(DRVMAP){ try{ DRVMAP.remove(); }catch(e){} }
+    DRVMAP=null; DRVMAP_LAYERS=[]; _drvMapRideId=null;
+  }
+  function clearDrvMapLayers(){
+    if(!DRVMAP) return;
+    DRVMAP_LAYERS.forEach(function(m){ try{ DRVMAP.removeLayer(m); }catch(e){} });
+    DRVMAP_LAYERS=[];
+  }
+  // Haydovchiga ko'chalar bo'yicha yo'lni chizamiz (bepul OSRM)
+  function drawDrvRoute(fLat,fLng,tLat,tLng){
+    var url="https://router.project-osrm.org/route/v1/driving/"+fLng+","+fLat+";"+tLng+","+tLat+"?overview=full&geometries=geojson";
+    fetch(url).then(function(r){ return r.json(); }).then(function(j){
+      if(!DRVMAP || !j || !j.routes || !j.routes.length) return;
+      var line=L.geoJSON(j.routes[0].geometry, { style:{ color:"#2563EB", weight:5, opacity:0.85 } }).addTo(DRVMAP);
+      DRVMAP_LAYERS.push(line);
+    }).catch(function(){});
+  }
+  // Joriy zakaz uchun xaritani chizamiz (koordinata o'zgarmaydi — har zakaz bir marta chiziladi)
+  function updateDrvMap(r){
+    var map=ensureDrvMap(); if(!map || !r) return;
+    if(_drvMapRideId===r.id) return;   // allaqachon chizilgan
+    _drvMapRideId=r.id;
+    clearDrvMapLayers();
+    var pts=[];
+    if(r.from_lat!=null && r.from_lng!=null){
+      var fm=L.marker([r.from_lat,r.from_lng], { icon: dotIcon("#16A34A","","Olib ketish",false) }).addTo(map);
+      DRVMAP_LAYERS.push(fm); pts.push([r.from_lat,r.from_lng]);
+    }
+    if(!r.ozim && r.to_lat!=null && r.to_lng!=null){
+      var tm=L.marker([r.to_lat,r.to_lng], { icon: dotIcon("#DC2626","","Manzil",false) }).addTo(map);
+      DRVMAP_LAYERS.push(tm); pts.push([r.to_lat,r.to_lng]);
+      drawDrvRoute(r.from_lat,r.from_lng,r.to_lat,r.to_lng);
+    }
+    if(pts.length===2){ try{ map.fitBounds(pts, { padding:[45,45] }); }catch(e){} }
+    else if(pts.length===1){ map.setView(pts[0], 15); }
+    setTimeout(function(){ try{ map.invalidateSize(); }catch(e){} }, 150);
+  }
+  // "Yo'lni ochish" — Google Maps havolasi (manzillar avtomatik, marshrut o'zi chiziladi)
+  function drvNavUrl(r){
+    var base="https://www.google.com/maps/dir/?api=1&travelmode=driving";
+    if(!r.ozim && r.from_lat!=null && r.from_lng!=null && r.to_lat!=null && r.to_lng!=null){
+      return base+"&origin="+r.from_lat+","+r.from_lng+"&destination="+r.to_lat+","+r.to_lng;
+    }
+    if(r.from_lat!=null && r.from_lng!=null){
+      return base+"&destination="+r.from_lat+","+r.from_lng;   // joriy joydan mijozgacha
+    }
+    return null;
+  }
+  function openDrvNav(r){
+    if(!r){ return; }
+    var url=drvNavUrl(r);
+    if(!url){ showMsg("Bu zakazda xaritada ko'rsatish uchun joylashuv yo'q."); return; }
+    try{ if(TG && typeof TG.openLink==="function"){ TG.openLink(url); return; } }catch(e){}
+    window.open(url, "_blank");
+  }
+
   function acceptRide(id){
     api("POST","/api/rides/"+id+"/accept", {}).then(function(){
       showMsg("Zakaz qabul qilindi!");
@@ -3948,6 +4036,7 @@
     if(e.target.closest("#dSave")){ submitDriver(); return; }
     if(e.target.closest("#dEdit")){ renderDriverForm(drvState); return; }
     if(e.target.closest("#drvRefresh")){ loadDriverOrders(); return; }
+    if(e.target.closest("#drvNavBtn")){ openDrvNav(_drvNavRide); return; }
     var _ar=e.target.closest("[data-accept-ride]");
     if(_ar){ acceptRide(_ar.getAttribute("data-accept-ride")); return; }
     var _rs=e.target.closest("[data-ride-status]");
