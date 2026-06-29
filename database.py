@@ -340,6 +340,7 @@ def init_db():
             to_lng          REAL,
             dist_km         REAL,                            -- masofa (km)
             dur_min         INTEGER,                         -- taxminiy vaqt (daqiqa)
+            meter_km        REAL,                            -- jonli GPS hisoblagich: bosib o'tilgan masofa (km)
             ozim            INTEGER DEFAULT 0,               -- 1 = manzilni og'zaki aytadi
             cargo           TEXT DEFAULT '',                 -- dostavka: yuk turi
             car_type        TEXT DEFAULT '',                 -- dostavka: yengil/katta yuk
@@ -427,6 +428,7 @@ def _migrate(conn):
             to_lng REAL,
             dist_km REAL,
             dur_min INTEGER,
+            meter_km REAL,
             ozim INTEGER DEFAULT 0,
             cargo TEXT DEFAULT '',
             car_type TEXT DEFAULT '',
@@ -443,7 +445,8 @@ def _migrate(conn):
     # rides: xaritadan koordinata ustunlari — v1386 (eski jadvalga xavfsiz qo'shamiz)
     rcols = [r["name"] for r in conn.execute("PRAGMA table_info(rides)").fetchall()]
     for _c, _t in (("from_lat", "REAL"), ("from_lng", "REAL"), ("to_lat", "REAL"),
-                   ("to_lng", "REAL"), ("dist_km", "REAL"), ("dur_min", "INTEGER")):
+                   ("to_lng", "REAL"), ("dist_km", "REAL"), ("dur_min", "INTEGER"),
+                   ("meter_km", "REAL")):
         if _c not in rcols:
             conn.execute("ALTER TABLE rides ADD COLUMN %s %s" % (_c, _t))
 
