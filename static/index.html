@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1388 -->
+<title>Platforma</title><!-- BUILD: v1389 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1604,13 +1604,33 @@
       var x=el(id); if(x) x.style.display = h ? "none" : "";
     });
   }
+  /* ---------- v1389: MASOFA BO'YICHA TAXMINIY NARX ---------- */
+  var PRICING_CFG = { taxi:{base:5000,per_km:2000,min:12000}, dostavka:{base:10000,per_km:2500,min:15000} };
+  var _pricingLoaded=false;
+  function loadPricing(){
+    if(_pricingLoaded) return;
+    _pricingLoaded=true;
+    api("GET","/api/pricing").then(function(d){
+      if(d && d.pricing){ PRICING_CFG=d.pricing; if(callMode && callState==="form" && el("cPrice")) el("cPrice").innerHTML=priceText(); }
+    }).catch(function(){ _pricingLoaded=false; });
+  }
+  function fmtSom(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+  function calcPrice(kind, km){
+    var cfg = (PRICING_CFG && PRICING_CFG[kind]) || (PRICING_CFG && PRICING_CFG.taxi);
+    if(!cfg || !km || km<=0) return null;
+    var p = cfg.base + cfg.per_km*km;
+    if(p<cfg.min) p=cfg.min;
+    return Math.round(p/500)*500;
+  }
   function priceText(){
-    if(ozim) return "Manzil haydovchiga og\u02bczaki aytiladi.<br>Narx bosib o\u02bctilgan masofa bo\u02bcyicha hisoblanadi \ud83e\udded";
+    if(ozim) return "Manzil og\u02bczaki aytiladi \u2014 narx bosib o\u02bctilgan masofa bo\u02bcyicha, safar oxirida \ud83e\udded";
     if(TO_LL && ORDER_DIST_KM>0){
-      return "Masofa: <span style=\"font-size:18px\">"+ORDER_DIST_KM.toFixed(1)+" km</span> \u00b7 ~"+ORDER_DUR_MIN+" daq<br><span style=\"font-size:12px;color:var(--soft)\">Narx haydovchi bilan kelishiladi (naqd)</span>";
+      var pr = calcPrice(callTab, ORDER_DIST_KM);
+      var head = pr ? '<span style="font-size:21px;font-weight:800">~'+fmtSom(pr)+' so\u02bcm</span>' : '';
+      return head+'<br><span style="font-size:12px;color:var(--soft)">'+ORDER_DIST_KM.toFixed(1)+' km \u00b7 ~'+ORDER_DUR_MIN+' daq \u00b7 naqd, haydovchiga</span>';
     }
-    if(TO_LL) return "Yo\u02bcl hisoblanmoqda...";
-    return "Boradigan joyni xaritada belgilang \u2014 yo\u02bcl shu yerda chiziladi";
+    if(TO_LL) return "Narx hisoblanmoqda...";
+    return "Boradigan joyni belgilang \u2014 narx shu yerda chiqadi";
   }
   function renderCallPanel(){
     var pnl = el("callPanel");
@@ -1652,6 +1672,7 @@
   function enterCall(){
     if(mapMode==="result") exitResults();
     callMode=true; callState="form"; pickMode="to";
+    loadPricing();
     cFromText=""; cToText=""; clearOrderMap();   // oldingi zakaz qoldiqlarini tozalaymiz
     homePartsHide(true);
     el("resWrap").hidden=true;
@@ -1900,11 +1921,15 @@
     var plate = d.car_plate ? (" \u00b7 "+esc(d.car_plate)) : "";
     var phone = (d.phone||"").trim();
     var canCancel = (r.status==="accepted" || r.status==="arrived");
+    var priceLine = (r.price && r.price>0)
+      ? '<div class="list-sub" style="color:var(--primary);font-weight:700;margin:3px 0 0">💰 ~'+fmtSom(r.price)+' so\u02bcm (naqd)</div>'
+      : (r.ozim?'<div class="list-sub" style="margin:3px 0 0">Narx masofa bo\u02bcyicha, safar oxirida</div>':'');
     el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
       '<div style="display:flex;gap:12px;align-items:center">'+
         '<div class="cab-logo" style="background:var(--amber-tint);flex:none">🚖</div>'+
         '<div style="flex:1;min-width:0"><b>'+esc(d.name||"Haydovchi")+'</b>'+
         '<div class="list-sub" style="margin:3px 0 0">'+(car||"Mashina")+plate+'</div>'+
+        priceLine+
         (r.ozim?'<div class="list-sub" style="margin:3px 0 0">Manzilni og\u02bczaki aytasiz</div>':'')+'</div>'+
       '</div>'+
       '<div style="display:flex;gap:9px;margin-top:12px">'+
@@ -3751,7 +3776,10 @@
                      : '<div class="list-sub">🔴 '+esc(r.to_addr||"Manzil")+'</div>';
     var dist = (r.dist_km && r.dist_km>0)
       ? '<div class="list-sub" style="color:var(--soft)">~'+r.dist_km.toFixed(1)+' km'+(r.dur_min?' · ~'+r.dur_min+' daq':'')+'</div>' : '';
-    return fromL+toL+dist;
+    var price = (r.price && r.price>0)
+      ? '<div class="list-sub" style="color:var(--primary);font-weight:700;margin-top:2px">💰 ~'+fmtSom(r.price)+' so\'m (naqd)</div>'
+      : (r.ozim ? '<div class="list-sub" style="color:var(--soft);margin-top:2px">Narx masofa bo\'yicha</div>' : '');
+    return fromL+toL+dist+price;
   }
   function renderDriverOrders(data){
     var box=el("drvOrders"); if(!box) return;
