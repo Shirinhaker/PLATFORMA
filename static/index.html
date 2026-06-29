@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1392 -->
+<title>Platforma</title><!-- BUILD: v1391 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -3750,32 +3750,9 @@
     var svcLabel = d.service==="both" ? "🚖 Taxi · 📦 Dostavka" : (d.service==="dostavka" ? "📦 Dostavka" : "🚖 Taxi");
     var carLine = d.car_model ? (esc(d.car_model)+(d.car_color?", "+esc(d.car_color):"")+(d.car_plate?" · "+esc(d.car_plate):"")+" · "+svcLabel) : svcLabel;
     var avail = !!d.available;
-    // Balans ma'lumotlari
-    var bal = d.balance || 0, comm = d.commission || 1000;
-    var low = bal < comm;
-    var balColor = low ? "#DC2626" : "var(--primary)";
-    var balanceCard =
-      '<div class="panel-card" style="margin:12px 0;border:1px solid '+(low?"#F0B8B8":"var(--line)")+'">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
-          '<div><div style="font-size:12px;color:var(--soft)">💳 Balansingiz</div>'+
-            '<div id="drvBalance" style="font-size:20px;font-weight:800;color:'+balColor+'">'+fmtSom(bal)+' so\'m</div></div>'+
-          '<button class="sort-chip" id="drvTopupBtn" style="padding:6px 14px">➕ To\'ldirish</button>'+
-        '</div>'+
-        '<div style="font-size:12px;color:var(--soft);margin-top:8px">Har qabul qilingan zakaz uchun '+fmtSom(comm)+' so\'m yechiladi.</div>'+
-        (low?'<div style="font-size:12px;color:#DC2626;font-weight:700;margin-top:6px">⚠️ Balans yetarli emas — zakaz olish uchun to\'ldiring.</div>':'')+
-      '</div>';
-    // Admin paneli (faqat egasi uchun)
-    var adminCard = d.is_admin ?
-      ('<div class="panel-card" style="margin-top:16px;border:1.5px dashed var(--primary)">'+
-        '<div style="font-weight:700;margin-bottom:8px">🔑 Admin: haydovchi balansini to\'ldirish</div>'+
-        '<select id="admDriver" class="input"><option value="">Yuklanmoqda...</option></select>'+
-        '<input id="admAmount" class="input" type="number" inputmode="numeric" placeholder="Summa (so\'m)" style="margin-top:8px">'+
-        '<button class="btn btn-primary btn-block" id="admTopupBtn" style="margin-top:8px">Balansni qo\'shish</button>'+
-      '</div>') : '';
     el("taxidrvBody").innerHTML =
       '<div class="cab-head"><div class="cab-logo" style="background:var(--amber-tint)">🚖</div>'+
         '<div><div class="cab-name">'+esc(d.name||"")+'</div><div class="cab-status" style="color:var(--soft)">'+carLine+'</div></div></div>'+
-      balanceCard+
       '<div class="field"><label>Holatim</label>'+
         '<div class="vis-card'+(avail?" on":"")+'" data-davail="1"><span class="v-ic">🟢</span><div><h5>Bo\'shman</h5><p>Yangi zakazlar menga ko\'rinadi.</p></div></div>'+
         '<div class="vis-card'+(!avail?" on":"")+'" data-davail="0"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Zakazlar kelmaydi.</p></div></div>'+
@@ -3787,41 +3764,10 @@
         '<div style="font-weight:700;font-size:13px;color:var(--soft);margin-bottom:6px">🗺️ Yo\'l xaritasi</div>'+
         '<div id="drvMap" style="height:220px;border:1px solid var(--line);border-radius:12px;overflow:hidden"></div>'+
         '<button class="btn btn-soft btn-block" id="drvNavBtn" style="margin-top:8px">🧭 Yo\'lni ochish (Google Maps)</button>'+
-      '</div>'+
-      adminCard;
+      '</div>';
     loadPricing();
     loadDriverOrders();
     startDriverOrdersPoll();
-    if(d.is_admin) loadAdminDrivers();
-  }
-
-  // Balansni to'ldirish bo'yicha (haydovchi uchun) qisqa ko'rsatma
-  function openTopupInfo(){
-    showMsg("Balansni to'ldirish: firma hisobiga pul o'tkazing, admin tasdiqlagach balans qo'shiladi. Avtomatik to'lov tez orada ulanadi.");
-  }
-  // Admin: haydovchilar ro'yxatini yuklab, tanlash ro'yxatini to'ldiramiz
-  function loadAdminDrivers(){
-    api("GET","/api/admin/drivers").then(function(data){
-      var sel=el("admDriver"); if(!sel) return;
-      var list=(data&&data.drivers)||[];
-      if(!list.length){ sel.innerHTML='<option value="">Haydovchi yo\'q</option>'; return; }
-      sel.innerHTML=list.map(function(dr){
-        return '<option value="'+dr.id+'">'+esc(dr.name||"—")+' · '+fmtSom(dr.balance)+' so\'m</option>';
-      }).join("");
-    }).catch(function(){ var sel=el("admDriver"); if(sel) sel.innerHTML='<option value="">Yuklab bo\'lmadi</option>'; });
-  }
-  // Admin: tanlangan haydovchi balansini to'ldirish
-  function adminTopup(){
-    var sel=el("admDriver"), amt=el("admAmount");
-    if(!sel||!amt) return;
-    var driver_id=parseInt(sel.value,10), amount=parseInt(amt.value,10);
-    if(!driver_id){ showMsg("Haydovchini tanlang."); return; }
-    if(!amount||amount<=0){ showMsg("Summani to'g'ri kiriting."); return; }
-    var btn=el("admTopupBtn"); if(btn) btn.disabled=true;
-    api("POST","/api/admin/topup",{driver_id:driver_id, amount:amount}).then(function(){
-      showMsg("Balans qo'shildi: +"+fmtSom(amount)+" so'm");
-      openTaxiDriver();   // profilni to'liq yangilaymiz (balans + ro'yxat)
-    }).catch(function(e){ showMsg((e&&e.message)||"Xatolik."); if(btn) btn.disabled=false; });
   }
 
   function submitDriver(){
@@ -4003,12 +3949,8 @@
   }
 
   function acceptRide(id){
-    api("POST","/api/rides/"+id+"/accept", {}).then(function(res){
-      var msg="Zakaz qabul qilindi!";
-      if(res && res.commission) msg+=" Komissiya: "+fmtSom(res.commission)+" so'm yechildi.";
-      showMsg(msg);
-      var be=el("drvBalance");
-      if(be && res && res.balance!=null) be.innerHTML=fmtSom(res.balance)+" so'm";
+    api("POST","/api/rides/"+id+"/accept", {}).then(function(){
+      showMsg("Zakaz qabul qilindi!");
       loadDriverOrders();
     }).catch(function(e){
       showMsg((e&&e.message)?e.message:"Qabul qilib bo'lmadi.");
@@ -4095,8 +4037,6 @@
     if(e.target.closest("#dEdit")){ renderDriverForm(drvState); return; }
     if(e.target.closest("#drvRefresh")){ loadDriverOrders(); return; }
     if(e.target.closest("#drvNavBtn")){ openDrvNav(_drvNavRide); return; }
-    if(e.target.closest("#drvTopupBtn")){ openTopupInfo(); return; }
-    if(e.target.closest("#admTopupBtn")){ adminTopup(); return; }
     var _ar=e.target.closest("[data-accept-ride]");
     if(_ar){ acceptRide(_ar.getAttribute("data-accept-ride")); return; }
     var _rs=e.target.closest("[data-ride-status]");
