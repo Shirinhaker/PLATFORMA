@@ -305,6 +305,28 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
 # TAXI ZAKAZLARI (v1384)
 # ====================================================================
 
+# Masofa bo'yicha taxminiy narx (so'mda). BU NAMUNA STAVKALAR — egasi o'zgartirishi mumkin.
+PRICING = {
+    "taxi":     {"base": 5000,  "per_km": 2000, "min": 12000},
+    "dostavka": {"base": 10000, "per_km": 2500, "min": 15000},
+}
+
+
+def _calc_price(kind, dist_km):
+    """Boshlang'ich haq + (har km narxi × masofa); minimaldan kam bo'lmaydi; 500 so'mgacha yaxlitlanadi."""
+    cfg = PRICING.get(kind) or PRICING["taxi"]
+    try:
+        km = float(dist_km)
+    except (TypeError, ValueError):
+        return None
+    if km <= 0:
+        return None
+    p = cfg["base"] + cfg["per_km"] * km
+    if p < cfg["min"]:
+        p = cfg["min"]
+    return int(p / 500.0 + 0.5) * 500
+
+
 def _ride_dict(r):
     def g(k):
         try:
@@ -315,6 +337,7 @@ def _ride_dict(r):
         "id": r["id"], "kind": r["kind"], "from_addr": r["from_addr"], "to_addr": r["to_addr"],
         "from_lat": g("from_lat"), "from_lng": g("from_lng"), "to_lat": g("to_lat"), "to_lng": g("to_lng"),
         "dist_km": g("dist_km"), "dur_min": g("dur_min"),
+        "price": _calc_price(r["kind"], g("dist_km")),
         "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
         "status": r["status"], "created_at": r["created_at"],
     }
@@ -510,6 +533,15 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
     conn.commit()
     conn.close()
     return {"ok": True, "status": new}
+
+
+@router.get("/pricing")
+async def get_pricing(x_telegram_init_data: str = Header(default="")):
+    """Frontend jonli narx ko'rsatishi uchun stavkalar."""
+    conn = db()
+    require_user(conn, x_telegram_init_data)
+    conn.close()
+    return {"pricing": PRICING}
 
 
 # ====================================================================
