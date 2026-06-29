@@ -338,6 +338,8 @@ def _ride_dict(r):
         "from_lat": g("from_lat"), "from_lng": g("from_lng"), "to_lat": g("to_lat"), "to_lng": g("to_lng"),
         "dist_km": g("dist_km"), "dur_min": g("dur_min"),
         "price": _calc_price(r["kind"], g("dist_km")),
+        "meter_km": g("meter_km"),
+        "final_price": _calc_price(r["kind"], g("meter_km")),
         "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
         "status": r["status"], "created_at": r["created_at"],
     }
@@ -533,6 +535,28 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
     conn.commit()
     conn.close()
     return {"ok": True, "status": new}
+
+
+@router.post("/rides/{ride_id}/progress")
+async def update_ride_progress(ride_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Jonli GPS hisoblagich: haydovchi bosib o'tilgan masofani (km) yangilaydi.
+    Faqat o'sha haydovchi va faqat 'ongoing' (safar davom etayotgan) holatda yoziladi."""
+    conn = db()
+    user, d = _require_driver(conn, x_telegram_init_data)
+    b = await request.json()
+    try:
+        km = float(b.get("km"))
+    except (TypeError, ValueError):
+        km = None
+    if km is None or km < 0:
+        km = 0.0
+    conn.execute(
+        "UPDATE rides SET meter_km=? WHERE id=? AND driver_id=? AND status='ongoing'",
+        (km, ride_id, d["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 @router.get("/pricing")
