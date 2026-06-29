@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1386 -->
+<title>Platforma</title><!-- BUILD: v1387 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1881,12 +1881,16 @@
     api("GET","/api/rides/my").then(function(res){
       var r = res && res.ride;
       if(!r){
+        var wasFound = (callState==="found");
         stopRidePoll(); CUR_RIDE=null;
-        if(callMode && callState!=="form"){ callState="form"; renderCallPanel(); }
+        if(callMode && callState!=="form"){
+          if(wasFound) showMsg("Safar yakunlandi. Rahmat!");
+          callState="form"; renderCallPanel();
+        }
         return;
       }
       CUR_RIDE=r;
-      if(r.status==="accepted"){ stopRidePoll(); showAcceptedDriver(r); }
+      if(r.status==="accepted" && callState!=="found"){ showAcceptedDriver(r); }
     }).catch(function(){});
   }
   // Haydovchi qabul qilgach — haqiqiy haydovchi ma'lumotini ko'rsatamiz
@@ -3712,8 +3716,10 @@
         '<div class="vis-card'+(!avail?" on":"")+'" data-davail="0"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Zakazlar kelmaydi.</p></div></div>'+
       '</div>'+
       '<button class="btn btn-soft btn-block" id="dEdit" style="margin-bottom:4px">✎ Ma\'lumotlarni tahrirlash</button>'+
-      '<div class="sec-head"><h2>Kelayotgan zakazlar</h2></div>'+
-      '<div class="empty" style="padding:24px 14px"><h3>Hozircha zakaz yo\'q</h3><p>Mijoz zakaz bersa, shu yerda ko\'rinadi.</p></div>';
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px"><h2 style="margin:0;font-size:17px">Kelayotgan zakazlar</h2><button class="sort-chip" id="drvRefresh" style="padding:4px 12px">↻ Yangilash</button></div>'+
+      '<div id="drvOrders"><div class="empty" style="padding:24px 14px"><p>Yuklanmoqda...</p></div></div>';
+    loadDriverOrders();
+    startDriverOrdersPoll();
   }
 
   function submitDriver(){
@@ -3736,6 +3742,82 @@
     }).catch(function(e){ showMsg(e.message); });
   }
 
+  /* ---------- v1387: HAYDOVCHI — KELAYOTGAN ZAKAZLAR ---------- */
+  var drvOrdersTimer=null;
+  function rideLinesHtml(r){
+    var fromL='<div class="list-sub">🟢 '+esc(r.from_addr||"Boshlanish")+'</div>';
+    var toL = r.ozim ? '<div class="list-sub">🗣 Manzilni og\'zaki aytadi</div>'
+                     : '<div class="list-sub">🔴 '+esc(r.to_addr||"Manzil")+'</div>';
+    var dist = (r.dist_km && r.dist_km>0)
+      ? '<div class="list-sub" style="color:var(--soft)">~'+r.dist_km.toFixed(1)+' km'+(r.dur_min?' · ~'+r.dur_min+' daq':'')+'</div>' : '';
+    return fromL+toL+dist;
+  }
+  function renderDriverOrders(data){
+    var box=el("drvOrders"); if(!box) return;
+    data=data||{}; var html="";
+    if(data.current){
+      var c=data.current, cust=c.customer||{};
+      html='<div class="panel-card" style="margin-bottom:10px;border:1.5px solid var(--primary)">'+
+        '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">🟢 Joriy zakaz · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
+        rideLinesHtml(c)+
+        '<div class="list-sub" style="margin-top:6px">Mijoz: '+esc(cust.name||"—")+'</div>'+
+        '<div style="display:flex;gap:9px;margin-top:10px">'+
+          (cust.phone?'<a class="btn btn-primary" style="height:42px;display:flex;align-items:center;justify-content:center;text-decoration:none" href="tel:'+esc(cust.phone)+'">📞 Qo\'ng\'iroq</a>':'')+
+          '<button class="btn btn-outline" style="height:42px;flex:1" data-complete-ride="'+c.id+'">✓ Yakunlash</button>'+
+        '</div></div>';
+      box.innerHTML=html; return;
+    }
+    if(!data.available){
+      html='<div class="empty" style="padding:20px 14px"><h3>Siz «Bandman»siz</h3><p>Zakaz olish uchun yuqorida «Bo\'shman»ni tanlang.</p></div>';
+    } else if(!data.pending || !data.pending.length){
+      html='<div class="empty" style="padding:24px 14px"><h3>Hozircha zakaz yo\'q</h3><p>Yangi zakaz chiqsa, shu yerda darhol ko\'rinadi.</p></div>';
+    } else {
+      data.pending.forEach(function(r){
+        html+='<div class="panel-card" style="margin-bottom:10px">'+
+          '<div style="font-weight:700;margin-bottom:4px">'+(r.kind==="dostavka"?"📦 Dostavka":"🚖 Taxi")+'</div>'+
+          rideLinesHtml(r)+
+          (r.customer_name?'<div class="list-sub" style="margin-top:4px">Mijoz: '+esc(r.customer_name)+'</div>':'')+
+          '<button class="btn btn-primary btn-block" style="margin-top:10px" data-accept-ride="'+r.id+'">Qabul qilish</button>'+
+          '</div>';
+      });
+    }
+    box.innerHTML=html;
+  }
+  function loadDriverOrders(){
+    if(!el("drvOrders")) return;
+    api("GET","/api/rides/pending").then(function(data){
+      renderDriverOrders(data);
+    }).catch(function(e){
+      var box=el("drvOrders"); if(box) box.innerHTML='<p class="elon-hint">'+esc((e&&e.message)||"Yuklab bo'lmadi")+'</p>';
+    });
+  }
+  function startDriverOrdersPoll(){
+    stopDriverOrdersPoll();
+    drvOrdersTimer=setInterval(function(){
+      if(current!=="taxidrv" || !el("drvOrders")){ stopDriverOrdersPoll(); return; }
+      loadDriverOrders();
+    }, 4000);
+  }
+  function stopDriverOrdersPoll(){ if(drvOrdersTimer){ clearInterval(drvOrdersTimer); drvOrdersTimer=null; } }
+  function acceptRide(id){
+    api("POST","/api/rides/"+id+"/accept", {}).then(function(){
+      showMsg("Zakaz qabul qilindi!");
+      loadDriverOrders();
+    }).catch(function(e){
+      showMsg((e&&e.message)?e.message:"Qabul qilib bo'lmadi.");
+      loadDriverOrders();
+    });
+  }
+  function completeRide(id){
+    askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){
+      if(!ok) return;
+      api("POST","/api/rides/"+id+"/complete", {}).then(function(){
+        showMsg("Zakaz yakunlandi. Rahmat!");
+        loadDriverOrders();
+      }).catch(function(e){ showMsg((e&&e.message)?e.message:"Xatolik."); });
+    });
+  }
+
   el("taxidrvBody").addEventListener("click", function(e){
     var svc=e.target.closest("[data-dsvc]");
     if(svc){
@@ -3746,6 +3828,11 @@
     }
     if(e.target.closest("#dSave")){ submitDriver(); return; }
     if(e.target.closest("#dEdit")){ renderDriverForm(drvState); return; }
+    if(e.target.closest("#drvRefresh")){ loadDriverOrders(); return; }
+    var _ar=e.target.closest("[data-accept-ride]");
+    if(_ar){ acceptRide(_ar.getAttribute("data-accept-ride")); return; }
+    var _cr=e.target.closest("[data-complete-ride]");
+    if(_cr){ completeRide(_cr.getAttribute("data-complete-ride")); return; }
     var av=e.target.closest("[data-davail]");
     if(av){ toggleDriverAvail(av.getAttribute("data-davail")==="1" ? 1 : 0); return; }
   });
