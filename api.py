@@ -344,7 +344,7 @@ async def create_ride(request: Request, x_telegram_init_data: str = Header(defau
         conn.close()
         raise HTTPException(400, "Qayerga borishni kiriting yoki 'O'zim aytaman'ni tanlang.")
     active = conn.execute(
-        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted') LIMIT 1",
+        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') LIMIT 1",
         (user["id"],),
     ).fetchone()
     if active:
@@ -379,7 +379,7 @@ async def my_ride(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     r = conn.execute(
-        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted') ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
         (user["id"],),
     ).fetchone()
     if not r:
@@ -404,7 +404,7 @@ async def cancel_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     cur = conn.execute(
-        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted')",
+        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted','arrived')",
         (ride_id, user["id"]),
     )
     conn.commit()
@@ -420,7 +420,7 @@ async def pending_rides(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
     cur_ride = conn.execute(
-        "SELECT * FROM rides WHERE driver_id=? AND status='accepted' ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
         (d["id"],),
     ).fetchone()
     current = None
@@ -454,7 +454,7 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     if not d["available"]:
         conn.close()
         raise HTTPException(400, "Avval 'Bo'shman' holatiga o'ting.")
-    busy = conn.execute("SELECT id FROM rides WHERE driver_id=? AND status='accepted' LIMIT 1", (d["id"],)).fetchone()
+    busy = conn.execute("SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1", (d["id"],)).fetchone()
     if busy:
         conn.close()
         raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
@@ -489,6 +489,27 @@ async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default
     if cur.rowcount == 0:
         raise HTTPException(404, "Zakaz topilmadi.")
     return {"ok": True}
+
+
+@router.post("/rides/{ride_id}/status")
+async def update_ride_status(ride_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Haydovchi safar bosqichini oldinga suradi: accepted -> arrived -> ongoing -> completed."""
+    conn = db()
+    user, d = _require_driver(conn, x_telegram_init_data)
+    b = await request.json()
+    new = (b.get("status") or "").strip()
+    nxt = {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
+    r = conn.execute("SELECT status FROM rides WHERE id=? AND driver_id=?", (ride_id, d["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Zakaz topilmadi.")
+    if nxt.get(r["status"]) != new:
+        conn.close()
+        raise HTTPException(400, "Bu bosqichga o'tib bo'lmaydi.")
+    conn.execute("UPDATE rides SET status=? WHERE id=?", (new, ride_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "status": new}
 
 
 # ====================================================================
