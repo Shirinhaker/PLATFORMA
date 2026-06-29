@@ -1,3136 +1,845 @@
 """
-Platforma — kabinet va umumiy API'lar.
+Platforma — asosiy server (FastAPI).
 
-Bo'limlar:
-  PROFIL        - shaxsiy ma'lumotlarni tahrirlash
-  MUTAXASISLIK  - "Mutaxasisligim va xizmatlarim" (davlat ishchisi rejimi bilan)
-  BIZNES        - biznes profili va mahsulot/xizmatlar
-  E'LONLAR      - joylash (rasm/video Telegram file_id bilan), tahrirlash, ko'rinish turi
-  OBUNA         - follow/followers (odamga ham, biznesga ham)
-  SAQLANGANLAR  - e'lon va bizneslarni saqlash
-  BUYURTMALAR   - buyurtma/navbatlar (user/business aktyorlar bo'yicha)
-  QARZ DAFTARI  - biznes kabineti bo'limi
-  QIDIRUV       - mahsulot + e'lon + mutaxasis + biznes (hammasi birga)
-  SAHIFALAR     - biznes sahifasi va mutaxasis (odam) sahifasi
+Bu bosqichda (B bo'lim, poydevor):
+  * Telegram initData tekshiruvi (har bir so'rov imzosi)
+  * Ro'yxatdan o'tish: forma -> Telegramga 6 xonali kod -> tasdiqlash -> akkaunt
+  * Kirish: login + parol -> Telegramga kod -> tasdiqlash -> shu Telegramga bog'lanadi
+  * Parollar shifrlangan (PBKDF2) saqlanadi — ochiq holda hech qayerda turmaydi
+  * /api/me — joriy foydalanuvchi
+  * /api/catalog — 20 yo'nalish
+  * Bot webhook: /start -> ilovani ochish tugmasi
+
+Environment variables:
+  BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET
+  UPLOAD_DIR=/data/uploads  -> Railway Volume uchun doimiy rasm papkasi
+  TEST_MODE=1  -> sinov rejimi (kod Telegramga emas, xotirada qoladi — faqat test uchun)
 """
 
+import os
 import json
 import time
-import re
-import os
+import hmac
 import secrets
+import hashlib
+from urllib.parse import parse_qsl
+from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Request, Header, HTTPException
+import httpx
+from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
-from database import db
+from database import db, init_db, DB_PATH
+from catalog_data import CATALOG, LISTING_CATS
 
-router = APIRouter(prefix="/api")
-
-
-# ---------- Yordamchilar ----------
-def _tg(init_data):
-    from main import require_tg
-    return require_tg(init_data)
-
-
-def require_user(conn, init_data):
-    """Ro'yxatdan o'tgan foydalanuvchini talab qiladi."""
-    tg = _tg(init_data)
-    user = conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
-    if not user:
-        raise HTTPException(401, "Avval ro'yxatdan o'ting yoki tizimga kiring.")
-    return user
+# ---------- Sozlamalar ----------
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
+TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
+TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
 
 
-def require_business(conn, init_data):
-    user = require_user(conn, init_data)
-    if user["role"] != "business":
-        raise HTTPException(403, "Bu bo'lim faqat biznes akkauntlar uchun.")
-    biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-    if not biz:
-        raise HTTPException(404, "Biznes profili topilmadi.")
-    return user, biz
+def resolve_upload_dir():
+    """
+    Rasm/fayllar saqlanadigan papkani aniqlaydi.
+
+    Railway'da rasm yo'qolmasligi uchun eng to'g'ri yo'l:
+      1) Railway Volume'ni /data ga ulash
+      2) UPLOAD_DIR=/data/uploads qilib qo'yish
+
+    Agar UPLOAD_DIR berilmagan bo'lsa, lekin /data papka mavjud bo'lsa,
+    avtomatik /data/uploads ishlatiladi. Lokal kompyuterda esa eski uploads papkasi qoladi.
+    """
+    env_dir = (os.environ.get("UPLOAD_DIR") or "").strip()
+    if env_dir:
+        return env_dir
+    if os.path.isdir("/data"):
+        return "/data/uploads"
+    return "uploads"
 
 
-def follower_count(conn, kind, target_id):
-    return conn.execute(
-        "SELECT COUNT(*) c FROM follows WHERE target_kind=? AND target_id=?", (kind, target_id)
-    ).fetchone()["c"]
+UPLOAD_DIR = resolve_upload_dir()
+
+CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
+
+# ---------- Bot va Mini App uchun ruxsat berilgan Telegram IDlar ----------
+# Faqat shu ID egalari botdan va platformadan foydalana oladi.
+ALLOWED_TG_IDS = {1423181561, 607563067}
+
+CLOSED_MESSAGE = (
+    "Loyihamiz to\'liq ishga tushmadi. "
+    "Loyihamiz to\'liq ishga tushganda barcha uchun ochiladi. "
+    "Iltimos kutib turing."
+)
 
 
-def following_count(conn, user_id):
-    return conn.execute(
-        "SELECT COUNT(*) c FROM follows WHERE follower_id=?", (user_id,)
-    ).fetchone()["c"]
-
-
-def is_following(conn, user_id, kind, target_id):
-    if not user_id:
+def is_allowed_tg_id(tg_id):
+    """Telegram ID ruxsat berilganlar ro'yxatidami — tekshiradi."""
+    try:
+        return int(tg_id) in ALLOWED_TG_IDS
+    except Exception:
         return False
-    return bool(conn.execute(
-        "SELECT 1 FROM follows WHERE follower_id=? AND target_kind=? AND target_id=?",
-        (user_id, kind, target_id),
-    ).fetchone())
 
 
-def optional_user(conn, init_data):
-    """Kirgan bo'lsa user, bo'lmasa None (mehmon rejimi)."""
-    try:
-        tg = _tg(init_data)
-    except HTTPException:
-        return None
-    return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
+# Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
+_test_codes = {}
 
 
-def resolve_actor(conn, user, actor_type="user"):
-    """
-    Hozirgi amal qaysi kabinet nomidan qilinyapti: oddiy user yoki biznes.
-    Frontend yuborgan actor_type tekshiriladi; business bo'lsa, biznes shu userniki bo'lishi shart.
-    """
-    at = (actor_type or "user").strip().lower()
-    if at not in ("user", "business"):
-        raise HTTPException(400, "Kabinet turi noto'g'ri.")
-    if at == "user":
-        return {"type": "user", "user_id": user["id"], "business_id": None, "business": None}
-
-    biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-    if not biz:
-        raise HTTPException(403, "Biznes kabinet topilmadi.")
-    return {"type": "business", "user_id": user["id"], "business_id": biz["id"], "business": biz}
-
-
-def actor_from_body(conn, user, body):
-    return resolve_actor(conn, user, (body or {}).get("actor_type") or "user")
-
-
-def listing_to_dict(conn, r, with_media=True):
-    d = {
-        "id": r["id"], "cat": r["cat"], "title": r["title"], "price": r["price"],
-        "descr": r["descr"], "address": r["address"], "lat": r["lat"], "lng": r["lng"],
-        "visibility": r["visibility"], "status": r["status"], "created_at": r["created_at"],
-        "user_id": r["user_id"], "business_id": r["business_id"],
-    }
-    if with_media:
-        media = conn.execute(
-            "SELECT tg_file_id, mtype FROM listing_media WHERE listing_id=? ORDER BY pos", (r["id"],)
-        ).fetchall()
-        d["media"] = [{"file_id": m["tg_file_id"], "type": m["mtype"]} for m in media]
-    owner = conn.execute("SELECT name FROM users WHERE id=?", (r["user_id"],)).fetchone()
-    d["owner_name"] = owner["name"] if owner else ""
-    return d
-
-
-# ====================================================================
-# PROFIL
-# ====================================================================
-@router.put("/profile")
-async def update_profile(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    # Yuborilmagan maydonlar eskisicha qoladi (bo'sh yozilmaydi)
-    def keep(key, old):
-        return b[key].strip() if (key in b and isinstance(b[key], str)) else old
-    new_name = keep("name", user["name"])
-    new_phone = keep("phone", user["phone"])
-    new_region = keep("region", user["region"])
-    new_district = keep("district", user["district"])
-    new_mahalla = keep("mahalla", user["mahalla"])
-    # lat/lng: yuborilgan bo'lsa yangilanadi, yuborilmasa eskisi qoladi.
-    # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
-    new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else user["lat"]
-    new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else user["lng"]
-    conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, user["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.get("/profile")
-async def get_profile(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    result = {
-        "id": user["id"], "role": user["role"], "name": user["name"], "phone": user["phone"],
-        "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
-        "lat": user["lat"], "lng": user["lng"],
-        "followers": follower_count(conn, "user", user["id"]),
-        "following": following_count(conn, user["id"]),
-    }
-    if user["role"] == "business":
-        biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
-        if biz:
-            result["business_followers"] = follower_count(conn, "business", biz["id"])
-            result["business_following"] = 0  # biznes nomidan obuna tizimi hozircha alohida qilinmagan
-            result["business_id"] = biz["id"]
-    conn.close()
-    return result
-
-
-# ====================================================================
-# MUTAXASISLIK ("Mutaxasisligim va xizmatlarim")
-# ====================================================================
-@router.get("/specialist")
-async def get_specialist(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    sp = conn.execute("SELECT * FROM specialists WHERE user_id=?", (user["id"],)).fetchone()
-    conn.close()
-    if not sp:
-        return {"exists": False}
-    return {
-        "exists": True, "kasb": sp["kasb"], "descr": sp["descr"], "narx": sp["narx"],
-        "hudud": sp["hudud"], "is_gov": bool(sp["is_gov"]), "org": sp["org"],
-        "dept": sp["dept"], "lavozim": sp["lavozim"], "work_hours": sp["work_hours"],
-        "after_hours": sp["after_hours"], "visible": bool(sp["visible"]),
-        "available": bool(sp["available"]), "lat": sp["lat"], "lng": sp["lng"],
-    }
-
-
-@router.put("/specialist")
-async def update_specialist(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    kasb = (b.get("kasb") or "").strip()
-    if b.get("visible") and not kasb:
-        conn.close()
-        raise HTTPException(400, "Ko'rinish uchun kasb/yo'nalish kiritilishi shart.")
-    is_gov = 1 if b.get("is_gov") else 0
-    if is_gov and not (b.get("org") or "").strip():
-        conn.close()
-        raise HTTPException(400, "Davlat ishchisi uchun tashkilot kiritilishi shart.")
-    now = int(time.time())
-    conn.execute(
-        """INSERT INTO specialists(user_id, kasb, descr, narx, hudud, is_gov, org, dept, lavozim,
-                                   work_hours, after_hours, visible, available, lat, lng, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(user_id) DO UPDATE SET
-             kasb=excluded.kasb, descr=excluded.descr, narx=excluded.narx, hudud=excluded.hudud,
-             is_gov=excluded.is_gov, org=excluded.org, dept=excluded.dept, lavozim=excluded.lavozim,
-             work_hours=excluded.work_hours, after_hours=excluded.after_hours,
-             visible=excluded.visible, available=excluded.available,
-             lat=excluded.lat, lng=excluded.lng""",
-        (user["id"], kasb, (b.get("descr") or "").strip(), (b.get("narx") or "").strip(),
-         (b.get("hudud") or "").strip(), is_gov, (b.get("org") or "").strip(),
-         (b.get("dept") or "").strip(), (b.get("lavozim") or "").strip(),
-         (b.get("work_hours") or "").strip(), (b.get("after_hours") or "").strip(),
-         1 if b.get("visible") else 0, 1 if b.get("available", True) else 0,
-         b.get("lat"), b.get("lng"), now),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-# ====================================================================
-# TAXI HAYDOVCHISI (v1383)
-# ====================================================================
-
-@router.get("/driver")
-async def get_driver(x_telegram_init_data: str = Header(default="")):
-    """Joriy foydalanuvchining haydovchi profili. Ro'yxatdan o'tmagan bo'lsa, formani
-    oldindan to'ldirish uchun akkaunt ismi va telefoni qaytariladi."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
-    name = user["name"]
-    phone = user["phone"]
-    conn.close()
-    if not d:
-        return {"exists": False, "name": name, "phone": phone}
-    rating = round(d["rating_sum"] / d["rating_cnt"], 1) if d["rating_cnt"] else 0
-    return {
-        "exists": True, "name": name,
-        "phone": d["phone"], "car_model": d["car_model"], "car_color": d["car_color"],
-        "car_plate": d["car_plate"], "service": d["service"], "available": bool(d["available"]),
-        "rating": rating, "rating_cnt": d["rating_cnt"], "balance": d["balance"],
-        "commission": COMMISSION_PER_ORDER, "is_admin": (user["tg_id"] in ADMIN_TG_IDS),
-    }
-
-
-@router.post("/driver")
-async def save_driver(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi ro'yxatdan o'tadi yoki ma'lumotini tahrirlaydi (upsert).
-    Taxi yoki Ikkalasi bo'lsa, mashina ma'lumoti majburiy."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    service = (b.get("service") or "taxi").strip().lower()
-    if service not in ("taxi", "dostavka", "both"):
-        service = "taxi"
-    phone = (b.get("phone") or "").strip()
-    car_model = (b.get("car_model") or "").strip()
-    car_color = (b.get("car_color") or "").strip()
-    car_plate = (b.get("car_plate") or "").strip()
-    if not phone:
-        conn.close()
-        raise HTTPException(400, "Telefon raqamini kiriting.")
-    # Taxi yoki Ikkalasi — yo'lovchi tashish uchun mashina ma'lumoti majburiy
-    if service in ("taxi", "both") and not (car_model and car_color and car_plate):
-        conn.close()
-        raise HTTPException(400, "Taxi uchun mashina rusumi, raqami va rangini to'ldiring.")
-    now = int(time.time())
-    conn.execute(
-        """INSERT INTO drivers(user_id, phone, car_model, car_color, car_plate, service, available, created_at)
-           VALUES(?,?,?,?,?,?,1,?)
-           ON CONFLICT(user_id) DO UPDATE SET
-             phone=excluded.phone, car_model=excluded.car_model, car_color=excluded.car_color,
-             car_plate=excluded.car_plate, service=excluded.service""",
-        (user["id"], phone, car_model, car_color, car_plate, service, now),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.put("/driver/available")
-async def set_driver_available(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi holatini o'zgartiradi: bo'shman (1) / bandman (0)."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    avail = 1 if b.get("available") else 0
-    cur = conn.execute("UPDATE drivers SET available=? WHERE user_id=?", (avail, user["id"]))
-    conn.commit()
-    conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "Avval haydovchi sifatida ro'yxatdan o'ting.")
-    return {"ok": True, "available": bool(avail)}
-
-
-# ====================================================================
-# TAXI ZAKAZLARI (v1384)
-# ====================================================================
-
-# Masofa bo'yicha taxminiy narx (so'mda). BU NAMUNA STAVKALAR — egasi o'zgartirishi mumkin.
-PRICING = {
-    "taxi":     {"base": 5000,  "per_km": 2000, "min": 9000},
-    "dostavka": {"base": 10000, "per_km": 2500, "min": 15000},
-}
-
-# Har qabul qilingan zakaz uchun haydovchi balansidan yechiladigan komissiya (so'm).
-# BU NAMUNA STAVKA — egasi o'zgartirishi mumkin.
-COMMISSION_PER_ORDER = 1000
-
-# Admin (egasi) Telegram ID'lari — balansni qo'lda to'ldirish huquqi shularda.
-ADMIN_TG_IDS = {1423181561, 607563067}
-
-
-def _calc_price(kind, dist_km):
-    """Boshlang'ich haq + (har km narxi × masofa); minimaldan kam bo'lmaydi; 500 so'mgacha yaxlitlanadi."""
-    cfg = PRICING.get(kind) or PRICING["taxi"]
-    try:
-        km = float(dist_km)
-    except (TypeError, ValueError):
-        return None
-    if km <= 0:
-        return None
-    p = cfg["base"] + cfg["per_km"] * km
-    if p < cfg["min"]:
-        p = cfg["min"]
-    return int(p / 500.0 + 0.5) * 500
-
-
-def _ride_dict(r):
-    def g(k):
-        try:
-            return r[k]
-        except Exception:
-            return None
-    return {
-        "id": r["id"], "kind": r["kind"], "from_addr": r["from_addr"], "to_addr": r["to_addr"],
-        "from_lat": g("from_lat"), "from_lng": g("from_lng"), "to_lat": g("to_lat"), "to_lng": g("to_lng"),
-        "dist_km": g("dist_km"), "dur_min": g("dur_min"),
-        "price": _calc_price(r["kind"], g("dist_km")),
-        "meter_km": g("meter_km"),
-        "final_price": _calc_price(r["kind"], g("meter_km")),
-        "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
-        "status": r["status"], "created_at": r["created_at"],
-    }
-
-
-def _require_driver(conn, init_data):
-    user = require_user(conn, init_data)
-    d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
-    if not d:
-        conn.close()
-        raise HTTPException(403, "Avval haydovchi sifatida ro'yxatdan o'ting.")
-    return user, d
-
-
-@router.post("/rides")
-async def create_ride(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Mijoz yangi zakaz beradi (taxi yoki dostavka)."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    kind = (b.get("kind") or "taxi").strip().lower()
-    if kind not in ("taxi", "dostavka"):
-        kind = "taxi"
-    ozim = 1 if b.get("ozim") else 0
-    to_addr = (b.get("to_addr") or "").strip()
-    if not ozim and not to_addr:
-        conn.close()
-        raise HTTPException(400, "Qayerga borishni kiriting yoki 'O'zim aytaman'ni tanlang.")
-    active = conn.execute(
-        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') LIMIT 1",
-        (user["id"],),
-    ).fetchone()
-    if active:
-        conn.close()
-        raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
-    def _num(v):
-        try:
-            return float(v) if v is not None and v != "" else None
-        except Exception:
-            return None
-    from_lat = _num(b.get("from_lat")); from_lng = _num(b.get("from_lng"))
-    to_lat = _num(b.get("to_lat")); to_lng = _num(b.get("to_lng"))
-    dist_km = _num(b.get("dist_km"))
-    _dm = _num(b.get("dur_min"))
-    dur_min = int(_dm) if _dm is not None else None
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO rides(customer_id, kind, from_addr, to_addr, from_lat, from_lng, to_lat, to_lng, dist_km, dur_min, ozim, cargo, car_type, note, status, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending', ?)""",
-        (user["id"], kind, (b.get("from_addr") or "").strip(), to_addr, from_lat, from_lng, to_lat, to_lng, dist_km, dur_min, ozim,
-         (b.get("cargo") or "").strip(), (b.get("car_type") or "").strip(), (b.get("note") or "").strip(), now),
-    )
-    rid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": rid, "status": "pending"}
-
-
-@router.get("/rides/my")
-async def my_ride(x_telegram_init_data: str = Header(default="")):
-    """Mijozning joriy (tugamagan) zakazi + qabul qilingan bo'lsa haydovchi ma'lumoti."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    r = conn.execute(
-        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
-        (user["id"],),
-    ).fetchone()
-    if not r:
-        conn.close()
-        return {"ride": None}
-    out = _ride_dict(r)
-    if r["status"] == "accepted" and r["driver_id"]:
-        d = conn.execute("SELECT * FROM drivers WHERE id=?", (r["driver_id"],)).fetchone()
-        if d:
-            du = conn.execute("SELECT name FROM users WHERE id=?", (d["user_id"],)).fetchone()
-            out["driver"] = {
-                "name": du["name"] if du else "", "phone": d["phone"],
-                "car_model": d["car_model"], "car_color": d["car_color"], "car_plate": d["car_plate"],
-            }
-    conn.close()
-    return {"ride": out}
-
-
-@router.post("/rides/{ride_id}/cancel")
-async def cancel_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
-    """Mijoz o'z zakazini bekor qiladi (pending yoki accepted)."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    cur = conn.execute(
-        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted','arrived')",
-        (ride_id, user["id"]),
-    )
-    conn.commit()
-    conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "Zakaz topilmadi yoki allaqachon yakunlangan.")
-    return {"ok": True}
-
-
-@router.get("/rides/pending")
-async def pending_rides(x_telegram_init_data: str = Header(default="")):
-    """Haydovchi uchun: joriy qabul qilingan zakazi + xizmatiga mos kutilayotgan zakazlar."""
-    conn = db()
-    user, d = _require_driver(conn, x_telegram_init_data)
-    cur_ride = conn.execute(
-        "SELECT * FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
-        (d["id"],),
-    ).fetchone()
-    current = None
-    if cur_ride:
-        current = _ride_dict(cur_ride)
-        cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (cur_ride["customer_id"],)).fetchone()
-        current["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
-    pend = []
-    if d["available"] and not current:
-        if d["service"] == "both":
-            rows = conn.execute("SELECT * FROM rides WHERE status='pending' ORDER BY created_at ASC").fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM rides WHERE status='pending' AND kind=? ORDER BY created_at ASC",
-                (d["service"],),
-            ).fetchall()
-        for r in rows:
-            item = _ride_dict(r)
-            cu = conn.execute("SELECT name FROM users WHERE id=?", (r["customer_id"],)).fetchone()
-            item["customer_name"] = cu["name"] if cu else ""
-            pend.append(item)
-    conn.close()
-    return {"available": bool(d["available"]), "current": current, "pending": pend}
-
-
-@router.post("/rides/{ride_id}/accept")
-async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi zakazni qabul qiladi (faqat birinchi bo'lib ulgurgan oladi)."""
-    conn = db()
-    user, d = _require_driver(conn, x_telegram_init_data)
-    if not d["available"]:
-        conn.close()
-        raise HTTPException(400, "Avval 'Bo'shman' holatiga o'ting.")
-    busy = conn.execute("SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1", (d["id"],)).fetchone()
-    if busy:
-        conn.close()
-        raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
-    # Balans tekshiruvi: zakaz olish uchun komissiyaga yetarli balans bo'lishi kerak
-    if (d["balance"] or 0) < COMMISSION_PER_ORDER:
-        conn.close()
-        raise HTTPException(400, "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.")
-    now = int(time.time())
-    cur = conn.execute(
-        "UPDATE rides SET status='accepted', driver_id=?, accepted_at=? WHERE id=? AND status='pending'",
-        (d["id"], now, ride_id),
-    )
-    conn.commit()
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
-    # Zakaz olindi — komissiyani balansdan yechamiz
-    conn.execute("UPDATE drivers SET balance = balance - ? WHERE id=?", (COMMISSION_PER_ORDER, d["id"]))
-    conn.commit()
-    r = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
-    out = _ride_dict(r)
-    cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (r["customer_id"],)).fetchone()
-    out["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
-    new_balance = conn.execute("SELECT balance FROM drivers WHERE id=?", (d["id"],)).fetchone()["balance"]
-    conn.close()
-    return {"ok": True, "ride": out, "commission": COMMISSION_PER_ORDER, "balance": new_balance}
-
-
-@router.post("/rides/{ride_id}/complete")
-async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi safarni yakunlaydi."""
-    conn = db()
-    user, d = _require_driver(conn, x_telegram_init_data)
-    cur = conn.execute(
-        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND status='accepted'",
-        (ride_id, d["id"]),
-    )
-    conn.commit()
-    conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "Zakaz topilmadi.")
-    return {"ok": True}
-
-
-@router.post("/rides/{ride_id}/status")
-async def update_ride_status(ride_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi safar bosqichini oldinga suradi: accepted -> arrived -> ongoing -> completed."""
-    conn = db()
-    user, d = _require_driver(conn, x_telegram_init_data)
-    b = await request.json()
-    new = (b.get("status") or "").strip()
-    nxt = {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
-    r = conn.execute("SELECT status FROM rides WHERE id=? AND driver_id=?", (ride_id, d["id"])).fetchone()
-    if not r:
-        conn.close()
-        raise HTTPException(404, "Zakaz topilmadi.")
-    if nxt.get(r["status"]) != new:
-        conn.close()
-        raise HTTPException(400, "Bu bosqichga o'tib bo'lmaydi.")
-    conn.execute("UPDATE rides SET status=? WHERE id=?", (new, ride_id))
-    conn.commit()
-    conn.close()
-    return {"ok": True, "status": new}
-
-
-@router.post("/rides/{ride_id}/progress")
-async def update_ride_progress(ride_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Jonli GPS hisoblagich: haydovchi bosib o'tilgan masofani (km) yangilaydi.
-    Faqat o'sha haydovchi va faqat 'ongoing' (safar davom etayotgan) holatda yoziladi."""
-    conn = db()
-    user, d = _require_driver(conn, x_telegram_init_data)
-    b = await request.json()
-    try:
-        km = float(b.get("km"))
-    except (TypeError, ValueError):
-        km = None
-    if km is None or km < 0:
-        km = 0.0
-    conn.execute(
-        "UPDATE rides SET meter_km=? WHERE id=? AND driver_id=? AND status='ongoing'",
-        (km, ride_id, d["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.get("/pricing")
-async def get_pricing(x_telegram_init_data: str = Header(default="")):
-    """Frontend jonli narx ko'rsatishi uchun stavkalar."""
-    conn = db()
-    require_user(conn, x_telegram_init_data)
-    conn.close()
-    return {"pricing": PRICING}
-
-
-def _require_admin(conn, init_data):
-    """Admin (egasi) ekanligini tekshiradi. Bo'lmasa 403."""
-    user = require_user(conn, init_data)
-    if user["tg_id"] not in ADMIN_TG_IDS:
-        conn.close()
-        raise HTTPException(403, "Bu amal faqat admin uchun.")
-    return user
-
-
-@router.get("/admin/drivers")
-async def admin_list_drivers(x_telegram_init_data: str = Header(default="")):
-    """Admin uchun: barcha haydovchilar va ularning balansi (qo'lda to'ldirish uchun)."""
-    conn = db()
-    _require_admin(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT d.id, d.phone, d.balance, u.name "
-        "FROM drivers d JOIN users u ON u.id=d.user_id ORDER BY u.name"
-    ).fetchall()
-    conn.close()
-    return {"drivers": [{"id": r["id"], "name": r["name"], "phone": r["phone"],
-                         "balance": r["balance"] or 0} for r in rows]}
-
-
-@router.post("/admin/topup")
-async def admin_topup(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Admin uchun: haydovchi balansini qo'lda to'ldirish (haydovchi pulni o'tkazgach)."""
-    conn = db()
-    _require_admin(conn, x_telegram_init_data)
-    b = await request.json()
-    try:
-        driver_id = int(b.get("driver_id"))
-        amount = int(b.get("amount"))
-    except (TypeError, ValueError):
-        conn.close()
-        raise HTTPException(400, "Haydovchi va summani to'g'ri kiriting.")
-    if amount <= 0 or amount > 10000000:
-        conn.close()
-        raise HTTPException(400, "Summa noto'g'ri (0 dan katta bo'lsin).")
-    cur = conn.execute("UPDATE drivers SET balance = balance + ? WHERE id=?", (amount, driver_id))
-    conn.commit()
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(404, "Haydovchi topilmadi.")
-    new_balance = conn.execute("SELECT balance FROM drivers WHERE id=?", (driver_id,)).fetchone()["balance"]
-    conn.close()
-    return {"ok": True, "balance": new_balance}
-
-
-# ====================================================================
-# BIZNES PROFILI VA MAHSULOTLAR
-# ====================================================================
-@router.put("/business")
-async def update_business(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    b = await request.json()
-    def keep(key, old):
-        return b[key].strip() if (key in b and isinstance(b[key], str)) else old
-    new_name = keep("name", biz["name"]) or biz["name"]
-    new_yon = keep("yon", biz["yon"])
-    new_tur = keep("tur", biz["tur"])
-    new_descr = keep("descr", biz["descr"])
-    new_phone = keep("phone", biz["phone"])
-    new_tg = keep("telegram", biz["telegram"])
-    new_hours = keep("work_hours", biz["work_hours"])
-    new_addr = keep("address", biz["address"])
-    # lat/lng: faqat yuborilgan bo'lsa yangilaymiz, aks holda eskisi qoladi
-    new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else biz["lat"]
-    new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
-    conn.execute(
-        """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
-           work_hours=?, address=?, lat=?, lng=? WHERE id=?""",
-        (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
-         new_hours, new_addr, new_lat, new_lng, biz["id"]),
-    )
-    # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
-    # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
-    # B variant: faqat birinchi marta (bo'sh bo'lsa). Keyin foydalanuvchi qo'lda o'zgartira oladi.
-    marker_sent = ("lat" in b and b["lat"] is not None) and ("lng" in b and b["lng"] is not None)
-    home_empty = not ((user["region"] or "").strip() or (user["district"] or "").strip())
-    if marker_sent and home_empty and new_lat is not None and new_lng is not None:
-        from main import reverse_geocode
-        geo = await reverse_geocode(new_lat, new_lng)
-        gr = (geo.get("region") or "").strip()
-        gd = (geo.get("district") or "").strip()
-        if gr or gd:
-            conn.execute("UPDATE users SET region=?, district=?, lat=?, lng=? WHERE id=?", (gr, gd, new_lat, new_lng, user["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-def _item_group_for_business(conn, biz_id, group_id):
-    """Guruh shu biznesnikimi — tekshiradi. group_id bo'sh bo'lsa None qaytadi."""
-    if group_id in (None, "", 0, "0"):
+# ---------- Telegram initData tekshiruvi ----------
+def verify_init_data(init_data):
+    """Mini App so'rovi haqiqatan Telegramdan kelganini imzo orqali tekshiradi."""
+    if not init_data or not BOT_TOKEN:
         return None
     try:
-        gid = int(group_id)
+        parsed = dict(parse_qsl(init_data, keep_blank_values=True))
     except Exception:
-        raise HTTPException(400, "Guruh noto'g'ri tanlangan.")
-    g = conn.execute(
-        "SELECT * FROM item_groups WHERE id=? AND business_id=?",
-        (gid, biz_id),
-    ).fetchone()
-    if not g:
-        raise HTTPException(400, "Tanlangan guruh topilmadi.")
-    return g
+        return None
+    received_hash = parsed.pop("hash", None)
+    if not received_hash:
+        return None
+    data_check_string = "\n".join("{}={}".format(k, parsed[k]) for k in sorted(parsed))
+    secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+    calc_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(calc_hash, received_hash):
+        return None
+    try:
+        user = json.loads(parsed.get("user", "{}"))
+    except Exception:
+        return None
+    return user if "id" in user else None
 
 
-def _item_kind_and_group(conn, biz_id, body):
+def require_tg(init_data):
+    """Telegram foydalanuvchisini majburiy tekshiradi."""
+    tg = verify_init_data(init_data)
+    if not tg:
+        raise HTTPException(401, "Iltimos, ilovani Telegram bot orqali oching.")
+    if not is_allowed_tg_id(tg.get("id")):
+        raise HTTPException(403, CLOSED_MESSAGE)
+    return tg
+
+
+def current_user(conn, tg_id):
+    """Shu Telegramga bog'langan akkauntni topadi (bo'lmasa None)."""
+    return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
+
+
+# ---------- Parol (xavfsiz saqlash) ----------
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), 200_000)
+    return salt + "$" + h.hex()
+
+
+def check_password(password, stored):
+    try:
+        salt, _ = stored.split("$", 1)
+    except Exception:
+        return False
+    return hmac.compare_digest(hash_password(password, salt), stored)
+
+
+def gen_code():
+    return "".join(secrets.choice("0123456789") for _ in range(6))
+
+
+# ---------- Telegram bot ----------
+async def tg_call(method, payload):
+    if TEST_MODE:
+        # Sinov rejimi: tashqariga so'rov yubormaymiz
+        if method == "sendMessage" and "KOD:" in str(payload.get("text", "")):
+            code = payload["text"].split("KOD:")[1].strip().split()[0]
+            _test_codes[payload["chat_id"]] = code
+        return {"ok": True}
+    if not BOT_TOKEN:
+        return None
+    async with httpx.AsyncClient(timeout=20) as client:
+        try:
+            r = await client.post(TG_API + "/" + method, json=payload)
+            return r.json()
+        except Exception as e:
+            print("Telegram xatosi (" + method + "):", e)
+            return None
+
+
+async def send_code(tg_id, code, purpose):
+    title = "Ro'yxatdan o'tish" if purpose == "register" else "Kirish"
+    await tg_call("sendMessage", {
+        "chat_id": tg_id,
+        "text": title + " uchun tasdiqlash kodingiz — KOD: " + code +
+                "\n\nKod 10 daqiqa amal qiladi. Uni hech kimga bermang.",
+    })
+
+
+async def setup_bot():
+    if not (BOT_TOKEN and BASE_URL) or TEST_MODE:
+        print("Bot sozlanmadi (BOT_TOKEN/BASE_URL yo'q yoki TEST_MODE).")
+        return
+    # Avval eski webhook'ni o'chiramiz (toza qayta ro'yxatdan o'tkazish uchun)
+    await tg_call("deleteWebhook", {"drop_pending_updates": False})
+    await tg_call("setWebhook", {
+        "url": BASE_URL + "/webhook",
+        "secret_token": WEBHOOK_SECRET,
+        "allowed_updates": ["message", "callback_query"],
+    })
+    # Hamma uchun pastdagi global "Platforma" tugmasini o'chiramiz.
+    # Aks holda ruxsatsiz odam ham asosiy sahifani ochib ko'rishi mumkin.
+    await tg_call("setChatMenuButton", {
+        "menu_button": {"type": "commands"},
+    })
+
+    # Faqat ruxsat berilgan Telegram IDlar uchun alohida Web App tugmasi qo'yamiz.
+    # Telegram Bot API bu yerda user_id emas, chat_id kutadi.
+    for uid in ALLOWED_TG_IDS:
+        await tg_call("setChatMenuButton", {
+            "chat_id": uid,
+            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        })
+
+    print("Bot sozlandi:", BASE_URL)
+
+
+# ---------- App ----------
+@asynccontextmanager
+async def lifespan(app):
+    init_db()
+    await setup_bot()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def whitelist_middleware(request: Request, call_next):
     """
-    v1379 qoidasi: agar haqiqiy guruh tanlansa, tovar turini guruh hal qiladi.
-    Guruhsiz bo'lsa, frontend yuborgan kind ishlaydi.
+    /api/... so'rovlarini global tekshiradi.
+    Bu api.py ichidagi alohida endpointlarni ham ruxsatsiz foydalanuvchilardan yopadi.
+    Static sahifa server tomonda Telegram IDni bilmaydi, shuning uchun frontend guard ham kerak.
     """
-    g = _item_group_for_business(conn, biz_id, (body or {}).get("group_id"))
-    if g:
-        return g["kind"], g["id"]
-    kind = (body or {}).get("kind") if (body or {}).get("kind") in ("product", "service") else "product"
-    return kind, None
+    path = request.url.path
 
+    # Telegram webhookni bloklamaymiz: u Telegram serveridan keladi.
+    if path == "/webhook":
+        return await call_next(request)
 
-@router.get("/item-groups")
-async def item_groups(x_telegram_init_data: str = Header(default="")):
-    """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT * FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
-        (biz["id"],),
-    ).fetchall()
-    conn.close()
-    return [{"id": r["id"], "name": r["name"], "kind": r["kind"], "created_at": r["created_at"]} for r in rows]
-
-
-@router.post("/item-groups")
-async def add_item_group(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Yangi guruh qo'shadi. Guruh turi faqat yaratilganda belgilanadi."""
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    b = await request.json()
-    name = (b.get("name") or "").strip()
-    if not name:
-        conn.close()
-        raise HTTPException(400, "Guruh nomi kiritilishi shart.")
-    kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
-    cur = conn.execute(
-        "INSERT INTO item_groups(business_id, name, kind, created_at) VALUES(?,?,?,?)",
-        (biz["id"], name, kind, int(time.time())),
-    )
-    conn.commit()
-    gid = cur.lastrowid
-    conn.close()
-    return {"id": gid, "name": name, "kind": kind}
-
-
-@router.put("/item-groups/{group_id}")
-async def edit_item_group(group_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Guruhning faqat nomini o'zgartiradi. kind o'zgartirilmaydi."""
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    row = conn.execute(
-        "SELECT * FROM item_groups WHERE id=? AND business_id=?",
-        (group_id, biz["id"]),
-    ).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    b = await request.json()
-    name = (b.get("name") or "").strip()
-    if not name:
-        conn.close()
-        raise HTTPException(400, "Guruh nomi kiritilishi shart.")
-    conn.execute("UPDATE item_groups SET name=? WHERE id=? AND business_id=?", (name, group_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.delete("/item-groups/{group_id}")
-async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(default="")):
-    """Guruhni xavfsiz o'chiradi: avval ichidagi tovarlar Guruhsizga o'tadi."""
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    row = conn.execute(
-        "SELECT id FROM item_groups WHERE id=? AND business_id=?",
-        (group_id, biz["id"]),
-    ).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    conn.execute("UPDATE items SET group_id=NULL WHERE group_id=? AND business_id=?", (group_id, biz["id"]))
-    conn.execute("DELETE FROM item_groups WHERE id=? AND business_id=?", (group_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.get("/items")
-async def my_items(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        """SELECT i.*, g.name AS group_name, g.kind AS group_kind
-           FROM items i
-           LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=?
-           ORDER BY i.created_at DESC""",
-        (biz["id"],),
-    ).fetchall()
-    conn.close()
-    return [{"id": r["id"], "name": r["name"], "price": r["price"],
-             "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
-             "group_name": r["group_name"], "group_kind": r["group_kind"],
-             "photo_file": r["photo_file"]} for r in rows]
-
-
-@router.post("/items")
-async def add_item(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    b = await request.json()
-    name = (b.get("name") or "").strip()
-    if not name:
-        conn.close()
-        raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
-    kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    photo = (b.get("photo_file") or "").strip()
-    cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?)",
-        (biz["id"], group_id, name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
-         kind, photo, int(time.time())),
-    )
-    conn.commit()
-    item_id = cur.lastrowid
-    conn.close()
-    return {"id": item_id}
-
-
-@router.put("/items/{item_id}")
-async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    row = conn.execute(
-        "SELECT id FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])
-    ).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Mahsulot topilmadi.")
-    b = await request.json()
-    name = (b.get("name") or "").strip()
-    if not name:
-        conn.close()
-        raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
-    kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    photo = (b.get("photo_file") or "").strip()
-    conn.execute(
-        "UPDATE items SET name=?, price=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
-        (name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
-         kind, group_id, photo, item_id, biz["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.post("/items/image")
-async def upload_item_image(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Tovar rasmini yuklash. Rasm UPLOAD_DIR/items papkasiga saqlanadi va /uploads/items/... URL qaytariladi."""
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    conn.close()
-    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
-    allowed = {
-        "image/jpeg": ".jpg",
-        "image/jpg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/heic": ".heic",
-        "image/heif": ".heif",
-    }
-    if ctype not in allowed:
-        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
-    raw = await request.body()
-    max_size = 8 * 1024 * 1024
-    if not raw:
-        raise HTTPException(400, "Rasm fayli topilmadi.")
-    if len(raw) > max_size:
-        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
-    from main import UPLOAD_DIR
-    folder = os.path.join(UPLOAD_DIR, "items")
-    os.makedirs(folder, exist_ok=True)
-    ext = allowed[ctype]
-    safe_name = "item_" + str(biz["id"]) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
-    path = os.path.join(folder, safe_name)
-    with open(path, "wb") as f:
-        f.write(raw)
-    return {"ok": True, "photo_file": "/uploads/items/" + safe_name}
-
-
-@router.delete("/items/{item_id}")
-async def delete_item(item_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    conn.execute("DELETE FROM items WHERE id=? AND business_id=?", (item_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-# ====================================================================
-# MEDIA QUTISI (botga yuborilgan rasm/videolar)
-# ====================================================================
-@router.get("/media/inbox")
-async def media_inbox(x_telegram_init_data: str = Header(default="")):
-    """Foydalanuvchi botga yuborgan oxirgi rasm/videolar — e'lon formasi shundan tanlaydi."""
-    from main import require_tg
-    tg = require_tg(x_telegram_init_data)
-    conn = db()
-    rows = conn.execute(
-        "SELECT file_id, mtype FROM media_inbox WHERE tg_id=? ORDER BY id DESC LIMIT 20",
-        (tg["id"],),
-    ).fetchall()
-    conn.close()
-    return [{"file_id": r["file_id"], "type": r["mtype"]} for r in rows]
-
-
-@router.delete("/media/inbox")
-async def clear_media_inbox(x_telegram_init_data: str = Header(default="")):
-    from main import require_tg
-    tg = require_tg(x_telegram_init_data)
-    conn = db()
-    conn.execute("DELETE FROM media_inbox WHERE tg_id=?", (tg["id"],))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-# ====================================================================
-# E'LONLAR
-# ====================================================================
-@router.post("/listings")
-async def create_listing(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    title = (b.get("title") or "").strip()
-    cat = (b.get("cat") or "").strip()
-    if not title or not cat:
-        conn.close()
-        raise HTTPException(400, "Sarlavha va toifa kiritilishi shart.")
-
-    actor = actor_from_body(conn, user, b)
-    visibility = "all"
-    business_id = None
-    if actor["type"] == "business":
-        business_id = actor["business_id"]
-        if b.get("visibility") == "own":
-            visibility = "own"  # faqat biznes sahifasi mehmonlariga
-
-    cur = conn.execute(
-        """INSERT INTO listings(user_id, business_id, cat, title, price, descr, address,
-                                lat, lng, visibility, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
-        (user["id"], business_id, cat, title, (b.get("price") or "").strip(),
-         (b.get("descr") or "").strip(), (b.get("address") or "").strip(),
-         b.get("lat"), b.get("lng"), visibility, int(time.time())),
-    )
-    listing_id = cur.lastrowid
-    for i, m in enumerate((b.get("media") or [])[:10]):
-        fid = (m.get("file_id") or "").strip()
-        if fid:
-            conn.execute(
-                "INSERT INTO listing_media(listing_id, tg_file_id, mtype, pos) VALUES(?,?,?,?)",
-                (listing_id, fid, "video" if m.get("type") == "video" else "photo", i),
+    # Faqat API so'rovlarini server tomonda himoya qilamiz.
+    if path.startswith("/api/"):
+        init_data = request.headers.get("x-telegram-init-data", "")
+        tg = verify_init_data(init_data)
+        if not tg:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
             )
-    conn.commit()
+        if not is_allowed_tg_id(tg.get("id")):
+            return JSONResponse(status_code=403, content={"detail": CLOSED_MESSAGE})
 
-    # Bildirishnoma: shu e'longa mos filtri bor foydalanuvchilarga xabar
-    targets = []
-    if visibility == "all":
-        try:
-            targets = _match_notify_filters(conn, {
-                "cat": cat,
-                "title": title,
-                "descr": (b.get("descr") or ""),
-                "address": (b.get("address") or ""),
-                "price_num": _price_to_number(b.get("price") or ""),
-                "owner_id": user["id"],
+    return await call_next(request)
+
+
+# Kabinet va platforma API'lari (api.py)
+from api import router as api_router
+app.include_router(api_router)
+
+
+@app.get("/api/_dbinfo")
+async def db_info():
+    """Baza diagnostikasi: nechta foydalanuvchi bor, baza qayerda, fayl o'lchami."""
+    import os as _os
+    info = {"DB_PATH": DB_PATH}
+    try:
+        info["fayl_bormi"] = _os.path.isfile(DB_PATH)
+        info["fayl_olchami_bayt"] = _os.path.getsize(DB_PATH) if _os.path.isfile(DB_PATH) else 0
+        info["papka_bormi"] = _os.path.isdir(_os.path.dirname(DB_PATH)) if _os.path.dirname(DB_PATH) else True
+    except Exception as e:
+        info["fayl_xato"] = str(e)
+    try:
+        conn = db()
+        info["foydalanuvchilar_soni"] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        info["bizneslar_soni"] = conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]
+        info["elonlar_soni"] = conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0]
+        # oxirgi 5 foydalanuvchi login va tg_id (parolsiz)
+        rows = conn.execute("SELECT login, tg_id, name FROM users ORDER BY id DESC LIMIT 5").fetchall()
+        info["oxirgi_foydalanuvchilar"] = [{"login": r["login"], "tg_id": r["tg_id"], "name": r["name"]} for r in rows]
+        conn.close()
+    except Exception as e:
+        info["baza_xato"] = str(e)
+    return info
+
+
+@app.get("/api/_setup")
+async def manual_setup():
+    """Webhook'ni qo'lda qayta o'rnatish va Telegram javoblarini ko'rsatish (diagnostika)."""
+    result = {"BOT_TOKEN_bormi": bool(BOT_TOKEN), "BASE_URL": BASE_URL,
+              "WEBHOOK_SECRET_uzunligi": len(WEBHOOK_SECRET or ""), "TEST_MODE": TEST_MODE}
+    try:
+        result["deleteWebhook"] = await tg_call("deleteWebhook", {"drop_pending_updates": False})
+    except Exception as e:
+        result["deleteWebhook_xato"] = str(e)
+    try:
+        result["setWebhook"] = await tg_call("setWebhook", {
+            "url": BASE_URL + "/webhook",
+            "secret_token": WEBHOOK_SECRET,
+            "allowed_updates": ["message", "callback_query"],
+        })
+    except Exception as e:
+        result["setWebhook_xato"] = str(e)
+    try:
+        result["menu_global"] = await tg_call("setChatMenuButton", {
+            "menu_button": {"type": "commands"},
+        })
+        result["menu_allowed"] = []
+        for uid in ALLOWED_TG_IDS:
+            result["menu_allowed"].append(await tg_call("setChatMenuButton", {
+                "chat_id": uid,
+                "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+            }))
+    except Exception as e:
+        result["menu_xato"] = str(e)
+    try:
+        info = await tg_call("getWebhookInfo", {})
+        result["getWebhookInfo"] = info.get("result") if isinstance(info, dict) else info
+    except Exception as e:
+        result["getWebhookInfo_xato"] = str(e)
+    return result
+
+
+# ---------- Webhook ----------
+@app.post("/webhook")
+async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(default="")):
+    if WEBHOOK_SECRET and x_telegram_bot_api_secret_token != WEBHOOK_SECRET:
+        raise HTTPException(403, "forbidden")
+    update = await request.json()
+    msg = update.get("message")
+    cq = update.get("callback_query")
+
+    # Whitelist: ruxsat berilmagan Telegram IDlar botdan foydalana olmaydi.
+    incoming_tg_id = None
+    incoming_chat_id = None
+    if msg:
+        incoming_tg_id = (msg.get("from") or {}).get("id") or (msg.get("chat") or {}).get("id")
+        incoming_chat_id = (msg.get("chat") or {}).get("id")
+    elif cq:
+        incoming_tg_id = (cq.get("from") or {}).get("id")
+        incoming_chat_id = ((cq.get("message") or {}).get("chat") or {}).get("id") or incoming_tg_id
+
+    if incoming_tg_id is not None and not is_allowed_tg_id(incoming_tg_id):
+        if cq:
+            await tg_call("answerCallbackQuery", {
+                "callback_query_id": cq.get("id"),
+                "text": CLOSED_MESSAGE,
+                "show_alert": True,
             })
-        except Exception:
-            targets = []
+        elif incoming_chat_id:
+            await tg_call("sendMessage", {
+                "chat_id": incoming_chat_id,
+                "text": CLOSED_MESSAGE,
+            })
+        return {"ok": True}
+
+    # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
+    if cq:
+        data = cq.get("data", "")
+        from_id = cq["from"]["id"]
+        cq_id = cq["id"]
+        action, _, rid = data.partition("_")
+        if action in ("approve", "reject") and rid.isdigit():
+            conn = db()
+            row = conn.execute("SELECT * FROM login_requests WHERE id=?", (int(rid),)).fetchone()
+            if not row:
+                conn.close()
+                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "So'rov topilmadi yoki muddati tugagan."})
+                return {"ok": True}
+            # faqat akkaunt egasi tasdiqlay oladi
+            user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+            if not user or user["tg_id"] != from_id:
+                conn.close()
+                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "Bu so'rov sizga tegishli emas."})
+                return {"ok": True}
+            new_status = "approved" if action == "approve" else "rejected"
+            conn.execute("UPDATE login_requests SET status=? WHERE id=?", (new_status, row["id"]))
+            conn.commit()
+            conn.close()
+            note = "✅ Tasdiqlandi. Endi yangi qurilmada kabinetga kirasiz." if action == "approve" \
+                   else "❌ Rad etildi. Kirishga ruxsat berilmadi."
+            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": note})
+            # xabar matnini yangilaymiz
+            try:
+                await tg_call("editMessageText", {
+                    "chat_id": from_id,
+                    "message_id": cq["message"]["message_id"],
+                    "text": cq["message"].get("text", "") + "\n\n" + note,
+                })
+            except Exception:
+                pass
+        else:
+            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id})
+        return {"ok": True}
+
+    # Foto/video kelsa — e'lon uchun "pochta qutisi"ga olamiz
+    if msg and (msg.get("photo") or msg.get("video")):
+        tg_id = msg["chat"]["id"]
+        if msg.get("photo"):
+            file_id = msg["photo"][-1]["file_id"]  # eng katta o'lcham
+            mtype = "photo"
+        else:
+            file_id = msg["video"]["file_id"]
+            mtype = "video"
+        conn = db()
+        conn.execute(
+            "INSERT INTO media_inbox(tg_id, file_id, mtype, created_at) VALUES(?,?,?,?)",
+            (tg_id, file_id, mtype, int(time.time())),
+        )
+        # faqat oxirgi 20 tasi saqlanadi
+        conn.execute(
+            "DELETE FROM media_inbox WHERE tg_id=? AND id NOT IN "
+            "(SELECT id FROM media_inbox WHERE tg_id=? ORDER BY id DESC LIMIT 20)",
+            (tg_id, tg_id),
+        )
+        conn.commit()
+        conn.close()
+        await tg_call("sendMessage", {
+            "chat_id": tg_id,
+            "text": ("Rasm" if mtype == "photo" else "Video") +
+                    " qabul qilindi ✅ Endi ilovadagi e'lon formasiga qaytsangiz, u yerda ko'rinadi.",
+        })
+        return {"ok": True}
+
+    if msg and isinstance(msg.get("text"), str) and msg["text"].split(" ")[0] == "/start":
+        await tg_call("sendMessage", {
+            "chat_id": msg["chat"]["id"],
+            "text": "Assalomu alaykum! Platformani ochish uchun pastdagi tugmani bosing.",
+            "reply_markup": {"inline_keyboard": [[
+                {"text": "Platformani ochish", "web_app": {"url": BASE_URL}}
+            ]]},
+        })
+    return {"ok": True}
+
+
+# ---------- Katalog ----------
+@app.get("/api/catalog")
+async def get_catalog():
+    return {"yonalishlar": CATALOG, "elon_toifalari": LISTING_CATS}
+
+
+# ---------- Login/parol generatori ----------
+def gen_login():
+    return "user" + "".join(secrets.choice("0123456789") for _ in range(6))
+
+def gen_biz_login():
+    return "biz" + "".join(secrets.choice("0123456789") for _ in range(6))
+
+def gen_pass():
+    alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+# ---------- Ro'yxatdan o'tish (platforma login/parol yaratadi) ----------
+@app.post("/api/auth/register")
+async def register(request: Request, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
+    body = await request.json()
+
+    role = body.get("role")
+    if role not in ("user", "business"):
+        raise HTTPException(400, "Rol noto'g'ri (user yoki business).")
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "Ism (yoki biznes nomi) kiritilishi shart.")
+    username = (body.get("username") or "").strip().lstrip("@")
+
+    conn = db()
+    existing = current_user(conn, tg["id"])
+
+    # Shu Telegramda allaqachon akkaunt bor — ikkinchi profilni qo'shamiz (xato emas)
+    if existing:
+        if role == "business":
+            # biznesi bormi?
+            has_biz = conn.execute("SELECT id FROM businesses WHERE user_id=?", (existing["id"],)).fetchone()
+            if has_biz:
+                conn.close()
+                raise HTTPException(400, "Sizda allaqachon biznes kabinet bor. Kabinetingizdan «Biznes kabinetga o'tish» orqali kiring.")
+            # biznes profil + alohida biznes login qo'shamiz
+            for _ in range(20):
+                biz_login = gen_biz_login()
+                if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and \
+                   not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
+                    break
+            biz_pass = gen_pass()
+            now = int(time.time())
+            conn.execute(
+                "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, biz_login, biz_pass_hash, status, created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (existing["id"], name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
+                 (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
+                 body.get("lat"), body.get("lng"), biz_login, hash_password(biz_pass), "active", now),
+            )
+            conn.execute("UPDATE users SET role='business' WHERE id=?", (existing["id"],))
+            conn.commit()
+            conn.close()
+            try:
+                await tg_call("sendMessage", {
+                    "chat_id": tg["id"],
+                    "text": ("\U0001F3EA Biznes kabinetingiz ochildi!\n\n"
+                             "Biznes login: " + biz_login + "\n"
+                             "Biznes parol: " + biz_pass + "\n\n"
+                             "Bu login/parol bilan biznes kabinetga alohida kirishingiz mumkin. Saqlab qo'ying."),
+                })
+            except Exception:
+                pass
+            return {"ok": True, "role": "business", "added_business": True,
+                    "biz_login": biz_login, "biz_password": biz_pass,
+                    "message": "Biznes kabinet ochildi!"}
+        else:
+            # oddiy kabinet allaqachon bor (har bir akkaunt oddiy asosga ega)
+            conn.close()
+            raise HTTPException(400, "Sizda oddiy kabinet allaqachon bor. Kabinetingizga kiring.")
+
+    # Login/parolni platforma o'zi yaratadi (noyob login)
+    for _ in range(20):
+        login = gen_login()
+        if not conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone():
+            break
+    password = gen_pass()
+
+    now = int(time.time())
+    cur = conn.execute(
+        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (tg["id"], username, login, hash_password(password), role, name,
+         (body.get("phone") or "").strip(), (body.get("region") or "").strip(),
+         (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
+    )
+    user_id = cur.lastrowid
+    biz_login = None; biz_pass = None
+    if role == "business":
+        # biznes uchun alohida login/parol
+        for _ in range(20):
+            biz_login = gen_biz_login()
+            if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and \
+               not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
+                break
+        biz_pass = gen_pass()
+        conn.execute(
+            "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, biz_login, biz_pass_hash, status, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (user_id, name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
+             (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
+             body.get("lat"), body.get("lng"), biz_login, hash_password(biz_pass), "active", now),
+        )
+    conn.commit()
     conn.close()
 
-    # Telegram xabarlarini yuboramiz (o'ziga emas)
-    for t in targets:
-        try:
-            from main import tg_call, BASE_URL
+    # Login va parolni foydalanuvchining Telegramiga yuboramiz
+    msg = ("Platformaga xush kelibsiz! \u2705\n\n"
+           "Kabinetingizga kirish ma'lumotlari:\n\n"
+           "\U0001F511 Login: " + login + "\n"
+           "\U0001F510 Parol: " + password + "\n\n"
+           "Bu ma'lumotlarni saqlab qo'ying. Boshqa qurilmadan kirganda shu login va parol kerak bo'ladi.")
+    if role == "business" and biz_login:
+        msg += ("\n\n\U0001F3EA Biznes kabinet uchun alohida:\n"
+                "Biznes login: " + biz_login + "\nBiznes parol: " + biz_pass)
+    await tg_call("sendMessage", {"chat_id": tg["id"], "text": msg})
+    # Ro'yxatdan o'tgan qurilma to'g'ridan-to'g'ri kiradi
+    return {"ok": True, "role": role, "login": login, "password": password,
+            "biz_login": biz_login, "biz_password": biz_pass,
+            "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
+
+
+# ---------- Kirish (login/parol -> asosiy akkauntga tasdiqlash) ----------
+@app.post("/api/auth/login")
+async def login(request: Request, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
+    body = await request.json()
+    login_v = (body.get("login") or "").strip().lower()
+    password = body.get("password") or ""
+
+    conn = db()
+    # Avval biznes login bo'lsa (biznes kabinetga alohida kirish)
+    biz = conn.execute("SELECT * FROM businesses WHERE biz_login=?", (login_v,)).fetchone()
+    if biz:
+        if not biz["biz_pass_hash"] or not check_password(password, biz["biz_pass_hash"]):
+            conn.close()
+            raise HTTPException(401, "Login yoki parol noto'g'ri.")
+        owner = conn.execute("SELECT * FROM users WHERE id=?", (biz["user_id"],)).fetchone()
+        # qurilmani biznes egasiga bog'laymiz (agar bo'sh yoki shu qurilma bo'lsa)
+        if owner and (not owner["tg_id"] or owner["tg_id"] == tg["id"]):
+            if not owner["tg_id"]:
+                conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], owner["id"]))
+                conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], owner["id"]))
+                conn.commit()
+            conn.close()
+            return {"ok": True, "approved": True, "role": "business", "name": biz["name"], "mode": "business"}
+        # boshqa qurilma — egasiga tasdiqlash so'rovi
+        if owner and owner["tg_id"]:
+            device_name = (tg.get("first_name") or "") + ((" @" + tg["username"]) if tg.get("username") else "")
+            now = int(time.time())
+            conn.execute("DELETE FROM login_requests WHERE user_id=? AND status='pending'", (owner["id"],))
+            cur = conn.execute(
+                "INSERT INTO login_requests(user_id, device_tg, device_name, status, expires_at, created_at) VALUES(?,?,?,?,?,?)",
+                (owner["id"], tg["id"], device_name, "pending", now + 600, now),
+            )
+            rid = cur.lastrowid
+            conn.commit()
+            conn.close()
             await tg_call("sendMessage", {
-                "chat_id": t["tg_id"],
-                "text": "📢 Yangi e'lon — " + _cat_name(cat) + ":\n" + title +
-                        ((" — " + (b.get("price") or "")) if b.get("price") else ""),
+                "chat_id": owner["tg_id"],
+                "text": "🔐 Biznes kabinetingizga yangi qurilmadan kirish urinilmoqda:\n" + (device_name or "Noma'lum qurilma") + "\n\nSiz kiryapsizmi?",
                 "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ko'rish", "web_app": {"url": BASE_URL}}
+                    {"text": "✅ Ha, kirish", "callback_data": "approve_" + str(rid)},
+                    {"text": "❌ Yo'q", "callback_data": "reject_" + str(rid)},
                 ]]},
             })
-        except Exception:
-            pass
-    return {"id": listing_id}
+            return {"ok": True, "approved": False, "request_id": rid}
+        conn.close()
+        raise HTTPException(400, "Biznes egasi topilmadi.")
 
+    user = conn.execute("SELECT * FROM users WHERE login=?", (login_v,)).fetchone()
+    if not user or not check_password(password, user["pass_hash"]):
+        conn.close()
+        raise HTTPException(401, "Login yoki parol noto'g'ri.")
 
-# --- Bildirishnoma yordamchilari ---
-_CAT_NAMES = {"uy": "Uy-joy", "ish": "Ish o'rinlari", "moshina": "Moshinalar",
-              "hayvon": "Hayvonlar", "texnika": "Texnika", "boshqa": "Boshqalar"}
-def _cat_name(cat):
-    return _CAT_NAMES.get(cat, cat)
+    # Agar shu qurilmaning o'zidan kirilayotgan bo'lsa (asosiy akkaunt) — to'g'ridan-to'g'ri
+    if user["tg_id"] == tg["id"]:
+        conn.close()
+        return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
 
-def _price_to_number(price_text):
-    """Narx matnidan raqamni ajratadi: '9 800 $' -> 9800, '5 mln so'm' -> 5000000. Topilmasa None."""
-    import re
-    if not price_text:
-        return None
-    t = price_text.lower().replace("\u00a0", " ")
-    m = re.search(r"[\d][\d\s]*", t)
-    if not m:
-        return None
-    base = int(re.sub(r"\s", "", m.group(0)) or 0)
-    if base == 0:
-        return None
-    if "mln" in t or "million" in t:
-        base *= 1_000_000
-    elif "ming" in t:
-        base *= 1_000
-    return base
+    # Boshqa qurilma — asosiy akkauntga tasdiqlash so'rovi yuboramiz
+    if not user["tg_id"]:
+        # akkaunt hech qaysi telegramga bog'lanmagan — shu qurilmaga bog'laymiz
+        # (avval shu qurilma boshqa akkauntga bog'langan bo'lsa, uni bo'shatamiz)
+        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], user["id"]))
+        conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], user["id"]))
+        conn.commit(); conn.close()
+        return {"ok": True, "approved": True, "role": user["role"], "name": user["name"]}
 
-def _match_notify_filters(conn, listing):
-    """E'longa mos keladigan filtrlar egalarini topadi (o'zidan tashqari)."""
-    rows = conn.execute(
-        "SELECT nf.*, u.tg_id AS u_tg FROM notify_filters nf JOIN users u ON u.id=nf.user_id WHERE nf.cat=?",
-        (listing["cat"],),
-    ).fetchall()
-    text_blob = (listing["title"] + " " + listing["descr"] + " " + listing["address"]).lower()
-    seen = set()
-    out = []
-    for f in rows:
-        if f["user_id"] == listing["owner_id"]:
-            continue  # o'ziga yubormaymiz
-        if not f["u_tg"]:
-            continue  # Telegramga bog'lanmagan
-        # hudud
-        if f["region"] and f["region"].lower() not in text_blob and (f["district"] or "").lower() not in text_blob:
-            # agar tuman ham mos kelmasa, o'tkazamiz
-            if not (f["district"] and f["district"].lower() in text_blob):
-                continue
-        if f["district"] and f["district"].lower() not in text_blob:
-            continue
-        # narx
-        pn = listing["price_num"]
-        if f["price_min"] and (pn is None or pn < f["price_min"]):
-            continue
-        if f["price_max"] and (pn is None or pn > f["price_max"]):
-            continue
-        # kalit so'z
-        if f["keyword"] and f["keyword"].lower() not in text_blob:
-            continue
-        if f["u_tg"] in seen:
-            continue
-        seen.add(f["u_tg"])
-        out.append({"tg_id": f["u_tg"]})
-    return out
-
-
-@router.get("/listings/my")
-async def my_listings(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, user, actor_type)
-    if actor["type"] == "business":
-        rows = conn.execute(
-            "SELECT * FROM listings WHERE business_id=? ORDER BY created_at DESC",
-            (actor["business_id"],),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL ORDER BY created_at DESC",
-            (user["id"],),
-        ).fetchall()
-    result = [listing_to_dict(conn, r) for r in rows]
+    device_name = (tg.get("first_name") or "") + ((" @" + tg["username"]) if tg.get("username") else "")
+    now = int(time.time())
+    conn.execute("DELETE FROM login_requests WHERE user_id=? AND status='pending'", (user["id"],))
+    cur = conn.execute(
+        "INSERT INTO login_requests(user_id, device_tg, device_name, status, expires_at, created_at) "
+        "VALUES(?,?,?,?,?,?)",
+        (user["id"], tg["id"], device_name.strip(), "pending", now + CODE_TTL, now),
+    )
+    req_id = cur.lastrowid
+    conn.commit()
     conn.close()
-    return result
+
+    # Asosiy akkauntga tasdiqlash tugmali xabar
+    await tg_call("sendMessage", {
+        "chat_id": user["tg_id"],
+        "text": ("\U0001F510 Akkauntingizga boshqa qurilmadan kirishga urinilmoqda:\n\n"
+                 + (device_name.strip() or "Noma'lum qurilma") +
+                 "\n\nBu sizmidingizmi? Agar ha bo'lsa, tasdiqlang. Agar siz bo'lmasangiz, rad eting."),
+        "reply_markup": {"inline_keyboard": [[
+            {"text": "\u2705 Tasdiqlash", "callback_data": "approve_" + str(req_id)},
+            {"text": "\u274C Rad etish", "callback_data": "reject_" + str(req_id)},
+        ]]},
+    })
+    return {"request_id": req_id, "approved": False,
+            "message": "Asosiy Telegram akkauntingizga tasdiqlash so'rovi yuborildi. Iltimos, o'sha yerda tasdiqlang."}
 
 
-@router.put("/listings/{listing_id}")
-async def edit_listing(listing_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+@app.get("/api/auth/login/status")
+async def login_status(request_id: int, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
     conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, user, b)
-    if actor["type"] == "business":
-        row = conn.execute(
-            "SELECT * FROM listings WHERE id=? AND business_id=?",
-            (listing_id, actor["business_id"]),
-        ).fetchone()
-    else:
-        row = conn.execute(
-            "SELECT * FROM listings WHERE id=? AND user_id=? AND business_id IS NULL",
-            (listing_id, user["id"]),
-        ).fetchone()
+    row = conn.execute(
+        "SELECT * FROM login_requests WHERE id=? AND device_tg=?", (request_id, tg["id"])
+    ).fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, "E'lon topilmadi.")
-    status = b.get("status") if b.get("status") in ("active", "inactive") else row["status"]
-    visibility = row["visibility"]
-    if actor["type"] == "business" and b.get("visibility") in ("all", "own"):
-        visibility = b["visibility"]
-    conn.execute(
-        """UPDATE listings SET title=?, price=?, descr=?, address=?, lat=?, lng=?,
-           status=?, visibility=? WHERE id=?""",
-        ((b.get("title") or row["title"]).strip(), (b.get("price") or row["price"]).strip(),
-         (b.get("descr") or row["descr"]).strip(), (b.get("address") or row["address"]).strip(),
-         b.get("lat", row["lat"]), b.get("lng", row["lng"]), status, visibility, listing_id),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.delete("/listings/{listing_id}")
-async def delete_listing(listing_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, user, actor_type)
-    if actor["type"] == "business":
-        conn.execute("DELETE FROM listings WHERE id=? AND business_id=?", (listing_id, actor["business_id"]))
-    else:
-        conn.execute("DELETE FROM listings WHERE id=? AND user_id=? AND business_id IS NULL", (listing_id, user["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.get("/listings/counts")
-async def listing_counts(x_telegram_init_data: str = Header(default="")):
-    """Har toifadagi ochiq e'lonlar soni (bosh sahifa kartochkalari uchun)."""
-    conn = db()
-    rows = conn.execute(
-        "SELECT cat, COUNT(*) AS n FROM listings WHERE status='active' AND visibility='all' GROUP BY cat"
-    ).fetchall()
-    conn.close()
-    return {r["cat"]: r["n"] for r in rows}
-
-
-@router.get("/listings")
-async def public_listings(cat: str = "", q: str = "", x_telegram_init_data: str = Header(default="")):
-    """Ochiq e'lonlar (faqat 'butun platforma' ko'rinishidagilar)."""
-    conn = db()
-    me = optional_user(conn, x_telegram_init_data)
-    saved_ids = set()
-    if me:
-        for s in conn.execute("SELECT target_id FROM saved WHERE user_id=? AND target_kind='listing'", (me["id"],)).fetchall():
-            saved_ids.add(s["target_id"])
-    sql = "SELECT * FROM listings WHERE status='active' AND visibility='all'"
-    args = []
-    if cat:
-        sql += " AND cat=?"
-        args.append(cat)
-    if q:
-        sql += " AND title LIKE ?"
-        args.append("%" + q + "%")
-    sql += " ORDER BY created_at DESC LIMIT 100"
-    rows = conn.execute(sql, args).fetchall()
-    result = []
-    for r in rows:
-        d = listing_to_dict(conn, r)
-        d["is_saved"] = r["id"] in saved_ids
-        result.append(d)
-    conn.close()
-    return result
-
-
-@router.get("/listings/{listing_id}")
-async def listing_detail(listing_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    r = conn.execute("SELECT * FROM listings WHERE id=? AND status='active'", (listing_id,)).fetchone()
-    if not r:
+        raise HTTPException(404, "So'rov topilmadi.")
+    if row["status"] == "pending" and row["expires_at"] < int(time.time()):
         conn.close()
-        raise HTTPException(404, "E'lon topilmadi.")
-    result = listing_to_dict(conn, r)
-    conn.close()
-    return result
-
-
-# ====================================================================
-# OBUNA (FOLLOW)
-# ====================================================================
-@router.post("/follow")
-async def toggle_follow(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, user, b)
-    if actor["type"] != "user":
+        return {"status": "expired"}
+    if row["status"] == "approved":
+        # qurilmani akkauntga bog'laymiz (Telegram tartibi: oxirgi kirgan qurilma asosiy bo'ladi)
+        user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
+        # shu qurilma boshqa akkauntga bog'langan bo'lsa, faqat o'shani bo'shatamiz (target'dan tashqari)
+        conn.execute("UPDATE users SET tg_id=NULL WHERE tg_id=? AND id<>?", (tg["id"], row["user_id"]))
+        conn.execute("UPDATE users SET tg_id=? WHERE id=?", (tg["id"], row["user_id"]))
+        conn.execute("DELETE FROM login_requests WHERE id=?", (row["id"],))
+        conn.commit()
         conn.close()
-        raise HTTPException(400, "Obuna hozircha oddiy kabinet orqali bajariladi.")
-    kind = b.get("target_kind")
-    target_id = b.get("target_id")
-    if kind not in ("user", "business") or not target_id:
-        conn.close()
-        raise HTTPException(400, "Obuna nishoni noto'g'ri.")
-    if kind == "user" and target_id == user["id"]:
-        conn.close()
-        raise HTTPException(400, "O'zingizga obuna bo'la olmaysiz.")
-
-    existing = conn.execute(
-        "SELECT id FROM follows WHERE follower_id=? AND target_kind=? AND target_id=?",
-        (user["id"], kind, target_id),
-    ).fetchone()
-    if existing:
-        conn.execute("DELETE FROM follows WHERE id=?", (existing["id"],))
-        following = False
-    else:
-        conn.execute(
-            "INSERT INTO follows(follower_id, target_kind, target_id, created_at) VALUES(?,?,?,?)",
-            (user["id"], kind, target_id, int(time.time())),
-        )
-        following = True
-    conn.commit()
-    count = follower_count(conn, kind, target_id)
+        return {"status": "approved", "role": user["role"], "name": user["name"]}
+    status = row["status"]
     conn.close()
-    return {"following": following, "followers": count}
+    return {"status": status}
 
-
-@router.get("/follows/my")
-async def my_follows(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Men obuna bo'lganlarim (obunalarim)."""
+# ---------- Joriy foydalanuvchi ----------
+@app.get("/api/me")
+async def me(x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
     conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, user, actor_type)
-    if actor["type"] == "business":
+    user = current_user(conn, tg["id"])
+    if not user:
         conn.close()
-        return []
-    rows = conn.execute(
-        "SELECT * FROM follows WHERE follower_id=? ORDER BY created_at DESC", (user["id"],)
-    ).fetchall()
-    result = []
-    for r in rows:
-        if r["target_kind"] == "business":
-            t = conn.execute("SELECT id, name, yon FROM businesses WHERE id=?", (r["target_id"],)).fetchone()
-            if t:
-                result.append({"kind": "business", "id": t["id"], "name": t["name"], "info": t["yon"]})
-        else:
-            t = conn.execute("SELECT id, name, district FROM users WHERE id=?", (r["target_id"],)).fetchone()
-            if t:
-                result.append({"kind": "user", "id": t["id"], "name": t["name"], "info": t["district"]})
-    conn.close()
-    return result
-
-
-@router.get("/followers/my")
-async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Menga obuna bo'lganlar (obunachilarim) — kabinet turi bo'yicha alohida."""
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, user, actor_type)
-    if actor["type"] == "business":
-        targets = [("business", actor["business_id"])]
-    else:
-        targets = [("user", user["id"])]
-    result = []
-    for kind, tid in targets:
-        rows = conn.execute(
-            "SELECT follower_id FROM follows WHERE target_kind=? AND target_id=?", (kind, tid)
-        ).fetchall()
-        for r in rows:
-            u = conn.execute("SELECT id, name, district FROM users WHERE id=?", (r["follower_id"],)).fetchone()
-            if u:
-                result.append({"id": u["id"], "name": u["name"], "info": u["district"]})
-    conn.close()
-    return result
-
-
-
-# ====================================================================
-# XARITA (bosh ekran): platforma ko'rsatadiganlar + obunalar
-# ====================================================================
-def _map_business_dict(row, source, following=False):
-    """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
-    return {
-        "id": row["id"],
-        "name": row["name"],
-        "yon": row["yon"],
-        "tur": row["tur"],
-        "address": row["address"],
-        "lat": row["lat"],
-        "lng": row["lng"],
-        "source": source,
-        "following": following,
-    }
-
-
-def _map_specialist_dict(row):
-    """Bosh xarita uchun mutaxasis/foydalanuvchini ixcham ko'rinishga o'tkazadi."""
-    return {
-        "user_id": row["user_id"],
-        "name": row["name"],
-        "kasb": row["kasb"],
-        "narx": row["narx"],
-        "is_gov": bool(row["is_gov"]),
-        "available": bool(row["available"]),
-        "district": row["district"],
-        "lat": row["lat"],
-        "lng": row["lng"],
-        "source": "obuna",
-    }
-
-
-@router.get("/map")
-async def home_map(x_telegram_init_data: str = Header(default="")):
-    """
-    Bosh sahifa xaritasi uchun obyektlar.
-
-    Bu endpoint HAMMA biznesni qaytarmaydi. Faqat:
-      1) platforma tomonidan bosh xaritada ko'rsatishga belgilangan bizneslar;
-      2) joriy foydalanuvchi obuna bo'lgan, joylashuvi bor bizneslar;
-      3) joriy foydalanuvchi obuna bo'lgan, ko'rinadigan va joylashuvi bor mutaxasislar.
-    """
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-
-    # 1) Platforma tomonidan ko'rsatiladigan bizneslar
-    platform_rows = conn.execute(
-        """SELECT * FROM businesses
-           WHERE status='active'
-             AND lat IS NOT NULL AND lng IS NOT NULL
-             AND COALESCE(map_visible, 0)=1
-           ORDER BY created_at DESC
-           LIMIT 200"""
-    ).fetchall()
-
-    business_map = {}
-    for b in platform_rows:
-        business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
-
-    # 2) Foydalanuvchi obuna bo'lgan bizneslar
-    followed_rows = conn.execute(
-        """SELECT b.* FROM follows f
-           JOIN businesses b ON b.id=f.target_id
-           WHERE f.follower_id=?
-             AND f.target_kind='business'
-             AND b.status='active'
-             AND b.lat IS NOT NULL AND b.lng IS NOT NULL
-           ORDER BY f.created_at DESC
-           LIMIT 200""",
-        (user["id"],),
-    ).fetchall()
-
-    for b in followed_rows:
-        if b["id"] in business_map:
-            business_map[b["id"]]["source"] = "platforma+obuna"
-            business_map[b["id"]]["following"] = True
-        else:
-            business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
-
-    # 3) Foydalanuvchi obuna bo'lgan mutaxasislar/foydalanuvchilar
-    specialist_rows = conn.execute(
-        """SELECT s.*, u.name, u.district
-           FROM follows f
-           JOIN specialists s ON s.user_id=f.target_id
-           JOIN users u ON u.id=s.user_id
-           WHERE f.follower_id=?
-             AND f.target_kind='user'
-             AND s.visible=1
-             AND s.lat IS NOT NULL AND s.lng IS NOT NULL
-           ORDER BY f.created_at DESC
-           LIMIT 200""",
-        (user["id"],),
-    ).fetchall()
-
+        return {"registered": False}
     result = {
-        "businesses": list(business_map.values()),
-        "specialists": [_map_specialist_dict(s) for s in specialist_rows],
+        "registered": True,
+        "id": user["id"], "role": user["role"], "name": user["name"],
+        "phone": user["phone"], "region": user["region"],
+        "district": user["district"], "mahalla": user["mahalla"],
+        "lat": user["lat"], "lng": user["lng"],
     }
-    conn.close()
-    return result
-
-# ====================================================================
-# SAQLANGANLAR
-# ====================================================================
-@router.post("/save")
-async def toggle_save(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, user, b)
-    if actor["type"] != "user":
-        conn.close()
-        raise HTTPException(400, "Saqlanganlar hozircha oddiy kabinet uchun.")
-    kind = b.get("target_kind")
-    target_id = b.get("target_id")
-    if kind not in ("listing", "business") or not target_id:
-        conn.close()
-        raise HTTPException(400, "Saqlash nishoni noto'g'ri.")
-    existing = conn.execute(
-        "SELECT id FROM saved WHERE user_id=? AND target_kind=? AND target_id=?",
-        (user["id"], kind, target_id),
-    ).fetchone()
-    if existing:
-        conn.execute("DELETE FROM saved WHERE id=?", (existing["id"],))
-        saved = False
-    else:
-        conn.execute(
-            "INSERT INTO saved(user_id, target_kind, target_id, created_at) VALUES(?,?,?,?)",
-            (user["id"], kind, target_id, int(time.time())),
-        )
-        saved = True
-    conn.commit()
-    conn.close()
-    return {"saved": saved}
-
-
-@router.get("/saved")
-async def my_saved(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, user, actor_type)
-    if actor["type"] != "user":
-        conn.close()
-        return []
-    rows = conn.execute(
-        "SELECT * FROM saved WHERE user_id=? ORDER BY created_at DESC", (user["id"],)
-    ).fetchall()
-    result = []
-    for r in rows:
-        if r["target_kind"] == "listing":
-            t = conn.execute(
-                "SELECT id, title, price, cat FROM listings WHERE id=? AND status='active'",
-                (r["target_id"],),
-            ).fetchone()
-            if t:
-                result.append({"kind": "listing", "id": t["id"], "name": t["title"],
-                               "info": t["price"], "cat": t["cat"]})
-        else:
-            t = conn.execute("SELECT id, name, yon FROM businesses WHERE id=?", (r["target_id"],)).fetchone()
-            if t:
-                result.append({"kind": "business", "id": t["id"], "name": t["name"], "info": t["yon"]})
+    # Biznes ma'lumotini rol nima bo'lishidan qat'i nazar qaytaramiz (agar businesses yozuvi bo'lsa)
+    biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    result["has_business"] = bool(biz)
+    if biz:
+        result["business"] = {
+            "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
+            "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
+            "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
+            "lat": biz["lat"], "lng": biz["lng"],
+        }
     conn.close()
     return result
 
 
-# ====================================================================
-# QARZ DAFTARI (biznes kabineti)
-# ====================================================================
-def qarz_balance(conn, debtor_id):
-    row = conn.execute(
-        "SELECT COALESCE(SUM(CASE WHEN type='debt' THEN amount ELSE -amount END),0) b "
-        "FROM qarz_tx WHERE debtor_id=?", (debtor_id,),
-    ).fetchone()
-    return row["b"] or 0
-
-
-@router.get("/qarz/debtors")
-async def qarz_list(x_telegram_init_data: str = Header(default="")):
+# ---------- Biznes ochish (mavjud akkauntga biznes profil qo'shish) ----------
+@app.post("/api/business/open")
+async def open_business(request: Request, x_telegram_init_data: str = Header(default="")):
+    tg = require_tg(x_telegram_init_data)
     conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT * FROM debtors WHERE business_id=? ORDER BY created_at DESC", (biz["id"],)
-    ).fetchall()
-    result = [{"id": r["id"], "name": r["name"], "phone": r["phone"], "note": r["note"],
-               "due": r["due"], "balance": qarz_balance(conn, r["id"])} for r in rows]
-    conn.close()
-    return result
-
-
-@router.post("/qarz/debtors")
-async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
+    user = current_user(conn, tg["id"])
+    if not user:
+        conn.close()
+        raise HTTPException(401, "Avval ro'yxatdan o'ting.")
+    # allaqachon biznes bormi?
+    exists = conn.execute("SELECT id FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    if exists:
+        conn.close()
+        raise HTTPException(400, "Sizda allaqachon biznes profil bor.")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
         conn.close()
-        raise HTTPException(400, "Ism kiritilishi shart.")
+        raise HTTPException(400, "Biznes nomi kiritilishi shart.")
     now = int(time.time())
-    cur = conn.execute(
-        "INSERT INTO debtors(business_id, name, phone, note, due, created_at) VALUES(?,?,?,?,?,?)",
-        (biz["id"], name, (b.get("phone") or "").strip(), (b.get("note") or "").strip(),
-         (b.get("due") or "").strip(), now),
-    )
-    debtor_id = cur.lastrowid
-    try:
-        initial = int(b.get("initial_debt") or 0)
-    except Exception:
-        initial = 0
-    if initial > 0:
-        from datetime import date
-        conn.execute(
-            "INSERT INTO qarz_tx(debtor_id, type, amount, date, note, created_at) VALUES(?,?,?,?,?,?)",
-            (debtor_id, "debt", initial, date.today().isoformat(),
-             (b.get("note") or "Boshlang'ich qarz").strip(), now),
-        )
-    conn.commit()
-    conn.close()
-    return {"id": debtor_id}
-
-
-@router.get("/qarz/debtors/{debtor_id}")
-async def qarz_debtor(debtor_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    r = conn.execute(
-        "SELECT * FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
-    ).fetchone()
-    if not r:
-        conn.close()
-        raise HTTPException(404, "Qarzdor topilmadi.")
-    txs = conn.execute(
-        "SELECT type, amount, date, note FROM qarz_tx WHERE debtor_id=? ORDER BY date, id", (debtor_id,)
-    ).fetchall()
-    result = {
-        "id": r["id"], "name": r["name"], "phone": r["phone"], "note": r["note"], "due": r["due"],
-        "balance": qarz_balance(conn, debtor_id),
-        "tx": [{"type": t["type"], "amount": t["amount"], "date": t["date"], "note": t["note"]} for t in txs],
-    }
-    conn.close()
-    return result
-
-
-@router.post("/qarz/debtors/{debtor_id}/tx")
-async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = require_business(conn, x_telegram_init_data)
-    owns = conn.execute(
-        "SELECT id FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
-    ).fetchone()
-    if not owns:
-        conn.close()
-        raise HTTPException(404, "Qarzdor topilmadi.")
-    b = await request.json()
-    if b.get("type") not in ("debt", "payment"):
-        conn.close()
-        raise HTTPException(400, "Amaliyot turi noto'g'ri.")
-    try:
-        amount = int(b.get("amount"))
-    except Exception:
-        amount = 0
-    if amount <= 0:
-        conn.close()
-        raise HTTPException(400, "Summa noto'g'ri.")
-    from datetime import date
+    # biznes uchun alohida login/parol yaratamiz
+    for _ in range(20):
+        biz_login = gen_biz_login()
+        clash = conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone()
+        clash2 = conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone()
+        if not clash and not clash2:
+            break
+    biz_pass = gen_pass()
     conn.execute(
-        "INSERT INTO qarz_tx(debtor_id, type, amount, date, note, created_at) VALUES(?,?,?,?,?,?)",
-        (debtor_id, b["type"], amount, (b.get("date") or date.today().isoformat()).strip(),
-         (b.get("note") or "").strip(), int(time.time())),
+        """INSERT INTO businesses(user_id, name, yon, tur, descr, phone, telegram, work_hours, address, lat, lng, biz_login, biz_pass_hash, status, created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (user["id"], name, (b.get("yon") or "").strip(), (b.get("tur") or "").strip(),
+         (b.get("descr") or "").strip(), (b.get("phone") or "").strip(), (b.get("telegram") or "").strip(),
+         (b.get("work_hours") or "").strip(), (b.get("address") or "").strip(),
+         b.get("lat"), b.get("lng"), biz_login, hash_password(biz_pass), "active", now),
     )
+    # rolni biznesga ham o'tkazamiz (lekin oddiy profil ham qoladi — bir akkaunt ikkala rejim)
+    conn.execute("UPDATE users SET role='business' WHERE id=?", (user["id"],))
     conn.commit()
     conn.close()
-    return {"ok": True}
 
-
-# ====================================================================
-# QIDIRUV (mahsulot + e'lon + mutaxasis + biznes)
-# ====================================================================
-def _search_terms(q):
-    """Qidiruv uchun asosiy so'z va oddiy sinonimlarni tayyorlaydi."""
-    base = (q or "").strip()
-    norm = (base.lower()
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("`", "'")
-            .replace("ʻ", "'")
-            .replace("ʼ", "'"))
-    variants = []
-
-    def add(x):
-        x = (x or "").strip().lower()
-        if len(x) >= 2 and x not in variants:
-            variants.append(x)
-
-    add(base)
-    add(norm)
-    add(norm.replace("'", ""))
-    add(norm.replace("-", " "))
-    add(norm.replace("'", " "))
-
-    for part in norm.replace("-", " ").replace("'", " ").split():
-        add(part)
-
-    syns = {
-        "muhr": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "tamga": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "pechat": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "shtamp": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "taxi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
-        "taksi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
-        "dori": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "dorixona": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "apteka": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "usta": ["usta", "ta'mir", "tamir", "santexnik", "elektrik", "montaj", "quruvchi"],
-        "repetitor": ["repetitor", "o'qituvchi", "ustoz", "ta'lim", "kurs"],
-        "advokat": ["advokat", "yurist", "huquq", "konsalting"],
-    }
-    for key, arr in syns.items():
-        if key in norm:
-            for x in arr:
-                add(x)
-
-    return variants[:18]
-
-
-def _like_where(columns, terms):
-    """Berilgan ustunlar bo'yicha xavfsiz LIKE shartini quradi."""
-    clauses = []
-    params = []
-    for col in columns:
-        for term in terms:
-            clauses.append("COALESCE(" + col + ", '') LIKE ?")
-            params.append("%" + term + "%")
-    if not clauses:
-        return "1=0", []
-    return "(" + " OR ".join(clauses) + ")", params
-
-
-@router.get("/search")
-async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
-    q = (q or "").strip()
-    if not q:
-        raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
-    terms = _search_terms(q)
-    conn = db()
-
-    product_where, product_params = _like_where(
-        ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
-        terms,
-    )
-    products = conn.execute(
-        """SELECT i.id, i.name, i.price, i.note, i.kind,
-                  b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
-           FROM items i JOIN businesses b ON b.id=i.business_id
-           WHERE b.status='active' AND """ + product_where + """
-           ORDER BY i.created_at DESC LIMIT 50""",
-        product_params,
-    ).fetchall()
-
-    listing_where, listing_params = _like_where(
-        ["title", "cat", "price", "descr", "address"],
-        terms,
-    )
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
-        " ORDER BY created_at DESC LIMIT 50",
-        listing_params,
-    ).fetchall()
-
-    specialist_where, specialist_params = _like_where(
-        ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
-         "u.name", "u.region", "u.district", "u.mahalla"],
-        terms,
-    )
-    specialists = conn.execute(
-        """SELECT s.*, u.name, u.region, u.district, u.mahalla
-           FROM specialists s JOIN users u ON u.id=s.user_id
-           WHERE s.visible=1 AND """ + specialist_where + """
-           ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
-        specialist_params,
-    ).fetchall()
-
-    business_where, business_params = _like_where(
-        ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
-        terms,
-    )
-    businesses = conn.execute(
-        "SELECT * FROM businesses WHERE status='active' AND " + business_where +
-        " ORDER BY created_at DESC LIMIT 50",
-        business_params,
-    ).fetchall()
-
-    result = {
-        "q": q,
-        "scope": scope,
-        "terms": terms,
-        "products": [{"id": p["id"], "name": p["name"], "price": p["price"],
-                      "note": p["note"], "kind": p["kind"],
-                      "business_id": p["biz_id"], "business_name": p["biz_name"],
-                      "business_yon": p["biz_yon"], "business_tur": p["biz_tur"],
-                      "address": p["address"], "lat": p["lat"], "lng": p["lng"]} for p in products],
-        "listings": [listing_to_dict(conn, r, with_media=False) for r in listings],
-        "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
-                         "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
-                         "available": bool(s["available"]), "region": s["region"],
-                         "district": s["district"], "mahalla": s["mahalla"],
-                         "lat": s["lat"], "lng": s["lng"]} for s in specialists],
-        "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
-                        "descr": b["descr"], "address": b["address"],
-                        "lat": b["lat"], "lng": b["lng"]} for b in businesses],
-    }
-    conn.close()
-    return result
-
-
-@router.get("/browse")
-async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(default="")):
-    """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar."""
-    tur = (tur or "").strip()
-    if not tur:
-        raise HTTPException(400, "Faoliyat turi kiritilmadi.")
-    terms = _search_terms(tur)
-    conn = db()
-
-    business_where, business_params = _like_where(["tur", "yon", "name", "descr"], terms)
-    businesses = conn.execute(
-        "SELECT * FROM businesses WHERE status='active' AND " + business_where +
-        " ORDER BY created_at DESC LIMIT 100",
-        business_params,
-    ).fetchall()
-
-    specialist_where, specialist_params = _like_where(
-        ["s.kasb", "s.descr", "s.hudud", "s.org", "s.lavozim", "u.name", "u.district"],
-        terms,
-    )
-    specialists = conn.execute(
-        """SELECT s.*, u.name, u.region, u.district, u.mahalla
-           FROM specialists s JOIN users u ON u.id=s.user_id
-           WHERE s.visible=1 AND """ + specialist_where + """
-           ORDER BY s.available DESC, s.created_at DESC LIMIT 100""",
-        specialist_params,
-    ).fetchall()
-    result = {
-        "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
-                        "descr": b["descr"], "address": b["address"],
-                        "lat": b["lat"], "lng": b["lng"]} for b in businesses],
-        "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
-                         "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
-                         "available": bool(s["available"]), "region": s["region"],
-                         "district": s["district"], "mahalla": s["mahalla"],
-                         "lat": s["lat"], "lng": s["lng"]} for s in specialists],
-    }
-    conn.close()
-    return result
-
-
-# ====================================================================
-# SAHIFALAR (biznes / mutaxasis)
-# ====================================================================
-@router.get("/business/{business_id}")
-async def business_page(business_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    viewer = optional_user(conn, x_telegram_init_data)
-    biz = conn.execute("SELECT * FROM businesses WHERE id=?", (business_id,)).fetchone()
-    if not biz:
-        conn.close()
-        raise HTTPException(404, "Biznes topilmadi.")
-    items = conn.execute(
-        """SELECT i.id, i.name, i.price, i.note, i.kind, i.group_id, i.photo_file,
-                  g.name AS group_name, g.kind AS group_kind
-           FROM items i
-           LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=? ORDER BY i.created_at DESC""",
-        (business_id,),
-    ).fetchall()
-    item_groups = conn.execute(
-        "SELECT id, name, kind FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
-        (business_id,),
-    ).fetchall()
-    # Biznes sahifasida HAMMA e'lonlari ko'rinadi (shu jumladan 'own' — faqat mehmonlarga)
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE business_id=? AND status='active' ORDER BY created_at DESC",
-        (business_id,),
-    ).fetchall()
-    result = {
-        "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
-        "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
-        "work_hours": biz["work_hours"], "address": biz["address"],
-        "lat": biz["lat"], "lng": biz["lng"],
-        "followers": follower_count(conn, "business", biz["id"]),
-        "is_following": is_following(conn, viewer["id"] if viewer else None, "business", biz["id"]),
-        "item_groups": [{"id": g["id"], "name": g["name"], "kind": g["kind"]} for g in item_groups],
-        "items": [{"id": i["id"], "name": i["name"], "price": i["price"],
-                   "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
-                   "group_name": i["group_name"], "group_kind": i["group_kind"],
-                   "photo_file": i["photo_file"]} for i in items],
-        "listings": [listing_to_dict(conn, r) for r in listings],
-    }
-    conn.close()
-    return result
-
-
-@router.get("/person/{user_id}")
-async def person_page(user_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    viewer = optional_user(conn, x_telegram_init_data)
-    u = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-    if not u:
-        conn.close()
-        raise HTTPException(404, "Foydalanuvchi topilmadi.")
-    sp = conn.execute("SELECT * FROM specialists WHERE user_id=? AND visible=1", (user_id,)).fetchone()
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' AND visibility='all' "
-        "ORDER BY created_at DESC", (user_id,),
-    ).fetchall()
-    result = {
-        "id": u["id"], "name": u["name"], "district": u["district"],
-        "followers": follower_count(conn, "user", u["id"]),
-        "is_following": is_following(conn, viewer["id"] if viewer else None, "user", u["id"]),
-        "specialist": None,
-        "listings": [listing_to_dict(conn, r) for r in listings],
-    }
-    if sp:
-        result["specialist"] = {
-            "kasb": sp["kasb"], "descr": sp["descr"], "narx": sp["narx"], "hudud": sp["hudud"],
-            "is_gov": bool(sp["is_gov"]), "org": sp["org"], "dept": sp["dept"],
-            "lavozim": sp["lavozim"], "work_hours": sp["work_hours"],
-            "after_hours": sp["after_hours"], "available": bool(sp["available"]),
-        }
-    conn.close()
-    return result
-
-
-# ====================================================================
-# CHAT / XABARLAR
-# ====================================================================
-def _actor_identity(actor):
-    """resolve_actor() natijasini chat uchun (kind, actor_id, owner_user_id) ko'rinishiga keltiradi."""
-    if actor["type"] == "business":
-        return "business", int(actor["business_id"]), int(actor["user_id"])
-    return "user", int(actor["user_id"]), int(actor["user_id"])
-
-
-def _resolve_target_actor(conn, target_kind, target_id):
-    """Xabar qabul qiluvchi aktyorni topadi: oddiy user yoki biznes."""
-    kind = (target_kind or "user").strip().lower()
+    # biznes login/parolni Telegramga yuboramiz
     try:
-        aid = int(target_id)
-    except Exception:
-        raise HTTPException(400, "Qabul qiluvchi noto'g'ri.")
-
-    if kind == "user":
-        u = conn.execute("SELECT id, tg_id, name, role FROM users WHERE id=?", (aid,)).fetchone()
-        if not u:
-            raise HTTPException(404, "Qabul qiluvchi topilmadi.")
-        return {
-            "kind": "user",
-            "actor_id": int(u["id"]),
-            "owner_user_id": int(u["id"]),
-            "tg_id": u["tg_id"],
-            "name": u["name"] or "Foydalanuvchi",
-            "role": "user",
-        }
-
-    if kind == "business":
-        biz = conn.execute(
-            """SELECT b.id, b.user_id, b.name, u.tg_id
-               FROM businesses b JOIN users u ON u.id=b.user_id
-               WHERE b.id=?""",
-            (aid,),
-        ).fetchone()
-        if not biz:
-            raise HTTPException(404, "Biznes topilmadi.")
-        return {
-            "kind": "business",
-            "actor_id": int(biz["id"]),
-            "owner_user_id": int(biz["user_id"]),
-            "tg_id": biz["tg_id"],
-            "name": biz["name"] or "Biznes",
-            "role": "business",
-        }
-
-    raise HTTPException(400, "Qabul qiluvchi turi noto'g'ri.")
-
-
-def _actor_brief(conn, kind, actor_id):
-    """Chat ro'yxati uchun aktyor nomi: user bo'lsa user nomi, business bo'lsa biznes nomi."""
-    return _resolve_target_actor(conn, kind, actor_id)
-
-
-def _clean_message_reply_to_id(conn, my_kind, my_actor_id, other_kind, other_actor_id, value):
-    """Umumiy chatda reply qilinayotgan xabar aynan shu ikki aktyor suhbatiga tegishlimi — tekshiradi."""
-    try:
-        mid = int(value or 0)
-    except Exception:
-        return None
-    if mid <= 0:
-        return None
-    r = conn.execute(
-        """SELECT id FROM messages
-           WHERE id=? AND (
-             (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
-             OR
-             (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
-           )""",
-        (mid, my_kind, my_actor_id, other_kind, other_actor_id,
-         other_kind, other_actor_id, my_kind, my_actor_id),
-    ).fetchone()
-    if not r:
-        raise HTTPException(400, "Javob berilayotgan xabar topilmadi.")
-    return mid
-
-
-def _message_preview_text(row):
-    """Suhbatlar ro'yxatida oxirgi xabarni qisqa ko'rsatish."""
-    if int(_row_val(row, "is_deleted", 0) or 0):
-        return "Xabar o'chirildi"
-    media_type = _row_val(row, "media_type", "text") or "text"
-    text = (_row_val(row, "text", "") or "").strip()
-    if media_type == "photo":
-        return text if text else "📷 Rasm"
-    return text
-
-
-@router.post("/messages/send")
-async def send_message(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    text = (b.get("text") or "").strip()
-    to_id = b.get("to") or b.get("target_id")
-    to_kind = b.get("to_kind") or b.get("target_kind") or b.get("target_type") or "user"
-    if not to_id or not text:
-        conn.close()
-        raise HTTPException(400, "Qabul qiluvchi va matn kiritilishi shart.")
-    if len(text) > 2000:
-        text = text[:2000]
-
-    actor = actor_from_body(conn, me, b)
-    sender_kind, sender_actor_id, sender_owner_id = _actor_identity(actor)
-    receiver = _resolve_target_actor(conn, to_kind, to_id)
-
-    # Faqat aynan bir aktyor o'ziga o'zi yozishi bloklanadi.
-    # Masalan user -> o'z biznesi boshqa aktyor hisoblanadi va test uchun ruxsatli bo'lishi mumkin.
-    if sender_kind == receiver["kind"] and sender_actor_id == receiver["actor_id"]:
-        conn.close()
-        raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
-
-    reply_to_id = _clean_message_reply_to_id(conn, sender_kind, sender_actor_id, receiver["kind"], receiver["actor_id"], b.get("reply_to_id"))
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO messages(sender_id, receiver_id, sender_kind, sender_actor_id,
-                                  receiver_kind, receiver_actor_id, text, media_type, media_url,
-                                  file_name, reply_to_id, is_read, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,0,?)""",
-        (sender_owner_id, receiver["owner_user_id"], sender_kind, sender_actor_id,
-         receiver["kind"], receiver["actor_id"], text, "text", "", "", reply_to_id, now),
-    )
-    mid = cur.lastrowid
-    conn.commit()
-
-    # Telegram bildirishnomasi qabul qiluvchining egasi akkauntiga boradi.
-    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
-    receiver_tg = receiver["tg_id"]
-    conn.close()
-    if receiver_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": receiver_tg,
-                "text": "💬 Sizga yangi xabar: " + sender_name + "\n\n" + (text[:200]),
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-    return {"ok": True, "id": mid, "created_at": now}
-
-
-@router.post("/messages/image")
-async def send_message_image(request: Request, to: int, to_kind: str = "user", actor_type: str = "user",
-                             text: str = "", reply_to_id: int = 0,
-                             x_telegram_init_data: str = Header(default="")):
-    """Umumiy Suhbatlarim chatiga rasm yuborish. Rasm UPLOAD_DIR/chat papkasiga saqlanadi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    sender_kind, sender_actor_id, sender_owner_id = _actor_identity(actor)
-    receiver = _resolve_target_actor(conn, to_kind, to)
-
-    if sender_kind == receiver["kind"] and int(sender_actor_id) == int(receiver["actor_id"]):
-        conn.close()
-        raise HTTPException(400, "O'zingizga xabar yubora olmaysiz.")
-
-    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
-    allowed = {
-        "image/jpeg": ".jpg",
-        "image/jpg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/heic": ".heic",
-        "image/heif": ".heif",
-    }
-    if ctype not in allowed:
-        conn.close()
-        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
-
-    raw = await request.body()
-    max_size = 8 * 1024 * 1024
-    if not raw:
-        conn.close()
-        raise HTTPException(400, "Rasm fayli topilmadi.")
-    if len(raw) > max_size:
-        conn.close()
-        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
-
-    from main import UPLOAD_DIR
-    folder = os.path.join(UPLOAD_DIR, "chat")
-    os.makedirs(folder, exist_ok=True)
-    ext = allowed[ctype]
-    safe_name = "chat_" + str(sender_kind) + "_" + str(sender_actor_id) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
-    path = os.path.join(folder, safe_name)
-    with open(path, "wb") as f:
-        f.write(raw)
-
-    media_url = "/uploads/chat/" + safe_name
-    caption = (text or "").strip()[:1000]
-    clean_reply_to_id = _clean_message_reply_to_id(conn, sender_kind, sender_actor_id, receiver["kind"], receiver["actor_id"], reply_to_id)
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO messages(sender_id, receiver_id, sender_kind, sender_actor_id,
-                                  receiver_kind, receiver_actor_id, text, media_type, media_url,
-                                  file_name, reply_to_id, is_read, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,0,?)""",
-        (sender_owner_id, receiver["owner_user_id"], sender_kind, sender_actor_id,
-         receiver["kind"], receiver["actor_id"], caption, "photo", media_url, safe_name, clean_reply_to_id, now),
-    )
-    mid = cur.lastrowid
-
-    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
-    receiver_tg = receiver["tg_id"]
-    conn.commit()
-    conn.close()
-
-    if receiver_tg:
-        try:
-            from main import tg_call, BASE_URL
-            msg = "📷 Sizga yangi rasm: " + sender_name
-            if caption:
-                msg += "\n\n" + caption[:300]
-            await tg_call("sendMessage", {
-                "chat_id": receiver_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-    return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
-
-
-@router.get("/messages/with/{target_id}")
-async def conversation_with(target_id: int, target_kind: str = "user", actor_type: str = "user",
-                            x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
-    other = _resolve_target_actor(conn, target_kind, target_id)
-
-    rows = conn.execute(
-        """SELECT * FROM messages
-           WHERE (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
-              OR (sender_kind=? AND sender_actor_id=? AND receiver_kind=? AND receiver_actor_id=?)
-           ORDER BY created_at ASC, id ASC LIMIT 500""",
-        (my_kind, my_actor_id, other["kind"], other["actor_id"],
-         other["kind"], other["actor_id"], my_kind, my_actor_id),
-    ).fetchall()
-
-    # Shu kabinetga kelgan xabarlar o'qilgan deb belgilanadi.
-    conn.execute(
-        """UPDATE messages SET is_read=1
-           WHERE receiver_kind=? AND receiver_actor_id=?
-             AND sender_kind=? AND sender_actor_id=? AND is_read=0""",
-        (my_kind, my_actor_id, other["kind"], other["actor_id"]),
-    )
-    conn.commit()
-
-    row_by_id = {int(r["id"]): r for r in rows}
-
-    def msg_reply_preview(reply_id):
-        try:
-            rid = int(reply_id or 0)
-        except Exception:
-            rid = 0
-        rr = row_by_id.get(rid)
-        if not rr:
-            return None
-        rs = _actor_brief(conn, rr["sender_kind"], rr["sender_actor_id"])
-        return {
-            "id": rr["id"],
-            "text": rr["text"] or "",
-            "media_type": _row_val(rr, "media_type", "text") or "text",
-            "media_url": _row_val(rr, "media_url", "") or "",
-            "is_deleted": bool(_row_val(rr, "is_deleted", 0) or 0),
-            "sender_name": rs.get("name") or "",
-        }
-
-    msgs = []
-    for r in rows:
-        mine = (r["sender_kind"] == my_kind and int(r["sender_actor_id"]) == my_actor_id)
-        sender = _actor_brief(conn, r["sender_kind"], r["sender_actor_id"])
-        msgs.append({
-            "id": r["id"],
-            "text": r["text"] or "",
-            "media_type": _row_val(r, "media_type", "text") or "text",
-            "media_url": _row_val(r, "media_url", "") or "",
-            "file_name": _row_val(r, "file_name", "") or "",
-            "reply_to_id": _row_val(r, "reply_to_id", None),
-            "reply": msg_reply_preview(_row_val(r, "reply_to_id", None)),
-            "edited_at": int(_row_val(r, "edited_at", 0) or 0),
-            "deleted_at": int(_row_val(r, "deleted_at", 0) or 0),
-            "is_deleted": bool(_row_val(r, "is_deleted", 0) or 0),
-            "mine": mine,
-            "sender_name": sender.get("name") or "",
-            "sender_kind": r["sender_kind"],
-            "created_at": r["created_at"],
+        await tg_call("sendMessage", {
+            "chat_id": tg["id"],
+            "text": ("\U0001F3EA Biznes kabinetingiz ochildi!\n\n"
+                     "Biznes login: " + biz_login + "\n"
+                     "Biznes parol: " + biz_pass + "\n\n"
+                     "Bu login/parol bilan biznes kabinetingizga alohida kirishingiz mumkin. Saqlab qo'ying."),
         })
-    conn.close()
-    return {"other": other, "messages": msgs}
-
-
-@router.get("/messages/conversations")
-async def conversations(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
-
-    # Shu kabinetga tegishli suhbatlar ro'yxati — oddiy va biznes chatlari aralashmaydi.
-    rows = conn.execute(
-        """SELECT * FROM messages
-           WHERE (sender_kind=? AND sender_actor_id=?) OR (receiver_kind=? AND receiver_actor_id=?)
-           ORDER BY created_at DESC, id DESC""",
-        (my_kind, my_actor_id, my_kind, my_actor_id),
-    ).fetchall()
-
-    seen = {}
-    order = []
-    for r in rows:
-        sent_by_me = (r["sender_kind"] == my_kind and int(r["sender_actor_id"]) == my_actor_id)
-        if sent_by_me:
-            other_kind = r["receiver_kind"]
-            other_id = int(r["receiver_actor_id"])
-        else:
-            other_kind = r["sender_kind"]
-            other_id = int(r["sender_actor_id"])
-        key = other_kind + ":" + str(other_id)
-        if key not in seen:
-            seen[key] = {"kind": other_kind, "id": other_id, "last": _message_preview_text(r), "created_at": r["created_at"], "unread": 0}
-            order.append(key)
-        if (r["receiver_kind"] == my_kind and int(r["receiver_actor_id"]) == my_actor_id and not r["is_read"]):
-            seen[key]["unread"] += 1
-
-    result = []
-    for key in order:
-        info = seen[key]
-        brief = _actor_brief(conn, info["kind"], info["id"])
-        result.append({
-            "target_kind": info["kind"],
-            "target_id": info["id"],
-            "user_id": brief["owner_user_id"],  # eski frontendlar uchun moslik
-            "name": brief["name"],
-            "role": brief["role"],
-            "last": info["last"],
-            "created_at": info["created_at"],
-            "unread": info["unread"],
-        })
-    conn.close()
-    return result
-
-
-@router.put("/messages/{message_id}")
-async def edit_message(message_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Suhbatlarim bo'limidagi o'z matnli xabarini tahrirlash."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    text = (b.get("text") or "").strip()
-    if not text:
-        conn.close()
-        raise HTTPException(400, "Tahrirlash uchun matn kiriting.")
-    if len(text) > 2000:
-        text = text[:2000]
-
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner_user_id = _actor_identity(actor)
-    msg = conn.execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
-    if not msg:
-        conn.close()
-        raise HTTPException(404, "Xabar topilmadi.")
-    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
-        conn.close()
-        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.")
-    if int(_row_val(msg, "is_deleted", 0) or 0):
-        conn.close()
-        raise HTTPException(400, "O'chirilgan xabarni tahrirlab bo'lmaydi.")
-    if not (msg["text"] or "").strip():
-        conn.close()
-        raise HTTPException(400, "Bu xabarda tahrirlanadigan matn yo'q.")
-
-    now = int(time.time())
-    conn.execute("UPDATE messages SET text=?, edited_at=?, is_read=0 WHERE id=?", (text, now, message_id))
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": message_id, "edited_at": now}
-
-
-@router.delete("/messages/{message_id}")
-async def delete_message(message_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Suhbatlarim bo'limidagi o'z xabarini xavfsiz o'chirish: o'rnida 'Xabar o'chirildi' qoladi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    try:
-        b = await request.json()
     except Exception:
-        b = {}
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner_user_id = _actor_identity(actor)
-    msg = conn.execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
-    if not msg:
-        conn.close()
-        raise HTTPException(404, "Xabar topilmadi.")
-    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
-        conn.close()
-        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.")
-    if int(_row_val(msg, "is_deleted", 0) or 0):
-        conn.close()
-        return {"ok": True, "id": message_id, "already_deleted": True}
-
-    now = int(time.time())
-    conn.execute(
-        "UPDATE messages SET is_deleted=1, deleted_at=?, text='', is_read=0 WHERE id=?",
-        (now, message_id),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": message_id, "deleted_at": now}
+        pass
+    return {"ok": True, "biz_login": biz_login, "biz_password": biz_pass}
 
 
-@router.get("/messages/unread_count")
-async def unread_count(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    my_kind, my_actor_id, _my_owner_id = _actor_identity(actor)
-    n = conn.execute(
-        "SELECT COUNT(*) FROM messages WHERE receiver_kind=? AND receiver_actor_id=? AND is_read=0",
-        (my_kind, my_actor_id),
-    ).fetchone()[0]
-    conn.close()
-    return {"count": n}
-
-
-
-# ====================================================================
-# BUYURTMALAR / NAVBATLAR
-# ====================================================================
-def _price_to_int(text):
-    """Narx matnidan taxminiy so'm qiymatini oladi: '12 000 so'm' -> 12000."""
-    raw = str(text or "")
-    digits = re.sub(r"[^0-9]", "", raw)
-    if not digits:
-        return 0
+# ---------- Koordinatadan manzil aniqlash (server orqali — ishonchli) ----------
+async def reverse_geocode(lat: float, lng: float):
+    """Koordinatadan manzil aniqlaydi: address (matn) + region/district (alohida) qaytaradi."""
+    if TEST_MODE:
+        # Sinov rejimi uchun soxta natija (haqiqiy rejimda Nominatim ishlaydi)
+        return {"address": "Yunusobod tumani, Toshkent shahri",
+                "region": "Toshkent shahri", "district": "Yunusobod tumani"}
     try:
-        return int(digits[:12])
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"format": "json", "lat": lat, "lon": lng, "accept-language": "uz"},
+                headers={"User-Agent": "PlatformaApp/1.0"},
+            )
+            d = r.json()
     except Exception:
-        return 0
+        return {"address": "", "region": "", "district": ""}
+    a = d.get("address", {}) if isinstance(d, dict) else {}
+    parts = []
+    ko = a.get("road") or a.get("neighbourhood") or ""
+    tuman = a.get("city_district") or a.get("county") or a.get("suburb") or a.get("town") or a.get("village") or ""
+    viloyat = a.get("state") or a.get("region") or ""
+    if ko:
+        parts.append(ko)
+    if tuman:
+        parts.append(tuman)
+    if viloyat and viloyat != tuman:
+        parts.append(viloyat)
+    return {"address": ", ".join(parts), "region": viloyat, "district": tuman}
 
 
-def _fmt_summa(n):
-    try:
-        n = int(n or 0)
-    except Exception:
-        n = 0
-    if n <= 0:
-        return ""
-    return f"{n:,}".replace(",", " ") + " so'm"
+@app.get("/api/geocode")
+async def geocode(lat: float, lng: float):
+    """Koordinatadan o'qiladigan manzil qaytaradi (OpenStreetMap orqali)."""
+    return await reverse_geocode(lat, lng)
 
 
-def _clean_qty(v):
-    try:
-        q = int(v or 1)
-    except Exception:
-        q = 1
-    if q < 1:
-        q = 1
-    if q > 999:
-        q = 999
-    return q
+_file_path_cache = {}
 
+@app.get("/media/{file_id}")
+async def media_proxy(file_id: str):
+    from fastapi.responses import StreamingResponse, Response
+    if TEST_MODE:
+        return Response(content=b"test-media", media_type="application/octet-stream")
+    path = _file_path_cache.get(file_id)
+    if not path:
+        r = await tg_call("getFile", {"file_id": file_id})
+        if not (r and r.get("ok")):
+            raise HTTPException(404, "Fayl topilmadi.")
+        path = r["result"]["file_path"]
+        _file_path_cache[file_id] = path
+    url = "https://api.telegram.org/file/bot" + BOT_TOKEN + "/" + path
+    client = httpx.AsyncClient(timeout=60)
+    req_s = client.build_request("GET", url)
+    resp = await client.send(req_s, stream=True)
+    if resp.status_code != 200:
+        await resp.aclose(); await client.aclose()
+        _file_path_cache.pop(file_id, None)
+        raise HTTPException(404, "Fayl topilmadi.")
+    ctype = "video/mp4" if path.endswith(".mp4") else "image/jpeg"
 
-def _clean_coord(v, minv, maxv):
-    try:
-        n = float(v)
-    except Exception:
-        return None
-    if n < minv or n > maxv:
-        return None
-    return n
-
-
-def _load_order_items_payload(conn, body, provider, item_id=None):
-    """Frontend yuborgan items ro'yxatini tekshiradi va normal ko'rinishga keltiradi."""
-    raw_items = body.get("items") if isinstance(body, dict) else None
-    items = []
-    if isinstance(raw_items, list):
-        for x in raw_items[:50]:
-            if not isinstance(x, dict):
-                continue
-            iid = x.get("item_id") or x.get("id")
-            try:
-                iid = int(iid)
-            except Exception:
-                continue
-            q = _clean_qty(x.get("qty"))
-            items.append({"item_id": iid, "qty": q})
-    elif item_id:
-        items.append({"item_id": int(item_id), "qty": _clean_qty(body.get("qty"))})
-
-    if not items:
-        return []
-    if provider["kind"] != "business":
-        raise HTTPException(400, "Mahsulot/xizmatli buyurtma faqat biznesga yuboriladi.")
-
-    normalized = []
-    seen = {}
-    for x in items:
-        iid = int(x["item_id"])
-        seen[iid] = seen.get(iid, 0) + _clean_qty(x.get("qty"))
-    for iid, qty in seen.items():
-        it = conn.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone()
-        if not it:
-            raise HTTPException(404, "Mahsulot/xizmat topilmadi.")
-        if int(it["business_id"]) != int(provider["actor_id"]):
-            raise HTTPException(400, "Mahsulot/xizmat bu biznesga tegishli emas.")
-        price_text = it["price"] or ""
-        price_val = _price_to_int(price_text)
-        normalized.append({
-            "item_id": int(it["id"]),
-            "item_name": it["name"] or "Mahsulot/xizmat",
-            "price_text": price_text,
-            "qty": qty,
-            "line_total": price_val * qty if price_val else 0,
-            "note": it["note"] or "",
-        })
-    return normalized
-
-
-def _order_title(conn, body, provider, item_id=None, listing_id=None, order_items=None):
-    """Buyurtma kartasida ko'rinadigan nomni aniqlaydi."""
-    title = (body.get("title") or "").strip() if isinstance(body, dict) else ""
-    if title:
-        return title[:180]
-    order_items = order_items or []
-    if order_items:
-        first = order_items[0]["item_name"]
-        if len(order_items) > 1:
-            return (first + " + " + str(len(order_items)-1) + " ta")[:180]
-        return first[:180]
-    if item_id:
-        it = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
-        if it and it["name"]:
-            return it["name"][:180]
-    if listing_id:
-        li = conn.execute("SELECT title FROM listings WHERE id=?", (listing_id,)).fetchone()
-        if li and li["title"]:
-            return li["title"][:180]
-    if provider and provider.get("kind") == "business":
-        return "Biznesga buyurtma"
-    return "Qabul / xizmatga yozilish"
-
-
-def _clean_order_type(value):
-    v = (value or "delivery").strip().lower()
-    aliases = {
-        "1": "delivery", "yetkazish": "delivery", "yetkazib": "delivery", "delivery": "delivery",
-        "2": "pickup", "olib": "pickup", "pickup": "pickup",
-        "3": "booking", "navbat": "booking", "qabul": "booking", "booking": "booking", "service": "booking",
-    }
-    return aliases.get(v, "delivery")
-
-
-def _order_items_to_dict(conn, order_id):
-    rows = conn.execute(
-        "SELECT * FROM order_items WHERE order_id=? ORDER BY id ASC", (order_id,)
-    ).fetchall()
-    return [{
-        "id": r["id"],
-        "item_id": r["item_id"],
-        "name": r["item_name"],
-        "price": r["price_text"] or "",
-        "qty": r["qty"] or 1,
-        "line_total": r["line_total"] or 0,
-        "note": r["note"] or "",
-    } for r in rows]
-
-
-def _row_val(row, key, default=None):
-    try:
-        v = row[key]
-        return default if v is None else v
-    except Exception:
-        return default
-
-
-def _order_seen_value(r, view):
-    if view == "provider":
-        return int(_row_val(r, "provider_seen_at", 0) or 0)
-    return int(_row_val(r, "customer_seen_at", 0) or 0)
-
-
-def _order_to_dict(conn, r, view="customer"):
-    customer = _actor_brief(conn, r["customer_kind"], r["customer_actor_id"])
-    provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
-    items = _order_items_to_dict(conn, r["id"])
-    total_amount = sum(int(x.get("line_total") or 0) for x in items)
-    chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
-    last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
-    return {
-        "id": r["id"],
-        "customer_kind": r["customer_kind"],
-        "customer_actor_id": r["customer_actor_id"],
-        "provider_kind": r["provider_kind"],
-        "provider_actor_id": r["provider_actor_id"],
-        "customer_name": customer["name"],
-        "provider_name": provider["name"],
-        "item_id": r["item_id"],
-        "listing_id": r["listing_id"],
-        "title": r["title"] or "Buyurtma",
-        "note": r["note"] or "",
-        "phone": r["phone"] or "",
-        "order_type": r["order_type"] or "delivery",
-        "address": r["address"] or "",
-        "desired_time": r["desired_time"] or "",
-        "delivery_lat": r["delivery_lat"],
-        "delivery_lng": r["delivery_lng"],
-        "qty": r["qty"] or 1,
-        "items": items,
-        "total_amount": total_amount,
-        "total_text": _fmt_summa(total_amount),
-        "status": r["status"],
-        "created_at": r["created_at"],
-        "updated_at": r["updated_at"],
-        "provider_seen_at": _row_val(r, "provider_seen_at", 0),
-        "customer_seen_at": _row_val(r, "customer_seen_at", 0),
-        "is_unread": _order_seen_value(r, view) <= 0,
-        "chat_count": chat_count,
-        "last_chat": ((last_chat["text"] if last_chat and last_chat["text"] else "📷 Rasm") if last_chat else ""),
-        "last_chat_at": (last_chat["created_at"] if last_chat else 0),
-        "view": view,
-    }
-
-
-@router.post("/orders")
-async def create_order(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, me, b)
-    customer_kind, customer_actor_id, customer_user_id = _actor_identity(actor)
-
-    provider_kind = b.get("provider_kind") or b.get("target_kind") or "business"
-    provider_id = b.get("provider_id") or b.get("target_id") or b.get("business_id") or b.get("user_id")
-    if not provider_id:
-        conn.close()
-        raise HTTPException(400, "Buyurtma qabul qiluvchi topilmadi.")
-    provider = _resolve_target_actor(conn, provider_kind, provider_id)
-
-    # Faqat aynan bir aktyor o'ziga o'zi buyurtma berishi bloklanadi.
-    if customer_kind == provider["kind"] and customer_actor_id == provider["actor_id"]:
-        conn.close()
-        raise HTTPException(400, "O'zingizga buyurtma bera olmaysiz.")
-
-    item_id = b.get("item_id")
-    listing_id = b.get("listing_id")
-    try:
-        item_id = int(item_id) if item_id else None
-    except Exception:
-        item_id = None
-    try:
-        listing_id = int(listing_id) if listing_id else None
-    except Exception:
-        listing_id = None
-
-    # Mahsulot/xizmatlar ro'yxatini tekshiramiz.
-    try:
-        order_items = _load_order_items_payload(conn, b, provider, item_id)
-    except HTTPException:
-        conn.close()
-        raise
-
-    # Agar listing_id yuborilsa, providerga mosligini imkon qadar tekshiramiz.
-    if listing_id:
-        li = conn.execute("SELECT user_id, business_id FROM listings WHERE id=? AND status='active'", (listing_id,)).fetchone()
-        if not li:
-            conn.close()
-            raise HTTPException(404, "E'lon topilmadi.")
-        if provider["kind"] == "business" and li["business_id"] and int(li["business_id"]) != int(provider["actor_id"]):
-            conn.close()
-            raise HTTPException(400, "E'lon bu biznesga tegishli emas.")
-        if provider["kind"] == "user" and int(li["user_id"]) != int(provider["actor_id"]):
-            conn.close()
-            raise HTTPException(400, "E'lon bu foydalanuvchiga tegishli emas.")
-
-    note = (b.get("note") or "").strip()[:1000]
-    phone = (b.get("phone") or "").strip()[:80]
-    order_type = _clean_order_type(b.get("order_type"))
-    address = (b.get("address") or "").strip()[:500]
-    desired_time = (b.get("desired_time") or "").strip()[:160]
-    delivery_lat = _clean_coord(b.get("delivery_lat"), -90, 90)
-    delivery_lng = _clean_coord(b.get("delivery_lng"), -180, 180)
-    qty = _clean_qty(b.get("qty"))
-    if order_items:
-        qty = sum(int(x["qty"] or 1) for x in order_items)
-        item_id = order_items[0]["item_id"] if len(order_items) == 1 else None
-
-    title = _order_title(conn, b, provider, item_id, listing_id, order_items)
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
-                              provider_kind, provider_actor_id, provider_user_id,
-                              item_id, listing_id, title, note, phone, order_type, address, desired_time,
-                              delivery_lat, delivery_lng, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (customer_kind, customer_actor_id, customer_user_id,
-         provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, order_type, address, desired_time,
-         delivery_lat, delivery_lng, qty, "new", now, now),
-    )
-    oid = cur.lastrowid
-    conn.execute("UPDATE orders SET customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, oid))
-    for oi in order_items:
-        conn.execute(
-            """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, line_total, note, created_at)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            (oid, oi["item_id"], oi["item_name"], oi["price_text"], oi["qty"], oi["line_total"], oi["note"], now),
-        )
-    conn.commit()
-
-    customer_name = _actor_brief(conn, customer_kind, customer_actor_id)["name"]
-    total_amount = sum(int(x.get("line_total") or 0) for x in order_items)
-    total_text = _fmt_summa(total_amount)
-    items_text = ""
-    if order_items:
-        items_text = "\n" + "\n".join(["• " + x["item_name"] + " × " + str(x["qty"]) for x in order_items[:8]])
-    provider_tg = provider.get("tg_id")
-    conn.close()
-
-    if provider_tg:
+    async def gen():
         try:
-            from main import tg_call, BASE_URL
-            msg = "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + items_text
-            if total_text:
-                msg += "\nJami: " + total_text
-            detail_lines = []
-            if order_type:
-                detail_lines.append("Turi: " + ({"delivery":"Yetkazib berish", "pickup":"Olib ketish", "booking":"Navbat/qabul"}.get(order_type, order_type)))
-            if phone:
-                detail_lines.append("Telefon: " + phone)
-            if address:
-                detail_lines.append("Manzil: " + address[:160])
-            if delivery_lat is not None and delivery_lng is not None:
-                detail_lines.append("Xarita: " + str(round(delivery_lat, 6)) + ", " + str(round(delivery_lng, 6)))
-            if desired_time:
-                detail_lines.append("Vaqt: " + desired_time[:120])
-            if detail_lines:
-                msg += "\n" + "\n".join(detail_lines)
-            if note:
-                msg += "\n\nIzoh: " + note[:200]
-            await tg_call("sendMessage", {
-                "chat_id": provider_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-    return {"ok": True, "id": oid, "status": "new", "created_at": now}
+            async for chunk in resp.aiter_bytes():
+                yield chunk
+        finally:
+            await resp.aclose(); await client.aclose()
+
+    return StreamingResponse(gen(), media_type=ctype,
+                             headers={"Cache-Control": "public, max-age=86400"})
 
 
-@router.get("/orders/my")
-async def my_orders(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Joriy kabinet nomidan berilgan buyurtmalar."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    kind, actor_id, _owner = _actor_identity(actor)
-    rows = conn.execute(
-        """SELECT * FROM orders
-           WHERE customer_kind=? AND customer_actor_id=?
-           ORDER BY created_at DESC, id DESC LIMIT 200""",
-        (kind, actor_id),
-    ).fetchall()
-    out = [_order_to_dict(conn, r, "customer") for r in rows]
-    conn.close()
-    return out
+# ---------- Sinov yordamchisi (faqat TEST_MODE) ----------
+@app.get("/api/_test/last_code/{tg_id}")
+async def test_last_code(tg_id: int):
+    if not TEST_MODE:
+        raise HTTPException(404, "not found")
+    return {"code": _test_codes.get(tg_id)}
 
 
-@router.get("/orders/inbox")
-async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str = Header(default="")):
-    """Joriy kabinetga kelgan buyurtmalar."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    kind, actor_id, _owner = _actor_identity(actor)
-    rows = conn.execute(
-        """SELECT * FROM orders
-           WHERE provider_kind=? AND provider_actor_id=?
-           ORDER BY created_at DESC, id DESC LIMIT 200""",
-        (kind, actor_id),
-    ).fetchall()
-    out = [_order_to_dict(conn, r, "provider") for r in rows]
-    conn.close()
-    return out
+# ---------- Yuklangan fayllar ----------
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+print("UPLOAD_DIR:", os.path.abspath(UPLOAD_DIR))
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-
-@router.put("/orders/{order_id}/seen")
-async def mark_order_seen(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Joriy kabinet buyurtmani ko'rdi deb belgilaydi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-
-    is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
-    is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
-    if not (is_provider or is_customer):
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    now = int(time.time())
-    if is_provider:
-        conn.execute("UPDATE orders SET provider_seen_at=? WHERE id=?", (now, order_id))
-    if is_customer:
-        conn.execute("UPDATE orders SET customer_seen_at=? WHERE id=?", (now, order_id))
-    conn.commit()
-    conn.close()
-    return {"ok": True, "seen_at": now}
-
-
-@router.put("/orders/{order_id}/status")
-async def update_order_status(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner = _actor_identity(actor)
-    new_status = (b.get("status") or "").strip().lower()
-    allowed = {"accepted", "rejected", "done", "cancelled"}
-    if new_status not in allowed:
-        conn.close()
-        raise HTTPException(400, "Buyurtma holati noto'g'ri.")
-
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-
-    is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
-    is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
-    if new_status in ("accepted", "rejected", "done") and not is_provider:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma holatini faqat qabul qiluvchi kabinet o'zgartira oladi.")
-    if new_status == "cancelled" and not (is_customer or is_provider):
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    now = int(time.time())
-    notify_tg = None
-    notify_text = ""
-
-    if new_status in ("accepted", "rejected", "done") or (new_status == "cancelled" and is_provider):
-        # Qabul qiluvchi/biznes statusni o'zgartirdi — mijoz tomonda yangilanish belgisi chiqadi.
-        conn.execute(
-            "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=? WHERE id=?",
-            (new_status, now, now, order_id),
-        )
-        cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
-        notify_tg = cu["tg_id"] if cu else None
-        notify_text = "🔔 Buyurtma holati: " + {
-            "accepted": "Qabul qilindi",
-            "rejected": "Rad etildi",
-            "done": "Yakunlandi",
-            "cancelled": "Bekor qilindi",
-        }.get(new_status, new_status) + "\n\n" + (row["title"] or "Buyurtma")
-    elif new_status == "cancelled" and is_customer:
-        # Mijoz bekor qildi — biznes tomonda yangi o'zgarish sifatida ko'rinadi.
-        conn.execute(
-            "UPDATE orders SET status=?, updated_at=?, provider_seen_at=0, customer_seen_at=? WHERE id=?",
-            (new_status, now, now, order_id),
-        )
-        pu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["provider_user_id"],)).fetchone()
-        notify_tg = pu["tg_id"] if pu else None
-        notify_text = "⚠️ Mijoz buyurtmani bekor qildi\n\n" + (row["title"] or "Buyurtma")
-    else:
-        conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
-
-    conn.commit()
-    conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": notify_text,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-
-    return {"ok": True, "status": new_status, "updated_at": now}
-
-
-def _order_actor_side(row, kind, actor_id):
-    """Joriy aktyor buyurtmaning mijozimi yoki qabul qiluvchisimi — aniqlaydi."""
-    if row["customer_kind"] == kind and int(row["customer_actor_id"]) == int(actor_id):
-        return "customer"
-    if row["provider_kind"] == kind and int(row["provider_actor_id"]) == int(actor_id):
-        return "provider"
-    return ""
-
-
-def _order_other_side_info(conn, row, side):
-    """Buyurtma chatidagi qarshi tomonni qaytaradi."""
-    if side == "customer":
-        brief = _actor_brief(conn, row["provider_kind"], row["provider_actor_id"])
-        return {
-            "side": "provider",
-            "kind": row["provider_kind"],
-            "actor_id": row["provider_actor_id"],
-            "owner_user_id": row["provider_user_id"],
-            "tg_id": brief.get("tg_id"),
-            "name": brief.get("name") or "Qabul qiluvchi",
-        }
-    brief = _actor_brief(conn, row["customer_kind"], row["customer_actor_id"])
-    return {
-        "side": "customer",
-        "kind": row["customer_kind"],
-        "actor_id": row["customer_actor_id"],
-        "owner_user_id": row["customer_user_id"],
-        "tg_id": brief.get("tg_id"),
-        "name": brief.get("name") or "Mijoz",
-    }
-
-
-def _mark_order_seen_for_side(conn, order_id, side, now=None):
-    now = now or int(time.time())
-    if side == "provider":
-        conn.execute("UPDATE orders SET provider_seen_at=? WHERE id=?", (now, order_id))
-    elif side == "customer":
-        conn.execute("UPDATE orders SET customer_seen_at=? WHERE id=?", (now, order_id))
-    return now
-
-
-def _clean_order_reply_to_id(conn, order_id, value):
-    """Reply qilinayotgan xabar shu buyurtmaga tegishli ekanini tekshiradi."""
-    try:
-        mid = int(value or 0)
-    except Exception:
-        return None
-    if mid <= 0:
-        return None
-    r = conn.execute(
-        "SELECT id FROM order_messages WHERE id=? AND order_id=?",
-        (mid, order_id),
-    ).fetchone()
-    if not r:
-        raise HTTPException(400, "Javob berilayotgan xabar topilmadi.")
-    return mid
-
-
-def _mark_order_changed_for_side(conn, order_id, side, now=None):
-    """Chatdagi o'zgarishda yuborgan tomon ko'rdi, qarshi tomonda yangilanish belgisi chiqadi."""
-    now = now or int(time.time())
-    if side == "provider":
-        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
-    else:
-        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
-    return now
-
-
-@router.get("/orders/{order_id}/chat")
-async def order_chat_messages(order_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Buyurtma ichidagi alohida chat xabarlari. Umumiy chatga aralashmaydi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    kind, actor_id, _owner = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-    side = _order_actor_side(row, kind, actor_id)
-    if not side:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    rows = conn.execute(
-        "SELECT * FROM order_messages WHERE order_id=? ORDER BY created_at ASC, id ASC LIMIT 500",
-        (order_id,),
-    ).fetchall()
-    now = _mark_order_seen_for_side(conn, order_id, side)
-    conn.commit()
-
-    row_by_id = {int(r["id"]): r for r in rows}
-
-    def msg_reply_preview(reply_id):
-        try:
-            rid = int(reply_id or 0)
-        except Exception:
-            rid = 0
-        rr = row_by_id.get(rid)
-        if not rr:
-            return None
-        rs = _actor_brief(conn, rr["sender_kind"], rr["sender_actor_id"])
-        return {
-            "id": rr["id"],
-            "text": rr["text"] or "",
-            "media_type": _row_val(rr, "media_type", "text") or "text",
-            "media_url": _row_val(rr, "media_url", "") or "",
-            "is_deleted": bool(_row_val(rr, "is_deleted", 0) or 0),
-            "sender_name": rs.get("name") or "",
-        }
-
-    msgs = []
-    for r in rows:
-        mine = (r["sender_kind"] == kind and int(r["sender_actor_id"]) == int(actor_id))
-        sender = _actor_brief(conn, r["sender_kind"], r["sender_actor_id"])
-        msgs.append({
-            "id": r["id"],
-            "text": r["text"] or "",
-            "media_type": _row_val(r, "media_type", "text") or "text",
-            "media_url": _row_val(r, "media_url", "") or "",
-            "file_name": _row_val(r, "file_name", "") or "",
-            "reply_to_id": _row_val(r, "reply_to_id", None),
-            "reply": msg_reply_preview(_row_val(r, "reply_to_id", None)),
-            "edited_at": int(_row_val(r, "edited_at", 0) or 0),
-            "deleted_at": int(_row_val(r, "deleted_at", 0) or 0),
-            "is_deleted": bool(_row_val(r, "is_deleted", 0) or 0),
-            "mine": mine,
-            "sender_name": sender.get("name") or "",
-            "sender_kind": r["sender_kind"],
-            "created_at": r["created_at"],
-        })
-    other = _order_other_side_info(conn, row, side)
-    order = _order_to_dict(conn, row, "provider" if side == "provider" else "customer")
-    conn.close()
-    return {"ok": True, "side": side, "seen_at": now, "other": other, "order": order, "messages": msgs}
-
-
-@router.post("/orders/{order_id}/chat")
-async def send_order_chat_message(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Buyurtma ichida xabar yuborish. Xabar faqat shu buyurtmaga bog'lanadi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    text = (b.get("text") or "").strip()
-    if not text:
-        conn.close()
-        raise HTTPException(400, "Xabar matni kiritilishi shart.")
-    if len(text) > 2000:
-        text = text[:2000]
-
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, owner_user_id = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-    side = _order_actor_side(row, kind, actor_id)
-    if not side:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    reply_to_id = _clean_order_reply_to_id(conn, order_id, b.get("reply_to_id"))
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
-                                      text, media_type, media_url, file_name, reply_to_id, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, text, "text", "", "", reply_to_id, now),
-    )
-    mid = cur.lastrowid
-    _mark_order_changed_for_side(conn, order_id, side, now)
-
-    sender_name = _actor_brief(conn, kind, actor_id)["name"]
-    other = _order_other_side_info(conn, row, side)
-    notify_tg = other.get("tg_id")
-    order_title = row["title"] or "Buyurtma"
-    conn.commit()
-    conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": "💬 Buyurtma bo'yicha yangi xabar: " + sender_name + "\n\n" + order_title + "\n" + text[:300],
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-    return {"ok": True, "id": mid, "created_at": now}
-
-
-@router.post("/orders/{order_id}/chat/image")
-async def send_order_chat_image(order_id: int, request: Request, actor_type: str = "user",
-                                text: str = "", reply_to_id: int = 0,
-                                x_telegram_init_data: str = Header(default="")):
-    """Buyurtma chatiga rasm yuborish. Rasm UPLOAD_DIR/order_chat papkasiga saqlanadi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    actor = resolve_actor(conn, me, actor_type)
-    kind, actor_id, owner_user_id = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-    side = _order_actor_side(row, kind, actor_id)
-    if not side:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
-    allowed = {
-        "image/jpeg": ".jpg",
-        "image/jpg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/heic": ".heic",
-        "image/heif": ".heif",
-    }
-    if ctype not in allowed:
-        conn.close()
-        raise HTTPException(400, "Faqat rasm fayli yuborish mumkin.")
-
-    raw = await request.body()
-    max_size = 8 * 1024 * 1024
-    if not raw:
-        conn.close()
-        raise HTTPException(400, "Rasm fayli topilmadi.")
-    if len(raw) > max_size:
-        conn.close()
-        raise HTTPException(400, "Rasm hajmi 8 MB dan oshmasin.")
-
-    from main import UPLOAD_DIR
-    folder = os.path.join(UPLOAD_DIR, "order_chat")
-    os.makedirs(folder, exist_ok=True)
-    ext = allowed[ctype]
-    safe_name = "order_" + str(order_id) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
-    path = os.path.join(folder, safe_name)
-    with open(path, "wb") as f:
-        f.write(raw)
-
-    media_url = "/uploads/order_chat/" + safe_name
-    caption = (text or "").strip()[:1000]
-    reply_to_id = _clean_order_reply_to_id(conn, order_id, reply_to_id)
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
-                                      text, media_type, media_url, file_name, reply_to_id, created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?)""",
-        (order_id, kind, actor_id, owner_user_id, caption, "photo", media_url, safe_name, reply_to_id, now),
-    )
-    mid = cur.lastrowid
-
-    _mark_order_changed_for_side(conn, order_id, side, now)
-
-    sender_name = _actor_brief(conn, kind, actor_id)["name"]
-    other = _order_other_side_info(conn, row, side)
-    notify_tg = other.get("tg_id")
-    order_title = row["title"] or "Buyurtma"
-    conn.commit()
-    conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            msg = "📷 Buyurtma bo'yicha yangi rasm: " + sender_name + "\n\n" + order_title
-            if caption:
-                msg += "\n" + caption[:300]
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
-    return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
-
-
-@router.put("/orders/{order_id}/chat/{message_id}")
-async def edit_order_chat_message(order_id: int, message_id: int, request: Request,
-                                  x_telegram_init_data: str = Header(default="")):
-    """Buyurtma chatidagi o'z xabarini tahrirlash."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    text = (b.get("text") or "").strip()
-    if not text:
-        conn.close()
-        raise HTTPException(400, "Tahrirlash uchun matn kiriting.")
-    if len(text) > 2000:
-        text = text[:2000]
-
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner_user_id = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-    side = _order_actor_side(row, kind, actor_id)
-    if not side:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    msg = conn.execute(
-        "SELECT * FROM order_messages WHERE id=? AND order_id=?",
-        (message_id, order_id),
-    ).fetchone()
-    if not msg:
-        conn.close()
-        raise HTTPException(404, "Xabar topilmadi.")
-    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
-        conn.close()
-        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.")
-    if int(_row_val(msg, "is_deleted", 0) or 0):
-        conn.close()
-        raise HTTPException(400, "O'chirilgan xabarni tahrirlab bo'lmaydi.")
-    if not (msg["text"] or "").strip():
-        conn.close()
-        raise HTTPException(400, "Bu xabarda tahrirlanadigan matn yo'q.")
-
-    now = int(time.time())
-    conn.execute("UPDATE order_messages SET text=?, edited_at=? WHERE id=?", (text, now, message_id))
-    _mark_order_changed_for_side(conn, order_id, side, now)
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": message_id, "edited_at": now}
-
-
-@router.delete("/orders/{order_id}/chat/{message_id}")
-async def delete_order_chat_message(order_id: int, message_id: int, request: Request,
-                                    x_telegram_init_data: str = Header(default="")):
-    """Buyurtma chatidagi o'z xabarini xavfsiz o'chirish: xabar o'rnida 'Xabar o'chirildi' qoladi."""
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    try:
-        b = await request.json()
-    except Exception:
-        b = {}
-    actor = actor_from_body(conn, me, b)
-    kind, actor_id, _owner_user_id = _actor_identity(actor)
-    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Buyurtma topilmadi.")
-    side = _order_actor_side(row, kind, actor_id)
-    if not side:
-        conn.close()
-        raise HTTPException(403, "Bu buyurtma sizga tegishli emas.")
-
-    msg = conn.execute(
-        "SELECT * FROM order_messages WHERE id=? AND order_id=?",
-        (message_id, order_id),
-    ).fetchone()
-    if not msg:
-        conn.close()
-        raise HTTPException(404, "Xabar topilmadi.")
-    if msg["sender_kind"] != kind or int(msg["sender_actor_id"]) != int(actor_id):
-        conn.close()
-        raise HTTPException(403, "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.")
-    if int(_row_val(msg, "is_deleted", 0) or 0):
-        conn.close()
-        return {"ok": True, "id": message_id, "already_deleted": True}
-
-    now = int(time.time())
-    conn.execute(
-        "UPDATE order_messages SET is_deleted=1, deleted_at=?, text='' WHERE id=?",
-        (now, message_id),
-    )
-    _mark_order_changed_for_side(conn, order_id, side, now)
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": message_id, "deleted_at": now}
-
-
-# ====================================================================
-# BILDIRISHNOMA FILTRLARI
-# ====================================================================
-@router.get("/notify/filters")
-async def get_notify_filters(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT * FROM notify_filters WHERE user_id=? ORDER BY id DESC", (me["id"],)
-    ).fetchall()
-    out = [{"id": r["id"], "cat": r["cat"], "region": r["region"], "district": r["district"],
-            "price_min": r["price_min"], "price_max": r["price_max"], "keyword": r["keyword"]} for r in rows]
-    conn.close()
-    return out
-
-
-@router.post("/notify/filters")
-async def add_notify_filter(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    b = await request.json()
-    cat = (b.get("cat") or "").strip()
-    if not cat:
-        conn.close()
-        raise HTTPException(400, "Tur tanlanishi shart.")
-    def _int(v):
-        try:
-            return int(v)
-        except Exception:
-            return 0
-    cur = conn.execute(
-        """INSERT INTO notify_filters(user_id, cat, region, district, price_min, price_max, keyword, created_at)
-           VALUES(?,?,?,?,?,?,?,?)""",
-        (me["id"], cat, (b.get("region") or "").strip(), (b.get("district") or "").strip(),
-         _int(b.get("price_min")), _int(b.get("price_max")), (b.get("keyword") or "").strip(),
-         int(time.time())),
-    )
-    fid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": fid}
-
-
-@router.delete("/notify/filters/{filter_id}")
-async def delete_notify_filter(filter_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    me = require_user(conn, x_telegram_init_data)
-    conn.execute("DELETE FROM notify_filters WHERE id=? AND user_id=?", (filter_id, me["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
+# ---------- Mini App (eng oxirida) ----------
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
