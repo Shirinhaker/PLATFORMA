@@ -248,7 +248,6 @@ async def get_driver(x_telegram_init_data: str = Header(default="")):
         "phone": d["phone"], "car_model": d["car_model"], "car_color": d["car_color"],
         "car_plate": d["car_plate"], "service": d["service"], "available": bool(d["available"]),
         "rating": rating, "rating_cnt": d["rating_cnt"], "balance": d["balance"],
-        "commission": COMMISSION_PER_ORDER, "is_admin": (user["tg_id"] in ADMIN_TG_IDS),
     }
 
 
@@ -311,13 +310,6 @@ PRICING = {
     "taxi":     {"base": 5000,  "per_km": 2000, "min": 9000},
     "dostavka": {"base": 10000, "per_km": 2500, "min": 15000},
 }
-
-# Har qabul qilingan zakaz uchun haydovchi balansidan yechiladigan komissiya (so'm).
-# BU NAMUNA STAVKA — egasi o'zgartirishi mumkin.
-COMMISSION_PER_ORDER = 1000
-
-# Admin (egasi) Telegram ID'lari — balansni qo'lda to'ldirish huquqi shularda.
-ADMIN_TG_IDS = {1423181561, 607563067}
 
 
 def _calc_price(kind, dist_km):
@@ -491,10 +483,6 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     if busy:
         conn.close()
         raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
-    # Balans tekshiruvi: zakaz olish uchun komissiyaga yetarli balans bo'lishi kerak
-    if (d["balance"] or 0) < COMMISSION_PER_ORDER:
-        conn.close()
-        raise HTTPException(400, "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.")
     now = int(time.time())
     cur = conn.execute(
         "UPDATE rides SET status='accepted', driver_id=?, accepted_at=? WHERE id=? AND status='pending'",
@@ -504,16 +492,12 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     if cur.rowcount == 0:
         conn.close()
         raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
-    # Zakaz olindi — komissiyani balansdan yechamiz
-    conn.execute("UPDATE drivers SET balance = balance - ? WHERE id=?", (COMMISSION_PER_ORDER, d["id"]))
-    conn.commit()
     r = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
     out = _ride_dict(r)
     cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (r["customer_id"],)).fetchone()
     out["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
-    new_balance = conn.execute("SELECT balance FROM drivers WHERE id=?", (d["id"],)).fetchone()["balance"]
     conn.close()
-    return {"ok": True, "ride": out, "commission": COMMISSION_PER_ORDER, "balance": new_balance}
+    return {"ok": True, "ride": out}
 
 
 @router.post("/rides/{ride_id}/complete")
@@ -582,54 +566,6 @@ async def get_pricing(x_telegram_init_data: str = Header(default="")):
     require_user(conn, x_telegram_init_data)
     conn.close()
     return {"pricing": PRICING}
-
-
-def _require_admin(conn, init_data):
-    """Admin (egasi) ekanligini tekshiradi. Bo'lmasa 403."""
-    user = require_user(conn, init_data)
-    if user["tg_id"] not in ADMIN_TG_IDS:
-        conn.close()
-        raise HTTPException(403, "Bu amal faqat admin uchun.")
-    return user
-
-
-@router.get("/admin/drivers")
-async def admin_list_drivers(x_telegram_init_data: str = Header(default="")):
-    """Admin uchun: barcha haydovchilar va ularning balansi (qo'lda to'ldirish uchun)."""
-    conn = db()
-    _require_admin(conn, x_telegram_init_data)
-    rows = conn.execute(
-        "SELECT d.id, d.phone, d.balance, u.name "
-        "FROM drivers d JOIN users u ON u.id=d.user_id ORDER BY u.name"
-    ).fetchall()
-    conn.close()
-    return {"drivers": [{"id": r["id"], "name": r["name"], "phone": r["phone"],
-                         "balance": r["balance"] or 0} for r in rows]}
-
-
-@router.post("/admin/topup")
-async def admin_topup(request: Request, x_telegram_init_data: str = Header(default="")):
-    """Admin uchun: haydovchi balansini qo'lda to'ldirish (haydovchi pulni o'tkazgach)."""
-    conn = db()
-    _require_admin(conn, x_telegram_init_data)
-    b = await request.json()
-    try:
-        driver_id = int(b.get("driver_id"))
-        amount = int(b.get("amount"))
-    except (TypeError, ValueError):
-        conn.close()
-        raise HTTPException(400, "Haydovchi va summani to'g'ri kiriting.")
-    if amount <= 0 or amount > 10000000:
-        conn.close()
-        raise HTTPException(400, "Summa noto'g'ri (0 dan katta bo'lsin).")
-    cur = conn.execute("UPDATE drivers SET balance = balance + ? WHERE id=?", (amount, driver_id))
-    conn.commit()
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(404, "Haydovchi topilmadi.")
-    new_balance = conn.execute("SELECT balance FROM drivers WHERE id=?", (driver_id,)).fetchone()["balance"]
-    conn.close()
-    return {"ok": True, "balance": new_balance}
 
 
 # ====================================================================
