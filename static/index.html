@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1389 -->
+<title>Platforma</title><!-- BUILD: v1390 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1848,6 +1848,8 @@
 
   /* ---------- v1386: HAQIQIY ZAKAZNI SERVERGA YUBORISH ---------- */
   var CUR_RIDE=null, ridePollTimer=null, _shownRideStatus=null;
+  // Jonli GPS hisoblagich (faqat haydovchi tomonida, "ongoing" + "o'zim aytaman" safarlar uchun)
+  var meterWatchId=null, meterKm=0, meterLastPt=null, meterRideId=null, meterKind="taxi", _meterSendAt=0;
   // Mijozga ko'rinadigan holat yorlig'i
   function rideStatusLabel(st){
     if(st==="arrived") return "📍 Haydovchi yetib keldi!";
@@ -1893,9 +1895,12 @@
       var r = res && res.ride;
       if(!r){
         var wasFound = (callState==="found");
+        // Yakuniy narxni nol qilishdan oldin saqlab olamiz (ozim -> hisoblagich narxi, aks holda -> taxmin)
+        var lastPrice = null;
+        if(CUR_RIDE){ lastPrice = CUR_RIDE.ozim ? CUR_RIDE.final_price : CUR_RIDE.price; }
         stopRidePoll(); CUR_RIDE=null; _shownRideStatus=null;
         if(callMode && callState!=="form"){
-          if(wasFound) showMsg("Safar yakunlandi. Rahmat!");
+          if(wasFound) showMsg((lastPrice && lastPrice>0) ? ("Safar tugadi · to\u02bclov ~"+fmtSom(lastPrice)+" so\u02bcm. Rahmat!") : "Safar yakunlandi. Rahmat!");
           callState="form"; renderCallPanel();
         }
         return;
@@ -1921,9 +1926,19 @@
     var plate = d.car_plate ? (" \u00b7 "+esc(d.car_plate)) : "";
     var phone = (d.phone||"").trim();
     var canCancel = (r.status==="accepted" || r.status==="arrived");
-    var priceLine = (r.price && r.price>0)
-      ? '<div class="list-sub" style="color:var(--primary);font-weight:700;margin:3px 0 0">💰 ~'+fmtSom(r.price)+' so\u02bcm (naqd)</div>'
-      : (r.ozim?'<div class="list-sub" style="margin:3px 0 0">Narx masofa bo\u02bcyicha, safar oxirida</div>':'');
+    var priceLine;
+    if(r.ozim && r.status==="ongoing"){
+      // Safar davom etmoqda — jonli hisoblagich (serverdan, ~3 soniyada yangilanadi)
+      var _mk=(r.meter_km && r.meter_km>0)?r.meter_km:0;
+      var _mp=(r.final_price && r.final_price>0)?r.final_price:0;
+      priceLine='<div class="list-sub" style="color:var(--primary);font-weight:700;margin:3px 0 0">📟 Bosib o\u02bctilgan: '+_mk.toFixed(1)+' km · ~'+(_mp?fmtSom(_mp):"0")+' so\u02bcm</div>';
+    } else if(r.ozim){
+      priceLine='<div class="list-sub" style="margin:3px 0 0">Narx masofa bo\u02bcyicha, safar oxirida</div>';
+    } else if(r.price && r.price>0){
+      priceLine='<div class="list-sub" style="color:var(--primary);font-weight:700;margin:3px 0 0">💰 ~'+fmtSom(r.price)+' so\u02bcm (naqd)</div>';
+    } else {
+      priceLine='';
+    }
     el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
       '<div style="display:flex;gap:12px;align-items:center">'+
         '<div class="cab-logo" style="background:var(--amber-tint);flex:none">🚖</div>'+
@@ -3770,32 +3785,48 @@
 
   /* ---------- v1387: HAYDOVCHI — KELAYOTGAN ZAKAZLAR ---------- */
   var drvOrdersTimer=null;
-  function rideLinesHtml(r){
+  function rideLinesHtml(r, hidePrice){
     var fromL='<div class="list-sub">🟢 '+esc(r.from_addr||"Boshlanish")+'</div>';
     var toL = r.ozim ? '<div class="list-sub">🗣 Manzilni og\'zaki aytadi</div>'
                      : '<div class="list-sub">🔴 '+esc(r.to_addr||"Manzil")+'</div>';
     var dist = (r.dist_km && r.dist_km>0)
       ? '<div class="list-sub" style="color:var(--soft)">~'+r.dist_km.toFixed(1)+' km'+(r.dur_min?' · ~'+r.dur_min+' daq':'')+'</div>' : '';
-    var price = (r.price && r.price>0)
+    var price = hidePrice ? '' : ((r.price && r.price>0)
       ? '<div class="list-sub" style="color:var(--primary);font-weight:700;margin-top:2px">💰 ~'+fmtSom(r.price)+' so\'m (naqd)</div>'
-      : (r.ozim ? '<div class="list-sub" style="color:var(--soft);margin-top:2px">Narx masofa bo\'yicha</div>' : '');
+      : (r.ozim ? '<div class="list-sub" style="color:var(--soft);margin-top:2px">Narx masofa bo\'yicha</div>' : ''));
     return fromL+toL+dist+price;
   }
   function renderDriverOrders(data){
     var box=el("drvOrders"); if(!box) return;
     data=data||{}; var html="";
+    // Jonli hisoblagichni boshqarish: faqat safar davom etayotgan "o'zim aytaman" zakazda ishlaydi
+    var cur=data.current;
+    if(cur && cur.status==="ongoing" && cur.ozim){ startMeter(cur.id, cur.kind); } else { stopMeter(); }
     if(data.current){
       var c=data.current, cust=c.customer||{};
       var act=drvActionFor(c.status);
+      var ongoingOzim=(c.status==="ongoing" && c.ozim);
+      // Narx / jonli hisoblagich bloki
+      var priceBlock;
+      if(ongoingOzim){
+        priceBlock='<div id="drvMeter" style="margin-top:8px;padding:9px 11px;background:var(--primary-tint);border-radius:10px;color:var(--primary);font-weight:700;font-size:15px">📟 Bosib o\'tilgan: <b>'+meterKm.toFixed(1)+' km</b> · ~'+(calcPrice(c.kind,meterKm)?fmtSom(calcPrice(c.kind,meterKm)):"0")+' so\'m</div>';
+      } else if(!c.ozim && c.price && c.price>0){
+        priceBlock='<div class="list-sub" style="color:var(--primary);font-weight:700;margin-top:8px">💰 ~'+fmtSom(c.price)+' so\'m (kelishilgan, naqd)</div>';
+      } else if(c.ozim){
+        priceBlock='<div class="list-sub" style="color:var(--soft);margin-top:8px">Narx safar oxirida — hisoblagich bo\'yicha</div>';
+      } else { priceBlock=''; }
       html='<div class="panel-card" style="margin-bottom:10px;border:1.5px solid var(--primary)">'+
         '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">'+drvStatusLabel(c.status)+' · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
-        rideLinesHtml(c)+
+        rideLinesHtml(c, true)+
+        priceBlock+
         '<div class="list-sub" style="margin-top:6px">Mijoz: '+esc(cust.name||"—")+'</div>'+
         '<div style="display:flex;gap:9px;margin-top:10px">'+
           (cust.phone?'<a class="btn btn-soft" style="height:42px;display:flex;align-items:center;justify-content:center;text-decoration:none;flex:0 0 auto;padding:0 16px" href="tel:'+esc(cust.phone)+'">📞</a>':'')+
           (act?'<button class="btn btn-primary" style="height:42px;flex:1" data-ride-status="'+act.next+'" data-ride-id="'+c.id+'">'+act.label+'</button>':'')+
         '</div></div>';
-      box.innerHTML=html; return;
+      box.innerHTML=html;
+      if(ongoingOzim) updateMeterDisplay();
+      return;
     }
     if(!data.available){
       html='<div class="empty" style="padding:20px 14px"><h3>Siz «Bandman»siz</h3><p>Zakaz olish uchun yuqorida «Bo\'shman»ni tanlang.</p></div>';
@@ -3853,13 +3884,57 @@
   function setRideStatus(id, newStatus){
     function go(){
       api("POST","/api/rides/"+id+"/status", {status:newStatus}).then(function(){
-        if(newStatus==="completed") showMsg("Zakaz yakunlandi. Rahmat!");
+        if(newStatus==="completed"){ stopMeter(); showMsg("Zakaz yakunlandi. Rahmat!"); }
         loadDriverOrders();
       }).catch(function(e){ showMsg((e&&e.message)?e.message:"Xatolik."); loadDriverOrders(); });
     }
     if(newStatus==="completed"){
-      askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){ if(ok) go(); });
+      askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){
+        if(!ok) return;
+        sendMeterThen(go);   // avval oxirgi masofani serverga saqlaymiz, keyin yakunlaymiz
+      });
     } else { go(); }
+  }
+
+  // ===== Jonli GPS hisoblagich (faqat haydovchi, "ongoing" + "o'zim aytaman") =====
+  function startMeter(rideId, kind){
+    if(meterWatchId!==null && meterRideId===rideId) return;   // allaqachon shu safar uchun ishlayapti
+    stopMeter();
+    meterRideId=rideId; meterKind=kind||"taxi"; meterKm=0; meterLastPt=null; _meterSendAt=0;
+    updateMeterDisplay();
+    if(!navigator.geolocation) return;
+    meterWatchId=navigator.geolocation.watchPosition(function(pos){
+      var acc=pos.coords.accuracy||999;
+      if(acc>50) return;                                       // ishonchsiz nuqta — tashlab ketamiz
+      var pt=[pos.coords.latitude, pos.coords.longitude];
+      if(!meterLastPt){ meterLastPt=pt; return; }
+      var dd=distMeters(meterLastPt[0], meterLastPt[1], pt[0], pt[1]);
+      if(dd<10) return;                                        // joyida turish / GPS titrashi — sanamaymiz
+      if(dd>1000){ meterLastPt=pt; return; }                   // GPS sakrashi — sanamaymiz
+      meterKm += dd/1000;
+      meterLastPt=pt;
+      updateMeterDisplay();
+      var now=Date.now();
+      if(now-_meterSendAt>10000){ _meterSendAt=now; sendMeter(); }   // har ~10 soniyada serverga
+    }, function(){}, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+  }
+  function stopMeter(){
+    if(meterWatchId!==null){ try{ navigator.geolocation.clearWatch(meterWatchId); }catch(e){} }
+    meterWatchId=null;
+  }
+  function sendMeter(){
+    if(meterRideId==null) return;
+    api("POST","/api/rides/"+meterRideId+"/progress", {km: meterKm}).catch(function(){});
+  }
+  // Oxirgi masofani yuborib, keyin cb() chaqiramiz (yakunlashdan oldin kerak: /progress faqat "ongoing"da yozadi)
+  function sendMeterThen(cb){
+    if(meterRideId==null){ cb(); return; }
+    api("POST","/api/rides/"+meterRideId+"/progress", {km: meterKm}).then(function(){ cb(); }, function(){ cb(); });
+  }
+  function updateMeterDisplay(){
+    var elm=el("drvMeter"); if(!elm) return;
+    var pr=calcPrice(meterKind, meterKm);
+    elm.innerHTML="📟 Bosib o'tilgan: <b>"+meterKm.toFixed(1)+" km</b> · ~"+(pr?fmtSom(pr):"0")+" so'm";
   }
 
   el("taxidrvBody").addEventListener("click", function(e){
