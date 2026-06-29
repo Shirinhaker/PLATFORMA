@@ -307,7 +307,7 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
 
 # Masofa bo'yicha taxminiy narx (so'mda). BU NAMUNA STAVKALAR — egasi o'zgartirishi mumkin.
 PRICING = {
-    "taxi":     {"base": 5000,  "per_km": 2000, "min": 12000},
+    "taxi":     {"base": 5000,  "per_km": 2000, "min": 9000},
     "dostavka": {"base": 10000, "per_km": 2500, "min": 15000},
 }
 
