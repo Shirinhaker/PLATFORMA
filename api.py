@@ -1547,14 +1547,15 @@ async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: st
 # QIDIRUV (mahsulot + e'lon + mutaxasis + biznes)
 # ====================================================================
 def _search_terms(q):
-    """Qidiruv uchun asosiy so'z va oddiy sinonimlarni tayyorlaydi."""
-    base = (q or "").strip()
-    norm = (base.lower()
-            .replace("’", "'")
-            .replace("‘", "'")
-            .replace("`", "'")
-            .replace("ʻ", "'")
-            .replace("ʼ", "'"))
+    """Qidiruv so'zini tozalab, variantlar va sinonimlarni tayyorlaydi.
+    Apostrof (', ', `, ʻ, ʼ) bir xil qilinadi va so'z ichidan olib tashlanadi
+    (do'kon -> dokon); apostrof so'z chegarasi deb hisoblanmaydi."""
+    base = (q or "").strip().lower()
+    norm = base
+    for a in ("’", "‘", "`", "ʻ", "ʼ"):
+        norm = norm.replace(a, "'")
+    canon = norm.replace("'", "")          # apostrofsiz shakl: do'kon -> dokon
+
     variants = []
 
     def add(x):
@@ -1564,45 +1565,91 @@ def _search_terms(q):
 
     add(base)
     add(norm)
-    add(norm.replace("'", ""))
-    add(norm.replace("-", " "))
-    add(norm.replace("'", " "))
-
-    for part in norm.replace("-", " ").replace("'", " ").split():
+    add(canon)
+    # so'zlarga ajratish: faqat bo'shliq va chiziqcha bo'yicha (apostrof bo'yicha EMAS)
+    for part in canon.replace("-", " ").split():
         add(part)
+    for part in norm.replace("-", " ").split():
+        add(part.replace("'", ""))
+
+    # Sinonimlar — ANIQ so'z bo'yicha (substring emas: "telefon" ichidagi "non" kabi
+    # noto'g'ri mosliklarning oldini oladi). Kalitlar apostrofsiz (kanonik) yoziladi.
+    words = set(canon.replace("-", " ").split())
+    words.add(canon)
 
     syns = {
-        "muhr": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "tamga": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "pechat": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "shtamp": ["muhr", "tamga", "muhr tamga", "muhr-tamga", "pechat", "shtamp", "stamp"],
-        "taxi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
-        "taksi": ["taxi", "taksi", "yo'lovchi tashish", "yo'lovchi", "mashina"],
+        "muhr": ["muhr", "tamga", "pechat", "shtamp", "stamp"],
+        "tamga": ["muhr", "tamga", "pechat", "shtamp"],
+        "pechat": ["muhr", "tamga", "pechat", "shtamp"],
+        "shtamp": ["muhr", "tamga", "pechat", "shtamp"],
+        "taksi": ["taksi", "taxi", "yo'lovchi", "mashina"],
+        "taxi": ["taksi", "taxi", "yo'lovchi", "mashina"],
         "dori": ["dori", "dorixona", "apteka", "farmatsevtika"],
         "dorixona": ["dori", "dorixona", "apteka", "farmatsevtika"],
         "apteka": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "usta": ["usta", "ta'mir", "tamir", "santexnik", "elektrik", "montaj", "quruvchi"],
-        "repetitor": ["repetitor", "o'qituvchi", "ustoz", "ta'lim", "kurs"],
+        "usta": ["usta", "ta'mir", "santexnik", "elektrik", "montaj", "quruvchi"],
+        "repetitor": ["repetitor", "o'qituvchi", "ustoz", "kurs"],
         "advokat": ["advokat", "yurist", "huquq", "konsalting"],
+        "dokon": ["dokon", "do'kon", "magazin", "market"],
+        "magazin": ["dokon", "do'kon", "magazin", "market"],
+        "oshxona": ["oshxona", "restoran", "kafe", "choyxona", "ovqat"],
+        "restoran": ["oshxona", "restoran", "kafe", "choyxona"],
+        "kafe": ["oshxona", "restoran", "kafe", "choyxona"],
+        "non": ["non", "nonvoy", "nonvoyxona", "pekarnya"],
+        "gosht": ["gosht", "qassob", "molgosht"],
+        "qassob": ["gosht", "qassob"],
+        "kiyim": ["kiyim", "kiyim-kechak", "odejda"],
+        "sartarosh": ["sartarosh", "salon", "soch", "go'zallik"],
+        "salon": ["sartarosh", "salon", "go'zallik"],
+        "shifokor": ["shifokor", "klinika", "poliklinika", "tibbiyot", "vrach"],
+        "klinika": ["shifokor", "klinika", "poliklinika", "tibbiyot"],
+        "mebel": ["mebel", "divan", "stol", "shkaf"],
+        "gul": ["gul", "gulchi", "guldasta", "buket"],
+        "telefon": ["telefon", "smartfon", "aksessuar", "gadjet"],
+        "qurilish": ["qurilish", "gisht", "stroymaterial", "sement"],
+        "avtoservis": ["avtoservis", "avtomashina", "remont", "moylash"],
     }
     for key, arr in syns.items():
-        if key in norm:
+        if key in words:
             for x in arr:
                 add(x)
 
-    return variants[:18]
+    return variants[:24]
+
+
+_APOS_CHARS = ("'", "’", "‘", "`", "ʻ", "ʼ")
+
+
+def _canon_sql(col):
+    """Ustun qiymatini kanonik shaklga keltiruvchi SQL ifoda:
+    kichik harf + barcha apostrof ko'rinishlarini olib tashlash."""
+    expr = "LOWER(COALESCE(" + col + ", ''))"
+    for a in _APOS_CHARS:
+        expr = "REPLACE(" + expr + ", '" + a.replace("'", "''") + "', '')"
+    return expr
 
 
 def _like_where(columns, terms):
-    """Berilgan ustunlar bo'yicha xavfsiz LIKE shartini quradi."""
+    """Ustunlar bo'yicha LIKE shartini quradi. Ustun ham, qidiruv so'zi ham bir xil
+    'kanonik' (kichik harf, apostrofsiz) shaklga keltirilib taqqoslanadi — shu sabab
+    "dokon" ham "do'koni"ni topadi (ikki tomonlama apostrof moslash)."""
+    cterms = []
+    for t in terms:
+        ct = (t or "").lower()
+        for a in _APOS_CHARS:
+            ct = ct.replace(a, "")
+        ct = ct.strip()
+        if len(ct) >= 2 and ct not in cterms:
+            cterms.append(ct)
+    if not cterms:
+        return "1=0", []
     clauses = []
     params = []
     for col in columns:
-        for term in terms:
-            clauses.append("COALESCE(" + col + ", '') LIKE ?")
-            params.append("%" + term + "%")
-    if not clauses:
-        return "1=0", []
+        cexpr = _canon_sql(col)
+        for ct in cterms:
+            clauses.append(cexpr + " LIKE ?")
+            params.append("%" + ct + "%")
     return "(" + " OR ".join(clauses) + ")", params
 
 
