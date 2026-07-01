@@ -1674,6 +1674,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
     terms = _search_terms(q)
+    _match = _fts_match(q)
     conn = db()
 
     product_where, product_params = _like_where(
@@ -1689,15 +1690,29 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         product_params,
     ).fetchall()
 
-    listing_where, listing_params = _like_where(
-        ["title", "cat", "price", "descr", "address"],
-        terms,
-    )
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
-        " ORDER BY created_at DESC LIMIT 50",
-        listing_params,
-    ).fetchall()
+    # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
+    listings = None
+    if _match:
+        try:
+            listings = conn.execute(
+                "SELECT l.*, bm25(listings_fts, 10.0, 1.0) AS _rank "
+                "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
+                "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' "
+                "ORDER BY _rank LIMIT 50",
+                (_match,),
+            ).fetchall()
+        except Exception:
+            listings = None
+    if listings is None:
+        listing_where, listing_params = _like_where(
+            ["title", "cat", "price", "descr", "address"],
+            terms,
+        )
+        listings = conn.execute(
+            "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
+            " ORDER BY created_at DESC LIMIT 50",
+            listing_params,
+        ).fetchall()
 
     specialist_where, specialist_params = _like_where(
         ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
@@ -1715,11 +1730,10 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
     # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
     # avtomatik eski LIKE usuliga qaytadi (biznes qidiruvi hech qachon buzilmaydi).
     businesses = None
-    _match = _fts_match(q)
     if _match:
         try:
             businesses = conn.execute(
-                "SELECT b.*, bm25(businesses_fts) AS _rank "
+                "SELECT b.*, bm25(businesses_fts, 10.0, 1.0) AS _rank "
                 "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid "
                 "WHERE businesses_fts MATCH ? AND b.status='active' "
                 "ORDER BY _rank LIMIT 50",
