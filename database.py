@@ -658,3 +658,32 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN biz_pass_hash TEXT")
     if "map_visible" not in bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN map_visible INTEGER DEFAULT 0")
+
+    # --- v1393: Bizneslar uchun to'liq matnli qidiruv indeksi (FTS5) + avtomatik sinxron ---
+    _biz_fts_fields = ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"]
+
+    def _biz_txt_expr(prefix):
+        # Maydonlarni birlashtirib kanonik shaklga keltiruvchi SQL ifoda
+        # (kichik harf + apostrofni olib tashlash — qidiruvdagi bilan bir xil).
+        concat = " || ' ' || ".join("COALESCE(" + prefix + f + ",'')" for f in _biz_fts_fields)
+        expr = "LOWER(" + concat + ")"
+        for a in ("'", "\u2019", "\u2018", "`", "\u02bb", "\u02bc"):
+            expr = "REPLACE(" + expr + ", '" + a.replace("'", "''") + "', '')"
+        return expr
+
+    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS businesses_fts USING fts5(txt)")
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS biz_fts_ai AFTER INSERT ON businesses BEGIN "
+        "INSERT INTO businesses_fts(rowid, txt) VALUES(new.id, " + _biz_txt_expr("new.") + "); END"
+    )
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS biz_fts_ad AFTER DELETE ON businesses BEGIN "
+        "DELETE FROM businesses_fts WHERE rowid = old.id; END"
+    )
+    conn.execute(
+        "CREATE TRIGGER IF NOT EXISTS biz_fts_au AFTER UPDATE ON businesses BEGIN "
+        "DELETE FROM businesses_fts WHERE rowid = old.id; "
+        "INSERT INTO businesses_fts(rowid, txt) VALUES(new.id, " + _biz_txt_expr("new.") + "); END"
+    )
+    if conn.execute("SELECT COUNT(*) FROM businesses_fts").fetchone()[0] == 0:
+        conn.execute("INSERT INTO businesses_fts(rowid, txt) SELECT id, " + _biz_txt_expr("") + " FROM businesses")
