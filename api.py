@@ -1677,18 +1677,35 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
     _match = _fts_match(q)
     conn = db()
 
-    product_where, product_params = _like_where(
-        ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
-        terms,
-    )
-    products = conn.execute(
-        """SELECT i.id, i.name, i.price, i.note, i.kind,
-                  b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
-           FROM items i JOIN businesses b ON b.id=i.business_id
-           WHERE b.status='active' AND """ + product_where + """
-           ORDER BY i.created_at DESC LIMIT 50""",
-        product_params,
-    ).fetchall()
+    # Mahsulotlar — FTS (bm25 moslik, mahsulot nomi 10x). Xatolik bo'lsa eski LIKE'ga qaytadi.
+    products = None
+    if _match:
+        try:
+            products = conn.execute(
+                "SELECT i.id, i.name, i.price, i.note, i.kind, "
+                "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
+                "bm25(items_fts, 10.0, 1.0) AS _rank "
+                "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
+                "JOIN businesses b ON b.id = i.business_id "
+                "WHERE items_fts MATCH ? AND b.status='active' "
+                "ORDER BY _rank LIMIT 50",
+                (_match,),
+            ).fetchall()
+        except Exception:
+            products = None
+    if products is None:
+        product_where, product_params = _like_where(
+            ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
+            terms,
+        )
+        products = conn.execute(
+            """SELECT i.id, i.name, i.price, i.note, i.kind,
+                      b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
+               FROM items i JOIN businesses b ON b.id=i.business_id
+               WHERE b.status='active' AND """ + product_where + """
+               ORDER BY i.created_at DESC LIMIT 50""",
+            product_params,
+        ).fetchall()
 
     # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
     listings = None
