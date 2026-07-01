@@ -739,6 +739,47 @@ def _migrate(conn):
             "SELECT i.id, " + _it_name_i + ", " + _it_body_i + " "
             "FROM items i JOIN businesses b ON b.id = i.business_id")
 
+    # --- v1397: Mutaxassislar (specialists) uchun FTS — mutaxassis + foydalanuvchi maydonlari ---
+    # 'name' = kasb + foydalanuvchi ismi (10x og'irlik); 'body' = tavsif/narx/hudud/tashkilot/
+    # lavozim + foydalanuvchi viloyat/tuman/mahalla. PK = user_id. Foydalanuvchi maydonlari
+    # mutaxassis yozilganda qo'shiladi (triggerlar faqat mutaxassis yozuviga ta'sir qiladi).
+    scols = [r["name"] for r in conn.execute("PRAGMA table_info(specialists_fts)").fetchall()]
+    if scols and scols != ["name", "body"]:
+        conn.execute("DROP TABLE IF EXISTS specialists_fts")
+    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS specialists_fts USING fts5(name, body)")
+    for suf in ("ai", "ad", "au"):
+        conn.execute("DROP TRIGGER IF EXISTS spec_fts_" + suf)
+
+    _sp_name_new = _canon_expr("COALESCE(new.kasb,'') || ' ' || COALESCE(u.name,'')")
+    _sp_body_new = _canon_expr(
+        "COALESCE(new.descr,'') || ' ' || COALESCE(new.narx,'') || ' ' || COALESCE(new.hudud,'') || ' ' || "
+        "COALESCE(new.org,'') || ' ' || COALESCE(new.dept,'') || ' ' || COALESCE(new.lavozim,'') || ' ' || "
+        "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
+    conn.execute(
+        "CREATE TRIGGER spec_fts_ai AFTER INSERT ON specialists BEGIN "
+        "INSERT INTO specialists_fts(rowid, name, body) "
+        "SELECT new.user_id, " + _sp_name_new + ", " + _sp_body_new + " "
+        "FROM users u WHERE u.id = new.user_id; END")
+    conn.execute(
+        "CREATE TRIGGER spec_fts_ad AFTER DELETE ON specialists BEGIN "
+        "DELETE FROM specialists_fts WHERE rowid = old.user_id; END")
+    conn.execute(
+        "CREATE TRIGGER spec_fts_au AFTER UPDATE ON specialists BEGIN "
+        "DELETE FROM specialists_fts WHERE rowid = old.user_id; "
+        "INSERT INTO specialists_fts(rowid, name, body) "
+        "SELECT new.user_id, " + _sp_name_new + ", " + _sp_body_new + " "
+        "FROM users u WHERE u.id = new.user_id; END")
+    if conn.execute("SELECT COUNT(*) FROM specialists_fts").fetchone()[0] == 0:
+        _sp_name_s = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
+        _sp_body_s = _canon_expr(
+            "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
+            "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
+            "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
+        conn.execute(
+            "INSERT INTO specialists_fts(rowid, name, body) "
+            "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
+            "FROM specialists s JOIN users u ON u.id = s.user_id")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
