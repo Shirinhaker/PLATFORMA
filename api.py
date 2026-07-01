@@ -18,6 +18,7 @@ import json
 import time
 import re
 import os
+import math
 import secrets
 
 from fastapi import APIRouter, Request, Header, HTTPException
@@ -1668,127 +1669,252 @@ def _fts_match(q):
     return " OR ".join(t + "*" for t in toks)
 
 
+# Qidiruv kengligi (scope) -> radius (km). None = cheklovsiz (Respublika).
+_SCOPE_RADIUS_KM = {
+    "Mahalla": 3.0,
+    "Tuman": 12.0,
+    "Shahar": 35.0,
+    "Viloyat": 150.0,
+    "Respublika": None,
+}
+
+
+def _within_radius(row, ulat, ulng, radius_km):
+    """Natija foydalanuvchidan radius_km ichidami? Koordinatasi yo'q bo'lsa True (yashirmaymiz)."""
+    try:
+        keys = row.keys()
+    except Exception:
+        keys = []
+    lat = row["lat"] if "lat" in keys else None
+    lng = row["lng"] if "lng" in keys else None
+    if lat is None or lng is None:
+        return True
+    dlat = (lat - ulat) * 111.0
+    dlng = (lng - ulng) * 111.0 * math.cos(math.radians(ulat))
+    return (dlat * dlat + dlng * dlng) <= (radius_km * radius_km)
+
+
+def _edit_distance(a, b):
+    """Levenshtein masofasi (necha harf o'zgargani). Katta farqni tez rad etadi."""
+    if a == b:
+        return 0
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 2:
+        return 99
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        cur = [i] + [0] * lb
+        ai = a[i - 1]
+        for j in range(1, lb + 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (0 if ai == b[j - 1] else 1))
+        prev = cur
+    return prev[lb]
+
+
+# Fuzzy uchun keng tarqalgan atamalar (kanonik: kichik harf, apostrofsiz).
+_FUZZY_VOCAB = {
+    "dokon", "magazin", "market", "oshxona", "restoran", "kafe", "choyxona", "ovqat",
+    "non", "nonvoyxona", "gosht", "qassob", "kiyim", "sartarosh", "salon", "soch",
+    "shifokor", "klinika", "poliklinika", "dorixona", "apteka", "dori", "mebel",
+    "gul", "gulchi", "telefon", "smartfon", "kompyuter", "qurilish", "avtoservis",
+    "taksi", "usta", "repetitor", "advokat", "fotograf", "tikuvchi", "shirinlik",
+    "kabob", "somsa", "pizza", "burger", "stomatolog", "vrach", "kir", "yuvish",
+}
+
+
+def _fuzzy_correct(conn, q):
+    """Qidiruv bo'sh natija berganda: xato yozilgan so'zlarni yaqin (mavjud) so'zlarga
+    tuzatadi. Lug'at: FTS nom ustunlaridagi haqiqiy so'zlar + keng tarqalgan atamalar."""
+    vocab = set(_FUZZY_VOCAB)
+    try:
+        for tbl in ("businesses_fts", "listings_fts", "items_fts", "specialists_fts"):
+            for row in conn.execute("SELECT name FROM " + tbl):
+                for w in (row[0] or "").split():
+                    if len(w) >= 3:
+                        vocab.add(w)
+    except Exception:
+        pass
+    raw = (q or "").lower()
+    for a in _APOS_CHARS:
+        raw = raw.replace(a, "")
+    toks = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2]
+    if not toks:
+        return None
+    changed = False
+    out = []
+    for t in toks:
+        if t in vocab:
+            out.append(t)
+            continue
+        thr = 1 if len(t) < 7 else 2
+        best, bestd = None, thr + 1
+        for v in vocab:
+            if abs(len(v) - len(t)) > thr:
+                continue
+            d = _edit_distance(t, v)
+            if d < bestd:
+                bestd, best = d, v
+        if best is not None and bestd <= thr:
+            out.append(best)
+            changed = True
+        else:
+            out.append(t)
+    if not changed:
+        return None
+    return " ".join(out)
+
+
 @router.get("/search")
 async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
-    terms = _search_terms(q)
-    _match = _fts_match(q)
     conn = db()
+    # Qadam 3: foydalanuvchi joylashuvi (masofa filtri uchun). Bo'lmasa filtr qo'llanmaydi.
+    ulat = ulng = None
+    try:
+        _u = require_user(conn, x_telegram_init_data)
+        ulat, ulng = _u["lat"], _u["lng"]
+    except Exception:
+        ulat = ulng = None
 
-    # Mahsulotlar — FTS (bm25 moslik, mahsulot nomi 10x). Xatolik bo'lsa eski LIKE'ga qaytadi.
-    products = None
-    if _match:
-        try:
+    def _fetch(qq):
+        terms = _search_terms(qq)
+        _match = _fts_match(qq)
+
+        # Mahsulotlar — FTS (bm25 moslik, mahsulot nomi 10x). Xatolik bo'lsa eski LIKE'ga qaytadi.
+        products = None
+        if _match:
+            try:
+                products = conn.execute(
+                    "SELECT i.id, i.name, i.price, i.note, i.kind, "
+                    "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
+                    "bm25(items_fts, 10.0, 1.0) AS _rank "
+                    "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
+                    "JOIN businesses b ON b.id = i.business_id "
+                    "WHERE items_fts MATCH ? AND b.status='active' "
+                    "ORDER BY _rank LIMIT 50",
+                    (_match,),
+                ).fetchall()
+            except Exception:
+                products = None
+        if products is None:
+            product_where, product_params = _like_where(
+                ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
+                terms,
+            )
             products = conn.execute(
-                "SELECT i.id, i.name, i.price, i.note, i.kind, "
-                "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
-                "bm25(items_fts, 10.0, 1.0) AS _rank "
-                "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
-                "JOIN businesses b ON b.id = i.business_id "
-                "WHERE items_fts MATCH ? AND b.status='active' "
-                "ORDER BY _rank LIMIT 50",
-                (_match,),
+                """SELECT i.id, i.name, i.price, i.note, i.kind,
+                          b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
+                   FROM items i JOIN businesses b ON b.id=i.business_id
+                   WHERE b.status='active' AND """ + product_where + """
+                   ORDER BY i.created_at DESC LIMIT 50""",
+                product_params,
             ).fetchall()
-        except Exception:
-            products = None
-    if products is None:
-        product_where, product_params = _like_where(
-            ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
-            terms,
-        )
-        products = conn.execute(
-            """SELECT i.id, i.name, i.price, i.note, i.kind,
-                      b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
-               FROM items i JOIN businesses b ON b.id=i.business_id
-               WHERE b.status='active' AND """ + product_where + """
-               ORDER BY i.created_at DESC LIMIT 50""",
-            product_params,
-        ).fetchall()
 
-    # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
-    listings = None
-    if _match:
-        try:
+        # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
+        listings = None
+        if _match:
+            try:
+                listings = conn.execute(
+                    "SELECT l.*, bm25(listings_fts, 10.0, 1.0) AS _rank "
+                    "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
+                    "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' "
+                    "ORDER BY _rank LIMIT 50",
+                    (_match,),
+                ).fetchall()
+            except Exception:
+                listings = None
+        if listings is None:
+            listing_where, listing_params = _like_where(
+                ["title", "cat", "price", "descr", "address"],
+                terms,
+            )
             listings = conn.execute(
-                "SELECT l.*, bm25(listings_fts, 10.0, 1.0) AS _rank "
-                "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
-                "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' "
-                "ORDER BY _rank LIMIT 50",
-                (_match,),
+                "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
+                " ORDER BY created_at DESC LIMIT 50",
+                listing_params,
             ).fetchall()
-        except Exception:
-            listings = None
-    if listings is None:
-        listing_where, listing_params = _like_where(
-            ["title", "cat", "price", "descr", "address"],
-            terms,
-        )
-        listings = conn.execute(
-            "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
-            " ORDER BY created_at DESC LIMIT 50",
-            listing_params,
-        ).fetchall()
 
-    # Mutaxassislar — FTS (bm25 moslik, kasb+ism 10x). Bo'sh (available) birinchi, keyin moslik.
-    specialists = None
-    if _match:
-        try:
+        # Mutaxassislar — FTS (bm25 moslik, kasb+ism 10x). Bo'sh (available) birinchi, keyin moslik.
+        specialists = None
+        if _match:
+            try:
+                specialists = conn.execute(
+                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, "
+                    "bm25(specialists_fts, 10.0, 1.0) AS _rank "
+                    "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
+                    "JOIN users u ON u.id = s.user_id "
+                    "WHERE specialists_fts MATCH ? AND s.visible=1 "
+                    "ORDER BY s.available DESC, _rank LIMIT 50",
+                    (_match,),
+                ).fetchall()
+            except Exception:
+                specialists = None
+        if specialists is None:
+            specialist_where, specialist_params = _like_where(
+                ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
+                 "u.name", "u.region", "u.district", "u.mahalla"],
+                terms,
+            )
             specialists = conn.execute(
-                "SELECT s.*, u.name, u.region, u.district, u.mahalla, "
-                "bm25(specialists_fts, 10.0, 1.0) AS _rank "
-                "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
-                "JOIN users u ON u.id = s.user_id "
-                "WHERE specialists_fts MATCH ? AND s.visible=1 "
-                "ORDER BY s.available DESC, _rank LIMIT 50",
-                (_match,),
+                """SELECT s.*, u.name, u.region, u.district, u.mahalla
+                   FROM specialists s JOIN users u ON u.id=s.user_id
+                   WHERE s.visible=1 AND """ + specialist_where + """
+                   ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
+                specialist_params,
             ).fetchall()
-        except Exception:
-            specialists = None
-    if specialists is None:
-        specialist_where, specialist_params = _like_where(
-            ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
-             "u.name", "u.region", "u.district", "u.mahalla"],
-            terms,
-        )
-        specialists = conn.execute(
-            """SELECT s.*, u.name, u.region, u.district, u.mahalla
-               FROM specialists s JOIN users u ON u.id=s.user_id
-               WHERE s.visible=1 AND """ + specialist_where + """
-               ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
-            specialist_params,
-        ).fetchall()
 
-    # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
-    # avtomatik eski LIKE usuliga qaytadi (biznes qidiruvi hech qachon buzilmaydi).
-    businesses = None
-    if _match:
-        try:
+        # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
+        # avtomatik eski LIKE usuliga qaytadi (biznes qidiruvi hech qachon buzilmaydi).
+        businesses = None
+        if _match:
+            try:
+                businesses = conn.execute(
+                    "SELECT b.*, bm25(businesses_fts, 10.0, 1.0) AS _rank "
+                    "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid "
+                    "WHERE businesses_fts MATCH ? AND b.status='active' "
+                    "ORDER BY _rank LIMIT 50",
+                    (_match,),
+                ).fetchall()
+            except Exception:
+                businesses = None
+        if businesses is None:
+            business_where, business_params = _like_where(
+                ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
+                terms,
+            )
             businesses = conn.execute(
-                "SELECT b.*, bm25(businesses_fts, 10.0, 1.0) AS _rank "
-                "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid "
-                "WHERE businesses_fts MATCH ? AND b.status='active' "
-                "ORDER BY _rank LIMIT 50",
-                (_match,),
+                "SELECT * FROM businesses WHERE status='active' AND " + business_where +
+                " ORDER BY created_at DESC LIMIT 50",
+                business_params,
             ).fetchall()
-        except Exception:
-            businesses = None
-    if businesses is None:
-        business_where, business_params = _like_where(
-            ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
-            terms,
-        )
-        businesses = conn.execute(
-            "SELECT * FROM businesses WHERE status='active' AND " + business_where +
-            " ORDER BY created_at DESC LIMIT 50",
-            business_params,
-        ).fetchall()
+
+        # Qadam 3: "Qidiruv kengligi" bo'yicha masofa filtri (qattiq). Koordinatasiz natija qoladi.
+        _radius = _SCOPE_RADIUS_KM.get(scope)
+        if _radius is not None and ulat is not None and ulng is not None:
+            products    = [r for r in products    if _within_radius(r, ulat, ulng, _radius)]
+            listings    = [r for r in listings    if _within_radius(r, ulat, ulng, _radius)]
+            specialists = [r for r in specialists if _within_radius(r, ulat, ulng, _radius)]
+            businesses  = [r for r in businesses  if _within_radius(r, ulat, ulng, _radius)]
+
+        return products, listings, specialists, businesses
+
+    products, listings, specialists, businesses = _fetch(q)
+    corrected = None
+    if (len(products) + len(listings) + len(specialists) + len(businesses)) == 0:
+        cq = _fuzzy_correct(conn, q)
+        if cq and cq != q:
+            p2, l2, s2, b2 = _fetch(cq)
+            if (len(p2) + len(l2) + len(s2) + len(b2)) > 0:
+                products, listings, specialists, businesses = p2, l2, s2, b2
+                corrected = cq
 
     result = {
         "q": q,
         "scope": scope,
-        "terms": terms,
+        "corrected": corrected,
+        "terms": _search_terms(corrected or q),
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"],
                       "note": p["note"], "kind": p["kind"],
                       "business_id": p["biz_id"], "business_name": p["biz_name"],
