@@ -697,3 +697,91 @@ def _migrate(conn):
 
     _setup_fts("businesses", "name", ["yon", "tur", "descr", "address", "phone", "telegram", "work_hours"], "biz")
     _setup_fts("listings", "title", ["cat", "price", "descr", "address"], "lst")
+
+    # --- v1396: Mahsulotlar (items) uchun FTS — mahsulot + tegishli biznes maydonlari ---
+    # 'name' = mahsulot nomi (10x og'irlik); 'body' = izoh/tur + biznes nomi/yo'nalishi/manzili.
+    # Biznes maydonlari mahsulot YOZILGANDA qo'shiladi. Bu triggerlar faqat mahsulot
+    # yozuvida ishlaydi (biznes tahririga ta'sir qilmaydi -> xavfsiz).
+    icols = [r["name"] for r in conn.execute("PRAGMA table_info(items_fts)").fetchall()]
+    if icols and icols != ["name", "body"]:
+        conn.execute("DROP TABLE IF EXISTS items_fts")
+    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(name, body)")
+    for suf in ("ai", "ad", "au"):
+        conn.execute("DROP TRIGGER IF EXISTS item_fts_" + suf)
+
+    _it_name_new = _canon_expr("COALESCE(new.name,'')")
+    _it_body_new = _canon_expr(
+        "COALESCE(new.note,'') || ' ' || COALESCE(new.kind,'') || ' ' || "
+        "COALESCE(b.name,'') || ' ' || COALESCE(b.yon,'') || ' ' || COALESCE(b.tur,'') || ' ' || "
+        "COALESCE(b.descr,'') || ' ' || COALESCE(b.address,'')")
+    conn.execute(
+        "CREATE TRIGGER item_fts_ai AFTER INSERT ON items BEGIN "
+        "INSERT INTO items_fts(rowid, name, body) "
+        "SELECT new.id, " + _it_name_new + ", " + _it_body_new + " "
+        "FROM businesses b WHERE b.id = new.business_id; END")
+    conn.execute(
+        "CREATE TRIGGER item_fts_ad AFTER DELETE ON items BEGIN "
+        "DELETE FROM items_fts WHERE rowid = old.id; END")
+    conn.execute(
+        "CREATE TRIGGER item_fts_au AFTER UPDATE ON items BEGIN "
+        "DELETE FROM items_fts WHERE rowid = old.id; "
+        "INSERT INTO items_fts(rowid, name, body) "
+        "SELECT new.id, " + _it_name_new + ", " + _it_body_new + " "
+        "FROM businesses b WHERE b.id = new.business_id; END")
+    if conn.execute("SELECT COUNT(*) FROM items_fts").fetchone()[0] == 0:
+        _it_name_i = _canon_expr("COALESCE(i.name,'')")
+        _it_body_i = _canon_expr(
+            "COALESCE(i.note,'') || ' ' || COALESCE(i.kind,'') || ' ' || "
+            "COALESCE(b.name,'') || ' ' || COALESCE(b.yon,'') || ' ' || COALESCE(b.tur,'') || ' ' || "
+            "COALESCE(b.descr,'') || ' ' || COALESCE(b.address,'')")
+        conn.execute(
+            "INSERT INTO items_fts(rowid, name, body) "
+            "SELECT i.id, " + _it_name_i + ", " + _it_body_i + " "
+            "FROM items i JOIN businesses b ON b.id = i.business_id")
+
+    # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
+    # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
+    # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
+    def _item_name(pfx):
+        return _canon_expr("COALESCE(" + pfx + "name,'')")
+
+    def _item_body(ip, bp):   # ip = item prefiksi, bp = biznes prefiksi
+        inner = ("COALESCE(" + ip + "note,'') || ' ' || COALESCE(" + ip + "kind,'') || ' ' || "
+                 "COALESCE(" + bp + "name,'') || ' ' || COALESCE(" + bp + "yon,'') || ' ' || "
+                 "COALESCE(" + bp + "tur,'') || ' ' || COALESCE(" + bp + "descr,'') || ' ' || "
+                 "COALESCE(" + bp + "address,'')")
+        return _canon_expr(inner)
+
+    icols = [r["name"] for r in conn.execute("PRAGMA table_info(items_fts)").fetchall()]
+    if icols and icols != ["name", "body"]:
+        conn.execute("DROP TABLE IF EXISTS items_fts")
+    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(name, body)")
+    for tg in ("item_fts_ai", "item_fts_au", "item_fts_ad", "item_fts_biz_au"):
+        conn.execute("DROP TRIGGER IF EXISTS " + tg)
+    # Mahsulot qo'shilganda: tegishli biznesni topib, biznes matni bilan birga indekslaymiz
+    conn.execute(
+        "CREATE TRIGGER item_fts_ai AFTER INSERT ON items BEGIN "
+        "INSERT INTO items_fts(rowid, name, body) "
+        "SELECT new.id, " + _item_name("new.") + ", " + _item_body("new.", "b.") + " "
+        "FROM businesses b WHERE b.id = new.business_id; END")
+    conn.execute(
+        "CREATE TRIGGER item_fts_au AFTER UPDATE ON items BEGIN "
+        "DELETE FROM items_fts WHERE rowid = old.id; "
+        "INSERT INTO items_fts(rowid, name, body) "
+        "SELECT new.id, " + _item_name("new.") + ", " + _item_body("new.", "b.") + " "
+        "FROM businesses b WHERE b.id = new.business_id; END")
+    conn.execute(
+        "CREATE TRIGGER item_fts_ad AFTER DELETE ON items BEGIN "
+        "DELETE FROM items_fts WHERE rowid = old.id; END")
+    # Biznes o'zgarganda: uning barcha mahsulotlari indeksini ham yangilaymiz (biznes matni o'zgargani uchun)
+    conn.execute(
+        "CREATE TRIGGER item_fts_biz_au AFTER UPDATE ON businesses BEGIN "
+        "DELETE FROM items_fts WHERE rowid IN (SELECT id FROM items WHERE business_id = new.id); "
+        "INSERT INTO items_fts(rowid, name, body) "
+        "SELECT i.id, " + _item_name("i.") + ", " + _item_body("i.", "new.") + " "
+        "FROM items i WHERE i.business_id = new.id; END")
+    if conn.execute("SELECT COUNT(*) FROM items_fts").fetchone()[0] == 0:
+        conn.execute(
+            "INSERT INTO items_fts(rowid, name, body) "
+            "SELECT i.id, " + _item_name("i.") + ", " + _item_body("i.", "b.") + " "
+            "FROM items i JOIN businesses b ON b.id = i.business_id")
