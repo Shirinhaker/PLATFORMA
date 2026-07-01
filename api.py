@@ -1731,18 +1731,34 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
             listing_params,
         ).fetchall()
 
-    specialist_where, specialist_params = _like_where(
-        ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
-         "u.name", "u.region", "u.district", "u.mahalla"],
-        terms,
-    )
-    specialists = conn.execute(
-        """SELECT s.*, u.name, u.region, u.district, u.mahalla
-           FROM specialists s JOIN users u ON u.id=s.user_id
-           WHERE s.visible=1 AND """ + specialist_where + """
-           ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
-        specialist_params,
-    ).fetchall()
+    # Mutaxassislar — FTS (bm25 moslik, kasb+ism 10x). Bo'sh (available) birinchi, keyin moslik.
+    specialists = None
+    if _match:
+        try:
+            specialists = conn.execute(
+                "SELECT s.*, u.name, u.region, u.district, u.mahalla, "
+                "bm25(specialists_fts, 10.0, 1.0) AS _rank "
+                "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
+                "JOIN users u ON u.id = s.user_id "
+                "WHERE specialists_fts MATCH ? AND s.visible=1 "
+                "ORDER BY s.available DESC, _rank LIMIT 50",
+                (_match,),
+            ).fetchall()
+        except Exception:
+            specialists = None
+    if specialists is None:
+        specialist_where, specialist_params = _like_where(
+            ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
+             "u.name", "u.region", "u.district", "u.mahalla"],
+            terms,
+        )
+        specialists = conn.execute(
+            """SELECT s.*, u.name, u.region, u.district, u.mahalla
+               FROM specialists s JOIN users u ON u.id=s.user_id
+               WHERE s.visible=1 AND """ + specialist_where + """
+               ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
+            specialist_params,
+        ).fetchall()
 
     # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
     # avtomatik eski LIKE usuliga qaytadi (biznes qidiruvi hech qachon buzilmaydi).
