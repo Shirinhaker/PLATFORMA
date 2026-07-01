@@ -659,31 +659,41 @@ def _migrate(conn):
     if "map_visible" not in bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN map_visible INTEGER DEFAULT 0")
 
-    # --- v1393: Bizneslar uchun to'liq matnli qidiruv indeksi (FTS5) + avtomatik sinxron ---
-    _biz_fts_fields = ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"]
-
-    def _biz_txt_expr(prefix):
-        # Maydonlarni birlashtirib kanonik shaklga keltiruvchi SQL ifoda
-        # (kichik harf + apostrofni olib tashlash — qidiruvdagi bilan bir xil).
-        concat = " || ' ' || ".join("COALESCE(" + prefix + f + ",'')" for f in _biz_fts_fields)
-        expr = "LOWER(" + concat + ")"
+    # --- v1395: To'liq matnli qidiruv (FTS5) — nom/sarlavha alohida ustun ---
+    # Har tur uchun: 'name' ustuni (asosiy nom/sarlavha) + 'body' ustuni (qolgan matn).
+    # bm25 tartiblashda nomga ko'proq og'irlik beriladi (api.py). Indeks avtomatik sinxron.
+    def _canon_expr(inner):
+        expr = "LOWER(" + inner + ")"
         for a in ("'", "\u2019", "\u2018", "`", "\u02bb", "\u02bc"):
             expr = "REPLACE(" + expr + ", '" + a.replace("'", "''") + "', '')"
         return expr
 
-    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS businesses_fts USING fts5(txt)")
-    conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS biz_fts_ai AFTER INSERT ON businesses BEGIN "
-        "INSERT INTO businesses_fts(rowid, txt) VALUES(new.id, " + _biz_txt_expr("new.") + "); END"
-    )
-    conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS biz_fts_ad AFTER DELETE ON businesses BEGIN "
-        "DELETE FROM businesses_fts WHERE rowid = old.id; END"
-    )
-    conn.execute(
-        "CREATE TRIGGER IF NOT EXISTS biz_fts_au AFTER UPDATE ON businesses BEGIN "
-        "DELETE FROM businesses_fts WHERE rowid = old.id; "
-        "INSERT INTO businesses_fts(rowid, txt) VALUES(new.id, " + _biz_txt_expr("new.") + "); END"
-    )
-    if conn.execute("SELECT COUNT(*) FROM businesses_fts").fetchone()[0] == 0:
-        conn.execute("INSERT INTO businesses_fts(rowid, txt) SELECT id, " + _biz_txt_expr("") + " FROM businesses")
+    def _concat(prefix, fields):
+        return " || ' ' || ".join("COALESCE(" + prefix + f + ",'')" for f in fields)
+
+    def _setup_fts(table, title_field, body_fields, tag, id_col="id"):
+        fts = table + "_fts"
+        # Eski sxema (bitta 'txt' ustun) bo'lsa qayta quramiz (indeks manbadan tiklanadi)
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(" + fts + ")").fetchall()]
+        if cols and cols != ["name", "body"]:
+            conn.execute("DROP TABLE IF EXISTS " + fts)
+        conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS " + fts + " USING fts5(name, body)")
+        for suf in ("ai", "ad", "au"):
+            conn.execute("DROP TRIGGER IF EXISTS " + tag + "_fts_" + suf)
+        tval = lambda pfx: _canon_expr("COALESCE(" + pfx + title_field + ",'')")
+        bval = lambda pfx: _canon_expr(_concat(pfx, body_fields))
+        conn.execute("CREATE TRIGGER " + tag + "_fts_ai AFTER INSERT ON " + table + " BEGIN "
+                     "INSERT INTO " + fts + "(rowid, name, body) VALUES(new." + id_col + ", "
+                     + tval("new.") + ", " + bval("new.") + "); END")
+        conn.execute("CREATE TRIGGER " + tag + "_fts_ad AFTER DELETE ON " + table + " BEGIN "
+                     "DELETE FROM " + fts + " WHERE rowid = old." + id_col + "; END")
+        conn.execute("CREATE TRIGGER " + tag + "_fts_au AFTER UPDATE ON " + table + " BEGIN "
+                     "DELETE FROM " + fts + " WHERE rowid = old." + id_col + "; "
+                     "INSERT INTO " + fts + "(rowid, name, body) VALUES(new." + id_col + ", "
+                     + tval("new.") + ", " + bval("new.") + "); END")
+        if conn.execute("SELECT COUNT(*) FROM " + fts).fetchone()[0] == 0:
+            conn.execute("INSERT INTO " + fts + "(rowid, name, body) SELECT " + id_col + ", "
+                         + tval("") + ", " + bval("") + " FROM " + table)
+
+    _setup_fts("businesses", "name", ["yon", "tur", "descr", "address", "phone", "telegram", "work_hours"], "biz")
+    _setup_fts("listings", "title", ["cat", "price", "descr", "address"], "lst")
