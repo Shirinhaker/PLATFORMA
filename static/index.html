@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1397 -->
+<title>Platforma</title><!-- BUILD: v1399 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2019,6 +2019,10 @@
     lists.forEach(function(e2){ pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||""}); });
     bizs.forEach(function(b){ pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:""}); });
     pins = dedupePins(pins);
+
+    if(data.corrected){
+      html += '<div class="elon-hint" style="margin:2px 0 8px;padding:8px 12px;background:var(--primary-tint);border-radius:10px">🔎 «'+esc(data.corrected)+'» bo\'yicha natijalar ko\'rsatilmoqda</div>';
+    }
 
     if(prods.length) html += '<div class="list-sub">🛍 Mahsulot va xizmatlar</div>'+prods.map(function(p){
       return '<div class="item" data-bsrv="'+p.business_id+'" style="cursor:pointer"><div><div class="iname">'+esc(p.name)+'</div><div class="idesc">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc(p.price||"")+'</span></div>';
@@ -4111,6 +4115,8 @@
     var c=e.target.closest("[data-scope]"); if(!c) return;
     scope=c.getAttribute("data-scope");
     this.querySelectorAll(".sort-chip").forEach(function(x){ x.classList.toggle("on", x===c); });
+    var _q=(el("searchInput").value||"").trim();
+    if(_q){ runSearch(_q); }   // kenglik o'zgardi — natijalarni yangilaymiz
   });
   el("yonList").addEventListener("click", function(e){
     var y=e.target.closest("[data-yon]"); if(y) openYon(parseInt(y.getAttribute("data-yon"),10));
