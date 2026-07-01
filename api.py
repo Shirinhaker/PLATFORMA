@@ -1653,6 +1653,21 @@ def _like_where(columns, terms):
     return "(" + " OR ".join(clauses) + ")", params
 
 
+def _fts_match(q):
+    """Qidiruv so'zidan FTS5 MATCH so'rovini quradi: kanonik tokenlar (apostrofsiz,
+    kichik harf), har biriga prefiks '*' (qismini ham topadi), OR bilan bog'lanadi.
+    Sinonimlar ham qo'shiladi (_search_terms orqali)."""
+    toks = []
+    for term in _search_terms(q):
+        for w in term.replace("-", " ").split():
+            w2 = "".join(ch for ch in w.lower() if ch.isalnum())
+            if len(w2) >= 2 and w2 not in toks:
+                toks.append(w2)
+    if not toks:
+        return ""
+    return " OR ".join(t + "*" for t in toks)
+
+
 @router.get("/search")
 async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
@@ -1697,15 +1712,31 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         specialist_params,
     ).fetchall()
 
-    business_where, business_params = _like_where(
-        ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
-        terms,
-    )
-    businesses = conn.execute(
-        "SELECT * FROM businesses WHERE status='active' AND " + business_where +
-        " ORDER BY created_at DESC LIMIT 50",
-        business_params,
-    ).fetchall()
+    # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
+    # avtomatik eski LIKE usuliga qaytadi (biznes qidiruvi hech qachon buzilmaydi).
+    businesses = None
+    _match = _fts_match(q)
+    if _match:
+        try:
+            businesses = conn.execute(
+                "SELECT b.*, bm25(businesses_fts) AS _rank "
+                "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid "
+                "WHERE businesses_fts MATCH ? AND b.status='active' "
+                "ORDER BY _rank LIMIT 50",
+                (_match,),
+            ).fetchall()
+        except Exception:
+            businesses = None
+    if businesses is None:
+        business_where, business_params = _like_where(
+            ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
+            terms,
+        )
+        businesses = conn.execute(
+            "SELECT * FROM businesses WHERE status='active' AND " + business_where +
+            " ORDER BY created_at DESC LIMIT 50",
+            business_params,
+        ).fetchall()
 
     result = {
         "q": q,
