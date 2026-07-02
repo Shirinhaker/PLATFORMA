@@ -807,6 +807,27 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_moves_item ON stock_moves(business_id, item_id, created_at)")
 
+    # --- v1408: KASSA — savdo daftari ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS sales("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "source TEXT DEFAULT 'manual', "   # manual (qo'lda) | order (buyurtmadan)
+        "order_id INTEGER, "
+        "item_id INTEGER, "
+        "item_name TEXT DEFAULT '', "
+        "qty REAL DEFAULT 1, "
+        "unit TEXT DEFAULT '', "
+        "price INTEGER DEFAULT 0, "        # birlik narxi (so'm)
+        "total INTEGER DEFAULT 0, "        # jami (so'm)
+        "pay_type TEXT DEFAULT '', "       # naqd | karta | qarz | '' (buyurtma)
+        "debtor_id INTEGER, "
+        "qarz_tx_id INTEGER, "             # qarz bo'lsa — qarz daftaridagi yozuv
+        "note TEXT DEFAULT '', "
+        "user_id INTEGER, "
+        "created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_biz_time ON sales(business_id, created_at)")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
