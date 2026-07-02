@@ -788,6 +788,25 @@ def _migrate(conn):
     if "unit" not in _oicols:
         conn.execute("ALTER TABLE order_items ADD COLUMN unit TEXT DEFAULT ''")
 
+    # --- v1406: Ombor — mahsulotda qoldiq + kirim-chiqim tarixi ---
+    _icols2 = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "track_stock" not in _icols2:
+        conn.execute("ALTER TABLE items ADD COLUMN track_stock INTEGER DEFAULT 0")
+    if "stock_qty" not in _icols2:
+        conn.execute("ALTER TABLE items ADD COLUMN stock_qty REAL DEFAULT 0")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS stock_moves("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "item_id INTEGER NOT NULL, "
+        "delta REAL NOT NULL, "            # + kirim, - chiqim
+        "reason TEXT DEFAULT '', "         # kirim | chiqim | sotuv | tuzatish
+        "note TEXT DEFAULT '', "
+        "order_id INTEGER, "               # sotuv bo'lsa — buyurtma raqami
+        "user_id INTEGER, "                # kim qildi
+        "created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_moves_item ON stock_moves(business_id, item_id, created_at)")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
