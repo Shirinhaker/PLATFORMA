@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1400 -->
+<title>Platforma</title><!-- BUILD: v1401 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -794,6 +794,7 @@
           </div>
           <div class="field"><label>Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
+          <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
           <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
           <div class="field" id="itKindWrap"><label>Turi</label>
@@ -2025,7 +2026,7 @@
     }
 
     if(prods.length) html += '<div class="list-sub">🛍 Mahsulot va xizmatlar</div>'+prods.map(function(p){
-      return '<div class="item" data-bsrv="'+p.business_id+'" style="cursor:pointer"><div><div class="iname">'+esc(p.name)+'</div><div class="idesc">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc(p.price||"")+'</span></div>';
+      return '<div class="item" data-bsrv="'+p.business_id+'" style="cursor:pointer"><div><div class="iname">'+esc(p.name)+'</div><div class="idesc">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
     }).join("");
     if(lists.length) html += '<div class="list-sub" style="margin-top:6px">📢 E\'lonlar</div>'+lists.map(function(e2){
       return '<div class="elon-item" data-lsrv="'+e2.id+'"><div class="li-thumb" style="background:var(--primary-tint)"><span>📦</span></div>'+
@@ -2228,9 +2229,9 @@
     return '<div class="item-card2 biz-prod-card">'+
       '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
-      '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+
+      '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
-      '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>'+
+      '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-item-unit="'+esc(it.unit||"dona")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>'+
     '</div>';
   }
   function bizGroupBlockHtml(group, items, b){
@@ -2329,11 +2330,11 @@
   function draftTotal(){
     return draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0);
   }
-  function addOrderItem(id, name, price, bid, bname){
+  function addOrderItem(id, name, price, bid, bname, unit){
     if(orderDraft.business_id && Number(orderDraft.business_id)!==Number(bid)) resetOrderDraft(bid, bname);
     if(!orderDraft.business_id) resetOrderDraft(bid, bname);
     var k=String(id);
-    if(!orderDraft.items[k]) orderDraft.items[k]={ item_id:parseInt(id,10), name:name||"Mahsulot/xizmat", price:price||"", qty:0 };
+    if(!orderDraft.items[k]) orderDraft.items[k]={ item_id:parseInt(id,10), name:name||"Mahsulot/xizmat", price:price||"", unit:unit||"dona", qty:0 };
     orderDraft.items[k].qty += 1;
     renderOrderDraftBox();
   }
@@ -2352,7 +2353,7 @@
     box.style.display="block";
     var total=draftTotal();
     box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><div><b>Tanlanganlar</b><div class="idesc">'+list.length+' xil mahsulot/xizmat</div></div><div class="iprice">'+esc(moneyText(total)||"Narx kelishiladi")+'</div></div>'+
-      list.map(function(it){ return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+esc(it.price||"Narx kelishiladi")+'</div></div><div style="display:flex;align-items:center;gap:6px"><button class="mini-btn" style="height:34px;padding:0 10px" data-order-minus="'+it.item_id+'">−</button><b>'+it.qty+'</b><button class="mini-btn" style="height:34px;padding:0 10px" data-order-plus="'+it.item_id+'">+</button></div></div>'; }).join("")+
+      list.map(function(it){ return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+esc(it.price||"Narx kelishiladi")+'</div></div><div style="display:flex;align-items:center;gap:6px"><button class="mini-btn" style="height:34px;padding:0 10px" data-order-minus="'+it.item_id+'">−</button><b>'+it.qty+((it.unit&&it.unit!=="dona")?" "+esc(it.unit):"")+'</b><button class="mini-btn" style="height:34px;padding:0 10px" data-order-plus="'+it.item_id+'">+</button></div></div>'; }).join("")+
       '<button class="btn btn-amber btn-block" data-order-checkout="'+orderDraft.business_id+'" data-order-name="'+esc(orderDraft.business_name)+'">Tanlanganlarni buyurtma qilish</button>';
   }
   function orderStatusText(st){
@@ -2555,7 +2556,7 @@
     var items = (o.items||[]);
     var itemsHtml = items.length ? '<div style="margin-top:9px;border-top:1px solid var(--line);padding-top:8px">'+items.map(function(it){
       var line = it.line_total ? moneyText(it.line_total) : (it.price||"");
-      return '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-top:4px"><span>'+esc(it.name)+' × '+esc(it.qty||1)+'</span><b style="color:var(--ink)">'+esc(line||"—")+'</b></div>';
+      return '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-top:4px"><span>'+esc(it.name)+' × '+esc(qtyUnitText(it.qty, it.unit))+'</span><b style="color:var(--ink)">'+esc(line||"—")+'</b></div>';
     }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:7px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
     var note = o.note ? '<div class="idesc" style="margin-top:5px">'+esc(o.note)+'</div>' : '';
     var phone = o.phone ? '<div class="idesc">☎ '+esc(o.phone)+'</div>' : '';
@@ -2648,7 +2649,7 @@
     var items=(o.items||[]);
     var itemsHtml = items.length ? '<div class="panel-card" style="margin:10px 0"><b>Mahsulot/xizmatlar</b>'+items.map(function(it){
       var line = it.line_total ? moneyText(it.line_total) : (it.price||"Narx kelishiladi");
-      return '<div class="detail-line"><b>'+esc(it.name)+' × '+esc(it.qty||1)+'</b><span>'+esc(line||"—")+'</span></div>';
+      return '<div class="detail-line"><b>'+esc(it.name)+' × '+esc(qtyUnitText(it.qty, it.unit))+'</b><span>'+esc(line||"—")+'</span></div>';
     }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:8px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
     var mapHtml = (o.delivery_lat!=null && o.delivery_lng!=null) ? '<div class="panel-card"><b>Yetkazib berish metkasi</b><div id="orderDetailMap" class="order-detail-map"></div><div class="idesc">🗺 '+esc(Number(o.delivery_lat).toFixed(6)+", "+Number(o.delivery_lng).toFixed(6))+'</div></div>' : '';
     var sh=el("orderDetailSheet");
@@ -4354,7 +4355,7 @@
     var oi=e.target.closest("[data-order-item]");
     if(oi){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
-      addOrderItem(parseInt(oi.getAttribute("data-order-item"),10), oi.getAttribute("data-item-name")||"Mahsulot/xizmat", oi.getAttribute("data-item-price")||"", parseInt(oi.getAttribute("data-business-id"),10), oi.getAttribute("data-business-name")||"Biznes");
+      addOrderItem(parseInt(oi.getAttribute("data-order-item"),10), oi.getAttribute("data-item-name")||"Mahsulot/xizmat", oi.getAttribute("data-item-price")||"", parseInt(oi.getAttribute("data-business-id"),10), oi.getAttribute("data-business-name")||"Biznes", oi.getAttribute("data-item-unit")||"dona");
       return;
     }
     var om=e.target.closest("[data-order-minus]");
@@ -4746,6 +4747,9 @@
   var itemSearch = "";      // qidiruv matni
 
   function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
+  // Birlik ko'rsatish: 'dona' bo'lsa ko'rsatmaymiz (ortiqcha shovqin bo'lmasin)
+  function unitSuffix(u){ return (u && u !== "dona") ? " / " + u : ""; }
+  function qtyUnitText(q, u){ return (q || 1) + ((u && u !== "dona") ? " " + u : ""); }
   function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
   function itemGroupById(gid){
     gid = itemGroupValue(gid);
@@ -4960,7 +4964,7 @@
       itemMenuHtml("item", it.id)+
       (it.photo_file ? '<div class="item-card2-img"><img src="'+esc(it.photo_file)+'" alt="" loading="lazy"></div>' : '')+
       '<div class="name">'+esc(it.name)+'</div>'+ 
-      '<div class="price">'+esc(it.price || "Narx kelishiladi")+'</div>'+ 
+      '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+ 
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>')+
       '<span class="kind">'+itemKindText(it.kind)+'</span>'+ 
       itemActionMenuHtml(it.id)+
@@ -5088,6 +5092,7 @@
     editItemId = data ? data.id : null;
     el("itName").value = data ? data.name : "";
     el("itPrice").value = data ? (data.price || "") : "";
+    el("itUnit").value = data ? (data.unit || "dona") : "dona";
     el("itNote").value = data ? (data.note || "") : "";
     setItemKind(data ? data.kind : "product");
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
@@ -5137,7 +5142,7 @@
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
+    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
     var wasEdit = !!editItemId;
     var btn=this; btn.disabled=true;
     var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
