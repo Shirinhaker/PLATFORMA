@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1405 -->
+<title>Platforma</title><!-- BUILD: v1406 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -739,6 +739,7 @@
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
@@ -795,6 +796,7 @@
           <div class="field"><label>Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
           <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
+          <div class="field"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
           <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
           <div class="field" id="itKindWrap"><label>Turi</label>
@@ -850,6 +852,12 @@
         <div class="q-total"><div class="eyebrow">Umumiy qarz</div><div class="q-amount" id="qTotal">0 so'm</div><div class="q-sub" id="qSub"><b>0</b> ta qarzdor</div></div>
         <div id="debtorsList"></div>
         <button class="btn btn-primary btn-block" style="margin-top:8px" id="debtorAddBtn">+ Yangi qarzdor</button>
+      </section>
+
+      <!-- CAB: OMBOR -->
+      <section class="screen" data-screen="cab-ombor">
+        <div class="idesc" style="margin:2px 2px 10px">Qoldiq yuritish uchun mahsulot tahririda «Omborda hisoblash»ni yoqing. Kirim — tovar keldi, Chiqim — sotildi/chiqdi.</div>
+        <div id="omborList"></div>
       </section>
 
       <!-- CAB: QARZDOR KARTASI -->
@@ -2180,7 +2188,7 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari",
+    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
@@ -4563,6 +4571,81 @@
     rc.addEventListener("click", function(){ renderReg(rc.getAttribute("data-role")); nav("regform"); });
   });
 
+  /* ---------- OMBOR (qoldiq + kirim-chiqim) ---------- */
+  function stockColor(q){ q = parseFloat(q)||0; if(q < 0) return "#e53935"; if(q === 0) return "#e6a100"; return "inherit"; }
+  function loadOmbor(){
+    var box = el("omborList");
+    box.innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/stock").then(renderOmbor).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function renderOmbor(rows){
+    var box = el("omborList");
+    if(!rows.length){
+      box.innerHTML = '<div class="item" style="display:block">Hozircha ombor yuritilayotgan mahsulot yo\'q.<div class="idesc" style="margin-top:4px">Mahsulot tahririda «Omborda hisoblash»ni yoqing — shu yerda paydo bo\'ladi.</div></div>';
+      return;
+    }
+    box.innerHTML = rows.map(function(r){
+      return '<div class="item" style="display:block;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+          '<div class="iname" style="min-width:0">'+esc(r.name)+'</div>'+
+          '<div style="font-weight:800;flex:0 0 auto;color:'+stockColor(r.stock_qty)+'">'+fmtQty(r.stock_qty)+' '+esc(r.unit||"dona")+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px">'+
+          '<button class="mini-btn" style="flex:1;height:36px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'">+ Kirim</button>'+
+          '<button class="mini-btn" style="flex:1;height:36px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'">− Chiqim</button>'+
+          '<button class="mini-btn" style="flex:1;height:36px" data-st-hist="'+r.id+'">Tarix</button>'+
+        '</div>'+
+        '<div id="stHist'+r.id+'" style="display:none;margin-top:8px"></div>'+
+      '</div>';
+    }).join("");
+  }
+  // Kirim/Chiqim formasi (ilova ichida): miqdor + izoh
+  function stockMoveForm(id, name, unit, sign){
+    askInput({
+      title: (sign>0 ? "Kirim: " : "Chiqim: ") + name,
+      okText: "Saqlash",
+      fields: [
+        { key:"q", label:"Miqdor ("+unit+")"+(unitAllowsFraction(unit)?"":" — butun son"), placeholder: unitAllowsFraction(unit)?"masalan: 2.5":"masalan: 5", required:true },
+        { key:"note", label:"Izoh (ixtiyoriy)", placeholder: sign>0?"masalan: yangi partiya":"masalan: do'konda sotildi" }
+      ]
+    }).then(function(v){
+      if(!v) return;
+      var q = parseFloat(String(v.q||"").replace(",", "."));
+      if(isNaN(q) || q<=0){ showMsg("Miqdor noto'g'ri."); return; }
+      if(!unitAllowsFraction(unit)) q = Math.floor(q+0.5);
+      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: sign*q, note: v.note||"" })
+        .then(function(){ showMsg("Saqlandi ✅"); loadOmbor(); })
+        .catch(function(e){ showMsg(e.message); });
+    });
+  }
+  function loadStockHist(id){
+    var box = el("stHist"+id);
+    if(!box) return;
+    if(box.style.display === "block"){ box.style.display = "none"; return; }
+    box.style.display = "block";
+    box.innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/stock/moves?item_id="+id).then(function(rows){
+      if(!rows.length){ box.innerHTML = '<div class="idesc">Hozircha harakat yo\'q.</div>'; return; }
+      box.innerHTML = rows.map(function(m){
+        var plus = m.delta > 0;
+        var d = new Date((m.created_at||0)*1000);
+        var ds = ("0"+d.getDate()).slice(-2)+"."+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+        return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">'+
+          '<div style="min-width:0"><div style="font-size:13px">'+esc(m.reason_text||"")+(m.note?' — '+esc(m.note):'')+'</div><div class="idesc">'+ds+(m.who?' · '+esc(m.who):'')+'</div></div>'+
+          '<div style="font-weight:800;flex:0 0 auto;color:'+(plus?"#188038":"#e53935")+'">'+(plus?"+":"−")+' '+fmtQty(Math.abs(m.delta))+' '+esc(m.unit||"")+'</div>'+
+        '</div>';
+      }).join("");
+    }).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  document.addEventListener("click", function(e){
+    var a = e.target.closest("[data-st-in]");
+    if(a){ stockMoveForm(a.getAttribute("data-st-in"), a.getAttribute("data-st-name"), a.getAttribute("data-st-unit"), 1); return; }
+    var b = e.target.closest("[data-st-out]");
+    if(b){ stockMoveForm(b.getAttribute("data-st-out"), b.getAttribute("data-st-name"), b.getAttribute("data-st-unit"), -1); return; }
+    var h = e.target.closest("[data-st-hist]");
+    if(h){ loadStockHist(h.getAttribute("data-st-hist")); return; }
+  });
+
   /* ---------- KABINET: yuklash va saqlash ---------- */
   function fillYonSelect(sel, val){
     sel.innerHTML = '<option value="">Tanlang</option>' +
@@ -4663,6 +4746,7 @@
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-qarz") loadDebtors();
+    else if(screen==="cab-ombor") loadOmbor();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
@@ -5042,7 +5126,8 @@
       '<div class="name">'+esc(it.name)+'</div>'+ 
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+ 
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>')+
-      '<span class="kind">'+itemKindText(it.kind)+'</span>'+ 
+      '<span class="kind">'+itemKindText(it.kind)+'</span>'+
+      (it.track_stock ? '<span class="idesc" style="margin-left:6px">Qoldiq: <b style="color:'+stockColor(it.stock_qty)+'">'+fmtQty(it.stock_qty||0)+' '+esc(it.unit||"dona")+'</b></span>' : '')+ 
       itemActionMenuHtml(it.id)+
     '</div>';
   }
@@ -5169,6 +5254,7 @@
     el("itName").value = data ? data.name : "";
     el("itPrice").value = data ? (data.price || "") : "";
     el("itUnit").value = data ? (data.unit || "dona") : "dona";
+    el("itTrack").value = data ? String(data.track_stock || 0) : "0";
     el("itNote").value = data ? (data.note || "") : "";
     setItemKind(data ? data.kind : "product");
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
@@ -5218,7 +5304,7 @@
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
+    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
     var wasEdit = !!editItemId;
     var btn=this; btn.disabled=true;
     var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
