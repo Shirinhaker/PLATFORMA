@@ -2027,6 +2027,7 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
         "is_following": is_following(conn, viewer["id"] if viewer else None, "business", biz["id"]),
         "item_groups": [{"id": g["id"], "name": g["name"], "kind": g["kind"]} for g in item_groups],
         "items": [{"id": i["id"], "name": i["name"], "price": i["price"],
+                   "unit": i["unit"] or "dona",
                    "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
                    "group_name": i["group_name"], "group_kind": i["group_kind"],
                    "photo_file": i["photo_file"]} for i in items],
