@@ -1466,6 +1466,42 @@ def _stock_delta(v):
     return d
 
 
+def _stock_deduct_for_order(conn, order, actor_user_id):
+    """Buyurtma "Bajarildi" bo'lganda ombordan avtomatik chiqim.
+    Faqat bir marta ishlaydi (shu buyurtma uchun harakat bo'lsa — qaytadan ayirmaydi).
+    Faqat "Omborda hisoblash" yoqilgan mahsulotlarga ta'sir qiladi."""
+    if (order["provider_kind"] or "") != "business":
+        return
+    already = conn.execute(
+        "SELECT COUNT(*) FROM stock_moves WHERE order_id=?", (order["id"],)
+    ).fetchone()[0]
+    if already:
+        return
+    rows = conn.execute(
+        "SELECT item_id, qty FROM order_items WHERE order_id=?", (order["id"],)
+    ).fetchall()
+    now = int(time.time())
+    for oi in rows:
+        if not oi["item_id"]:
+            continue
+        it = conn.execute(
+            "SELECT id, business_id, track_stock FROM items WHERE id=?", (oi["item_id"],)
+        ).fetchone()
+        if not it or not (it["track_stock"] or 0):
+            continue
+        if int(it["business_id"]) != int(order["provider_actor_id"] or 0):
+            continue
+        q = round(float(oi["qty"] or 1), 3)
+        if q <= 0:
+            continue
+        conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (q, it["id"]))
+        conn.execute(
+            "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (it["business_id"], it["id"], -q, "sotuv", "Buyurtma #%d" % order["id"], order["id"], actor_user_id, now),
+        )
+
+
 @router.get("/stock")
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -3055,6 +3091,10 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         notify_text = "⚠️ Mijoz buyurtmani bekor qildi\n\n" + (row["title"] or "Buyurtma")
     else:
         conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
+
+    # v1407: Buyurtma "Bajarildi" — ombordan avtomatik chiqim (faqat bir marta)
+    if new_status == "done":
+        _stock_deduct_for_order(conn, row, me["id"])
 
     conn.commit()
     conn.close()
