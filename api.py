@@ -1775,6 +1775,10 @@ def _clean_unit(v):
     return v if v in UNITS else "dona"
 
 
+# Kasr miqdorga ruxsat etilgan (o'lchanadigan) birliklar; qolganlari butun son bo'ladi
+FRACTIONAL_UNITS = ("kg", "g", "litr", "ml", "metr", "sm", "m²", "soat")
+
+
 @router.get("/search")
 async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
@@ -2524,15 +2528,17 @@ def _fmt_summa(n):
 
 
 def _clean_qty(v):
+    """Miqdor: kasr ham bo'ladi (0.5 kg). Vergul ham qabul qilinadi ("0,5")."""
     try:
-        q = int(v or 1)
+        q = float(str(v if v is not None else 1).replace(",", ".").strip() or 1)
     except Exception:
-        q = 1
-    if q < 1:
-        q = 1
+        q = 1.0
+    if q != q or q <= 0:
+        q = 1.0
     if q > 999:
-        q = 999
-    return q
+        q = 999.0
+    q = round(q, 3)
+    return int(q) if float(q).is_integer() else q
 
 
 def _clean_coord(v, minv, maxv):
@@ -2581,13 +2587,17 @@ def _load_order_items_payload(conn, body, provider, item_id=None):
             raise HTTPException(400, "Mahsulot/xizmat bu biznesga tegishli emas.")
         price_text = it["price"] or ""
         price_val = _price_to_int(price_text)
+        unit = _row_val(it, "unit", "dona") or "dona"
+        if unit not in FRACTIONAL_UNITS:
+            # sanaladigan birlik (dona, quti...) — butun songa keltiramiz (0.5 -> yuqoriga)
+            qty = max(1, int(math.floor(qty + 0.5)))
         normalized.append({
             "item_id": int(it["id"]),
             "item_name": it["name"] or "Mahsulot/xizmat",
             "price_text": price_text,
             "qty": qty,
-            "unit": _row_val(it, "unit", "dona") or "dona",
-            "line_total": price_val * qty if price_val else 0,
+            "unit": unit,
+            "line_total": int(round(price_val * qty)) if price_val else 0,
             "note": it["note"] or "",
         })
     return normalized
@@ -2759,7 +2769,7 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     delivery_lng = _clean_coord(b.get("delivery_lng"), -180, 180)
     qty = _clean_qty(b.get("qty"))
     if order_items:
-        qty = sum(int(x["qty"] or 1) for x in order_items)
+        qty = round(sum(float(x["qty"] or 1) for x in order_items), 3)
         item_id = order_items[0]["item_id"] if len(order_items) == 1 else None
 
     title = _order_title(conn, b, provider, item_id, listing_id, order_items)
