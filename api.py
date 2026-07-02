@@ -19,6 +19,7 @@ import time
 import re
 import os
 import math
+import calendar
 import secrets
 
 from fastapi import APIRouter, Request, Header, HTTPException
@@ -1577,6 +1578,190 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     return result
 
 
+# ================== KASSA (savdo daftari) ==================
+TASHKENT_TZ = 5 * 3600   # O'zbekiston vaqti (UTC+5) — "bugun" chegarasi uchun
+_PAY_TYPES = ("naqd", "karta", "qarz")
+_PAY_TEXT = {"naqd": "Naqd", "karta": "Karta", "qarz": "Qarz", "": "Buyurtma"}
+
+
+def _day_bounds(day):
+    """'YYYY-MM-DD' (Toshkent kuni) -> (boshlanish_ts, tugash_ts, kun). Bo'sh bo'lsa bugun."""
+    import datetime as _dt
+    d = None
+    try:
+        if (day or "").strip():
+            d = _dt.date.fromisoformat((day or "").strip())
+    except Exception:
+        d = None
+    if d is None:
+        d = _dt.datetime.fromtimestamp(time.time() + TASHKENT_TZ, _dt.timezone.utc).date()
+    start = calendar.timegm(d.timetuple()) - TASHKENT_TZ
+    return start, start + 86400, d.isoformat()
+
+
+def _sale_dict(r):
+    return {"id": r["id"], "source": r["source"] or "manual", "order_id": r["order_id"],
+            "item_id": r["item_id"], "item_name": r["item_name"] or "",
+            "qty": r["qty"] or 1, "unit": r["unit"] or "", "price": r["price"] or 0,
+            "total": r["total"] or 0, "pay_type": r["pay_type"] or "",
+            "pay_text": _PAY_TEXT.get(r["pay_type"] or "", r["pay_type"] or ""),
+            "debtor_id": r["debtor_id"], "note": r["note"] or "",
+            "created_at": r["created_at"]}
+
+
+def _kassa_add_for_order(conn, order, actor_user_id):
+    """Buyurtma "Bajarildi" bo'lganda savdo daftariga avtomatik yozish (faqat bir marta)."""
+    if (order["provider_kind"] or "") != "business":
+        return
+    if conn.execute("SELECT COUNT(*) FROM sales WHERE order_id=?", (order["id"],)).fetchone()[0]:
+        return
+    rows = conn.execute("SELECT * FROM order_items WHERE order_id=?", (order["id"],)).fetchall()
+    now = int(time.time())
+    for oi in rows:
+        total = int(oi["line_total"] or 0)
+        qty = round(float(oi["qty"] or 1), 3)
+        price = int(round(total / qty)) if (total and qty) else _price_to_int(oi["price_text"] or "")
+        conn.execute(
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, note, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (int(order["provider_actor_id"] or 0), "order", order["id"], oi["item_id"],
+             oi["item_name"] or "", qty, _row_val(oi, "unit", "") or "", price, total,
+             "", "Buyurtma #%d" % order["id"], actor_user_id, now),
+        )
+
+
+@router.get("/kassa")
+async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    start, end, dstr = _day_bounds(day)
+    rows = conn.execute(
+        "SELECT s.*, u.name AS who FROM sales s LEFT JOIN users u ON u.id=s.user_id "
+        "WHERE s.business_id=? AND s.created_at>=? AND s.created_at<? "
+        "ORDER BY s.created_at DESC, s.id DESC LIMIT 200",
+        (biz["id"], start, end),
+    ).fetchall()
+    totals = {"all": 0, "naqd": 0, "karta": 0, "qarz": 0, "order": 0}
+    out = []
+    for r in rows:
+        d = _sale_dict(r)
+        d["who"] = r["who"] or ""
+        out.append(d)
+        t = int(r["total"] or 0)
+        totals["all"] += t
+        pt = r["pay_type"] or ""
+        if pt in ("naqd", "karta", "qarz"):
+            totals[pt] += t
+        else:
+            totals["order"] += t
+    conn.close()
+    return {"day": dstr, "sales": out, "totals": totals}
+
+
+@router.post("/kassa")
+async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    item_id = int(body.get("item_id") or 0) or None
+    name = (body.get("name") or "").strip()
+    unit = "dona"
+    it = None
+    if item_id:
+        it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
+        if not it:
+            conn.close()
+            raise HTTPException(404, "Mahsulot topilmadi.")
+        name = it["name"]
+        unit = _row_val(it, "unit", "dona") or "dona"
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Mahsulot nomi kiritilmadi.")
+    qty = _clean_qty(body.get("qty"))
+    if unit not in FRACTIONAL_UNITS:
+        qty = max(1, int(math.floor(float(qty) + 0.5)))
+    try:
+        price = int(str(body.get("price") or "0").replace(" ", "") or 0)
+    except Exception:
+        price = 0
+    if price < 0:
+        price = 0
+    total = int(round(price * float(qty)))
+    if total <= 0:
+        conn.close()
+        raise HTTPException(400, "Narx kiritilmadi.")
+    pay = (body.get("pay_type") or "naqd").strip()
+    if pay not in _PAY_TYPES:
+        pay = "naqd"
+    note = (body.get("note") or "").strip()[:200]
+    now = int(time.time())
+    debtor_id = None
+    qtx_id = None
+    if pay == "qarz":
+        debtor_id = int(body.get("debtor_id") or 0)
+        owns = conn.execute("SELECT id FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])).fetchone()
+        if not owns:
+            conn.close()
+            raise HTTPException(400, "Qarz uchun qarzdorni tanlang.")
+        import datetime as _dt
+        conn.execute(
+            "INSERT INTO qarz_tx(debtor_id, type, amount, date, note, created_at) VALUES(?,?,?,?,?,?)",
+            (debtor_id, "debt", total,
+             _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat(),
+             ("Kassa: " + name)[:120], now),
+        )
+        qtx_id = conn.execute("SELECT last_insert_rowid() r").fetchone()["r"]
+    cur = conn.execute(
+        "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (biz["id"], "manual", None, item_id, name, qty, unit, price, total, pay, debtor_id, qtx_id, note, user["id"], now),
+    )
+    sale_id = cur.lastrowid
+    # Ombor yoqilgan bo'lsa — savdo qoldiqdan ayiradi
+    if it is not None and (_row_val(it, "track_stock", 0) or 0):
+        conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(qty), item_id))
+        conn.execute(
+            "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+            "VALUES(?,?,?,?,?,NULL,?,?)",
+            (biz["id"], item_id, -float(qty), "sotuv", "Kassa #%d" % sale_id, user["id"], now),
+        )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": sale_id, "total": total}
+
+
+@router.delete("/kassa/{sale_id}")
+async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    r = conn.execute("SELECT * FROM sales WHERE id=? AND business_id=?", (sale_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Savdo topilmadi.")
+    if (r["source"] or "") != "manual":
+        conn.close()
+        raise HTTPException(400, "Buyurtma orqali kelgan savdo bu yerdan o'chirilmaydi.")
+    now = int(time.time())
+    # Ombor qaytariladi (agar hisob yoqilgan bo'lsa)
+    if r["item_id"]:
+        it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
+        if it and (it["track_stock"] or 0):
+            q = round(float(r["qty"] or 0), 3)
+            if q > 0:
+                conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (q, r["item_id"]))
+                conn.execute(
+                    "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+                    "VALUES(?,?,?,?,?,NULL,?,?)",
+                    (biz["id"], r["item_id"], q, "tuzatish", "Kassa #%d o'chirildi" % sale_id, user["id"], now),
+                )
+    # Qarz daftaridagi yozuv ham olib tashlanadi
+    if r["qarz_tx_id"]:
+        conn.execute("DELETE FROM qarz_tx WHERE id=?", (r["qarz_tx_id"],))
+    conn.execute("DELETE FROM sales WHERE id=?", (sale_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @router.get("/qarz/debtors")
 async def qarz_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -3095,6 +3280,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     # v1407: Buyurtma "Bajarildi" — ombordan avtomatik chiqim (faqat bir marta)
     if new_status == "done":
         _stock_deduct_for_order(conn, row, me["id"])
+        _kassa_add_for_order(conn, row, me["id"])   # v1408: kassaga avtomatik savdo
 
     conn.commit()
     conn.close()
