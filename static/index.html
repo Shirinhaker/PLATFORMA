@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1402 -->
+<title>Platforma</title><!-- BUILD: v1403 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2330,13 +2330,15 @@
   function draftTotal(){
     return Math.round(draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0));
   }
-  // Miqdor/Summa oynasi — miqdor yozilsa summa, summa yozilsa miqdor avtomatik hisoblanadi.
-  // Masalan 30 000 so'm/kg mahsulotda "15000" summa yozilsa -> 0.5 kg bo'ladi.
+  // Miqdor/Summa oynasi — miqdor yozilsa summa, summa yozilsa miqdor hisoblanadi.
+  // Pastdagi "Jami" qatori doim haqiqiy narxni ko'rsatadi (sanaladigan birlikda
+  // summa butun donaga to'g'ri kelmasa ham, foydalanuvchi buni darrov ko'radi).
   function openQtyDialog(id){
     var k = String(id), it = orderDraft.items[k];
     if(!it) return;
     var pv = parsePriceAmount(it.price);        // birlik narxi (so'm), 0 = narx kelishiladi
-    var frac = unitAllowsFraction(it.unit);
+    var u = it.unit || "dona";
+    var frac = unitAllowsFraction(u);
     var back = document.getElementById("qtyDlgBack");
     var sheet = document.getElementById("qtyDlgSheet");
     if(!back){
@@ -2345,17 +2347,29 @@
       document.body.appendChild(back); document.body.appendChild(sheet);
     }
     sheet.innerHTML =
-      '<div class="acf-title">'+esc(it.name)+'</div>'+
-      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(it.unit||"dona")+')'+(frac?'':' — butun son')+'</div>'+
-      '<input class="input" id="qtyDlgQty" type="text" inputmode="decimal" value="'+fmtQty(it.qty)+'">'+
-      (pv>0 ? ('<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">yoki Summa (so\'m) — narx: '+esc(moneyText(pv))+' / '+esc(it.unit||"dona")+'</div>'+
-               '<input class="input" id="qtyDlgSum" type="text" inputmode="numeric" value="'+Math.round(pv*(parseFloat(it.qty)||0))+'">') : '')+
+      '<div class="acf-title" style="margin-bottom:2px">'+esc(it.name)+'</div>'+
+      (pv>0 ? '<div style="font-size:13px;color:var(--muted,#6b7280);margin-bottom:4px">Narx: <b>'+esc(moneyText(pv))+'</b> / '+esc(u)+'</div>' : '')+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(u)+')'+(frac?'':' — butun son')+'</div>'+
+      '<div style="display:flex;gap:8px;align-items:center">'+
+        '<button class="mini-btn" id="qtyDlgMinus" style="height:46px;min-width:46px;font-size:22px;flex:0 0 auto">−</button>'+
+        '<input class="input" id="qtyDlgQty" type="text" inputmode="decimal" style="text-align:center;font-size:19px;font-weight:700" value="'+fmtQty(it.qty)+'">'+
+        '<button class="mini-btn" id="qtyDlgPlus" style="height:46px;min-width:46px;font-size:22px;flex:0 0 auto">+</button>'+
+      '</div>'+
+      (pv>0 ? ('<div style="text-align:left;margin:12px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">yoki Summa (so\'m)</div>'+
+               '<input class="input" id="qtyDlgSum" type="text" inputmode="numeric" style="text-align:center;font-size:19px" value="'+Math.round(pv*(parseFloat(it.qty)||0))+'">'+
+               '<div id="qtyDlgTotal" style="margin-top:12px;padding:10px 12px;background:var(--primary-tint,#e8f4f4);border-radius:10px;font-weight:700;font-size:15px"></div>') : '')+
       '<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
     function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
-    var qEl = sheet.querySelector("#qtyDlgQty"), sEl = sheet.querySelector("#qtyDlgSum");
+    var qEl = sheet.querySelector("#qtyDlgQty"), sEl = sheet.querySelector("#qtyDlgSum"), tEl = sheet.querySelector("#qtyDlgTotal");
     function readQty(){ var v = parseFloat(String(qEl.value||"").replace(",", ".")); return (isNaN(v)||v<0) ? 0 : v; }
+    function renderTotal(){
+      if(!tEl) return;
+      var q = readQty();
+      tEl.textContent = (q>0) ? ("Jami: "+fmtQty(q)+" "+u+" = "+moneyText(Math.round(pv*q))+" so'm") : "Miqdor kiriting";
+    }
+    function syncSumFromQty(){ if(sEl){ var q = readQty(); sEl.value = q>0 ? String(Math.round(pv*q)) : ""; } renderTotal(); }
     if(sEl){
-      qEl.addEventListener("input", function(){ var q = readQty(); sEl.value = q>0 ? String(Math.round(pv*q)) : ""; });
+      qEl.addEventListener("input", syncSumFromQty);
       sEl.addEventListener("input", function(){
         var m = parseInt(String(sEl.value||"").replace(/[^0-9]/g,""), 10) || 0;
         if(m>0 && pv>0){
@@ -2363,8 +2377,24 @@
           q = frac ? Math.round(q*1000)/1000 : Math.max(1, Math.floor(q));
           qEl.value = fmtQty(q);
         }
+        renderTotal();   // haqiqiy jami — foydalanuvchi nomuvofiqlikni darrov ko'radi
       });
+    } else {
+      qEl.addEventListener("input", renderTotal);
     }
+    var step = frac ? 0.5 : 1;
+    sheet.querySelector("#qtyDlgMinus").onclick = function(){
+      var q = readQty() - step;
+      if(q < 0.001) q = step;
+      qEl.value = fmtQty(Math.round(q*1000)/1000);
+      syncSumFromQty();
+    };
+    sheet.querySelector("#qtyDlgPlus").onclick = function(){
+      var q = readQty() + step;
+      if(q > 999) q = 999;
+      qEl.value = fmtQty(Math.round(q*1000)/1000);
+      syncSumFromQty();
+    };
     sheet.querySelector(".acf-cancel").onclick = function(){ close(); };
     back.onclick = function(){ close(); };
     sheet.querySelector(".acf-ok").onclick = function(){
@@ -2377,6 +2407,7 @@
       close(); renderOrderDraftBox();
     };
     back.classList.add("on"); sheet.classList.add("on");
+    renderTotal();
     setTimeout(function(){ qEl.focus(); if(qEl.select) qEl.select(); }, 60);
   }
 
