@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1407 -->
+<title>Platforma</title><!-- BUILD: v1408 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -740,6 +740,7 @@
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
@@ -858,6 +859,31 @@
       <section class="screen" data-screen="cab-ombor">
         <div class="idesc" style="margin:2px 2px 10px">Qoldiq yuritish uchun mahsulot tahririda «Omborda hisoblash»ni yoqing. Kirim — tovar keldi, Chiqim — sotildi/chiqdi.</div>
         <div id="omborList"></div>
+      </section>
+
+      <!-- CAB: KASSA -->
+      <section class="screen" data-screen="cab-kassa">
+        <div class="q-total"><div class="eyebrow" id="kassaDayLbl">Bugungi tushum</div><div class="q-amount" id="kassaTotal">0 so'm</div><div class="q-sub" id="kassaBreak"></div></div>
+        <div style="display:flex;gap:6px;margin:10px 0 8px">
+          <button class="mini-btn" style="flex:1;height:38px" id="kassaPrevDay">← Oldingi</button>
+          <button class="mini-btn" style="flex:1;height:38px" id="kassaToday">Bugun</button>
+          <button class="mini-btn" style="flex:1;height:38px" id="kassaNextDay">Keyingi →</button>
+        </div>
+        <div id="kassaList"></div>
+        <button class="btn btn-primary btn-block" style="margin-top:8px" id="kassaAddBtn">+ Savdo yozish</button>
+      </section>
+
+      <!-- CAB: KASSA FORMA -->
+      <section class="screen" data-screen="cab-kassa-form">
+        <div class="field"><label>Mahsulot</label><select class="input" id="ksItem"></select></div>
+        <div class="field" id="ksNameWrap"><label>Nomi (qo'lda)</label><input class="input" id="ksName" placeholder="Masalan: Choy"></div>
+        <div class="field"><label id="ksQtyLbl">Miqdor (dona)</label><input class="input" id="ksQty" inputmode="decimal" value="1"></div>
+        <div class="field"><label>Narx (so'm, 1 birlik uchun)</label><input class="input" id="ksPrice" inputmode="numeric" placeholder="0"></div>
+        <div class="field"><label>To'lov turi</label><select class="input" id="ksPay"><option value="naqd">Naqd</option><option value="karta">Karta</option><option value="qarz">Qarz (daftariga yoziladi)</option></select></div>
+        <div class="field" id="ksDebtorWrap" style="display:none"><label>Qarzdor</label><select class="input" id="ksDebtor"></select></div>
+        <div class="field"><label>Izoh (ixtiyoriy)</label><input class="input" id="ksNote"></div>
+        <div class="item" style="display:block;margin:6px 0 10px;text-align:center"><b>Jami: <span id="ksTotal">0 so'm</span></b></div>
+        <button class="btn btn-primary btn-block" id="ksSave">Saqlash</button>
       </section>
 
       <!-- CAB: QARZDOR KARTASI -->
@@ -2188,7 +2214,7 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor",
+    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
@@ -4646,6 +4672,118 @@
     if(h){ loadStockHist(h.getAttribute("data-st-hist")); return; }
   });
 
+  /* ---------- KASSA (savdo daftari) ---------- */
+  var kassaDay = "";     // "" = bugun
+  var ksItems = [];      // savdo formasi uchun mahsulotlar
+  function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+  function kassaShiftDay(delta){
+    var base = kassaDay ? new Date(kassaDay+"T00:00:00") : new Date();
+    base.setDate(base.getDate()+delta);
+    kassaDay = base.getFullYear()+"-"+("0"+(base.getMonth()+1)).slice(-2)+"-"+("0"+base.getDate()).slice(-2);
+    if(kassaDay===todayStr()) kassaDay="";
+    loadKassa();
+  }
+  function loadKassa(){
+    el("kassaList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/kassa"+(kassaDay?("?day="+kassaDay):"")).then(renderKassa)
+      .catch(function(e){ el("kassaList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function renderKassa(data){
+    var t = data.totals || {};
+    el("kassaDayLbl").textContent = kassaDay ? (data.day+" tushumi") : "Bugungi tushum";
+    el("kassaTotal").textContent = moneyText(t.all||0)+" so'm";
+    el("kassaBreak").innerHTML = 'Naqd: <b>'+moneyText(t.naqd||0)+'</b> · Karta: <b>'+moneyText(t.karta||0)+'</b> · Qarz: <b>'+moneyText(t.qarz||0)+'</b> · Buyurtma: <b>'+moneyText(t.order||0)+'</b>';
+    var list = data.sales || [];
+    if(!list.length){ el("kassaList").innerHTML = '<div class="item" style="display:block">Bu kunda savdo yo\'q.</div>'; return; }
+    el("kassaList").innerHTML = list.map(function(sl){
+      var d = new Date((sl.created_at||0)*1000);
+      var hm = ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+      var src = sl.source==="order" ? ('Buyurtma #'+sl.order_id) : ('Qo\'lda'+(sl.who?' · '+esc(sl.who):''));
+      return '<div class="item" style="display:block;margin-bottom:7px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px"><div class="iname" style="min-width:0">'+esc(sl.item_name)+' × '+fmtQty(sl.qty)+((sl.unit&&sl.unit!=="dona")?" "+esc(sl.unit):"")+'</div><div class="iprice" style="flex:0 0 auto">'+moneyText(sl.total)+'</div></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px;align-items:center"><div class="idesc">'+hm+' · <b>'+esc(sl.pay_text||"")+'</b> · '+src+'</div>'+
+        (sl.source==="manual" ? '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-ks-del="'+sl.id+'">O\'chirish</button>' : '')+'</div>'+
+      '</div>';
+    }).join("");
+  }
+  function ksSelItem(){
+    var v = parseInt(el("ksItem").value||"0",10);
+    for(var i=0;i<ksItems.length;i++) if(ksItems[i].id===v) return ksItems[i];
+    return null;
+  }
+  function ksUnit(){ var it=ksSelItem(); return it ? (it.unit||"dona") : "dona"; }
+  function ksUpdateTotal(){
+    var q = parseFloat(String(el("ksQty").value||"").replace(",", "."))||0;
+    var pv = parseInt(String(el("ksPrice").value||"").replace(/[^0-9]/g,""),10)||0;
+    el("ksTotal").textContent = moneyText(Math.round(q*pv))+" so'm";
+  }
+  function openKassaForm(){
+    api("GET","/api/items").then(function(items){
+      ksItems = items||[];
+      el("ksItem").innerHTML = '<option value="">— Boshqa (nomini qo\'lda yozaman) —</option>'+
+        ksItems.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+(i.price?' — '+esc(i.price):'')+'</option>'; }).join("");
+      el("ksNameWrap").style.display="block";
+      el("ksName").value=""; el("ksQty").value="1"; el("ksPrice").value=""; el("ksNote").value="";
+      el("ksPay").value="naqd"; el("ksDebtorWrap").style.display="none";
+      el("ksQtyLbl").textContent="Miqdor (dona)";
+      ksUpdateTotal();
+      nav("cab-kassa-form");
+    }).catch(function(e){ showMsg(e.message); });
+  }
+  el("ksItem").addEventListener("change", function(){
+    var it = ksSelItem();
+    el("ksNameWrap").style.display = it ? "none" : "block";
+    var u = ksUnit();
+    el("ksQtyLbl").textContent = "Miqdor ("+u+")"+(unitAllowsFraction(u)?"":" — butun son");
+    el("ksPrice").value = it ? String(parsePriceAmount(it.price)||"") : "";
+    ksUpdateTotal();
+  });
+  el("ksPay").addEventListener("change", function(){
+    var q = el("ksPay").value==="qarz";
+    el("ksDebtorWrap").style.display = q ? "block" : "none";
+    if(q){
+      api("GET","/api/qarz/debtors").then(function(ds){
+        el("ksDebtor").innerHTML = (ds&&ds.length) ? ds.map(function(d){ return '<option value="'+d.id+'">'+esc(d.name)+'</option>'; }).join("") : '<option value="0">Qarzdor yo\'q — avval Qarz daftarida qo\'shing</option>';
+      }).catch(function(e){ showMsg(e.message); });
+    }
+  });
+  el("ksQty").addEventListener("input", function(){
+    if(!unitAllowsFraction(ksUnit())){ var c=this.value.replace(/[^0-9]/g,""); if(this.value!==c) this.value=c; }
+    ksUpdateTotal();
+  });
+  el("ksPrice").addEventListener("input", ksUpdateTotal);
+  el("kassaAddBtn").addEventListener("click", openKassaForm);
+  el("kassaPrevDay").addEventListener("click", function(){ kassaShiftDay(-1); });
+  el("kassaNextDay").addEventListener("click", function(){ kassaShiftDay(1); });
+  el("kassaToday").addEventListener("click", function(){ kassaDay=""; loadKassa(); });
+  el("ksSave").addEventListener("click", function(){
+    var it = ksSelItem();
+    var body = {
+      item_id: it ? it.id : 0,
+      name: it ? "" : (el("ksName").value||"").trim(),
+      qty: (el("ksQty").value||"1"),
+      price: parseInt(String(el("ksPrice").value||"").replace(/[^0-9]/g,""),10)||0,
+      pay_type: el("ksPay").value,
+      debtor_id: parseInt(el("ksDebtor").value||"0",10),
+      note: (el("ksNote").value||"").trim()
+    };
+    if(!it && !body.name){ showMsg("Mahsulot tanlang yoki nomini yozing."); return; }
+    if(!(body.price>0)){ showMsg("Narx kiritilmadi."); return; }
+    if(body.pay_type==="qarz" && !(body.debtor_id>0)){ showMsg("Qarzdorni tanlang."); return; }
+    api("POST","/api/kassa", body)
+      .then(function(){ showMsg("Savdo yozildi ✅"); nav("cab-kassa"); })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  document.addEventListener("click", function(e){
+    var d = e.target.closest("[data-ks-del]");
+    if(!d) return;
+    var id = d.getAttribute("data-ks-del");
+    askConfirm({ text: "Bu savdo o'chirilsinmi? Ombor va qarz daftari qaytariladi.", okText: "O'chirish", danger: true }).then(function(ok){
+      if(!ok) return;
+      api("DELETE","/api/kassa/"+id).then(function(){ showMsg("O'chirildi"); loadKassa(); }).catch(function(e2){ showMsg(e2.message); });
+    });
+  });
+
   /* ---------- KABINET: yuklash va saqlash ---------- */
   function fillYonSelect(sel, val){
     sel.innerHTML = '<option value="">Tanlang</option>' +
@@ -4747,6 +4885,7 @@
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-qarz") loadDebtors();
     else if(screen==="cab-ombor") loadOmbor();
+    else if(screen==="cab-kassa") loadKassa();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
