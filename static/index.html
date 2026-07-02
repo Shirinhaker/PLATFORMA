@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1399 -->
+<title>Platforma</title><!-- BUILD: v1400 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2127,7 +2127,7 @@
 
   function submitRegister(){
     var name = (el("rgName").value||"").trim();
-    if(!name){ alert(regRole==="business"?"Biznes nomi kiritilishi shart.":"Ism kiritilishi shart."); return; }
+    if(!name){ showMsg(regRole==="business"?"Biznes nomi kiritilishi shart.":"Ism kiritilishi shart."); return; }
     var body = { role:regRole, name:name,
                  username:(el("rgUsername")?el("rgUsername").value.trim():""),
                  phone:(el("rgPhone")?el("rgPhone").value.trim():"") };
@@ -2156,7 +2156,7 @@
       // oddiy ro'yxat — login va parolni ko'rsatamiz (Telegramga ham yuborilgan)
       showCredentials(r.login, r.password, r.role);
     }).catch(function(e){
-      alert(e.message);
+      showMsg(e.message);
     }).finally(function(){
       btn.disabled = false; btn.textContent = "Ro'yxatdan o'tish";
     });
@@ -2295,7 +2295,7 @@
       bindPageFollow();
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
 
   /* ---------- BUYURTMALAR / NAVBATLAR ---------- */
@@ -2476,11 +2476,11 @@
   }
   function submitOrderSheet(){
     var phone = (el("orderPhone").value||"").trim();
-    if(!phone){ alert("Telefon raqam kiritish kerak."); el("orderPhone").focus(); return; }
+    if(!phone){ showMsg("Telefon raqam kiritish kerak."); el("orderPhone").focus(); return; }
     var address = (el("orderAddress").value||"").trim();
     var deliveryLat = null, deliveryLng = null;
     if(orderSheetType==="delivery"){
-      if(!ORDER_POINT){ alert("Yetkazib berish joyini xaritada belgilang."); return; }
+      if(!ORDER_POINT){ showMsg("Yetkazib berish joyini xaritada belgilang."); return; }
       deliveryLat = ORDER_POINT.lat; deliveryLng = ORDER_POINT.lng;
       if(!address){ address = "Xaritada belgilandi: "+deliveryLat.toFixed(6)+", "+deliveryLng.toFixed(6); }
     }
@@ -2519,10 +2519,10 @@
       }
       api("POST","/api/orders", withActor(body, actorType())).then(function(){
         if(useItems){ resetOrderDraft(bid, bname); }
-        alert("Buyurtma yuborildi.");
+        showMsg("Buyurtma yuborildi.");
         if(activeMode==="user") loadMyOrders();
         refreshOrderBadges();
-      }).catch(function(e){ alert(e.message); });
+      }).catch(function(e){ showMsg(e.message); });
     });
   }
   function setBadge(id, n, textId, textWhenOn, textWhenOff){
@@ -2719,7 +2719,7 @@
       var file = inp.files && inp.files[0];
       if(!file){ clearOrderChatImagePreview(); return; }
       if(!String(file.type||"").match(/^image\//)){
-        alert("Faqat rasm tanlang.");
+        showMsg("Faqat rasm tanlang.");
         clearOrderChatImagePreview();
         return;
       }
@@ -2788,7 +2788,7 @@
   function setOrderChatEdit(m){
     if(!m || !m.mine || m.is_deleted) return;
     if(!(m.text || "").trim()){
-      alert("Bu xabarda tahrirlanadigan matn yo‘q.");
+      showMsg("Bu xabarda tahrirlanadigan matn yo‘q.");
       return;
     }
     clearOrderChatImagePreview();
@@ -2877,8 +2877,8 @@
   }
   function copyOrderChatMessage(m){
     var text=(m && m.text ? m.text : "").trim();
-    if(!text){ alert("Nusxalanadigan matn yo‘q."); return; }
-    function done(){ alert("Matn nusxalandi."); }
+    if(!text){ showMsg("Nusxalanadigan matn yo‘q."); return; }
+    function done(){ showMsg("Matn nusxalandi."); }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopyOrderText(text, done); });
     }else{
@@ -2893,7 +2893,7 @@
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
-    try{ document.execCommand("copy"); if(done) done(); }catch(e){ alert("Nusxalab bo‘lmadi. Matnni qo‘lda belgilang."); }
+    try{ document.execCommand("copy"); if(done) done(); }catch(e){ showMsg("Nusxalab bo‘lmadi. Matnni qo‘lda belgilang."); }
     document.body.removeChild(ta);
   }
   function ensureOrderChatPhotoViewer(){
@@ -2990,7 +2990,12 @@
   }
   function deleteOrderChatMessage(id, mode, msg){
     if(!msg || !msg.mine) return;
-    if(!confirm("Bu xabar o‘chirilsinmi?")) return;
+    askConfirm({ text: "Bu xabar o‘chirilsinmi?", okText: "O‘chirish", danger: true }).then(function(ok){
+      if(ok) _doDeleteOrderChatMessage(id, mode, msg);
+    });
+  }
+  // Tasdiqdan keyingi haqiqiy o'chirish (yuqoridagi askConfirm'dan chaqiriladi)
+  function _doDeleteOrderChatMessage(id, mode, msg){
     var atype=orderChatActor(mode);
     api("DELETE","/api/orders/"+id+"/chat/"+msg.id, withActor({}, atype)).then(function(){
       clearOrderChatReply();
@@ -2998,7 +3003,7 @@
       return loadOrderChat(id, mode);
     }).then(function(){
       if(mode==="inbox") loadBizOrders(); else loadMyOrders();
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
   function sendOrderChat(id, mode){
     var inp=el("orderChatInput");
@@ -3009,10 +3014,10 @@
     var imageFile = imgInput && imgInput.files ? imgInput.files[0] : null;
     if(ORDER_CHAT_EDIT){
       if(imageFile){
-        alert("Tahrirlash paytida rasm yuborilmaydi. Avval tahrirlashni yakunlang yoki X bilan bekor qiling.");
+        showMsg("Tahrirlash paytida rasm yuborilmaydi. Avval tahrirlashni yakunlang yoki X bilan bekor qiling.");
         return;
       }
-      if(!text){ alert("Tahrirlash uchun matn kiriting."); return; }
+      if(!text){ showMsg("Tahrirlash uchun matn kiriting."); return; }
       if(btn) btn.disabled=true;
       var editId=ORDER_CHAT_EDIT.id;
       editOrderChatMessage(id, mode, editId, text).then(function(){
@@ -3021,12 +3026,12 @@
         return loadOrderChat(id, mode);
       }).then(function(){
         if(mode==="inbox") loadBizOrders(); else loadMyOrders();
-      }).catch(function(e){ alert(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
+      }).catch(function(e){ showMsg(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
       return;
     }
     if(imageFile){
       if(imageFile.size > 8 * 1024 * 1024){
-        alert("Rasm hajmi 8 MB dan oshmasin.");
+        showMsg("Rasm hajmi 8 MB dan oshmasin.");
         return;
       }
       if(btn) btn.disabled=true;
@@ -3037,7 +3042,7 @@
         return loadOrderChat(id, mode);
       }).then(function(){
         if(mode==="inbox") loadBizOrders(); else loadMyOrders();
-      }).catch(function(e){ alert(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
+      }).catch(function(e){ showMsg(e.message); }).finally(function(){ if(btn) btn.disabled=false; });
       return;
     }
     if(!text) return;
@@ -3051,7 +3056,7 @@
       return loadOrderChat(id, mode);
     }).then(function(){
       if(mode==="inbox") loadBizOrders(); else loadMyOrders();
-    }).catch(function(e){ alert(e.message); inp.value=text; }).finally(function(){ if(btn) btn.disabled=false; });
+    }).catch(function(e){ showMsg(e.message); inp.value=text; }).finally(function(){ if(btn) btn.disabled=false; });
   }
 
 
@@ -3083,7 +3088,7 @@
     api("PUT","/api/orders/"+id+"/status", withActor({status:status}, atype)).then(function(){
       if(mode==="inbox") loadBizOrders(); else loadMyOrders();
       refreshOrderBadges();
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
 
 
@@ -3119,12 +3124,12 @@
       var file = input.files && input.files[0] ? input.files[0] : null;
       if(!file){ clearChatImagePreview(); return; }
       if(!/^image\//.test(file.type || "")){
-        alert("Faqat rasm tanlang.");
+        showMsg("Faqat rasm tanlang.");
         clearChatImagePreview();
         return;
       }
       if(file.size > 8 * 1024 * 1024){
-        alert("Rasm hajmi 8 MB dan oshmasin.");
+        showMsg("Rasm hajmi 8 MB dan oshmasin.");
         clearChatImagePreview();
         return;
       }
@@ -3195,7 +3200,7 @@
   }
   function setChatEdit(m){
     if(!m || m.is_deleted) return;
-    if(!(m.text||"").trim()){ alert("Bu xabarda tahrirlanadigan matn yo‘q."); return; }
+    if(!(m.text||"").trim()){ showMsg("Bu xabarda tahrirlanadigan matn yo‘q."); return; }
     CHAT_EDIT = { id:m.id, text:m.text||"", media_type:m.media_type||"text" };
     CHAT_REPLY = null;
     clearChatImagePreview();
@@ -3283,8 +3288,8 @@
   }
   function copyChatMessage(m){
     var text = (m && m.text ? m.text : "").trim();
-    if(!text){ alert("Nusxalanadigan matn yo‘q."); return; }
-    function done(){ alert("Matn nusxalandi."); }
+    if(!text){ showMsg("Nusxalanadigan matn yo‘q."); return; }
+    function done(){ showMsg("Matn nusxalandi."); }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopyOrderText(text, done); });
     }else{
@@ -3375,13 +3380,18 @@
   }
   function deleteChatMessage(msg){
     if(!msg) return;
-    if(!confirm("Bu xabar o‘chirilsinmi?")) return;
+    askConfirm({ text: "Bu xabar o‘chirilsinmi?", okText: "O‘chirish", danger: true }).then(function(ok){
+      if(ok) _doDeleteChatMessage(msg);
+    });
+  }
+  // Tasdiqdan keyingi haqiqiy o'chirish (yuqoridagi askConfirm'dan chaqiriladi)
+  function _doDeleteChatMessage(msg){
     api("DELETE", "/api/messages/" + msg.id, withActor({})).then(function(){
       if(CHAT_EDIT && parseInt(CHAT_EDIT.id,10) === parseInt(msg.id,10)) clearChatEdit();
       if(CHAT_REPLY && parseInt(CHAT_REPLY.id,10) === parseInt(msg.id,10)) clearChatReply();
       loadChat(false);
       loadChatsListSilent();
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
   function sendChat(){
     var inp = el("chatInput");
@@ -3389,7 +3399,7 @@
     var text = (inp.value||"").trim();
     if(!chatPeer) return;
     if(CHAT_EDIT){
-      if(!text){ alert("Tahrirlash uchun matn kiriting."); return; }
+      if(!text){ showMsg("Tahrirlash uchun matn kiriting."); return; }
       if(btn) btn.disabled = true;
       var editId = CHAT_EDIT.id;
       updateChatMessage(editId, text).then(function(){
@@ -3397,7 +3407,7 @@
         inp.value = "";
         loadChat(false);
         loadChatsListSilent();
-      }).catch(function(e){ alert(e.message); }).finally(function(){ if(btn) btn.disabled = false; });
+      }).catch(function(e){ showMsg(e.message); }).finally(function(){ if(btn) btn.disabled = false; });
       return;
     }
     if(CHAT_IMAGE_FILE){
@@ -3410,7 +3420,7 @@
         loadChat(true);
         loadChatsListSilent();
       }).catch(function(e){
-        alert(e.message || "Rasm yuborilmadi.");
+        showMsg(e.message || "Rasm yuborilmadi.");
         inp.value = text;
       }).finally(function(){ if(btn) btn.disabled = false; });
       return;
@@ -3424,7 +3434,7 @@
       clearChatReply();
       loadChat(true);
       loadChatsListSilent();
-    }).catch(function(e){ alert(e.message); inp.value=text; }).finally(function(){ if(btn) btn.disabled=false; });
+    }).catch(function(e){ showMsg(e.message); inp.value=text; }).finally(function(){ if(btn) btn.disabled=false; });
   }
   function loadChatsListSilent(){
     if(current !== "chats") return;
@@ -3446,7 +3456,7 @@
   });
   el("boSave") && el("boSave").addEventListener("click", function(){
     var name=(el("boName").value||"").trim();
-    if(!name){ alert("Biznes nomini kiriting."); return; }
+    if(!name){ showMsg("Biznes nomini kiriting."); return; }
     var body={ name:name, yon:el("boYon").value||"", tur:(el("boTur").value||"").trim(),
                phone:(el("boPhone").value||"").trim(), address:(el("boAddr").value||"").trim() };
     var btn=this; btn.disabled=true;
@@ -3468,7 +3478,7 @@
       nav("register");
       el("tbTitle").textContent="Biznes ochildi";
       var dn=el("bizCredDone"); if(dn) dn.addEventListener("click", function(){ goBiz(); });
-    }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
+    }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
   function goBiz(){ activeMode="business"; nav("cabinet"); }
@@ -3514,7 +3524,7 @@
     // viloyat/tuman ro'yxatini to'ldiramiz (UZ_REGIONS)
     var R = window.UZ_REGIONS || [];
     var rs = el("nfRegion");
-    if(!R.length){ alert("Hududlar ro'yxati yuklanmadi. Internetni tekshirib, qayta urinib ko'ring."); }
+    if(!R.length){ showMsg("Hududlar ro'yxati yuklanmadi. Internetni tekshirib, qayta urinib ko'ring."); }
     rs.innerHTML = '<option value="">Istalgan viloyat</option>' + R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
     el("nfDistrict").innerHTML = '<option value="">Istalgan tuman</option>';
     el("nfCat").value="uy"; el("nfPriceMin").value=""; el("nfPriceMax").value=""; el("nfKeyword").value="";
@@ -3538,15 +3548,18 @@
     };
     var btn=this; btn.disabled=true;
     api("POST","/api/notify/filters",body).then(function(){
-      alert("Filtr saqlandi ✅");
+      showMsg("Filtr saqlandi ✅");
       openNotify();
-    }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
+    }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("notifyList") && el("notifyList").addEventListener("click", function(e){
     var d=e.target.closest("[data-delnf]");
     if(d){
-      if(!confirm("Bu filtrni o'chirasizmi?")) return;
-      api("DELETE","/api/notify/filters/"+d.getAttribute("data-delnf")).then(function(){ loadNotifyFilters(); }).catch(function(err){ alert(err.message); });
+      var nfid = d.getAttribute("data-delnf");
+      askConfirm({ text: "Bu filtrni o'chirasizmi?", okText: "O'chirish", danger: true }).then(function(ok){
+        if(!ok) return;
+        api("DELETE","/api/notify/filters/"+nfid).then(function(){ loadNotifyFilters(); }).catch(function(err){ showMsg(err.message); });
+      });
     }
   });
 
@@ -3612,7 +3625,7 @@
       bindPageFollow();
       var pm = el("pageMsg");
       if(pm) pm.addEventListener("click", function(){ openChat("user", p.id, p.name); });
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
   function openElonSrv(id){
     api("GET","/api/listings/"+id).then(function(e2){
@@ -3634,7 +3647,7 @@
       el("tbTitle").textContent = e2.title;
       nav("business");
       el("tbTitle").textContent = e2.title;
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
   function bindPageFollow(){
     var btn = el("pageFollow");
@@ -3645,7 +3658,7 @@
       api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id, actor_type:"user"}).then(function(r){
         btn.textContent = r.following ? "✓ Obunadasiz" : "+ Obuna";
         if(mapMode==="biz") loadHomeMap();
-      }).catch(function(e){ alert(e.message); });
+      }).catch(function(e){ showMsg(e.message); });
     });
   }
 
@@ -4131,7 +4144,7 @@
     function done(){ btn.disabled=false; btn.textContent=old; }
     if(!navigator.geolocation){
       done();
-      alert("Bu qurilmada avtomatik joylashuv mavjud emas. Iltimos, pastda qo'lda kiriting.");
+      showMsg("Bu qurilmada avtomatik joylashuv mavjud emas. Iltimos, pastda qo'lda kiriting.");
       return;
     }
     navigator.geolocation.getCurrentPosition(function(pos){
@@ -4162,7 +4175,7 @@
       var msg = "Joylashuvni aniqlab bo'lmadi. ";
       if(err && err.code===1) msg += "Telegram sozlamalarida joylashuvga ruxsat bering yoki pastda qo'lda kiriting.";
       else msg += "Iltimos, pastda qo'lda kiriting.";
-      alert(msg);
+      showMsg(msg);
     }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
   });
   /* ---------- MANZIL TANLASH (viloyat -> tuman) ---------- */
@@ -4277,7 +4290,7 @@
     if(loggedIn){
       api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:s.lat, lng:s.lng })
         .then(function(){ nav("home"); })
-        .catch(function(e){ alert((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
+        .catch(function(e){ showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
     } else {
       nav("home");
     }
@@ -4296,7 +4309,7 @@
         var item=ELONS.filter(function(x){return x.id===lid;})[0];
         if(item) item.is_saved = r.saved;
         renderElonList(mapMode);
-      }).catch(function(err){ alert(err.message); });
+      }).catch(function(err){ showMsg(err.message); });
       return;
     }
     // bog'lanish tugmasi (detal ichida) -> e'lon egasi sahifasiga
@@ -4337,7 +4350,7 @@
     var c=e.target.closest(".biz-card"); if(!c || c.hasAttribute("data-person")) return; openBiz(parseInt(c.getAttribute("data-id"),10));
   });
   el("bizBody").addEventListener("click", function(e){
-    if(e.target.closest(".gal-tile.video")){ alert("Video (namunada faqat ko'rsatilgan)."); return; }
+    if(e.target.closest(".gal-tile.video")){ showMsg("Video (namunada faqat ko'rsatilgan)."); return; }
     var oi=e.target.closest("[data-order-item]");
     if(oi){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
@@ -4362,10 +4375,10 @@
     }
     var btn=e.target.closest("[data-act]"); if(!btn) return;
     var a=btn.getAttribute("data-act");
-    if(a==="call"){ alert("Bog'lanish: telefon yoki Telegram orqali (namunada faqat ko'rsatilgan)."); return; }
+    if(a==="call"){ showMsg("Bog'lanish: telefon yoki Telegram orqali (namunada faqat ko'rsatilgan)."); return; }
     if(!loggedIn){ showLogin(a==="save" ? "Saqlash" : "Buyurtma berish yoki navbatga yozilish"); return; }
-    if(a==="save") alert("Saqlandi (namuna).");
-    else alert("Buyurtma / navbatga yozilish — keyingi bosqichlarda qo'shiladi.");
+    if(a==="save") showMsg("Saqlandi (namuna).");
+    else showMsg("Buyurtma / navbatga yozilish — keyingi bosqichlarda qo'shiladi.");
   });
 
   el("goRegister").addEventListener("click", function(){ nav("register"); });
@@ -4392,7 +4405,7 @@
   el("loginGo").addEventListener("click", function(){
     var login=(el("loginUser").value||"").trim();
     var pass=el("loginPass").value||"";
-    if(!login || !pass){ alert("Login va parolni kiriting."); return; }
+    if(!login || !pass){ showMsg("Login va parolni kiriting."); return; }
     var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
     api("POST","/api/auth/login",{login:login,password:pass}).then(function(r){
       if(r.approved){
@@ -4415,15 +4428,15 @@
           } else if(s.status==="rejected"){
             stopPoll();
             el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-            alert("Kirish rad etildi. Asosiy akkaunt egasi ruxsat bermadi.");
+            showMsg("Kirish rad etildi. Asosiy akkaunt egasi ruxsat bermadi.");
           } else if(s.status==="expired"){
             stopPoll();
             el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-            alert("So'rov muddati tugadi. Qaytadan urinib ko'ring.");
+            showMsg("So'rov muddati tugadi. Qaytadan urinib ko'ring.");
           }
         }).catch(function(){});
       }, 2500);
-    }).catch(function(e){ alert(e.message); })
+    }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Kirish"; });
   });
   el("loginBack").addEventListener("click", function(){
@@ -4471,7 +4484,7 @@
     var n=e.target.closest("[data-nav]");
     if(n){ nav(n.getAttribute("data-nav")); return; }
     var a=e.target.closest("[data-alert]");
-    if(a){ alert(a.getAttribute("data-alert")); }
+    if(a){ showMsg(a.getAttribute("data-alert")); }
   });
   document.querySelectorAll('[data-role]').forEach(function(rc){
     rc.addEventListener("click", function(){ renderReg(rc.getAttribute("data-role")); nav("regform"); });
@@ -4674,8 +4687,8 @@
       .then(function(){
         ME.name = nm;
         if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
-        alert("Saqlandi ✅");
-      }).catch(function(e){ alert(e.message); })
+        showMsg("Saqlandi ✅");
+      }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
 
@@ -4702,8 +4715,8 @@
         if(ad){ el("cabAddr").textContent="📍 "+ad; el("cabAddr").style.display=""; }
         else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
       }
-      alert("Saqlandi ✅");
-    }).catch(function(e){ alert(e.message); })
+      showMsg("Saqlandi ✅");
+    }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
 
@@ -4718,7 +4731,7 @@
       work_hours:el("spWork").value.trim(), after_hours:el("spAfter").value.trim(),
       visible: getToggle(spScreen,"data-vis")==="1",
       available: getToggle(spScreen,"data-avail")==="1"
-    }).then(function(){ alert("Saqlandi ✅"); }).catch(function(e){ alert(e.message); })
+    }).then(function(){ showMsg("Saqlandi ✅"); }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
 
@@ -4800,6 +4813,62 @@
       back.onclick = function(){ close(false); };
       back.classList.add("on");
       sheet.classList.add("on");
+    });
+  }
+
+  // Ilova ichidagi kiritish oynasi — prompt o'rniga (doimiy qoida: tashqi oynalar taqiqlangan).
+  // opts: { title, okText, cancelText, fields: [{key, label, placeholder, value, numeric, required}] }
+  // Natija: Promise -> {key: qiymat, ...} yoki bekor qilinsa null.
+  function askInput(opts){
+    opts = opts || {};
+    var fields = opts.fields || [];
+    return new Promise(function(resolve){
+      var back = document.getElementById("appInputBack");
+      var sheet = document.getElementById("appInputSheet");
+      if(!back){
+        back = document.createElement("div");
+        back.id = "appInputBack";
+        back.className = "app-modal-back";
+        sheet = document.createElement("div");
+        sheet.id = "appInputSheet";
+        sheet.className = "app-confirm";
+        document.body.appendChild(back);
+        document.body.appendChild(sheet);
+      }
+      var fhtml = fields.map(function(f, i){
+        return '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">'+esc(f.label||"")+'</div>'+
+               '<input class="input" data-ai="'+i+'" type="text"'+(f.numeric?' inputmode="numeric"':'')+
+               ' placeholder="'+esc(f.placeholder||"")+'" value="'+esc(f.value||"")+'">';
+      }).join("");
+      sheet.innerHTML =
+        (opts.title ? '<div class="acf-title">'+esc(opts.title)+'</div>' : '') +
+        fhtml +
+        '<div class="acf-btns">'+
+          '<button class="acf-cancel">'+esc(opts.cancelText||"Bekor qilish")+'</button>'+
+          '<button class="acf-ok">'+esc(opts.okText||"Saqlash")+'</button>'+
+        '</div>';
+      function close(val){
+        back.classList.remove("on");
+        sheet.classList.remove("on");
+        resolve(val);
+      }
+      sheet.querySelector(".acf-cancel").onclick = function(){ close(null); };
+      sheet.querySelector(".acf-ok").onclick = function(){
+        var out = {}, missing = null;
+        fields.forEach(function(f, i){
+          var v = (sheet.querySelector('[data-ai="'+i+'"]').value || "").trim();
+          if(f.numeric) v = v.replace(/\D/g, "");
+          if(f.required && !v && !missing) missing = f.label || "Maydon";
+          out[f.key] = v;
+        });
+        if(missing){ showMsg(missing + " kiritilishi shart."); return; }
+        close(out);
+      };
+      back.onclick = function(){ close(null); };
+      back.classList.add("on");
+      sheet.classList.add("on");
+      var first = sheet.querySelector('[data-ai="0"]');
+      if(first) setTimeout(function(){ first.focus(); }, 60);
     });
   }
 
@@ -5186,11 +5255,20 @@
     }).catch(function(e){ el("debtorsList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   el("debtorAddBtn").addEventListener("click", function(){
-    var name = prompt("Qarzdor ismi:"); if(!name) return;
-    var phone = prompt("Telefon (ixtiyoriy):") || "";
-    var initv = prompt("Boshlang'ich qarz summasi (faqat raqam, ixtiyoriy):") || "0";
-    api("POST","/api/qarz/debtors",{name:name.trim(),phone:phone.trim(),initial_debt:parseInt(initv.replace(/\D/g,""))||0})
-      .then(loadDebtors).catch(function(e){ alert(e.message); });
+    // prompt o'rniga — ilova ichidagi forma (3 maydon bitta oynada)
+    askInput({
+      title: "Yangi qarzdor",
+      okText: "Qo'shish",
+      fields: [
+        { key: "name",  label: "Qarzdor ismi", placeholder: "Ism", required: true },
+        { key: "phone", label: "Telefon (ixtiyoriy)", placeholder: "+998 ..." },
+        { key: "initv", label: "Boshlang'ich qarz (faqat raqam, ixtiyoriy)", placeholder: "0", numeric: true }
+      ]
+    }).then(function(v){
+      if(!v) return;
+      api("POST","/api/qarz/debtors",{name:v.name, phone:v.phone, initial_debt:parseInt(v.initv,10)||0})
+        .then(loadDebtors).catch(function(e){ showMsg(e.message); });
+    });
   });
   var curDebtor = null;
   el("debtorsList").addEventListener("click", function(e){
@@ -5212,16 +5290,25 @@
       }).join("");
       nav("cab-qarz-card");
       el("tbTitle").textContent = d.name;
-    }).catch(function(e){ alert(e.message); });
+    }).catch(function(e){ showMsg(e.message); });
   }
   function addTx(type){
     var label = type==="debt" ? "Qarz summasi" : "To'lov summasi";
-    var v = prompt(label+" (faqat raqam):"); if(!v) return;
-    var amount = parseInt(v.replace(/\D/g,"")) || 0;
-    if(amount<=0){ alert("Summa noto'g'ri."); return; }
-    var note = prompt("Izoh (ixtiyoriy):") || "";
-    api("POST","/api/qarz/debtors/"+curDebtor+"/tx",{type:type,amount:amount,note:note.trim()})
-      .then(function(){ openDebtor(curDebtor); }).catch(function(e){ alert(e.message); });
+    // prompt o'rniga — ilova ichidagi forma (summa + izoh bitta oynada)
+    askInput({
+      title: label,
+      okText: "Saqlash",
+      fields: [
+        { key: "amount", label: label + " (faqat raqam)", placeholder: "0", numeric: true, required: true },
+        { key: "note",   label: "Izoh (ixtiyoriy)", placeholder: "" }
+      ]
+    }).then(function(v){
+      if(!v) return;
+      var amount = parseInt(v.amount, 10) || 0;
+      if(amount<=0){ showMsg("Summa noto'g'ri."); return; }
+      api("POST","/api/qarz/debtors/"+curDebtor+"/tx",{type:type,amount:amount,note:v.note})
+        .then(function(){ openDebtor(curDebtor); }).catch(function(e){ showMsg(e.message); });
+    });
   }
   el("qcPayBtn").addEventListener("click", function(){ addTx("payment"); });
   el("qcDebtBtn").addEventListener("click", function(){ addTx("debt"); });
@@ -5263,7 +5350,7 @@
   function pickMedia(listId){
     api("GET","/api/media/inbox").then(function(items){
       if(!items.length){
-        alert("Avval rasm yoki videoni shu botga yuboring (chat oynasida), keyin bu yerga qaytib tanlang.");
+        showMsg("Avval rasm yoki videoni shu botga yuboring (chat oynasida), keyin bu yerga qaytib tanlang.");
         return;
       }
       // oddiy tanlov: birinchi kelganini qo'shamiz (haqiqiy UI keyin — hozir botdan kelgan oxirgilarni qo'shadi)
@@ -5272,8 +5359,8 @@
         if(selMedia.length<10 && !selMedia.some(function(x){return x.file_id===m.file_id;})){ selMedia.push(m); added++; }
       });
       renderMediaList(listId);
-      if(added) alert(added+" ta media qo'shildi.");
-    }).catch(function(e){ alert(e.message); });
+      if(added) showMsg(added+" ta media qo'shildi.");
+    }).catch(function(e){ showMsg(e.message); });
   }
 
   /* ---------- E'LON JOYINI XARITADA TANLASH ---------- */
@@ -5318,7 +5405,7 @@
   }
   function openPicker(prefix){
     pickTarget = prefix;
-    if(typeof L === "undefined"){ alert("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
+    if(typeof L === "undefined"){ showMsg("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
 
     // bp uchun avval saqlangan koordinatani tiklab olamiz
     if(prefix === "bp" && !pickedLatLng.bp){
@@ -5377,7 +5464,7 @@
     var c = PMAP.getCenter();
     var ll = normalizeLatLng(c.lat, c.lng);
     if(!ll){
-      alert("Xarita koordinatasi noto'g'ri. Iltimos, boshqa joyni tanlang.");
+      showMsg("Xarita koordinatasi noto'g'ri. Iltimos, boshqa joyni tanlang.");
       return;
     }
 
@@ -5401,7 +5488,7 @@
         updateCabAddr();
         nav("cab-profil");
       }).catch(function(e){
-        alert((e && e.message) ? e.message : "Joyni saqlashda xatolik bo'ldi");
+        showMsg((e && e.message) ? e.message : "Joyni saqlashda xatolik bo'ldi");
         nav("cab-profil");
       });
       return;
@@ -5438,8 +5525,8 @@
     });
     el(prefix+"Submit").addEventListener("click", function(){
       var title=(el(prefix+"Title").value||"").trim();
-      if(!title){ alert("Sarlavha kiritilishi shart."); return; }
-      if(!pickedLatLng[prefix]){ alert("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash)."); return; }
+      if(!title){ showMsg("Sarlavha kiritilishi shart."); return; }
+      if(!pickedLatLng[prefix]){ showMsg("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash)."); return; }
       var catOn=el(catsId).querySelector("[data-elcat].on");
       var cat=catOn?catOn.getAttribute("data-elcat"):"boshqa";
       var ll = pickedLatLng[prefix];
@@ -5453,9 +5540,9 @@
         pickedLatLng[prefix]=null;
         var info=el(prefix+"PickInfo"); if(info){ info.innerHTML="Joy hali belgilanmagan"; info.style.color="var(--soft)"; }
         el(prefix+"Title").value=""; el(prefix+"Price").value=""; el(prefix+"Descr").value=""; el(prefix+"Addr").value="";
-        alert("E'lon joylandi ✅");
+        showMsg("E'lon joylandi ✅");
         nav(prefix==="be" ? "cab-elon" : "ucab-elon");
-      }).catch(function(e){ alert(e.message); }).finally(function(){ btn.disabled=false; });
+      }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
     });
   }
 
@@ -5485,7 +5572,13 @@
   // E'lon o'chirish (ikkala ro'yxat uchun)
   document.addEventListener("click", function(e){
     var dl=e.target.closest("[data-eldel]");
-    if(dl){ if(confirm("Bu e'lon o'chirilsinmi?")){ api("DELETE","/api/listings/"+dl.getAttribute("data-eldel")+"?"+actorQuery(current==="cab-elon"?"business":"user")).then(function(){ renderMyElons(current==="cab-elon"?"bizElonList":"userElonList", current==="cab-elon"?"business":"user"); }).catch(function(e){ alert(e.message); }); } }
+    if(dl){
+      var _delId = dl.getAttribute("data-eldel");
+      askConfirm({ text: "Bu e'lon o'chirilsinmi?", okText: "O'chirish", danger: true }).then(function(ok){
+        if(!ok) return;
+        api("DELETE","/api/listings/"+_delId+"?"+actorQuery(current==="cab-elon"?"business":"user")).then(function(){ renderMyElons(current==="cab-elon"?"bizElonList":"userElonList", current==="cab-elon"?"business":"user"); }).catch(function(e){ showMsg(e.message); });
+      });
+    }
   });
 
 
