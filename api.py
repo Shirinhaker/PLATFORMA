@@ -795,7 +795,7 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
         (biz["id"],),
     ).fetchall()
     conn.close()
-    return [{"id": r["id"], "name": r["name"], "price": r["price"],
+    return [{"id": r["id"], "name": r["name"], "price": r["price"], "unit": r["unit"] or "dona",
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
              "photo_file": r["photo_file"]} for r in rows]
@@ -813,8 +813,8 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?)",
-        (biz["id"], group_id, name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
+        "INSERT INTO items(business_id, group_id, name, price, unit, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")), (b.get("note") or "").strip(),
          kind, photo, int(time.time())),
     )
     conn.commit()
@@ -841,8 +841,8 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     conn.execute(
-        "UPDATE items SET name=?, price=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
-        (name, (b.get("price") or "").strip(), (b.get("note") or "").strip(),
+        "UPDATE items SET name=?, price=?, unit=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
+        (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")), (b.get("note") or "").strip(),
          kind, group_id, photo, item_id, biz["id"]),
     )
     conn.commit()
@@ -1764,6 +1764,17 @@ def _fuzzy_correct(conn, q):
     return " ".join(out)
 
 
+# O'lchov birliklari — ruxsat etilgan ro'yxat (frontend tanlovi bilan bir xil bo'lishi shart)
+UNITS = ("dona", "kg", "g", "litr", "ml", "metr", "sm", "m²",
+         "to'plam", "quti", "juft", "porsiya", "soat", "kun", "marta")
+
+
+def _clean_unit(v):
+    """Birlikni tekshiradi; ro'yxatda bo'lmasa yoki bo'sh bo'lsa 'dona' qaytaradi."""
+    v = (v or "").strip()
+    return v if v in UNITS else "dona"
+
+
 @router.get("/search")
 async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
@@ -1787,7 +1798,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         if _match:
             try:
                 products = conn.execute(
-                    "SELECT i.id, i.name, i.price, i.note, i.kind, "
+                    "SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, "
                     "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
@@ -1804,7 +1815,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 terms,
             )
             products = conn.execute(
-                """SELECT i.id, i.name, i.price, i.note, i.kind,
+                """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind,
                           b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
                    FROM items i JOIN businesses b ON b.id=i.business_id
                    WHERE b.status='active' AND """ + product_where + """
@@ -1915,7 +1926,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         "scope": scope,
         "corrected": corrected,
         "terms": _search_terms(corrected or q),
-        "products": [{"id": p["id"], "name": p["name"], "price": p["price"],
+        "products": [{"id": p["id"], "name": p["name"], "price": p["price"], "unit": p["unit"] or "dona",
                       "note": p["note"], "kind": p["kind"],
                       "business_id": p["biz_id"], "business_name": p["biz_name"],
                       "business_yon": p["biz_yon"], "business_tur": p["biz_tur"],
@@ -1987,7 +1998,7 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
     items = conn.execute(
-        """SELECT i.id, i.name, i.price, i.note, i.kind, i.group_id, i.photo_file,
+        """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file,
                   g.name AS group_name, g.kind AS group_kind
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
@@ -2575,6 +2586,7 @@ def _load_order_items_payload(conn, body, provider, item_id=None):
             "item_name": it["name"] or "Mahsulot/xizmat",
             "price_text": price_text,
             "qty": qty,
+            "unit": _row_val(it, "unit", "dona") or "dona",
             "line_total": price_val * qty if price_val else 0,
             "note": it["note"] or "",
         })
@@ -2625,6 +2637,7 @@ def _order_items_to_dict(conn, order_id):
         "name": r["item_name"],
         "price": r["price_text"] or "",
         "qty": r["qty"] or 1,
+        "unit": _row_val(r, "unit", "") or "",
         "line_total": r["line_total"] or 0,
         "note": r["note"] or "",
     } for r in rows]
@@ -2766,9 +2779,9 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     conn.execute("UPDATE orders SET customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, oid))
     for oi in order_items:
         conn.execute(
-            """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, line_total, note, created_at)
-               VALUES(?,?,?,?,?,?,?,?)""",
-            (oid, oi["item_id"], oi["item_name"], oi["price_text"], oi["qty"], oi["line_total"], oi["note"], now),
+            """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, unit, line_total, note, created_at)
+               VALUES(?,?,?,?,?,?,?,?,?)""",
+            (oid, oi["item_id"], oi["item_name"], oi["price_text"], oi["qty"], oi.get("unit") or "", oi["line_total"], oi["note"], now),
         )
     conn.commit()
 
