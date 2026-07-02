@@ -780,6 +780,14 @@ def _migrate(conn):
             "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
             "FROM specialists s JOIN users u ON u.id = s.user_id")
 
+    # --- v1401: O'lchov birliklari — items.unit va order_items.unit (eski bazaga xavfsiz) ---
+    _icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "unit" not in _icols:
+        conn.execute("ALTER TABLE items ADD COLUMN unit TEXT DEFAULT 'dona'")
+    _oicols = [r["name"] for r in conn.execute("PRAGMA table_info(order_items)").fetchall()]
+    if "unit" not in _oicols:
+        conn.execute("ALTER TABLE order_items ADD COLUMN unit TEXT DEFAULT ''")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
