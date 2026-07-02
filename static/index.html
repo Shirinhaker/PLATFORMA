@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1404 -->
+<title>Platforma</title><!-- BUILD: v1405 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2362,7 +2362,7 @@
           '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="iname" style="min-width:0">'+esc(it.name)+'</div><div class="idesc" style="flex:0 0 auto">'+esc(it.price||"Narx kelishiladi")+'</div></div>'+
           '<div style="display:flex;align-items:center;gap:6px;margin-top:8px">'+
             '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-order-minus="'+it.item_id+'">−</button>'+
-            '<input class="input" inputmode="decimal" data-dq-qty="'+it.item_id+'" value="'+fmtQty(it.qty)+'" style="height:38px;flex:1;min-width:0;text-align:center;font-weight:700">'+
+            '<input class="input" inputmode="'+(unitAllowsFraction(it.unit)?"decimal":"numeric")+'" data-dq-qty="'+it.item_id+'" value="'+fmtQty(it.qty)+'" style="height:38px;flex:1;min-width:0;text-align:center;font-weight:700">'+
             '<span class="idesc" style="flex:0 0 auto">'+esc(it.unit||"dona")+'</span>'+
             '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-order-plus="'+it.item_id+'">+</button>'+
             (pv>0 ? '<input class="input" inputmode="numeric" data-dq-sum="'+it.item_id+'" value="'+Math.round(pv*(parseFloat(it.qty)||0))+'" placeholder="so\'m" style="height:38px;flex:1.2;min-width:0;text-align:right">' : '')+
@@ -2387,6 +2387,11 @@
       var sk=t.getAttribute ? t.getAttribute("data-dq-sum") : null;
       if(qk){
         var it=orderDraft.items[String(qk)]; if(!it) return;
+        if(!unitAllowsFraction(it.unit)){
+          // dona kabi sanaladigan birlik — faqat raqam, kasr yozib bo'lmaydi
+          var cleaned = String(t.value||"").replace(/[^0-9]/g, "");
+          if(t.value !== cleaned) t.value = cleaned;
+        }
         var q=parseFloat(String(t.value||"").replace(",", "."));
         if(isNaN(q)||q<0) q=0;
         if(q>999) q=999;
