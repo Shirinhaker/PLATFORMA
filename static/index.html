@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1401 -->
+<title>Platforma</title><!-- BUILD: v1402 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2328,8 +2328,58 @@
     return Object.keys(orderDraft.items||{}).map(function(k){ return orderDraft.items[k]; });
   }
   function draftTotal(){
-    return draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0);
+    return Math.round(draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0));
   }
+  // Miqdor/Summa oynasi — miqdor yozilsa summa, summa yozilsa miqdor avtomatik hisoblanadi.
+  // Masalan 30 000 so'm/kg mahsulotda "15000" summa yozilsa -> 0.5 kg bo'ladi.
+  function openQtyDialog(id){
+    var k = String(id), it = orderDraft.items[k];
+    if(!it) return;
+    var pv = parsePriceAmount(it.price);        // birlik narxi (so'm), 0 = narx kelishiladi
+    var frac = unitAllowsFraction(it.unit);
+    var back = document.getElementById("qtyDlgBack");
+    var sheet = document.getElementById("qtyDlgSheet");
+    if(!back){
+      back = document.createElement("div"); back.id = "qtyDlgBack"; back.className = "app-modal-back";
+      sheet = document.createElement("div"); sheet.id = "qtyDlgSheet"; sheet.className = "app-confirm";
+      document.body.appendChild(back); document.body.appendChild(sheet);
+    }
+    sheet.innerHTML =
+      '<div class="acf-title">'+esc(it.name)+'</div>'+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(it.unit||"dona")+')'+(frac?'':' — butun son')+'</div>'+
+      '<input class="input" id="qtyDlgQty" type="text" inputmode="decimal" value="'+fmtQty(it.qty)+'">'+
+      (pv>0 ? ('<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">yoki Summa (so\'m) — narx: '+esc(moneyText(pv))+' / '+esc(it.unit||"dona")+'</div>'+
+               '<input class="input" id="qtyDlgSum" type="text" inputmode="numeric" value="'+Math.round(pv*(parseFloat(it.qty)||0))+'">') : '')+
+      '<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
+    function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
+    var qEl = sheet.querySelector("#qtyDlgQty"), sEl = sheet.querySelector("#qtyDlgSum");
+    function readQty(){ var v = parseFloat(String(qEl.value||"").replace(",", ".")); return (isNaN(v)||v<0) ? 0 : v; }
+    if(sEl){
+      qEl.addEventListener("input", function(){ var q = readQty(); sEl.value = q>0 ? String(Math.round(pv*q)) : ""; });
+      sEl.addEventListener("input", function(){
+        var m = parseInt(String(sEl.value||"").replace(/[^0-9]/g,""), 10) || 0;
+        if(m>0 && pv>0){
+          var q = m/pv;
+          q = frac ? Math.round(q*1000)/1000 : Math.max(1, Math.floor(q));
+          qEl.value = fmtQty(q);
+        }
+      });
+    }
+    sheet.querySelector(".acf-cancel").onclick = function(){ close(); };
+    back.onclick = function(){ close(); };
+    sheet.querySelector(".acf-ok").onclick = function(){
+      var q = readQty();
+      if(!frac) q = Math.floor(q + 0.5);
+      q = Math.round(q*1000)/1000;
+      if(!(q>0)){ showMsg("Miqdor noto'g'ri."); return; }
+      if(q>999) q = 999;
+      it.qty = q;
+      close(); renderOrderDraftBox();
+    };
+    back.classList.add("on"); sheet.classList.add("on");
+    setTimeout(function(){ qEl.focus(); if(qEl.select) qEl.select(); }, 60);
+  }
+
   function addOrderItem(id, name, price, bid, bname, unit){
     if(orderDraft.business_id && Number(orderDraft.business_id)!==Number(bid)) resetOrderDraft(bid, bname);
     if(!orderDraft.business_id) resetOrderDraft(bid, bname);
@@ -2353,7 +2403,7 @@
     box.style.display="block";
     var total=draftTotal();
     box.innerHTML = '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><div><b>Tanlanganlar</b><div class="idesc">'+list.length+' xil mahsulot/xizmat</div></div><div class="iprice">'+esc(moneyText(total)||"Narx kelishiladi")+'</div></div>'+
-      list.map(function(it){ return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+esc(it.price||"Narx kelishiladi")+'</div></div><div style="display:flex;align-items:center;gap:6px"><button class="mini-btn" style="height:34px;padding:0 10px" data-order-minus="'+it.item_id+'">−</button><b>'+it.qty+((it.unit&&it.unit!=="dona")?" "+esc(it.unit):"")+'</b><button class="mini-btn" style="height:34px;padding:0 10px" data-order-plus="'+it.item_id+'">+</button></div></div>'; }).join("")+
+      list.map(function(it){ return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px"><div style="flex:1;min-width:0"><div class="iname">'+esc(it.name)+'</div><div class="idesc">'+esc(it.price||"Narx kelishiladi")+'</div></div><div style="display:flex;align-items:center;gap:6px"><button class="mini-btn" style="height:34px;padding:0 10px" data-order-minus="'+it.item_id+'">−</button><b data-qty-edit="'+it.item_id+'" style="cursor:pointer;min-width:24px;text-align:center;text-decoration:underline dotted;text-underline-offset:3px">'+fmtQty(it.qty)+((it.unit&&it.unit!=="dona")?" "+esc(it.unit):"")+'</b><button class="mini-btn" style="height:34px;padding:0 10px" data-order-plus="'+it.item_id+'">+</button></div></div>'; }).join("")+
       '<button class="btn btn-amber btn-block" data-order-checkout="'+orderDraft.business_id+'" data-order-name="'+esc(orderDraft.business_name)+'">Tanlanganlarni buyurtma qilish</button>';
   }
   function orderStatusText(st){
@@ -4362,6 +4412,8 @@
     if(om){ changeOrderItem(parseInt(om.getAttribute("data-order-minus"),10), -1); return; }
     var op=e.target.closest("[data-order-plus]");
     if(op){ changeOrderItem(parseInt(op.getAttribute("data-order-plus"),10), 1); return; }
+    var oq=e.target.closest("[data-qty-edit]");
+    if(oq){ openQtyDialog(oq.getAttribute("data-qty-edit")); return; }
     var oc=e.target.closest("[data-order-checkout]");
     if(oc){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
@@ -4749,7 +4801,11 @@
   function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
   // Birlik ko'rsatish: 'dona' bo'lsa ko'rsatmaymiz (ortiqcha shovqin bo'lmasin)
   function unitSuffix(u){ return (u && u !== "dona") ? " / " + u : ""; }
-  function qtyUnitText(q, u){ return (q || 1) + ((u && u !== "dona") ? " " + u : ""); }
+  function fmtQty(q){ var n = Math.round((parseFloat(q)||0)*1000)/1000; return String(n); }
+  // Kasr miqdorga ruxsat etilgan (o'lchanadigan) birliklar — backend bilan bir xil
+  var FRACTIONAL_UNITS = ["kg","g","litr","ml","metr","sm","m²","soat"];
+  function unitAllowsFraction(u){ return FRACTIONAL_UNITS.indexOf(u||"dona") !== -1; }
+  function qtyUnitText(q, u){ return fmtQty(q || 1) + ((u && u !== "dona") ? " " + u : ""); }
   function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
   function itemGroupById(gid){
     gid = itemGroupValue(gid);
