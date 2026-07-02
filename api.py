@@ -796,6 +796,7 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
     ).fetchall()
     conn.close()
     return [{"id": r["id"], "name": r["name"], "price": r["price"], "unit": r["unit"] or "dona",
+             "track_stock": r["track_stock"] or 0, "stock_qty": r["stock_qty"] or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
              "photo_file": r["photo_file"]} for r in rows]
@@ -813,9 +814,10 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")), (b.get("note") or "").strip(),
-         kind, photo, int(time.time())),
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
+         1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
+         (b.get("note") or "").strip(), kind, photo, int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -841,9 +843,10 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
-        (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")), (b.get("note") or "").strip(),
-         kind, group_id, photo, item_id, biz["id"]),
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
+        (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
+         1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
+         (b.get("note") or "").strip(), kind, group_id, photo, item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -1443,6 +1446,99 @@ def qarz_balance(conn, debtor_id):
         "FROM qarz_tx WHERE debtor_id=?", (debtor_id,),
     ).fetchone()
     return row["b"] or 0
+
+
+# ================== OMBOR (qoldiq + kirim-chiqim tarixi) ==================
+_STOCK_REASON_TEXT = {"kirim": "Kirim", "chiqim": "Chiqim", "sotuv": "Sotuv (buyurtma)", "tuzatish": "Tuzatish"}
+
+
+def _stock_delta(v):
+    """Kirim/chiqim miqdori: kasr ham bo'ladi, vergul ham qabul qilinadi."""
+    try:
+        d = float(str(v if v is not None else 0).replace(",", ".").strip() or 0)
+    except Exception:
+        d = 0.0
+    if d != d:
+        d = 0.0
+    d = round(d, 3)
+    if abs(d) > 100000:
+        raise HTTPException(400, "Miqdor juda katta.")
+    return d
+
+
+@router.get("/stock")
+async def stock_list(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        "SELECT id, name, unit, stock_qty FROM items "
+        "WHERE business_id=? AND track_stock=1 ORDER BY name COLLATE NOCASE",
+        (biz["id"],),
+    ).fetchall()
+    result = [{"id": r["id"], "name": r["name"], "unit": r["unit"] or "dona",
+               "stock_qty": r["stock_qty"] or 0} for r in rows]
+    conn.close()
+    return result
+
+
+@router.post("/stock/move")
+async def stock_move(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    item_id = int(body.get("item_id") or 0)
+    it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
+    if not it:
+        conn.close()
+        raise HTTPException(404, "Mahsulot topilmadi.")
+    delta = _stock_delta(body.get("delta"))
+    unit = _row_val(it, "unit", "dona") or "dona"
+    if unit not in FRACTIONAL_UNITS and not float(delta).is_integer():
+        # sanaladigan birlik — butun songa keltiramiz
+        sgn = 1 if delta > 0 else -1
+        delta = sgn * float(int(math.floor(abs(delta) + 0.5)))
+    if delta == 0:
+        conn.close()
+        raise HTTPException(400, "Miqdor kiritilmadi.")
+    reason = (body.get("reason") or "").strip()
+    if reason not in _STOCK_REASON_TEXT:
+        reason = "kirim" if delta > 0 else "chiqim"
+    note = (body.get("note") or "").strip()[:200]
+    now = int(time.time())
+    conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
+    conn.execute(
+        "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+        "VALUES(?,?,?,?,?,NULL,?,?)",
+        (biz["id"], item_id, delta, reason, note, user["id"], now),
+    )
+    conn.commit()
+    new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
+    conn.close()
+    return {"ok": True, "stock_qty": new_q or 0}
+
+
+@router.get("/stock/moves")
+async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    it = conn.execute("SELECT unit FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
+    if not it:
+        conn.close()
+        raise HTTPException(404, "Mahsulot topilmadi.")
+    unit = it["unit"] or "dona"
+    rows = conn.execute(
+        "SELECT m.*, u.name AS who FROM stock_moves m "
+        "LEFT JOIN users u ON u.id = m.user_id "
+        "WHERE m.business_id=? AND m.item_id=? "
+        "ORDER BY m.created_at DESC, m.id DESC LIMIT 100",
+        (biz["id"], item_id),
+    ).fetchall()
+    result = [{"delta": r["delta"], "reason": r["reason"],
+               "reason_text": _STOCK_REASON_TEXT.get(r["reason"], r["reason"] or ""),
+               "note": r["note"] or "", "who": r["who"] or "",
+               "order_id": r["order_id"], "created_at": r["created_at"], "unit": unit}
+              for r in rows]
+    conn.close()
+    return result
 
 
 @router.get("/qarz/debtors")
