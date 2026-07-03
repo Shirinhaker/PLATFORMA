@@ -1508,12 +1508,17 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     rows = conn.execute(
-        "SELECT id, name, unit, stock_qty FROM items "
-        "WHERE business_id=? AND track_stock=1 ORDER BY name COLLATE NOCASE",
+        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.photo_file, i.group_id, "
+        "g.name AS group_name FROM items i "
+        "LEFT JOIN item_groups g ON g.id = i.group_id "
+        "WHERE i.business_id=? AND i.track_stock=1 "
+        "ORDER BY i.name COLLATE NOCASE",
         (biz["id"],),
     ).fetchall()
     result = [{"id": r["id"], "name": r["name"], "unit": r["unit"] or "dona",
-               "stock_qty": r["stock_qty"] or 0} for r in rows]
+               "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
+               "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
+               "group_name": r["group_name"] or ""} for r in rows]
     conn.close()
     return result
 
@@ -1540,12 +1545,21 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     if reason not in _STOCK_REASON_TEXT:
         reason = "kirim" if delta > 0 else "chiqim"
     note = (body.get("note") or "").strip()[:200]
+    try:
+        cost = int(str(body.get("cost") or "0").replace(" ", "") or 0)
+    except Exception:
+        cost = 0
+    if cost < 0:
+        cost = 0
     now = int(time.time())
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
+    if delta > 0 and cost > 0:
+        # oxirgi tannarx mahsulotda saqlanadi (foyda hisobi uchun)
+        conn.execute("UPDATE items SET cost_price=? WHERE id=?", (cost, item_id))
     conn.execute(
-        "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
-        "VALUES(?,?,?,?,?,NULL,?,?)",
-        (biz["id"], item_id, delta, reason, note, user["id"], now),
+        "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, cost, order_id, user_id, created_at) "
+        "VALUES(?,?,?,?,?,?,NULL,?,?)",
+        (biz["id"], item_id, delta, reason, note, cost, user["id"], now),
     )
     conn.commit()
     new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
@@ -1572,6 +1586,7 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     result = [{"delta": r["delta"], "reason": r["reason"],
                "reason_text": _STOCK_REASON_TEXT.get(r["reason"], r["reason"] or ""),
                "note": r["note"] or "", "who": r["who"] or "",
+               "cost": _row_val(r, "cost", 0) or 0,
                "order_id": r["order_id"], "created_at": r["created_at"], "unit": unit}
               for r in rows]
     conn.close()
