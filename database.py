@@ -807,6 +807,14 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_moves_item ON stock_moves(business_id, item_id, created_at)")
 
+    # --- v1410: Tannarx — mahsulotda oxirgi tannarx, kirimda tannarx tarixi ---
+    _icols3 = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    if "cost_price" not in _icols3:
+        conn.execute("ALTER TABLE items ADD COLUMN cost_price INTEGER DEFAULT 0")
+    _smcols = [r["name"] for r in conn.execute("PRAGMA table_info(stock_moves)").fetchall()]
+    if "cost" not in _smcols:
+        conn.execute("ALTER TABLE stock_moves ADD COLUMN cost INTEGER DEFAULT 0")
+
     # --- v1408: KASSA — savdo daftari ---
     conn.execute(
         "CREATE TABLE IF NOT EXISTS sales("
