@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1408 -->
+<title>Platforma</title><!-- BUILD: v1409 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -875,14 +875,16 @@
 
       <!-- CAB: KASSA FORMA -->
       <section class="screen" data-screen="cab-kassa-form">
-        <div class="field"><label>Mahsulot</label><select class="input" id="ksItem"></select></div>
-        <div class="field" id="ksNameWrap"><label>Nomi (qo'lda)</label><input class="input" id="ksName" placeholder="Masalan: Choy"></div>
-        <div class="field"><label id="ksQtyLbl">Miqdor (dona)</label><input class="input" id="ksQty" inputmode="decimal" value="1"></div>
-        <div class="field"><label>Narx (so'm, 1 birlik uchun)</label><input class="input" id="ksPrice" inputmode="numeric" placeholder="0"></div>
+        <div class="idesc" style="margin:2px 2px 8px">Mahsulot ustiga bosing — chekka qo'shiladi. Chekda miqdor va summa bir-biriga bog'langan.</div>
+        <div id="ksCatalog"><div class="idesc">Yuklanmoqda...</div></div>
+        <button class="mini-btn" style="width:100%;height:38px;margin:2px 0 10px" id="ksCustomBtn">+ Ro'yxatda yo'q mahsulot (qo'lda)</button>
+        <div id="ksSelBox" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 6px"><b>🧾 Chek</b><div class="iprice" id="ksTotal">0 so'm</div></div>
+          <div id="ksSelList"></div>
+        </div>
         <div class="field"><label>To'lov turi</label><select class="input" id="ksPay"><option value="naqd">Naqd</option><option value="karta">Karta</option><option value="qarz">Qarz (daftariga yoziladi)</option></select></div>
         <div class="field" id="ksDebtorWrap" style="display:none"><label>Qarzdor</label><select class="input" id="ksDebtor"></select></div>
         <div class="field"><label>Izoh (ixtiyoriy)</label><input class="input" id="ksNote"></div>
-        <div class="item" style="display:block;margin:6px 0 10px;text-align:center"><b>Jami: <span id="ksTotal">0 so'm</span></b></div>
         <button class="btn btn-primary btn-block" id="ksSave">Saqlash</button>
       </section>
 
@@ -4674,7 +4676,6 @@
 
   /* ---------- KASSA (savdo daftari) ---------- */
   var kassaDay = "";     // "" = bugun
-  var ksItems = [];      // savdo formasi uchun mahsulotlar
   function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
   function kassaShiftDay(delta){
     var base = kassaDay ? new Date(kassaDay+"T00:00:00") : new Date();
@@ -4706,40 +4707,159 @@
       '</div>';
     }).join("");
   }
-  function ksSelItem(){
-    var v = parseInt(el("ksItem").value||"0",10);
-    for(var i=0;i<ksItems.length;i++) if(ksItems[i].id===v) return ksItems[i];
-    return null;
+
+  /* --- Kassa cheki: bir nechta mahsulot, miqdor <-> summa bog'langan --- */
+  var ksSel = {};    // key -> {key,item_id,name,unit,pv,price,qty,custom}
+  var ksSeq = 0;
+  function ksRowPrice(s0){ return s0.pv>0 ? s0.pv : (s0.price||0); }
+  function ksGrandTotal(){
+    var t=0;
+    Object.keys(ksSel).forEach(function(k){ var s0=ksSel[k]; t += Math.round(ksRowPrice(s0)*(parseFloat(s0.qty)||0)); });
+    return t;
   }
-  function ksUnit(){ var it=ksSelItem(); return it ? (it.unit||"dona") : "dona"; }
-  function ksUpdateTotal(){
-    var q = parseFloat(String(el("ksQty").value||"").replace(",", "."))||0;
-    var pv = parseInt(String(el("ksPrice").value||"").replace(/[^0-9]/g,""),10)||0;
-    el("ksTotal").textContent = moneyText(Math.round(q*pv))+" so'm";
+  function ksUpdateTotal(){ el("ksTotal").textContent = moneyText(ksGrandTotal())+" so'm"; }
+  function ksAddItem(it){
+    var k = "i"+it.id;
+    if(!ksSel[k]) ksSel[k] = { key:k, item_id:it.id, name:it.name, unit:(it.unit||"dona"), pv:(parsePriceAmount(it.price)||0), price:(parsePriceAmount(it.price)||0), qty:0, custom:false };
+    ksSel[k].qty = Math.round(((parseFloat(ksSel[k].qty)||0)+1)*1000)/1000;
+    renderKsSel();
+  }
+  function ksAddCustom(name){
+    ksSeq++;
+    var k = "c"+ksSeq;
+    ksSel[k] = { key:k, item_id:0, name:name, unit:"dona", pv:0, price:0, qty:1, custom:true };
+    renderKsSel();
+  }
+  function renderKsSel(){
+    var box = el("ksSelList");
+    var keys = Object.keys(ksSel);
+    el("ksSelBox").style.display = keys.length ? "block" : "none";
+    box.innerHTML = keys.map(function(k){
+      var s0 = ksSel[k];
+      var moneyPart;
+      if(s0.pv > 0){
+        moneyPart = '<input class="input" inputmode="numeric" data-kq-sum="'+k+'" value="'+Math.round(s0.pv*(parseFloat(s0.qty)||0))+'" placeholder="so\'m" style="height:38px;flex:1.2;min-width:0;text-align:right">';
+      } else {
+        moneyPart = '<input class="input" inputmode="numeric" data-kq-price="'+k+'" value="'+(s0.price||"")+'" placeholder="Narx (1 '+esc(s0.unit)+')" style="height:38px;flex:1.2;min-width:0;text-align:right">';
+      }
+      return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px;display:block">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+          (s0.custom ? '<input class="input" data-kq-name="'+k+'" value="'+esc(s0.name||"")+'" placeholder="Mahsulot nomi" style="height:34px;flex:1;min-width:0">' : '<div class="iname" style="min-width:0">'+esc(s0.name)+'</div>')+
+          '<div class="idesc" style="flex:0 0 auto">'+(s0.pv>0 ? esc(moneyText(s0.pv))+unitSuffix(s0.unit) : 'narxni yozing')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-top:8px">'+
+          '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-kq-minus="'+k+'">−</button>'+
+          '<input class="input" inputmode="'+(unitAllowsFraction(s0.unit)?"decimal":"numeric")+'" data-kq-qty="'+k+'" value="'+fmtQty(s0.qty)+'" style="height:38px;flex:1;min-width:0;text-align:center;font-weight:700">'+
+          '<span class="idesc" style="flex:0 0 auto">'+esc(s0.unit||"dona")+'</span>'+
+          '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-kq-plus="'+k+'">+</button>'+
+          moneyPart+
+        '</div>'+
+      '</div>';
+    }).join("");
+    _bindKsInputs(box);
+    ksUpdateTotal();
+  }
+  // Yozish paytida qayta chizmaymiz (fokus saqlanadi); yozish tugagach tartibga solamiz
+  function _bindKsInputs(box){
+    if(box.__kqBound) return;
+    box.__kqBound = true;
+    box.addEventListener("input", function(e){
+      var t = e.target;
+      var qk = t.getAttribute ? t.getAttribute("data-kq-qty") : null;
+      var sk = t.getAttribute ? t.getAttribute("data-kq-sum") : null;
+      var pk = t.getAttribute ? t.getAttribute("data-kq-price") : null;
+      var nk = t.getAttribute ? t.getAttribute("data-kq-name") : null;
+      if(qk){
+        var s0 = ksSel[qk]; if(!s0) return;
+        if(!unitAllowsFraction(s0.unit)){ var c = t.value.replace(/[^0-9]/g,""); if(t.value!==c) t.value=c; }
+        var q = parseFloat(String(t.value||"").replace(",", "."));
+        if(isNaN(q)||q<0) q=0;
+        if(q>999) q=999;
+        s0.qty = q;
+        if(s0.pv>0){ var sEl = box.querySelector('[data-kq-sum="'+qk+'"]'); if(sEl) sEl.value = q>0 ? String(Math.round(s0.pv*q)) : ""; }
+        ksUpdateTotal();
+      } else if(sk){
+        var s1 = ksSel[sk]; if(!s1 || !(s1.pv>0)) return;
+        var m = parseInt(String(t.value||"").replace(/[^0-9]/g,""),10)||0;
+        if(m>0){
+          var q2 = m/s1.pv;
+          q2 = unitAllowsFraction(s1.unit) ? Math.round(q2*1000)/1000 : Math.max(1, Math.floor(q2));
+          s1.qty = q2;
+          var qEl = box.querySelector('[data-kq-qty="'+sk+'"]');
+          if(qEl) qEl.value = fmtQty(q2);
+        }
+        ksUpdateTotal();
+      } else if(pk){
+        var s2 = ksSel[pk]; if(!s2) return;
+        var pnum = parseInt(String(t.value||"").replace(/[^0-9]/g,""),10)||0;
+        s2.price = pnum;
+        ksUpdateTotal();
+      } else if(nk){
+        var s3 = ksSel[nk]; if(s3) s3.name = t.value;
+      }
+    });
+    box.addEventListener("change", function(e){
+      var t = e.target;
+      var key = t.getAttribute ? (t.getAttribute("data-kq-qty")||t.getAttribute("data-kq-sum")) : null;
+      if(!key) return;
+      var s0 = ksSel[key];
+      if(!s0){ renderKsSel(); return; }
+      var q = parseFloat(s0.qty)||0;
+      if(!unitAllowsFraction(s0.unit)) q = Math.floor(q+0.5);
+      q = Math.round(q*1000)/1000;
+      if(q<=0){ delete ksSel[key]; }
+      else { if(q>999) q=999; s0.qty=q; }
+      renderKsSel();
+    });
+    box.addEventListener("click", function(e){
+      var mBtn = e.target.closest("[data-kq-minus]");
+      var pBtn = e.target.closest("[data-kq-plus]");
+      var key = mBtn ? mBtn.getAttribute("data-kq-minus") : (pBtn ? pBtn.getAttribute("data-kq-plus") : null);
+      if(!key) return;
+      var s0 = ksSel[key]; if(!s0) return;
+      var step = unitAllowsFraction(s0.unit) ? 0.5 : 1;
+      var q = (parseFloat(s0.qty)||0) + step*(mBtn?-1:1);
+      q = Math.round(q*1000)/1000;
+      if(q<=0){ delete ksSel[key]; }
+      else { if(q>999) q=999; s0.qty=q; }
+      renderKsSel();
+    });
+  }
+  function renderKsCatalog(groups, items){
+    var used = {};
+    (groups||[]).forEach(function(g){ used[String(g.id)] = true; });
+    function chip(it){
+      var pv = parsePriceAmount(it.price)||0;
+      return '<div class="item" data-ks-add="'+it.id+'" style="min-width:118px;max-width:150px;flex:0 0 auto;display:block;padding:8px;cursor:pointer">'+
+        '<div class="iname" style="font-size:13px">'+esc(it.name)+'</div>'+
+        '<div class="idesc" style="margin-top:2px">'+(pv ? esc(moneyText(pv))+unitSuffix(it.unit) : "Narx yozilmagan")+'</div>'+
+      '</div>';
+    }
+    function block(title, arr){
+      if(!arr.length) return "";
+      return '<div class="item-group-block"><div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+arr.length+' ta</p></div></div>'+
+        '<div class="item-hrow">'+arr.map(chip).join("")+'</div></div>';
+    }
+    var html = "";
+    (groups||[]).forEach(function(g){
+      html += block(g.name, (items||[]).filter(function(it){ return String(it.group_id||"")===String(g.id); }));
+    });
+    var ung = (items||[]).filter(function(it){ return !it.group_id || !used[String(it.group_id)]; });
+    html += block("Guruhsiz", ung);
+    el("ksCatalog").innerHTML = html || '<div class="idesc">Mahsulotlar yo\'q — avval Mahsulotlarim bo\'limida qo\'shing.</div>';
   }
   function openKassaForm(){
-    api("GET","/api/items").then(function(items){
-      ksItems = items||[];
-      el("ksItem").innerHTML = '<option value="">— Boshqa (nomini qo\'lda yozaman) —</option>'+
-        ksItems.map(function(i){ return '<option value="'+i.id+'">'+esc(i.name)+(i.price?' — '+esc(i.price):'')+'</option>'; }).join("");
-      el("ksNameWrap").style.display="block";
-      el("ksName").value=""; el("ksQty").value="1"; el("ksPrice").value=""; el("ksNote").value="";
-      el("ksPay").value="naqd"; el("ksDebtorWrap").style.display="none";
-      el("ksQtyLbl").textContent="Miqdor (dona)";
-      ksUpdateTotal();
-      nav("cab-kassa-form");
-    }).catch(function(e){ showMsg(e.message); });
+    el("ksCatalog").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    ksSel = {}; renderKsSel();
+    el("ksPay").value = "naqd"; el("ksDebtorWrap").style.display = "none"; el("ksNote").value = "";
+    nav("cab-kassa-form");
+    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+      renderKsCatalog(res[0]||[], res[1]||[]);
+      window.__ksItems = res[1]||[];
+    }).catch(function(e){ el("ksCatalog").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
-  el("ksItem").addEventListener("change", function(){
-    var it = ksSelItem();
-    el("ksNameWrap").style.display = it ? "none" : "block";
-    var u = ksUnit();
-    el("ksQtyLbl").textContent = "Miqdor ("+u+")"+(unitAllowsFraction(u)?"":" — butun son");
-    el("ksPrice").value = it ? String(parsePriceAmount(it.price)||"") : "";
-    ksUpdateTotal();
-  });
   el("ksPay").addEventListener("change", function(){
-    var q = el("ksPay").value==="qarz";
+    var q = el("ksPay").value === "qarz";
     el("ksDebtorWrap").style.display = q ? "block" : "none";
     if(q){
       api("GET","/api/qarz/debtors").then(function(ds){
@@ -4747,40 +4867,48 @@
       }).catch(function(e){ showMsg(e.message); });
     }
   });
-  el("ksQty").addEventListener("input", function(){
-    if(!unitAllowsFraction(ksUnit())){ var c=this.value.replace(/[^0-9]/g,""); if(this.value!==c) this.value=c; }
-    ksUpdateTotal();
+  el("ksCustomBtn").addEventListener("click", function(){
+    askInput({ title:"Qo'lda mahsulot", okText:"Chekka qo'shish",
+      fields:[{ key:"n", label:"Mahsulot nomi", placeholder:"Masalan: Choy", required:true }] })
+    .then(function(v){ if(v && (v.n||"").trim()) ksAddCustom((v.n||"").trim()); });
   });
-  el("ksPrice").addEventListener("input", ksUpdateTotal);
   el("kassaAddBtn").addEventListener("click", openKassaForm);
   el("kassaPrevDay").addEventListener("click", function(){ kassaShiftDay(-1); });
   el("kassaNextDay").addEventListener("click", function(){ kassaShiftDay(1); });
   el("kassaToday").addEventListener("click", function(){ kassaDay=""; loadKassa(); });
   el("ksSave").addEventListener("click", function(){
-    var it = ksSelItem();
-    var body = {
-      item_id: it ? it.id : 0,
-      name: it ? "" : (el("ksName").value||"").trim(),
-      qty: (el("ksQty").value||"1"),
-      price: parseInt(String(el("ksPrice").value||"").replace(/[^0-9]/g,""),10)||0,
-      pay_type: el("ksPay").value,
-      debtor_id: parseInt(el("ksDebtor").value||"0",10),
-      note: (el("ksNote").value||"").trim()
-    };
-    if(!it && !body.name){ showMsg("Mahsulot tanlang yoki nomini yozing."); return; }
-    if(!(body.price>0)){ showMsg("Narx kiritilmadi."); return; }
+    var keys = Object.keys(ksSel);
+    if(!keys.length){ showMsg("Chek bo'sh — mahsulot tanlang."); return; }
+    var items = [], bad = null;
+    keys.forEach(function(k){
+      var s0 = ksSel[k];
+      var pr = ksRowPrice(s0);
+      if(s0.custom && !(s0.name||"").trim() && !bad) bad = "nomi yozilmagan mahsulot";
+      if(!(pr>0) && !bad) bad = s0.name || "mahsulot";
+      items.push({ item_id: s0.item_id||0, name: s0.custom ? (s0.name||"").trim() : "", qty: s0.qty, price: pr });
+    });
+    if(bad){ showMsg("Narx kiritilmadi: "+bad); return; }
+    var body = { items: items, pay_type: el("ksPay").value,
+      debtor_id: parseInt(el("ksDebtor").value||"0",10), note: (el("ksNote").value||"").trim() };
     if(body.pay_type==="qarz" && !(body.debtor_id>0)){ showMsg("Qarzdorni tanlang."); return; }
-    api("POST","/api/kassa", body)
-      .then(function(){ showMsg("Savdo yozildi ✅"); nav("cab-kassa"); })
+    api("POST","/api/kassa/multi", body)
+      .then(function(r){ showMsg("Savdo yozildi ✅ ("+(r.count||items.length)+" ta)"); nav("cab-kassa"); })
       .catch(function(e){ showMsg(e.message); });
   });
   document.addEventListener("click", function(e){
+    var add = e.target.closest("[data-ks-add]");
+    if(add){
+      var id = parseInt(add.getAttribute("data-ks-add"),10);
+      var arr = window.__ksItems||[];
+      for(var i=0;i<arr.length;i++) if(arr[i].id===id){ ksAddItem(arr[i]); break; }
+      return;
+    }
     var d = e.target.closest("[data-ks-del]");
     if(!d) return;
-    var id = d.getAttribute("data-ks-del");
+    var sid = d.getAttribute("data-ks-del");
     askConfirm({ text: "Bu savdo o'chirilsinmi? Ombor va qarz daftari qaytariladi.", okText: "O'chirish", danger: true }).then(function(ok){
       if(!ok) return;
-      api("DELETE","/api/kassa/"+id).then(function(){ showMsg("O'chirildi"); loadKassa(); }).catch(function(e2){ showMsg(e2.message); });
+      api("DELETE","/api/kassa/"+sid).then(function(){ showMsg("O'chirildi"); loadKassa(); }).catch(function(e2){ showMsg(e2.message); });
     });
   });
 
