@@ -1729,6 +1729,95 @@ async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
     return {"ok": True, "id": sale_id, "total": total}
 
 
+@router.post("/kassa/multi")
+async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default="")):
+    """Bitta chekda bir nechta mahsulot. Avval hammasi tekshiriladi, keyin yoziladi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    raw_items = body.get("items") or []
+    if not isinstance(raw_items, list) or not raw_items:
+        conn.close()
+        raise HTTPException(400, "Mahsulot tanlanmadi.")
+    if len(raw_items) > 30:
+        conn.close()
+        raise HTTPException(400, "Bir chekda ko'pi bilan 30 ta mahsulot.")
+    pay = (body.get("pay_type") or "naqd").strip()
+    if pay not in _PAY_TYPES:
+        pay = "naqd"
+    note = (body.get("note") or "").strip()[:200]
+    debtor_id = None
+    if pay == "qarz":
+        debtor_id = int(body.get("debtor_id") or 0)
+        owns = conn.execute("SELECT id FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])).fetchone()
+        if not owns:
+            conn.close()
+            raise HTTPException(400, "Qarz uchun qarzdorni tanlang.")
+    # 1-bosqich: hammasini tekshirib tayyorlaymiz (hech narsa yozilmaydi)
+    prepared = []
+    for x in raw_items:
+        item_id = int(x.get("item_id") or 0) or None
+        name = (x.get("name") or "").strip()
+        unit = "dona"
+        it = None
+        if item_id:
+            it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
+            if not it:
+                conn.close()
+                raise HTTPException(404, "Mahsulot topilmadi.")
+            name = it["name"]
+            unit = _row_val(it, "unit", "dona") or "dona"
+        if not name:
+            conn.close()
+            raise HTTPException(400, "Mahsulot nomi kiritilmadi.")
+        qty = _clean_qty(x.get("qty"))
+        if unit not in FRACTIONAL_UNITS:
+            qty = max(1, int(math.floor(float(qty) + 0.5)))
+        try:
+            price = int(str(x.get("price") or "0").replace(" ", "") or 0)
+        except Exception:
+            price = 0
+        if price < 0:
+            price = 0
+        total = int(round(price * float(qty)))
+        if total <= 0:
+            conn.close()
+            raise HTTPException(400, "Narx kiritilmadi: " + name)
+        prepared.append({"item_id": item_id, "it": it, "name": name, "unit": unit,
+                         "qty": qty, "price": price, "total": total})
+    # 2-bosqich: yozamiz (bitta commit)
+    now = int(time.time())
+    import datetime as _dt
+    day_str = _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
+    grand = 0
+    for pr in prepared:
+        qtx_id = None
+        if pay == "qarz":
+            conn.execute(
+                "INSERT INTO qarz_tx(debtor_id, type, amount, date, note, created_at) VALUES(?,?,?,?,?,?)",
+                (debtor_id, "debt", pr["total"], day_str, ("Kassa: " + pr["name"])[:120], now),
+            )
+            qtx_id = conn.execute("SELECT last_insert_rowid() r").fetchone()["r"]
+        cur = conn.execute(
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (biz["id"], "manual", None, pr["item_id"], pr["name"], pr["qty"], pr["unit"],
+             pr["price"], pr["total"], pay, debtor_id, qtx_id, note, user["id"], now),
+        )
+        sale_id = cur.lastrowid
+        it = pr["it"]
+        if it is not None and (_row_val(it, "track_stock", 0) or 0):
+            conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(pr["qty"]), pr["item_id"]))
+            conn.execute(
+                "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+                "VALUES(?,?,?,?,?,NULL,?,?)",
+                (biz["id"], pr["item_id"], -float(pr["qty"]), "sotuv", "Kassa #%d" % sale_id, user["id"], now),
+            )
+        grand += pr["total"]
+    conn.commit()
+    conn.close()
+    return {"ok": True, "count": len(prepared), "total": grand}
+
+
 @router.delete("/kassa/{sale_id}")
 async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
