@@ -4,74 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1412 -->
+<title>Platforma</title><!-- BUILD: v1413 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
-  /* === v1412: Adaptive ekran — telefon / planshet / kompyuter === */
-  @media (min-width: 600px){
-    body{background:var(--bg);align-items:stretch;}
-    .phone{max-width:820px;width:100%;min-height:100dvh;margin:0 auto;border-radius:0;box-shadow:none;}
-    .topbar{padding-left:22px;padding-right:22px;}
-    .screen{padding-left:22px;padding-right:22px;}
-    .statusbar{padding-left:26px;padding-right:26px;}
-    #leafletMap{height:310px!important;}
-    .map-wrap svg.basemap{height:310px;}
-    .mini-map{height:140px;}
-    .order-map-wrap,.order-detail-map{height:310px;}
-    .cat-grid{grid-template-columns:repeat(4,1fr);}
-    .item-card2{width:178px;}
-    .item-add-card{width:144px;}
-    .elon-card{width:142px;}
-    .gal-tile{width:190px;height:180px;}
-    .order-sheet,.order-detail-sheet{max-width:720px;}
-    .chat-bar,.chat-compose{max-width:820px;}
-    .order-chat-action-menu{max-width:640px;}
-  }
-
-  @media (min-width: 900px){
-    body{background:#dfe7e3;align-items:center;padding:16px;}
-    [data-theme="dark"] body{background:#050807;}
-    .phone{max-width:1180px;width:min(1180px,100%);height:calc(100vh - 32px);min-height:0;margin:0;border-radius:30px;box-shadow:var(--shadow-lg);}
-    .topbar{padding:8px 30px 14px;}
-    .screen{padding-left:30px;padding-right:30px;}
-    .statusbar{padding-left:32px;padding-right:32px;}
-    .tb-home{gap:9px;}
-    .search{height:44px;border-radius:14px;}
-    .icon-btn{width:44px;height:44px;border-radius:14px;}
-    #leafletMap{height:360px!important;}
-    .map-wrap svg.basemap{height:360px;}
-    .order-map-wrap,.order-detail-map{height:360px;}
-    .mini-map{height:170px;}
-    .cat-grid{grid-template-columns:repeat(5,1fr);}
-    .cat-tile{min-height:116px;}
-    .biz-card{padding:14px;border-radius:18px;}
-    .biz-logo{width:62px;height:62px;}
-    .menu-card{padding:16px;border-radius:18px;}
-    .cab-head{padding:18px;border-radius:20px;}
-    .item-card2{width:210px;min-height:154px;}
-    .item-card2-img{height:132px;}
-    .item-add-card{width:170px;min-height:154px;}
-    .item-hrow,.elon-row,.gallery,.sort-row{scrollbar-width:thin;}
-    .lead{font-size:27px;}
-    .lead-sub{font-size:15px;}
-    .field{max-width:760px;}
-    .btn-block{max-width:760px;}
-    .order-sheet,.order-detail-sheet{max-width:760px;border-radius:26px 26px 0 0;}
-    .chat-bar,.chat-compose{max-width:min(1180px,calc(100% - 32px));}
-    .order-chat-action-menu{max-width:720px;}
-  }
-
-  @media (min-width: 1200px){
-    .phone{max-width:1280px;width:min(1280px,100%);}
-    .cat-grid{grid-template-columns:repeat(6,1fr);}
-    .item-card2{width:224px;}
-    .item-add-card{width:184px;}
-    .biz-card{max-width:900px;}
-    .order-sheet,.order-detail-sheet{max-width:820px;}
-  }
-
 </style>
 <script>
 (function () {
@@ -622,6 +559,100 @@
   .acf-ok{border-color:var(--primary);background:var(--primary);color:#fff;}
   .acf-ok.danger{border-color:#DC2626;background:#DC2626;color:#fff;}
 </style>
+
+
+<!-- BUILD v1413: Adaptive ekran CSS — accessLockStyle ichida emas, asosiy style'dan keyin turadi -->
+<style id="adaptiveLayoutStyle">
+  /* Telefon rejimi: 0–599px — eski dizayn saqlanadi */
+
+  @media (min-width: 600px){
+    body{
+      background:var(--bg) !important;
+      align-items:stretch !important;
+      justify-content:center !important;
+    }
+    .phone{
+      width:100% !important;
+      max-width:820px !important;
+      min-height:100dvh !important;
+      height:auto !important;
+      margin:0 auto !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+    }
+    .topbar{padding-left:22px !important;padding-right:22px !important;}
+    .screen{padding-left:22px !important;padding-right:22px !important;}
+    .statusbar{padding-left:26px !important;padding-right:26px !important;}
+    #leafletMap{height:310px !important;}
+    .map-wrap svg.basemap{height:310px !important;}
+    .mini-map{height:140px !important;}
+    .order-map-wrap,.order-detail-map{height:310px !important;}
+    .cat-grid{grid-template-columns:repeat(4,1fr) !important;}
+    .item-card2{width:178px !important;}
+    .item-add-card{width:144px !important;}
+    .elon-card{width:142px !important;}
+    .gal-tile{width:190px !important;height:180px !important;}
+    .order-sheet,.order-detail-sheet{max-width:720px !important;}
+    .chat-bar,.chat-compose{max-width:820px !important;}
+    .order-chat-action-menu{max-width:640px !important;}
+  }
+
+  @media (min-width: 900px){
+    body{
+      background:#dfe7e3 !important;
+      align-items:center !important;
+      justify-content:center !important;
+      padding:16px !important;
+    }
+    [data-theme="dark"] body{background:#050807 !important;}
+    .phone{
+      width:min(1180px,100%) !important;
+      max-width:1180px !important;
+      height:calc(100vh - 32px) !important;
+      min-height:0 !important;
+      margin:0 auto !important;
+      border-radius:30px !important;
+      box-shadow:var(--shadow-lg) !important;
+    }
+    .topbar{padding:8px 30px 14px !important;}
+    .screen{padding-left:30px !important;padding-right:30px !important;}
+    .statusbar{padding-left:32px !important;padding-right:32px !important;}
+    .tb-home{gap:9px !important;}
+    .search{height:44px !important;border-radius:14px !important;}
+    .icon-btn{width:44px !important;height:44px !important;border-radius:14px !important;}
+    #leafletMap{height:360px !important;}
+    .map-wrap svg.basemap{height:360px !important;}
+    .order-map-wrap,.order-detail-map{height:360px !important;}
+    .mini-map{height:170px !important;}
+    .cat-grid{grid-template-columns:repeat(5,1fr) !important;}
+    .cat-tile{min-height:116px !important;}
+    .biz-card{padding:14px !important;border-radius:18px !important;}
+    .biz-logo{width:62px !important;height:62px !important;}
+    .menu-card{padding:16px !important;border-radius:18px !important;}
+    .cab-head{padding:18px !important;border-radius:20px !important;}
+    .item-card2{width:210px !important;min-height:154px !important;}
+    .item-card2-img{height:132px !important;}
+    .item-add-card{width:170px !important;min-height:154px !important;}
+    .item-hrow,.elon-row,.gallery,.sort-row{scrollbar-width:thin !important;}
+    .lead{font-size:27px !important;}
+    .lead-sub{font-size:15px !important;}
+    .field{max-width:760px !important;}
+    .btn-block{max-width:760px !important;}
+    .order-sheet,.order-detail-sheet{max-width:760px !important;border-radius:26px 26px 0 0 !important;}
+    .chat-bar,.chat-compose{max-width:min(1180px,calc(100% - 32px)) !important;}
+    .order-chat-action-menu{max-width:720px !important;}
+  }
+
+  @media (min-width: 1200px){
+    .phone{width:min(1280px,100%) !important;max-width:1280px !important;}
+    .cat-grid{grid-template-columns:repeat(6,1fr) !important;}
+    .item-card2{width:224px !important;}
+    .item-add-card{width:184px !important;}
+    .biz-card{max-width:900px !important;}
+    .order-sheet,.order-detail-sheet{max-width:820px !important;}
+  }
+</style>
+
 </head>
 <body>
   <div class="phone">
