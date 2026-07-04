@@ -1503,6 +1503,45 @@ def _stock_deduct_for_order(conn, order, actor_user_id):
         )
 
 
+def _stock_restore_for_order(conn, order, actor_user_id):
+    """Buyurtma bekor qilinsa: 'Bajarildi'da ayirilgan qoldiq qaytadi va kassadagi
+    avtomatik savdo yozuvlari olib tashlanadi. Faqat bir marta ishlaydi."""
+    if (order["provider_kind"] or "") != "business":
+        return
+    sold = conn.execute(
+        "SELECT * FROM stock_moves WHERE order_id=? AND reason='sotuv'", (order["id"],)
+    ).fetchall()
+    if sold:
+        already = conn.execute(
+            "SELECT COUNT(*) FROM stock_moves WHERE order_id=? AND reason='tuzatish'", (order["id"],)
+        ).fetchone()[0]
+        if not already:
+            now = int(time.time())
+            for m in sold:
+                q = round(abs(float(m["delta"] or 0)), 3)
+                if q <= 0:
+                    continue
+                conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (q, m["item_id"]))
+                conn.execute(
+                    "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?)",
+                    (m["business_id"], m["item_id"], q, "tuzatish",
+                     "Buyurtma #%d bekor qilindi" % order["id"], order["id"], actor_user_id, now),
+                )
+    conn.execute("DELETE FROM sales WHERE order_id=? AND source='order'", (order["id"],))
+
+
+def _stock_move_deletable(r):
+    """Faqat qo'lda qilingan kirim/chiqimni o'chirish mumkin (buyurtma/kassa bilan bog'liqlarni emas)."""
+    if r["order_id"]:
+        return False
+    if (r["reason"] or "") not in ("kirim", "chiqim"):
+        return False
+    if (r["note"] or "").startswith("Kassa") or (r["note"] or "").startswith("Chek"):
+        return False
+    return True
+
+
 @router.get("/stock")
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1567,6 +1606,26 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     return {"ok": True, "stock_qty": new_q or 0}
 
 
+@router.delete("/stock/moves/{move_id}")
+async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(default="")):
+    """Xato yozilgan qo'lda kirim/chiqimni o'chirish — qoldiq teskarisiga qaytadi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    r = conn.execute("SELECT * FROM stock_moves WHERE id=? AND business_id=?", (move_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Harakat topilmadi.")
+    if not _stock_move_deletable(r):
+        conn.close()
+        raise HTTPException(400, "Bu harakat buyurtma yoki kassa bilan bog'liq — o'chirib bo'lmaydi.")
+    conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?",
+                 (float(r["delta"] or 0), r["item_id"]))
+    conn.execute("DELETE FROM stock_moves WHERE id=?", (move_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @router.get("/stock/moves")
 async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1583,10 +1642,11 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
         "ORDER BY m.created_at DESC, m.id DESC LIMIT 100",
         (biz["id"], item_id),
     ).fetchall()
-    result = [{"delta": r["delta"], "reason": r["reason"],
+    result = [{"id": r["id"], "delta": r["delta"], "reason": r["reason"],
                "reason_text": _STOCK_REASON_TEXT.get(r["reason"], r["reason"] or ""),
                "note": r["note"] or "", "who": r["who"] or "",
                "cost": _row_val(r, "cost", 0) or 0,
+               "can_delete": _stock_move_deletable(r),
                "order_id": r["order_id"], "created_at": r["created_at"], "unit": unit}
               for r in rows]
     conn.close()
@@ -1615,13 +1675,23 @@ def _day_bounds(day):
 
 
 def _sale_dict(r):
-    return {"id": r["id"], "source": r["source"] or "manual", "order_id": r["order_id"],
+    src = r["source"] or "manual"
+    pt = r["pay_type"] or ""
+    pay_text = "Qarz to'lovi" if src == "qarzpay" else _PAY_TEXT.get(pt, pt)
+    return {"id": r["id"], "source": src, "order_id": r["order_id"],
+            "chek_no": _row_val(r, "chek_no", None),
             "item_id": r["item_id"], "item_name": r["item_name"] or "",
             "qty": r["qty"] or 1, "unit": r["unit"] or "", "price": r["price"] or 0,
-            "total": r["total"] or 0, "pay_type": r["pay_type"] or "",
-            "pay_text": _PAY_TEXT.get(r["pay_type"] or "", r["pay_type"] or ""),
+            "total": r["total"] or 0, "pay_type": pt,
+            "pay_text": pay_text,
             "debtor_id": r["debtor_id"], "note": r["note"] or "",
             "created_at": r["created_at"]}
+
+
+def _next_chek_no(conn, biz_id):
+    return int(conn.execute(
+        "SELECT COALESCE(MAX(chek_no), 0) + 1 FROM sales WHERE business_id=?", (biz_id,)
+    ).fetchone()[0])
 
 
 def _kassa_add_for_order(conn, order, actor_user_id):
@@ -1656,7 +1726,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         "ORDER BY s.created_at DESC, s.id DESC LIMIT 200",
         (biz["id"], start, end),
     ).fetchall()
-    totals = {"all": 0, "naqd": 0, "karta": 0, "qarz": 0, "order": 0}
+    totals = {"all": 0, "naqd": 0, "karta": 0, "qarz": 0, "qarzpay": 0, "order": 0}
     out = []
     for r in rows:
         d = _sale_dict(r)
@@ -1665,7 +1735,9 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         t = int(r["total"] or 0)
         totals["all"] += t
         pt = r["pay_type"] or ""
-        if pt in ("naqd", "karta", "qarz"):
+        if (r["source"] or "") == "qarzpay":
+            totals["qarzpay"] += t
+        elif pt in ("naqd", "karta", "qarz"):
             totals[pt] += t
         else:
             totals["order"] += t
@@ -1725,10 +1797,11 @@ async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
              ("Kassa: " + name)[:120], now),
         )
         qtx_id = conn.execute("SELECT last_insert_rowid() r").fetchone()["r"]
+    chek = _next_chek_no(conn, biz["id"])
     cur = conn.execute(
-        "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (biz["id"], "manual", None, item_id, name, qty, unit, price, total, pay, debtor_id, qtx_id, note, user["id"], now),
+        "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at, chek_no) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (biz["id"], "manual", None, item_id, name, qty, unit, price, total, pay, debtor_id, qtx_id, note, user["id"], now, chek),
     )
     sale_id = cur.lastrowid
     # Ombor yoqilgan bo'lsa — savdo qoldiqdan ayiradi
@@ -1803,6 +1876,7 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
     now = int(time.time())
     import datetime as _dt
     day_str = _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
+    chek = _next_chek_no(conn, biz["id"])
     grand = 0
     for pr in prepared:
         qtx_id = None
@@ -1813,10 +1887,10 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
             )
             qtx_id = conn.execute("SELECT last_insert_rowid() r").fetchone()["r"]
         cur = conn.execute(
-            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at, chek_no) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (biz["id"], "manual", None, pr["item_id"], pr["name"], pr["qty"], pr["unit"],
-             pr["price"], pr["total"], pay, debtor_id, qtx_id, note, user["id"], now),
+             pr["price"], pr["total"], pay, debtor_id, qtx_id, note, user["id"], now, chek),
         )
         sale_id = cur.lastrowid
         it = pr["it"]
@@ -1833,6 +1907,39 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
     return {"ok": True, "count": len(prepared), "total": grand}
 
 
+@router.delete("/kassa/chek/{chek_no}")
+async def kassa_delete_chek(chek_no: int, x_telegram_init_data: str = Header(default="")):
+    """Chekni butun o'chirish: hamma qatorlari, ombor va qarz daftari qaytariladi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        "SELECT * FROM sales WHERE business_id=? AND chek_no=? AND source='manual'",
+        (biz["id"], chek_no),
+    ).fetchall()
+    if not rows:
+        conn.close()
+        raise HTTPException(404, "Chek topilmadi.")
+    now = int(time.time())
+    for r in rows:
+        if r["item_id"]:
+            it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
+            if it and (it["track_stock"] or 0):
+                q = round(float(r["qty"] or 0), 3)
+                if q > 0:
+                    conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (q, r["item_id"]))
+                    conn.execute(
+                        "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
+                        "VALUES(?,?,?,?,?,NULL,?,?)",
+                        (biz["id"], r["item_id"], q, "tuzatish", "Chek #%d o'chirildi" % chek_no, user["id"], now),
+                    )
+        if r["qarz_tx_id"]:
+            conn.execute("DELETE FROM qarz_tx WHERE id=?", (r["qarz_tx_id"],))
+    conn.execute("DELETE FROM sales WHERE business_id=? AND chek_no=? AND source='manual'", (biz["id"], chek_no))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "count": len(rows)}
+
+
 @router.delete("/kassa/{sale_id}")
 async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1841,7 +1948,7 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
     if not r:
         conn.close()
         raise HTTPException(404, "Savdo topilmadi.")
-    if (r["source"] or "") != "manual":
+    if (r["source"] or "") not in ("manual", "qarzpay"):
         conn.close()
         raise HTTPException(400, "Buyurtma orqali kelgan savdo bu yerdan o'chirilmaydi.")
     now = int(time.time())
@@ -1955,11 +2062,23 @@ async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: st
         conn.close()
         raise HTTPException(400, "Summa noto'g'ri.")
     from datetime import date
-    conn.execute(
+    cur = conn.execute(
         "INSERT INTO qarz_tx(debtor_id, type, amount, date, note, created_at) VALUES(?,?,?,?,?,?)",
         (debtor_id, b["type"], amount, (b.get("date") or date.today().isoformat()).strip(),
          (b.get("note") or "").strip(), int(time.time())),
     )
+    # v1412 (K1): qarz TO'LOVI o'sha kun kassasiga tushadi — "«Falonchi» qarz to'lovi"
+    if b["type"] == "payment":
+        _tx_id = cur.lastrowid
+        _d = conn.execute("SELECT name FROM debtors WHERE id=?", (debtor_id,)).fetchone()
+        _dname = (_d["name"] if _d else "") or "Qarzdor"
+        conn.execute(
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (biz["id"], "qarzpay", None, None, "«" + _dname + "» qarz to'lovi",
+             1, "", amount, amount, "", debtor_id, _tx_id,
+             (b.get("note") or "").strip()[:200], user["id"], int(time.time())),
+        )
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -3385,6 +3504,9 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     if new_status == "done":
         _stock_deduct_for_order(conn, row, me["id"])
         _kassa_add_for_order(conn, row, me["id"])   # v1408: kassaga avtomatik savdo
+    # v1412 (O5): bekor qilinsa — qoldiq qaytadi, kassadagi avto-savdo o'chadi
+    if new_status == "cancelled":
+        _stock_restore_for_order(conn, row, me["id"])
 
     conn.commit()
     conn.close()
