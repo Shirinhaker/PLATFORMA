@@ -1662,6 +1662,231 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     return result
 
 
+# ================== STATISTIKA ==================
+def _ts_day(d):
+    return calendar.timegm(d.timetuple()) - TASHKENT_TZ
+
+
+def _tashkent_today():
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(time.time() + TASHKENT_TZ, _dt.timezone.utc).date()
+
+
+def _add_months(d, n):
+    import datetime as _dt
+    m = d.month - 1 + n
+    y = d.year + m // 12
+    return _dt.date(y, m % 12 + 1, 1)
+
+
+_MON = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"]
+_WD = ["Du", "Se", "Cho", "Pa", "Ju", "Sha", "Ya"]
+_PERIODS = ("kun", "hafta", "oy", "chorak", "yarim", "yil")
+
+
+def _period_bounds(period, anchor):
+    """(start_ts, end_ts, label, buckets[]) — Toshkent vaqti bo'yicha. bucket: {start,end,label}."""
+    import datetime as _dt
+    today = _tashkent_today()
+    a = today
+    if (anchor or "").strip():
+        try:
+            a = _dt.date.fromisoformat(anchor.strip())
+        except Exception:
+            a = today
+    P = (period or "oy").lower()
+    if P not in _PERIODS:
+        P = "oy"
+    buckets = []
+    if P == "kun":
+        s0 = _ts_day(a)
+        for h in range(24):
+            buckets.append({"start": s0 + h * 3600, "end": s0 + (h + 1) * 3600, "label": "%02d" % h})
+        return s0, s0 + 86400, a.isoformat(), buckets
+    if P == "hafta":
+        start = a - _dt.timedelta(days=a.weekday())
+        for i in range(7):
+            d = start + _dt.timedelta(days=i)
+            buckets.append({"start": _ts_day(d), "end": _ts_day(d) + 86400, "label": _WD[i]})
+        return _ts_day(start), _ts_day(start) + 7 * 86400, start.strftime("%d.%m") + " hafta", buckets
+    if P == "oy":
+        start = _dt.date(a.year, a.month, 1)
+        nxt = _add_months(start, 1)
+        d = start
+        while d < nxt:
+            buckets.append({"start": _ts_day(d), "end": _ts_day(d) + 86400, "label": str(d.day)})
+            d = d + _dt.timedelta(days=1)
+        return _ts_day(start), _ts_day(nxt), _MON[start.month - 1] + " " + str(start.year), buckets
+    if P == "chorak":
+        q = (a.month - 1) // 3
+        start = _dt.date(a.year, q * 3 + 1, 1)
+        for i in range(3):
+            ms = _add_months(start, i)
+            buckets.append({"start": _ts_day(ms), "end": _ts_day(_add_months(start, i + 1)), "label": _MON[ms.month - 1]})
+        return _ts_day(start), _ts_day(_add_months(start, 3)), str(q + 1) + "-chorak " + str(a.year), buckets
+    if P == "yarim":
+        half = 0 if a.month <= 6 else 1
+        start = _dt.date(a.year, half * 6 + 1, 1)
+        for i in range(6):
+            ms = _add_months(start, i)
+            buckets.append({"start": _ts_day(ms), "end": _ts_day(_add_months(start, i + 1)), "label": _MON[ms.month - 1]})
+        lbl = ("1-yarim yil " if half == 0 else "2-yarim yil ") + str(a.year)
+        return _ts_day(start), _ts_day(_add_months(start, 6)), lbl, buckets
+    # yil
+    start = _dt.date(a.year, 1, 1)
+    for i in range(12):
+        ms = _add_months(start, i)
+        buckets.append({"start": _ts_day(ms), "end": _ts_day(_add_months(start, i + 1)), "label": _MON[i]})
+    return _ts_day(start), _ts_day(_dt.date(a.year + 1, 1, 1)), str(a.year), buckets
+
+
+def _period_shift(period, anchor, direction):
+    """Davrni oldinga/orqaga suradi -> yangi anchor sanasi (YYYY-MM-DD)."""
+    import datetime as _dt
+    start, end, _lbl, _b = _period_bounds(period, anchor)
+    P = (period or "oy").lower()
+    a = _dt.datetime.fromtimestamp(start + TASHKENT_TZ + 1, _dt.timezone.utc).date()
+    if direction < 0:
+        if P == "kun":
+            return (a - _dt.timedelta(days=1)).isoformat()
+        if P == "hafta":
+            return (a - _dt.timedelta(days=7)).isoformat()
+        if P == "oy":
+            return _add_months(a, -1).isoformat()
+        if P == "chorak":
+            return _add_months(a, -3).isoformat()
+        if P == "yarim":
+            return _add_months(a, -6).isoformat()
+        return _add_months(a, -12).isoformat()
+    else:
+        if P == "kun":
+            return (a + _dt.timedelta(days=1)).isoformat()
+        if P == "hafta":
+            return (a + _dt.timedelta(days=7)).isoformat()
+        if P == "oy":
+            return _add_months(a, 1).isoformat()
+        if P == "chorak":
+            return _add_months(a, 3).isoformat()
+        if P == "yarim":
+            return _add_months(a, 6).isoformat()
+        return _add_months(a, 12).isoformat()
+
+
+@router.get("/stats")
+async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    bid = biz["id"]
+    start, end, label, buckets = _period_bounds(period, anchor)
+    n = len(buckets)
+
+    # --- Savdolar (qarzpay = qarz to'lovi, tushumga kirmaydi) ---
+    sales = conn.execute(
+        "SELECT source, pay_type, total, item_id, item_name, qty, price, created_at "
+        "FROM sales WHERE business_id=? AND created_at>=? AND created_at<?",
+        (bid, start, end),
+    ).fetchall()
+    revenue = 0
+    qarzpay = 0
+    pay = {"naqd": 0, "karta": 0, "qarz": 0, "order": 0}
+    bkt_rev = [0] * n
+    prod = {}
+    for sl in sales:
+        t = int(sl["total"] or 0)
+        src = sl["source"] or "manual"
+        ca = sl["created_at"] or 0
+        if src == "qarzpay":
+            qarzpay += t
+            continue
+        revenue += t
+        pt = sl["pay_type"] or ""
+        pay[pt if pt in ("naqd", "karta", "qarz") else "order"] += t
+        for i in range(n):
+            if buckets[i]["start"] <= ca < buckets[i]["end"]:
+                bkt_rev[i] += t
+                break
+        key = sl["item_name"] or "?"
+        pr = prod.get(key)
+        if not pr:
+            pr = {"name": key, "item_id": sl["item_id"], "qty": 0.0, "total": 0, "unit": ""}
+            prod[key] = pr
+        pr["qty"] += float(sl["qty"] or 0)
+        pr["total"] += t
+
+    # --- Xarajatlar ---
+    exp_rows = conn.execute(
+        "SELECT amount, category, created_at FROM expenses WHERE business_id=? AND created_at>=? AND created_at<?",
+        (bid, start, end),
+    ).fetchall()
+    expenses = 0
+    exp_by_cat = {}
+    bkt_exp = [0] * n
+    for e in exp_rows:
+        amt = int(e["amount"] or 0)
+        expenses += amt
+        cat = e["category"] or "Boshqa"
+        exp_by_cat[cat] = exp_by_cat.get(cat, 0) + amt
+        ca = e["created_at"] or 0
+        for i in range(n):
+            if buckets[i]["start"] <= ca < buckets[i]["end"]:
+                bkt_exp[i] += amt
+                break
+
+    profit = revenue - expenses
+
+    # --- Tovar birliklari + tannarx (foyda uchun) ---
+    ids = [pr["item_id"] for pr in prod.values() if pr["item_id"]]
+    costs = {}
+    units = {}
+    if ids:
+        qmarks = ",".join("?" * len(ids))
+        for r in conn.execute("SELECT id, unit, cost_price FROM items WHERE id IN (" + qmarks + ")", ids).fetchall():
+            costs[r["id"]] = r["cost_price"] or 0
+            units[r["id"]] = r["unit"] or "dona"
+    top = []
+    for pr in prod.values():
+        u = units.get(pr["item_id"], "")
+        cost = costs.get(pr["item_id"], 0)
+        margin = None
+        if cost and pr["qty"]:
+            margin = int(round(pr["total"] - cost * pr["qty"]))
+        top.append({"name": pr["name"], "qty": round(pr["qty"], 3), "unit": u,
+                    "total": pr["total"], "margin": margin})
+    top.sort(key=lambda x: x["total"], reverse=True)
+    top = top[:12]
+
+    # --- Kam qolgan tovarlar ---
+    low = [{"name": r["name"], "unit": r["unit"] or "dona", "stock_qty": r["stock_qty"] or 0}
+           for r in conn.execute(
+               "SELECT name, unit, stock_qty FROM items WHERE business_id=? AND track_stock=1 "
+               "ORDER BY stock_qty ASC LIMIT 8", (bid,)).fetchall()]
+
+    trend = [{"label": buckets[i]["label"], "rev": bkt_rev[i], "exp": bkt_exp[i],
+              "profit": bkt_rev[i] - bkt_exp[i]} for i in range(n)]
+
+    can_next = end <= _ts_day(_tashkent_today())
+
+    conn.close()
+    return {
+        "period": (period or "oy").lower() if (period or "oy").lower() in _PERIODS else "oy",
+        "anchor": anchor or "",
+        "label": label,
+        "revenue": revenue, "expenses": expenses, "profit": profit, "qarzpay": qarzpay,
+        "pay": pay, "exp_by_cat": exp_by_cat,
+        "trend": trend, "top_products": top, "low_stock": low,
+        "sales_count": len([1 for sl in sales if (sl["source"] or "") != "qarzpay"]),
+        "can_next": can_next,
+    }
+
+
+@router.get("/stats/nav")
+async def stats_nav(period: str = "oy", anchor: str = "", dir: int = -1, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    require_business(conn, x_telegram_init_data)
+    conn.close()
+    return {"anchor": _period_shift(period, anchor, dir)}
+
+
 # ================== XARAJATLAR ==================
 _DEFAULT_EXP_CATS = ["Ijara", "Kommunal", "Maosh", "Transport", "Tovar xaridi", "Soliq", "Boshqa"]
 
