@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1413 -->
+<title>Platforma</title><!-- BUILD: v1414 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -741,6 +741,7 @@
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
@@ -886,6 +887,18 @@
         <div class="field" id="ksDebtorWrap" style="display:none"><label>Qarzdor</label><div style="display:flex;gap:6px"><select class="input" id="ksDebtor" style="flex:1;min-width:0"></select><button class="mini-btn" id="ksDebtorAdd" style="height:44px;flex:0 0 auto;padding:0 12px">+ Yangi</button></div></div>
         <div class="field"><label>Izoh (ixtiyoriy)</label><input class="input" id="ksNote"></div>
         <button class="btn btn-primary btn-block" id="ksSave">Saqlash</button>
+      </section>
+
+      <!-- CAB: XARAJATLAR -->
+      <section class="screen" data-screen="cab-xarajat">
+        <div class="q-total" style="background:linear-gradient(135deg,#c0392b,#e74c3c)"><div class="eyebrow" id="xarDayLbl">Bugungi xarajat</div><div class="q-amount" id="xarTotal">0 so'm</div><div class="q-sub" id="xarBreak"></div></div>
+        <button class="btn btn-primary btn-block" style="margin:10px 0" id="xarAddBtn">+ Xarajat yozish</button>
+        <div style="display:flex;gap:6px;margin:0 0 8px">
+          <button class="mini-btn" style="flex:1;height:38px" id="xarPrevDay">← Oldingi</button>
+          <button class="mini-btn" style="flex:1;height:38px" id="xarToday">Bugun</button>
+          <button class="mini-btn" style="flex:1;height:38px" id="xarNextDay">Keyingi →</button>
+        </div>
+        <div id="xarList"></div>
       </section>
 
       <!-- CAB: QARZDOR KARTASI -->
@@ -2216,7 +2229,7 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish",
+    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
@@ -4758,6 +4771,99 @@
     if(ag){ openGroupForm(null, "cab-ombor"); return; }
   });
 
+  /* ---------- XARAJATLAR ---------- */
+  var xarDay = "";
+  function loadXarajat(){
+    el("xarList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/expenses"+(xarDay?("?day="+xarDay):"")).then(renderXarajat)
+      .catch(function(e){ el("xarList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function xarShiftDay(delta){
+    var base = xarDay ? new Date(xarDay+"T00:00:00") : new Date();
+    base.setDate(base.getDate()+delta);
+    xarDay = base.getFullYear()+"-"+("0"+(base.getMonth()+1)).slice(-2)+"-"+("0"+base.getDate()).slice(-2);
+    if(xarDay===todayStr()) xarDay="";
+    loadXarajat();
+  }
+  function renderXarajat(data){
+    el("xarDayLbl").textContent = xarDay ? (data.day+" xarajati") : "Bugungi xarajat";
+    el("xarTotal").textContent = moneyText(data.total||0)+" so'm";
+    var bc = data.by_cat || {};
+    var keys = Object.keys(bc);
+    el("xarBreak").innerHTML = keys.length ? keys.map(function(k){ return esc(k)+': <b>'+moneyText(bc[k])+'</b>'; }).join(" · ") : "";
+    var list = data.expenses || [];
+    if(!list.length){ el("xarList").innerHTML = '<div class="item" style="display:block">Bu kunda xarajat yo\'q.</div>'; return; }
+    el("xarList").innerHTML = list.map(function(x){
+      var d = new Date((x.created_at||0)*1000);
+      var hm = ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+      var fromStock = x.source==="stock";
+      return '<div class="item" style="display:block;margin-bottom:7px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px"><div class="iname" style="min-width:0">'+esc(x.category)+(x.note?' — <span class="idesc">'+esc(x.note)+'</span>':'')+'</div><div class="iprice" style="flex:0 0 auto;color:#e53935">−'+moneyText(x.amount)+'</div></div>'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px;align-items:center"><div class="idesc">'+hm+(fromStock?' · Ombor kirimi':(x.who?' · '+esc(x.who):''))+'</div>'+
+        (fromStock ? '<span class="idesc">avtomatik</span>' : '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-xar-del="'+x.id+'">O\'chirish</button>')+'</div>'+
+      '</div>';
+    }).join("");
+  }
+  function openXarajatForm(){
+    api("GET","/api/expense-cats").then(function(res){
+      var cats = res.cats || [];
+      var opts = cats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join("")+'<option value="__new__">+ Yangi kategoriya...</option>';
+      showXarSheet(opts);
+    }).catch(function(e){ showMsg(e.message); });
+  }
+  function showXarSheet(catOpts){
+    var back = document.getElementById("xarFormBack"), sheet = document.getElementById("xarFormSheet");
+    if(!back){
+      back = document.createElement("div"); back.id="xarFormBack"; back.className="app-modal-back";
+      sheet = document.createElement("div"); sheet.id="xarFormSheet"; sheet.className="app-confirm";
+      document.body.appendChild(back); document.body.appendChild(sheet);
+    }
+    sheet.innerHTML =
+      '<div class="acf-title">Xarajat yozish</div>'+
+      '<div style="text-align:left;margin:8px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Kategoriya</div>'+
+      '<select class="input" id="xarCat">'+catOpts+'</select>'+
+      '<div id="xarNewWrap" style="display:none"><input class="input" id="xarNewCat" placeholder="Yangi kategoriya nomi" style="margin-top:6px"></div>'+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Summa (so\'m)</div>'+
+      '<input class="input" id="xarAmount" inputmode="numeric" placeholder="0">'+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Izoh (ixtiyoriy)</div>'+
+      '<input class="input" id="xarNote" placeholder="masalan: iyul oyi">'+
+      '<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
+    function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
+    var catSel = sheet.querySelector("#xarCat");
+    catSel.onchange = function(){ sheet.querySelector("#xarNewWrap").style.display = catSel.value==="__new__" ? "block" : "none"; };
+    sheet.querySelector(".acf-cancel").onclick = function(){ close(); };
+    back.onclick = function(){ close(); };
+    sheet.querySelector(".acf-ok").onclick = function(){
+      var cat = catSel.value;
+      if(cat==="__new__"){ cat = (sheet.querySelector("#xarNewCat").value||"").trim(); if(!cat){ showMsg("Kategoriya nomini yozing."); return; } }
+      var amount = parseInt(String(sheet.querySelector("#xarAmount").value||"").replace(/[^0-9]/g,""),10)||0;
+      if(!(amount>0)){ showMsg("Summa kiritilmadi."); return; }
+      var note = (sheet.querySelector("#xarNote").value||"").trim();
+      var isNew = catSel.value==="__new__";
+      function doSave(){
+        api("POST","/api/expenses",{ category:cat, amount:amount, note:note })
+          .then(function(){ close(); showMsg("Xarajat yozildi ✅"); loadXarajat(); })
+          .catch(function(e){ showMsg(e.message); });
+      }
+      if(isNew){ api("POST","/api/expense-cats",{ name:cat }).then(doSave).catch(function(e){ showMsg(e.message); }); }
+      else doSave();
+    };
+    back.classList.add("on"); sheet.classList.add("on");
+  }
+  el("xarAddBtn").addEventListener("click", openXarajatForm);
+  el("xarPrevDay").addEventListener("click", function(){ xarShiftDay(-1); });
+  el("xarNextDay").addEventListener("click", function(){ xarShiftDay(1); });
+  el("xarToday").addEventListener("click", function(){ xarDay=""; loadXarajat(); });
+  document.addEventListener("click", function(e){
+    var d = e.target.closest("[data-xar-del]");
+    if(!d) return;
+    var id = d.getAttribute("data-xar-del");
+    askConfirm({ text: "Bu xarajat o'chirilsinmi?", okText: "O'chirish", danger: true }).then(function(ok){
+      if(!ok) return;
+      api("DELETE","/api/expenses/"+id).then(function(){ showMsg("O'chirildi"); loadXarajat(); }).catch(function(e2){ showMsg(e2.message); });
+    });
+  });
+
   /* ---------- KASSA (savdo daftari) ---------- */
   var kassaDay = "";     // "" = bugun
   function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
@@ -5149,6 +5255,7 @@
     else if(screen==="cab-qarz") loadDebtors();
     else if(screen==="cab-ombor") loadOmbor();
     else if(screen==="cab-kassa") loadKassa();
+    else if(screen==="cab-xarajat") loadXarajat();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
