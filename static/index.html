@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1415 -->
+<title>Platforma</title><!-- BUILD: v1416 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -879,6 +879,7 @@
       <!-- CAB: KASSA FORMA -->
       <section class="screen" data-screen="cab-kassa-form">
         <div class="idesc" style="margin:2px 2px 8px">Mahsulot ustiga bosing — chekka qo'shiladi. Chekda miqdor va summa bir-biriga bog'langan.</div>
+        <input class="input" id="ksSearch" placeholder="🔍 Mahsulot qidirish..." style="margin-bottom:8px" autocomplete="off">
         <div id="ksCatalog"><div class="idesc">Yuklanmoqda...</div></div>
         <button class="mini-btn" style="width:100%;height:38px;margin:2px 0 10px" id="ksCustomBtn">+ Ro'yxatda yo'q mahsulot (qo'lda)</button>
         <div id="ksSelBox" style="display:none">
@@ -5170,20 +5171,21 @@
       renderKsSel();
     });
   }
+  function ksNorm(x){ return String(x||"").toLowerCase().replace(/[’‘\'`ʻʼ]/g,""); }
+  function ksChip(it){
+    var pv = parsePriceAmount(it.price)||0;
+    return '<div class="item-card2" data-ks-add="'+it.id+'" style="width:140px;min-height:auto;padding:10px;cursor:pointer">'+
+      '<div class="iname" style="font-size:13px">'+esc(it.name)+'</div>'+
+      '<div class="idesc" style="margin-top:2px">'+(pv ? esc(moneyText(pv))+unitSuffix(it.unit) : "Narx yozilmagan")+'</div>'+
+    '</div>';
+  }
   function renderKsCatalog(groups, items){
     var used = {};
     (groups||[]).forEach(function(g){ used[String(g.id)] = true; });
-    function chip(it){
-      var pv = parsePriceAmount(it.price)||0;
-      return '<div class="item-card2" data-ks-add="'+it.id+'" style="width:140px;min-height:auto;padding:10px;cursor:pointer">'+
-        '<div class="iname" style="font-size:13px">'+esc(it.name)+'</div>'+
-        '<div class="idesc" style="margin-top:2px">'+(pv ? esc(moneyText(pv))+unitSuffix(it.unit) : "Narx yozilmagan")+'</div>'+
-      '</div>';
-    }
     function block(title, arr){
       if(!arr.length) return "";
       return '<div class="item-group-block"><div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+arr.length+' ta</p></div></div>'+
-        '<div class="item-hrow">'+arr.map(chip).join("")+'</div></div>';
+        '<div class="item-hrow">'+arr.map(ksChip).join("")+'</div></div>';
     }
     var html = "";
     (groups||[]).forEach(function(g){
@@ -5193,14 +5195,27 @@
     html += block("Guruhsiz", ung);
     el("ksCatalog").innerHTML = html || '<div class="idesc">Mahsulotlar yo\'q — avval Mahsulotlarim bo\'limida qo\'shing.</div>';
   }
+  // Qidiruvli ko'rinish: bo'sh -> guruhli katalog, yozilsa -> mos mahsulotlar (tekis ro'yxat)
+  function ksApplyCatalog(){
+    var items = window.__ksItems || [];
+    var groups = window.__ksGroups || [];
+    var q = ksNorm((el("ksSearch")||{}).value);
+    if(!q){ renderKsCatalog(groups, items); return; }
+    var found = items.filter(function(it){ return ksNorm(it.name).indexOf(q) !== -1; });
+    if(!found.length){ el("ksCatalog").innerHTML = '<div class="idesc" style="padding:6px 2px">«'+esc((el("ksSearch")||{}).value)+'» bo\'yicha mahsulot topilmadi.</div>'; return; }
+    el("ksCatalog").innerHTML = '<div class="item-group-block"><div class="item-group-head"><div class="item-group-title"><h3>Qidiruv natijasi</h3><p>'+found.length+' ta</p></div></div>'+
+      '<div class="item-hrow" style="flex-wrap:wrap">'+found.map(ksChip).join("")+'</div></div>';
+  }
   function openKassaForm(){
     el("ksCatalog").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
     ksSel = {}; renderKsSel();
     el("ksPay").value = "naqd"; el("ksDebtorWrap").style.display = "none"; el("ksNote").value = "";
     nav("cab-kassa-form");
+    if(el("ksSearch")) el("ksSearch").value = "";
     Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
-      renderKsCatalog(res[0]||[], res[1]||[]);
+      window.__ksGroups = res[0]||[];
       window.__ksItems = res[1]||[];
+      ksApplyCatalog();
     }).catch(function(e){ el("ksCatalog").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   el("ksPay").addEventListener("change", function(){
@@ -5225,6 +5240,7 @@
         .catch(function(e){ showMsg(e.message); });
     });
   });
+  el("ksSearch").addEventListener("input", ksApplyCatalog);
   el("ksCustomBtn").addEventListener("click", function(){
     askInput({ title:"Qo'lda mahsulot", okText:"Chekka qo'shish",
       fields:[{ key:"n", label:"Mahsulot nomi", placeholder:"Masalan: Choy", required:true }] })
