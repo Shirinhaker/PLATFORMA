@@ -841,6 +841,26 @@ def _migrate(conn):
     if "chek_no" not in _scols:
         conn.execute("ALTER TABLE sales ADD COLUMN chek_no INTEGER")
 
+    # --- v1414: XARAJATLAR ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS expenses("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "category TEXT DEFAULT 'Boshqa', "
+        "amount INTEGER DEFAULT 0, "
+        "note TEXT DEFAULT '', "
+        "source TEXT DEFAULT 'manual', "   # manual | stock (ombor kirimi)
+        "stock_move_id INTEGER, "          # ombordan bog'liq harakat
+        "user_id INTEGER, "
+        "created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_biz_time ON expenses(business_id, created_at)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS expense_cats("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, "
+        "created_at INTEGER NOT NULL)")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
