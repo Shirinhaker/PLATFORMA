@@ -836,6 +836,11 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sales_biz_time ON sales(business_id, created_at)")
 
+    # --- v1412: Chek raqami (bitta chekdagi savdolarni birlashtiradi) ---
+    _scols = [r["name"] for r in conn.execute("PRAGMA table_info(sales)").fetchall()]
+    if "chek_no" not in _scols:
+        conn.execute("ALTER TABLE sales ADD COLUMN chek_no INTEGER")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
