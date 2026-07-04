@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1414 -->
+<title>Platforma</title><!-- BUILD: v1415 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -272,6 +272,8 @@
   .input-row{display:flex;gap:9px;}
   .input-row .input{flex:1;}
   .mini-btn{flex:none;height:50px;padding:0 15px;border-radius:13px;border:1.5px solid var(--primary);background:var(--primary-tint);color:var(--primary);font-weight:700;font-size:13.5px;font-family:inherit;cursor:pointer;white-space:nowrap;}
+  .seg-b{flex:0 0 auto;height:34px;padding:0 12px;border:1.4px solid var(--line,#e5e7eb);background:#fff;color:var(--soft,#6b7280);border-radius:9px;font-family:var(--font-d);font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;}
+  .seg-b.on{background:var(--primary);border-color:var(--primary);color:#fff;}
   .form-foot{text-align:center;font-size:14px;color:var(--soft);margin-top:18px;}
   .form-foot b{color:var(--primary);font-weight:700;cursor:pointer;}
 
@@ -742,7 +744,7 @@
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Ko'rishlar va murojaatlar</p></div><span class="soon-mini">Tez orada</span></div>
+        <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -915,8 +917,20 @@
 
       <!-- CAB: STATISTIKA (stub) -->
       <section class="screen" data-screen="cab-stats">
-        <div class="empty"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg></div>
-        <h3>Statistika</h3><p>Sahifa ko'rishlari, murojaatlar va e'lon ko'rishlari shu yerda bo'ladi.</p><span class="soon">Tez orada</span></div>
+        <div class="seg" id="statPeriods" style="display:flex;gap:4px;overflow-x:auto;margin-bottom:10px">
+          <button class="seg-b" data-period="kun">Kun</button>
+          <button class="seg-b" data-period="hafta">Hafta</button>
+          <button class="seg-b on" data-period="oy">Oy</button>
+          <button class="seg-b" data-period="chorak">Chorak</button>
+          <button class="seg-b" data-period="yarim">Yarim yil</button>
+          <button class="seg-b" data-period="yil">Yil</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+          <button class="mini-btn" style="flex:0 0 auto;height:36px;padding:0 12px" id="statPrev">←</button>
+          <div style="flex:1;text-align:center;font-weight:800" id="statLabel">—</div>
+          <button class="mini-btn" style="flex:0 0 auto;height:36px;padding:0 12px" id="statNext">→</button>
+        </div>
+        <div id="statBody"><div class="idesc">Yuklanmoqda...</div></div>
       </section>
 
       <!-- CAB: SOZLAMALAR -->
@@ -4771,6 +4785,118 @@
     if(ag){ openGroupForm(null, "cab-ombor"); return; }
   });
 
+  /* ---------- STATISTIKA ---------- */
+  var statPeriod = "oy", statAnchor = "", statMetric = "rev", statData = null;
+  function loadStats(){
+    el("statBody").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/stats?period="+statPeriod+(statAnchor?("&anchor="+statAnchor):""))
+      .then(function(d){ statData = d; renderStats(d); })
+      .catch(function(e){ el("statBody").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function statShift(dir){
+    api("GET","/api/stats/nav?period="+statPeriod+(statAnchor?("&anchor="+statAnchor):"")+"&dir="+dir)
+      .then(function(r){ statAnchor = r.anchor; loadStats(); }).catch(function(e){ showMsg(e.message); });
+  }
+  // Umumiy SVG ustunli diagramma
+  function svgBars(items, opts){
+    opts = opts || {};
+    var W = 340, H = 130, pad = 6, bottomH = 16;
+    var n = items.length || 1;
+    var vals = items.map(function(x){ return x.value||0; });
+    var maxV = Math.max(1, Math.max.apply(null, vals.map(function(v){ return Math.abs(v); })));
+    var hasNeg = vals.some(function(v){ return v < 0; });
+    var chartH = H - bottomH;
+    var zeroY = hasNeg ? chartH/2 : chartH;
+    var maxBar = hasNeg ? chartH/2 - 2 : chartH - 2;
+    var bw = (W - pad*2) / n;
+    var bars = items.map(function(x, i){
+      var v = x.value||0;
+      var h = Math.max(1, Math.round(Math.abs(v)/maxV * maxBar));
+      var x0 = pad + i*bw + bw*0.14, w = bw*0.72;
+      var y = v>=0 ? zeroY - h : zeroY;
+      var col = opts.signed ? (v>=0 ? "#188038" : "#e53935") : (opts.color || "var(--primary)");
+      return '<rect x="'+x0.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+h+'" rx="2" fill="'+col+'"><title>'+esc(x.label)+': '+moneyText(v)+'</title></rect>';
+    }).join("");
+    var step = Math.max(1, Math.ceil(n/8));
+    var labels = items.map(function(x, i){
+      if(i%step!==0 && i!==n-1) return "";
+      var x0 = pad + i*bw + bw/2;
+      return '<text x="'+x0.toFixed(1)+'" y="'+(H-3)+'" font-size="8.5" text-anchor="middle" fill="var(--soft)">'+esc(x.label)+'</text>';
+    }).join("");
+    var zeroLn = hasNeg ? '<line x1="'+pad+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-pad)+'" y2="'+zeroY.toFixed(1)+'" stroke="rgba(0,0,0,.12)"/>' : "";
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+zeroLn+bars+labels+'</svg>';
+  }
+  function renderStats(d){
+    el("statLabel").textContent = d.label || "";
+    el("statNext").style.visibility = d.can_next ? "visible" : "hidden";
+    var profitColor = (d.profit>=0) ? "#188038" : "#e53935";
+    var maxPay = Math.max(1, d.pay.naqd, d.pay.karta, d.pay.qarz, d.pay.order);
+    function payRow(nm, v, col){
+      var w = Math.round((v/maxPay)*100);
+      return '<div style="margin:5px 0"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+nm+'</span><b>'+moneyText(v)+'</b></div><div style="height:7px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden;margin-top:2px"><div style="height:100%;width:'+w+'%;background:'+col+'"></div></div></div>';
+    }
+    // Trend metrikasi ma'lumoti
+    var trendItems = (d.trend||[]).map(function(t){
+      var v = statMetric==="rev" ? t.rev : (statMetric==="exp" ? t.exp : t.profit);
+      return { label: t.label, value: v };
+    });
+    var metricColor = statMetric==="rev" ? "var(--primary)" : (statMetric==="exp" ? "#e53935" : null);
+
+    var html = "";
+    // Moliyaviy kartalar
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Tushum</div><div style="font-weight:800;font-size:18px;color:#188038;margin-top:2px">'+moneyText(d.revenue)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Xarajat</div><div style="font-weight:800;font-size:18px;color:#e53935;margin-top:2px">'+moneyText(d.expenses)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px;grid-column:1 / span 2"><div class="idesc">Sof foyda (tushum − xarajat)</div><div style="font-weight:800;font-size:22px;color:'+profitColor+';margin-top:2px">'+moneyText(d.profit)+' so\'m</div>'+(d.qarzpay?'<div class="idesc" style="margin-top:3px">+ Qarz to\'lovi qabul qilindi: '+moneyText(d.qarzpay)+' (tushumga kirmaydi)</div>':'')+'</div>'+
+    '</div>';
+    // Trend grafik + metrika almashtirish
+    html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px">'+
+      '<div style="display:flex;gap:4px;margin-bottom:8px">'+
+        '<button class="seg-b '+(statMetric==="rev"?"on":"")+'" data-metric="rev" style="flex:1">Tushum</button>'+
+        '<button class="seg-b '+(statMetric==="exp"?"on":"")+'" data-metric="exp" style="flex:1">Xarajat</button>'+
+        '<button class="seg-b '+(statMetric==="profit"?"on":"")+'" data-metric="profit" style="flex:1">Foyda</button>'+
+      '</div>'+
+      (trendItems.length ? svgBars(trendItems, { color: metricColor, signed: statMetric==="profit" }) : '<div class="idesc">Ma\'lumot yo\'q</div>')+
+    '</div>';
+    // To'lov turlari
+    html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:4px">To\'lov turlari</div>'+
+      payRow("Naqd", d.pay.naqd, "#188038")+payRow("Karta", d.pay.karta, "#1a73e8")+payRow("Qarz (sotildi)", d.pay.qarz, "#e6a100")+payRow("Buyurtma", d.pay.order, "#8e44ad")+'</div>';
+    // Tovarlar
+    if((d.top_products||[]).length){
+      var maxT = Math.max.apply(null, d.top_products.map(function(p){ return p.total||1; }));
+      html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:6px">🛒 Eng ko\'p sotilganlar</div>'+
+        d.top_products.map(function(p){
+          var w = Math.round((p.total/maxT)*100);
+          var mg = (p.margin!==null && p.margin!==undefined) ? '<span style="color:'+((p.margin>=0)?"#188038":"#e53935")+'"> · foyda '+moneyText(p.margin)+'</span>' : '';
+          return '<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:13px;gap:8px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.name)+'</span><b style="flex:0 0 auto">'+moneyText(p.total)+'</b></div>'+
+            '<div style="height:6px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden;margin-top:2px"><div style="height:100%;width:'+w+'%;background:var(--primary)"></div></div>'+
+            '<div class="idesc">'+fmtQty(p.qty)+' '+esc(p.unit||"dona")+' sotildi'+mg+'</div></div>';
+        }).join("")+'</div>';
+    }
+    // Kam qolgan
+    if((d.low_stock||[]).length){
+      html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:6px">📦 Kam qolgan tovarlar</div>'+
+        d.low_stock.map(function(l){
+          var q = parseFloat(l.stock_qty)||0;
+          var col = q<0 ? "#e53935" : (q<=5 ? "#e6a100" : "inherit");
+          return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span>'+esc(l.name)+'</span><b style="color:'+col+'">'+fmtQty(q)+' '+esc(l.unit||"dona")+'</b></div>';
+        }).join("")+'</div>';
+    }
+    el("statBody").innerHTML = html;
+  }
+  document.addEventListener("click", function(e){
+    var pb = e.target.closest("#statPeriods [data-period]");
+    if(pb){
+      statPeriod = pb.getAttribute("data-period"); statAnchor = "";
+      document.querySelectorAll("#statPeriods .seg-b").forEach(function(x){ x.classList.toggle("on", x===pb); });
+      loadStats(); return;
+    }
+    var mb = e.target.closest("[data-metric]");
+    if(mb && statData){ statMetric = mb.getAttribute("data-metric"); renderStats(statData); return; }
+  });
+  el("statPrev").addEventListener("click", function(){ statShift(-1); });
+  el("statNext").addEventListener("click", function(){ statShift(1); });
+
   /* ---------- XARAJATLAR ---------- */
   var xarDay = "";
   function loadXarajat(){
@@ -5252,6 +5378,7 @@
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="cab-items") loadItems();
+    else if(screen==="cab-stats") loadStats();
     else if(screen==="cab-qarz") loadDebtors();
     else if(screen==="cab-ombor") loadOmbor();
     else if(screen==="cab-kassa") loadKassa();
