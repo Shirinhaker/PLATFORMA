@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1412 -->
+<title>Platforma</title><!-- BUILD: v1413 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -4609,7 +4609,7 @@
     }).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function _ombCard(r){
-    return '<div class="item" style="min-width:132px;max-width:156px;flex:0 0 auto;display:block;padding:8px">'+
+    return '<div class="item-card2" style="width:150px;min-height:auto;padding:10px">'+
       (r.photo_file ? '<div style="height:64px;border-radius:8px;overflow:hidden;margin-bottom:6px"><img src="'+esc(r.photo_file)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>' : '')+
       '<div class="iname" style="font-size:13px">'+esc(r.name)+'</div>'+
       '<div style="font-weight:800;margin-top:2px;color:'+stockColor(r.stock_qty)+'">'+fmtQty(r.stock_qty)+' '+esc(r.unit||"dona")+'</div>'+
@@ -4943,7 +4943,7 @@
     (groups||[]).forEach(function(g){ used[String(g.id)] = true; });
     function chip(it){
       var pv = parsePriceAmount(it.price)||0;
-      return '<div class="item" data-ks-add="'+it.id+'" style="min-width:118px;max-width:150px;flex:0 0 auto;display:block;padding:8px;cursor:pointer">'+
+      return '<div class="item-card2" data-ks-add="'+it.id+'" style="width:140px;min-height:auto;padding:10px;cursor:pointer">'+
         '<div class="iname" style="font-size:13px">'+esc(it.name)+'</div>'+
         '<div class="idesc" style="margin-top:2px">'+(pv ? esc(moneyText(pv))+unitSuffix(it.unit) : "Narx yozilmagan")+'</div>'+
       '</div>';
