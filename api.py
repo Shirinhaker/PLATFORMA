@@ -1595,11 +1595,19 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     if delta > 0 and cost > 0:
         # oxirgi tannarx mahsulotda saqlanadi (foyda hisobi uchun)
         conn.execute("UPDATE items SET cost_price=? WHERE id=?", (cost, item_id))
-    conn.execute(
+    cur_m = conn.execute(
         "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, cost, order_id, user_id, created_at) "
         "VALUES(?,?,?,?,?,?,NULL,?,?)",
         (biz["id"], item_id, delta, reason, note, cost, user["id"], now),
     )
+    # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
+    if delta > 0 and cost > 0:
+        _spent = int(round(cost * float(delta)))
+        if _spent > 0:
+            _iname = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
+            _expense_add(conn, biz["id"], "Tovar xaridi", _spent,
+                         (_iname["name"] if _iname else "") + (" — " + note if note else ""),
+                         user["id"], source="stock", stock_move_id=cur_m.lastrowid)
     conn.commit()
     new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
     conn.close()
@@ -1620,6 +1628,7 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
         raise HTTPException(400, "Bu harakat buyurtma yoki kassa bilan bog'liq — o'chirib bo'lmaydi.")
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?",
                  (float(r["delta"] or 0), r["item_id"]))
+    conn.execute("DELETE FROM expenses WHERE source='stock' AND stock_move_id=?", (move_id,))
     conn.execute("DELETE FROM stock_moves WHERE id=?", (move_id,))
     conn.commit()
     conn.close()
@@ -1651,6 +1660,121 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
               for r in rows]
     conn.close()
     return result
+
+
+# ================== XARAJATLAR ==================
+_DEFAULT_EXP_CATS = ["Ijara", "Kommunal", "Maosh", "Transport", "Tovar xaridi", "Soliq", "Boshqa"]
+
+
+def _expense_cats(conn, biz_id):
+    """Standart kategoriyalar + biznes qo'shgan maxsus kategoriyalar (takrorsiz)."""
+    extra = [r["name"] for r in conn.execute(
+        "SELECT name FROM expense_cats WHERE business_id=? ORDER BY name COLLATE NOCASE", (biz_id,)
+    ).fetchall()]
+    out = list(_DEFAULT_EXP_CATS)
+    for e in extra:
+        if e not in out:
+            out.append(e)
+    return out
+
+
+def _expense_add(conn, biz_id, category, amount, note, user_id, source="manual", stock_move_id=None):
+    now = int(time.time())
+    conn.execute(
+        "INSERT INTO expenses(business_id, category, amount, note, source, stock_move_id, user_id, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        (biz_id, category, int(amount), note[:200], source, stock_move_id, user_id, now),
+    )
+    return conn.execute("SELECT last_insert_rowid() r").fetchone()["r"]
+
+
+@router.get("/expense-cats")
+async def expense_cats_list(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    cats = _expense_cats(conn, biz["id"])
+    conn.close()
+    return {"cats": cats, "default": _DEFAULT_EXP_CATS}
+
+
+@router.post("/expense-cats")
+async def expense_cats_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    name = (body.get("name") or "").strip()[:40]
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Kategoriya nomi kiritilmadi.")
+    if name in _expense_cats(conn, biz["id"]):
+        conn.close()
+        return {"ok": True, "exists": True}
+    conn.execute("INSERT INTO expense_cats(business_id, name, created_at) VALUES(?,?,?)",
+                 (biz["id"], name, int(time.time())))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.get("/expenses")
+async def expenses_list(day: str = "", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    start, end, dstr = _day_bounds(day)
+    rows = conn.execute(
+        "SELECT e.*, u.name AS who FROM expenses e LEFT JOIN users u ON u.id=e.user_id "
+        "WHERE e.business_id=? AND e.created_at>=? AND e.created_at<? "
+        "ORDER BY e.created_at DESC, e.id DESC LIMIT 200",
+        (biz["id"], start, end),
+    ).fetchall()
+    total = 0
+    by_cat = {}
+    out = []
+    for r in rows:
+        amt = int(r["amount"] or 0)
+        total += amt
+        cat = r["category"] or "Boshqa"
+        by_cat[cat] = by_cat.get(cat, 0) + amt
+        out.append({"id": r["id"], "category": cat, "amount": amt, "note": r["note"] or "",
+                    "source": r["source"] or "manual", "who": r["who"] or "",
+                    "created_at": r["created_at"]})
+    conn.close()
+    return {"day": dstr, "expenses": out, "total": total, "by_cat": by_cat}
+
+
+@router.post("/expenses")
+async def expenses_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    category = (body.get("category") or "Boshqa").strip()[:40] or "Boshqa"
+    try:
+        amount = int(str(body.get("amount") or "0").replace(" ", "") or 0)
+    except Exception:
+        amount = 0
+    if amount <= 0:
+        conn.close()
+        raise HTTPException(400, "Summa kiritilmadi.")
+    note = (body.get("note") or "").strip()
+    eid = _expense_add(conn, biz["id"], category, amount, note, user["id"])
+    conn.commit()
+    conn.close()
+    return {"ok": True, "id": eid}
+
+
+@router.delete("/expenses/{expense_id}")
+async def expenses_delete(expense_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    r = conn.execute("SELECT * FROM expenses WHERE id=? AND business_id=?", (expense_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xarajat topilmadi.")
+    if (r["source"] or "") == "stock":
+        conn.close()
+        raise HTTPException(400, "Bu xarajat ombor kirimidan — uni Ombordagi kirimni o'chirsangiz yo'qoladi.")
+    conn.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 # ================== KASSA (savdo daftari) ==================
