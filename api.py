@@ -1748,6 +1748,35 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     return result
 
 
+# ================== ULASHISH / DEEP-LINK RESOLVE ==================
+@router.get("/resolve")
+async def resolve_share(param: str = "", x_telegram_init_data: str = Header(default="")):
+    """startapp parametrini sahifaga aylantiradi: shop_<username|id> yoki user_<username>."""
+    require_tg(x_telegram_init_data)  # faqat ilova ichidan
+    conn = db()
+    p = (param or "").strip()
+    try:
+        if p.startswith("shop_"):
+            rest = p[5:]
+            if rest.isdigit():
+                r = conn.execute("SELECT id, name FROM businesses WHERE id=? AND status='active'", (int(rest),)).fetchone()
+            else:
+                r = conn.execute("SELECT id, name FROM businesses WHERE lower(username)=? AND status='active'", (rest.lower(),)).fetchone()
+            if r:
+                conn.close()
+                return {"type": "business", "id": r["id"], "name": r["name"]}
+        elif p.startswith("user_"):
+            rest = p[5:].lower()
+            r = conn.execute("SELECT id, name FROM users WHERE lower(pub_username)=?", (rest,)).fetchone()
+            if r:
+                conn.close()
+                return {"type": "user", "id": r["id"], "name": r["name"]}
+    except Exception:
+        pass
+    conn.close()
+    return {"type": None}
+
+
 # ================== XODIMLAR (kadr) ==================
 _DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
                         "Yuk tashuvchi", "Haydovchi", "Farrosh", "Qorovul", "Boshqa"]
