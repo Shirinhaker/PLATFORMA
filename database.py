@@ -875,6 +875,29 @@ def _migrate(conn):
     if "payment_status" not in _ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT ''")
 
+    # --- v1424: XODIMLAR (kadr) ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, "
+        "profession TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', "
+        "salary INTEGER DEFAULT 0, "
+        "hire_date TEXT DEFAULT '', "
+        "status TEXT DEFAULT 'active', "     # active | fired
+        "note TEXT DEFAULT '', "
+        "user_id INTEGER, "
+        "created_at INTEGER NOT NULL, "
+        "fired_at INTEGER)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff_professions("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, "
+        "created_at INTEGER NOT NULL)")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
