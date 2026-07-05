@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1422 -->
+<title>Platforma</title><!-- BUILD: v1423 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -2818,7 +2818,7 @@
         (o.address?'<div class="detail-line"><b>Manzil</b><span>'+esc(o.address)+'</span></div>':'')+
         (o.desired_time?'<div class="detail-line"><b>Vaqt</b><span>'+esc(o.desired_time)+'</span></div>':'')+
         (o.note?'<div style="margin-top:10px"><b>Izoh</b><div class="idesc" style="margin-top:5px;white-space:pre-wrap">'+esc(o.note)+'</div></div>':'')+
-      '</div>'+itemsHtml+mapHtml+orderActionButtons(o, mode)+orderChatHtml(o, mode)+'<button class="btn btn-soft btn-block" style="margin-top:10px" id="orderDetailClose2">Yopish</button>';
+      '</div>'+itemsHtml+mapHtml+orderPaymentHtml(o, mode)+orderActionButtons(o, mode)+orderChatHtml(o, mode)+'<button class="btn btn-soft btn-block" style="margin-top:10px" id="orderDetailClose2">Yopish</button>';
     el("orderDetailBackdrop").classList.add("on");
     sh.classList.add("on");
     el("orderDetailClose").addEventListener("click", closeOrderDetail);
@@ -2837,7 +2837,71 @@
         closeOrderDetail();
       });
     });
+    sh.querySelectorAll("[data-paystatus]").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        setOrderPayment(o.id, btn.getAttribute("data-paystatus"), mode);
+      });
+    });
     renderOrderDetailMap(o);
+  }
+  function payStatusInfo(st){
+    if(st==="confirmed") return { text:"To'lov tasdiqlandi", color:"#188038", bg:"rgba(24,128,56,.10)" };
+    if(st==="rejected")  return { text:"To'lov rad etildi", color:"#e53935", bg:"rgba(229,57,53,.10)" };
+    return { text:"To'lov kutilmoqda", color:"#e6a100", bg:"rgba(230,161,0,.12)" };
+  }
+  function orderPaymentHtml(o, mode){
+    var hasPay = (o.pay_card && o.pay_card.trim()) || (o.pay_qr && o.pay_qr.trim());
+    if(!hasPay) return "";   // biznesda to'lov ma'lumoti yo'q -> ko'rsatilmaydi
+    var st = o.payment_status || "";
+    var info = payStatusInfo(st);
+    var badge = '<div style="display:inline-block;padding:4px 10px;border-radius:20px;font-weight:800;font-size:13px;color:'+info.color+';background:'+info.bg+'">'+info.text+'</div>';
+    var html = '<div class="panel-card"><b>💳 Onlayn to\'lov</b><div style="margin-top:8px">'+badge+'</div>';
+    if(mode==="inbox"){
+      // Biznes tomoni: tasdiqlash / rad etish
+      html += '<div class="idesc" style="margin-top:8px">Mijoz chek (to\'lov skrinshoti)ni suhbatga tashlaydi. Tekshirib tasdiqlang.</div>';
+      if(st!=="confirmed"){
+        html += '<button class="btn btn-primary btn-block" style="margin-top:8px" data-paystatus="confirmed">✅ To\'lovni tasdiqlash</button>';
+      }
+      if(st!=="rejected"){
+        html += '<button class="btn btn-soft btn-block" style="margin-top:6px" data-paystatus="rejected">❌ Rad etish</button>';
+      }
+    } else {
+      // Mijoz tomoni: QR/karta ko'rsatiladi
+      if(st!=="confirmed"){
+        html += '<div class="idesc" style="margin-top:8px;white-space:pre-wrap">Quyidagi karta yoki QR orqali to\'lang, so\'ng to\'lov chekini (skrinshotini) shu buyurtma suhbatiga tashlang. Do\'kon tekshirib tasdiqlaydi.</div>';
+        if(o.pay_qr && o.pay_qr.trim()){
+          html += '<div style="margin-top:10px;text-align:center"><img src="'+esc(o.pay_qr)+'" alt="QR" style="max-width:200px;width:100%;border-radius:12px;background:#fff"></div>';
+        }
+        if(o.pay_card && o.pay_card.trim()){
+          html += '<div class="detail-line" style="margin-top:10px"><b>Karta</b><span style="font-weight:800;letter-spacing:.5px">'+esc(o.pay_card)+'</span></div>';
+        }
+        if(o.pay_holder && o.pay_holder.trim()){
+          html += '<div class="detail-line"><b>Karta egasi</b><span>'+esc(o.pay_holder)+'</span></div>';
+        }
+      } else {
+        html += '<div class="idesc" style="margin-top:8px">To\'lovingiz do\'kon tomonidan tasdiqlandi. Rahmat!</div>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+  function setOrderPayment(orderId, status, mode){
+    var label = status==="confirmed" ? "tasdiqlash" : "rad etish";
+    askConfirm({ text: "To'lovni "+label+"ni tasdiqlaysizmi?", okText: (status==="confirmed"?"Tasdiqlash":"Rad etish"), danger: status==="rejected" }).then(function(ok){
+      if(!ok) return;
+      api("POST","/api/orders/"+orderId+"/payment", { status:status })
+        .then(function(){
+          showMsg(status==="confirmed" ? "To'lov tasdiqlandi ✅" : "To'lov rad etildi");
+          // buyurtmani yangilab, detalni qayta ochamiz
+          if(typeof loadMyOrders==="function") loadMyOrders();
+          var o2 = findOrderById(orderId, mode);
+          if(o2){ o2.payment_status = status; }
+          closeOrderDetail();
+          setTimeout(function(){ openOrderDetail(orderId, mode); }, 150);
+        })
+        .catch(function(e){ showMsg(e.message); });
+    });
   }
   function orderChatHtml(o, mode){
     return '<div class="panel-card order-chat-box">'+
