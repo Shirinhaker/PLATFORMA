@@ -98,6 +98,12 @@ def resolve_actor(conn, user, actor_type="user"):
     biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
     if not biz:
         raise HTTPException(403, "Biznes kabinet topilmadi.")
+    try:
+        _ensure_pay_columns(conn)
+        conn.commit()
+        biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
+    except Exception:
+        pass
     return {"type": "business", "user_id": user["id"], "business_id": biz["id"], "business": biz}
 
 
@@ -637,10 +643,23 @@ async def admin_topup(request: Request, x_telegram_init_data: str = Header(defau
 # ====================================================================
 # BIZNES PROFILI VA MAHSULOTLAR
 # ====================================================================
+def _ensure_pay_columns(conn):
+    """To'lov ustunlari yo'q bo'lsa qo'shadi. Har chaqiruvda ishlaydi (migratsiya/restartga bog'liq emas)."""
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if "pay_card" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_card TEXT DEFAULT ''")
+    if "pay_holder" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_holder TEXT DEFAULT ''")
+    if "pay_qr" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
+
+
 @router.put("/business")
 async def update_business(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_pay_columns(conn)   # v1421: to'lov ustunlari kafolatlangan
+    biz = conn.execute("SELECT * FROM businesses WHERE id=?", (biz["id"],)).fetchone()  # ustunlar bilan qayta o'qish
     b = await request.json()
     def keep(key, old):
         return b[key].strip() if (key in b and isinstance(b[key], str)) else old
