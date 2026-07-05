@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1419 -->
+<title>Platforma</title><!-- BUILD: v1420 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -773,6 +773,14 @@
           <div class="field"><label>Telegram</label><input class="input" id="bpTg" placeholder="@username"></div>
           <div class="field"><label>Ish vaqti</label><input class="input" id="bpHours" placeholder="8:00 – 23:00"></div>
           <div class="field"><label>Manzil</label><input class="input" id="bpAddr" placeholder="Tuman, mahalla, ko'cha"></div>
+          <div style="margin:14px 2px 6px;padding-top:12px;border-top:1px solid var(--line,#e5e7eb)"><b>💳 To'lov ma'lumotlari</b><div class="idesc" style="margin-top:2px">Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.</div></div>
+          <div class="field"><label>To'lov kartasi raqami</label><input class="input" id="bpCard" inputmode="numeric" placeholder="8600 XXXX XXXX XXXX"></div>
+          <div class="field"><label>Karta egasi (ism-familiya)</label><input class="input" id="bpHolder" placeholder="Masalan: Anvar Karimov"></div>
+          <div class="field"><label>To'lov QR kodi (rasm)</label>
+            <input type="file" accept="image/*" id="bpQrFile" style="display:none">
+            <button type="button" class="btn btn-outline btn-block" id="bpQrAdd">📷 QR rasm yuklash</button>
+            <div id="bpQrPreview" style="display:none;margin-top:8px;position:relative;width:max-content"><img id="bpQrImg" alt="" style="max-width:180px;border-radius:12px;display:block;background:rgba(0,0,0,.05)"><button type="button" id="bpQrRemove" aria-label="O'chirish" style="position:absolute;top:-8px;right:-8px;width:26px;height:26px;border-radius:50%;border:none;background:#e53935;color:#fff;font-weight:800;cursor:pointer">×</button></div>
+          </div>
           <div class="field">
             <label>Xaritadagi joy</label>
             <button class="btn btn-outline btn-block" id="bpPickBtn" type="button">📍 Xaritada joy belgilash</button>
@@ -5374,6 +5382,8 @@
       el("bpDescr").value=b.descr||""; el("bpPhone").value=b.phone||"";
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
+      el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
+      bpQrUrl = b.pay_qr||""; renderBpQr();
       fillYonSelect(el("bpYon"), b.yon||"");
 
       // Backend lat/lng yoki latitude/longitude qaytarsa, saqlangan joyni tiklaymiz
@@ -5517,6 +5527,24 @@
   });
 
   el("bpPickBtn") && el("bpPickBtn").addEventListener("click", function(){ openPicker("bp"); });
+  var bpQrUrl = "";
+  function renderBpQr(){
+    var has = !!bpQrUrl;
+    el("bpQrPreview").style.display = has ? "block" : "none";
+    el("bpQrAdd").style.display = has ? "none" : "block";
+    if(has) el("bpQrImg").src = bpQrUrl;
+  }
+  el("bpQrAdd") && el("bpQrAdd").addEventListener("click", function(){ el("bpQrFile").click(); });
+  el("bpQrRemove") && el("bpQrRemove").addEventListener("click", function(){ bpQrUrl=""; renderBpQr(); });
+  el("bpQrFile") && el("bpQrFile").addEventListener("change", function(){
+    var inp=this, f=inp.files && inp.files[0];
+    if(!f) return;
+    if(f.size > 8*1024*1024){ showMsg("Rasm hajmi 8 MB dan oshmasin."); inp.value=""; return; }
+    var btn=el("bpQrAdd"); var old0=btn.textContent; btn.disabled=true; btn.textContent="Yuklanmoqda...";
+    uploadRaw("POST","/api/items/image", f).then(function(res){ bpQrUrl=res.photo_file||""; renderBpQr(); })
+      .catch(function(e){ showMsg(e.message); })
+      .finally(function(){ btn.disabled=false; btn.textContent=old0||"📷 QR rasm yuklash"; inp.value=""; });
+  });
   bindSave("bpSave", function(){
     var btn=this; btn.disabled=true;
     var nm=el("bpName").value.trim(), yon=el("bpYon").value;
@@ -5524,7 +5552,8 @@
       name:nm, yon:yon, tur:el("bpTur").value.trim(),
       descr:el("bpDescr").value.trim(), phone:el("bpPhone").value.trim(),
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
-      address:el("bpAddr").value.trim()
+      address:el("bpAddr").value.trim(),
+      pay_card:el("bpCard").value.trim(), pay_holder:el("bpHolder").value.trim(), pay_qr:bpQrUrl
     };
     var bpLL = normalizeLatLng(
       pickedLatLng.bp && pickedLatLng.bp[0],
