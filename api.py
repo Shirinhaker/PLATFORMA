@@ -3580,9 +3580,24 @@ def _order_seen_value(r, view):
     return int(_row_val(r, "customer_seen_at", 0) or 0)
 
 
+def _ensure_order_pay_column(conn):
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+    if "payment_status" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT ''")
+
+
 def _order_to_dict(conn, r, view="customer"):
     customer = _actor_brief(conn, r["customer_kind"], r["customer_actor_id"])
     provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
+    # Provayder biznes bo'lsa — to'lov ma'lumotini qo'shamiz (onlayn to'lov uchun)
+    _pay_card = _pay_holder = _pay_qr = ""
+    if (r["provider_kind"] or "") == "business":
+        _pb = conn.execute("SELECT * FROM businesses WHERE id=?", (r["provider_actor_id"],)).fetchone()
+        if _pb:
+            _pbk = _pb.keys()
+            _pay_card = (_pb["pay_card"] if "pay_card" in _pbk else "") or ""
+            _pay_holder = (_pb["pay_holder"] if "pay_holder" in _pbk else "") or ""
+            _pay_qr = (_pb["pay_qr"] if "pay_qr" in _pbk else "") or ""
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
@@ -3610,6 +3625,8 @@ def _order_to_dict(conn, r, view="customer"):
         "total_amount": total_amount,
         "total_text": _fmt_summa(total_amount),
         "status": r["status"],
+        "payment_status": _row_val(r, "payment_status", "") or "",
+        "pay_card": _pay_card, "pay_holder": _pay_holder, "pay_qr": _pay_qr,
         "created_at": r["created_at"],
         "updated_at": r["updated_at"],
         "provider_seen_at": _row_val(r, "provider_seen_at", 0),
@@ -3965,6 +3982,41 @@ def _mark_order_changed_for_side(conn, order_id, side, now=None):
     else:
         conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
     return now
+
+
+@router.post("/orders/{order_id}/payment")
+async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Provayder biznes buyurtma to'lovini tasdiqlaydi yoki rad etadi. Suhbatga xabar yoziladi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_order_pay_column(conn)
+    r = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Buyurtma topilmadi.")
+    if (r["provider_kind"] or "") != "business" or int(r["provider_actor_id"] or 0) != int(biz["id"]):
+        conn.close()
+        raise HTTPException(403, "Bu buyurtma sizniki emas.")
+    status = (body.get("status") or "").strip()
+    if status not in ("confirmed", "rejected", "pending"):
+        conn.close()
+        raise HTTPException(400, "Holat noto'g'ri.")
+    now = int(time.time())
+    conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
+    # Suhbatga tizim xabari
+    msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!",
+           "rejected": "❌ To'lov tasdiqlanmadi. Iltimos, to'lovni tekshiring yoki qayta yuboring.",
+           "pending": "⏳ To'lov kutilmoqda."}.get(status, "")
+    if msg:
+        conn.execute(
+            """INSERT INTO order_messages(order_id, sender_kind, sender_actor_id, sender_user_id,
+                                          text, media_type, media_url, file_name, reply_to_id, created_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (order_id, "business", biz["id"], user["id"], msg, "text", "", "", None, now),
+        )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "payment_status": status}
 
 
 @router.get("/orders/{order_id}/chat")
