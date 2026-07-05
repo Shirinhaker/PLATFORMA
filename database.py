@@ -861,6 +861,15 @@ def _migrate(conn):
         "name TEXT NOT NULL, "
         "created_at INTEGER NOT NULL)")
 
+    # --- v1420: Biznes to'lov ma'lumotlari (onlayn buyurtma uchun) ---
+    _bcols = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if "pay_card" not in _bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_card TEXT DEFAULT ''")
+    if "pay_holder" not in _bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_holder TEXT DEFAULT ''")
+    if "pay_qr" not in _bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
