@@ -131,10 +131,21 @@ def listing_to_dict(conn, r, with_media=True):
 # ====================================================================
 # PROFIL
 # ====================================================================
+def _ensure_user_username(conn):
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "pub_username" not in cols:
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
+        except Exception:
+            pass
+
+
 @router.put("/profile")
 async def update_profile(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    _ensure_user_username(conn)
+    user = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
     b = await request.json()
     # Yuborilmagan maydonlar eskisicha qoladi (bo'sh yozilmaydi)
     def keep(key, old):
@@ -148,9 +159,23 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
     new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else user["lat"]
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else user["lng"]
+    # pub_username (ixtiyoriy, band emasligi tekshiriladi)
+    new_pubu = _row_val(user, "pub_username", "") or ""
+    if "pub_username" in b:
+        cand = _norm_username(b.get("pub_username"))
+        err = _username_error(cand)
+        if err:
+            conn.close()
+            raise HTTPException(400, err)
+        if cand:
+            taken = conn.execute("SELECT id FROM users WHERE lower(pub_username)=? AND id<>?", (cand, user["id"])).fetchone()
+            if taken:
+                conn.close()
+                raise HTTPException(400, "Bu username band. Boshqasini tanlang.")
+        new_pubu = cand
     conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, user["id"]),
+        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=?, pub_username=? WHERE id=?",
+        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, new_pubu, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -161,10 +186,13 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
 async def get_profile(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    _ensure_user_username(conn)
+    user = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
     result = {
         "id": user["id"], "role": user["role"], "name": user["name"], "phone": user["phone"],
         "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
         "lat": user["lat"], "lng": user["lng"],
+        "pub_username": _row_val(user, "pub_username", "") or "",
         "followers": follower_count(conn, "user", user["id"]),
         "following": following_count(conn, user["id"]),
     }
