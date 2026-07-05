@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1423 -->
+<title>Platforma</title><!-- BUILD: v1424 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -1180,8 +1180,28 @@
 
       <!-- CAB: MA'MURIYAT (stub) -->
       <section class="screen" data-screen="cab-admin">
-        <div class="empty"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-        <h3>Ma'muriyat</h3><p>Bu bo'limning vazifasini keyingi bosqichda birga belgilaymiz.</p><span class="soon">Keyingi bosqich</span></div>
+        <div class="menu-grid2">
+          <div class="menu-card" data-nav="cab-staff"><div class="menu-ic">👥</div><div class="menu-main"><h4>Xodimlar</h4><p>Ro'yxat, kasblar, oylik</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📄</div><div class="menu-main"><h4>Hujjatlar</h4><p>Kiruvchi, chiquvchi, ichki, kontragentlar</p></div><span class="soon-mini">Tez orada</span></div>
+        </div>
+      </section>
+
+      <!-- CAB: XODIMLAR -->
+      <section class="screen" data-screen="cab-staff">
+        <div class="q-total"><div class="eyebrow">Faol xodimlar</div><div class="q-amount" id="staffCount">0</div><div class="q-sub" id="staffSalary"></div></div>
+        <button class="btn btn-primary btn-block" style="margin:10px 0" id="staffAddBtn">+ Xodim qo'shish</button>
+        <div id="staffList"></div>
+      </section>
+
+      <!-- CAB: XODIM FORMA -->
+      <section class="screen" data-screen="cab-staff-form">
+        <div class="field"><label>Ism-familiya</label><input class="input" id="stName" placeholder="Masalan: Anvar Karimov"></div>
+        <div class="field"><label>Kasb (lavozim)</label><div style="display:flex;gap:6px"><select class="input" id="stProf" style="flex:1;min-width:0"></select><button class="mini-btn" id="stProfAdd" style="height:44px;flex:0 0 auto;padding:0 12px">+ Yangi</button></div></div>
+        <div class="field"><label>Telefon</label><input class="input" id="stPhone" inputmode="tel" placeholder="+998 ..."></div>
+        <div class="field"><label>Oylik maosh (so'm)</label><input class="input" id="stSalary" inputmode="numeric" placeholder="0"></div>
+        <div class="field"><label>Ishga qabul sanasi</label><input class="input" id="stHire" type="date"></div>
+        <button class="btn btn-primary btn-block" id="stSave">Saqlash</button>
+        <button class="btn btn-soft btn-block" style="margin-top:8px;display:none" id="stFireBtn">Ishdan bo'shatish</button>
       </section>
 
       <!-- CAB: HISOBOT (stub) -->
@@ -4866,6 +4886,113 @@
     if(ai){ var gv = ai.getAttribute("data-omb-add-item"); openItemForm(null, gv ? parseInt(gv,10) : null, "cab-ombor"); return; }
     var ag = e.target.closest("[data-omb-add-group]");
     if(ag){ openGroupForm(null, "cab-ombor"); return; }
+  });
+
+  /* ---------- XODIMLAR (kadr) ---------- */
+  var editStaffId = null;
+  function loadStaff(){
+    el("staffList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/staff").then(renderStaff)
+      .catch(function(e){ el("staffList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function staffCard(x, fired){
+    var sub = [];
+    if(x.profession) sub.push(esc(x.profession));
+    if(x.phone) sub.push(esc(x.phone));
+    var salary = x.salary ? moneyText(x.salary)+" so'm/oy" : "";
+    return '<div class="item" style="display:block;margin-bottom:7px'+(fired?';opacity:.65':'')+'">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+        '<div style="min-width:0"><div class="iname">'+esc(x.name)+'</div>'+
+          (sub.length?'<div class="idesc" style="margin-top:2px">'+sub.join(" · ")+'</div>':'')+
+          (x.hire_date?'<div class="idesc">Qabul: '+esc(x.hire_date)+'</div>':'')+
+          (fired?'<div class="idesc" style="color:#e53935">Ishdan bo\'shatilgan</div>':'')+
+        '</div>'+
+        (salary?'<div class="iprice" style="flex:0 0 auto">'+salary+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:6px;margin-top:8px">'+
+        (fired
+          ? '<button class="mini-btn" style="flex:1;height:34px" data-st-rehire="'+x.id+'">Qayta ishga olish</button><button class="mini-btn" style="flex:0 0 auto;height:34px;padding:0 12px" data-st-del="'+x.id+'">O\'chirish</button>'
+          : '<button class="mini-btn" style="flex:1;height:34px" data-st-edit="'+x.id+'">Tahrirlash</button>')+
+      '</div>'+
+    '</div>';
+  }
+  function renderStaff(data){
+    el("staffCount").textContent = data.active_count || 0;
+    el("staffSalary").textContent = (data.total_salary ? "Umumiy oylik: "+moneyText(data.total_salary)+" so'm" : "");
+    window.__staff = {};
+    (data.active||[]).concat(data.fired||[]).forEach(function(x){ window.__staff[x.id]=x; });
+    var html = "";
+    if((data.active||[]).length){
+      html += (data.active).map(function(x){ return staffCard(x, false); }).join("");
+    } else {
+      html += '<div class="item" style="display:block">Hozircha faol xodim yo\'q. "+ Xodim qo\'shish" bilan qo\'shing.</div>';
+    }
+    if((data.fired||[]).length){
+      html += '<div style="margin:14px 2px 6px;font-weight:800;color:var(--soft)">Ishdan bo\'shatilganlar ('+data.fired.length+')</div>';
+      html += (data.fired).map(function(x){ return staffCard(x, true); }).join("");
+    }
+    el("staffList").innerHTML = html;
+  }
+  function stLoadProfs(selected){
+    return api("GET","/api/staff-professions").then(function(res){
+      var profs = res.professions || [];
+      el("stProf").innerHTML = profs.map(function(p){ return '<option value="'+esc(p)+'">'+esc(p)+'</option>'; }).join("");
+      if(selected){ el("stProf").value = selected; }
+    });
+  }
+  function openStaffForm(x){
+    editStaffId = x ? x.id : null;
+    el("stName").value = x ? (x.name||"") : "";
+    el("stPhone").value = x ? (x.phone||"") : "";
+    el("stSalary").value = x && x.salary ? String(x.salary) : "";
+    el("stHire").value = x ? (x.hire_date||"") : "";
+    el("stFireBtn").style.display = x ? "block" : "none";
+    stLoadProfs(x ? x.profession : "").catch(function(e){ showMsg(e.message); });
+    nav("cab-staff-form");
+  }
+  el("staffAddBtn").addEventListener("click", function(){ openStaffForm(null); });
+  el("stProfAdd").addEventListener("click", function(){
+    askInput({ title:"Yangi kasb", okText:"Qo'shish",
+      fields:[{ key:"name", label:"Kasb (lavozim) nomi", placeholder:"Masalan: Barmen", required:true }] })
+    .then(function(v){
+      if(!v || !(v.name||"").trim()) return;
+      api("POST","/api/staff-professions",{ name:v.name }).then(function(){
+        stLoadProfs((v.name||"").trim()).then(function(){ showMsg("Kasb qo'shildi ✅"); });
+      }).catch(function(e){ showMsg(e.message); });
+    });
+  });
+  el("stSave").addEventListener("click", function(){
+    var body = {
+      name: (el("stName").value||"").trim(),
+      profession: el("stProf").value||"",
+      phone: (el("stPhone").value||"").trim(),
+      salary: parseInt(String(el("stSalary").value||"").replace(/[^0-9]/g,""),10)||0,
+      hire_date: el("stHire").value||""
+    };
+    if(!body.name){ showMsg("Xodim ismini kiriting."); return; }
+    var req = editStaffId ? api("PUT","/api/staff/"+editStaffId, body) : api("POST","/api/staff", body);
+    req.then(function(){ showMsg(editStaffId ? "Saqlandi ✅" : "Xodim qo'shildi ✅"); nav("cab-staff"); })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  el("stFireBtn").addEventListener("click", function(){
+    if(!editStaffId) return;
+    askConfirm({ text:"Bu xodim ishdan bo'shatilsinmi? (Ma'lumot arxivda saqlanadi)", okText:"Bo'shatish", danger:true }).then(function(ok){
+      if(!ok) return;
+      api("POST","/api/staff/"+editStaffId+"/fire").then(function(){ showMsg("Ishdan bo'shatildi"); nav("cab-staff"); }).catch(function(e){ showMsg(e.message); });
+    });
+  });
+  document.addEventListener("click", function(e){
+    var ed = e.target.closest("[data-st-edit]");
+    if(ed){ var x=(window.__staff||{})[ed.getAttribute("data-st-edit")]; if(x) openStaffForm(x); return; }
+    var rh = e.target.closest("[data-st-rehire]");
+    if(rh){ var id=rh.getAttribute("data-st-rehire");
+      api("POST","/api/staff/"+id+"/rehire").then(function(){ showMsg("Qayta ishga olindi ✅"); loadStaff(); }).catch(function(e2){ showMsg(e2.message); }); return; }
+    var dl = e.target.closest("[data-st-del]");
+    if(dl){ var did=dl.getAttribute("data-st-del");
+      askConfirm({ text:"Bu xodim butunlay o'chirilsinmi? (Qaytarib bo'lmaydi)", okText:"O'chirish", danger:true }).then(function(ok){
+        if(!ok) return;
+        api("DELETE","/api/staff/"+did).then(function(){ showMsg("O'chirildi"); loadStaff(); }).catch(function(e2){ showMsg(e2.message); });
+      }); return; }
   });
 
   /* ---------- STATISTIKA ---------- */
