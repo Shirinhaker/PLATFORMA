@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1424 -->
+<title>Platforma</title><!-- BUILD: v1425 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -773,6 +773,10 @@
           <div class="field"><label>Telegram</label><input class="input" id="bpTg" placeholder="@username"></div>
           <div class="field"><label>Ish vaqti</label><input class="input" id="bpHours" placeholder="8:00 – 23:00"></div>
           <div class="field"><label>Manzil</label><input class="input" id="bpAddr" placeholder="Tuman, mahalla, ko'cha"></div>
+          <div class="field"><label>Username (do'kon manzili)</label>
+            <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="bpUsername" placeholder="dokonanvar" autocomplete="off" style="flex:1"></div>
+            <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom orqali oson topadi. Ixtiyoriy.</div>
+          </div>
           <div style="margin:14px 2px 6px;padding-top:12px;border-top:1px solid var(--line,#e5e7eb)"><b>💳 To'lov ma'lumotlari</b><div class="idesc" style="margin-top:2px">Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.</div></div>
           <div class="field"><label>To'lov kartasi raqami</label><input class="input" id="bpCard" inputmode="numeric" placeholder="8600 XXXX XXXX XXXX"></div>
           <div class="field"><label>Karta egasi (ism-familiya)</label><input class="input" id="bpHolder" placeholder="Masalan: Anvar Karimov"></div>
@@ -5573,6 +5577,7 @@
       el("bpDescr").value=b.descr||""; el("bpPhone").value=b.phone||"";
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
+      el("bpUsername").value=b.username||"";
       el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
       bpQrUrl = b.pay_qr||""; renderBpQr();
       fillYonSelect(el("bpYon"), b.yon||"");
@@ -5727,6 +5732,10 @@
   }
   el("bpQrAdd") && el("bpQrAdd").addEventListener("click", function(){ el("bpQrFile").click(); });
   el("bpQrRemove") && el("bpQrRemove").addEventListener("click", function(){ bpQrUrl=""; renderBpQr(); });
+  el("bpUsername") && el("bpUsername").addEventListener("input", function(){
+    var c = this.value.toLowerCase().replace(/^@+/,"").replace(/[^a-z0-9_]/g,"");
+    if(this.value!==c) this.value=c;
+  });
   el("bpQrFile") && el("bpQrFile").addEventListener("change", function(){
     var inp=this, f=inp.files && inp.files[0];
     if(!f) return;
@@ -5744,7 +5753,8 @@
       descr:el("bpDescr").value.trim(), phone:el("bpPhone").value.trim(),
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim(),
-      pay_card:el("bpCard").value.trim(), pay_holder:el("bpHolder").value.trim(), pay_qr:bpQrUrl
+      pay_card:el("bpCard").value.trim(), pay_holder:el("bpHolder").value.trim(), pay_qr:bpQrUrl,
+      username:(el("bpUsername").value||"").trim().toLowerCase().replace(/^@+/,"")
     };
     var bpLL = normalizeLatLng(
       pickedLatLng.bp && pickedLatLng.bp[0],
