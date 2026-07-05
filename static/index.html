@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1417 -->
+<title>Platforma</title><!-- BUILD: v1419 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -808,6 +808,7 @@
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
           <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
           <div class="field"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
+          <div class="field" id="itStockWrap" style="display:none"><label>Boshlang'ich qoldiq (ombordagi hozirgi soni)</label><input class="input" id="itStockQty" inputmode="decimal" placeholder="0"></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
           <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
           <div class="field" id="itKindWrap"><label>Turi</label>
@@ -888,7 +889,7 @@
         <div class="idesc" style="margin:2px 2px 8px">Mahsulot ustiga bosing — chekka qo'shiladi. Chekda miqdor va summa bir-biriga bog'langan.</div>
         <input class="input" id="ksSearch" placeholder="🔍 Mahsulot qidirish..." style="margin-bottom:8px" autocomplete="off">
         <div id="ksCatalog"><div class="idesc">Yuklanmoqda...</div></div>
-        <button class="mini-btn" style="width:100%;height:38px;margin:2px 0 10px" id="ksCustomBtn">+ Ro'yxatda yo'q mahsulot (qo'lda)</button>
+        <button class="mini-btn" style="width:100%;height:38px;margin:2px 0 10px" id="ksCustomBtn">+ Yangi mahsulot (ro'yxatga qo'shiladi)</button>
         <div id="ksSelBox" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 6px"><b>🧾 Chek</b><div class="iprice" id="ksTotal">0 so'm</div></div>
           <div id="ksSelList"></div>
@@ -5251,10 +5252,15 @@
   });
   el("ksSearch").addEventListener("input", ksApplyCatalog);
   el("ksCustomBtn").addEventListener("click", function(){
-    askInput({ title:"Qo'lda mahsulot", okText:"Chekka qo'shish",
-      fields:[{ key:"n", label:"Mahsulot nomi", placeholder:"Masalan: Choy", required:true }] })
-    .then(function(v){ if(v && (v.n||"").trim()) ksAddCustom((v.n||"").trim()); });
+    // Mahsulotlarim bo'limidagi to'liq forma ochiladi; saqlangach chekka o'zi tushmaydi,
+    // ro'yxatga qo'shiladi va o'sha yerdan tanlab chekka qo'shiladi.
+    openItemForm(null, null, "cab-kassa-form");
   });
+  function ksReloadCatalog(){
+    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+      window.__ksGroups = res[0]||[]; window.__ksItems = res[1]||[]; ksApplyCatalog();
+    }).catch(function(){});
+  }
   el("kassaAddBtn").addEventListener("click", openKassaForm);
   el("kassaPrevDay").addEventListener("click", function(){ kassaShiftDay(-1); });
   el("kassaNextDay").addEventListener("click", function(){ kassaShiftDay(1); });
@@ -5569,6 +5575,8 @@
   function fmtQty(q){ var n = Math.round((parseFloat(q)||0)*1000)/1000; return String(n); }
   // Kasr miqdorga ruxsat etilgan (o'lchanadigan) birliklar — backend bilan bir xil
   var FRACTIONAL_UNITS = ["kg","g","litr","ml","metr","sm","m²","soat"];
+  var UNITS_ALL = ["dona","kg","g","litr","ml","metr","sm","m²","to'plam","quti","juft","porsiya","soat","kun","marta"];
+  function cleanUnitJs(u){ u=(u||"").trim(); return UNITS_ALL.indexOf(u)!==-1 ? u : "dona"; }
   function unitAllowsFraction(u){ return FRACTIONAL_UNITS.indexOf(u||"dona") !== -1; }
   function qtyUnitText(q, u){ return fmtQty(q || 1) + ((u && u !== "dona") ? " " + u : ""); }
   function itemGroupValue(v){ return (v == null || v === "" || v === "0") ? "" : String(v); }
@@ -5919,6 +5927,8 @@
     el("itPrice").value = data ? (data.price || "") : "";
     el("itUnit").value = data ? (data.unit || "dona") : "dona";
     el("itTrack").value = data ? String(data.track_stock || 0) : (itemFormReturnTo==="cab-ombor" ? "1" : "0");
+    el("itStockQty").value = "";
+    el("itStockWrap").style.display = (!data && el("itTrack").value==="1") ? "block" : "none";
     el("itNote").value = data ? (data.note || "") : "";
     setItemKind(data ? data.kind : "product");
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
@@ -5958,6 +5968,9 @@
   }
 
   el("itGroup").addEventListener("change", updateItemKindVisibility);
+  el("itTrack").addEventListener("change", function(){
+    el("itStockWrap").style.display = (!editItemId && el("itTrack").value==="1") ? "block" : "none";
+  });
   el("itKindRow").addEventListener("click", function(e){
     var c=e.target.closest("[data-kind]"); if(!c) return;
     this.querySelectorAll("[data-kind]").forEach(function(x){ x.classList.toggle("on", x===c); });
@@ -5970,9 +5983,27 @@
     var gid = itemGroupValue(el("itGroup").value);
     var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
     var wasEdit = !!editItemId;
+    var initQty = (!editItemId && parseInt(el("itTrack").value||"0",10)===1)
+      ? (parseFloat(String(el("itStockQty").value||"").replace(",", ".")) || 0) : 0;
+    var ret = itemFormReturnTo || "cab-items";
     var btn=this; btn.disabled=true;
-    var p = editItemId ? api("PUT","/api/items/"+editItemId,body) : api("POST","/api/items",body);
-    p.then(function(){ nav(itemFormReturnTo||"cab-items"); showMsg(wasEdit ? "Saqlandi." : "Tovar qo'shildi."); }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
+    function done(){
+      if(ret==="cab-kassa-form"){ nav("cab-kassa-form"); if(typeof ksReloadCatalog==="function") ksReloadCatalog(); }
+      else { nav(ret); }
+      showMsg(wasEdit ? "Saqlandi." : "Tovar qo'shildi.");
+      btn.disabled=false;
+    }
+    function fail(e){ showMsg(e.message); btn.disabled=false; }
+    if(editItemId){
+      api("PUT","/api/items/"+editItemId,body).then(done).catch(fail);
+    } else {
+      api("POST","/api/items",body).then(function(r){
+        if(initQty>0 && r && r.id){
+          api("POST","/api/stock/move",{ item_id:r.id, delta:initQty, reason:"tuzatish", note:"Boshlang'ich qoldiq" })
+            .then(done).catch(function(e){ showMsg("Mahsulot saqlandi, lekin qoldiq yozilmadi: "+e.message); done(); });
+        } else { done(); }
+      }).catch(fail);
+    }
   });
   el("itDeleteBtn").addEventListener("click", function(){
     if(!editItemId) return;
