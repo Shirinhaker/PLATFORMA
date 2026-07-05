@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1425 -->
+<title>Platforma</title><!-- BUILD: v1426 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
@@ -989,6 +989,10 @@
         <div class="form-wrap">
           <div class="field"><label>Ism familiya</label><input class="input" id="upName" placeholder="Ismingiz"></div>
           <div class="field"><label>Telefon</label><input class="input" id="upPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
+          <div class="field"><label>Username (sahifa manzili)</label>
+            <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="upUsername" placeholder="ismingiz" autocomplete="off" style="flex:1"></div>
+            <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Do'stlaringiz sizni shu nom orqali topadi. Ixtiyoriy.</div>
+          </div>
           <button class="btn btn-primary btn-block" id="upSave">Saqlash</button>
         </div>
       </section>
@@ -5531,6 +5535,7 @@
   function loadUserProfile(){
     api("GET","/api/profile").then(function(d){
       if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; }
+      if(el("upUsername")) el("upUsername").value=d.pub_username||"";
     }).catch(function(){});
   }
   var BPMINI = null;
@@ -5710,10 +5715,15 @@
   // Saqlash tugmalari
   function bindSave(id, fn){ var b=el(id); if(b) b.addEventListener("click", fn); }
 
+  el("upUsername") && el("upUsername").addEventListener("input", function(){
+    var c = this.value.toLowerCase().replace(/^@+/,"").replace(/[^a-z0-9_]/g,"");
+    if(this.value!==c) this.value=c;
+  });
   bindSave("upSave", function(){
     var btn=this; btn.disabled=true;
     var nm = el("upName").value.trim();
-    api("PUT","/api/profile",{name:nm,phone:el("upPhone").value.trim()})
+    var pubu = (el("upUsername") ? el("upUsername").value : "").trim().toLowerCase().replace(/^@+/,"");
+    api("PUT","/api/profile",{name:nm,phone:el("upPhone").value.trim(),pub_username:pubu})
       .then(function(){
         ME.name = nm;
         if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
