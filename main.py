@@ -701,6 +701,7 @@ async def me(x_telegram_init_data: str = Header(default="")):
             "pay_card": biz["pay_card"] if "pay_card" in _bk else "",
             "pay_holder": biz["pay_holder"] if "pay_holder" in _bk else "",
             "pay_qr": biz["pay_qr"] if "pay_qr" in _bk else "",
+            "username": biz["username"] if "username" in _bk else "",
         }
     conn.close()
     return result
