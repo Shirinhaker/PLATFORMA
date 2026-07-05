@@ -869,6 +869,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_holder TEXT DEFAULT ''")
     if "pay_qr" not in _bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
+    if "username" not in _bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
 
     # --- v1423: Buyurtma to'lov holati (onlayn to'lov) ---
     _ocols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
