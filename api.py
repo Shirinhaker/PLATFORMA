@@ -643,6 +643,22 @@ async def admin_topup(request: Request, x_telegram_init_data: str = Header(defau
 # ====================================================================
 # BIZNES PROFILI VA MAHSULOTLAR
 # ====================================================================
+def _norm_username(v):
+    v = (v or "").strip().lower().lstrip("@")
+    return v
+
+
+def _username_error(u):
+    """Username qoidalari. Xato bo'lsa matn qaytaradi, to'g'ri bo'lsa None."""
+    if u == "":
+        return None  # bo'sh = username yo'q (ruxsat)
+    if len(u) < 3 or len(u) > 20:
+        return "Username 3 tadan 20 tagacha belgidan iborat bo'lsin."
+    if not re.match(r"^[a-z][a-z0-9_]*$", u):
+        return "Faqat kichik lotin harflari, raqam va pastki chiziq (_). Harf bilan boshlansin."
+    return None
+
+
 def _ensure_pay_columns(conn):
     """To'lov ustunlari yo'q bo'lsa qo'shadi. Har chaqiruvda ishlaydi (migratsiya/restartga bog'liq emas)."""
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
@@ -652,6 +668,8 @@ def _ensure_pay_columns(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_holder TEXT DEFAULT ''")
     if "pay_qr" not in cols:
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
+    if "username" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
 
 
 @router.put("/business")
@@ -674,15 +692,32 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     new_pay_card = keep("pay_card", _row_val(biz, "pay_card", ""))
     new_pay_holder = keep("pay_holder", _row_val(biz, "pay_holder", ""))
     new_pay_qr = keep("pay_qr", _row_val(biz, "pay_qr", ""))
+    # v1425: username (ixtiyoriy, band emasligi tekshiriladi)
+    new_username = _row_val(biz, "username", "") or ""
+    if "username" in b:
+        cand = _norm_username(b.get("username"))
+        err = _username_error(cand)
+        if err:
+            conn.close()
+            raise HTTPException(400, err)
+        if cand:
+            taken = conn.execute(
+                "SELECT id FROM businesses WHERE lower(username)=? AND id<>?",
+                (cand, biz["id"]),
+            ).fetchone()
+            if taken:
+                conn.close()
+                raise HTTPException(400, "Bu username band. Boshqasini tanlang.")
+        new_username = cand
     # lat/lng: faqat yuborilgan bo'lsa yangilaymiz, aks holda eskisi qoladi
     new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else biz["lat"]
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
     conn.execute(
         """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
-           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=? WHERE id=?""",
+           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=?, username=? WHERE id=?""",
         (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
          new_hours, new_addr, new_lat, new_lng,
-         new_pay_card, new_pay_holder, new_pay_qr, biz["id"]),
+         new_pay_card, new_pay_holder, new_pay_qr, new_username, biz["id"]),
     )
     # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
     # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
@@ -1691,18 +1726,37 @@ _DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
 
 
 def _ensure_staff_tables(conn):
-    """staff va staff_professions jadvallari yo'q bo'lsa yaratadi (migratsiya/restartga bog'liq emas)."""
+    """staff/staff_professions jadvallarini kafolatlaydi. Mavjud jadvalga yetishmagan
+    ustunlarni ham qo'shadi (har biri alohida, xavfsiz). Hech narsa o'chirilmaydi."""
     conn.execute(
         "CREATE TABLE IF NOT EXISTS staff("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, name TEXT NOT NULL, "
         "profession TEXT DEFAULT '', phone TEXT DEFAULT '', salary INTEGER DEFAULT 0, "
         "hire_date TEXT DEFAULT '', status TEXT DEFAULT 'active', note TEXT DEFAULT '', "
         "user_id INTEGER, created_at INTEGER NOT NULL, fired_at INTEGER)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS staff_professions("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
         "name TEXT NOT NULL, created_at INTEGER NOT NULL)")
+    # Eski staff jadvaliga yetishmagan ustunlarni majburan qo'shamiz (faqat yo'q bo'lsa)
+    try:
+        _sc = [r["name"] for r in conn.execute("PRAGMA table_info(staff)").fetchall()]
+        _need = {"profession": "TEXT DEFAULT ''", "phone": "TEXT DEFAULT ''",
+                 "salary": "INTEGER DEFAULT 0", "hire_date": "TEXT DEFAULT ''",
+                 "status": "TEXT DEFAULT 'active'", "note": "TEXT DEFAULT ''",
+                 "user_id": "INTEGER", "created_at": "INTEGER", "fired_at": "INTEGER"}
+        for _col, _decl in _need.items():
+            if _col not in _sc:
+                try:
+                    conn.execute("ALTER TABLE staff ADD COLUMN %s %s" % (_col, _decl))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
+    except Exception:
+        pass
 
 
 def _professions(conn, biz_id):
