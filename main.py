@@ -691,11 +691,16 @@ async def me(x_telegram_init_data: str = Header(default="")):
     biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
     result["has_business"] = bool(biz)
     if biz:
+        _bk = biz.keys()
         result["business"] = {
             "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
             "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
             "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
             "lat": biz["lat"], "lng": biz["lng"],
+            # v1422: to'lov ma'lumotlari (ustunlar bo'lmasa ham xavfsiz)
+            "pay_card": biz["pay_card"] if "pay_card" in _bk else "",
+            "pay_holder": biz["pay_holder"] if "pay_holder" in _bk else "",
+            "pay_qr": biz["pay_qr"] if "pay_qr" in _bk else "",
         }
     conn.close()
     return result
