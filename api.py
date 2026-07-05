@@ -652,14 +652,18 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     new_tg = keep("telegram", biz["telegram"])
     new_hours = keep("work_hours", biz["work_hours"])
     new_addr = keep("address", biz["address"])
+    new_pay_card = keep("pay_card", _row_val(biz, "pay_card", ""))
+    new_pay_holder = keep("pay_holder", _row_val(biz, "pay_holder", ""))
+    new_pay_qr = keep("pay_qr", _row_val(biz, "pay_qr", ""))
     # lat/lng: faqat yuborilgan bo'lsa yangilaymiz, aks holda eskisi qoladi
     new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else biz["lat"]
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
     conn.execute(
         """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
-           work_hours=?, address=?, lat=?, lng=? WHERE id=?""",
+           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=? WHERE id=?""",
         (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
-         new_hours, new_addr, new_lat, new_lng, biz["id"]),
+         new_hours, new_addr, new_lat, new_lng,
+         new_pay_card, new_pay_holder, new_pay_qr, biz["id"]),
     )
     # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
     # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
