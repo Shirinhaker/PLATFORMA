@@ -1685,6 +1685,203 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     return result
 
 
+# ================== XODIMLAR (kadr) ==================
+_DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
+                        "Yuk tashuvchi", "Haydovchi", "Farrosh", "Qorovul", "Boshqa"]
+
+
+def _ensure_staff_tables(conn):
+    """staff va staff_professions jadvallari yo'q bo'lsa yaratadi (migratsiya/restartga bog'liq emas)."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, name TEXT NOT NULL, "
+        "profession TEXT DEFAULT '', phone TEXT DEFAULT '', salary INTEGER DEFAULT 0, "
+        "hire_date TEXT DEFAULT '', status TEXT DEFAULT 'active', note TEXT DEFAULT '', "
+        "user_id INTEGER, created_at INTEGER NOT NULL, fired_at INTEGER)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff_professions("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, created_at INTEGER NOT NULL)")
+
+
+def _professions(conn, biz_id):
+    extra = [r["name"] for r in conn.execute(
+        "SELECT name FROM staff_professions WHERE business_id=? ORDER BY name COLLATE NOCASE", (biz_id,)
+    ).fetchall()]
+    out = list(_DEFAULT_PROFESSIONS)
+    for e in extra:
+        if e not in out:
+            out.append(e)
+    return out
+
+
+def _staff_dict(r):
+    return {"id": r["id"], "name": r["name"] or "", "profession": r["profession"] or "",
+            "phone": r["phone"] or "", "salary": r["salary"] or 0,
+            "hire_date": r["hire_date"] or "", "status": r["status"] or "active",
+            "note": r["note"] or "", "created_at": r["created_at"],
+            "fired_at": _row_val(r, "fired_at", None)}
+
+
+@router.get("/staff-professions")
+async def staff_professions_list(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    profs = _professions(conn, biz["id"])
+    conn.close()
+    return {"professions": profs, "default": _DEFAULT_PROFESSIONS}
+
+
+@router.post("/staff-professions")
+async def staff_professions_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    name = (body.get("name") or "").strip()[:40]
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Kasb nomi kiritilmadi.")
+    if name not in _professions(conn, biz["id"]):
+        conn.execute("INSERT INTO staff_professions(business_id, name, created_at) VALUES(?,?,?)",
+                     (biz["id"], name, int(time.time())))
+        conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.get("/staff")
+async def staff_list(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    rows = conn.execute(
+        "SELECT * FROM staff WHERE business_id=? ORDER BY "
+        "CASE status WHEN 'active' THEN 0 ELSE 1 END, name COLLATE NOCASE",
+        (biz["id"],),
+    ).fetchall()
+    active, fired = [], []
+    total_salary = 0
+    for r in rows:
+        d = _staff_dict(r)
+        if d["status"] == "fired":
+            fired.append(d)
+        else:
+            active.append(d)
+            total_salary += int(d["salary"] or 0)
+    conn.close()
+    return {"active": active, "fired": fired,
+            "active_count": len(active), "fired_count": len(fired),
+            "total_salary": total_salary}
+
+
+@router.post("/staff")
+async def staff_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    name = (body.get("name") or "").strip()
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Xodim ismini kiriting.")
+    profession = (body.get("profession") or "").strip()[:40]
+    phone = (body.get("phone") or "").strip()[:30]
+    try:
+        salary = int(str(body.get("salary") or "0").replace(" ", "") or 0)
+    except Exception:
+        salary = 0
+    if salary < 0:
+        salary = 0
+    hire_date = (body.get("hire_date") or "").strip()[:20]
+    now = int(time.time())
+    cur = conn.execute(
+        "INSERT INTO staff(business_id, name, profession, phone, salary, hire_date, status, note, user_id, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?)",
+        (biz["id"], name, profession, phone, salary, hire_date, "active", "", user["id"], now),
+    )
+    conn.commit()
+    sid = cur.lastrowid
+    conn.close()
+    return {"ok": True, "id": sid}
+
+
+@router.put("/staff/{staff_id}")
+async def staff_update(staff_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    r = conn.execute("SELECT * FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    name = (body.get("name") or r["name"]).strip() or r["name"]
+    profession = (body.get("profession") or "").strip()[:40] if "profession" in body else (r["profession"] or "")
+    phone = (body.get("phone") or "").strip()[:30] if "phone" in body else (r["phone"] or "")
+    if "salary" in body:
+        try:
+            salary = int(str(body.get("salary") or "0").replace(" ", "") or 0)
+        except Exception:
+            salary = 0
+        if salary < 0:
+            salary = 0
+    else:
+        salary = r["salary"] or 0
+    hire_date = (body.get("hire_date") or "").strip()[:20] if "hire_date" in body else (r["hire_date"] or "")
+    conn.execute(
+        "UPDATE staff SET name=?, profession=?, phone=?, salary=?, hire_date=? WHERE id=?",
+        (name, profession, phone, salary, hire_date, staff_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.post("/staff/{staff_id}/fire")
+async def staff_fire(staff_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    conn.execute("UPDATE staff SET status='fired', fired_at=? WHERE id=?", (int(time.time()), staff_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.post("/staff/{staff_id}/rehire")
+async def staff_rehire(staff_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    conn.execute("UPDATE staff SET status='active', fired_at=NULL WHERE id=?", (staff_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/staff/{staff_id}")
+async def staff_delete(staff_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    conn.execute("DELETE FROM staff WHERE id=?", (staff_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 # ================== STATISTIKA ==================
 def _ts_day(d):
     return calendar.timegm(d.timetuple()) - TASHKENT_TZ
