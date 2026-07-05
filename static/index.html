@@ -4,8 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1426 -->
+<title>Platforma</title><!-- BUILD: v1427 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -777,6 +778,15 @@
             <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="bpUsername" placeholder="dokonanvar" autocomplete="off" style="flex:1"></div>
             <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom orqali oson topadi. Ixtiyoriy.</div>
           </div>
+          <div id="bpShareCard" style="display:none;margin:4px 2px 10px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:var(--primary-tint,#f5f7ff)">
+            <b>🔗 Do'kon havolasi</b>
+            <div class="idesc" style="margin-top:2px">Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+              <input class="input" id="bpShareLink" readonly style="flex:1;min-width:0;font-size:12px">
+              <button type="button" class="mini-btn" id="bpShareCopy" style="flex:0 0 auto;height:44px;padding:0 12px">Nusxa</button>
+            </div>
+            <div id="bpShareQr" style="display:flex;justify-content:center;margin-top:12px"></div>
+          </div>
           <div style="margin:14px 2px 6px;padding-top:12px;border-top:1px solid var(--line,#e5e7eb)"><b>💳 To'lov ma'lumotlari</b><div class="idesc" style="margin-top:2px">Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.</div></div>
           <div class="field"><label>To'lov kartasi raqami</label><input class="input" id="bpCard" inputmode="numeric" placeholder="8600 XXXX XXXX XXXX"></div>
           <div class="field"><label>Karta egasi (ism-familiya)</label><input class="input" id="bpHolder" placeholder="Masalan: Anvar Karimov"></div>
@@ -992,6 +1002,15 @@
           <div class="field"><label>Username (sahifa manzili)</label>
             <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="upUsername" placeholder="ismingiz" autocomplete="off" style="flex:1"></div>
             <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Do'stlaringiz sizni shu nom orqali topadi. Ixtiyoriy.</div>
+          </div>
+          <div id="upShareCard" style="display:none;margin:4px 2px 10px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:var(--primary-tint,#f5f7ff)">
+            <b>🔗 Sahifa havolasi</b>
+            <div class="idesc" style="margin-top:2px">Shu havola yoki QR orqali do'stlaringiz sahifangizga o'tadi.</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+              <input class="input" id="upShareLink" readonly style="flex:1;min-width:0;font-size:12px">
+              <button type="button" class="mini-btn" id="upShareCopy" style="flex:0 0 auto;height:44px;padding:0 12px">Nusxa</button>
+            </div>
+            <div id="upShareQr" style="display:flex;justify-content:center;margin-top:12px"></div>
           </div>
           <button class="btn btn-primary btn-block" id="upSave">Saqlash</button>
         </div>
@@ -4896,6 +4915,50 @@
     if(ag){ openGroupForm(null, "cab-ombor"); return; }
   });
 
+  /* ---------- ULASHISH (havola + QR) ---------- */
+  var BOT_USERNAME = "TARTIBLANGANkoprik_bot";
+  function buildStartLink(param){ return "https://t.me/" + BOT_USERNAME + "?startapp=" + param; }
+  function renderQrInto(elId, text){
+    var box = el(elId);
+    if(!box) return;
+    box.innerHTML = "";
+    try{
+      if(typeof QRCode === "undefined"){ box.innerHTML = '<div class="idesc">QR yuklanmadi (internet kerak)</div>'; return; }
+      new QRCode(box, { text: text, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+    }catch(e){ box.innerHTML = '<div class="idesc">QR chizilmadi</div>'; }
+  }
+  function copyText(txt){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ showMsg("Nusxa olindi ✅"); })
+        .catch(function(){ showMsg("Nusxa olinmadi — havolani qo'lda belgilang"); });
+    } else {
+      showMsg("Nusxa olinmadi — havolani qo'lda belgilang");
+    }
+  }
+  // Biznes ulashish blokini ko'rsatish (username yoki id bilan)
+  function showBizShare(username, bizId){
+    var card = el("bpShareCard");
+    if(!card) return;
+    var param = username ? ("shop_" + username) : (bizId ? ("shop_" + bizId) : "");
+    if(!param){ card.style.display = "none"; return; }
+    var link = buildStartLink(param);
+    el("bpShareLink").value = link;
+    card.style.display = "block";
+    renderQrInto("bpShareQr", link);
+  }
+  // Foydalanuvchi ulashish blokini ko'rsatish (faqat username bo'lsa)
+  function showUserShare(username){
+    var card = el("upShareCard");
+    if(!card) return;
+    if(!username){ card.style.display = "none"; return; }
+    var link = buildStartLink("user_" + username);
+    el("upShareLink").value = link;
+    card.style.display = "block";
+    renderQrInto("upShareQr", link);
+  }
+  el("bpShareCopy") && el("bpShareCopy").addEventListener("click", function(){ copyText(el("bpShareLink").value); });
+  el("upShareCopy") && el("upShareCopy").addEventListener("click", function(){ copyText(el("upShareLink").value); });
+
   /* ---------- XODIMLAR (kadr) ---------- */
   var editStaffId = null;
   function loadStaff(){
@@ -5536,6 +5599,7 @@
     api("GET","/api/profile").then(function(d){
       if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; }
       if(el("upUsername")) el("upUsername").value=d.pub_username||"";
+      showUserShare(d.pub_username||"");
     }).catch(function(){});
   }
   var BPMINI = null;
@@ -5583,6 +5647,7 @@
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
       el("bpUsername").value=b.username||"";
+      showBizShare(b.username||"", b.id||null);
       el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
       bpQrUrl = b.pay_qr||""; renderBpQr();
       fillYonSelect(el("bpYon"), b.yon||"");
