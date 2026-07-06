@@ -874,6 +874,14 @@ def _migrate(conn):
     _ucols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "pub_username" not in _ucols:
         conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_pub_username ON users(lower(pub_username)) WHERE COALESCE(pub_username,'')<>''")
+    except Exception:
+        pass
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_businesses_username ON businesses(lower(username)) WHERE COALESCE(username,'')<>''")
+    except Exception:
+        pass
 
     # --- v1423: Buyurtma to'lov holati (onlayn to'lov) ---
     _ocols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
