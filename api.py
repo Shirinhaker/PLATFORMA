@@ -138,6 +138,11 @@ def _ensure_user_username(conn):
             conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
         except Exception:
             pass
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_pub_username "
+                     "ON users(lower(pub_username)) WHERE COALESCE(pub_username,'')<>''")
+    except Exception:
+        pass
 
 
 @router.put("/profile")
@@ -698,6 +703,11 @@ def _ensure_pay_columns(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
     if "username" not in cols:
         conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_businesses_username "
+                     "ON businesses(lower(username)) WHERE COALESCE(username,'')<>''")
+    except Exception:
+        pass
 
 
 @router.put("/business")
@@ -1749,6 +1759,25 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
 
 
 # ================== ULASHISH / DEEP-LINK RESOLVE ==================
+_BOT_UNAME_CACHE = ""
+
+
+@router.get("/config")
+async def app_config():
+    """Frontend sozlamalari: bot username (Telegram getMe orqali, keshlanadi)."""
+    global _BOT_UNAME_CACHE
+    if not _BOT_UNAME_CACHE:
+        try:
+            from main import tg_call
+            r = await tg_call("getMe", {})
+            u = (((r or {}).get("result") or {}).get("username") or "").strip()
+            if u:
+                _BOT_UNAME_CACHE = u
+        except Exception:
+            pass
+    return {"bot_username": _BOT_UNAME_CACHE or "TARTIBLANGANkoprik_bot"}
+
+
 @router.get("/resolve")
 async def resolve_share(param: str = "", x_telegram_init_data: str = Header(default="")):
     """startapp parametrini sahifaga aylantiradi: shop_<username|id> yoki user_<username>."""
@@ -1766,8 +1795,11 @@ async def resolve_share(param: str = "", x_telegram_init_data: str = Header(defa
                 conn.close()
                 return {"type": "business", "id": r["id"], "name": r["name"]}
         elif p.startswith("user_"):
-            rest = p[5:].lower()
-            r = conn.execute("SELECT id, name FROM users WHERE lower(pub_username)=?", (rest,)).fetchone()
+            rest = p[5:]
+            if rest.isdigit():
+                r = conn.execute("SELECT id, name FROM users WHERE id=?", (int(rest),)).fetchone()
+            else:
+                r = conn.execute("SELECT id, name FROM users WHERE lower(pub_username)=?", (rest.lower(),)).fetchone()
             if r:
                 conn.close()
                 return {"type": "user", "id": r["id"], "name": r["name"]}
@@ -3220,7 +3252,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
             urows = conn.execute(
                 "SELECT id, name, pub_username, username, region, district, avatar_file FROM users "
                 "WHERE (COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
-                "   OR (COALESCE(pub_username,'')='' AND COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
+                "   OR (COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
                 "LIMIT 30",
                 (like, like),
             ).fetchall()
