@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1427 -->
+<title>Platforma</title><!-- BUILD: v1428 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -685,6 +685,11 @@
         <div id="bizBody"></div>
       </section>
 
+      <!-- FOYDALANUVCHI OMMAVIY SAHIFASI -->
+      <section class="screen" data-screen="user-page">
+        <div id="userBody"></div>
+      </section>
+
       <!-- LOGIN -->
       <section class="screen" data-screen="login">
         <div class="form-wrap">
@@ -752,7 +757,7 @@
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
+        <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
@@ -2232,6 +2237,53 @@
       '</div>';
   }
 
+  /* ---------- FOYDALANUVCHI OMMAVIY SAHIFASI ---------- */
+  function openUser(userId){
+    el("userBody").innerHTML = '<div class="idesc" style="padding:20px">Yuklanmoqda...</div>';
+    nav("user-page");
+    api("GET","/api/user/"+userId).then(renderUser).catch(function(e){
+      el("userBody").innerHTML = '<div class="empty"><h3>Topilmadi</h3><p>'+esc(e.message)+'</p></div>';
+    });
+  }
+  function renderUser(u){
+    var initial = (u.name||"F").trim().charAt(0).toUpperCase();
+    var avatar = u.avatar_file
+      ? '<img src="'+esc(u.avatar_file)+'" alt="" style="width:84px;height:84px;border-radius:50%;object-fit:cover">'
+      : '<div style="width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(135deg,#6a8dff,#9a6bff)">'+esc(initial)+'</div>';
+    var loc = [u.district, u.region].filter(Boolean).join(", ");
+    var sp = u.specialist;
+    var spHtml = sp ? (
+      '<div class="panel-card"><b>🧑‍🔧 Mutaxassis</b>'+
+      '<div class="detail-line" style="margin-top:6px"><b>Kasb</b><span>'+esc(sp.kasb||"-")+'</span></div>'+
+      (sp.narx?'<div class="detail-line"><b>Narx</b><span>'+esc(sp.narx)+'</span></div>':'')+
+      (sp.org?'<div class="detail-line"><b>Tashkilot</b><span>'+esc(sp.org)+'</span></div>':'')+
+      (sp.lavozim?'<div class="detail-line"><b>Lavozim</b><span>'+esc(sp.lavozim)+'</span></div>':'')+
+      (sp.descr?'<div class="idesc" style="margin-top:6px">'+esc(sp.descr)+'</div>':'')+
+      '<div style="margin-top:6px"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:800;color:'+(sp.available?"#188038":"#e53935")+';background:'+(sp.available?"rgba(24,128,56,.10)":"rgba(229,57,53,.10)")+'">'+(sp.available?"Bo\'sh":"Band")+'</span></div>'+
+      '</div>'
+    ) : "";
+    var listings = (u.listings||[]);
+    var listHtml = listings.length ? (
+      '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+listings.length+' ta</span></div>'+
+      listings.map(function(e2){
+        return '<div class="item" style="display:block;margin-bottom:7px"><div class="iname">'+esc(e2.title||"E\'lon")+'</div>'+
+          (e2.price?'<div class="iprice" style="margin-top:2px">'+esc(e2.price)+'</div>':'')+
+          (e2.descr?'<div class="idesc" style="margin-top:2px">'+esc(e2.descr)+'</div>':'')+
+          '</div>';
+      }).join("")
+    ) : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha e\'lon yo\'q</div>';
+    el("userBody").innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 0 8px">'+
+        avatar+
+        '<div style="font-size:20px;font-weight:800;margin-top:10px">'+esc(u.name||"Foydalanuvchi")+'</div>'+
+        (u.pub_username?'<div class="idesc">@'+esc(u.pub_username)+'</div>':'')+
+        (loc?'<div class="idesc" style="margin-top:2px">📍 '+esc(loc)+'</div>':'')+
+        (u.followers?'<div class="idesc" style="margin-top:2px">'+u.followers+' obunachi</div>':'')+
+      '</div>'+
+      spHtml+
+      listHtml;
+  }
+
   /* ---------- ro'yxatdan o'tish formasi ---------- */
   var regRole = "user";
   function renderReg(role){
@@ -2315,7 +2367,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2323,7 +2375,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5690,6 +5742,7 @@
     else if(screen==="cab-ombor") loadOmbor();
     else if(screen==="cab-kassa") loadKassa();
     else if(screen==="cab-xarajat") loadXarajat();
+    else if(screen==="cab-staff") loadStaff();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
