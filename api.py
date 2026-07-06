@@ -3108,7 +3108,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 ).fetchall()
             except Exception:
                 products = None
-        if products is None:
+        if not products:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
             product_where, product_params = _like_where(
                 ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
                 terms,
@@ -3135,7 +3135,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 ).fetchall()
             except Exception:
                 listings = None
-        if listings is None:
+        if not listings:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
             listing_where, listing_params = _like_where(
                 ["title", "cat", "price", "descr", "address"],
                 terms,
@@ -3161,7 +3161,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 ).fetchall()
             except Exception:
                 specialists = None
-        if specialists is None:
+        if not specialists:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
             specialist_where, specialist_params = _like_where(
                 ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
                  "u.name", "u.region", "u.district", "u.mahalla"],
@@ -3189,7 +3189,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 ).fetchall()
             except Exception:
                 businesses = None
-        if businesses is None:
+        if not businesses:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
             business_where, business_params = _like_where(
                 ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours", "username"],
                 terms,
