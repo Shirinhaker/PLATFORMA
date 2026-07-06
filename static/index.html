@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1433 -->
+<title>Platforma</title><!-- BUILD: v1434 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1697,6 +1697,7 @@
     }catch(e){}
   }
   function enterResults(list_html, pins, count){
+    pins = (pins||[]).filter(function(r){ return validPin(r.lat, r.lng); });  // yaroqsiz koordinata xaritani qulatmasin
     RES = {pins:pins, html:list_html, count:count};
     renderPins("result");
     renderMapChip();
@@ -2148,6 +2149,10 @@
         '<div class="biz-meta"><span class="cat">@'+esc(u.pub_username||"")+'</span>'+(loc?'<span class="dot-sep"></span>'+esc(loc):'')+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
+  function validPin(lat, lng){
+    var a = parseFloat(lat), b = parseFloat(lng);
+    return isFinite(a) && isFinite(b);
+  }
   function buildResults(data, headerLabel, callBtn){
     var pins=[], html=callBtn||"";
     var prods = data.products||[], lists=data.listings||[], specs=data.specialists||[], bizs=data.businesses||[];
@@ -2159,11 +2164,11 @@
     });
     Object.keys(byBiz).forEach(function(k){
       var g=byBiz[k];
-      pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:g.prices.join("<br>")});
+      if(validPin(g.lat, g.lng)) pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:g.prices.join("<br>")});
     });
-    specs.forEach(function(s){ pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:s.narx||""}); });
-    lists.forEach(function(e2){ pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||""}); });
-    bizs.forEach(function(b){ pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:""}); });
+    specs.forEach(function(s){ if(validPin(s.lat, s.lng)) pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:s.narx||""}); });
+    lists.forEach(function(e2){ if(validPin(e2.lat, e2.lng)) pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||""}); });
+    bizs.forEach(function(b){ if(validPin(b.lat, b.lng)) pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:""}); });
     pins = dedupePins(pins);
 
     if(data.corrected){
