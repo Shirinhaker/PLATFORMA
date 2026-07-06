@@ -769,16 +769,17 @@ def _migrate(conn):
         "INSERT INTO specialists_fts(rowid, name, body) "
         "SELECT new.user_id, " + _sp_name_new + ", " + _sp_body_new + " "
         "FROM users u WHERE u.id = new.user_id; END")
-    if conn.execute("SELECT COUNT(*) FROM specialists_fts").fetchone()[0] == 0:
-        _sp_name_s = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
-        _sp_body_s = _canon_expr(
-            "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
-            "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
-            "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
-        conn.execute(
-            "INSERT INTO specialists_fts(rowid, name, body) "
-            "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
-            "FROM specialists s JOIN users u ON u.id = s.user_id")
+    # Indeksga tushmay qolgan mutaxassislarni HAR ishga tushishda to'ldiramiz (bo'sh bo'lishini kutmaymiz)
+    _sp_name_s = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
+    _sp_body_s = _canon_expr(
+        "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
+        "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
+        "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
+    conn.execute(
+        "INSERT INTO specialists_fts(rowid, name, body) "
+        "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
+        "FROM specialists s JOIN users u ON u.id = s.user_id "
+        "WHERE s.user_id NOT IN (SELECT rowid FROM specialists_fts)")
 
     # --- v1401: O'lchov birliklari — items.unit va order_items.unit (eski bazaga xavfsiz) ---
     _icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
