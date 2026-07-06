@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1429 -->
+<title>Platforma</title><!-- BUILD: v1430 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2137,6 +2137,17 @@
         '<div class="biz-meta"><span class="cat">'+esc(b.tur||b.yon||"")+'</span></div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
+  function userCardSrv(u){
+    var ini = (u.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
+    var av = u.avatar_file
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      : '<div class="biz-logo" style="background:linear-gradient(135deg,#6a8dff,#9a6bff)"><span style="font-size:16px;font-weight:800;color:#fff">'+esc(ini)+'</span></div>';
+    var loc = [u.district, u.region].filter(Boolean).join(", ");
+    return '<div class="biz-card" data-usrv="'+u.id+'">'+av+
+      '<div class="biz-main"><div class="biz-name">'+esc(u.name||"Foydalanuvchi")+'</div>'+
+        '<div class="biz-meta"><span class="cat">@'+esc(u.pub_username||"")+'</span>'+(loc?'<span class="dot-sep"></span>'+esc(loc):'')+'</div></div>'+
+      '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+  }
   function buildResults(data, headerLabel, callBtn){
     var pins=[], html=callBtn||"";
     var prods = data.products||[], lists=data.listings||[], specs=data.specialists||[], bizs=data.businesses||[];
@@ -2168,8 +2179,10 @@
     }).join("");
     if(specs.length) html += '<div class="list-sub" style="margin-top:6px">👤 Mutaxasislar</div>'+specs.map(specCardSrv).join("");
     if(bizs.length) html += '<div class="list-sub" style="margin-top:6px">🏪 Bizneslar</div>'+bizs.map(bizCardSrv).join("");
+    var usrs = data.users||[];
+    if(usrs.length) html += '<div class="list-sub" style="margin-top:6px">🧑 Foydalanuvchilar</div>'+usrs.map(userCardSrv).join("");
 
-    var total = prods.length + lists.length + specs.length + bizs.length;
+    var total = prods.length + lists.length + specs.length + bizs.length + usrs.length;
     if(total===0){
       html = (callBtn||"") + '<div class="empty" style="padding:30px 16px"><h3>Hech narsa topilmadi</h3><p>'+esc(headerLabel)+' bo\'yicha natija yo\'q. Boshqa so\'z bilan qidiring yoki katalogdan tanlang.</p></div>';
     }
@@ -4835,6 +4848,8 @@
     if(cp){ window.location.href = "tel:" + cp.getAttribute("data-callphone").replace(/\s/g,""); return; }
     var gbs=e.target.closest("[data-bsrv]");
     if(gbs){ openBizSrv(parseInt(gbs.getAttribute("data-bsrv"),10)); return; }
+    var gus=e.target.closest("[data-usrv]");
+    if(gus){ openUser(parseInt(gus.getAttribute("data-usrv"),10)); return; }
     var gps=e.target.closest("[data-psrv]");
     if(gps){ personBack=current; openPersonSrv(parseInt(gps.getAttribute("data-psrv"),10)); return; }
     var gls=e.target.closest("[data-lsrv]");
