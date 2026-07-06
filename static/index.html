@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1431 -->
+<title>Platforma</title><!-- BUILD: v1432 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -2195,6 +2195,7 @@
     el("searchInput").value = q;
     el("catSearch").value = q;
     api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)).then(function(data){
+      if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
       var r = buildResults(data, '"'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
@@ -2279,10 +2280,8 @@
     var listHtml = listings.length ? (
       '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+listings.length+' ta</span></div>'+
       listings.map(function(e2){
-        return '<div class="item" style="display:block;margin-bottom:7px"><div class="iname">'+esc(e2.title||"E\'lon")+'</div>'+
-          (e2.price?'<div class="iprice" style="margin-top:2px">'+esc(e2.price)+'</div>':'')+
-          (e2.descr?'<div class="idesc" style="margin-top:2px">'+esc(e2.descr)+'</div>':'')+
-          '</div>';
+        return '<div class="elon-item" data-lsrv="'+e2.id+'"><div class="li-thumb" style="background:var(--primary-tint)"><span>📦</span></div>'+
+          '<div class="li-main"><div class="li-title">'+esc(e2.title||"E\'lon")+'</div><div class="li-price">'+esc(e2.price||"")+'</div><div class="li-meta">'+esc(e2.address||"")+'</div></div></div>';
       }).join("")
     ) : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha e\'lon yo\'q</div>';
     el("userBody").innerHTML =
@@ -5039,6 +5038,7 @@
 
   /* ---------- ULASHISH (havola + QR) ---------- */
   var BOT_USERNAME = "TARTIBLANGANkoprik_bot";
+  api("GET","/api/config").then(function(c){ if(c && c.bot_username) BOT_USERNAME = c.bot_username; }).catch(function(){});
   function buildStartLink(param){ return "https://t.me/" + BOT_USERNAME + "?startapp=" + param; }
   function renderQrInto(elId, text){
     var box = el(elId);
@@ -5069,11 +5069,12 @@
     renderQrInto("bpShareQr", link);
   }
   // Foydalanuvchi ulashish blokini ko'rsatish (faqat username bo'lsa)
-  function showUserShare(username){
+  function showUserShare(username, userId){
     var card = el("upShareCard");
     if(!card) return;
-    if(!username){ card.style.display = "none"; return; }
-    var link = buildStartLink("user_" + username);
+    var param = username ? ("user_" + username) : (userId ? ("user_" + userId) : "");
+    if(!param){ card.style.display = "none"; return; }
+    var link = buildStartLink(param);
     el("upShareLink").value = link;
     card.style.display = "block";
     renderQrInto("upShareQr", link);
@@ -5721,7 +5722,7 @@
     api("GET","/api/profile").then(function(d){
       if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; }
       if(el("upUsername")) el("upUsername").value=d.pub_username||"";
-      showUserShare(d.pub_username||"");
+      showUserShare(d.pub_username||"", d.id||null);
     }).catch(function(){});
   }
   var BPMINI = null;
@@ -5769,7 +5770,8 @@
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
       el("bpUsername").value=b.username||"";
-      showBizShare(b.username||"", b.id||null);
+      window.__bizId = b.id||null;
+      showBizShare(b.username||"", window.__bizId);
       el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
       bpQrUrl = b.pay_qr||""; renderBpQr();
       fillYonSelect(el("bpYon"), b.yon||"");
@@ -5916,6 +5918,7 @@
         ME.name = nm;
         if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
         showMsg("Saqlandi ✅");
+        showUserShare(pubu, (ME && ME.id) || null);
       }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
@@ -5968,6 +5971,7 @@
         else { el("cabAddr").textContent=""; el("cabAddr").style.display="none"; }
       }
       showMsg("Saqlandi ✅");
+      showBizShare(body.username||"", window.__bizId||null);
     }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
