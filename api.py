@@ -3042,6 +3042,12 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
     conn = db()
+    try:
+        _ensure_pay_columns(conn)       # businesses.username kafolati
+        _ensure_user_username(conn)     # users.pub_username kafolati
+        conn.commit()
+    except Exception:
+        pass
     # Qadam 3: foydalanuvchi joylashuvi (masofa filtri uchun). Bo'lmasa filtr qo'llanmaydi.
     ulat = ulng = None
     try:
@@ -3153,7 +3159,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                 businesses = None
         if businesses is None:
             business_where, business_params = _like_where(
-                ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours"],
+                ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours", "username"],
                 terms,
             )
             businesses = conn.execute(
@@ -3202,6 +3208,24 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                         "descr": b["descr"], "address": b["address"],
                         "lat": b["lat"], "lng": b["lng"]} for b in businesses],
     }
+    # Foydalanuvchilarni username (yoki ism) bo'yicha topamiz — mutaxassis bo'lmasa ham
+    try:
+        uq = (corrected or q).strip().lstrip("@").lower()
+        users = []
+        if uq:
+            urows = conn.execute(
+                "SELECT id, name, pub_username, region, district, avatar_file FROM users "
+                "WHERE COALESCE(pub_username,'')<>'' AND "
+                "(lower(pub_username) LIKE ? OR lower(COALESCE(name,'')) LIKE ?) LIMIT 30",
+                ("%" + uq + "%", "%" + uq + "%"),
+            ).fetchall()
+            users = [{"id": u["id"], "name": u["name"] or "Foydalanuvchi",
+                      "pub_username": u["pub_username"] or "",
+                      "region": u["region"] or "", "district": u["district"] or "",
+                      "avatar_file": _row_val(u, "avatar_file", "") or ""} for u in urows]
+        result["users"] = users
+    except Exception:
+        result["users"] = []
     conn.close()
     return result
 
