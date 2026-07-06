@@ -1752,7 +1752,7 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
 @router.get("/resolve")
 async def resolve_share(param: str = "", x_telegram_init_data: str = Header(default="")):
     """startapp parametrini sahifaga aylantiradi: shop_<username|id> yoki user_<username>."""
-    require_tg(x_telegram_init_data)  # faqat ilova ichidan
+    _tg(x_telegram_init_data)  # faqat ilova ichidan
     conn = db()
     p = (param or "").strip()
     try:
@@ -1775,6 +1775,43 @@ async def resolve_share(param: str = "", x_telegram_init_data: str = Header(defa
         pass
     conn.close()
     return {"type": None}
+
+
+@router.get("/user/{user_id}")
+async def public_user(user_id: int, x_telegram_init_data: str = Header(default="")):
+    """Foydalanuvchining ommaviy sahifasi: ism, avatar, e'lonlari, (bo'lsa) mutaxassislik."""
+    _tg(x_telegram_init_data)
+    conn = db()
+    u = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+    if not u:
+        conn.close()
+        raise HTTPException(404, "Foydalanuvchi topilmadi.")
+    # Shaxsiy e'lonlar (biznesga tegishli emas, faol)
+    rows = conn.execute(
+        "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' "
+        "ORDER BY created_at DESC LIMIT 100",
+        (user_id,),
+    ).fetchall()
+    listings = [listing_to_dict(conn, r) for r in rows]
+    # Mutaxassislik (agar bor va ko'rinadigan bo'lsa)
+    sp = conn.execute("SELECT * FROM specialists WHERE user_id=? AND visible=1", (user_id,)).fetchone()
+    specialist = None
+    if sp:
+        specialist = {
+            "kasb": sp["kasb"] or "", "descr": sp["descr"] or "", "narx": sp["narx"] or "",
+            "available": bool(sp["available"]), "org": _row_val(sp, "org", "") or "",
+            "lavozim": _row_val(sp, "lavozim", "") or "",
+        }
+    result = {
+        "id": u["id"], "name": u["name"] or "Foydalanuvchi",
+        "avatar_file": _row_val(u, "avatar_file", "") or "",
+        "pub_username": _row_val(u, "pub_username", "") or "",
+        "region": u["region"] or "", "district": u["district"] or "",
+        "listings": listings, "specialist": specialist,
+        "followers": follower_count(conn, "user", u["id"]),
+    }
+    conn.close()
+    return result
 
 
 # ================== XODIMLAR (kadr) ==================
