@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1428 -->
+<title>Platforma</title><!-- BUILD: v1429 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2282,6 +2282,61 @@
       '</div>'+
       spHtml+
       listHtml;
+  }
+
+  /* ---------- HAQIQIY DO'KON SAHIFASI (deep-link uchun) ---------- */
+  function openBizPage(id){
+    el("bizBody").innerHTML = '<div class="idesc" style="padding:20px">Yuklanmoqda...</div>';
+    if(el("tbTitle")) el("tbTitle").textContent = "Do'kon";
+    nav("business");
+    api("GET","/api/business/"+id).then(renderBizPage).catch(function(e){
+      el("bizBody").innerHTML = '<div class="empty"><h3>Topilmadi</h3><p>'+esc(e.message)+'</p></div>';
+    });
+  }
+  function renderBizPage(b){
+    if(el("tbTitle")) el("tbTitle").textContent = b.name || "Do'kon";
+    var meta = [b.yon, b.tur].filter(Boolean).join(" · ");
+    var items = (b.items||[]);
+    var itemsHtml = items.length ? (
+      '<div class="sec-head"><h2>Mahsulotlar</h2><span class="link">'+items.length+' ta</span></div>'+
+      items.map(function(it){
+        var pr = it.price ? (moneyText ? (isNaN(parseInt(String(it.price).replace(/[^0-9]/g,""),10))?esc(it.price):moneyText(parseInt(String(it.price).replace(/[^0-9]/g,""),10))+" so'm") : esc(it.price)) : "";
+        var ph = it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" style="width:46px;height:46px;border-radius:8px;object-fit:cover;flex:0 0 auto">' : '';
+        return '<div class="item" style="display:flex;gap:10px;align-items:center">'+ph+'<div style="flex:1;min-width:0"><div class="iname">'+esc(it.name||"")+'</div>'+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div>'+(pr?'<div class="iprice" style="flex:0 0 auto">'+pr+'</div>':'')+'</div>';
+      }).join("")
+    ) : "";
+    var listings = (b.listings||[]);
+    var listHtml = listings.length ? (
+      '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+listings.length+' ta</span></div>'+
+      listings.map(function(e2){
+        return '<div class="item" style="display:block;margin-bottom:7px"><div class="iname">'+esc(e2.title||"E\'lon")+'</div>'+(e2.price?'<div class="iprice" style="margin-top:2px">'+esc(e2.price)+'</div>':'')+(e2.descr?'<div class="idesc" style="margin-top:2px">'+esc(e2.descr)+'</div>':'')+'</div>';
+      }).join("")
+    ) : "";
+    el("bizBody").innerHTML =
+      '<div style="padding:16px 0 4px">'+
+        '<div style="font-size:20px;font-weight:800">'+esc(b.name||"Do\'kon")+'</div>'+
+        (meta?'<div class="idesc" style="margin-top:2px">'+esc(meta)+'</div>':'')+
+        (b.address?'<div class="idesc" style="margin-top:2px">📍 '+esc(b.address)+'</div>':'')+
+        (b.phone?'<div class="idesc" style="margin-top:2px">📞 '+esc(b.phone)+'</div>':'')+
+        (b.followers?'<div class="idesc" style="margin-top:2px">'+b.followers+' obunachi</div>':'')+
+        (b.descr?'<div class="biz-desc" style="margin-top:8px">'+esc(b.descr)+'</div>':'')+
+      '</div>'+
+      itemsHtml+
+      listHtml+
+      (items.length||listings.length ? '' : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha ma\'lumot yo\'q</div>');
+  }
+  // Deep-link: ilova havola orqali ochilганда to'g'ri sahifa
+  function handleDeepLink(){
+    try{
+      if(!TG || !TG.initDataUnsafe) return;
+      var param = TG.initDataUnsafe.start_param || "";
+      if(!param) return;
+      api("GET","/api/resolve?param="+encodeURIComponent(param)).then(function(r){
+        if(!r) return;
+        if(r.type==="business") openBizPage(r.id);
+        else if(r.type==="user") openUser(r.id);
+      }).catch(function(){});
+    }catch(e){}
   }
 
   /* ---------- ro'yxatdan o'tish formasi ---------- */
@@ -6832,6 +6887,7 @@
         refreshOrderBadges();
       }
     }).catch(function(){ loadHomeMap(); });
+    handleDeepLink();
   }
   function bootWhenReady(){
     boot();
