@@ -3213,16 +3213,23 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         uq = (corrected or q).strip().lstrip("@").lower()
         users = []
         if uq:
+            like = "%" + uq + "%"
+            # FAQAT username maydonlari bo'yicha (ism/mahsulot aralashmaydi):
+            #  - tanlangan pub_username, YOKI
+            #  - pub_username bo'sh bo'lsa, Telegram username (registratsiyadagi)
             urows = conn.execute(
-                "SELECT id, name, pub_username, region, district, avatar_file FROM users "
-                "WHERE COALESCE(pub_username,'')<>'' AND "
-                "(lower(pub_username) LIKE ? OR lower(COALESCE(name,'')) LIKE ?) LIMIT 30",
-                ("%" + uq + "%", "%" + uq + "%"),
+                "SELECT id, name, pub_username, username, region, district, avatar_file FROM users "
+                "WHERE (COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
+                "   OR (COALESCE(pub_username,'')='' AND COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
+                "LIMIT 30",
+                (like, like),
             ).fetchall()
-            users = [{"id": u["id"], "name": u["name"] or "Foydalanuvchi",
-                      "pub_username": u["pub_username"] or "",
-                      "region": u["region"] or "", "district": u["district"] or "",
-                      "avatar_file": _row_val(u, "avatar_file", "") or ""} for u in urows]
+            for u in urows:
+                handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
+                users.append({"id": u["id"], "name": u["name"] or "Foydalanuvchi",
+                              "pub_username": handle,
+                              "region": u["region"] or "", "district": u["district"] or "",
+                              "avatar_file": _row_val(u, "avatar_file", "") or ""})
         result["users"] = users
     except Exception:
         result["users"] = []
