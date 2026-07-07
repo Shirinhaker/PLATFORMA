@@ -883,6 +883,7 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
 async def my_items(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_item_min_qty(conn)
     rows = conn.execute(
         """SELECT i.*, g.name AS group_name, g.kind AS group_kind
            FROM items i
@@ -894,6 +895,7 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
     conn.close()
     return [{"id": r["id"], "name": r["name"], "price": r["price"], "unit": r["unit"] or "dona",
              "track_stock": r["track_stock"] or 0, "stock_qty": r["stock_qty"] or 0,
+             "min_qty": _row_val(r, "min_qty", 0) or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
              "photo_file": r["photo_file"]} for r in rows]
@@ -910,11 +912,12 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
+    _ensure_item_min_qty(conn)
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, photo, int(time.time())),
+         (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b), int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -939,11 +942,12 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
+    _ensure_item_min_qty(conn)
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, group_id, photo, item_id, biz["id"]),
+         (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b), item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -1642,8 +1646,9 @@ def _stock_move_deletable(r):
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_item_min_qty(conn)
     rows = conn.execute(
-        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.photo_file, i.group_id, "
+        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, "
         "g.name AS group_name FROM items i "
         "LEFT JOIN item_groups g ON g.id = i.group_id "
         "WHERE i.business_id=? AND i.track_stock=1 "
@@ -1652,6 +1657,7 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     ).fetchall()
     result = [{"id": r["id"], "name": r["name"], "unit": r["unit"] or "dona",
                "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
+               "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
                "group_name": r["group_name"] or ""} for r in rows]
     conn.close()
@@ -2404,6 +2410,26 @@ async def expenses_delete(expense_id: int, x_telegram_init_data: str = Header(de
 
 # ================== KASSA (savdo daftari) ==================
 TASHKENT_TZ = 5 * 3600   # O'zbekiston vaqti (UTC+5) — "bugun" chegarasi uchun
+def _ensure_item_min_qty(conn):
+    """items.min_qty ustunini kafolatlaydi (O3: kam qoldi chegarasi)."""
+    try:
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+        if "min_qty" not in cols:
+            conn.execute("ALTER TABLE items ADD COLUMN min_qty REAL DEFAULT 0")
+    except Exception:
+        pass
+
+
+def _parse_min_qty(b):
+    try:
+        v = float(str(b.get("min_qty") or "0").replace(",", "."))
+    except Exception:
+        v = 0.0
+    if v < 0:
+        v = 0.0
+    return round(v, 3)
+
+
 _PAY_TYPES = ("naqd", "karta", "qarz")
 _PAY_TEXT = {"naqd": "Naqd", "karta": "Karta", "qarz": "Qarz", "": "Buyurtma"}
 
@@ -2624,6 +2650,20 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
     # 2-bosqich: yozamiz (bitta commit)
     now = int(time.time())
     import datetime as _dt
+    # K5: tanlangan o'tgan sana bo'lsa — savdo o'sha kunga (12:00) yoziladi
+    sana = (body.get("sana") or "").strip()
+    if sana:
+        try:
+            _d = _dt.date.fromisoformat(sana)
+        except Exception:
+            conn.close()
+            raise HTTPException(400, "Sana noto'g'ri.")
+        _today = _dt.datetime.fromtimestamp(int(time.time()) + TASHKENT_TZ, _dt.timezone.utc).date()
+        if _d > _today:
+            conn.close()
+            raise HTTPException(400, "Kelajak sanaga savdo yozib bo'lmaydi.")
+        if _d < _today:
+            now = calendar.timegm(_d.timetuple()) - TASHKENT_TZ + 12 * 3600
     day_str = _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
     chek = _next_chek_no(conn, biz["id"])
     grand = 0
@@ -2654,6 +2694,31 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
     conn.commit()
     conn.close()
     return {"ok": True, "count": len(prepared), "total": grand}
+
+
+@router.put("/sales/{sale_id}/pay")
+async def set_order_sale_pay(sale_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """K3: Buyurtmadan kelgan savdoga to'lov turini belgilash (butun buyurtma uchun)."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    r = conn.execute("SELECT * FROM sales WHERE id=? AND business_id=?", (sale_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Savdo topilmadi.")
+    if (r["source"] or "") != "order":
+        conn.close()
+        raise HTTPException(400, "Bu faqat buyurtma savdosi uchun.")
+    pt = (body.get("pay_type") or "").strip()
+    if pt not in ("naqd", "karta"):
+        conn.close()
+        raise HTTPException(400, "To'lov turi noto'g'ri.")
+    conn.execute(
+        "UPDATE sales SET pay_type=? WHERE business_id=? AND source='order' AND order_id=?",
+        (pt, biz["id"], r["order_id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "pay_type": pt}
 
 
 @router.delete("/kassa/chek/{chek_no}")
