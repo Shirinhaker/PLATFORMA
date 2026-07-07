@@ -905,14 +905,35 @@ def _migrate(conn):
         "note TEXT DEFAULT '', "
         "user_id INTEGER, "
         "created_at INTEGER NOT NULL, "
+        "schedule_json TEXT DEFAULT '', "
         "fired_at INTEGER)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff_attendance("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "staff_id INTEGER NOT NULL, "
+        "date TEXT NOT NULL, "
+        "status TEXT DEFAULT '', "
+        "time_in TEXT DEFAULT '', "
+        "time_out TEXT DEFAULT '', "
+        "created_at INTEGER NOT NULL, "
+        "UNIQUE(staff_id, date))")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS staff_professions("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "business_id INTEGER NOT NULL, "
         "name TEXT NOT NULL, "
         "created_at INTEGER NOT NULL)")
+    # --- M2a: Kontragentlar (hamkorlar bazasi) ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS contractors("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, ctype TEXT DEFAULT '', director TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', address TEXT DEFAULT '', inn TEXT DEFAULT '', "
+        "account TEXT DEFAULT '', bank TEXT DEFAULT '', mfo TEXT DEFAULT '', "
+        "note TEXT DEFAULT '', created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_contractors_biz ON contractors(business_id)")
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
