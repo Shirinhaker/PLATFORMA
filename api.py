@@ -2235,6 +2235,115 @@ async def tabel_set(body: dict, x_telegram_init_data: str = Header(default="")):
     return {"ok": True, "status": status}
 
 
+# ================== KONTRAGENTLAR (M2a) ==================
+_CONTRACTOR_TYPES = ["Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa"]
+
+
+def _ensure_contractors(conn):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS contractors("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, ctype TEXT DEFAULT '', director TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', address TEXT DEFAULT '', inn TEXT DEFAULT '', "
+        "account TEXT DEFAULT '', bank TEXT DEFAULT '', mfo TEXT DEFAULT '', "
+        "note TEXT DEFAULT '', created_at INTEGER NOT NULL)")
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_contractors_biz ON contractors(business_id)")
+    except Exception:
+        pass
+
+
+def _contractor_dict(r):
+    return {"id": r["id"], "name": r["name"] or "", "ctype": r["ctype"] or "",
+            "director": r["director"] or "", "phone": r["phone"] or "",
+            "address": r["address"] or "", "inn": r["inn"] or "",
+            "account": r["account"] or "", "bank": r["bank"] or "",
+            "mfo": r["mfo"] or "", "note": r["note"] or "", "created_at": r["created_at"]}
+
+
+def _contractor_fields(b):
+    return (
+        (b.get("name") or "").strip(),
+        (b.get("ctype") or "").strip()[:40],
+        (b.get("director") or "").strip()[:120],
+        (b.get("phone") or "").strip()[:40],
+        (b.get("address") or "").strip()[:200],
+        (b.get("inn") or "").strip()[:20],
+        (b.get("account") or "").strip()[:40],
+        (b.get("bank") or "").strip()[:120],
+        (b.get("mfo") or "").strip()[:20],
+        (b.get("note") or "").strip()[:300],
+    )
+
+
+@router.get("/contractors")
+async def contractors_list(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_contractors(conn)
+    rows = conn.execute("SELECT * FROM contractors WHERE business_id=? ORDER BY name COLLATE NOCASE", (biz["id"],)).fetchall()
+    out = [_contractor_dict(r) for r in rows]
+    conn.close()
+    return {"contractors": out, "count": len(out), "types": _CONTRACTOR_TYPES}
+
+
+@router.post("/contractors")
+async def contractors_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_contractors(conn)
+    f = _contractor_fields(body)
+    if not f[0]:
+        conn.close()
+        raise HTTPException(400, "Kontragent nomini kiriting.")
+    cur = conn.execute(
+        "INSERT INTO contractors(business_id, name, ctype, director, phone, address, inn, account, bank, mfo, note, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        (biz["id"],) + f + (int(time.time()),),
+    )
+    conn.commit()
+    cid = cur.lastrowid
+    conn.close()
+    return {"ok": True, "id": cid}
+
+
+@router.put("/contractors/{cid}")
+async def contractors_update(cid: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_contractors(conn)
+    r = conn.execute("SELECT id FROM contractors WHERE id=? AND business_id=?", (cid, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Kontragent topilmadi.")
+    f = _contractor_fields(body)
+    if not f[0]:
+        conn.close()
+        raise HTTPException(400, "Kontragent nomini kiriting.")
+    conn.execute(
+        "UPDATE contractors SET name=?, ctype=?, director=?, phone=?, address=?, inn=?, account=?, bank=?, mfo=?, note=? WHERE id=?",
+        f + (cid,),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/contractors/{cid}")
+async def contractors_delete(cid: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_contractors(conn)
+    r = conn.execute("SELECT id FROM contractors WHERE id=? AND business_id=?", (cid, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Kontragent topilmadi.")
+    conn.execute("DELETE FROM contractors WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 # ================== STATISTIKA ==================
 def _ts_day(d):
     return calendar.timegm(d.timetuple()) - TASHKENT_TZ
