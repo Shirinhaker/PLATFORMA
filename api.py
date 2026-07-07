@@ -1766,22 +1766,27 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
 
 # ================== ULASHISH / DEEP-LINK RESOLVE ==================
 _BOT_UNAME_CACHE = ""
+_BOT_HASAPP_CACHE = None   # True bo'lsa keshlanadi; False/None bo'lsa har safar qayta so'raladi
 
 
 @router.get("/config")
 async def app_config():
-    """Frontend sozlamalari: bot username (Telegram getMe orqali, keshlanadi)."""
-    global _BOT_UNAME_CACHE
-    if not _BOT_UNAME_CACHE:
+    """Frontend sozlamalari: bot username + botda Mini App yoqilganmi (getMe)."""
+    global _BOT_UNAME_CACHE, _BOT_HASAPP_CACHE
+    if (not _BOT_UNAME_CACHE) or (_BOT_HASAPP_CACHE is not True):
         try:
             from main import tg_call
             r = await tg_call("getMe", {})
-            u = (((r or {}).get("result") or {}).get("username") or "").strip()
+            res = (r or {}).get("result") or {}
+            u = (res.get("username") or "").strip()
             if u:
                 _BOT_UNAME_CACHE = u
+            if "has_main_web_app" in res:
+                _BOT_HASAPP_CACHE = bool(res.get("has_main_web_app"))
         except Exception:
             pass
-    return {"bot_username": _BOT_UNAME_CACHE or "TARTIBLANGANkoprik_bot"}
+    return {"bot_username": _BOT_UNAME_CACHE or "TARTIBLANGANkoprik_bot",
+            "has_main_web_app": _BOT_HASAPP_CACHE}
 
 
 @router.get("/resolve")
@@ -1876,7 +1881,8 @@ def _ensure_staff_tables(conn):
         _need = {"profession": "TEXT DEFAULT ''", "phone": "TEXT DEFAULT ''",
                  "salary": "INTEGER DEFAULT 0", "hire_date": "TEXT DEFAULT ''",
                  "status": "TEXT DEFAULT 'active'", "note": "TEXT DEFAULT ''",
-                 "user_id": "INTEGER", "created_at": "INTEGER", "fired_at": "INTEGER"}
+                 "user_id": "INTEGER", "created_at": "INTEGER", "fired_at": "INTEGER",
+                 "schedule_json": "TEXT DEFAULT ''"}
         for _col, _decl in _need.items():
             if _col not in _sc:
                 try:
@@ -1887,6 +1893,15 @@ def _ensure_staff_tables(conn):
         pass
     try:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
+    except Exception:
+        pass
+    try:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS staff_attendance("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+            "staff_id INTEGER NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT '', "
+            "time_in TEXT DEFAULT '', time_out TEXT DEFAULT '', created_at INTEGER NOT NULL, "
+            "UNIQUE(staff_id, date))")
     except Exception:
         pass
 
@@ -1907,7 +1922,35 @@ def _staff_dict(r):
             "phone": r["phone"] or "", "salary": r["salary"] or 0,
             "hire_date": r["hire_date"] or "", "status": r["status"] or "active",
             "note": r["note"] or "", "created_at": r["created_at"],
-            "fired_at": _row_val(r, "fired_at", None)}
+            "fired_at": _row_val(r, "fired_at", None),
+            "schedule": _staff_schedule(_row_val(r, "schedule_json", "") or "")}
+
+
+def _staff_schedule(raw):
+    try:
+        d = json.loads(raw or "{}")
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+_TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def _clean_hhmm(v):
+    v = (v or "").strip()[:5]
+    # "9:00" -> "09:00" (bir xonali soatni normallaymiz)
+    if len(v) == 4 and v[1] == ":":
+        v = "0" + v
+    return v if _TIME_RE.match(v) else ""
+
+
+def _hhmm_min(v):
+    try:
+        h, m = v.split(":")
+        return int(h) * 60 + int(m)
+    except Exception:
+        return None
 
 
 @router.get("/staff-professions")
@@ -2066,6 +2109,130 @@ async def staff_delete(staff_id: int, x_telegram_init_data: str = Header(default
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@router.put("/staff/{staff_id}/schedule")
+async def staff_set_schedule(staff_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """M1b: Xodim haftalik ish grafigi (d0=Dushanba ... d6=Yakshanba)."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    sched = body.get("schedule") or {}
+    clean = {}
+    for i in range(7):
+        d = sched.get("d%d" % i) or {}
+        on = 1 if str(d.get("on") or 0) in ("1", "true", "True") else 0
+        clean["d%d" % i] = {"on": on, "s": _clean_hhmm(d.get("s")), "e": _clean_hhmm(d.get("e"))}
+    conn.execute("UPDATE staff SET schedule_json=? WHERE id=?", (json.dumps(clean, ensure_ascii=False), staff_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+def _tabel_today_iso():
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(int(time.time()) + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
+
+
+@router.get("/tabel")
+async def tabel_get(date: str = "", x_telegram_init_data: str = Header(default="")):
+    """M1c: Kunlik davomat + shu oy hisobi (kun / soat)."""
+    import datetime as _dt
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    date = (date or "").strip()
+    try:
+        d = _dt.date.fromisoformat(date) if date else _dt.date.fromisoformat(_tabel_today_iso())
+    except Exception:
+        conn.close()
+        raise HTTPException(400, "Sana noto'g'ri.")
+    iso = d.isoformat()
+    wd = d.weekday()  # 0=Dushanba
+    staff_rows = conn.execute(
+        "SELECT * FROM staff WHERE business_id=? AND status='active' ORDER BY name COLLATE NOCASE",
+        (biz["id"],),
+    ).fetchall()
+    att = {r["staff_id"]: r for r in conn.execute(
+        "SELECT * FROM staff_attendance WHERE business_id=? AND date=?", (biz["id"], iso)).fetchall()}
+    month_rows = conn.execute(
+        "SELECT staff_id, status, time_in, time_out FROM staff_attendance "
+        "WHERE business_id=? AND date LIKE ?", (biz["id"], iso[:7] + "-%")).fetchall()
+    mk, mm = {}, {}
+    for r in month_rows:
+        if (r["status"] or "") != "keldi":
+            continue
+        mk[r["staff_id"]] = mk.get(r["staff_id"], 0) + 1
+        a, b = _hhmm_min(r["time_in"] or ""), _hhmm_min(r["time_out"] or "")
+        if a is not None and b is not None and b > a:
+            mm[r["staff_id"]] = mm.get(r["staff_id"], 0) + (b - a)
+    out = []
+    for st in staff_rows:
+        sch = _staff_schedule(_row_val(st, "schedule_json", "") or "")
+        day = sch.get("d%d" % wd) or {}
+        a = att.get(st["id"])
+        out.append({
+            "id": st["id"], "name": st["name"] or "", "profession": st["profession"] or "",
+            "status": (a["status"] if a else "") or "",
+            "time_in": (a["time_in"] if a else "") or "",
+            "time_out": (a["time_out"] if a else "") or "",
+            "sched_on": int(day.get("on") or 0), "sched_s": day.get("s") or "", "sched_e": day.get("e") or "",
+            "month_keldi": mk.get(st["id"], 0), "month_min": mm.get(st["id"], 0),
+        })
+    conn.close()
+    return {"date": iso, "weekday": wd, "staff": out}
+
+
+@router.post("/tabel")
+async def tabel_set(body: dict, x_telegram_init_data: str = Header(default="")):
+    """M1c: Belgilash. status='' bo'lsa yozuv o'chiriladi (bekor qilish)."""
+    import datetime as _dt
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    staff_id = int(body.get("staff_id") or 0)
+    r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    try:
+        iso = _dt.date.fromisoformat((body.get("date") or "").strip()).isoformat()
+    except Exception:
+        conn.close()
+        raise HTTPException(400, "Sana noto'g'ri.")
+    if iso > _tabel_today_iso():
+        conn.close()
+        raise HTTPException(400, "Kelajak sanaga tabel yozilmaydi.")
+    status = (body.get("status") or "").strip()
+    if status not in ("", "keldi", "kelmadi", "dam"):
+        conn.close()
+        raise HTTPException(400, "Holat noto'g'ri.")
+    if status == "":
+        conn.execute("DELETE FROM staff_attendance WHERE business_id=? AND staff_id=? AND date=?",
+                     (biz["id"], staff_id, iso))
+        conn.commit()
+        conn.close()
+        return {"ok": True, "cleared": True}
+    t_in = _clean_hhmm(body.get("time_in")) if status == "keldi" else ""
+    t_out = _clean_hhmm(body.get("time_out")) if status == "keldi" else ""
+    ex = conn.execute("SELECT id FROM staff_attendance WHERE business_id=? AND staff_id=? AND date=?",
+                      (biz["id"], staff_id, iso)).fetchone()
+    if ex:
+        conn.execute("UPDATE staff_attendance SET status=?, time_in=?, time_out=? WHERE id=?",
+                     (status, t_in, t_out, ex["id"]))
+    else:
+        conn.execute(
+            "INSERT INTO staff_attendance(business_id, staff_id, date, status, time_in, time_out, created_at) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (biz["id"], staff_id, iso, status, t_in, t_out, int(time.time())),
+        )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "status": status}
 
 
 # ================== STATISTIKA ==================
