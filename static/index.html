@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1435 -->
+<title>Platforma</title><!-- BUILD: v1437 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -791,6 +791,7 @@
               <button type="button" class="mini-btn" id="bpShareCopy" style="flex:0 0 auto;height:44px;padding:0 12px">Nusxa</button>
             </div>
             <div id="bpShareQr" style="display:flex;justify-content:center;margin-top:12px"></div>
+            <div id="bpShareWarn"></div>
           </div>
           <div style="margin:14px 2px 6px;padding-top:12px;border-top:1px solid var(--line,#e5e7eb)"><b>💳 To'lov ma'lumotlari</b><div class="idesc" style="margin-top:2px">Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.</div></div>
           <div class="field"><label>To'lov kartasi raqami</label><input class="input" id="bpCard" inputmode="numeric" placeholder="8600 XXXX XXXX XXXX"></div>
@@ -1018,6 +1019,7 @@
               <button type="button" class="mini-btn" id="upShareCopy" style="flex:0 0 auto;height:44px;padding:0 12px">Nusxa</button>
             </div>
             <div id="upShareQr" style="display:flex;justify-content:center;margin-top:12px"></div>
+            <div id="upShareWarn"></div>
           </div>
           <button class="btn btn-primary btn-block" id="upSave">Saqlash</button>
         </div>
@@ -1224,7 +1226,18 @@
       <section class="screen" data-screen="cab-staff">
         <div class="q-total"><div class="eyebrow">Faol xodimlar</div><div class="q-amount" id="staffCount">0</div><div class="q-sub" id="staffSalary"></div></div>
         <button class="btn btn-primary btn-block" style="margin:10px 0" id="staffAddBtn">+ Xodim qo'shish</button>
+        <button class="btn btn-soft btn-block" style="margin:0 0 10px" id="staffTabelBtn">📋 Ish tabeli</button>
         <div id="staffList"></div>
+      </section>
+
+      <!-- CAB: ISH TABELI -->
+      <section class="screen" data-screen="cab-tabel">
+        <div style="display:flex;gap:6px;align-items:center;margin:2px 0 10px">
+          <button class="mini-btn" style="height:42px;width:46px;flex:0 0 auto" id="tbPrev">‹</button>
+          <input class="input" id="tbDate" type="date" style="flex:1;min-width:0">
+          <button class="mini-btn" style="height:42px;width:46px;flex:0 0 auto" id="tbNext">›</button>
+        </div>
+        <div id="tabelList"></div>
       </section>
 
       <!-- CAB: XODIM FORMA -->
@@ -2349,6 +2362,12 @@
     try{
       if(!TG || !TG.initDataUnsafe) return;
       var param = TG.initDataUnsafe.start_param || "";
+      if(!param){
+        try{
+          var m = /[?&#]tgWebAppStartParam=([^&#]+)/.exec(location.href);
+          if(m) param = decodeURIComponent(m[1]);
+        }catch(e2){}
+      }
       if(!param) return;
       api("GET","/api/resolve?param="+encodeURIComponent(param)).then(function(r){
         if(!r) return;
@@ -2441,7 +2460,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2449,7 +2468,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5091,7 +5110,18 @@
 
   /* ---------- ULASHISH (havola + QR) ---------- */
   var BOT_USERNAME = "TARTIBLANGANkoprik_bot";
-  api("GET","/api/config").then(function(c){ if(c && c.bot_username) BOT_USERNAME = c.bot_username; }).catch(function(){});
+  window.__botHasApp = null;   // null=noma'lum, true/false=Telegram javobi
+  api("GET","/api/config").then(function(c){
+    if(c && c.bot_username) BOT_USERNAME = c.bot_username;
+    if(c && typeof c.has_main_web_app !== "undefined") window.__botHasApp = c.has_main_web_app;
+    // Karta allaqachon ochiq bo'lsa — yangi bot nomi/ogohlantirish bilan qayta chizamiz
+    if(window.__lastBizShare) showBizShare(window.__lastBizShare.u, window.__lastBizShare.id);
+    if(window.__lastUserShare) showUserShare(window.__lastUserShare.u, window.__lastUserShare.id);
+  }).catch(function(){});
+  function shareWarnHtml(){
+    if(window.__botHasApp !== false) return "";
+    return '<div class="idesc" style="margin-top:10px;color:#b45309;text-align:left">⚠️ Bot sozlamalarida <b>Mini App yoqilmagan</b> — havola/QR hozircha ishlamaydi. BotFather → Bot Settings → <b>Configure Mini App</b> orqali yoqing (URL: ilova manzili). Yoqilgach bu ogohlantirish o\'zi yo\'qoladi.</div>';
+  }
   function buildStartLink(param){ return "https://t.me/" + BOT_USERNAME + "?startapp=" + param; }
   function renderQrInto(elId, text){
     var box = el(elId);
@@ -5114,23 +5144,27 @@
   function showBizShare(username, bizId){
     var card = el("bpShareCard");
     if(!card) return;
+    window.__lastBizShare = { u: username, id: bizId };
     var param = username ? ("shop_" + username) : (bizId ? ("shop_" + bizId) : "");
     if(!param){ card.style.display = "none"; return; }
     var link = buildStartLink(param);
     el("bpShareLink").value = link;
     card.style.display = "block";
     renderQrInto("bpShareQr", link);
+    if(el("bpShareWarn")) el("bpShareWarn").innerHTML = shareWarnHtml();
   }
   // Foydalanuvchi ulashish blokini ko'rsatish (faqat username bo'lsa)
   function showUserShare(username, userId){
     var card = el("upShareCard");
     if(!card) return;
+    window.__lastUserShare = { u: username, id: userId };
     var param = username ? ("user_" + username) : (userId ? ("user_" + userId) : "");
     if(!param){ card.style.display = "none"; return; }
     var link = buildStartLink(param);
     el("upShareLink").value = link;
     card.style.display = "block";
     renderQrInto("upShareQr", link);
+    if(el("upShareWarn")) el("upShareWarn").innerHTML = shareWarnHtml();
   }
   el("bpShareCopy") && el("bpShareCopy").addEventListener("click", function(){ copyText(el("bpShareLink").value); });
   el("upShareCopy") && el("upShareCopy").addEventListener("click", function(){ copyText(el("upShareLink").value); });
@@ -5152,6 +5186,7 @@
         '<div style="min-width:0"><div class="iname">'+esc(x.name)+'</div>'+
           (sub.length?'<div class="idesc" style="margin-top:2px">'+sub.join(" · ")+'</div>':'')+
           (x.hire_date?'<div class="idesc">Qabul: '+esc(x.hire_date)+'</div>':'')+
+          (schedSummary(x.schedule)?'<div class="idesc">📅 '+schedSummary(x.schedule)+'</div>':'')+
           (fired?'<div class="idesc" style="color:#e53935">Ishdan bo\'shatilgan</div>':'')+
         '</div>'+
         (salary?'<div class="iprice" style="flex:0 0 auto">'+salary+'</div>':'')+
@@ -5159,7 +5194,7 @@
       '<div style="display:flex;gap:6px;margin-top:8px">'+
         (fired
           ? '<button class="mini-btn" style="flex:1;height:34px" data-st-rehire="'+x.id+'">Qayta ishga olish</button><button class="mini-btn" style="flex:0 0 auto;height:34px;padding:0 12px" data-st-del="'+x.id+'">O\'chirish</button>'
-          : '<button class="mini-btn" style="flex:1;height:34px" data-st-edit="'+x.id+'">Tahrirlash</button>')+
+          : '<button class="mini-btn" style="flex:1;height:34px" data-st-edit="'+x.id+'">Tahrirlash</button><button class="mini-btn" style="flex:1;height:34px" data-st-graf="'+x.id+'">📅 Grafik</button>')+
       '</div>'+
     '</div>';
   }
@@ -5229,6 +5264,8 @@
     });
   });
   document.addEventListener("click", function(e){
+    var gf = e.target.closest("[data-st-graf]");
+    if(gf){ var xg=(window.__staff||{})[gf.getAttribute("data-st-graf")]; if(xg) openGrafikModal(xg); return; }
     var ed = e.target.closest("[data-st-edit]");
     if(ed){ var x=(window.__staff||{})[ed.getAttribute("data-st-edit")]; if(x) openStaffForm(x); return; }
     var rh = e.target.closest("[data-st-rehire]");
@@ -5240,6 +5277,156 @@
         if(!ok) return;
         api("DELETE","/api/staff/"+did).then(function(){ showMsg("O'chirildi"); loadStaff(); }).catch(function(e2){ showMsg(e2.message); });
       }); return; }
+  });
+
+  /* ---------- M1b: ISH GRAFIGI ---------- */
+  var DAYS_UZ = ["Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba","Yakshanba"];
+  var DAYS_QISQA = ["Du","Se","Cho","Pa","Ju","Sha","Ya"];
+  function schedSummary(sch){
+    sch = sch || {};
+    var ons = [], s0 = null, e0 = null, uniform = true;
+    for(var i=0;i<7;i++){
+      var d = sch["d"+i] || {};
+      if(d.on==1 || d.on==="1" || d.on===true){
+        ons.push(i);
+        if(s0===null){ s0=d.s||""; e0=d.e||""; }
+        else if((d.s||"")!==s0 || (d.e||"")!==e0){ uniform=false; }
+      }
+    }
+    if(!ons.length) return "";
+    var days = ons.map(function(i){ return DAYS_QISQA[i]; }).join(",");
+    var seq = true;
+    for(var j=1;j<ons.length;j++){ if(ons[j]!==ons[j-1]+1){ seq=false; break; } }
+    if(seq && ons.length>2) days = DAYS_QISQA[ons[0]]+"–"+DAYS_QISQA[ons[ons.length-1]];
+    return days + ((uniform && s0 && e0) ? (" · "+s0+"–"+e0) : "");
+  }
+  function openGrafikModal(x){
+    var back = document.getElementById("gfBack"), sheet = document.getElementById("gfSheet");
+    if(!back){
+      back = document.createElement("div"); back.id="gfBack"; back.className="app-modal-back";
+      sheet = document.createElement("div"); sheet.id="gfSheet"; sheet.className="app-confirm";
+      sheet.style.maxHeight = "86vh"; sheet.style.overflowY = "auto";
+      document.body.appendChild(back); document.body.appendChild(sheet);
+    }
+    var sch = x.schedule || {}, rows = "";
+    for(var i=0;i<7;i++){
+      var d = sch["d"+i] || {};
+      var on = (d.on==1 || d.on==="1" || d.on===true);
+      rows += '<div style="display:flex;gap:6px;align-items:center;margin-top:8px">'+
+        '<label style="flex:0 0 96px;display:flex;gap:6px;align-items:center;font-weight:700;font-size:13px"><input type="checkbox" id="gfOn'+i+'" '+(on?"checked":"")+' style="width:18px;height:18px"> '+DAYS_UZ[i]+'</label>'+
+        '<input type="time" class="input" id="gfS'+i+'" value="'+esc(d.s||"")+'" style="flex:1;height:40px;min-width:0" '+(on?"":"disabled")+'>'+
+        '<span class="idesc">–</span>'+
+        '<input type="time" class="input" id="gfE'+i+'" value="'+esc(d.e||"")+'" style="flex:1;height:40px;min-width:0" '+(on?"":"disabled")+'>'+
+      '</div>';
+    }
+    sheet.innerHTML = '<div class="acf-title">📅 Ish grafigi — '+esc(x.name)+'</div>'+rows+
+      '<div class="acf-btns" style="margin-top:12px"><button class="acf-cancel">Bekor</button><button class="acf-ok">Saqlash</button></div>';
+    function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
+    back.onclick = close; sheet.querySelector(".acf-cancel").onclick = close;
+    for(var k=0;k<7;k++)(function(i){
+      sheet.querySelector("#gfOn"+i).addEventListener("change", function(){
+        sheet.querySelector("#gfS"+i).disabled = !this.checked;
+        sheet.querySelector("#gfE"+i).disabled = !this.checked;
+      });
+    })(k);
+    sheet.querySelector(".acf-ok").onclick = function(){
+      var sched = {};
+      for(var i=0;i<7;i++){
+        sched["d"+i] = { on: sheet.querySelector("#gfOn"+i).checked ? 1 : 0,
+                         s: sheet.querySelector("#gfS"+i).value || "",
+                         e: sheet.querySelector("#gfE"+i).value || "" };
+      }
+      api("PUT","/api/staff/"+x.id+"/schedule",{ schedule: sched })
+        .then(function(){ close(); showMsg("Grafik saqlandi ✅"); loadStaff(); })
+        .catch(function(e){ showMsg(e.message); });
+    };
+    back.classList.add("on"); sheet.classList.add("on");
+  }
+
+  /* ---------- M1c: ISH TABELI ---------- */
+  function tbToday(){ var t=new Date(); return t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2); }
+  function tbShift(days){
+    var v = el("tbDate").value || tbToday();
+    var d = new Date(v+"T12:00:00");
+    d.setDate(d.getDate()+days);
+    el("tbDate").value = d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+    loadTabel();
+  }
+  function fmtSoat(min){
+    min = parseInt(min||0,10);
+    if(min<=0) return "";
+    var h = Math.floor(min/60), m = min%60;
+    return h+" soat"+(m ? " "+m+" min" : "");
+  }
+  function loadTabel(){
+    if(el("tbDate") && !el("tbDate").value) el("tbDate").value = tbToday();
+    el("tabelList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/tabel?date="+encodeURIComponent(el("tbDate").value))
+      .then(renderTabel)
+      .catch(function(e){ el("tabelList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function renderTabel(d){
+    window.__tabel = {};
+    var st = d.staff||[];
+    if(!st.length){ el("tabelList").innerHTML = '<div class="item" style="display:block">Faol xodim yo\'q. Avval Xodimlar bo\'limida xodim qo\'shing.</div>'; return; }
+    el("tabelList").innerHTML = st.map(function(x){
+      window.__tabel[x.id] = x;
+      function b(code, label, color){
+        var act = (x.status===code);
+        return '<button class="mini-btn" style="flex:1;height:36px'+(act?';background:'+color+';color:#fff;border-color:transparent':'')+'" data-tb-set="'+x.id+'|'+code+'">'+label+'</button>';
+      }
+      var timeRow = "";
+      if(x.status==="keldi"){
+        timeRow = '<div style="display:flex;gap:6px;align-items:center;margin-top:6px">'+
+          '<span class="idesc" style="flex:0 0 auto">Keldi</span>'+
+          '<input type="time" class="input" style="flex:1;height:38px;min-width:0" data-tb-in="'+x.id+'" value="'+esc(x.time_in||"")+'">'+
+          '<span class="idesc" style="flex:0 0 auto">Ketdi</span>'+
+          '<input type="time" class="input" style="flex:1;height:38px;min-width:0" data-tb-out="'+x.id+'" value="'+esc(x.time_out||"")+'">'+
+        '</div>';
+      }
+      var month = "Bu oy: "+(x.month_keldi||0)+" kun"+(x.month_min>0 ? " · "+fmtSoat(x.month_min) : "");
+      return '<div class="item" style="display:block;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+          '<div style="min-width:0"><div class="iname">'+esc(x.name)+'</div>'+(x.profession?'<div class="idesc">'+esc(x.profession)+'</div>':'')+'</div>'+
+          '<div class="idesc" style="flex:0 0 auto;text-align:right">'+month+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px">'+
+          b("keldi","✅ Keldi","#188038")+b("kelmadi","❌ Kelmadi","#e53935")+b("dam","🏖 Dam","#e6a100")+
+        '</div>'+timeRow+
+      '</div>';
+    }).join("");
+  }
+  function tbPost(staffId, status, tin, tout){
+    api("POST","/api/tabel",{ staff_id: staffId, date: el("tbDate").value, status: status, time_in: tin||"", time_out: tout||"" })
+      .then(function(){ loadTabel(); })
+      .catch(function(e){ showMsg(e.message); });
+  }
+  el("staffTabelBtn") && el("staffTabelBtn").addEventListener("click", function(){ nav("cab-tabel"); });
+  el("tbPrev") && el("tbPrev").addEventListener("click", function(){ tbShift(-1); });
+  el("tbNext") && el("tbNext").addEventListener("click", function(){ tbShift(1); });
+  el("tbDate") && el("tbDate").addEventListener("change", loadTabel);
+  el("tabelList") && el("tabelList").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-tb-set]");
+    if(!btn) return;
+    var parts = btn.getAttribute("data-tb-set").split("|");
+    var id = parseInt(parts[0],10), code = parts[1];
+    var cur = (window.__tabel||{})[id] || {};
+    if(cur.status === code){ tbPost(id, "", "", ""); return; }
+    if(code==="keldi"){
+      tbPost(id, "keldi", cur.time_in || cur.sched_s || "", cur.time_out || cur.sched_e || "");
+    } else {
+      tbPost(id, code, "", "");
+    }
+  });
+  el("tabelList") && el("tabelList").addEventListener("change", function(e){
+    var tin = e.target.closest("[data-tb-in]"), tout = e.target.closest("[data-tb-out]");
+    var t = tin || tout;
+    if(!t) return;
+    var id = parseInt(t.getAttribute(tin ? "data-tb-in" : "data-tb-out"),10);
+    var row = (window.__tabel||{})[id] || {};
+    var inEl = document.querySelector('[data-tb-in="'+id+'"]');
+    var outEl = document.querySelector('[data-tb-out="'+id+'"]');
+    tbPost(id, "keldi", (inEl?inEl.value:row.time_in)||"", (outEl?outEl.value:row.time_out)||"");
   });
 
   /* ---------- STATISTIKA ---------- */
@@ -5920,6 +6107,7 @@
     else if(screen==="cab-kassa") loadKassa();
     else if(screen==="cab-xarajat") loadXarajat();
     else if(screen==="cab-staff") loadStaff();
+    else if(screen==="cab-tabel") loadTabel();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
