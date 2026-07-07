@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1434 -->
+<title>Platforma</title><!-- BUILD: v1435 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -836,6 +836,7 @@
           <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
           <div class="field"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
           <div class="field" id="itStockWrap" style="display:none"><label>Boshlang'ich qoldiq (ombordagi hozirgi soni)</label><input class="input" id="itStockQty" inputmode="decimal" placeholder="0"></div>
+          <div class="field" id="itMinWrap" style="display:none"><label>Kam qoldi chegarasi (shu songa tushsa ⚠️ belgisi chiqadi)</label><input class="input" id="itMinQty" inputmode="decimal" placeholder="masalan: 5"></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
           <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
           <div class="field" id="itKindWrap"><label>Turi</label>
@@ -921,6 +922,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 6px"><b>🧾 Chek</b><div class="iprice" id="ksTotal">0 so'm</div></div>
           <div id="ksSelList"></div>
         </div>
+        <div class="field"><label>Sana</label><input class="input" id="ksDate" type="date"></div>
         <div class="field"><label>To'lov turi</label><select class="input" id="ksPay"><option value="naqd">Naqd</option><option value="karta">Karta</option><option value="qarz">Qarz (daftariga yoziladi)</option></select></div>
         <div class="field" id="ksDebtorWrap" style="display:none"><label>Qarzdor</label><div style="display:flex;gap:6px"><select class="input" id="ksDebtor" style="flex:1;min-width:0"></select><button class="mini-btn" id="ksDebtorAdd" style="height:44px;flex:0 0 auto;padding:0 12px">+ Yangi</button></div></div>
         <div class="field"><label>Izoh (ixtiyoriy)</label><input class="input" id="ksNote"></div>
@@ -4896,10 +4898,11 @@
       (r.photo_file ? '<div style="height:64px;border-radius:8px;overflow:hidden;margin-bottom:6px"><img src="'+esc(r.photo_file)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>' : '')+
       '<div class="iname" style="font-size:13px">'+esc(r.name)+'</div>'+
       '<div style="font-weight:800;margin-top:2px;color:'+stockColor(r.stock_qty)+'">'+fmtQty(r.stock_qty)+' '+esc(r.unit||"dona")+'</div>'+
+      ((r.min_qty>0 && (r.stock_qty||0)<=r.min_qty) ? '<div style="display:inline-block;margin-top:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;color:#b45309;background:rgba(230,161,0,.15)">⚠️ Kam qoldi</div>' : '')+
       (r.cost_price ? '<div class="idesc">Tannarx: '+moneyText(r.cost_price)+'</div>' : '<div class="idesc">Tannarx yo\'q</div>')+
       '<div style="display:flex;gap:4px;margin-top:6px">'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-cost="'+(r.cost_price||0)+'">+</button>'+
-        '<button class="mini-btn" style="flex:1;height:32px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'">−</button>'+
+        '<button class="mini-btn" style="flex:1;height:32px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-stock="'+(r.stock_qty||0)+'">−</button>'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-hist="'+r.id+'" data-st-name="'+esc(r.name)+'">🕒</button>'+
       '</div>'+
     '</div>';
@@ -4986,6 +4989,51 @@
     back.classList.add("on"); sheet.classList.add("on");
     setTimeout(function(){ qEl.focus(); }, 60);
   }
+  // O6: Chiqim oynasi — kirim kabi chiroyli modal (+O2: qoldiqdan ortiq chiqimda ogohlantirish)
+  function openChiqimForm(id, name, unit, stock){
+    var back = document.getElementById("chiqBack"), sheet = document.getElementById("chiqSheet");
+    if(!back){
+      back = document.createElement("div"); back.id = "chiqBack"; back.className = "app-modal-back";
+      sheet = document.createElement("div"); sheet.id = "chiqSheet"; sheet.className = "app-confirm";
+      document.body.appendChild(back); document.body.appendChild(sheet);
+    }
+    var frac = unitAllowsFraction(unit);
+    sheet.innerHTML =
+      '<div class="acf-title" style="margin-bottom:2px">Chiqim: '+esc(name)+'</div>'+
+      '<div class="idesc" style="margin:2px 2px 0">Hozirgi qoldiq: <b>'+fmtQty(stock)+' '+esc(unit)+'</b></div>'+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(unit)+')'+(frac?'':' — butun son')+'</div>'+
+      '<input class="input" id="chqQty" type="text" inputmode="'+(frac?"decimal":"numeric")+'">'+
+      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Izoh (ixtiyoriy)</div>'+
+      '<input class="input" id="chqNote" type="text" placeholder="masalan: do\'konda ishlatildi">'+
+      '<div class="idesc" id="chqWarn" style="display:none;color:#b45309;margin-top:8px;text-align:left"></div>'+
+      '<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
+    function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
+    var qEl = sheet.querySelector("#chqQty"), warnEl = sheet.querySelector("#chqWarn");
+    var overOk = false;
+    qEl.addEventListener("input", function(){
+      if(!frac){ var c = qEl.value.replace(/[^0-9]/g,""); if(qEl.value!==c) qEl.value=c; }
+      overOk = false; warnEl.style.display = "none";
+    });
+    sheet.querySelector(".acf-cancel").onclick = function(){ close(); };
+    back.onclick = function(){ close(); };
+    sheet.querySelector(".acf-ok").onclick = function(){
+      var q = parseFloat(String(qEl.value||"").replace(",", "."));
+      if(isNaN(q) || q<=0){ showMsg("Miqdor noto'g'ri."); return; }
+      if(!frac) q = Math.floor(q+0.5);
+      q = Math.round(q*1000)/1000;
+      if(q > (parseFloat(stock)||0) && !overOk){
+        overOk = true;
+        warnEl.textContent = "Omborda faqat "+fmtQty(stock)+" "+unit+" bor. Yana «Saqlash» bossangiz baribir chiqariladi (qoldiq minusga tushadi).";
+        warnEl.style.display = "block";
+        return;
+      }
+      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: -q, note: (sheet.querySelector("#chqNote").value||"").trim() })
+        .then(function(){ close(); showMsg("Chiqim yozildi ✅"); loadOmbor(); })
+        .catch(function(e){ showMsg(e.message); });
+    };
+    back.classList.add("on"); sheet.classList.add("on");
+    setTimeout(function(){ qEl.focus(); }, 60);
+  }
   // Tarix — ilova varag'ida (gorizontal kartalarga mos)
   function openStockHistSheet(id, name){
     var back = document.getElementById("stHistBack"), sheet = document.getElementById("stHistSheet");
@@ -5032,7 +5080,7 @@
     var a = e.target.closest("[data-st-in]");
     if(a){ openKirimForm(a.getAttribute("data-st-in"), a.getAttribute("data-st-name"), a.getAttribute("data-st-unit"), parseInt(a.getAttribute("data-st-cost")||"0",10)); return; }
     var b = e.target.closest("[data-st-out]");
-    if(b){ stockMoveForm(b.getAttribute("data-st-out"), b.getAttribute("data-st-name"), b.getAttribute("data-st-unit"), -1); return; }
+    if(b){ openChiqimForm(b.getAttribute("data-st-out"), b.getAttribute("data-st-name"), b.getAttribute("data-st-unit"), parseFloat(b.getAttribute("data-st-stock")||"0")||0); return; }
     var h = e.target.closest("[data-st-hist]");
     if(h){ openStockHistSheet(h.getAttribute("data-st-hist"), h.getAttribute("data-st-name")||""); return; }
     var ai = e.target.closest("[data-omb-add-item]");
@@ -5409,6 +5457,29 @@
     if(kassaDay===todayStr()) kassaDay="";
     loadKassa();
   }
+  // K3: buyurtma savdosiga to'lov turini tanlash oynasi
+  function openOrderPayChoose(saleId){
+    var back = document.getElementById("opayBack"), sheet = document.getElementById("opaySheet");
+    if(!back){
+      back = document.createElement("div"); back.id="opayBack"; back.className="app-modal-back";
+      sheet = document.createElement("div"); sheet.id="opaySheet"; sheet.className="app-confirm";
+      document.body.appendChild(back); document.body.appendChild(sheet);
+    }
+    sheet.innerHTML = '<div class="acf-title">Buyurtma to\'lov turi</div>'+
+      '<button class="btn btn-primary btn-block" style="margin-top:10px" data-opay="naqd">Naqd</button>'+
+      '<button class="btn btn-primary btn-block" style="margin-top:8px" data-opay="karta">Karta</button>'+
+      '<div class="acf-btns" style="margin-top:10px"><button class="acf-cancel" style="flex:1">Bekor qilish</button></div>';
+    function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
+    back.onclick = close; sheet.querySelector(".acf-cancel").onclick = close;
+    sheet.querySelectorAll("[data-opay]").forEach(function(b){
+      b.onclick = function(){
+        api("PUT","/api/sales/"+saleId+"/pay",{ pay_type: b.getAttribute("data-opay") })
+          .then(function(){ close(); showMsg("To'lov turi saqlandi ✅"); loadKassa(); })
+          .catch(function(e){ showMsg(e.message); });
+      };
+    });
+    back.classList.add("on"); sheet.classList.add("on");
+  }
   function loadKassa(){
     el("kassaList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
     api("GET","/api/kassa"+(kassaDay?("?day="+kassaDay):"")).then(renderKassa)
@@ -5440,6 +5511,8 @@
       var title, delBtn = "";
       if(g.source==="order"){
         title = "Buyurtma #"+g.order_id;
+        var curPay = g.lines[0].pay_type||"";
+        delBtn = '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-order-pay="'+g.sale_id+'">'+(curPay ? "O\'zgartirish" : "To\'lov turini belgilash")+'</button>';
       } else if(g.source==="qarzpay"){
         title = "💵 "+esc(g.lines[0].item_name);
         delBtn = '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-ks-del="'+g.sale_id+'">O\'chirish</button>';
@@ -5618,6 +5691,7 @@
     el("ksCatalog").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
     ksSel = {}; renderKsSel();
     el("ksPay").value = "naqd"; el("ksDebtorWrap").style.display = "none"; el("ksNote").value = "";
+    if(el("ksDate")){ var _t=new Date(); el("ksDate").value = _t.getFullYear()+"-"+("0"+(_t.getMonth()+1)).slice(-2)+"-"+("0"+_t.getDate()).slice(-2); }
     nav("cab-kassa-form");
     if(el("ksSearch")) el("ksSearch").value = "";
     Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
@@ -5676,11 +5750,35 @@
     });
     if(bad){ showMsg("Narx kiritilmadi: "+bad); return; }
     var body = { items: items, pay_type: el("ksPay").value,
-      debtor_id: parseInt(el("ksDebtor").value||"0",10), note: (el("ksNote").value||"").trim() };
+      debtor_id: parseInt(el("ksDebtor").value||"0",10), note: (el("ksNote").value||"").trim(),
+      sana: (el("ksDate") ? el("ksDate").value : "") };
     if(body.pay_type==="qarz" && !(body.debtor_id>0)){ showMsg("Qarzdorni tanlang."); return; }
-    api("POST","/api/kassa/multi", body)
-      .then(function(r){ showMsg("Savdo yozildi ✅ ("+(r.count||items.length)+" ta)"); nav("cab-kassa"); })
-      .catch(function(e){ showMsg(e.message); });
+    function ksDoSend(){
+      api("POST","/api/kassa/multi", body)
+        .then(function(r){ showMsg("Savdo yozildi ✅ ("+(r.count||items.length)+" ta)"); nav("cab-kassa"); })
+        .catch(function(e){ showMsg(e.message); });
+    }
+    // O2: ombordagi qoldiq yetarlimi? Yetmasa — ogohlantirib so'raymiz
+    var lackList = [];
+    keys.forEach(function(k){
+      var s0 = ksSel[k];
+      if(!s0.item_id) return;
+      var arr = window.__ksItems||[];
+      for(var i=0;i<arr.length;i++){
+        if(arr[i].id===s0.item_id){
+          if((arr[i].track_stock||0) && parseFloat(s0.qty) > (parseFloat(arr[i].stock_qty)||0)){
+            lackList.push(arr[i].name+" (kerak "+fmtQty(s0.qty)+", omborda "+fmtQty(arr[i].stock_qty||0)+")");
+          }
+          break;
+        }
+      }
+    });
+    if(lackList.length){
+      askConfirm({ text: "Omborda yetarli emas: "+lackList.join("; ")+". Baribir yozilsinmi? (qoldiq minusga tushadi)", okText: "Ha, yozilsin", danger: true })
+        .then(function(ok){ if(ok) ksDoSend(); });
+    } else {
+      ksDoSend();
+    }
   });
   document.addEventListener("click", function(e){
     var add = e.target.closest("[data-ks-add]");
@@ -5690,6 +5788,8 @@
       for(var i=0;i<arr.length;i++) if(arr[i].id===id){ ksAddItem(arr[i]); break; }
       return;
     }
+    var op = e.target.closest("[data-order-pay]");
+    if(op){ openOrderPayChoose(parseInt(op.getAttribute("data-order-pay"),10)); return; }
     var ck = e.target.closest("[data-chek-del]");
     if(ck){
       var cn = ck.getAttribute("data-chek-del");
@@ -6366,6 +6466,8 @@
     el("itTrack").value = data ? String(data.track_stock || 0) : (itemFormReturnTo==="cab-ombor" ? "1" : "0");
     el("itStockQty").value = "";
     el("itStockWrap").style.display = (!data && el("itTrack").value==="1") ? "block" : "none";
+    el("itMinQty").value = (data && data.min_qty>0) ? String(data.min_qty) : "";
+    el("itMinWrap").style.display = (el("itTrack").value==="1") ? "block" : "none";
     el("itNote").value = data ? (data.note || "") : "";
     setItemKind(data ? data.kind : "product");
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
@@ -6407,6 +6509,7 @@
   el("itGroup").addEventListener("change", updateItemKindVisibility);
   el("itTrack").addEventListener("change", function(){
     el("itStockWrap").style.display = (!editItemId && el("itTrack").value==="1") ? "block" : "none";
+    el("itMinWrap").style.display = (el("itTrack").value==="1") ? "block" : "none";
   });
   el("itKindRow").addEventListener("click", function(e){
     var c=e.target.closest("[data-kind]"); if(!c) return;
@@ -6418,7 +6521,8 @@
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl};
+    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl,
+      min_qty: (parseInt(el("itTrack").value||"0",10)===1 ? (parseFloat(String(el("itMinQty").value||"").replace(",", "."))||0) : 0)};
     var wasEdit = !!editItemId;
     var initQty = (!editItemId && parseInt(el("itTrack").value||"0",10)===1)
       ? (parseFloat(String(el("itStockQty").value||"").replace(",", ".")) || 0) : 0;
