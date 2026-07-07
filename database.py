@@ -812,6 +812,8 @@ def _migrate(conn):
     _icols3 = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "cost_price" not in _icols3:
         conn.execute("ALTER TABLE items ADD COLUMN cost_price INTEGER DEFAULT 0")
+    if "min_qty" not in _icols3:
+        conn.execute("ALTER TABLE items ADD COLUMN min_qty REAL DEFAULT 0")
     _smcols = [r["name"] for r in conn.execute("PRAGMA table_info(stock_moves)").fetchall()]
     if "cost" not in _smcols:
         conn.execute("ALTER TABLE stock_moves ADD COLUMN cost INTEGER DEFAULT 0")
