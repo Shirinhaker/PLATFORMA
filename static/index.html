@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1437 -->
+<title>Platforma</title><!-- BUILD: v1438 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1218,7 +1218,7 @@
       <section class="screen" data-screen="cab-admin">
         <div class="menu-grid2">
           <div class="menu-card" data-nav="cab-staff"><div class="menu-ic">👥</div><div class="menu-main"><h4>Xodimlar</h4><p>Ro'yxat, kasblar, oylik</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📄</div><div class="menu-main"><h4>Hujjatlar</h4><p>Kiruvchi, chiquvchi, ichki, kontragentlar</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" data-nav="cab-docs"><div class="menu-ic">📄</div><div class="menu-main"><h4>Hujjatlar</h4><p>Kiruvchi, chiquvchi, ichki, kontragentlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
       </section>
 
@@ -1238,6 +1238,40 @@
           <button class="mini-btn" style="height:42px;width:46px;flex:0 0 auto" id="tbNext">›</button>
         </div>
         <div id="tabelList"></div>
+      </section>
+
+      <!-- CAB: HUJJATLAR MARKAZI -->
+      <section class="screen" data-screen="cab-docs">
+        <div class="menu-grid2">
+          <div class="menu-card" data-nav="cab-contractors"><div class="menu-ic">🤝</div><div class="menu-main"><h4>Kontragentlar</h4><p>Hamkorlar bazasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kiruvchi</h4><p>Kelgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📤</div><div class="menu-main"><h4>Chiquvchi</h4><p>Yuborilgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📋</div><div class="menu-main"><h4>Ichki</h4><p>Firma ichki hujjatlari</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" style="opacity:.6"><div class="menu-ic">✍️</div><div class="menu-main"><h4>Hujjat yaratish</h4><p>Yangi hujjat</p></div><span class="soon-mini">Tez orada</span></div>
+        </div>
+      </section>
+
+      <!-- CAB: KONTRAGENTLAR -->
+      <section class="screen" data-screen="cab-contractors">
+        <div class="q-total"><div class="eyebrow">Kontragentlar</div><div class="q-amount" id="contrCount">0</div></div>
+        <button class="btn btn-primary btn-block" style="margin:10px 0" id="contrAddBtn">+ Kontragent qo'shish</button>
+        <div id="contrList"></div>
+      </section>
+
+      <!-- CAB: KONTRAGENT FORMA -->
+      <section class="screen" data-screen="cab-contractor-form">
+        <div class="field"><label>Nomi (firma yoki shaxs)</label><input class="input" id="coName" placeholder="Masalan: Olma Savdo MChJ"></div>
+        <div class="field"><label>Turi</label><select class="input" id="coType"></select></div>
+        <div class="field"><label>Rahbari</label><input class="input" id="coDir" placeholder="Ism-familiya"></div>
+        <div class="field"><label>Telefon</label><input class="input" id="coPhone" inputmode="tel" placeholder="+998 ..."></div>
+        <div class="field"><label>Manzil</label><input class="input" id="coAddr" placeholder="Viloyat, tuman, ko'cha"></div>
+        <div class="field"><label>STIR (INN)</label><input class="input" id="coInn" inputmode="numeric" placeholder="9 xonali"></div>
+        <div class="field"><label>Hisob raqami</label><input class="input" id="coAcc" inputmode="numeric" placeholder="20208..."></div>
+        <div class="field"><label>Bank nomi</label><input class="input" id="coBank" placeholder="Masalan: Ipoteka Bank"></div>
+        <div class="field"><label>MFO kodi</label><input class="input" id="coMfo" inputmode="numeric" placeholder="5 xonali"></div>
+        <div class="field"><label>Izoh</label><input class="input" id="coNote" placeholder="Ixtiyoriy"></div>
+        <button class="btn btn-primary btn-block" id="coSave">Saqlash</button>
+        <button class="btn btn-soft btn-block" style="margin-top:8px;display:none" id="coDelBtn">O'chirish</button>
       </section>
 
       <!-- CAB: XODIM FORMA -->
@@ -2460,7 +2494,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2468,7 +2502,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5429,6 +5463,83 @@
     tbPost(id, "keldi", (inEl?inEl.value:row.time_in)||"", (outEl?outEl.value:row.time_out)||"");
   });
 
+  /* ---------- M2a: KONTRAGENTLAR ---------- */
+  var editContrId = null;
+  var CONTR_TYPES = ["Yetkazib beruvchi","Mijoz","Hamkor","Boshqa"];
+  function loadContractors(){
+    el("contrList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/contractors").then(function(d){
+      if(d.types && d.types.length) CONTR_TYPES = d.types;
+      renderContractors(d);
+    }).catch(function(e){ el("contrList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function renderContractors(d){
+    el("contrCount").textContent = d.count||0;
+    window.__contr = {};
+    var list = d.contractors||[];
+    if(!list.length){ el("contrList").innerHTML = '<div class="item" style="display:block">Hozircha kontragent yo\'q. "+ Kontragent qo\'shish" bilan qo\'shing.</div>'; return; }
+    el("contrList").innerHTML = list.map(function(c){
+      window.__contr[c.id] = c;
+      var sub = [];
+      if(c.ctype) sub.push(esc(c.ctype));
+      if(c.phone) sub.push(esc(c.phone));
+      var line2 = [];
+      if(c.inn) line2.push("STIR: "+esc(c.inn));
+      if(c.account) line2.push("h/r: "+esc(c.account));
+      return '<div class="item" style="display:block;margin-bottom:7px" data-contr-open="'+c.id+'">'+
+        '<div class="iname">'+esc(c.name)+'</div>'+
+        (sub.length?'<div class="idesc" style="margin-top:2px">'+sub.join(" · ")+'</div>':'')+
+        (c.director?'<div class="idesc">Rahbar: '+esc(c.director)+'</div>':'')+
+        (line2.length?'<div class="idesc">'+line2.join(" · ")+'</div>':'')+
+        (c.bank?'<div class="idesc">'+esc(c.bank)+(c.mfo?" (MFO "+esc(c.mfo)+")":"")+'</div>':'')+
+      '</div>';
+    }).join("");
+  }
+  function fillContrTypes(sel){
+    el("coType").innerHTML = CONTR_TYPES.map(function(t){ return '<option value="'+esc(t)+'">'+esc(t)+'</option>'; }).join("");
+    if(sel) el("coType").value = sel;
+  }
+  function openContractorForm(c){
+    editContrId = c ? c.id : null;
+    el("coName").value = c ? (c.name||"") : "";
+    fillContrTypes(c ? c.ctype : "");
+    el("coDir").value = c ? (c.director||"") : "";
+    el("coPhone").value = c ? (c.phone||"") : "";
+    el("coAddr").value = c ? (c.address||"") : "";
+    el("coInn").value = c ? (c.inn||"") : "";
+    el("coAcc").value = c ? (c.account||"") : "";
+    el("coBank").value = c ? (c.bank||"") : "";
+    el("coMfo").value = c ? (c.mfo||"") : "";
+    el("coNote").value = c ? (c.note||"") : "";
+    el("coDelBtn").style.display = c ? "block" : "none";
+    nav("cab-contractor-form");
+  }
+  el("contrAddBtn") && el("contrAddBtn").addEventListener("click", function(){ openContractorForm(null); });
+  el("contrList") && el("contrList").addEventListener("click", function(e){
+    var op = e.target.closest("[data-contr-open]");
+    if(op){ var c=(window.__contr||{})[op.getAttribute("data-contr-open")]; if(c) openContractorForm(c); }
+  });
+  el("coSave") && el("coSave").addEventListener("click", function(){
+    var body = {
+      name:(el("coName").value||"").trim(), ctype:el("coType").value||"",
+      director:(el("coDir").value||"").trim(), phone:(el("coPhone").value||"").trim(),
+      address:(el("coAddr").value||"").trim(), inn:(el("coInn").value||"").trim(),
+      account:(el("coAcc").value||"").trim(), bank:(el("coBank").value||"").trim(),
+      mfo:(el("coMfo").value||"").trim(), note:(el("coNote").value||"").trim()
+    };
+    if(!body.name){ showMsg("Kontragent nomini kiriting."); return; }
+    var req = editContrId ? api("PUT","/api/contractors/"+editContrId, body) : api("POST","/api/contractors", body);
+    req.then(function(){ showMsg(editContrId ? "Saqlandi ✅" : "Qo'shildi ✅"); nav("cab-contractors"); })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  el("coDelBtn") && el("coDelBtn").addEventListener("click", function(){
+    if(!editContrId) return;
+    askConfirm({ text:"Bu kontragent o'chirilsinmi?", okText:"O'chirish", danger:true }).then(function(ok){
+      if(!ok) return;
+      api("DELETE","/api/contractors/"+editContrId).then(function(){ showMsg("O'chirildi"); nav("cab-contractors"); }).catch(function(e){ showMsg(e.message); });
+    });
+  });
+
   /* ---------- STATISTIKA ---------- */
   var statPeriod = "oy", statAnchor = "", statMetric = "rev", statData = null;
   function loadStats(){
@@ -6108,6 +6219,7 @@
     else if(screen==="cab-xarajat") loadXarajat();
     else if(screen==="cab-staff") loadStaff();
     else if(screen==="cab-tabel") loadTabel();
+    else if(screen==="cab-contractors") loadContractors();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
