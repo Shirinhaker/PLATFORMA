@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1441 -->
+<title>Platforma</title><!-- BUILD: v1442 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1293,6 +1293,7 @@
         </div>
         <div class="field"><label>Firma nomi</label><input class="input" id="dcFirma" placeholder="Firma nomi"></div>
         <div class="field"><label>Rahbar F.I.Sh.</label><input class="input" id="dcRahbar" placeholder="Rahbar"></div>
+        <div class="field"><label>Firma STIR (INN)</label><input class="input" id="dcInn" inputmode="numeric" placeholder="9 xonali"></div>
         <div class="field" id="dcContrWrap" style="display:none"><label>Kontragent (kimga)</label><select class="input" id="dcContr"></select></div>
         <button class="btn btn-soft btn-block" id="dcGenBtn" style="margin-bottom:8px">📄 Shablonni yuklash</button>
         <div class="field"><label>Hujjat matni</label><textarea class="input" id="dcBody" rows="16" style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre" placeholder="Yuqoridan tur tanlab «Shablonni yuklash» tugmasini bosing — tayyor andoza shu yerga chiqadi. So'ng to'ldiring."></textarea></div>
@@ -5631,6 +5632,7 @@
       var b = d.business||{};
       el("dcFirma").value = b.name||"";
       el("dcRahbar").value = b.director||"";
+      if(el("dcInn")) el("dcInn").value = b.inn||"";
     }).catch(function(){});
     // Kontragentlar ro'yxati
     api("GET","/api/contractors").then(function(d){
@@ -5680,8 +5682,20 @@
       sana: (el("dcDate") && el("dcDate").value) || "____-__-__",
       raqam: (el("dcNum") && el("dcNum").value.trim()) || "___",
       title: (el("dcTitle") && el("dcTitle").value.trim()) || "",
-      contr: docContrName()
+      contr: docContrName(),
+      firmaInn: (el("dcInn") && el("dcInn").value.trim()) || "[_______]",
+      contrInn: (docContr().inn || "[_______]"),
+      contrAcc: (docContr().account || "[_______]"),
+      contrBank: (docContr().bank || "[_______]"),
+      contrMfo: (docContr().mfo || "[____]"),
+      contrDir: (docContr().director || "[F.I.Sh.]")
     };
+  }
+  function docContr(){
+    if(!el("dcContr")) return {};
+    var id = parseInt(el("dcContr").value||"0",10);
+    for(var i=0;i<docContrList.length;i++){ if(docContrList[i].id===id) return docContrList[i]; }
+    return {};
   }
   function line(s){ return s; }
   // Har bir shablon — matn qaytaradi
@@ -5770,17 +5784,17 @@
       "7. TOMONLARNING REKVIZITLARI VA IMZOLARI\n\n"+
       "Yetkazib beruvchi:                        Buyurtmachi:\n"+
       c.firma+"                                  "+(c.contr?c.contr:"[nomi]")+"\n"+
-      "STIR: [_______]                           STIR: [_______]\n"+
-      "h/r: [_______]                            h/r: [_______]\n"+
-      "Bank: [_______], MFO: [____]              Bank: [_______], MFO: [____]\n\n"+
+      "STIR: "+c.firmaInn+"                      STIR: "+c.contrInn+"\n"+
+      "h/r: [_______]                            h/r: "+c.contrAcc+"\n"+
+      "Bank: [_______], MFO: [____]              Bank: "+c.contrBank+", MFO: "+c.contrMfo+"\n\n"+
       "_______________ "+c.rahbar+"              _______________ [F.I.Sh.]\n"+
       "M.O'.                                     M.O'.\n" ); },
 
     "Hisob-faktura": function(c){ return (
       "HISOB-FAKTURA \u2116 "+c.raqam+"   sana: "+c.sana+"\n"+
       "(Shartnoma: \u2116 ______ , sana ________ )\n\n"+
-      "Yetkazib beruvchi: "+c.firma+"\n  STIR: [_______]   h/r: [_______]   Bank: [_______], MFO: [____]\n\n"+
-      "Xaridor: "+(c.contr?c.contr:"[Kontragent nomi]")+"\n  STIR: [_______]\n\n"+
+      "Yetkazib beruvchi: "+c.firma+"\n  STIR: "+c.firmaInn+"   h/r: [_______]   Bank: [_______], MFO: [____]\n\n"+
+      "Xaridor: "+(c.contr?c.contr:"[Kontragent nomi]")+"\n  STIR: "+c.contrInn+"   h/r: "+c.contrAcc+"   Bank: "+c.contrBank+", MFO: "+c.contrMfo+"\n\n"+
       "\u2116 | Tovar/xizmat nomi          | O'lchov | Soni | Narxi     | Summasi\n"+
       "--+----------------------------+---------+------+-----------+-----------\n"+
       "1 | __________________________ | ______  | ____ | _________ | _________\n"+
@@ -5808,7 +5822,7 @@
     "Ishonchnoma": function(c){ return (
       "                       ISHONCHNOMA\n\n"+
       "[shahar/tuman]                                   "+c.sana+"\n\n"+
-      c.firma+" (STIR: [_______]) nomidan rahbar "+c.rahbar+" \n"+
+      c.firma+" (STIR: "+c.firmaInn+") nomidan rahbar "+c.rahbar+" \n"+
       "ushbu ishonchnoma bilan [F.I.Sh.] (pasport: [seriya/raqam]) ga \n"+
       "quyidagi vakolatlarni ishonib topshiradi:\n\n"+
       "________________________________________________________________\n"+
