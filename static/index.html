@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1446 -->
+<title>Platforma</title><!-- BUILD: v1447 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -8022,7 +8022,9 @@
     }).catch(function(err){
       // Telegram ID oq ro'yxatda bo'lmasa (403) — bu ehtimol xodim. Login oynasini ko'rsatamiz.
       var msg = (err && err.message) ? err.message : "";
-      if(msg.indexOf("Telegram")>=0 || msg.indexOf("ruxsat")>=0 || msg.indexOf("yopiq")>=0){
+      // Oq ro'yxatda yo'q (yopiq/Telegram/Loyiha xabari) — ehtimol xodim. Login oynasi.
+      if(msg.indexOf("Telegram")>=0 || msg.indexOf("ruxsat")>=0 || msg.indexOf("yopiq")>=0 ||
+         msg.indexOf("Loyiha")>=0 || msg.indexOf("ochiladi")>=0){
         showStaffLogin();
       } else { loadHomeMap(); }
     });
