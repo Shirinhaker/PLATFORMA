@@ -35,8 +35,42 @@ def _tg(init_data):
     return require_tg(init_data)
 
 
+def _staff_session(conn, init_data):
+    """init_data 'staff:<token>' bo'lsa — faol xodim sessiyasini qaytaradi, aks holda None."""
+    if not (init_data or "").startswith("staff:"):
+        return None
+    token = init_data[6:].strip()
+    if not token:
+        return None
+    try:
+        sess = conn.execute("SELECT * FROM staff_sessions WHERE token=?", (token,)).fetchone()
+    except Exception:
+        return None
+    if not sess:
+        return None
+    st = conn.execute("SELECT * FROM staff WHERE id=?", (sess["staff_id"],)).fetchone()
+    if not st or not (_row_val(st, "can_login", 0) or 0) or (st["status"] or "") != "active":
+        return None
+    return st
+
+
+def _staff_ctx(conn, init_data):
+    """Xodim bo'lsa (staff_row, biz, owner_user) qaytaradi; bo'lmasa None."""
+    st = _staff_session(conn, init_data)
+    if not st:
+        return None
+    biz = conn.execute("SELECT * FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
+    if not biz:
+        raise HTTPException(404, "Do'kon topilmadi.")
+    owner = conn.execute("SELECT * FROM users WHERE id=?", (biz["user_id"],)).fetchone()
+    return st, biz, owner
+
+
 def require_user(conn, init_data):
-    """Ro'yxatdan o'tgan foydalanuvchini talab qiladi."""
+    """Ro'yxatdan o'tgan foydalanuvchini (yoki xodim bo'lsa — do'kon egasini) talab qiladi."""
+    ctx = _staff_ctx(conn, init_data)
+    if ctx:
+        return ctx[2]  # do'kon egasi (owner)
     tg = _tg(init_data)
     user = conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
     if not user:
@@ -45,6 +79,10 @@ def require_user(conn, init_data):
 
 
 def require_business(conn, init_data):
+    """Biznes akkaunt yoki xodim sessiyasi. (owner_user, biz) qaytaradi."""
+    ctx = _staff_ctx(conn, init_data)
+    if ctx:
+        return ctx[2], ctx[1]  # (owner, biz)
     user = require_user(conn, init_data)
     if user["role"] != "business":
         raise HTTPException(403, "Bu bo'lim faqat biznes akkauntlar uchun.")
@@ -52,6 +90,29 @@ def require_business(conn, init_data):
     if not biz:
         raise HTTPException(404, "Biznes profili topilmadi.")
     return user, biz
+
+
+def _staff_perms_of(conn, init_data):
+    """Xodim bo'lsa — ruxsatlar ro'yxati; do'kon egasi/oddiy foydalanuvchi bo'lsa None (to'liq huquq)."""
+    st = _staff_session(conn, init_data)
+    if not st:
+        return None
+    return _perms_parse(_row_val(st, "perms", "") or "")
+
+
+def deny_staff(conn, init_data, section="Bu bo'lim"):
+    """Sezgir bo'limlar: xodimlarga umuman yopiq (faqat do'kon egasi)."""
+    if _staff_session(conn, init_data):
+        raise HTTPException(403, section + " faqat do'kon egasi uchun.")
+
+
+def need_perm(conn, init_data, perm):
+    """Xodim bo'lsa — shu ruxsat borligini tekshiradi; egasi bo'lsa — o'tadi."""
+    perms = _staff_perms_of(conn, init_data)
+    if perms is None:
+        return  # egasi — to'liq huquq
+    if perm not in perms:
+        raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
 
 
 def follower_count(conn, kind, target_id):
@@ -149,6 +210,7 @@ def _ensure_user_username(conn):
 async def update_profile(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Profil")
     _ensure_user_username(conn)
     user = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
     b = await request.json()
@@ -718,6 +780,7 @@ def _ensure_pay_columns(conn):
 async def update_business(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Do'kon sozlamalari")
     _ensure_pay_columns(conn)   # v1421: to'lov ustunlari kafolatlangan
     biz = conn.execute("SELECT * FROM businesses WHERE id=?", (biz["id"],)).fetchone()  # ustunlar bilan qayta o'qish
     b = await request.json()
@@ -1652,6 +1715,7 @@ def _stock_move_deletable(r):
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ombor")
     _ensure_item_min_qty(conn)
     rows = conn.execute(
         "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, "
@@ -1674,6 +1738,7 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
 async def stock_move(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ombor")
     item_id = int(body.get("item_id") or 0)
     it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
     if not it:
@@ -1727,6 +1792,7 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
     """Xato yozilgan qo'lda kirim/chiqimni o'chirish — qoldiq teskarisiga qaytadi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ombor")
     r = conn.execute("SELECT * FROM stock_moves WHERE id=? AND business_id=?", (move_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -1890,6 +1956,7 @@ def _ensure_staff_tables(conn):
                  "user_id": "INTEGER", "created_at": "INTEGER", "fired_at": "INTEGER",
                  "schedule_json": "TEXT DEFAULT ''",
                  "login": "TEXT DEFAULT ''", "pass_hash": "TEXT DEFAULT ''",
+                 "pass_plain": "TEXT DEFAULT ''",
                  "perms": "TEXT DEFAULT ''", "can_login": "INTEGER DEFAULT 0"}
         for _col, _decl in _need.items():
             if _col not in _sc:
@@ -1914,7 +1981,8 @@ def _ensure_staff_tables(conn):
             "CREATE TABLE IF NOT EXISTS staff_sessions("
             "token TEXT PRIMARY KEY, staff_id INTEGER NOT NULL, business_id INTEGER NOT NULL, "
             "created_at INTEGER NOT NULL)")
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_staff_login ON staff(lower(login)) WHERE COALESCE(login,'')<>''")
+        conn.execute("DROP INDEX IF EXISTS uq_staff_login")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_staff_login_biz ON staff(business_id, lower(login)) WHERE COALESCE(login,'')<>''")
     except Exception:
         pass
 
@@ -1963,6 +2031,7 @@ def _staff_dict(r):
             "login": _row_val(r, "login", "") or "",
             "can_login": _row_val(r, "can_login", 0) or 0,
             "has_pass": 1 if (_row_val(r, "pass_hash", "") or "") else 0,
+            "password": _row_val(r, "pass_plain", "") or "",
             "perms": _perms_parse(_row_val(r, "perms", "") or "")}
 
 
@@ -2007,6 +2076,7 @@ async def staff_professions_list(x_telegram_init_data: str = Header(default=""))
 async def staff_professions_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Kasblar")
     _ensure_staff_tables(conn)
     name = (body.get("name") or "").strip()[:40]
     if not name:
@@ -2024,12 +2094,14 @@ async def staff_professions_add(body: dict, x_telegram_init_data: str = Header(d
 async def staff_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodimlar bo'limi")
     _ensure_staff_tables(conn)
     rows = conn.execute(
         "SELECT * FROM staff WHERE business_id=? ORDER BY "
         "CASE status WHEN 'active' THEN 0 ELSE 1 END, name COLLATE NOCASE",
         (biz["id"],),
     ).fetchall()
+    firm_login = _row_val(biz, "biz_login", "") or ""
     active, fired = [], []
     total_salary = 0
     for r in rows:
@@ -2042,13 +2114,14 @@ async def staff_list(x_telegram_init_data: str = Header(default="")):
     conn.close()
     return {"active": active, "fired": fired,
             "active_count": len(active), "fired_count": len(fired),
-            "total_salary": total_salary}
+            "total_salary": total_salary, "firm_login": firm_login}
 
 
 @router.post("/staff")
 async def staff_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodim qo'shish")
     _ensure_staff_tables(conn)
     name = (body.get("name") or "").strip()
     if not name:
@@ -2079,6 +2152,7 @@ async def staff_add(body: dict, x_telegram_init_data: str = Header(default="")):
 async def staff_update(staff_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodimni tahrirlash")
     _ensure_staff_tables(conn)
     r = conn.execute("SELECT * FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
     if not r:
@@ -2110,6 +2184,7 @@ async def staff_update(staff_id: int, body: dict, x_telegram_init_data: str = He
 async def staff_fire(staff_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodim")
     _ensure_staff_tables(conn)
     r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
     if not r:
@@ -2125,6 +2200,7 @@ async def staff_fire(staff_id: int, x_telegram_init_data: str = Header(default="
 async def staff_rehire(staff_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodim")
     _ensure_staff_tables(conn)
     r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
     if not r:
@@ -2140,6 +2216,7 @@ async def staff_rehire(staff_id: int, x_telegram_init_data: str = Header(default
 async def staff_delete(staff_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Xodim")
     _ensure_staff_tables(conn)
     r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
     if not r:
@@ -2233,6 +2310,7 @@ async def tabel_set(body: dict, x_telegram_init_data: str = Header(default="")):
     import datetime as _dt
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Ish tabeli")
     _ensure_staff_tables(conn)
     staff_id = int(body.get("staff_id") or 0)
     r = conn.execute("SELECT id FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
@@ -2331,6 +2409,7 @@ async def contractors_list(x_telegram_init_data: str = Header(default="")):
 async def contractors_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Kontragentlar")
     _ensure_contractors(conn)
     f = _contractor_fields(body)
     if not f[0]:
@@ -2351,6 +2430,7 @@ async def contractors_add(body: dict, x_telegram_init_data: str = Header(default
 async def contractors_update(cid: int, body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Kontragentlar")
     _ensure_contractors(conn)
     r = conn.execute("SELECT id FROM contractors WHERE id=? AND business_id=?", (cid, biz["id"])).fetchone()
     if not r:
@@ -2373,6 +2453,7 @@ async def contractors_update(cid: int, body: dict, x_telegram_init_data: str = H
 async def contractors_delete(cid: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Kontragentlar")
     _ensure_contractors(conn)
     r = conn.execute("SELECT id FROM contractors WHERE id=? AND business_id=?", (cid, biz["id"])).fetchone()
     if not r:
@@ -2479,6 +2560,7 @@ def _doc_fields(b):
 async def document_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     f = _doc_fields(body)
     if not f[6]:
@@ -2499,6 +2581,7 @@ async def document_add(body: dict, x_telegram_init_data: str = Header(default=""
 async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -2518,6 +2601,7 @@ async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = H
 async def document_delete(doc_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -2534,6 +2618,7 @@ async def document_send(doc_id: int, body: dict, x_telegram_init_data: str = Hea
     """Chiquvchi hujjatni STIR bo'yicha boshqa firmaga yuboradi (nusxasi 'kiruvchi' bo'ladi)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     _ensure_pay_columns(conn)
     doc = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
@@ -2613,6 +2698,7 @@ async def staff_access_set(staff_id: int, body: dict, x_telegram_init_data: str 
     """Rahbar xodimga login/parol/ruxsatlar beradi (yoki o'chiradi)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Kirish huquqi")
     _ensure_staff_tables(conn)
     st = conn.execute("SELECT * FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
     if not st:
@@ -2631,7 +2717,7 @@ async def staff_access_set(staff_id: int, body: dict, x_telegram_init_data: str 
             conn.close()
             raise HTTPException(400, "Login 3-20 belgi, kichik lotin harf bilan boshlansin (harf, raqam, _).")
         # login band emasligini tekshiramiz (boshqa xodimda)
-        dup = conn.execute("SELECT id FROM staff WHERE lower(login)=? AND id<>?", (login, staff_id)).fetchone()
+        dup = conn.execute("SELECT id FROM staff WHERE business_id=? AND lower(login)=? AND id<>?", (biz["id"], login, staff_id)).fetchone()
         if dup:
             conn.close()
             raise HTTPException(400, "Bu login band. Boshqasini tanlang.")
@@ -2646,8 +2732,8 @@ async def staff_access_set(staff_id: int, body: dict, x_telegram_init_data: str 
     from main import hash_password
     if password:
         ph = hash_password(password)
-        conn.execute("UPDATE staff SET login=?, pass_hash=?, perms=?, can_login=? WHERE id=?",
-                     (login, ph, json.dumps(perms), can, staff_id))
+        conn.execute("UPDATE staff SET login=?, pass_hash=?, pass_plain=?, perms=?, can_login=? WHERE id=?",
+                     (login, ph, password, json.dumps(perms), can, staff_id))
     else:
         conn.execute("UPDATE staff SET login=?, perms=?, can_login=? WHERE id=?",
                      (login, json.dumps(perms), can, staff_id))
@@ -2664,12 +2750,17 @@ async def staff_auth_login(body: dict):
     """Xodim login/parol bilan kiradi (Telegram shart emas). Token qaytaradi."""
     conn = db()
     _ensure_staff_tables(conn)
+    firm_login = (body.get("firm_login") or "").strip().lower()
     login = _norm_login(body.get("login"))
     password = (body.get("password") or "").strip()
-    if not login or not password:
+    if not firm_login or not login or not password:
         conn.close()
-        raise HTTPException(400, "Login va parolni kiriting.")
-    st = conn.execute("SELECT * FROM staff WHERE lower(login)=?", (login,)).fetchone()
+        raise HTTPException(400, "Firma logini, xodim logini va parolni kiriting.")
+    firm = conn.execute("SELECT * FROM businesses WHERE lower(biz_login)=? AND status='active'", (firm_login,)).fetchone()
+    if not firm:
+        conn.close()
+        raise HTTPException(401, "Firma logini noto'g'ri.")
+    st = conn.execute("SELECT * FROM staff WHERE business_id=? AND lower(login)=?", (firm["id"], login)).fetchone()
     if not st or not (_row_val(st, "can_login", 0) or 0) or (st["status"] or "") != "active":
         conn.close()
         raise HTTPException(401, "Login yoki parol noto'g'ri.")
@@ -2841,6 +2932,7 @@ def _period_shift(period, anchor, direction):
 async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Statistika")
     bid = biz["id"]
     start, end, label, buckets = _period_bounds(period, anchor)
     n = len(buckets)
@@ -3153,6 +3245,7 @@ def _kassa_add_for_order(conn, order, actor_user_id):
 async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     start, end, dstr = _day_bounds(day)
     rows = conn.execute(
         "SELECT s.*, u.name AS who FROM sales s LEFT JOIN users u ON u.id=s.user_id "
@@ -3183,6 +3276,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
 async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     item_id = int(body.get("item_id") or 0) or None
     name = (body.get("name") or "").strip()
     unit = "dona"
@@ -3256,6 +3350,7 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
     """Bitta chekda bir nechta mahsulot. Avval hammasi tekshiriladi, keyin yoziladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     raw_items = body.get("items") or []
     if not isinstance(raw_items, list) or not raw_items:
         conn.close()
@@ -3385,6 +3480,7 @@ async def kassa_delete_chek(chek_no: int, x_telegram_init_data: str = Header(def
     """Chekni butun o'chirish: hamma qatorlari, ombor va qarz daftari qaytariladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     rows = conn.execute(
         "SELECT * FROM sales WHERE business_id=? AND chek_no=? AND source='manual'",
         (biz["id"], chek_no),
@@ -3417,6 +3513,7 @@ async def kassa_delete_chek(chek_no: int, x_telegram_init_data: str = Header(def
 async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     r = conn.execute("SELECT * FROM sales WHERE id=? AND business_id=?", (sale_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -4922,6 +5019,7 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
     """Joriy kabinetga kelgan buyurtmalar."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "buyurtma")
     actor = resolve_actor(conn, me, actor_type)
     kind, actor_id, _owner = _actor_identity(actor)
     rows = conn.execute(
