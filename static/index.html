@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1449 -->
+<title>Platforma</title><!-- BUILD: v1450 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2960,11 +2960,11 @@
     });
   }
   function orderStatusText(st){
-    var m={new:"Yangi",accepted:"Qabul qilindi",rejected:"Rad etildi",done:"Yakunlandi",cancelled:"Bekor qilindi"};
+    var m={new:"Yangi",accepted:"Qabul qilindi",rejected:"Rad etildi",done:"Yakunlandi",cancelled:"Bekor qilindi",tayyor:"Tayyor — kuryer qidirilmoqda"};
     return m[st] || st || "—";
   }
   function orderStatusClass(st){
-    if(st==="accepted" || st==="done") return "credit";
+    if(st==="accepted" || st==="done" || st==="tayyor") return "credit";
     if(st==="rejected" || st==="cancelled") return "debit";
     return "";
   }
@@ -3170,9 +3170,13 @@
     var actions = '';
     if(mode==="inbox"){
       if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
-      else if(o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      else if(o.status==="accepted"){
+        var readyBtn = (o.order_type==="delivery") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
+        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+'<button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      }
+      else if(o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     } else {
-      if(o.status==="new" || o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      if(o.status==="new" || o.status==="accepted" || o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
     var cls = 'item order-card' + (o.status==="new" ? ' order-new' : '') + (o.is_unread ? ' order-unread' : '');
     var unread = o.is_unread ? '<div class="order-unread-pill">🔔 '+(mode==="inbox"?'Yangi buyurtma/xabar':'Status yoki xabar yangilandi')+'</div>' : '';
@@ -3185,8 +3189,12 @@
     if(!o) return "";
     if(mode==="inbox"){
       if(o.status==="new") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
-      if(o.status==="accepted") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
-    } else if(o.status==="new" || o.status==="accepted"){
+      if(o.status==="accepted"){
+        var rb = (o.order_type==="delivery") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
+        return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+rb+'<button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      }
+      if(o.status==="tayyor") return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+    } else if(o.status==="new" || o.status==="accepted" || o.status==="tayyor"){
       return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
     return "";
