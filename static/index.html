@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1445 -->
+<title>Platforma</title><!-- BUILD: v1446 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -701,6 +701,10 @@
             <div class="field"><label>Parol</label><input class="input" id="loginPass" type="password" placeholder="Parolingiz" /></div>
             <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Kirish</button>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
+            <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)">
+              <button class="btn btn-soft btn-block" id="goStaffLogin">👥 Xodimlar uchun kirish</button>
+              <div class="idesc" style="margin-top:6px">Do'kon xodimi bo'lsangiz — firma va o'z login-parolingiz bilan kiring.</div>
+            </div>
           </div>
           <div id="loginStep2" hidden>
             <div style="text-align:center;padding:20px 0">
@@ -751,6 +755,7 @@
           <div class="field"><label>Xodim paroli</label><input class="input" id="slPass" type="password" autocomplete="current-password" placeholder="Parol"></div>
           <button class="btn btn-primary btn-block" id="slEnter" style="margin-top:6px">Kirish</button>
           <div class="idesc" id="slErr" style="color:#e53935;text-align:center;margin-top:10px;display:none"></div>
+          <div class="form-foot" style="margin-top:14px"><b id="slBack">← Oddiy kirishga qaytish</b></div>
         </div>
       </section>
 
@@ -7926,6 +7931,8 @@
     if(el("slErr")) el("slErr").style.display="none";
     nav("staff-login");
   }
+  el("goStaffLogin") && el("goStaffLogin").addEventListener("click", function(){ showStaffLogin(); });
+  el("slBack") && el("slBack").addEventListener("click", function(){ nav("login"); });
   function staffBoot(){
     api("GET","/api/staff-auth/me").then(function(d){
       STAFF_INFO = d;
