@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1439 -->
+<title>Platforma</title><!-- BUILD: v1440 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1246,8 +1246,8 @@
         <div class="menu-grid2">
           <div class="menu-card" data-nav="cab-contractors"><div class="menu-ic">🤝</div><div class="menu-main"><h4>Kontragentlar</h4><p>Hamkorlar bazasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           <div class="menu-card" style="opacity:.6"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kiruvchi</h4><p>Kelgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
-          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📤</div><div class="menu-main"><h4>Chiquvchi</h4><p>Yuborilgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
-          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📋</div><div class="menu-main"><h4>Ichki</h4><p>Firma ichki hujjatlari</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" data-nav="cab-doc-out"><div class="menu-ic">📤</div><div class="menu-main"><h4>Chiquvchi</h4><p>Yuborilgan hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+          <div class="menu-card" data-nav="cab-doc-in"><div class="menu-ic">📋</div><div class="menu-main"><h4>Ichki</h4><p>Firma ichki hujjatlari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           <div class="menu-card" data-nav="cab-doc-new"><div class="menu-ic">✍️</div><div class="menu-main"><h4>Hujjat yaratish</h4><p>Tayyor shablon asosida</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
       </section>
@@ -1297,6 +1297,27 @@
         <div class="field"><label>Hujjat matni</label><textarea class="input" id="dcBody" rows="16" style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre" placeholder="Yuqoridan tur tanlab «Shablonni yuklash» tugmasini bosing — tayyor andoza shu yerga chiqadi. So'ng to'ldiring."></textarea></div>
         <button class="btn btn-primary btn-block" id="dcSave">💾 Hujjatni saqlash</button>
         <button class="btn btn-soft btn-block" id="dcCopy" style="margin-top:8px">📋 Nusxa olish</button>
+      </section>
+
+      <!-- CAB: ICHKI HUJJATLAR -->
+      <section class="screen" data-screen="cab-doc-in">
+        <button class="btn btn-primary btn-block" style="margin:2px 0 10px" id="docInNew">+ Yangi ichki hujjat</button>
+        <div id="docInList"></div>
+      </section>
+
+      <!-- CAB: CHIQUVCHI HUJJATLAR -->
+      <section class="screen" data-screen="cab-doc-out">
+        <button class="btn btn-primary btn-block" style="margin:2px 0 10px" id="docOutNew">+ Yangi chiquvchi hujjat</button>
+        <div id="docOutList"></div>
+      </section>
+
+      <!-- CAB: HUJJAT KO'RISH -->
+      <section class="screen" data-screen="cab-doc-view">
+        <div id="docViewHead" style="margin-bottom:8px"></div>
+        <textarea class="input" id="dvBody" rows="16" style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre"></textarea>
+        <button class="btn btn-primary btn-block" id="dvSave" style="margin-top:8px">💾 O'zgarishni saqlash</button>
+        <button class="btn btn-soft btn-block" id="dvCopy" style="margin-top:8px">📋 Nusxa olish</button>
+        <button class="btn btn-soft btn-block" id="dvDel" style="margin-top:8px">🗑️ O'chirish</button>
       </section>
 
       <!-- CAB: XODIM FORMA -->
@@ -2519,7 +2540,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2527,7 +2548,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5581,7 +5602,8 @@
     // Kontragent faqat chiquvchida kerak
     el("dcContrWrap").style.display = (dir==="chiquvchi") ? "block" : "none";
   }
-  function docNewOpen(){
+  function docNewOpen(preDir){
+    if(preDir && el("dcDir")) el("dcDir").value = preDir;
     // Sana bugun
     var t=new Date(); el("dcDate").value = t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2);
     el("dcTitle").value=""; el("dcNum").value=""; el("dcBody").value="";
@@ -5821,6 +5843,81 @@
     if(fn) return fn(c);
     return DOC_TPL["Erkin shakldagi hujjat"](c);
   }
+
+  /* ---------- HUJJATLAR RO'YXATI + KO'RISH ---------- */
+  var DOC_DIR_UZ = { ichki:"Ichki", chiquvchi:"Chiquvchi", kiruvchi:"Kiruvchi" };
+  var curDocDir = "ichki";
+  function loadDocs(dir){
+    curDocDir = dir;
+    var box = el(dir==="ichki" ? "docInList" : "docOutList");
+    box.innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/documents?direction="+encodeURIComponent(dir)).then(function(d){
+      renderDocs(dir, d.documents||[]);
+    }).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  function renderDocs(dir, list){
+    var box = el(dir==="ichki" ? "docInList" : "docOutList");
+    window.__docs = window.__docs || {};
+    if(!list.length){ box.innerHTML = '<div class="item" style="display:block">Hozircha hujjat yo\'q. "+ Yangi" bilan yarating.</div>'; return; }
+    box.innerHTML = list.map(function(dd){
+      window.__docs[dd.id] = dd;
+      var meta = [];
+      if(dd.number) meta.push("№ "+esc(dd.number));
+      if(dd.doc_date) meta.push(esc(dd.doc_date));
+      if(dd.contractor_name) meta.push(esc(dd.contractor_name));
+      var preview = (dd.body||"").replace(/\s+/g," ").trim().slice(0,60);
+      return '<div class="item" style="display:block;margin-bottom:7px" data-doc-open="'+dd.id+'">'+
+        '<div class="iname">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
+        (meta.length?'<div class="idesc" style="margin-top:2px">'+meta.join(" · ")+'</div>':'')+
+        (preview?'<div class="idesc" style="margin-top:2px;opacity:.7">'+esc(preview)+'...</div>':'')+
+      '</div>';
+    }).join("");
+  }
+  var curDocId = null;
+  function openDocView(id){
+    var dd = (window.__docs||{})[id];
+    if(!dd) return;
+    curDocId = id;
+    el("docViewHead").innerHTML =
+      '<div style="font-weight:800;font-size:16px">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
+      '<div class="idesc" style="margin-top:2px">'+esc(DOC_DIR_UZ[dd.direction]||dd.direction)+
+        (dd.number?" · № "+esc(dd.number):"")+(dd.doc_date?" · "+esc(dd.doc_date):"")+
+        (dd.contractor_name?" · "+esc(dd.contractor_name):"")+'</div>';
+    el("dvBody").value = dd.body||"";
+    nav("cab-doc-view");
+  }
+  el("docInList") && el("docInList").addEventListener("click", function(e){
+    var o=e.target.closest("[data-doc-open]"); if(o) openDocView(parseInt(o.getAttribute("data-doc-open"),10));
+  });
+  el("docOutList") && el("docOutList").addEventListener("click", function(e){
+    var o=e.target.closest("[data-doc-open]"); if(o) openDocView(parseInt(o.getAttribute("data-doc-open"),10));
+  });
+  el("docInNew") && el("docInNew").addEventListener("click", function(){ docNewOpen("ichki"); nav("cab-doc-new"); });
+  el("docOutNew") && el("docOutNew").addEventListener("click", function(){ docNewOpen("chiquvchi"); nav("cab-doc-new"); });
+  el("dvSave") && el("dvSave").addEventListener("click", function(){
+    if(!curDocId) return;
+    var dd = (window.__docs||{})[curDocId] || {};
+    if(!el("dvBody").value.trim()){ showMsg("Matn bo'sh bo'lishi mumkin emas."); return; }
+    api("PUT","/api/documents/"+curDocId,{
+      direction: dd.direction, doc_type: dd.doc_type, title: dd.title,
+      number: dd.number, doc_date: dd.doc_date, contractor_id: dd.contractor_id,
+      body: el("dvBody").value
+    }).then(function(){ showMsg("Saqlandi ✅"); if(dd.body!==undefined) dd.body=el("dvBody").value; })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  el("dvCopy") && el("dvCopy").addEventListener("click", function(){
+    if(!el("dvBody").value.trim()){ showMsg("Matn bo'sh."); return; }
+    copyText(el("dvBody").value);
+  });
+  el("dvDel") && el("dvDel").addEventListener("click", function(){
+    if(!curDocId) return;
+    askConfirm({ text:"Bu hujjat o'chirilsinmi?", okText:"O'chirish", danger:true }).then(function(ok){
+      if(!ok) return;
+      var dir = ((window.__docs||{})[curDocId]||{}).direction || curDocDir;
+      api("DELETE","/api/documents/"+curDocId).then(function(){ showMsg("O'chirildi"); nav(dir==="chiquvchi"?"cab-doc-out":"cab-doc-in"); })
+        .catch(function(e){ showMsg(e.message); });
+    });
+  });
 
   /* ---------- STATISTIKA ---------- */
   var statPeriod = "oy", statAnchor = "", statMetric = "rev", statData = null;
@@ -6504,6 +6601,8 @@
     else if(screen==="cab-tabel") loadTabel();
     else if(screen==="cab-contractors") loadContractors();
     else if(screen==="cab-doc-new") docNewOpen();
+    else if(screen==="cab-doc-in") loadDocs("ichki");
+    else if(screen==="cab-doc-out") loadDocs("chiquvchi");
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
