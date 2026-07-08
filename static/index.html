@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1443 -->
+<title>Platforma</title><!-- BUILD: v1445 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -738,6 +738,27 @@
       </section>
 
       <!-- CABINET (BIZNES) -->
+      <!-- XODIM: KIRISH OYNASI -->
+      <section class="screen" data-screen="staff-login">
+        <div style="max-width:420px;margin:0 auto;padding:24px 4px">
+          <div style="text-align:center;margin-bottom:18px">
+            <div style="font-size:40px">🏪</div>
+            <div style="font-size:20px;font-weight:800;margin-top:6px">Xodim kirishi</div>
+            <div class="idesc" style="margin-top:4px">Do'kon rahbari bergan login va parol bilan kiring.</div>
+          </div>
+          <div class="field"><label>Firma logini</label><input class="input" id="slFirm" autocomplete="off" placeholder="masalan: biz123456" style="text-transform:lowercase"></div>
+          <div class="field"><label>Xodim logini</label><input class="input" id="slLogin" autocomplete="username" placeholder="masalan: vali01" style="text-transform:lowercase"></div>
+          <div class="field"><label>Xodim paroli</label><input class="input" id="slPass" type="password" autocomplete="current-password" placeholder="Parol"></div>
+          <button class="btn btn-primary btn-block" id="slEnter" style="margin-top:6px">Kirish</button>
+          <div class="idesc" id="slErr" style="color:#e53935;text-align:center;margin-top:10px;display:none"></div>
+        </div>
+      </section>
+
+      <!-- XODIM: BOSH SAHIFA (cheklangan) -->
+      <section class="screen" data-screen="staff-home">
+        <div id="staffHomeBody"></div>
+      </section>
+
       <section class="screen" data-screen="cabinet">
         <div class="cab-head">
           <div class="cab-logo" id="cabLogo">🛒</div>
@@ -1352,6 +1373,16 @@
         <div id="stAccessCard" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:var(--primary-tint,#f5f7ff)">
           <b>🔑 Ilovaga kirish huquqi</b>
           <div class="idesc" style="margin-top:2px">Xodim shu login-parol bilan ilovaga kirib, faqat siz belgilagan bo'limlarni ko'radi.</div>
+          <div id="stFirmLoginBox" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.04);font-size:13px">Firma logini (xodimga ayting): <b id="stFirmLogin">—</b></div>
+          <div id="stSavedBox" style="display:none;margin-top:8px;padding:10px;border-radius:10px;background:rgba(0,0,0,.04)">
+            <div style="font-weight:700;margin-bottom:4px">Saqlangan kirish ma'lumoti:</div>
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>Login: <b id="stSavedLogin">—</b></span></div>
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:4px">
+              <span>Parol: <b id="stSavedPass">••••••</b></span>
+              <button type="button" class="mini-btn" id="stPassToggle" style="height:32px;padding:0 12px">Ko'rsatish</button>
+            </div>
+            <div class="idesc" style="margin-top:4px">Bu ma'lumotni faqat siz ko'rasiz. Xodimga login-parolni yetkazib qo'ying.</div>
+          </div>
           <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:700"><input type="checkbox" id="stCanLogin" style="width:18px;height:18px"> Kirishga ruxsat berish</label>
           <div id="stAccessFields" style="display:none;margin-top:10px">
             <div class="field"><label>Login</label><input class="input" id="stLogin" autocomplete="off" placeholder="masalan: vali01" style="text-transform:lowercase"></div>
@@ -1401,9 +1432,14 @@
   var TG = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if(TG){ try{ TG.ready(); TG.expand(); }catch(e){} }
   var INIT_DATA = TG ? (TG.initData || "") : "";
+  var STAFF_TOKEN = null;
+  try { STAFF_TOKEN = localStorage.getItem("koprik_staff_token") || null; } catch(e){}
+  var STAFF_INFO = null;
+  function authHeader(){ return STAFF_TOKEN ? ("staff:" + STAFF_TOKEN) : INIT_DATA; }
 
   function api(method, path, body){
-    var opts = { method: method, headers: { "X-Telegram-Init-Data": INIT_DATA } };
+    var opts = { method: method, headers: { "X-Telegram-Init-Data": authHeader() } };
+    if(STAFF_TOKEN) opts.headers["X-Staff-Token"] = STAFF_TOKEN;
     if(body !== undefined && body !== null){
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
@@ -1420,7 +1456,8 @@
   }
   function mediaUrl(fileId){ return "/media/" + fileId; }
   function uploadRaw(method, path, file){
-    var opts = { method: method, headers: { "X-Telegram-Init-Data": INIT_DATA } };
+    var opts = { method: method, headers: { "X-Telegram-Init-Data": authHeader() } };
+    if(STAFF_TOKEN) opts.headers["X-Staff-Token"] = STAFF_TOKEN;
     if(file){
       opts.headers["Content-Type"] = file.type || "application/octet-stream";
       opts.body = file;
@@ -2576,7 +2613,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2603,6 +2640,9 @@
     el("tbHome").style.display = home ? "flex" : "none";
     el("tbSub").style.display = home ? "none" : "flex";
     if(!home) el("tbTitle").textContent = titles[screen] || "";
+    // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
+    if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
+    if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
@@ -5289,7 +5329,7 @@
   var editStaffId = null;
   function loadStaff(){
     el("staffList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
-    api("GET","/api/staff").then(renderStaff)
+    api("GET","/api/staff").then(function(d){ window.__firmLogin = d.firm_login || ""; renderStaff(d); })
       .catch(function(e){ el("staffList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function staffCard(x, fired){
@@ -5358,6 +5398,17 @@
       el("stPermKassa").checked = pr.indexOf("kassa")>=0;
       el("stPermOmbor").checked = pr.indexOf("ombor")>=0;
       el("stPermBuyurtma").checked = pr.indexOf("buyurtma")>=0;
+      // Firma logini
+      if(el("stFirmLogin")) el("stFirmLogin").textContent = window.__firmLogin || "—";
+      // Saqlangan login/parol (yulduzcha, Ko'rsatish bilan)
+      var hasCreds = x && (x.login || x.password);
+      if(el("stSavedBox")){
+        el("stSavedBox").style.display = hasCreds ? "block" : "none";
+        el("stSavedLogin").textContent = (x && x.login) ? x.login : "—";
+        window.__stPassPlain = (x && x.password) ? x.password : "";
+        el("stSavedPass").textContent = "••••••";
+        if(el("stPassToggle")) el("stPassToggle").textContent = "Ko'rsatish";
+      }
     }
     stLoadProfs(x ? x.profession : "").catch(function(e){ showMsg(e.message); });
     nav("cab-staff-form");
@@ -5388,6 +5439,11 @@
   });
   el("stCanLogin") && el("stCanLogin").addEventListener("change", function(){
     el("stAccessFields").style.display = this.checked ? "block" : "none";
+  });
+  el("stPassToggle") && el("stPassToggle").addEventListener("click", function(){
+    var shown = el("stSavedPass").textContent !== "••••••";
+    if(shown){ el("stSavedPass").textContent = "••••••"; this.textContent = "Ko'rsatish"; }
+    else { el("stSavedPass").textContent = window.__stPassPlain || "(parol saqlanmagan)"; this.textContent = "Yashirish"; }
   });
   el("stLogin") && el("stLogin").addEventListener("input", function(){
     this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g,"");
@@ -7860,7 +7916,81 @@
   function toggleTheme(){ var d=document.documentElement; d.setAttribute("data-theme", d.getAttribute("data-theme")==="dark"?"light":"dark"); setIcon(); }
 
   /* ---------- init ---------- */
+  /* ---------- XODIM REJIMI (Faza 2) ---------- */
+  var STAFF_SECTIONS = {
+    kassa:   { title:"Kassa", ic:"🧾", desc:"Savdo daftari va kunlik tushum", nav:"cab-kassa" },
+    ombor:   { title:"Ombor", ic:"📦", desc:"Qoldiq va kirim-chiqim", nav:"cab-ombor" },
+    buyurtma:{ title:"Buyurtmalar", ic:"📥", desc:"Kelgan buyurtma va yozilishlar", nav:"cab-orders" }
+  };
+  function showStaffLogin(){
+    if(el("slErr")) el("slErr").style.display="none";
+    nav("staff-login");
+  }
+  function staffBoot(){
+    api("GET","/api/staff-auth/me").then(function(d){
+      STAFF_INFO = d;
+      loggedIn = true;
+      // Orqaga tugma xodim bo'limlaridan staff-home ga qaytsin
+      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home";
+      renderStaffHome(d);
+      nav("staff-home");
+    }).catch(function(){
+      // Token yaroqsiz — tozalab, login oynasi
+      STAFF_TOKEN=null; STAFF_INFO=null;
+      try { localStorage.removeItem("koprik_staff_token"); } catch(e){}
+      showStaffLogin();
+    });
+  }
+  function renderStaffHome(d){
+    var perms = d.perms || [];
+    var cards = perms.map(function(k){
+      var sc = STAFF_SECTIONS[k]; if(!sc) return "";
+      return '<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+    }).join("");
+    if(!cards) cards = '<div class="item" style="display:block">Sizga hali birorta bo\'lim ruxsat etilmagan. Rahbaringizga murojaat qiling.</div>';
+    el("staffHomeBody").innerHTML =
+      '<div style="padding:14px 2px 6px">'+
+        '<div style="font-size:13px;color:var(--muted,#6b7280)">Xush kelibsiz,</div>'+
+        '<div style="font-size:20px;font-weight:800">'+esc(d.name||"Xodim")+'</div>'+
+        '<div class="idesc" style="margin-top:2px">🏪 '+esc(d.business_name||"")+'</div>'+
+      '</div>'+
+      '<div class="menu-grid2" style="margin-top:8px">'+cards+'</div>'+
+      '<button class="btn btn-soft btn-block" id="staffLogout" style="margin-top:16px">🚪 Chiqish</button>';
+  }
+  // Login tugmasi
+  el("slEnter") && el("slEnter").addEventListener("click", function(){
+    var firm = (el("slFirm").value||"").trim().toLowerCase();
+    var login = (el("slLogin").value||"").trim().toLowerCase();
+    var pass = (el("slPass").value||"").trim();
+    if(!firm || !login || !pass){ el("slErr").textContent="Firma logini, xodim logini va parolni kiriting."; el("slErr").style.display="block"; return; }
+    el("slEnter").disabled = true; el("slEnter").textContent = "Kirilyapti...";
+    api("POST","/api/staff-auth",{ firm_login:firm, login:login, password:pass }).then(function(r){
+      STAFF_TOKEN = r.token;
+      try { localStorage.setItem("koprik_staff_token", r.token); } catch(e){}
+      el("slPass").value=""; el("slEnter").disabled=false; el("slEnter").textContent="Kirish";
+      staffBoot();
+    }).catch(function(e){
+      el("slEnter").disabled=false; el("slEnter").textContent="Kirish";
+      el("slErr").textContent = e.message; el("slErr").style.display="block";
+    });
+  });
+  el("slLogin") && el("slLogin").addEventListener("input", function(){ this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,""); });
+  el("slFirm") && el("slFirm").addEventListener("input", function(){ this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,""); });
+  // Chiqish (delegatsiya — tugma dinamik)
+  document.addEventListener("click", function(e){
+    if(e.target.closest("#staffLogout")){
+      askConfirm({ text:"Ilovadan chiqasizmi?", okText:"Chiqish", danger:true }).then(function(ok){
+        if(!ok) return;
+        api("POST","/api/staff-auth/logout").catch(function(){});
+        STAFF_TOKEN=null; STAFF_INFO=null; loggedIn=false;
+        try { localStorage.removeItem("koprik_staff_token"); } catch(e2){}
+        showStaffLogin();
+      });
+    }
+  });
+
   function boot(){
+    if(STAFF_TOKEN){ staffBoot(); return; }   // xodim rejimi
     try { renderMapChip(); renderElonRow(); renderYon(); setIcon(); } catch(e){}
     nav("home");
     loadElonCounts();
@@ -7882,7 +8012,13 @@
         loadHomeMap();
         refreshOrderBadges();
       }
-    }).catch(function(){ loadHomeMap(); });
+    }).catch(function(err){
+      // Telegram ID oq ro'yxatda bo'lmasa (403) — bu ehtimol xodim. Login oynasini ko'rsatamiz.
+      var msg = (err && err.message) ? err.message : "";
+      if(msg.indexOf("Telegram")>=0 || msg.indexOf("ruxsat")>=0 || msg.indexOf("yopiq")>=0){
+        showStaffLogin();
+      } else { loadHomeMap(); }
+    });
     handleDeepLink();
   }
   function bootWhenReady(){
