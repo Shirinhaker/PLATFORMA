@@ -703,6 +703,8 @@ def _ensure_pay_columns(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
     if "username" not in cols:
         conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
+    if "director" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN director TEXT DEFAULT ''")
     try:
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_businesses_username "
                      "ON businesses(lower(username)) WHERE COALESCE(username,'')<>''")
@@ -732,6 +734,7 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     new_pay_qr = keep("pay_qr", _row_val(biz, "pay_qr", ""))
     # v1425: username (ixtiyoriy, band emasligi tekshiriladi)
     new_username = _row_val(biz, "username", "") or ""
+    new_director = keep("director", _row_val(biz, "director", ""))
     if "username" in b:
         cand = _norm_username(b.get("username"))
         err = _username_error(cand)
@@ -752,10 +755,10 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
     conn.execute(
         """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
-           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=?, username=? WHERE id=?""",
+           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=?, username=?, director=? WHERE id=?""",
         (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
          new_hours, new_addr, new_lat, new_lng,
-         new_pay_card, new_pay_holder, new_pay_qr, new_username, biz["id"]),
+         new_pay_card, new_pay_holder, new_pay_qr, new_username, new_director, biz["id"]),
     )
     # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
     # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
@@ -2339,6 +2342,140 @@ async def contractors_delete(cid: int, x_telegram_init_data: str = Header(defaul
         conn.close()
         raise HTTPException(404, "Kontragent topilmadi.")
     conn.execute("DELETE FROM contractors WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ================== HUJJATLAR (M2: Hujjat yaratish) ==================
+_DOC_DIRECTIONS = ("ichki", "kiruvchi", "chiquvchi")
+
+
+def _ensure_documents(conn):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS documents("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "direction TEXT DEFAULT '', doc_type TEXT DEFAULT '', title TEXT DEFAULT '', "
+        "number TEXT DEFAULT '', doc_date TEXT DEFAULT '', contractor_id INTEGER, "
+        "body TEXT DEFAULT '', created_at INTEGER NOT NULL)")
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_biz ON documents(business_id, direction)")
+    except Exception:
+        pass
+
+
+def _doc_dict(r, contr_name=""):
+    return {"id": r["id"], "direction": r["direction"] or "", "doc_type": r["doc_type"] or "",
+            "title": r["title"] or "", "number": r["number"] or "", "doc_date": r["doc_date"] or "",
+            "contractor_id": _row_val(r, "contractor_id", None), "contractor_name": contr_name,
+            "body": r["body"] or "", "created_at": r["created_at"]}
+
+
+@router.get("/documents")
+async def documents_list(direction: str = "", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    if direction in _DOC_DIRECTIONS:
+        rows = conn.execute("SELECT * FROM documents WHERE business_id=? AND direction=? ORDER BY id DESC",
+                            (biz["id"], direction)).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM documents WHERE business_id=? ORDER BY id DESC", (biz["id"],)).fetchall()
+    cmap = {}
+    try:
+        for c in conn.execute("SELECT id, name FROM contractors WHERE business_id=?", (biz["id"],)).fetchall():
+            cmap[c["id"]] = c["name"]
+    except Exception:
+        pass
+    out = [_doc_dict(r, cmap.get(_row_val(r, "contractor_id", None), "")) for r in rows]
+    conn.close()
+    return {"documents": out, "count": len(out)}
+
+
+@router.get("/documents/{doc_id}")
+async def document_get(doc_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    r = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Hujjat topilmadi.")
+    cn = ""
+    cid = _row_val(r, "contractor_id", None)
+    if cid:
+        try:
+            cr = conn.execute("SELECT name FROM contractors WHERE id=?", (cid,)).fetchone()
+            cn = cr["name"] if cr else ""
+        except Exception:
+            pass
+    conn.close()
+    return _doc_dict(r, cn)
+
+
+def _doc_fields(b):
+    direction = (b.get("direction") or "").strip().lower()
+    if direction not in _DOC_DIRECTIONS:
+        direction = "ichki"
+    cid = b.get("contractor_id")
+    try:
+        cid = int(cid) if cid else None
+    except Exception:
+        cid = None
+    return (direction, (b.get("doc_type") or "").strip()[:60], (b.get("title") or "").strip()[:200],
+            (b.get("number") or "").strip()[:40], (b.get("doc_date") or "").strip()[:20], cid,
+            (b.get("body") or "").strip())
+
+
+@router.post("/documents")
+async def document_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    f = _doc_fields(body)
+    if not f[6]:
+        conn.close()
+        raise HTTPException(400, "Hujjat matni bo'sh.")
+    cur = conn.execute(
+        "INSERT INTO documents(business_id, direction, doc_type, title, number, doc_date, contractor_id, body, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?)",
+        (biz["id"],) + f + (int(time.time()),),
+    )
+    conn.commit()
+    did = cur.lastrowid
+    conn.close()
+    return {"ok": True, "id": did}
+
+
+@router.put("/documents/{doc_id}")
+async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Hujjat topilmadi.")
+    f = _doc_fields(body)
+    conn.execute(
+        "UPDATE documents SET direction=?, doc_type=?, title=?, number=?, doc_date=?, contractor_id=?, body=? WHERE id=?",
+        f + (doc_id,),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/documents/{doc_id}")
+async def document_delete(doc_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
+    if not r:
+        conn.close()
+        raise HTTPException(404, "Hujjat topilmadi.")
+    conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
     conn.commit()
     conn.close()
     return {"ok": True}
