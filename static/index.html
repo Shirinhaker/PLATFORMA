@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1448 -->
+<title>Platforma</title><!-- BUILD: v1449 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -444,6 +444,7 @@
   .order-type-btn.on{border-color:var(--primary);background:var(--primary-tint);color:var(--primary);}
   .order-map-wrap{position:relative;height:240px;border-radius:16px;overflow:hidden;background:var(--map-land);border:1px solid var(--line);box-shadow:var(--shadow);margin-top:8px;}
   #orderMap{width:100%;height:100%;}
+  #spMap{width:100%;height:100%;}
   .order-center-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none;}
   .order-map-help{position:absolute;left:10px;right:10px;top:10px;z-index:501;text-align:center;pointer-events:none;}
   .order-map-help span{display:inline-block;background:var(--card);color:var(--ink);padding:7px 10px;border-radius:11px;font-size:12px;font-weight:700;box-shadow:var(--shadow);}
@@ -1121,6 +1122,11 @@
           <div class="field"><label>Ko'rinishim</label>
             <div class="vis-card" data-vis="1"><span class="v-ic">✅</span><div><h5>Ko'rinaman</h5><p>Qidiruv va xaritada mutaxasis sifatida chiqaman.</p></div></div>
             <div class="vis-card on" data-vis="0"><span class="v-ic">🚫</span><div><h5>Ko'rinmayman</h5><p>Hozircha oddiy foydalanuvchi bo'lib turaman.</p></div></div>
+          </div>
+          <div class="field"><label>📍 Joylashuvingiz <span style="font-weight:400;color:var(--soft)">(qidiruv va xaritada shu yerda chiqasiz)</span></label>
+            <div class="order-map-wrap"><div id="spMap"></div><div class="order-center-pin">📍</div><div class="order-map-help"><span>Xaritani suring — metka markazda turadi</span></div></div>
+            <div id="spMapInfo" class="idesc" style="margin-top:7px">Joy hali belgilanmagan</div>
+            <button type="button" class="btn btn-soft btn-block" id="spGeoBtn" style="margin-top:7px">📍 Hozirgi joylashuvimni aniqlash</button>
           </div>
           <button class="btn btn-primary btn-block" id="spSave">Saqlash</button>
         </div>
@@ -6905,6 +6911,48 @@
       }
     }).catch(function(){});
   }
+  var SPECMAP = null, SP_POINT = null;
+  function spMapInfoText(){
+    return SP_POINT ? ("📍 Belgilandi: " + SP_POINT.lat.toFixed(6) + ", " + SP_POINT.lng.toFixed(6)) : "Joy hali belgilanmagan";
+  }
+  function updateSpPointFromMap(){
+    if(!SPECMAP) return;
+    var c = SPECMAP.getCenter();
+    SP_POINT = { lat: c.lat, lng: c.lng };
+    if(el("spMapInfo")) el("spMapInfo").textContent = spMapInfoText();
+  }
+  function initSpecMap(){
+    if(typeof L === "undefined" || !el("spMap")){
+      if(el("spMapInfo")) el("spMapInfo").textContent = "Xarita yuklanmoqda. Birozdan keyin qayta urinib ko‘ring.";
+      return;
+    }
+    var start = SP_POINT ? [SP_POINT.lat, SP_POINT.lng] : (HOME_POINT ? [HOME_POINT.lat, HOME_POINT.lng] : (CENTER || [41.311, 69.280]));
+    if(!SPECMAP){
+      SPECMAP = L.map("spMap", { zoomControl:true, attributionControl:false }).setView(start, 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(SPECMAP);
+      SPECMAP.on("moveend", updateSpPointFromMap);
+      SPECMAP.on("click", function(e){ SPECMAP.setView(e.latlng, SPECMAP.getZoom()); });
+    } else {
+      SPECMAP.setView(start, 15);
+    }
+    if(el("spMapInfo")) el("spMapInfo").textContent = spMapInfoText();
+    setTimeout(function(){ try{ SPECMAP.invalidateSize(); if(SP_POINT) el("spMapInfo").textContent = spMapInfoText(); }catch(e){} }, 180);
+  }
+  el("spGeoBtn") && el("spGeoBtn").addEventListener("click", function(){
+    if(!navigator.geolocation){ showMsg("Qurilma joylashuvni qo'llab-quvvatlamaydi."); return; }
+    var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent="Aniqlanmoqda...";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      btn.disabled=false; btn.textContent=old;
+      var la=pos.coords.latitude, lo=pos.coords.longitude;
+      SP_POINT = { lat: la, lng: lo };
+      if(SPECMAP) SPECMAP.setView([la,lo], 16);
+      if(el("spMapInfo")) el("spMapInfo").textContent = spMapInfoText();
+    }, function(){
+      btn.disabled=false; btn.textContent=old;
+      showMsg("Joylashuvni aniqlab bo'lmadi. Xaritani qo'lda suring.");
+    }, { enableHighAccuracy:true, timeout:8000 });
+  });
+
   function loadSpecialist(){
     api("GET","/api/specialist").then(function(d){
       if(!d) return;
@@ -6917,6 +6965,13 @@
       el("govFields").style.display = gov ? "" : "none";
       setToggle(spScreen, "data-vis", d.visible?1:0);
       setToggle(spScreen, "data-avail", d.available?1:0);
+      // Joylashuv (lat/lng) — mavjud bo'lsa xaritaga qo'yamiz
+      if(d.lat!=null && d.lng!=null && isFinite(d.lat) && isFinite(d.lng)){
+        SP_POINT = { lat: parseFloat(d.lat), lng: parseFloat(d.lng) };
+      } else {
+        SP_POINT = null;
+      }
+      setTimeout(initSpecMap, 180);
     }).catch(function(){});
   }
 
@@ -7110,7 +7165,9 @@
       org:el("spOrg").value.trim(), dept:el("spDept").value.trim(), lavozim:el("spLavozim").value.trim(),
       work_hours:el("spWork").value.trim(), after_hours:el("spAfter").value.trim(),
       visible: getToggle(spScreen,"data-vis")==="1",
-      available: getToggle(spScreen,"data-avail")==="1"
+      available: getToggle(spScreen,"data-avail")==="1",
+      lat: SP_POINT ? SP_POINT.lat : null,
+      lng: SP_POINT ? SP_POINT.lng : null
     }).then(function(){ showMsg("Saqlandi ✅"); }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
