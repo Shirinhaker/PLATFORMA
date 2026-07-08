@@ -351,6 +351,7 @@ def init_db():
             note            TEXT DEFAULT '',
             status          TEXT NOT NULL DEFAULT 'pending', -- pending|accepted|completed|canceled
             driver_id       INTEGER,                         -- qabul qilgan haydovchi
+            src_order_id    INTEGER,                         -- #4: shu do'kon buyurtmasidan avtomatik yaratilgan bo'lsa
             created_at      INTEGER NOT NULL,
             accepted_at     INTEGER,
             FOREIGN KEY(customer_id) REFERENCES users(id) ON DELETE CASCADE
@@ -968,6 +969,9 @@ def _migrate(conn):
         "receiver_inn TEXT DEFAULT '', status TEXT DEFAULT '')")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_biz ON documents(business_id, direction)")
     # --- #1: Baholash va fikrlar ---
+    _rdc = [r["name"] for r in conn.execute("PRAGMA table_info(rides)").fetchall()]
+    if "src_order_id" not in _rdc:
+        conn.execute("ALTER TABLE rides ADD COLUMN src_order_id INTEGER")
     _bzc = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
     if "rating_sum" not in _bzc:
         conn.execute("ALTER TABLE businesses ADD COLUMN rating_sum INTEGER DEFAULT 0")
