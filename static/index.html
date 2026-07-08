@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1440 -->
+<title>Platforma</title><!-- BUILD: v1441 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -780,6 +780,7 @@
           <div class="field"><label>Ish vaqti</label><input class="input" id="bpHours" placeholder="8:00 – 23:00"></div>
           <div class="field"><label>Manzil</label><input class="input" id="bpAddr" placeholder="Tuman, mahalla, ko'cha"></div>
           <div class="field"><label>Rahbar F.I.Sh. (hujjatlar uchun)</label><input class="input" id="bpDirector" placeholder="Masalan: Aliyev Vali Akramovich"></div>
+          <div class="field"><label>STIR (INN) — hujjat almashinuvi uchun</label><input class="input" id="bpInn" inputmode="numeric" placeholder="9 xonali soliq raqami"></div>
           <div class="field"><label>Username (do'kon manzili)</label>
             <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="bpUsername" placeholder="dokonanvar" autocomplete="off" style="flex:1"></div>
             <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom orqali oson topadi. Ixtiyoriy.</div>
@@ -1245,7 +1246,7 @@
       <section class="screen" data-screen="cab-docs">
         <div class="menu-grid2">
           <div class="menu-card" data-nav="cab-contractors"><div class="menu-ic">🤝</div><div class="menu-main"><h4>Kontragentlar</h4><p>Hamkorlar bazasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-          <div class="menu-card" style="opacity:.6"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kiruvchi</h4><p>Kelgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" data-nav="cab-doc-inbox"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kiruvchi</h4><p>Kelgan hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           <div class="menu-card" data-nav="cab-doc-out"><div class="menu-ic">📤</div><div class="menu-main"><h4>Chiquvchi</h4><p>Yuborilgan hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           <div class="menu-card" data-nav="cab-doc-in"><div class="menu-ic">📋</div><div class="menu-main"><h4>Ichki</h4><p>Firma ichki hujjatlari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           <div class="menu-card" data-nav="cab-doc-new"><div class="menu-ic">✍️</div><div class="menu-main"><h4>Hujjat yaratish</h4><p>Tayyor shablon asosida</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1315,9 +1316,27 @@
       <section class="screen" data-screen="cab-doc-view">
         <div id="docViewHead" style="margin-bottom:8px"></div>
         <textarea class="input" id="dvBody" rows="16" style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre"></textarea>
+        <div id="dvSendWrap" style="display:none;margin-top:10px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:12px;background:var(--primary-tint,#f5f7ff)">
+          <b>📤 Boshqa firmaga yuborish</b>
+          <div class="idesc" style="margin:2px 0 8px">Qabul qiluvchi firmaning STIR (INN) raqamini kiriting. Hujjat unда «Kiruvchi» bo'lib ko'rinadi.</div>
+          <div style="display:flex;gap:6px">
+            <input class="input" id="dvSendInn" inputmode="numeric" placeholder="STIR (9 xonali)" style="flex:1;min-width:0">
+            <button class="mini-btn" id="dvSendBtn" style="flex:0 0 auto;height:44px;padding:0 14px">Yuborish</button>
+          </div>
+          <div class="idesc" id="dvSendStatus" style="margin-top:8px"></div>
+        </div>
         <button class="btn btn-primary btn-block" id="dvSave" style="margin-top:8px">💾 O'zgarishni saqlash</button>
         <button class="btn btn-soft btn-block" id="dvCopy" style="margin-top:8px">📋 Nusxa olish</button>
         <button class="btn btn-soft btn-block" id="dvDel" style="margin-top:8px">🗑️ O'chirish</button>
+        <div id="dvInboxActions" style="display:none;margin-top:8px">
+          <button class="btn btn-primary btn-block" id="dvAccept">✅ Qabul qilish</button>
+          <button class="btn btn-soft btn-block" id="dvReject" style="margin-top:8px">❌ Rad etish</button>
+        </div>
+      </section>
+
+      <!-- CAB: KIRUVCHI HUJJATLAR -->
+      <section class="screen" data-screen="cab-doc-inbox">
+        <div id="docInboxList"></div>
       </section>
 
       <!-- CAB: XODIM FORMA -->
@@ -2540,7 +2559,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2548,7 +2567,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5844,6 +5863,87 @@
     return DOC_TPL["Erkin shakldagi hujjat"](c);
   }
 
+  /* ---------- FIRMALARARO ALMASHINUV ---------- */
+  function docStatusBadge(st){
+    var map = {
+      "yuborilgan": ["#1e40af","rgba(37,99,235,.12)"],
+      "kutilmoqda": ["#b45309","rgba(230,161,0,.15)"],
+      "qabul qilindi": ["#188038","rgba(24,128,56,.12)"],
+      "rad etildi": ["#e53935","rgba(229,57,53,.12)"]
+    };
+    var c = map[st] || ["#6b7280","rgba(107,114,128,.12)"];
+    return '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:800;color:'+c[0]+';background:'+c[1]+'">'+esc(st)+'</span>';
+  }
+  // Kiruvchi hujjatlar
+  function loadInbox(){
+    el("docInboxList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
+    api("GET","/api/documents?direction=kiruvchi").then(function(d){
+      var list = d.documents||[];
+      window.__docs = window.__docs || {};
+      if(!list.length){ el("docInboxList").innerHTML = '<div class="item" style="display:block">Kiruvchi hujjat yo\'q. Boshqa firmalar sizning STIR raqamingizga hujjat yuborsa, shu yerda ko\'rinadi.</div>'; return; }
+      el("docInboxList").innerHTML = list.map(function(dd){
+        window.__docs[dd.id] = dd;
+        var meta = [];
+        if(dd.number) meta.push("№ "+esc(dd.number));
+        if(dd.doc_date) meta.push(esc(dd.doc_date));
+        if(dd.status) meta.push(docStatusBadge(dd.status));
+        return '<div class="item" style="display:block;margin-bottom:7px" data-inbox-open="'+dd.id+'">'+
+          '<div class="iname">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
+          '<div class="idesc" style="margin-top:2px">Yuboruvchi: '+esc(dd.sender_name||"?")+'</div>'+
+          (meta.length?'<div class="idesc" style="margin-top:2px">'+meta.join(" · ")+'</div>':'')+
+        '</div>';
+      }).join("");
+    }).catch(function(e){ el("docInboxList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
+  }
+  el("docInboxList") && el("docInboxList").addEventListener("click", function(e){
+    var o=e.target.closest("[data-inbox-open]"); if(o) openInboxView(parseInt(o.getAttribute("data-inbox-open"),10));
+  });
+  var curInboxId = null;
+  function openInboxView(id){
+    var dd = (window.__docs||{})[id]; if(!dd) return;
+    curInboxId = id;
+    el("docViewHead").innerHTML =
+      '<div style="font-weight:800;font-size:16px">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
+      '<div class="idesc" style="margin-top:2px">Kiruvchi · Yuboruvchi: '+esc(dd.sender_name||"?")+
+        (dd.number?" · № "+esc(dd.number):"")+(dd.doc_date?" · "+esc(dd.doc_date):"")+'</div>'+
+      '<div style="margin-top:6px">'+(dd.status?docStatusBadge(dd.status):"")+'</div>';
+    el("dvBody").value = dd.body||"";
+    el("dvBody").readOnly = true;
+    el("dvSendWrap").style.display = "none";
+    el("dvSave").style.display = "none";
+    el("dvDel").style.display = "none";
+    // Qabul/rad tugmalari (faqat hali javob berilmagan bo'lsa)
+    var actWrap = el("dvInboxActions");
+    if(dd.status==="kutilmoqda"){
+      actWrap.style.display = "block";
+    } else {
+      actWrap.style.display = "none";
+    }
+    nav("cab-doc-view");
+  }
+  function inboxRespond(action){
+    if(!curInboxId) return;
+    api("POST","/api/documents/"+curInboxId+"/respond",{ action: action })
+      .then(function(r){ showMsg(action==="qabul"?"Qabul qilindi ✅":"Rad etildi"); nav("cab-doc-inbox"); })
+      .catch(function(e){ showMsg(e.message); });
+  }
+  el("dvAccept") && el("dvAccept").addEventListener("click", function(){ inboxRespond("qabul"); });
+  el("dvReject") && el("dvReject").addEventListener("click", function(){
+    askConfirm({ text:"Hujjat rad etilsinmi?", okText:"Rad etish", danger:true }).then(function(ok){ if(ok) inboxRespond("rad"); });
+  });
+  // Yuborish tugmasi
+  el("dvSendBtn") && el("dvSendBtn").addEventListener("click", function(){
+    if(!curDocId) return;
+    var inn = (el("dvSendInn").value||"").trim();
+    if(inn.replace(/\D/g,"").length < 9){ showMsg("STIR raqamini to'g'ri kiriting (kamida 9 raqam)."); return; }
+    askConfirm({ text:"Hujjat STIR "+inn+" raqamli firmaga yuborilsinmi?", okText:"Yuborish" }).then(function(ok){
+      if(!ok) return;
+      api("POST","/api/documents/"+curDocId+"/send",{ receiver_inn: inn })
+        .then(function(r){ showMsg("Yuborildi ✅ ("+(r.receiver_name||"firma")+")"); nav("cab-doc-out"); })
+        .catch(function(e){ showMsg(e.message); });
+    });
+  });
+
   /* ---------- HUJJATLAR RO'YXATI + KO'RISH ---------- */
   var DOC_DIR_UZ = { ichki:"Ichki", chiquvchi:"Chiquvchi", kiruvchi:"Kiruvchi" };
   var curDocDir = "ichki";
@@ -5865,6 +5965,7 @@
       if(dd.number) meta.push("№ "+esc(dd.number));
       if(dd.doc_date) meta.push(esc(dd.doc_date));
       if(dd.contractor_name) meta.push(esc(dd.contractor_name));
+      if(dd.status) meta.push(docStatusBadge(dd.status));
       var preview = (dd.body||"").replace(/\s+/g," ").trim().slice(0,60);
       return '<div class="item" style="display:block;margin-bottom:7px" data-doc-open="'+dd.id+'">'+
         '<div class="iname">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
@@ -5878,12 +5979,26 @@
     var dd = (window.__docs||{})[id];
     if(!dd) return;
     curDocId = id;
+    // Kiruvchi rejimidan qaytgan bo'lsa — normal holatga tiklaymiz
+    el("dvBody").readOnly = false;
+    el("dvSave").style.display = "block";
+    el("dvDel").style.display = "block";
+    if(el("dvInboxActions")) el("dvInboxActions").style.display = "none";
     el("docViewHead").innerHTML =
       '<div style="font-weight:800;font-size:16px">'+esc(dd.doc_type||"Hujjat")+(dd.title?" — "+esc(dd.title):"")+'</div>'+
       '<div class="idesc" style="margin-top:2px">'+esc(DOC_DIR_UZ[dd.direction]||dd.direction)+
         (dd.number?" · № "+esc(dd.number):"")+(dd.doc_date?" · "+esc(dd.doc_date):"")+
         (dd.contractor_name?" · "+esc(dd.contractor_name):"")+'</div>';
     el("dvBody").value = dd.body||"";
+    // Chiquvchi hujjat uchun "Yuborish" bloki
+    var sendWrap = el("dvSendWrap");
+    if(dd.direction==="chiquvchi"){
+      sendWrap.style.display = "block";
+      el("dvSendInn").value = dd.receiver_inn || "";
+      el("dvSendStatus").innerHTML = dd.status ? ("Holat: "+docStatusBadge(dd.status)) : "";
+    } else {
+      sendWrap.style.display = "none";
+    }
     nav("cab-doc-view");
   }
   el("docInList") && el("docInList").addEventListener("click", function(e){
@@ -6553,6 +6668,7 @@
       el("bpAddr").value=b.address||"";
       el("bpUsername").value=b.username||"";
       if(el("bpDirector")) el("bpDirector").value=b.director||"";
+      if(el("bpInn")) el("bpInn").value=b.inn||"";
       window.__bizId = b.id||null;
       showBizShare(b.username||"", window.__bizId);
       el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
@@ -6603,6 +6719,7 @@
     else if(screen==="cab-doc-new") docNewOpen();
     else if(screen==="cab-doc-in") loadDocs("ichki");
     else if(screen==="cab-doc-out") loadDocs("chiquvchi");
+    else if(screen==="cab-doc-inbox") loadInbox();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
@@ -6744,7 +6861,8 @@
       address:el("bpAddr").value.trim(),
       pay_card:el("bpCard").value.trim(), pay_holder:el("bpHolder").value.trim(), pay_qr:bpQrUrl,
       username:(el("bpUsername").value||"").trim().toLowerCase().replace(/^@+/,""),
-      director:(el("bpDirector") ? el("bpDirector").value.trim() : "")
+      director:(el("bpDirector") ? el("bpDirector").value.trim() : ""),
+      inn:(el("bpInn") ? el("bpInn").value.trim() : "")
     };
     var bpLL = normalizeLatLng(
       pickedLatLng.bp && pickedLatLng.bp[0],
