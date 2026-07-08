@@ -705,6 +705,8 @@ def _ensure_pay_columns(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
     if "director" not in cols:
         conn.execute("ALTER TABLE businesses ADD COLUMN director TEXT DEFAULT ''")
+    if "inn" not in cols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN inn TEXT DEFAULT ''")
     try:
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_businesses_username "
                      "ON businesses(lower(username)) WHERE COALESCE(username,'')<>''")
@@ -735,6 +737,7 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     # v1425: username (ixtiyoriy, band emasligi tekshiriladi)
     new_username = _row_val(biz, "username", "") or ""
     new_director = keep("director", _row_val(biz, "director", ""))
+    new_inn = keep("inn", _row_val(biz, "inn", "")).strip()[:20]
     if "username" in b:
         cand = _norm_username(b.get("username"))
         err = _username_error(cand)
@@ -755,10 +758,10 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else biz["lng"]
     conn.execute(
         """UPDATE businesses SET name=?, yon=?, tur=?, descr=?, phone=?, telegram=?,
-           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=?, username=?, director=? WHERE id=?""",
+           work_hours=?, address=?, lat=?, lng=?, pay_card=?, pay_holder=?, pay_qr=?, username=?, director=?, inn=? WHERE id=?""",
         (new_name, new_yon, new_tur, new_descr, new_phone, new_tg,
          new_hours, new_addr, new_lat, new_lng,
-         new_pay_card, new_pay_holder, new_pay_qr, new_username, new_director, biz["id"]),
+         new_pay_card, new_pay_holder, new_pay_qr, new_username, new_director, new_inn, biz["id"]),
     )
     # 3-talab: biznes metkasi belgilanganda, agar bosh sahifa manzili HALI BO'SH bo'lsa,
     # o'sha joyning viloyat/tumani avtomatik bosh sahifa manziliga yoziladi.
@@ -2359,6 +2362,14 @@ def _ensure_documents(conn):
         "number TEXT DEFAULT '', doc_date TEXT DEFAULT '', contractor_id INTEGER, "
         "body TEXT DEFAULT '', created_at INTEGER NOT NULL)")
     try:
+        _dcols = [r["name"] for r in conn.execute("PRAGMA table_info(documents)").fetchall()]
+        for _c, _t in (("sender_business_id", "INTEGER"), ("sender_name", "TEXT DEFAULT ''"),
+                       ("receiver_inn", "TEXT DEFAULT ''"), ("status", "TEXT DEFAULT ''")):
+            if _c not in _dcols:
+                conn.execute("ALTER TABLE documents ADD COLUMN %s %s" % (_c, _t))
+    except Exception:
+        pass
+    try:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_biz ON documents(business_id, direction)")
     except Exception:
         pass
@@ -2368,7 +2379,10 @@ def _doc_dict(r, contr_name=""):
     return {"id": r["id"], "direction": r["direction"] or "", "doc_type": r["doc_type"] or "",
             "title": r["title"] or "", "number": r["number"] or "", "doc_date": r["doc_date"] or "",
             "contractor_id": _row_val(r, "contractor_id", None), "contractor_name": contr_name,
-            "body": r["body"] or "", "created_at": r["created_at"]}
+            "body": r["body"] or "", "created_at": r["created_at"],
+            "sender_name": _row_val(r, "sender_name", "") or "",
+            "receiver_inn": _row_val(r, "receiver_inn", "") or "",
+            "status": _row_val(r, "status", "") or ""}
 
 
 @router.get("/documents")
@@ -2479,6 +2493,84 @@ async def document_delete(doc_id: int, x_telegram_init_data: str = Header(defaul
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@router.post("/documents/{doc_id}/send")
+async def document_send(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Chiquvchi hujjatni STIR bo'yicha boshqa firmaga yuboradi (nusxasi 'kiruvchi' bo'ladi)."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    _ensure_pay_columns(conn)
+    doc = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
+    if not doc:
+        conn.close()
+        raise HTTPException(404, "Hujjat topilmadi.")
+    inn = (body.get("receiver_inn") or "").strip()
+    inn_digits = "".join(ch for ch in inn if ch.isdigit())
+    if len(inn_digits) < 9:
+        conn.close()
+        raise HTTPException(400, "STIR raqami noto'g'ri (kamida 9 raqam).")
+    # STIR bo'yicha qabul qiluvchi firmani topamiz
+    target = conn.execute(
+        "SELECT * FROM businesses WHERE replace(replace(COALESCE(inn,''),' ',''),'-','')=? AND status='active'",
+        (inn_digits,),
+    ).fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(404, "Bu STIR raqamli firma ilovada topilmadi. Firma ro'yxatdan o'tганини tekshiring.")
+    if target["id"] == biz["id"]:
+        conn.close()
+        raise HTTPException(400, "Hujjatni o'zingizga yubora olmaysiz.")
+    now = int(time.time())
+    # Qabul qiluvchi bazasiga 'kiruvchi' nusxa
+    conn.execute(
+        "INSERT INTO documents(business_id, direction, doc_type, title, number, doc_date, contractor_id, body, created_at, "
+        "sender_business_id, sender_name, receiver_inn, status) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (target["id"], "kiruvchi", doc["doc_type"], doc["title"], doc["number"], doc["doc_date"],
+         None, doc["body"], now, biz["id"], biz["name"], inn_digits, "kutilmoqda"),
+    )
+    # Yuboruvchining chiquvchi hujjatida holatni belgilaymiz
+    conn.execute("UPDATE documents SET status=?, receiver_inn=? WHERE id=?", ("yuborilgan", inn_digits, doc_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "receiver_name": target["name"]}
+
+
+@router.post("/documents/{doc_id}/respond")
+async def document_respond(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Kiruvchi hujjatni qabul qilish yoki rad etish."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_documents(conn)
+    doc = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
+    if not doc:
+        conn.close()
+        raise HTTPException(404, "Hujjat topilmadi.")
+    if (doc["direction"] or "") != "kiruvchi":
+        conn.close()
+        raise HTTPException(400, "Bu amal faqat kiruvchi hujjat uchun.")
+    action = (body.get("action") or "").strip()
+    if action not in ("qabul", "rad"):
+        conn.close()
+        raise HTTPException(400, "Amal noto'g'ri.")
+    new_status = "qabul qilindi" if action == "qabul" else "rad etildi"
+    conn.execute("UPDATE documents SET status=? WHERE id=?", (new_status, doc_id))
+    # Yuboruvchining nusxasida ham holatni yangilaymiz (agar topilsa)
+    sbid = _row_val(doc, "sender_business_id", None)
+    if sbid:
+        try:
+            conn.execute(
+                "UPDATE documents SET status=? WHERE business_id=? AND direction='chiquvchi' "
+                "AND doc_type=? AND COALESCE(number,'')=? AND COALESCE(body,'')=?",
+                (new_status, sbid, doc["doc_type"], doc["number"] or "", doc["body"] or ""),
+            )
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+    return {"ok": True, "status": new_status}
 
 
 # ================== STATISTIKA ==================
