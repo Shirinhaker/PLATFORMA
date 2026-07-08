@@ -1888,7 +1888,9 @@ def _ensure_staff_tables(conn):
                  "salary": "INTEGER DEFAULT 0", "hire_date": "TEXT DEFAULT ''",
                  "status": "TEXT DEFAULT 'active'", "note": "TEXT DEFAULT ''",
                  "user_id": "INTEGER", "created_at": "INTEGER", "fired_at": "INTEGER",
-                 "schedule_json": "TEXT DEFAULT ''"}
+                 "schedule_json": "TEXT DEFAULT ''",
+                 "login": "TEXT DEFAULT ''", "pass_hash": "TEXT DEFAULT ''",
+                 "perms": "TEXT DEFAULT ''", "can_login": "INTEGER DEFAULT 0"}
         for _col, _decl in _need.items():
             if _col not in _sc:
                 try:
@@ -1908,6 +1910,11 @@ def _ensure_staff_tables(conn):
             "staff_id INTEGER NOT NULL, date TEXT NOT NULL, status TEXT DEFAULT '', "
             "time_in TEXT DEFAULT '', time_out TEXT DEFAULT '', created_at INTEGER NOT NULL, "
             "UNIQUE(staff_id, date))")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS staff_sessions("
+            "token TEXT PRIMARY KEY, staff_id INTEGER NOT NULL, business_id INTEGER NOT NULL, "
+            "created_at INTEGER NOT NULL)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_staff_login ON staff(lower(login)) WHERE COALESCE(login,'')<>''")
     except Exception:
         pass
 
@@ -1923,13 +1930,40 @@ def _professions(conn, biz_id):
     return out
 
 
+_STAFF_PERM_KEYS = ("kassa", "ombor", "buyurtma")
+
+
+def _perms_parse(raw):
+    try:
+        arr = json.loads(raw) if raw else []
+    except Exception:
+        arr = []
+    if not isinstance(arr, list):
+        arr = []
+    return [p for p in _STAFF_PERM_KEYS if p in arr]
+
+
+def _perms_clean(arr):
+    if not isinstance(arr, list):
+        arr = []
+    return [p for p in _STAFF_PERM_KEYS if p in arr]
+
+
+def _norm_login(v):
+    return (v or "").strip().lower()
+
+
 def _staff_dict(r):
     return {"id": r["id"], "name": r["name"] or "", "profession": r["profession"] or "",
             "phone": r["phone"] or "", "salary": r["salary"] or 0,
             "hire_date": r["hire_date"] or "", "status": r["status"] or "active",
             "note": r["note"] or "", "created_at": r["created_at"],
             "fired_at": _row_val(r, "fired_at", None),
-            "schedule": _staff_schedule(_row_val(r, "schedule_json", "") or "")}
+            "schedule": _staff_schedule(_row_val(r, "schedule_json", "") or ""),
+            "login": _row_val(r, "login", "") or "",
+            "can_login": _row_val(r, "can_login", 0) or 0,
+            "has_pass": 1 if (_row_val(r, "pass_hash", "") or "") else 0,
+            "perms": _perms_parse(_row_val(r, "perms", "") or "")}
 
 
 def _staff_schedule(raw):
@@ -2571,6 +2605,126 @@ async def document_respond(doc_id: int, body: dict, x_telegram_init_data: str = 
     conn.commit()
     conn.close()
     return {"ok": True, "status": new_status}
+
+
+# ================== XODIM KIRISH HUQUQI (Faza 1) ==================
+@router.put("/staff/{staff_id}/access")
+async def staff_access_set(staff_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Rahbar xodimga login/parol/ruxsatlar beradi (yoki o'chiradi)."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    _ensure_staff_tables(conn)
+    st = conn.execute("SELECT * FROM staff WHERE id=? AND business_id=?", (staff_id, biz["id"])).fetchone()
+    if not st:
+        conn.close()
+        raise HTTPException(404, "Xodim topilmadi.")
+    can = 1 if str(body.get("can_login") or 0) in ("1", "true", "True") else 0
+    perms = _perms_clean(body.get("perms") or [])
+    login = _norm_login(body.get("login"))
+    password = (body.get("password") or "").strip()
+
+    if can:
+        if not login:
+            conn.close()
+            raise HTTPException(400, "Login kiriting.")
+        if len(login) < 3 or len(login) > 20 or not re.match(r"^[a-z][a-z0-9_]*$", login):
+            conn.close()
+            raise HTTPException(400, "Login 3-20 belgi, kichik lotin harf bilan boshlansin (harf, raqam, _).")
+        # login band emasligini tekshiramiz (boshqa xodimda)
+        dup = conn.execute("SELECT id FROM staff WHERE lower(login)=? AND id<>?", (login, staff_id)).fetchone()
+        if dup:
+            conn.close()
+            raise HTTPException(400, "Bu login band. Boshqasini tanlang.")
+        has_pass = bool(_row_val(st, "pass_hash", "") or "")
+        if not has_pass and not password:
+            conn.close()
+            raise HTTPException(400, "Yangi xodim uchun parol kiriting.")
+        if password and len(password) < 4:
+            conn.close()
+            raise HTTPException(400, "Parol kamida 4 belgi bo'lsin.")
+
+    from main import hash_password
+    if password:
+        ph = hash_password(password)
+        conn.execute("UPDATE staff SET login=?, pass_hash=?, perms=?, can_login=? WHERE id=?",
+                     (login, ph, json.dumps(perms), can, staff_id))
+    else:
+        conn.execute("UPDATE staff SET login=?, perms=?, can_login=? WHERE id=?",
+                     (login, json.dumps(perms), can, staff_id))
+    # O'chirilsa — barcha sessiyalarni bekor qilamiz
+    if not can:
+        conn.execute("DELETE FROM staff_sessions WHERE staff_id=?", (staff_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.post("/staff-auth")
+async def staff_auth_login(body: dict):
+    """Xodim login/parol bilan kiradi (Telegram shart emas). Token qaytaradi."""
+    conn = db()
+    _ensure_staff_tables(conn)
+    login = _norm_login(body.get("login"))
+    password = (body.get("password") or "").strip()
+    if not login or not password:
+        conn.close()
+        raise HTTPException(400, "Login va parolni kiriting.")
+    st = conn.execute("SELECT * FROM staff WHERE lower(login)=?", (login,)).fetchone()
+    if not st or not (_row_val(st, "can_login", 0) or 0) or (st["status"] or "") != "active":
+        conn.close()
+        raise HTTPException(401, "Login yoki parol noto'g'ri.")
+    from main import check_password
+    if not check_password(password, _row_val(st, "pass_hash", "") or ""):
+        conn.close()
+        raise HTTPException(401, "Login yoki parol noto'g'ri.")
+    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
+    token = secrets.token_urlsafe(24)
+    conn.execute("INSERT INTO staff_sessions(token, staff_id, business_id, created_at) VALUES(?,?,?,?)",
+                 (token, st["id"], st["business_id"], int(time.time())))
+    conn.commit()
+    result = {"ok": True, "token": token, "name": st["name"] or "Xodim",
+              "business_name": (biz["name"] if biz else ""),
+              "perms": _perms_parse(_row_val(st, "perms", "") or "")}
+    conn.close()
+    return result
+
+
+@router.get("/staff-auth/me")
+async def staff_auth_me(x_staff_token: str = Header(default="")):
+    """Token bo'yicha xodim ma'lumoti (2-fazada ilova shu bilan yuklanadi)."""
+    conn = db()
+    _ensure_staff_tables(conn)
+    token = (x_staff_token or "").strip()
+    if not token:
+        conn.close()
+        raise HTTPException(401, "Token yo'q.")
+    sess = conn.execute("SELECT * FROM staff_sessions WHERE token=?", (token,)).fetchone()
+    if not sess:
+        conn.close()
+        raise HTTPException(401, "Sessiya topilmadi. Qayta kiring.")
+    st = conn.execute("SELECT * FROM staff WHERE id=?", (sess["staff_id"],)).fetchone()
+    if not st or not (_row_val(st, "can_login", 0) or 0) or (st["status"] or "") != "active":
+        conn.execute("DELETE FROM staff_sessions WHERE token=?", (token,))
+        conn.commit()
+        conn.close()
+        raise HTTPException(401, "Kirish huquqi o'chirilgan.")
+    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (sess["business_id"],)).fetchone()
+    result = {"name": st["name"] or "Xodim", "business_name": (biz["name"] if biz else ""),
+              "perms": _perms_parse(_row_val(st, "perms", "") or "")}
+    conn.close()
+    return result
+
+
+@router.post("/staff-auth/logout")
+async def staff_auth_logout(x_staff_token: str = Header(default="")):
+    conn = db()
+    _ensure_staff_tables(conn)
+    token = (x_staff_token or "").strip()
+    if token:
+        conn.execute("DELETE FROM staff_sessions WHERE token=?", (token,))
+        conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 # ================== STATISTIKA ==================
