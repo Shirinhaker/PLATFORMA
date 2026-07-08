@@ -74,6 +74,8 @@ def init_db():
             biz_pass_hash TEXT,                             -- biznes uchun alohida parol
             status        TEXT DEFAULT 'active',
             map_visible   INTEGER DEFAULT 0,                -- bosh xaritada platforma ko'rsatadigan biznesmi
+            rating_sum    INTEGER DEFAULT 0,                -- baholar yig'indisi
+            rating_cnt    INTEGER DEFAULT 0,                -- baholar soni
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -94,6 +96,8 @@ def init_db():
             available     INTEGER DEFAULT 1,                -- bo'shman/bandman
             lat           REAL,
             lng           REAL,
+            rating_sum    INTEGER DEFAULT 0,
+            rating_cnt    INTEGER DEFAULT 0,
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -963,6 +967,24 @@ def _migrate(conn):
         "sender_business_id INTEGER, sender_name TEXT DEFAULT '', "
         "receiver_inn TEXT DEFAULT '', status TEXT DEFAULT '')")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_biz ON documents(business_id, direction)")
+    # --- #1: Baholash va fikrlar ---
+    _bzc = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
+    if "rating_sum" not in _bzc:
+        conn.execute("ALTER TABLE businesses ADD COLUMN rating_sum INTEGER DEFAULT 0")
+    if "rating_cnt" not in _bzc:
+        conn.execute("ALTER TABLE businesses ADD COLUMN rating_cnt INTEGER DEFAULT 0")
+    _spc = [r["name"] for r in conn.execute("PRAGMA table_info(specialists)").fetchall()]
+    if "rating_sum" not in _spc:
+        conn.execute("ALTER TABLE specialists ADD COLUMN rating_sum INTEGER DEFAULT 0")
+    if "rating_cnt" not in _spc:
+        conn.execute("ALTER TABLE specialists ADD COLUMN rating_cnt INTEGER DEFAULT 0")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS reviews("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, target_kind TEXT NOT NULL, target_id INTEGER NOT NULL, "
+        "reviewer_user_id INTEGER NOT NULL, order_id INTEGER, stars INTEGER NOT NULL, "
+        "comment TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_review_one ON reviews(target_kind, target_id, reviewer_user_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_kind, target_id)")
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
