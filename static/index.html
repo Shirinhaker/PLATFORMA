@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1442 -->
+<title>Platforma</title><!-- BUILD: v1443 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1348,6 +1348,22 @@
         <div class="field"><label>Oylik maosh (so'm)</label><input class="input" id="stSalary" inputmode="numeric" placeholder="0"></div>
         <div class="field"><label>Ishga qabul sanasi</label><input class="input" id="stHire" type="date"></div>
         <button class="btn btn-primary btn-block" id="stSave">Saqlash</button>
+
+        <div id="stAccessCard" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:var(--primary-tint,#f5f7ff)">
+          <b>🔑 Ilovaga kirish huquqi</b>
+          <div class="idesc" style="margin-top:2px">Xodim shu login-parol bilan ilovaga kirib, faqat siz belgilagan bo'limlarni ko'radi.</div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:700"><input type="checkbox" id="stCanLogin" style="width:18px;height:18px"> Kirishga ruxsat berish</label>
+          <div id="stAccessFields" style="display:none;margin-top:10px">
+            <div class="field"><label>Login</label><input class="input" id="stLogin" autocomplete="off" placeholder="masalan: vali01" style="text-transform:lowercase"></div>
+            <div class="field"><label>Parol <span id="stPassHint" class="idesc"></span></label><input class="input" id="stPass" type="text" autocomplete="new-password" placeholder="kamida 4 belgi"></div>
+            <div style="font-weight:700;margin:6px 2px">Ruxsat berilgan bo'limlar:</div>
+            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermKassa" style="width:18px;height:18px"> 💵 Kassa</label>
+            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermOmbor" style="width:18px;height:18px"> 📦 Ombor</label>
+            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermBuyurtma" style="width:18px;height:18px"> 🛍️ Buyurtmalar</label>
+          </div>
+          <button class="btn btn-soft btn-block" id="stAccessSave" style="margin-top:10px">Kirish huquqini saqlash</button>
+        </div>
+
         <button class="btn btn-soft btn-block" style="margin-top:8px;display:none" id="stFireBtn">Ishdan bo'shatish</button>
       </section>
 
@@ -5329,6 +5345,20 @@
     el("stSalary").value = x && x.salary ? String(x.salary) : "";
     el("stHire").value = x ? (x.hire_date||"") : "";
     el("stFireBtn").style.display = x ? "block" : "none";
+    // Kirish huquqi bo'limi (faqat mavjud xodimda)
+    if(el("stAccessCard")){
+      el("stAccessCard").style.display = x ? "block" : "none";
+      var can = x && (x.can_login==1);
+      el("stCanLogin").checked = !!can;
+      el("stAccessFields").style.display = can ? "block" : "none";
+      el("stLogin").value = x ? (x.login||"") : "";
+      el("stPass").value = "";
+      el("stPassHint").textContent = (x && x.has_pass) ? "(o'rnatilgan — bo'sh qoldirsangiz o'zgarmaydi)" : "(yangi parol kiriting)";
+      var pr = (x && x.perms) ? x.perms : [];
+      el("stPermKassa").checked = pr.indexOf("kassa")>=0;
+      el("stPermOmbor").checked = pr.indexOf("ombor")>=0;
+      el("stPermBuyurtma").checked = pr.indexOf("buyurtma")>=0;
+    }
     stLoadProfs(x ? x.profession : "").catch(function(e){ showMsg(e.message); });
     nav("cab-staff-form");
   }
@@ -5354,6 +5384,28 @@
     if(!body.name){ showMsg("Xodim ismini kiriting."); return; }
     var req = editStaffId ? api("PUT","/api/staff/"+editStaffId, body) : api("POST","/api/staff", body);
     req.then(function(){ showMsg(editStaffId ? "Saqlandi ✅" : "Xodim qo'shildi ✅"); nav("cab-staff"); })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  el("stCanLogin") && el("stCanLogin").addEventListener("change", function(){
+    el("stAccessFields").style.display = this.checked ? "block" : "none";
+  });
+  el("stLogin") && el("stLogin").addEventListener("input", function(){
+    this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g,"");
+  });
+  el("stAccessSave") && el("stAccessSave").addEventListener("click", function(){
+    if(!editStaffId){ showMsg("Avval xodimni saqlang."); return; }
+    var perms = [];
+    if(el("stPermKassa").checked) perms.push("kassa");
+    if(el("stPermOmbor").checked) perms.push("ombor");
+    if(el("stPermBuyurtma").checked) perms.push("buyurtma");
+    var body = {
+      can_login: el("stCanLogin").checked ? 1 : 0,
+      login: (el("stLogin").value||"").trim(),
+      password: (el("stPass").value||"").trim(),
+      perms: perms
+    };
+    api("PUT","/api/staff/"+editStaffId+"/access", body)
+      .then(function(){ showMsg("Kirish huquqi saqlandi ✅"); el("stPass").value=""; loadStaff(); })
       .catch(function(e){ showMsg(e.message); });
   });
   el("stFireBtn").addEventListener("click", function(){
