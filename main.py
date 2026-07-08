@@ -228,7 +228,15 @@ async def whitelist_middleware(request: Request, call_next):
 
     # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
+        # XODIM (staff) kirishi Telegram whitelistdan ozod:
+        #  1) /api/staff-auth* (login / me / logout)
+        #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
+        if path.startswith("/api/staff-auth"):
+            return await call_next(request)
         init_data = request.headers.get("x-telegram-init-data", "")
+        staff_token = request.headers.get("x-staff-token", "")
+        if staff_token or init_data.startswith("staff:"):
+            return await call_next(request)
         tg = verify_init_data(init_data)
         if not tg:
             return JSONResponse(
