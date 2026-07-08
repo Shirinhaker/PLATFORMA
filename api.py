@@ -4056,10 +4056,14 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
                          "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
                          "available": bool(s["available"]), "region": s["region"],
                          "district": s["district"], "mahalla": s["mahalla"],
-                         "lat": s["lat"], "lng": s["lng"]} for s in specialists],
+                         "lat": s["lat"], "lng": s["lng"],
+                         "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
+                         "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
-                        "lat": b["lat"], "lng": b["lng"]} for b in businesses],
+                        "lat": b["lat"], "lng": b["lng"],
+                        "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
+                        "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
     }
     # Foydalanuvchilarni username (yoki ism) bo'yicha topamiz — mutaxassis bo'lmasa ham
     try:
@@ -4120,12 +4124,16 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
     result = {
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
-                        "lat": b["lat"], "lng": b["lng"]} for b in businesses],
+                        "lat": b["lat"], "lng": b["lng"],
+                        "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
+                        "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
                          "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
                          "available": bool(s["available"]), "region": s["region"],
                          "district": s["district"], "mahalla": s["mahalla"],
-                         "lat": s["lat"], "lng": s["lng"]} for s in specialists],
+                         "lat": s["lat"], "lng": s["lng"],
+                         "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
+                         "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
     }
     conn.close()
     return result
@@ -5608,6 +5616,183 @@ async def delete_notify_filter(filter_id: int, x_telegram_init_data: str = Heade
     conn = db()
     me = require_user(conn, x_telegram_init_data)
     conn.execute("DELETE FROM notify_filters WHERE id=? AND user_id=?", (filter_id, me["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+# ================== BAHOLASH VA FIKRLAR (#1) ==================
+_REVIEW_KINDS = ("business", "specialist")
+
+
+def _ensure_reviews(conn):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS reviews("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, target_kind TEXT NOT NULL, target_id INTEGER NOT NULL, "
+        "reviewer_user_id INTEGER NOT NULL, order_id INTEGER, stars INTEGER NOT NULL, "
+        "comment TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_review_one ON reviews(target_kind, target_id, reviewer_user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_kind, target_id)")
+    except Exception:
+        pass
+
+
+def _review_target_ok(conn, kind, tid):
+    """Baholanadigan obyekt bor-yo'qligini tekshiradi."""
+    if kind == "business":
+        return conn.execute("SELECT id FROM businesses WHERE id=? AND status='active'", (tid,)).fetchone() is not None
+    if kind == "specialist":
+        return conn.execute("SELECT user_id FROM specialists WHERE user_id=?", (tid,)).fetchone() is not None
+    return False
+
+
+def _review_eligible_order(conn, user_id, kind, tid):
+    """Foydalanuvchi shu obyektдan buyurtma/xarid qilganmi? Buyurtma id qaytaradi yoki None."""
+    if kind == "business":
+        row = conn.execute(
+            "SELECT id FROM orders WHERE customer_user_id=? AND provider_kind='business' AND provider_actor_id=? "
+            "AND COALESCE(status,'') NOT IN ('bekor','rad','cancelled') ORDER BY id DESC LIMIT 1",
+            (user_id, tid),
+        ).fetchone()
+    elif kind == "specialist":
+        row = conn.execute(
+            "SELECT id FROM orders WHERE customer_user_id=? AND provider_kind='user' AND provider_actor_id=? "
+            "AND COALESCE(status,'') NOT IN ('bekor','rad','cancelled') ORDER BY id DESC LIMIT 1",
+            (user_id, tid),
+        ).fetchone()
+    else:
+        return None
+    return row["id"] if row else None
+
+
+def _recompute_rating(conn, kind, tid):
+    """reviews jadvalidan reyting yig'indisi va sonini qайta hisoblab, obyektга yozadi."""
+    agg = conn.execute(
+        "SELECT COALESCE(SUM(stars),0) AS s, COUNT(*) AS c FROM reviews WHERE target_kind=? AND target_id=?",
+        (kind, tid),
+    ).fetchone()
+    ssum, scnt = int(agg["s"] or 0), int(agg["c"] or 0)
+    if kind == "business":
+        conn.execute("UPDATE businesses SET rating_sum=?, rating_cnt=? WHERE id=?", (ssum, scnt, tid))
+    elif kind == "specialist":
+        conn.execute("UPDATE specialists SET rating_sum=?, rating_cnt=? WHERE user_id=?", (ssum, scnt, tid))
+    return ssum, scnt
+
+
+def _reviewer_name(conn, uid):
+    u = conn.execute("SELECT name FROM users WHERE id=?", (uid,)).fetchone()
+    return (u["name"] if u and u["name"] else "Foydalanuvchi")
+
+
+@router.get("/reviews")
+async def reviews_list(target_kind: str = "", target_id: int = 0, x_telegram_init_data: str = Header(default="")):
+    """Obyekt uchun fikrlar + o'rtacha reyting + joriy foydalanuvchi holati."""
+    conn = db()
+    kind = (target_kind or "").strip().lower()
+    if kind not in _REVIEW_KINDS or not target_id:
+        conn.close()
+        raise HTTPException(400, "Noto'g'ri obyekt.")
+    _ensure_reviews(conn)
+    rows = conn.execute(
+        "SELECT * FROM reviews WHERE target_kind=? AND target_id=? ORDER BY id DESC LIMIT 100",
+        (kind, target_id),
+    ).fetchall()
+    items = [{
+        "id": r["id"], "stars": r["stars"], "comment": r["comment"] or "",
+        "user_name": _reviewer_name(conn, r["reviewer_user_id"]),
+        "reviewer_user_id": r["reviewer_user_id"], "created_at": r["created_at"],
+    } for r in rows]
+    ssum = sum(r["stars"] for r in rows)
+    scnt = len(rows)
+    avg = round(ssum / scnt, 1) if scnt else 0
+
+    me = optional_user(conn, x_telegram_init_data)
+    can_review = False
+    my_review = None
+    if me:
+        for it in items:
+            if it["reviewer_user_id"] == me["id"]:
+                my_review = {"stars": it["stars"], "comment": it["comment"]}
+                break
+        if _review_target_ok(conn, kind, target_id):
+            can_review = _review_eligible_order(conn, me["id"], kind, target_id) is not None
+    conn.close()
+    return {"reviews": items, "avg": avg, "count": scnt, "can_review": can_review, "my_review": my_review}
+
+
+@router.post("/reviews")
+async def review_save(body: dict, x_telegram_init_data: str = Header(default="")):
+    """Baho qoldirish yoki yangilash (faqat shu obyektдан buyurtma qilganlar)."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    _ensure_reviews(conn)
+    kind = (body.get("target_kind") or "").strip().lower()
+    try:
+        tid = int(body.get("target_id") or 0)
+    except Exception:
+        tid = 0
+    if kind not in _REVIEW_KINDS or not tid:
+        conn.close()
+        raise HTTPException(400, "Noto'g'ri obyekt.")
+    if not _review_target_ok(conn, kind, tid):
+        conn.close()
+        raise HTTPException(404, "Obyekt topilmadi.")
+    try:
+        stars = int(body.get("stars") or 0)
+    except Exception:
+        stars = 0
+    if stars < 1 or stars > 5:
+        conn.close()
+        raise HTTPException(400, "Yulduzlar 1 dan 5 gacha bo'lsin.")
+    comment = (body.get("comment") or "").strip()[:1000]
+    # O'ziga baho bermasin
+    if kind == "specialist" and tid == me["id"]:
+        conn.close()
+        raise HTTPException(400, "O'zingizga baho bera olmaysiz.")
+    if kind == "business":
+        own = conn.execute("SELECT id FROM businesses WHERE user_id=?", (me["id"],)).fetchone()
+        if own and own["id"] == tid:
+            conn.close()
+            raise HTTPException(400, "O'z do'koningizga baho bera olmaysiz.")
+    # Eligibility: buyurtma bo'lishi shart
+    oid = _review_eligible_order(conn, me["id"], kind, tid)
+    if not oid:
+        conn.close()
+        raise HTTPException(403, "Faqat shu yerdan buyurtma/xarid qilganlar baho bera oladi.")
+    now = int(time.time())
+    ex = conn.execute(
+        "SELECT id FROM reviews WHERE target_kind=? AND target_id=? AND reviewer_user_id=?",
+        (kind, tid, me["id"]),
+    ).fetchone()
+    if ex:
+        conn.execute("UPDATE reviews SET stars=?, comment=?, order_id=?, updated_at=? WHERE id=?",
+                     (stars, comment, oid, now, ex["id"]))
+    else:
+        conn.execute(
+            "INSERT INTO reviews(target_kind, target_id, reviewer_user_id, order_id, stars, comment, created_at, updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (kind, tid, me["id"], oid, stars, comment, now, now),
+        )
+    ssum, scnt = _recompute_rating(conn, kind, tid)
+    conn.commit()
+    conn.close()
+    avg = round(ssum / scnt, 1) if scnt else 0
+    return {"ok": True, "avg": avg, "count": scnt}
+
+
+@router.delete("/reviews")
+async def review_delete(target_kind: str = "", target_id: int = 0, x_telegram_init_data: str = Header(default="")):
+    """O'z bahoni o'chirish."""
+    conn = db()
+    me = require_user(conn, x_telegram_init_data)
+    _ensure_reviews(conn)
+    kind = (target_kind or "").strip().lower()
+    if kind not in _REVIEW_KINDS or not target_id:
+        conn.close()
+        raise HTTPException(400, "Noto'g'ri obyekt.")
+    conn.execute("DELETE FROM reviews WHERE target_kind=? AND target_id=? AND reviewer_user_id=?",
+                 (kind, target_id, me["id"]))
+    _recompute_rating(conn, kind, target_id)
     conn.commit()
     conn.close()
     return {"ok": True}
