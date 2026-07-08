@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1438 -->
+<title>Platforma</title><!-- BUILD: v1439 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -779,6 +779,7 @@
           <div class="field"><label>Telegram</label><input class="input" id="bpTg" placeholder="@username"></div>
           <div class="field"><label>Ish vaqti</label><input class="input" id="bpHours" placeholder="8:00 – 23:00"></div>
           <div class="field"><label>Manzil</label><input class="input" id="bpAddr" placeholder="Tuman, mahalla, ko'cha"></div>
+          <div class="field"><label>Rahbar F.I.Sh. (hujjatlar uchun)</label><input class="input" id="bpDirector" placeholder="Masalan: Aliyev Vali Akramovich"></div>
           <div class="field"><label>Username (do'kon manzili)</label>
             <div style="display:flex;align-items:center;gap:4px"><span style="font-weight:800;color:var(--soft)">@</span><input class="input" id="bpUsername" placeholder="dokonanvar" autocomplete="off" style="flex:1"></div>
             <div class="idesc" style="margin-top:3px">Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom orqali oson topadi. Ixtiyoriy.</div>
@@ -1247,7 +1248,7 @@
           <div class="menu-card" style="opacity:.6"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kiruvchi</h4><p>Kelgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
           <div class="menu-card" style="opacity:.6"><div class="menu-ic">📤</div><div class="menu-main"><h4>Chiquvchi</h4><p>Yuborilgan hujjatlar</p></div><span class="soon-mini">Tez orada</span></div>
           <div class="menu-card" style="opacity:.6"><div class="menu-ic">📋</div><div class="menu-main"><h4>Ichki</h4><p>Firma ichki hujjatlari</p></div><span class="soon-mini">Tez orada</span></div>
-          <div class="menu-card" style="opacity:.6"><div class="menu-ic">✍️</div><div class="menu-main"><h4>Hujjat yaratish</h4><p>Yangi hujjat</p></div><span class="soon-mini">Tez orada</span></div>
+          <div class="menu-card" data-nav="cab-doc-new"><div class="menu-ic">✍️</div><div class="menu-main"><h4>Hujjat yaratish</h4><p>Tayyor shablon asosida</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
       </section>
 
@@ -1272,6 +1273,30 @@
         <div class="field"><label>Izoh</label><input class="input" id="coNote" placeholder="Ixtiyoriy"></div>
         <button class="btn btn-primary btn-block" id="coSave">Saqlash</button>
         <button class="btn btn-soft btn-block" style="margin-top:8px;display:none" id="coDelBtn">O'chirish</button>
+      </section>
+
+      <!-- CAB: HUJJAT YARATISH -->
+      <section class="screen" data-screen="cab-doc-new">
+        <div class="field"><label>1. Yo'nalish</label>
+          <select class="input" id="dcDir">
+            <option value="ichki">📋 Ichki hujjat</option>
+            <option value="chiquvchi">📤 Chiquvchi hujjat</option>
+            <option value="kiruvchi">📥 Kiruvchi hujjat</option>
+          </select>
+        </div>
+        <div class="field"><label>2. Hujjat turi</label><select class="input" id="dcType"></select></div>
+        <div class="field"><label>Sarlavha (ixtiyoriy)</label><input class="input" id="dcTitle" placeholder="Masalan: Ta'til to'g'risida"></div>
+        <div style="display:flex;gap:8px">
+          <div class="field" style="flex:1"><label>Raqami</label><input class="input" id="dcNum" placeholder="№"></div>
+          <div class="field" style="flex:1"><label>Sana</label><input class="input" id="dcDate" type="date"></div>
+        </div>
+        <div class="field"><label>Firma nomi</label><input class="input" id="dcFirma" placeholder="Firma nomi"></div>
+        <div class="field"><label>Rahbar F.I.Sh.</label><input class="input" id="dcRahbar" placeholder="Rahbar"></div>
+        <div class="field" id="dcContrWrap" style="display:none"><label>Kontragent (kimga)</label><select class="input" id="dcContr"></select></div>
+        <button class="btn btn-soft btn-block" id="dcGenBtn" style="margin-bottom:8px">📄 Shablonni yuklash</button>
+        <div class="field"><label>Hujjat matni</label><textarea class="input" id="dcBody" rows="16" style="font-family:monospace;font-size:12px;line-height:1.5;white-space:pre" placeholder="Yuqoridan tur tanlab «Shablonni yuklash» tugmasini bosing — tayyor andoza shu yerga chiqadi. So'ng to'ldiring."></textarea></div>
+        <button class="btn btn-primary btn-block" id="dcSave">💾 Hujjatni saqlash</button>
+        <button class="btn btn-soft btn-block" id="dcCopy" style="margin-top:8px">📋 Nusxa olish</button>
       </section>
 
       <!-- CAB: XODIM FORMA -->
@@ -2494,7 +2519,7 @@
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
-    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
+    "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
@@ -2502,7 +2527,7 @@
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -5540,6 +5565,263 @@
     });
   });
 
+
+  /* ---------- HUJJAT YARATISH (mantiq) ---------- */
+  var docContrList = [];
+  function docContrName(){
+    if(!el("dcContr")) return "";
+    var id = parseInt(el("dcContr").value||"0",10);
+    for(var i=0;i<docContrList.length;i++){ if(docContrList[i].id===id) return docContrList[i].name; }
+    return "";
+  }
+  function docFillTypes(){
+    var dir = el("dcDir").value || "ichki";
+    var list = DOC_TYPES[dir] || DOC_TYPES.ichki;
+    el("dcType").innerHTML = list.map(function(t){ return '<option value="'+esc(t)+'">'+esc(t)+'</option>'; }).join("");
+    // Kontragent faqat chiquvchida kerak
+    el("dcContrWrap").style.display = (dir==="chiquvchi") ? "block" : "none";
+  }
+  function docNewOpen(){
+    // Sana bugun
+    var t=new Date(); el("dcDate").value = t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2);
+    el("dcTitle").value=""; el("dcNum").value=""; el("dcBody").value="";
+    // Firma/rahbar profildan (o'zgartirsa bo'ladi)
+    api("GET","/api/me").then(function(d){
+      var b = d.business||{};
+      el("dcFirma").value = b.name||"";
+      el("dcRahbar").value = b.director||"";
+    }).catch(function(){});
+    // Kontragentlar ro'yxati
+    api("GET","/api/contractors").then(function(d){
+      docContrList = d.contractors||[];
+      el("dcContr").innerHTML = '<option value="0">— tanlanmagan —</option>'+
+        docContrList.map(function(c){ return '<option value="'+c.id+'">'+esc(c.name)+'</option>'; }).join("");
+    }).catch(function(){ docContrList=[]; if(el("dcContr")) el("dcContr").innerHTML='<option value="0">—</option>'; });
+    docFillTypes();
+  }
+  el("dcDir") && el("dcDir").addEventListener("change", docFillTypes);
+  el("dcGenBtn") && el("dcGenBtn").addEventListener("click", function(){
+    var cur = el("dcBody").value.trim();
+    function gen(){ el("dcBody").value = docTemplate(el("dcType").value, docCtx()); }
+    if(cur){
+      askConfirm({ text:"Matn maydonida yozuv bor. Shablon bilan almashtirilsinmi?", okText:"Ha, almashtir", danger:true })
+        .then(function(ok){ if(ok) gen(); });
+    } else { gen(); }
+  });
+  el("dcSave") && el("dcSave").addEventListener("click", function(){
+    var body = {
+      direction: el("dcDir").value, doc_type: el("dcType").value,
+      title:(el("dcTitle").value||"").trim(), number:(el("dcNum").value||"").trim(),
+      doc_date: el("dcDate").value||"", body: el("dcBody").value,
+      contractor_id: (el("dcDir").value==="chiquvchi" ? (parseInt(el("dcContr").value||"0",10)||null) : null)
+    };
+    if(!body.body.trim()){ showMsg("Avval shablonni yuklang va matnni to'ldiring."); return; }
+    api("POST","/api/documents", body)
+      .then(function(){ showMsg("Hujjat saqlandi ✅"); })
+      .catch(function(e){ showMsg(e.message); });
+  });
+  el("dcCopy") && el("dcCopy").addEventListener("click", function(){
+    var txt = el("dcBody").value;
+    if(!txt.trim()){ showMsg("Matn bo'sh."); return; }
+    copyText(txt);
+  });
+  /* ---------- HUJJAT SHABLONLARI (14 ta) ---------- */
+  // Yo'nalish -> turlar ro'yxati
+  var DOC_TYPES = {
+    ichki: ["Buyruq","Ariza","Dalolatnoma","Bayonnoma","Tilxat","Xabarnoma"],
+    chiquvchi: ["Shartnoma","Hisob-faktura","Yuk xati","Ishonchnoma","Akt","Solishtirma dalolatnoma","Bayonnoma","Erkin shakldagi hujjat"],
+    kiruvchi: ["Erkin shakldagi hujjat"]
+  };
+  function docCtx(){
+    return {
+      firma: (el("dcFirma") && el("dcFirma").value.trim()) || "[Firma nomi]",
+      rahbar: (el("dcRahbar") && el("dcRahbar").value.trim()) || "[Rahbar F.I.Sh.]",
+      sana: (el("dcDate") && el("dcDate").value) || "____-__-__",
+      raqam: (el("dcNum") && el("dcNum").value.trim()) || "___",
+      title: (el("dcTitle") && el("dcTitle").value.trim()) || "",
+      contr: docContrName()
+    };
+  }
+  function line(s){ return s; }
+  // Har bir shablon — matn qaytaradi
+  var DOC_TPL = {
+    "Buyruq": function(c){ return (
+      c.firma+"\n\nBUYRUQ\n\u2116 "+c.raqam+"                                   "+c.sana+"\n"+
+      (c.title?("\n"+c.title.toUpperCase()+"\n"):"\n[Buyruq sarlavhasi]\n")+
+      "\nBUYURAMAN:\n\n1. ________________________________________________\n2. ________________________________________________\n3. ________________________________________________\n\n"+
+      "Asos: [asos hujjat / ariza / bayonnoma]\n\n"+
+      "Buyruq ijrosini nazorat qilishni o'z zimmamga qoldiraman.\n\n\n"+
+      "Rahbar: _______________________  "+c.rahbar+"\n\n"+
+      "M.O'.  (muhr o'rni)\n\n"+
+      "Buyruq bilan tanishdim: _______________________ ( _______________ )\n" ); },
+
+    "Ariza": function(c){ return (
+      "                                        "+c.firma+" rahbari\n"+
+      "                                        "+c.rahbar+" ga\n\n"+
+      "                                        [Ariza beruvchi F.I.Sh.]\n"+
+      "                                        [lavozimi]\n"+
+      "                                        tel: [telefon]\n\n"+
+      "                       A R I Z A\n\n"+
+      "Men, [F.I.Sh.], sizdan ________________________________________\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________ so'rayman.\n\n"+
+      "Sabab: ________________________________________________________\n\n"+
+      "Sana: "+c.sana+"                          Imzo: _______________\n" ); },
+
+    "Dalolatnoma": function(c){ return (
+      c.firma+"\n\nDALOLATNOMA\n\u2116 "+c.raqam+"                                   "+c.sana+"\n"+
+      "                                        "+"[tuzilgan joy]\n\n"+
+      (c.title?(c.title+"\n\n"):"[Dalolatnoma mavzusi]\n\n")+
+      "Biz, quyida imzo chekuvchilar:\n"+
+      "1. [F.I.Sh., lavozim]\n"+
+      "2. [F.I.Sh., lavozim]\n"+
+      "3. [F.I.Sh., lavozim]\n\n"+
+      "ushbu dalolatnomani quyidagilar to'g'risida tuzdik:\n\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n\n"+
+      "Mazkur dalolatnoma 3 (uch) nusxada tuzildi.\n\n"+
+      "Imzolar:\n1. _______________\n2. _______________\n3. _______________\n" ); },
+
+    "Bayonnoma": function(c){ return (
+      c.firma+"\n\nBAYONNOMA\n\u2116 "+c.raqam+"                                   "+c.sana+"\n\n"+
+      (c.title?(c.title+"\n\n"):"[Yig'ilish / majlis nomi]\n\n")+
+      "Rais: [F.I.Sh.]\nKotib: [F.I.Sh.]\nIshtirok etdilar: [ro'yxat / soni]\n\n"+
+      "KUN TARTIBI:\n1. ________________________________________________\n2. ________________________________________________\n\n"+
+      "ESHITILDI: ____________________________________________________\n\n"+
+      "QAROR QILINDI:\n1. ________________________________________________\n2. ________________________________________________\n\n"+
+      "Rais: _______________  ( _______________ )\nKotib: _______________  ( _______________ )\n" ); },
+
+    "Tilxat": function(c){ return (
+      "                       T I L X A T\n\n"+
+      "Sana: "+c.sana+"                          Joy: [shahar/tuman]\n\n"+
+      "Men, [F.I.Sh.], [pasport seriya/raqam], [manzil], \n"+
+      c.firma+" dan / [kimdan] quyidagilarni oldim:\n\n"+
+      "________________________________________________________________\n"+
+      "Miqdori / summasi: [______________] (_____________________ so'm)\n\n"+
+      "Yuqoridagilarni to'liq va tegishli holatda olganimni tasdiqlayman.\n"+
+      "Majburiyat: [qaytarish muddati / shartlari, agar bo'lsa]\n\n"+
+      "Imzo: _______________  ( [F.I.Sh.] )\n" ); },
+
+    "Xabarnoma": function(c){ return (
+      c.firma+"\n\u2116 "+c.raqam+"                                   "+c.sana+"\n\n"+
+      "                                        [Kimga: F.I.Sh. / tashkilot]\n\n"+
+      "                       XABARNOMA\n\n"+
+      (c.title?(c.title+"\n\n"):"")+
+      "Sizga ma'lum qilamizki, ______________________________________\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n\n"+
+      "Iltimos, mazkur xabarnomani inobatga olishingizni so'raymiz.\n\n"+
+      "Hurmat bilan,\n"+c.rahbar+"\nRahbar: _______________   M.O'.\n" ); },
+
+    "Shartnoma": function(c){ return (
+      "                       SHARTNOMA \u2116 "+c.raqam+"\n\n"+
+      "[shahar/tuman]                                   "+c.sana+"\n\n"+
+      c.firma+", keyingi o'rinlarda \"Yetkazib beruvchi\" (rahbar "+c.rahbar+") bir tomondan, va \n"+
+      (c.contr?c.contr:"[Kontragent nomi]")+", keyingi o'rinlarda \"Buyurtmachi\" ikkinchi tomondan, \n"+
+      "ushbu shartnomani quyidagilar to'g'risida tuzdilar:\n\n"+
+      "1. SHARTNOMA PREDMETI\n1.1. ____________________________________________________\n\n"+
+      "2. SHARTNOMA SUMMASI VA TO'LOV TARTIBI\n2.1. Summa: [__________] (___________________) so'm.\n2.2. To'lov: ______________________________________\n\n"+
+      "3. TOMONLARNING MAJBURIYATLARI\n3.1. ____________________________________________________\n\n"+
+      "4. TOMONLAR JAVOBGARLIGI\n4.1. ____________________________________________________\n\n"+
+      "5. NIZOLARNI HAL QILISH\n5.1. Nizolar muzokara yo'li bilan, kelishilmasa qonun bo'yicha hal etiladi.\n\n"+
+      "6. SHARTNOMA MUDDATI\n6.1. Amal qilish muddati: "+c.sana+" dan [_________] gacha.\n\n"+
+      "7. TOMONLARNING REKVIZITLARI VA IMZOLARI\n\n"+
+      "Yetkazib beruvchi:                        Buyurtmachi:\n"+
+      c.firma+"                                  "+(c.contr?c.contr:"[nomi]")+"\n"+
+      "STIR: [_______]                           STIR: [_______]\n"+
+      "h/r: [_______]                            h/r: [_______]\n"+
+      "Bank: [_______], MFO: [____]              Bank: [_______], MFO: [____]\n\n"+
+      "_______________ "+c.rahbar+"              _______________ [F.I.Sh.]\n"+
+      "M.O'.                                     M.O'.\n" ); },
+
+    "Hisob-faktura": function(c){ return (
+      "HISOB-FAKTURA \u2116 "+c.raqam+"   sana: "+c.sana+"\n"+
+      "(Shartnoma: \u2116 ______ , sana ________ )\n\n"+
+      "Yetkazib beruvchi: "+c.firma+"\n  STIR: [_______]   h/r: [_______]   Bank: [_______], MFO: [____]\n\n"+
+      "Xaridor: "+(c.contr?c.contr:"[Kontragent nomi]")+"\n  STIR: [_______]\n\n"+
+      "\u2116 | Tovar/xizmat nomi          | O'lchov | Soni | Narxi     | Summasi\n"+
+      "--+----------------------------+---------+------+-----------+-----------\n"+
+      "1 | __________________________ | ______  | ____ | _________ | _________\n"+
+      "2 | __________________________ | ______  | ____ | _________ | _________\n"+
+      "3 | __________________________ | ______  | ____ | _________ | _________\n"+
+      "--+----------------------------+---------+------+-----------+-----------\n"+
+      "                                              Jami:      | _________\n"+
+      "                                              QQS (12%): | _________\n"+
+      "                                     Umumiy summa:       | _________\n\n"+
+      "Rahbar: _______________ "+c.rahbar+"\nBosh hisobchi: _______________\nM.O'.\n" ); },
+
+    "Yuk xati": function(c){ return (
+      "YUK XATI (nakladnoy) \u2116 "+c.raqam+"        sana: "+c.sana+"\n\n"+
+      "Jo'natuvchi: "+c.firma+"\nQabul qiluvchi: "+(c.contr?c.contr:"[Kontragent nomi]")+"\n\n"+
+      "\u2116 | Tovar nomi                 | O'lchov | Soni | Narxi   | Summasi\n"+
+      "--+----------------------------+---------+------+---------+---------\n"+
+      "1 | __________________________ | ______  | ____ | _______ | _______\n"+
+      "2 | __________________________ | ______  | ____ | _______ | _______\n"+
+      "--+----------------------------+---------+------+---------+---------\n"+
+      "                                    Jami summa:        | _______\n\n"+
+      "Topshirdi: _______________ ( _______________ )\n"+
+      "Qabul qildi: _______________ ( _______________ )\n"+
+      "M.O'.\n" ); },
+
+    "Ishonchnoma": function(c){ return (
+      "                       ISHONCHNOMA\n\n"+
+      "[shahar/tuman]                                   "+c.sana+"\n\n"+
+      c.firma+" (STIR: [_______]) nomidan rahbar "+c.rahbar+" \n"+
+      "ushbu ishonchnoma bilan [F.I.Sh.] (pasport: [seriya/raqam]) ga \n"+
+      "quyidagi vakolatlarni ishonib topshiradi:\n\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n\n"+
+      "Mazkur ishonchnoma [_________] gacha amal qiladi.\n"+
+      "Imzo namunasi ishonchnoma egasi: _______________ tasdiqlanadi.\n\n"+
+      "Rahbar: _______________ "+c.rahbar+"\nM.O'.\n" ); },
+
+    "Akt": function(c){ return (
+      "BAJARILGAN ISHLAR (XIZMATLAR) AKTI \u2116 "+c.raqam+"\n"+
+      "sana: "+c.sana+"    (Shartnoma \u2116 ______ , ________ )\n\n"+
+      "Ijrochi: "+c.firma+"\nBuyurtmachi: "+(c.contr?c.contr:"[Kontragent nomi]")+"\n\n"+
+      "Quyidagi ishlar (xizmatlar) bajarilganligi to'g'risida akt tuzildi:\n\n"+
+      "\u2116 | Ish/xizmat nomi            | Soni | Summasi\n"+
+      "--+----------------------------+------+---------\n"+
+      "1 | __________________________ | ____ | _______\n"+
+      "2 | __________________________ | ____ | _______\n"+
+      "--+----------------------------+------+---------\n"+
+      "                       Jami:          | _______\n\n"+
+      "Tomonlar bir-biriga da'vosi yo'q.\n\n"+
+      "Topshirdi (Ijrochi): _______________ "+c.rahbar+"\n"+
+      "Qabul qildi (Buyurtmachi): _______________\nM.O'.\n" ); },
+
+    "Solishtirma dalolatnoma": function(c){ return (
+      "O'ZARO HISOB-KITOB SOLISHTIRMA DALOLATNOMASI\n"+
+      "sana: "+c.sana+"   davr: [__.__.____ dan __.__.____ gacha]\n\n"+
+      c.firma+" va "+(c.contr?c.contr:"[Kontragent nomi]")+" o'rtasidagi \n"+
+      "o'zaro hisob-kitoblar quyidagicha solishtirildi:\n\n"+
+      "Ko'rsatkich                         | "+c.firma+" | Kontragent\n"+
+      "------------------------------------+-----------+-----------\n"+
+      "Davr boshiga qoldiq                 | _________ | _________\n"+
+      "Davrda hisoblangan (debet)          | _________ | _________\n"+
+      "Davrda to'langan (kredit)           | _________ | _________\n"+
+      "Davr oxiriga qoldiq                 | _________ | _________\n\n"+
+      "Kelishilgan yakuniy qoldiq: [_______________] (___________________) so'm.\n\n"+
+      c.firma+":                              Kontragent:\n"+
+      "_______________ "+c.rahbar+"           _______________ [F.I.Sh.]\n"+
+      "M.O'.                                  M.O'.\n" ); },
+
+    "Erkin shakldagi hujjat": function(c){ return (
+      c.firma+"\n\u2116 "+c.raqam+"                                   "+c.sana+"\n\n"+
+      (c.title?(c.title+"\n\n"):"")+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n"+
+      "________________________________________________________________\n\n"+
+      "Hurmat bilan,\n"+c.rahbar+"\n_______________   M.O'.\n" ); }
+  };
+  function docTemplate(type, c){
+    var fn = DOC_TPL[type];
+    if(fn) return fn(c);
+    return DOC_TPL["Erkin shakldagi hujjat"](c);
+  }
+
   /* ---------- STATISTIKA ---------- */
   var statPeriod = "oy", statAnchor = "", statMetric = "rev", statData = null;
   function loadStats(){
@@ -6173,6 +6455,7 @@
       el("bpTg").value=b.telegram||""; el("bpHours").value=b.work_hours||"";
       el("bpAddr").value=b.address||"";
       el("bpUsername").value=b.username||"";
+      if(el("bpDirector")) el("bpDirector").value=b.director||"";
       window.__bizId = b.id||null;
       showBizShare(b.username||"", window.__bizId);
       el("bpCard").value=b.pay_card||""; el("bpHolder").value=b.pay_holder||"";
@@ -6220,6 +6503,7 @@
     else if(screen==="cab-staff") loadStaff();
     else if(screen==="cab-tabel") loadTabel();
     else if(screen==="cab-contractors") loadContractors();
+    else if(screen==="cab-doc-new") docNewOpen();
     else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
     else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
     else if(screen==="cab-orders") loadBizOrders();
@@ -6360,7 +6644,8 @@
       telegram:el("bpTg").value.trim(), work_hours:el("bpHours").value.trim(),
       address:el("bpAddr").value.trim(),
       pay_card:el("bpCard").value.trim(), pay_holder:el("bpHolder").value.trim(), pay_qr:bpQrUrl,
-      username:(el("bpUsername").value||"").trim().toLowerCase().replace(/^@+/,"")
+      username:(el("bpUsername").value||"").trim().toLowerCase().replace(/^@+/,""),
+      director:(el("bpDirector") ? el("bpDirector").value.trim() : "")
     };
     var bpLL = normalizeLatLng(
       pickedLatLng.bp && pickedLatLng.bp[0],
