@@ -438,6 +438,18 @@ def _calc_price(kind, dist_km):
     return int(p / 500.0 + 0.5) * 500
 
 
+def _haversine_km(la1, lo1, la2, lo2):
+    try:
+        la1, lo1, la2, lo2 = float(la1), float(lo1), float(la2), float(lo2)
+    except Exception:
+        return 0
+    R = 6371.0
+    p1 = math.radians(la1); p2 = math.radians(la2)
+    dp = math.radians(la2 - la1); dl = math.radians(lo2 - lo1)
+    a = math.sin(dp/2)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return round(R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a)), 1)
+
+
 def _ride_dict(r):
     def g(k):
         try:
@@ -539,10 +551,13 @@ async def cancel_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     """Mijoz o'z zakazini bekor qiladi (pending yoki accepted)."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    prev = conn.execute("SELECT driver_id, status FROM rides WHERE id=? AND customer_id=?", (ride_id, user["id"])).fetchone()
     cur = conn.execute(
         "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted','arrived')",
         (ride_id, user["id"]),
     )
+    if cur.rowcount and prev and prev["driver_id"]:
+        conn.execute("UPDATE drivers SET available = 1 WHERE id=?", (prev["driver_id"],))  # #3: haydovchi bo'shadi
     conn.commit()
     conn.close()
     if cur.rowcount == 0:
@@ -607,8 +622,8 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     if cur.rowcount == 0:
         conn.close()
         raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
-    # Zakaz olindi — komissiyani balansdan yechamiz
-    conn.execute("UPDATE drivers SET balance = balance - ? WHERE id=?", (COMMISSION_PER_ORDER, d["id"]))
+    # Zakaz olindi — komissiyani balansdan yechamiz + avtomatik BAND holatiga o'tkazamiz (#3)
+    conn.execute("UPDATE drivers SET balance = balance - ?, available = 0 WHERE id=?", (COMMISSION_PER_ORDER, d["id"]))
     conn.commit()
     r = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
     out = _ride_dict(r)
@@ -625,9 +640,11 @@ async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
     cur = conn.execute(
-        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND status='accepted'",
+        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND status IN ('accepted','arrived','ongoing')",
         (ride_id, d["id"]),
     )
+    if cur.rowcount:
+        conn.execute("UPDATE drivers SET available = 1 WHERE id=?", (d["id"],))  # #3: yakunlandi -> bo'sh
     conn.commit()
     conn.close()
     if cur.rowcount == 0:
@@ -651,6 +668,8 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
         conn.close()
         raise HTTPException(400, "Bu bosqichga o'tib bo'lmaydi.")
     conn.execute("UPDATE rides SET status=? WHERE id=?", (new, ride_id))
+    if new == "completed":
+        conn.execute("UPDATE drivers SET available = 1 WHERE id=?", (d["id"],))  # #3: bo'sh
     conn.commit()
     conn.close()
     return {"ok": True, "status": new}
@@ -5070,6 +5089,55 @@ async def mark_order_seen(order_id: int, request: Request, x_telegram_init_data:
     return {"ok": True, "seen_at": now}
 
 
+def _auto_dostavka_for_order(conn, order_row):
+    """#4: Yetkazib berish buyurtmasi 'Tayyor' bo'lganda do'kondan mijozgacha dostavka zakazi yaratadi.
+    Faqat: order_type=delivery, mijoz manzili (delivery_lat/lng) bor, provayder=business, dublikatsiz."""
+    try:
+        otype = (order_row["order_type"] or "").strip().lower()
+        if otype != "delivery":
+            return None
+        if (order_row["provider_kind"] or "") != "business":
+            return None
+        dlat = order_row["delivery_lat"]; dlng = order_row["delivery_lng"]
+        if dlat is None or dlng is None:
+            return None
+        oid = order_row["id"]
+        # Dublikat: shu buyurtma uchun faol dostavka zakazi bormi
+        ex = conn.execute(
+            "SELECT id FROM rides WHERE src_order_id=? AND status IN ('pending','accepted','arrived','ongoing') LIMIT 1",
+            (oid,),
+        ).fetchone()
+        if ex:
+            return ex["id"]
+        # Do'kon (jo'natuvchi) ma'lumoti
+        biz = conn.execute("SELECT id, user_id, name, address, lat, lng FROM businesses WHERE id=?",
+                           (order_row["provider_actor_id"],)).fetchone()
+        if not biz:
+            return None
+        from_lat = biz["lat"]; from_lng = biz["lng"]
+        from_addr = biz["name"] or "Do'kon"
+        if biz["address"]:
+            from_addr += ", " + biz["address"]
+        to_addr = order_row["address"] or "Mijoz manzili (xaritada)"
+        dist = _haversine_km(from_lat, from_lng, dlat, dlng) if (from_lat is not None and from_lng is not None) else 0
+        note = "Do'kon buyurtmasi #%d" % oid
+        if order_row["title"]:
+            note += " — " + (order_row["title"] or "")
+        # Zakaz egasi = do'kon egasi (kuryerni chaqirayotgan tomon)
+        requester = biz["user_id"]
+        now = int(time.time())
+        cur = conn.execute(
+            "INSERT INTO rides(customer_id, kind, from_addr, to_addr, from_lat, from_lng, to_lat, to_lng, "
+            "dist_km, dur_min, ozim, cargo, car_type, note, status, src_order_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'pending', ?, ?)",
+            (requester, "dostavka", from_addr, to_addr, from_lat, from_lng, dlat, dlng,
+             dist, 0, 0, "", "", note, oid, now),
+        )
+        return cur.lastrowid
+    except Exception:
+        return None
+
+
 @router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -5078,7 +5146,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     actor = actor_from_body(conn, me, b)
     kind, actor_id, _owner = _actor_identity(actor)
     new_status = (b.get("status") or "").strip().lower()
-    allowed = {"accepted", "rejected", "done", "cancelled"}
+    allowed = {"accepted", "rejected", "done", "cancelled", "tayyor"}
     if new_status not in allowed:
         conn.close()
         raise HTTPException(400, "Buyurtma holati noto'g'ri.")
@@ -5090,7 +5158,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
-    if new_status in ("accepted", "rejected", "done") and not is_provider:
+    if new_status in ("accepted", "rejected", "done", "tayyor") and not is_provider:
         conn.close()
         raise HTTPException(403, "Bu buyurtma holatini faqat qabul qiluvchi kabinet o'zgartira oladi.")
     if new_status == "cancelled" and not (is_customer or is_provider):
@@ -5101,7 +5169,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     notify_tg = None
     notify_text = ""
 
-    if new_status in ("accepted", "rejected", "done") or (new_status == "cancelled" and is_provider):
+    if new_status in ("accepted", "rejected", "done", "tayyor") or (new_status == "cancelled" and is_provider):
         # Qabul qiluvchi/biznes statusni o'zgartirdi — mijoz tomonda yangilanish belgisi chiqadi.
         conn.execute(
             "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=? WHERE id=?",
@@ -5114,6 +5182,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             "rejected": "Rad etildi",
             "done": "Yakunlandi",
             "cancelled": "Bekor qilindi",
+            "tayyor": "Tayyor bo'ldi — yetkazish uchun kuryer qidirilmoqda",
         }.get(new_status, new_status) + "\n\n" + (row["title"] or "Buyurtma")
     elif new_status == "cancelled" and is_customer:
         # Mijoz bekor qildi — biznes tomonda yangi o'zgarish sifatida ko'rinadi.
@@ -5134,6 +5203,10 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     # v1412 (O5): bekor qilinsa — qoldiq qaytadi, kassadagi avto-savdo o'chadi
     if new_status == "cancelled":
         _stock_restore_for_order(conn, row, me["id"])
+
+    # #4: "Tayyor bo'ldi" + yetkazib berish buyurtmasi -> avtomatik dostavka zakazi (dostavka haydovchilari ko'radi)
+    if new_status == "tayyor":
+        _auto_dostavka_for_order(conn, row)
 
     conn.commit()
     conn.close()
