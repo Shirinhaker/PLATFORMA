@@ -874,6 +874,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN pay_qr TEXT DEFAULT ''")
     if "username" not in _bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
+    if "director" not in _bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN director TEXT DEFAULT ''")
     _ucols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "pub_username" not in _ucols:
         conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
@@ -934,6 +936,14 @@ def _migrate(conn):
         "account TEXT DEFAULT '', bank TEXT DEFAULT '', mfo TEXT DEFAULT '', "
         "note TEXT DEFAULT '', created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_contractors_biz ON contractors(business_id)")
+    # --- M2: Hujjatlar ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS documents("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "direction TEXT DEFAULT '', doc_type TEXT DEFAULT '', title TEXT DEFAULT '', "
+        "number TEXT DEFAULT '', doc_date TEXT DEFAULT '', contractor_id INTEGER, "
+        "body TEXT DEFAULT '', created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_biz ON documents(business_id, direction)")
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
