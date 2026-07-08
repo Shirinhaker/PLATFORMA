@@ -910,6 +910,10 @@ def _migrate(conn):
         "user_id INTEGER, "
         "created_at INTEGER NOT NULL, "
         "schedule_json TEXT DEFAULT '', "
+        "login TEXT DEFAULT '', "
+        "pass_hash TEXT DEFAULT '', "
+        "perms TEXT DEFAULT '', "
+        "can_login INTEGER DEFAULT 0, "
         "fired_at INTEGER)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_staff_biz ON staff(business_id, status)")
     conn.execute(
@@ -923,6 +927,15 @@ def _migrate(conn):
         "time_out TEXT DEFAULT '', "
         "created_at INTEGER NOT NULL, "
         "UNIQUE(staff_id, date))")
+    _stc2 = [r["name"] for r in conn.execute("PRAGMA table_info(staff)").fetchall()]
+    for _c, _d in (("login","TEXT DEFAULT ''"),("pass_hash","TEXT DEFAULT ''"),("perms","TEXT DEFAULT ''"),("can_login","INTEGER DEFAULT 0")):
+        if _c not in _stc2:
+            conn.execute("ALTER TABLE staff ADD COLUMN %s %s" % (_c, _d))
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS staff_sessions("
+        "token TEXT PRIMARY KEY, staff_id INTEGER NOT NULL, business_id INTEGER NOT NULL, "
+        "created_at INTEGER NOT NULL)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_staff_login ON staff(lower(login)) WHERE COALESCE(login,'')<>''")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS staff_professions("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
