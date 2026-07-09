@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1450 -->
+<title>Platforma</title><!-- BUILD: v1451 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1004,9 +1004,9 @@
       <!-- CAB: SOZLAMALAR -->
       <section class="screen" data-screen="cab-settings">
         <div style="height:6px"></div>
-        <div class="set-row" data-alert="Login/parolni o'zgartirish (namuna).">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-nav="biz-cred">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="set-row" data-alert="Bildirishnomalar (namuna).">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-notify="1">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
@@ -1132,6 +1132,21 @@
         </div>
       </section>
 
+      <!-- CAB: LOGIN VA PAROL (do'kon) -->
+      <section class="screen" data-screen="biz-cred">
+        <div class="form-wrap">
+          <div class="panel-card"><b>🏪 Firma logini</b>
+            <div id="bcLogin" style="font-size:20px;font-weight:800;margin-top:4px">—</div>
+            <div class="idesc" style="margin-top:4px">Bu login va parol bilan boshqa qurilmadan ham do'kon kabinetiga kirasiz. Xodimlaringiz ham shu <b>firma logini</b>ni ishlatadi.</div>
+          </div>
+          <div class="field"><label>Yangi login <span style="font-weight:400;color:var(--soft)">(o'zgartirmoqchi bo'lsangiz)</span></label><input class="input" id="bcNewLogin" autocomplete="off" placeholder="masalan: anvardokon" style="text-transform:lowercase"></div>
+          <div class="field"><label>Yangi parol</label><input class="input" id="bcNewPass" type="text" autocomplete="new-password" placeholder="kamida 4 belgi (bo'sh qoldirsangiz o'zgarmaydi)"></div>
+          <div class="field"><label>Yangi parolni takrorlang</label><input class="input" id="bcNewPass2" type="text" autocomplete="new-password" placeholder="parolni yana kiriting"></div>
+          <div class="idesc" style="color:#b45309;margin:2px 0 8px">⚠️ Loginni o'zgartirsangiz, xodimlaringizga yangi firma loginini ayting.</div>
+          <button class="btn btn-primary btn-block" id="bcSave">Saqlash</button>
+        </div>
+      </section>
+
       <!-- PERSON: MUTAXASIS SAHIFASI -->
       <section class="screen" data-screen="person">
         <div id="personBody"></div>
@@ -1226,9 +1241,9 @@
       <!-- UCAB: SOZLAMALAR -->
       <section class="screen" data-screen="ucab-settings">
         <div style="height:6px"></div>
-        <div class="set-row" data-alert="Login/parolni o'zgartirish (namuna).">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-nav="biz-cred">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="set-row" data-alert="Bildirishnomalar (namuna).">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-notify="1">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
@@ -2713,14 +2728,14 @@
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
-    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi" };
+    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -6961,6 +6976,28 @@
     }, { enableHighAccuracy:true, timeout:8000 });
   });
 
+  function loadBizCred(){
+    el("bcNewLogin").value=""; el("bcNewPass").value=""; el("bcNewPass2").value="";
+    api("GET","/api/me").then(function(d){
+      var b = (d && d.business) || {};
+      if(!d || !d.has_business){ el("bcLogin").textContent = "—"; showMsg("Bu bo'lim do'kon egalari uchun."); return; }
+      el("bcLogin").textContent = b.biz_login || "—";
+    }).catch(function(e){ showMsg(e.message); });
+  }
+  el("bcNewLogin") && el("bcNewLogin").addEventListener("input", function(){ this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,""); });
+  el("bcSave") && el("bcSave").addEventListener("click", function(){
+    var nl=(el("bcNewLogin").value||"").trim().toLowerCase();
+    var np=(el("bcNewPass").value||"").trim();
+    var np2=(el("bcNewPass2").value||"").trim();
+    if(!nl && !np){ showMsg("Yangi login yoki parol kiriting."); return; }
+    if(np && np!==np2){ showMsg("Parollar mos kelmadi."); return; }
+    var btn=this; btn.disabled=true;
+    api("PUT","/api/business/credentials",{ new_login:nl, new_password:np })
+      .then(function(r){ showMsg("Saqlandi ✅"); if(r.biz_login) el("bcLogin").textContent=r.biz_login; el("bcNewLogin").value=""; el("bcNewPass").value=""; el("bcNewPass2").value=""; })
+      .catch(function(e){ showMsg(e.message); })
+      .finally(function(){ btn.disabled=false; });
+  });
+
   function loadSpecialist(){
     api("GET","/api/specialist").then(function(d){
       if(!d) return;
@@ -6987,6 +7024,7 @@
     if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="ucab-spec") loadSpecialist();
+    else if(screen==="biz-cred") loadBizCred();
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-stats") loadStats();
     else if(screen==="cab-qarz") loadDebtors();
