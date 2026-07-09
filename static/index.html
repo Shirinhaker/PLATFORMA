@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1457 -->
+<title>Platforma</title><!-- BUILD: v1458 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2844,6 +2844,12 @@
       }).join("");
       var elonsBlock = (b.listings&&b.listings.length) ? '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+b.listings.length+' ta</span></div>'+elons : '';
       el("bizBody").innerHTML =
+        '<div id="bizCartBar" style="position:sticky;top:0;z-index:40;display:none;padding:8px 0 8px;background:var(--bg)">'+
+          '<button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">'+
+            '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🛒 Savatcha: <b id="bizCartBarCount">0</b> ta<span id="bizCartBarTotalWrap" style="display:none"> · <b id="bizCartBarTotal"></b></span></span>'+
+            '<span style="flex:0 0 auto;font-weight:700">Ko\'rish →</span>'+
+          '</button>'+
+        '</div>'+
         '<div class="biz-hero" style="background:var(--primary-tint)"><div class="emoji">🏪</div><span class="htag">'+esc(b.yon||"")+'</span></div>'+
         '<div class="biz-title">'+esc(b.name)+'</div>'+
         '<div class="biz-sub"><span>'+esc(b.tur||"")+'</span>'+(b.address?'<span class="dot-sep"></span><span>'+esc(b.address)+'</span>':'')+'<span class="dot-sep"></span><span>'+b.followers+' obunachi</span></div>'+
@@ -2854,8 +2860,6 @@
           '<button class="btn btn-primary" style="flex:1" id="bizMsgBtn">✍️ Xabar</button>'+
           (b.phone?'<button class="btn btn-outline" style="flex:none;width:48px" data-callphone="'+esc(b.phone)+'" aria-label="Bog\'lanish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></button>':'')+
         '</div>'+
-        // Tanlanganlar (savatcha) — profil ichida ko'rinib turadi, eski uslub (hisob-kitob bilan)
-        '<div id="orderDraftBox" class="panel-card" style="display:none;margin:2px 0 12px"></div>'+
         '<div class="sec-head"><h2>Mahsulot va xizmatlar</h2><span class="link">'+(b.items?b.items.length:0)+' ta</span></div>'+
         // Qidiruv (#4) — 3 tadan ko'p mahsulot bo'lsa ko'rsatamiz
         ((b.items&&b.items.length>3)?'<input class="input" id="bizSearch" placeholder="🔍 Mahsulot yoki xizmat qidirish..." style="margin-bottom:12px">':'')+
@@ -2870,7 +2874,9 @@
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
       loadReviews("business", b.id, "rvBoxBiz");
-      renderOrderDraftBox(); // profil ichidagi Tanlanganlar (savatcha)
+      updateBizCartBar(); // profil ichida sticky savatcha bar
+      var _bcb=el("bizCartBarBtn");
+      if(_bcb) _bcb.addEventListener("click", function(){ cartFilter = currentBizId; renderCart(cartFilter); nav("cart"); });
       // Qidiruv (#4): mahsulot nomi/izohi bo'yicha filtrlash
       var bs = el("bizSearch");
       if(bs) bs.addEventListener("input", function(){
@@ -2916,10 +2922,29 @@
     return Math.round(Object.keys(cart.items).reduce(function(sum,k){ var it=cart.items[k]; return sum + parsePriceAmount(it.price)*(parseFloat(it.qty)||0); }, 0));
   }
   function updateCartBadge(){
-    var badge = el("cartBadge"); if(!badge) return;
-    var n = (current==="business" && currentBizId) ? cartBizCount(currentBizId) : cartTotalCount();
-    badge.hidden = n<=0;
-    badge.textContent = n>99 ? "99+" : String(n);
+    var badge = el("cartBadge");
+    if(badge){
+      var n = (current==="business" && currentBizId) ? cartBizCount(currentBizId) : cartTotalCount();
+      badge.hidden = n<=0;
+      badge.textContent = n>99 ? "99+" : String(n);
+    }
+    updateBizCartBar();
+  }
+  // Do'kon sahifasidagi yuqorida qotib turadigan (sticky) savatcha bar
+  function updateBizCartBar(){
+    var bar=el("bizCartBar"); if(!bar) return;
+    var cart = currentBizId ? CART[parseInt(currentBizId,10)] : null;
+    var lines = cart ? cartLines(cart) : 0;
+    if(lines>0){
+      bar.style.display="block";
+      if(el("bizCartBarCount")) el("bizCartBarCount").textContent = lines;
+      var total = cart ? cartReceiptTotal(cart) : 0;
+      var tw=el("bizCartBarTotalWrap"), tt=el("bizCartBarTotal");
+      if(total>0 && tt){ tt.textContent = moneyText(total); if(tw) tw.style.display="inline"; }
+      else if(tw){ tw.style.display="none"; }
+    } else {
+      bar.style.display="none";
+    }
   }
   function cartChange(bid, itemId, dir){
     var cart=CART[parseInt(bid,10)]; if(!cart) return;
