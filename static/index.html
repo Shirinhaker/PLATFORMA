@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1455 -->
+<title>Platforma</title><!-- BUILD: v1454 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -588,7 +588,7 @@
         </div>
         <button class="icon-btn" id="cartBtn" aria-label="Savat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6"/></svg>
-          <span class="badge" id="cartBadge" hidden>0</span>
+          <span class="badge">2</span>
         </button>
         <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖</button>
         <button class="icon-btn" id="cabBtn" aria-label="Kabinet">
@@ -1443,9 +1443,14 @@
         <div id="taxidrvBody"></div>
       </section>
 
-      <!-- CART (savatcha — har do'kon uchun alohida chek) -->
+      <!-- CART (stub) -->
       <section class="screen" data-screen="cart">
-        <div class="form-wrap"><div id="cartBody"></div></div>
+        <div class="empty">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6"/></svg></div>
+          <h3>Savat hozircha bo'sh</h3>
+          <p>Mahsulot qo'shish va buyurtma berish keyingi bosqichda qo'shiladi.</p>
+          <span class="soon">2-bosqich</span>
+        </div>
       </section>
 
     </main>
@@ -2762,7 +2767,6 @@
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
     if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
-    if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
@@ -2775,30 +2779,13 @@
   }
   // Mijoz biznes sahifasi: bitta tovar kartochkasi (rasm + nom + narx + "Savatga" tugmasi)
   // "Savatga" tugmasi eski "Qo'shish" mexanizmini saqlaydi: data-order-item + ma'lumotlar.
-  function itemCtrlHtml(it, b){
-    var c = CART[parseInt(b.id,10)] && CART[parseInt(b.id,10)].items[String(it.id)];
-    if(c && (parseFloat(c.qty)||0)>0){
-      return '<div style="display:flex;align-items:center;gap:6px;width:100%">'+
-        '<button class="mini-btn" style="flex:0 0 auto;width:34px;height:34px;padding:0" data-cart-minus="'+it.id+'" data-cart-biz="'+b.id+'">−</button>'+
-        '<span style="flex:1;text-align:center;font-weight:800">'+fmtQty(c.qty)+'</span>'+
-        '<button class="mini-btn" style="flex:0 0 auto;width:34px;height:34px;padding:0" data-cart-plus="'+it.id+'" data-cart-biz="'+b.id+'">+</button>'+
-      '</div>';
-    }
-    return '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-item-unit="'+esc(it.unit||"dona")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>';
-  }
-  function refreshItemCtrl(bid, itemId){
-    var cont = document.querySelector('.biz-item-ctrl[data-ci="'+itemId+'"][data-cb="'+bid+'"]');
-    if(!cont) return;
-    var it = curBiz.items[String(itemId)];
-    if(it) cont.innerHTML = itemCtrlHtml(it, { id:parseInt(bid,10), name:curBiz.name });
-  }
   function bizItemCardHtml(it, b){
     return '<div class="item-card2 biz-prod-card">'+
       '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
-      '<div class="biz-item-ctrl" data-ci="'+it.id+'" data-cb="'+b.id+'">'+itemCtrlHtml(it, b)+'</div>'+
+      '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-item-unit="'+esc(it.unit||"dona")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>'+
     '</div>';
   }
   function bizGroupBlockHtml(group, items, b){
@@ -2836,10 +2823,6 @@
     api("GET","/api/business/"+id).then(function(b){
       curFollow = {kind:"business", id:b.id};
       resetOrderDraft(b.id, b.name);
-      // Savatcha uchun: joriy do'kon + mahsulotlar lug'ati (stepper qayta chizish uchun)
-      currentBizId = b.id;
-      var _ci = {}; (b.items||[]).forEach(function(it){ _ci[String(it.id)] = it; });
-      curBiz = { id:b.id, name:b.name, items:_ci };
       var items = bizItemsHtml(b);
       var elons = (b.listings||[]).map(function(e2){
         var vis = e2.visibility==="own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma";
@@ -2864,6 +2847,7 @@
         '<div id="bizItemsWrap">'+items+'</div>'+
         '<div id="bizSearchEmpty" class="idesc" style="display:none;text-align:center;margin:10px 0">Hech narsa topilmadi</div>'+
         elonsBlock+
+        '<div id="orderDraftBox" class="panel-card" style="display:none;margin-top:14px"></div>'+
         '<div id="rvBoxBiz"></div>';
       el("tbTitle").textContent = b.name;
       nav("business");
@@ -2898,78 +2882,6 @@
   /* ---------- BUYURTMALAR / NAVBATLAR ---------- */
 
   var orderDraft = { business_id:null, business_name:"", items:{} };
-  // ===== SAVATCHA (#1): har do'kon uchun alohida chek (aralashmaydi) =====
-  var CART = {};                 // { bizId: {business_id, business_name, items:{}} }
-  var currentBizId = null;       // hozir ochiq do'kon sahifasi id si
-  var cartFilter = null;         // savat ekrani: bitta do'kon (profildan) yoki hammasi (bosh)
-  var curBiz = { id:null, name:"", items:{} }; // ochiq do'kon mahsulotlari (stepper qayta chizish uchun)
-  function cartFor(bid, bname){
-    bid = parseInt(bid,10);
-    if(!CART[bid]) CART[bid] = { business_id:bid, business_name:bname||"", items:{} };
-    else if(bname) CART[bid].business_name = bname;
-    return CART[bid];
-  }
-  function clearCart(bid){ if(CART[parseInt(bid,10)]) CART[parseInt(bid,10)].items = {}; updateCartBadge(); }
-  function cartLines(cart){ return cart ? Object.keys(cart.items||{}).length : 0; }
-  function cartBizCount(bid){ var c=CART[parseInt(bid,10)]; return c ? cartLines(c) : 0; }
-  function cartTotalCount(){ var n=0; Object.keys(CART).forEach(function(bid){ n += cartLines(CART[bid]); }); return n; }
-  function cartReceiptTotal(cart){
-    return Math.round(Object.keys(cart.items).reduce(function(sum,k){ var it=cart.items[k]; return sum + parsePriceAmount(it.price)*(parseFloat(it.qty)||0); }, 0));
-  }
-  function updateCartBadge(){
-    var badge = el("cartBadge"); if(!badge) return;
-    var n = (current==="business" && currentBizId) ? cartBizCount(currentBizId) : cartTotalCount();
-    badge.hidden = n<=0;
-    badge.textContent = n>99 ? "99+" : String(n);
-  }
-  function cartChange(bid, itemId, dir){
-    var cart=CART[parseInt(bid,10)]; if(!cart) return;
-    var k=String(itemId), it=cart.items[k]; if(!it) return;
-    var step = unitAllowsFraction(it.unit) ? 0.5 : 1;
-    var q=(parseFloat(it.qty)||0)+step*dir; q=Math.round(q*1000)/1000;
-    if(q<=0) delete cart.items[k]; else { if(q>999)q=999; it.qty=q; }
-    updateCartBadge();
-  }
-  function cartReceiptHtml(cart){
-    var keys = Object.keys(cart.items);
-    var total = cartReceiptTotal(cart);
-    var rows = keys.map(function(k){
-      var it=cart.items[k]; var pv=parsePriceAmount(it.price);
-      return '<div style="display:block;padding:9px 0;border-top:1px solid var(--line,#eee)">'+
-        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
-          '<div style="min-width:0"><div style="font-weight:600">'+esc(it.name)+'</div>'+
-            '<div class="idesc">'+esc(it.price ? (it.price+unitSuffix(it.unit)) : "Narx kelishiladi")+'</div></div>'+
-          (pv>0?'<div style="flex:0 0 auto;font-weight:700">'+esc(moneyText(Math.round(pv*(parseFloat(it.qty)||0))))+'</div>':'')+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:7px">'+
-          '<button class="mini-btn" style="height:36px;min-width:36px;flex:0 0 auto" data-cart-minus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">−</button>'+
-          '<span style="min-width:70px;text-align:center;font-weight:800">'+fmtQty(it.qty)+' '+esc(it.unit||"dona")+'</span>'+
-          '<button class="mini-btn" style="height:36px;min-width:36px;flex:0 0 auto" data-cart-plus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">+</button>'+
-        '</div>'+
-      '</div>';
-    }).join("");
-    return '<div class="panel-card" style="margin-bottom:14px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
-        '<div style="min-width:0"><b>🏪 '+esc(cart.business_name||"Do\'kon")+'</b>'+
-          '<div class="idesc">'+keys.length+' xil mahsulot</div></div>'+
-        (total>0?'<div style="flex:0 0 auto;font-weight:800;font-size:16px">'+esc(moneyText(total))+'</div>':'')+
-      '</div>'+
-      rows+
-      '<button class="btn btn-amber btn-block" style="margin-top:12px" data-cart-checkout="'+cart.business_id+'" data-cart-name="'+esc(cart.business_name||"")+'">Buyurtma qilish</button>'+
-      '<button class="btn btn-soft btn-block" style="margin-top:8px" data-cart-clear="'+cart.business_id+'">Chekni tozalash</button>'+
-    '</div>';
-  }
-  function renderCart(filterBid){
-    var box=el("cartBody"); if(!box) return;
-    var bids = Object.keys(CART).filter(function(bid){ return cartLines(CART[bid])>0; });
-    if(filterBid) bids = bids.filter(function(bid){ return String(bid)===String(filterBid); });
-    if(!bids.length){
-      box.innerHTML = '<div class="empty" style="padding:48px 20px"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6"/></svg></div><h3>Savatcha bo\'sh</h3><p>Do\'kon sahifasidan mahsulot qo\'shing.</p></div>';
-      return;
-    }
-    var head = (!filterBid && bids.length>1) ? '<div class="idesc" style="margin-bottom:10px">Har do\'kon uchun alohida chek. Har birini alohida buyurtma qilasiz.</div>' : '';
-    box.innerHTML = head + bids.map(function(bid){ return cartReceiptHtml(CART[bid]); }).join("");
-  }
   var ORDERS_MINE = [];
   var ORDERS_INBOX = [];
   var ORDER_DETAIL_MAP = null;
@@ -2978,10 +2890,7 @@
   var ORDER_CHAT_REPLY = null;
   var ORDER_CHAT_EDIT = null;
   function resetOrderDraft(bid, bname){
-    // Do'kon sahifasi ochilganda: shu do'kon savatini yuklaymiz (saqlanadi, aralashmaydi)
-    if(bid){ orderDraft = cartFor(bid, bname); }
-    else { orderDraft = { business_id:null, business_name:"", items:{} }; }
-    updateCartBadge();
+    orderDraft = { business_id:bid||null, business_name:bname||"", items:{} };
     setTimeout(renderOrderDraftBox, 0);
   }
   function parsePriceAmount(text){
@@ -3002,12 +2911,11 @@
     return Math.round(draftItems().reduce(function(sum,it){ return sum + (parsePriceAmount(it.price) * (it.qty||1)); }, 0));
   }
   function addOrderItem(id, name, price, bid, bname, unit){
-    var cart = cartFor(bid, bname);
-    orderDraft = cart;
+    if(orderDraft.business_id && Number(orderDraft.business_id)!==Number(bid)) resetOrderDraft(bid, bname);
+    if(!orderDraft.business_id) resetOrderDraft(bid, bname);
     var k=String(id);
-    if(!cart.items[k]) cart.items[k]={ item_id:parseInt(id,10), name:name||"Mahsulot/xizmat", price:price||"", unit:unit||"dona", qty:0 };
-    cart.items[k].qty += 1;
-    updateCartBadge();
+    if(!orderDraft.items[k]) orderDraft.items[k]={ item_id:parseInt(id,10), name:name||"Mahsulot/xizmat", price:price||"", unit:unit||"dona", qty:0 };
+    orderDraft.items[k].qty += 1;
     renderOrderDraftBox();
   }
   function changeOrderItem(id, dir){
@@ -3018,7 +2926,6 @@
     q = Math.round(q*1000)/1000;
     if(q<=0){ delete orderDraft.items[k]; }
     else { if(q>999) q=999; it.qty=q; }
-    updateCartBadge();
     renderOrderDraftBox();
   }
   function renderOrderDraftBox(){
@@ -3264,11 +3171,7 @@
         body.items = selected.map(function(it){ return { item_id:it.item_id, qty:it.qty }; });
       }
       api("POST","/api/orders", withActor(body, actorType())).then(function(){
-        if(useItems){
-          clearCart(bid);
-          if(current==="cart") renderCart(cartFilter);
-          if(currentBizId===Number(bid)){ Object.keys(curBiz.items||{}).forEach(function(iid){ refreshItemCtrl(bid, iid); }); }
-        }
+        if(useItems){ resetOrderDraft(bid, bname); }
         showMsg("Buyurtma yuborildi.");
         if(activeMode==="user") loadMyOrders();
         refreshOrderBadges();
@@ -4490,11 +4393,7 @@
   el("backBtn").addEventListener("click", function(){ nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home")); });
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
-  el("cartBtn").addEventListener("click", function(){
-    cartFilter = (current==="business" && currentBizId) ? currentBizId : null;
-    renderCart(cartFilter);
-    nav("cart");
-  });
+  el("cartBtn").addEventListener("click", function(){ nav("cart"); });
   el("cabBtn").addEventListener("click", function(){
     if(loggedIn && ME.registered){
       // biznesi bo'lmasa doim oddiy; bo'lsa hozirgi faol rejimga qarab
@@ -5180,35 +5079,7 @@
     var oi=e.target.closest("[data-order-item]");
     if(oi){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
-      var _bid=parseInt(oi.getAttribute("data-business-id"),10), _iid=parseInt(oi.getAttribute("data-order-item"),10);
-      addOrderItem(_iid, oi.getAttribute("data-item-name")||"Mahsulot/xizmat", oi.getAttribute("data-item-price")||"", _bid, oi.getAttribute("data-business-name")||"Biznes", oi.getAttribute("data-item-unit")||"dona");
-      refreshItemCtrl(_bid, _iid);
-      return;
-    }
-    // Savat stepperlari (karta yoki savat ekrani) — data-cart-plus/minus
-    var cpl=e.target.closest("[data-cart-plus]");
-    if(cpl){ var pb=cpl.getAttribute("data-cart-biz"), pi=cpl.getAttribute("data-cart-plus"); cartChange(pb, pi, 1); if(current==="cart") renderCart(cartFilter); else refreshItemCtrl(pb, pi); return; }
-    var cmi=e.target.closest("[data-cart-minus]");
-    if(cmi){ var mb=cmi.getAttribute("data-cart-biz"), mi=cmi.getAttribute("data-cart-minus"); cartChange(mb, mi, -1); if(current==="cart") renderCart(cartFilter); else refreshItemCtrl(mb, mi); return; }
-    // Savatdan buyurtma qilish (chek)
-    var cco=e.target.closest("[data-cart-checkout]");
-    if(cco){
-      if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
-      var cbid=parseInt(cco.getAttribute("data-cart-checkout"),10);
-      orderDraft = cartFor(cbid, cco.getAttribute("data-cart-name")||"");
-      createBusinessOrder(cbid, cco.getAttribute("data-cart-name")||"Biznes");
-      return;
-    }
-    // Chekni tozalash
-    var ccl=e.target.closest("[data-cart-clear]");
-    if(ccl){
-      var clid=parseInt(ccl.getAttribute("data-cart-clear"),10);
-      askConfirm({ text:"Bu do'kon cheki tozalansinmi?", okText:"Tozalash", danger:true }).then(function(ok){
-        if(!ok) return;
-        clearCart(clid);
-        if(current==="cart") renderCart(cartFilter);
-        if(currentBizId){ /* karta stepperlarini yangilash */ Object.keys(curBiz.items||{}).forEach(function(iid){ refreshItemCtrl(currentBizId, iid); }); }
-      });
+      addOrderItem(parseInt(oi.getAttribute("data-order-item"),10), oi.getAttribute("data-item-name")||"Mahsulot/xizmat", oi.getAttribute("data-item-price")||"", parseInt(oi.getAttribute("data-business-id"),10), oi.getAttribute("data-business-name")||"Biznes", oi.getAttribute("data-item-unit")||"dona");
       return;
     }
     var om=e.target.closest("[data-order-minus]");
