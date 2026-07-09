@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1458 -->
+<title>Platforma</title><!-- BUILD: v1459 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -602,6 +602,13 @@
         <div class="tb-title" id="tbTitle">Sahifa</div>
       </div>
     </header>
+
+    <div id="bizCartBar" style="display:none;flex:none;padding:8px 14px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
+      <button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🛒 Savatcha: <b id="bizCartBarCount">0</b> ta<span id="bizCartBarTotalWrap" style="display:none"> · <b id="bizCartBarTotal"></b></span></span>
+        <span style="flex:0 0 auto;font-weight:700">Ko'rish →</span>
+      </button>
+    </div>
 
     <main class="screens" id="screens">
 
@@ -2844,12 +2851,6 @@
       }).join("");
       var elonsBlock = (b.listings&&b.listings.length) ? '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+b.listings.length+' ta</span></div>'+elons : '';
       el("bizBody").innerHTML =
-        '<div id="bizCartBar" style="position:sticky;top:0;z-index:40;display:none;padding:8px 0 8px;background:var(--bg)">'+
-          '<button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">'+
-            '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🛒 Savatcha: <b id="bizCartBarCount">0</b> ta<span id="bizCartBarTotalWrap" style="display:none"> · <b id="bizCartBarTotal"></b></span></span>'+
-            '<span style="flex:0 0 auto;font-weight:700">Ko\'rish →</span>'+
-          '</button>'+
-        '</div>'+
         '<div class="biz-hero" style="background:var(--primary-tint)"><div class="emoji">🏪</div><span class="htag">'+esc(b.yon||"")+'</span></div>'+
         '<div class="biz-title">'+esc(b.name)+'</div>'+
         '<div class="biz-sub"><span>'+esc(b.tur||"")+'</span>'+(b.address?'<span class="dot-sep"></span><span>'+esc(b.address)+'</span>':'')+'<span class="dot-sep"></span><span>'+b.followers+' obunachi</span></div>'+
@@ -2874,9 +2875,6 @@
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
       loadReviews("business", b.id, "rvBoxBiz");
-      updateBizCartBar(); // profil ichida sticky savatcha bar
-      var _bcb=el("bizCartBarBtn");
-      if(_bcb) _bcb.addEventListener("click", function(){ cartFilter = currentBizId; renderCart(cartFilter); nav("cart"); });
       // Qidiruv (#4): mahsulot nomi/izohi bo'yicha filtrlash
       var bs = el("bizSearch");
       if(bs) bs.addEventListener("input", function(){
@@ -2933,9 +2931,9 @@
   // Do'kon sahifasidagi yuqorida qotib turadigan (sticky) savatcha bar
   function updateBizCartBar(){
     var bar=el("bizCartBar"); if(!bar) return;
-    var cart = currentBizId ? CART[parseInt(currentBizId,10)] : null;
+    var cart = (current==="business" && currentBizId) ? CART[parseInt(currentBizId,10)] : null;
     var lines = cart ? cartLines(cart) : 0;
-    if(lines>0){
+    if(current==="business" && lines>0){
       bar.style.display="block";
       if(el("bizCartBarCount")) el("bizCartBarCount").textContent = lines;
       var total = cart ? cartReceiptTotal(cart) : 0;
@@ -4563,6 +4561,9 @@
     cartFilter = (current==="business" && currentBizId) ? currentBizId : null;
     renderCart(cartFilter);
     nav("cart");
+  });
+  el("bizCartBarBtn") && el("bizCartBarBtn").addEventListener("click", function(){
+    cartFilter = currentBizId; renderCart(cartFilter); nav("cart");
   });
   el("cabBtn").addEventListener("click", function(){
     if(loggedIn && ME.registered){
