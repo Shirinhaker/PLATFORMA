@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1451 -->
+<title>Platforma</title><!-- BUILD: v1452 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1007,7 +1007,7 @@
         <div class="set-row" data-nav="biz-cred">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-notify="1">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-nav="help">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
 
@@ -1147,6 +1147,14 @@
         </div>
       </section>
 
+      <!-- YORDAM: SAVOL-JAVOB (FAQ) -->
+      <section class="screen" data-screen="help">
+        <div class="form-wrap">
+          <div class="idesc" style="margin-bottom:10px">Ko'p so'raladigan savollar. Savol ustiga bosing — javobi ochiladi.</div>
+          <div id="faqList"></div>
+        </div>
+      </section>
+
       <!-- PERSON: MUTAXASIS SAHIFASI -->
       <section class="screen" data-screen="person">
         <div id="personBody"></div>
@@ -1244,7 +1252,7 @@
         <div class="set-row" data-nav="biz-cred">🔑 Login va parol<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-alert="Til tanlash (namuna).">🌐 Til — O'zbekcha<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row" data-notify="1">🔔 Bildirishnomalar<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="set-row" data-alert="Yordam markazi: savol-javob va murojaat (namuna).">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="set-row" data-nav="help">🆘 Yordam<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
 
@@ -2728,14 +2736,14 @@
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
-    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol" };
+    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol", help:"Yordam" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", help:"cab-settings", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home" };
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -6976,6 +6984,44 @@
     }, { enableHighAccuracy:true, timeout:8000 });
   });
 
+  var FAQ_ITEMS = [
+    { q: "Do'konimni qanday ochaman?", a: "Pastdagi menyudan \"Kabinet\" — \"Biznes ochish\" tugmasini bosing. Do'kon nomi, turi, manzilini kiriting. Ochilgach sizga firma login va parol beriladi — ularni saqlab qo'ying." },
+    { q: "Mahsulot qanday qo'shaman?", a: "Do'kon kabinetida \"Mahsulotlar\" bo'limiga kiring — \"+ Yangi\" tugmasi orqali nom, narx, o'lchov birligi va rasm qo'shing. Ombordagi qoldiqni ham shu yerda boshqarasiz." },
+    { q: "Buyurtmani qanday qabul qilaman?", a: "\"Buyurtmalar\" bo'limida yangi buyurtmalar ko'rinadi. \"Qabul qilish\" bosing, tayyor bo'lgach — yetkazib berish bo'lsa \"Tayyor bo'ldi\", so'ng \"Yakunlash\" tugmasini bosing." },
+    { q: "\"Tayyor bo'ldi\" nima qiladi?", a: "Yetkazib berish buyurtmasida \"Tayyor bo'ldi\" bosilganda, tizim avtomatik dostavka e'lonini beradi — dostavka haydovchilari do'koningizdan mijozgacha yetkazish uchun buyurtmani ko'radi va oladi." },
+    { q: "Xodimga login-parol qanday beraman?", a: "Kabinet — \"Ma'muriyat\" — \"Xodimlar\" — xodimni oching — \"Ilovaga kirish huquqi\"ni yoqing. Login-parol va ruxsat bo'limlarini (Kassa/Ombor/Buyurtma) belgilang. Xodimga firma logini, o'z logini va parolini bering." },
+    { q: "Xodim qanday kiradi?", a: "Kirish sahifasida \"Xodimlar uchun kirish\" tugmasini bossin. So'ng firma logini, o'z logini va parolini kiritib kiradi — faqat siz belgilagan bo'limlarni ko'radi." },
+    { q: "Do'kon login yoki parolini unutdim / o'zgartirmoqchiman", a: "Do'kon kabineti — \"Sozlamalar\" — \"Login va parol\" bo'limida firma loginini ko'rasiz va yangi login/parol o'rnatasiz." },
+    { q: "Mutaxassis bo'lib qanday ro'yxatdan o'taman?", a: "\"Kabinet\" — \"Mutaxasisligim\" bo'limiga kiring. Kasbingiz, narx va ma'lumotlarni to'ldiring, xaritada joylashuvingizni belgilang va \"Ko'rinaman\"ni yoqing. Shundan so'ng qidiruvda va xaritada chiqasiz." },
+    { q: "Taxi yoki dostavkani qanday chaqiraman?", a: "Bosh sahifadagi taxi tugmasini bosing. Qayerdan-qayerga, yuk turini kiriting va chaqiring. Yaqin haydovchilar buyurtmangizni ko'radi." },
+    { q: "Haydovchi bo'lib qanday ishlayman?", a: "Haydovchi kabinetiga kiring, xizmat turini (taxi/dostavka) tanlang va \"Bo'shman\" holatiga o'ting. Buyurtma kelganda qabul qiling — qabul qilgach avtomatik \"Bandman\" bo'lasiz, yakunlagach yana bo'sh." },
+    { q: "Baho va fikrni qanday qoldiraman?", a: "Do'kon yoki mutaxassis sahifasining pastida \"Baholar va fikrlar\" bo'limi bor. Faqat o'sha yerdan buyurtma bergan/xarid qilganlar yulduz (1-5) va izoh qoldira oladi." },
+    { q: "To'lov qanday ishlaydi?", a: "Do'kon o'z to'lov kartasini profilга qo'shsa, mijoz buyurtma berayotganda karta ma'lumotini ko'radi va o'zaro kelishuv asosida to'laydi. Onlayn to'lov tizimi keyingi bosqichda ulanadi." },
+    { q: "Havola (link) va QR nima uchun?", a: "Do'kon profilida havola va QR kod bor. Ularni ulashsangiz, boshqalar to'g'ridan-to'g'ri do'koningiz sahifasini ochadi." },
+    { q: "Qarz daftari nima?", a: "Kassada qarzga sotilgan savdolar \"Qarz daftari\"da saqlanadi. Kim, qancha qarzdorligini ko'rasiz va to'lov qilinganda belgilaysiz." }
+  ];
+  function renderFaq(){
+    var box = el("faqList"); if(!box) return;
+    box.innerHTML = FAQ_ITEMS.map(function(it, i){
+      return '<div class="panel-card faq-item" style="margin-bottom:8px;cursor:pointer" data-faq="'+i+'">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">'+
+          '<b style="min-width:0">'+esc(it.q)+'</b>'+
+          '<span class="faq-arw" style="flex:0 0 auto;transition:transform .15s">▾</span>'+
+        '</div>'+
+        '<div class="faq-ans" style="display:none;margin-top:8px;color:var(--soft);line-height:1.5">'+esc(it.a)+'</div>'+
+      '</div>';
+    }).join("");
+    box.querySelectorAll(".faq-item").forEach(function(card){
+      card.addEventListener("click", function(){
+        var ans = this.querySelector(".faq-ans");
+        var arw = this.querySelector(".faq-arw");
+        var open = ans.style.display !== "none";
+        ans.style.display = open ? "none" : "block";
+        if(arw) arw.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
+      });
+    });
+  }
+
   function loadBizCred(){
     el("bcNewLogin").value=""; el("bcNewPass").value=""; el("bcNewPass2").value="";
     api("GET","/api/me").then(function(d){
@@ -7025,6 +7071,7 @@
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="biz-cred") loadBizCred();
+    else if(screen==="help") renderFaq();
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-stats") loadStats();
     else if(screen==="cab-qarz") loadDebtors();
