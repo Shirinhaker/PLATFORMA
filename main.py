@@ -712,6 +712,7 @@ async def me(x_telegram_init_data: str = Header(default="")):
             "username": biz["username"] if "username" in _bk else "",
             "director": biz["director"] if "director" in _bk else "",
             "inn": biz["inn"] if "inn" in _bk else "",
+            "biz_login": biz["biz_login"] if "biz_login" in _bk else "",
         }
     conn.close()
     return result
