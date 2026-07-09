@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1455 -->
+<title>Platforma</title><!-- BUILD: v1457 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2776,15 +2776,11 @@
   // Mijoz biznes sahifasi: bitta tovar kartochkasi (rasm + nom + narx + "Savatga" tugmasi)
   // "Savatga" tugmasi eski "Qo'shish" mexanizmini saqlaydi: data-order-item + ma'lumotlar.
   function itemCtrlHtml(it, b){
+    // Menyuda stepper YO'Q — faqat "Savatga" tugmasi. Miqdorni pastdagi "Tanlanganlar"da o'zgartiradi.
     var c = CART[parseInt(b.id,10)] && CART[parseInt(b.id,10)].items[String(it.id)];
-    if(c && (parseFloat(c.qty)||0)>0){
-      return '<div style="display:flex;align-items:center;gap:6px;width:100%">'+
-        '<button class="mini-btn" style="flex:0 0 auto;width:34px;height:34px;padding:0" data-cart-minus="'+it.id+'" data-cart-biz="'+b.id+'">−</button>'+
-        '<span style="flex:1;text-align:center;font-weight:800">'+fmtQty(c.qty)+'</span>'+
-        '<button class="mini-btn" style="flex:0 0 auto;width:34px;height:34px;padding:0" data-cart-plus="'+it.id+'" data-cart-biz="'+b.id+'">+</button>'+
-      '</div>';
-    }
-    return '<button class="biz-add-btn" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-item-unit="'+esc(it.unit||"dona")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">+ Savatga</button>';
+    var n = c ? (parseFloat(c.qty)||0) : 0;
+    var label = n>0 ? ("✓ Savatda: "+fmtQty(n)) : "+ Savatga";
+    return '<button class="biz-add-btn'+(n>0?' in-cart':'')+'" data-order-item="'+it.id+'" data-item-name="'+esc(it.name)+'" data-item-price="'+esc(it.price||"")+'" data-item-unit="'+esc(it.unit||"dona")+'" data-business-id="'+b.id+'" data-business-name="'+esc(b.name)+'">'+label+'</button>';
   }
   function refreshItemCtrl(bid, itemId){
     var cont = document.querySelector('.biz-item-ctrl[data-ci="'+itemId+'"][data-cb="'+bid+'"]');
@@ -2858,6 +2854,8 @@
           '<button class="btn btn-primary" style="flex:1" id="bizMsgBtn">✍️ Xabar</button>'+
           (b.phone?'<button class="btn btn-outline" style="flex:none;width:48px" data-callphone="'+esc(b.phone)+'" aria-label="Bog\'lanish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></button>':'')+
         '</div>'+
+        // Tanlanganlar (savatcha) — profil ichida ko'rinib turadi, eski uslub (hisob-kitob bilan)
+        '<div id="orderDraftBox" class="panel-card" style="display:none;margin:2px 0 12px"></div>'+
         '<div class="sec-head"><h2>Mahsulot va xizmatlar</h2><span class="link">'+(b.items?b.items.length:0)+' ta</span></div>'+
         // Qidiruv (#4) — 3 tadan ko'p mahsulot bo'lsa ko'rsatamiz
         ((b.items&&b.items.length>3)?'<input class="input" id="bizSearch" placeholder="🔍 Mahsulot yoki xizmat qidirish..." style="margin-bottom:12px">':'')+
@@ -2872,6 +2870,7 @@
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
       loadReviews("business", b.id, "rvBoxBiz");
+      renderOrderDraftBox(); // profil ichidagi Tanlanganlar (savatcha)
       // Qidiruv (#4): mahsulot nomi/izohi bo'yicha filtrlash
       var bs = el("bizSearch");
       if(bs) bs.addEventListener("input", function(){
@@ -2935,16 +2934,14 @@
     var total = cartReceiptTotal(cart);
     var rows = keys.map(function(k){
       var it=cart.items[k]; var pv=parsePriceAmount(it.price);
-      return '<div style="display:block;padding:9px 0;border-top:1px solid var(--line,#eee)">'+
-        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
-          '<div style="min-width:0"><div style="font-weight:600">'+esc(it.name)+'</div>'+
-            '<div class="idesc">'+esc(it.price ? (it.price+unitSuffix(it.unit)) : "Narx kelishiladi")+'</div></div>'+
-          (pv>0?'<div style="flex:0 0 auto;font-weight:700">'+esc(moneyText(Math.round(pv*(parseFloat(it.qty)||0))))+'</div>':'')+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:7px">'+
-          '<button class="mini-btn" style="height:36px;min-width:36px;flex:0 0 auto" data-cart-minus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">−</button>'+
-          '<span style="min-width:70px;text-align:center;font-weight:800">'+fmtQty(it.qty)+' '+esc(it.unit||"dona")+'</span>'+
-          '<button class="mini-btn" style="height:36px;min-width:36px;flex:0 0 auto" data-cart-plus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">+</button>'+
+      return '<div class="item" style="box-shadow:none;margin-bottom:7px;padding:9px;display:block">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="iname" style="min-width:0">'+esc(it.name)+'</div><div class="idesc" style="flex:0 0 auto">'+esc(it.price||"Narx kelishiladi")+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-top:8px">'+
+          '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-cart-minus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">−</button>'+
+          '<input class="input" inputmode="'+(unitAllowsFraction(it.unit)?"decimal":"numeric")+'" data-cq-qty="'+it.item_id+'" data-cq-biz="'+cart.business_id+'" value="'+fmtQty(it.qty)+'" style="height:38px;flex:1;min-width:0;text-align:center;font-weight:700">'+
+          '<span class="idesc" style="flex:0 0 auto">'+esc(it.unit||"dona")+'</span>'+
+          '<button class="mini-btn" style="height:38px;min-width:38px;flex:0 0 auto" data-cart-plus="'+it.item_id+'" data-cart-biz="'+cart.business_id+'">+</button>'+
+          (pv>0 ? '<input class="input" inputmode="numeric" data-cq-sum="'+it.item_id+'" data-cq-biz="'+cart.business_id+'" value="'+Math.round(pv*(parseFloat(it.qty)||0))+'" placeholder="so\'m" style="height:38px;flex:1.2;min-width:0;text-align:right">' : '')+
         '</div>'+
       '</div>';
     }).join("");
@@ -2969,6 +2966,53 @@
     }
     var head = (!filterBid && bids.length>1) ? '<div class="idesc" style="margin-bottom:10px">Har do\'kon uchun alohida chek. Har birini alohida buyurtma qilasiz.</div>' : '';
     box.innerHTML = head + bids.map(function(bid){ return cartReceiptHtml(CART[bid]); }).join("");
+    _bindCartInputs(box);
+  }
+  // Savat ekranida miqdor<->summa jonli bog'lanish (eski Tanlanganlar kabi), biz bo'yicha
+  function _bindCartInputs(box){
+    if(box.__cqBound) return;
+    box.__cqBound = true;
+    box.addEventListener("input", function(e){
+      var t=e.target; if(!t.getAttribute) return;
+      var qk=t.getAttribute("data-cq-qty"), sk=t.getAttribute("data-cq-sum"), bid=t.getAttribute("data-cq-biz");
+      if(!bid) return;
+      var cart=CART[parseInt(bid,10)]; if(!cart) return;
+      if(qk){
+        var it=cart.items[String(qk)]; if(!it) return;
+        if(!unitAllowsFraction(it.unit)){ var cl=String(t.value||"").replace(/[^0-9]/g,""); if(t.value!==cl) t.value=cl; }
+        var q=parseFloat(String(t.value||"").replace(",",".")); if(isNaN(q)||q<0)q=0; if(q>999)q=999;
+        it.qty=q;
+        var pv=parsePriceAmount(it.price);
+        var sEl=box.querySelector('[data-cq-sum="'+qk+'"][data-cq-biz="'+bid+'"]');
+        if(sEl && pv>0) sEl.value = q>0 ? String(Math.round(pv*q)) : "";
+        updateCartBadge();
+      } else if(sk){
+        var it2=cart.items[String(sk)]; if(!it2) return;
+        var pv2=parsePriceAmount(it2.price);
+        var m=parseInt(String(t.value||"").replace(/[^0-9]/g,""),10)||0;
+        if(pv2>0 && m>0){
+          var q2=m/pv2; q2=unitAllowsFraction(it2.unit)?Math.round(q2*1000)/1000:Math.max(1,Math.floor(q2));
+          it2.qty=q2;
+          var qEl=box.querySelector('[data-cq-qty="'+sk+'"][data-cq-biz="'+bid+'"]');
+          if(qEl) qEl.value=fmtQty(q2);
+        }
+        updateCartBadge();
+      }
+    });
+    box.addEventListener("change", function(e){
+      var t=e.target; if(!t.getAttribute) return;
+      var key=t.getAttribute("data-cq-qty")||t.getAttribute("data-cq-sum"), bid=t.getAttribute("data-cq-biz");
+      if(!key||!bid) return;
+      var cart=CART[parseInt(bid,10)]; if(!cart) return;
+      var it=cart.items[String(key)];
+      if(!it){ renderCart(cartFilter); return; }
+      var q=parseFloat(it.qty)||0;
+      if(!unitAllowsFraction(it.unit)) q=Math.floor(q+0.5);
+      q=Math.round(q*1000)/1000;
+      if(q<=0){ delete cart.items[String(key)]; } else { if(q>999)q=999; it.qty=q; }
+      updateCartBadge(); renderCart(cartFilter);
+      if(currentBizId===parseInt(bid,10)){ refreshItemCtrl(bid, key); renderOrderDraftBox(); }
+    });
   }
   var ORDERS_MINE = [];
   var ORDERS_INBOX = [];
@@ -5212,9 +5256,9 @@
       return;
     }
     var om=e.target.closest("[data-order-minus]");
-    if(om){ changeOrderItem(parseInt(om.getAttribute("data-order-minus"),10), -1); return; }
+    if(om){ var omi=parseInt(om.getAttribute("data-order-minus"),10); changeOrderItem(omi, -1); if(currentBizId) refreshItemCtrl(currentBizId, omi); return; }
     var op=e.target.closest("[data-order-plus]");
-    if(op){ changeOrderItem(parseInt(op.getAttribute("data-order-plus"),10), 1); return; }
+    if(op){ var opi=parseInt(op.getAttribute("data-order-plus"),10); changeOrderItem(opi, 1); if(currentBizId) refreshItemCtrl(currentBizId, opi); return; }
     var oc=e.target.closest("[data-order-checkout]");
     if(oc){
       if(!loggedIn){ showLogin("Buyurtma berish yoki navbatga yozilish"); return; }
