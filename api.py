@@ -2372,6 +2372,43 @@ async def tabel_set(body: dict, x_telegram_init_data: str = Header(default="")):
     return {"ok": True, "status": status}
 
 
+@router.put("/business/credentials")
+async def update_business_credentials(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Do'kon login/parolini o'zgartirish (biz_login + biz_pass). Egasi allaqachon sessiya orqali
+    tasdiqlangan, shuning uchun joriy parol so'ralmaydi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Login va parol")
+    b = await request.json()
+    from main import hash_password
+    new_login = (b.get("new_login") or "").strip().lower()
+    new_pass = (b.get("new_password") or "").strip()
+    if not new_login and not new_pass:
+        conn.close()
+        raise HTTPException(400, "O'zgartirish uchun yangi login yoki parol kiriting.")
+    # Login o'zgartirish
+    if new_login and new_login != (_row_val(biz, "biz_login", "") or "").lower():
+        if len(new_login) < 4 or len(new_login) > 20 or not re.match(r"^[a-z][a-z0-9_]*$", new_login):
+            conn.close()
+            raise HTTPException(400, "Login 4-20 belgi, kichik lotin harfi bilan boshlansin (harf, raqam, _).")
+        dup = conn.execute("SELECT 1 FROM businesses WHERE lower(biz_login)=? AND id<>?", (new_login, biz["id"])).fetchone()
+        dup2 = conn.execute("SELECT 1 FROM users WHERE lower(login)=?", (new_login,)).fetchone()
+        if dup or dup2:
+            conn.close()
+            raise HTTPException(400, "Bu login band. Boshqasini tanlang.")
+        conn.execute("UPDATE businesses SET biz_login=? WHERE id=?", (new_login, biz["id"]))
+    # Parol o'zgartirish
+    if new_pass:
+        if len(new_pass) < 4:
+            conn.close()
+            raise HTTPException(400, "Yangi parol kamida 4 belgi bo'lsin.")
+        conn.execute("UPDATE businesses SET biz_pass_hash=? WHERE id=?", (hash_password(new_pass), biz["id"]))
+    conn.commit()
+    row = conn.execute("SELECT biz_login FROM businesses WHERE id=?", (biz["id"],)).fetchone()
+    conn.close()
+    return {"ok": True, "biz_login": row["biz_login"] if row else new_login}
+
+
 # ================== KONTRAGENTLAR (M2a) ==================
 _CONTRACTOR_TYPES = ["Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa"]
 
