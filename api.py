@@ -4925,6 +4925,7 @@ def _order_to_dict(conn, r, view="customer"):
         "provider_seen_at": _row_val(r, "provider_seen_at", 0),
         "customer_seen_at": _row_val(r, "customer_seen_at", 0),
         "is_unread": _order_seen_value(r, view) <= 0,
+        "last_event": _row_val(r, "last_event", "") or "",
         "chat_count": chat_count,
         "last_chat": ((last_chat["text"] if last_chat and last_chat["text"] else "📷 Rasm") if last_chat else ""),
         "last_chat_at": (last_chat["created_at"] if last_chat else 0),
@@ -5209,7 +5210,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     if new_status in ("accepted", "rejected", "done", "tayyor") or (new_status == "cancelled" and is_provider):
         # Qabul qiluvchi/biznes statusni o'zgartirdi — mijoz tomonda yangilanish belgisi chiqadi.
         conn.execute(
-            "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=? WHERE id=?",
+            "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=?, last_event='status' WHERE id=?",
             (new_status, now, now, order_id),
         )
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
@@ -5224,7 +5225,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     elif new_status == "cancelled" and is_customer:
         # Mijoz bekor qildi — biznes tomonda yangi o'zgarish sifatida ko'rinadi.
         conn.execute(
-            "UPDATE orders SET status=?, updated_at=?, provider_seen_at=0, customer_seen_at=? WHERE id=?",
+            "UPDATE orders SET status=?, updated_at=?, provider_seen_at=0, customer_seen_at=?, last_event='status' WHERE id=?",
             (new_status, now, now, order_id),
         )
         pu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["provider_user_id"],)).fetchone()
@@ -5326,9 +5327,9 @@ def _mark_order_changed_for_side(conn, order_id, side, now=None):
     """Chatdagi o'zgarishda yuborgan tomon ko'rdi, qarshi tomonda yangilanish belgisi chiqadi."""
     now = now or int(time.time())
     if side == "provider":
-        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0 WHERE id=?", (now, now, order_id))
+        conn.execute("UPDATE orders SET updated_at=?, provider_seen_at=?, customer_seen_at=0, last_event='msg' WHERE id=?", (now, now, order_id))
     else:
-        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, now, order_id))
+        conn.execute("UPDATE orders SET updated_at=?, customer_seen_at=?, provider_seen_at=0, last_event='msg' WHERE id=?", (now, now, order_id))
     return now
 
 
