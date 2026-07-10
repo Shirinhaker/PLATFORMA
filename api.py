@@ -1223,6 +1223,291 @@ async def clear_media_inbox(x_telegram_init_data: str = Header(default="")):
 
 
 # ====================================================================
+# BOSH SAHIFA REKLAMALARI (v1472)
+# ====================================================================
+AD_RATES = {
+    "district": 10_000,   # bitta tuman / 1 kun
+    "region": 30_000,     # bitta viloyat / 1 kun
+    "republic": 100_000,  # butun O'zbekiston / 1 kun
+}
+
+
+def _ad_discount(days):
+    days = int(days or 1)
+    if days >= 30:
+        return 25
+    if days >= 14:
+        return 15
+    if days >= 7:
+        return 10
+    return 0
+
+
+def _clean_ad_targets(raw):
+    if not isinstance(raw, list):
+        raise HTTPException(400, "Reklama hududlarini tanlang.")
+    result = []
+    seen = set()
+    for x in raw[:30]:
+        if not isinstance(x, dict):
+            continue
+        level = str(x.get("level") or "").strip().lower()
+        region = str(x.get("region") or "").strip()
+        district = str(x.get("district") or "").strip()
+        if level not in ("district", "region", "republic"):
+            continue
+        if level == "district" and not (region and district):
+            continue
+        if level == "region" and not region:
+            continue
+        if level == "republic":
+            region = ""
+            district = ""
+        key = (level, region.lower(), district.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append({"level": level, "region": region, "district": district})
+    if not result:
+        raise HTTPException(400, "Kamida bitta hudud tanlang.")
+    if any(x["level"] == "republic" for x in result) and len(result) > 1:
+        raise HTTPException(400, "Respublika tanlansa boshqa hudud qo'shilmaydi.")
+    return result
+
+
+def _ad_price(targets, days):
+    days = max(1, min(int(days or 1), 90))
+    daily = sum(AD_RATES[t["level"]] for t in targets)
+    subtotal = daily * days
+    discount = _ad_discount(days)
+    total = int(round(subtotal * (100 - discount) / 100))
+    return {"daily": daily, "subtotal": subtotal, "discount": discount, "total": total, "days": days}
+
+
+def _ad_norm(v):
+    v = str(v or "").lower().replace("ʻ", "'").replace("’", "'").strip()
+    v = re.sub(r"\b(viloyati|viloyat|shahri|shahar|tumani|tuman)\b", "", v)
+    return re.sub(r"[^a-z0-9'\u0400-\u04ff]+", "", v)
+
+
+def _ad_matches(targets, user_region, user_district):
+    ur = _ad_norm(user_region)
+    ud = _ad_norm(user_district)
+    for t in targets:
+        level = t.get("level")
+        if level == "republic":
+            return True
+        if level == "region" and ur and _ad_norm(t.get("region")) == ur:
+            return True
+        if level == "district" and ur and ud:
+            if _ad_norm(t.get("region")) == ur and _ad_norm(t.get("district")) == ud:
+                return True
+    return False
+
+
+def _ad_status(row, now=None):
+    now = int(now or time.time())
+    if row["status"] != "active":
+        return row["status"]
+    if now < row["start_at"]:
+        return "scheduled"
+    if now >= row["end_at"]:
+        return "ended"
+    return "active"
+
+
+def _ad_dict(row):
+    try:
+        targets = json.loads(row["targets_json"] or "[]")
+    except Exception:
+        targets = []
+    return {
+        "id": row["id"], "user_id": row["user_id"], "business_id": row["business_id"],
+        "actor_type": row["actor_type"], "title": row["title"], "caption": row["caption"],
+        "image_file": row["image_file"], "targets": targets,
+        "start_at": row["start_at"], "end_at": row["end_at"],
+        "duration_days": row["duration_days"], "price": row["price"],
+        "status": _ad_status(row), "views": row["views"], "clicks": row["clicks"],
+        "created_at": row["created_at"],
+    }
+
+
+@router.get("/advertisements/rates")
+async def advertisement_rates(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    require_user(conn, x_telegram_init_data)
+    conn.close()
+    return {
+        "rates": AD_RATES,
+        "discounts": {"7": 10, "14": 15, "30": 25},
+        "currency": "UZS",
+        "note": "To'lov tizimi ulanmaguncha reklama sinov rejimida darhol faol qilinadi.",
+    }
+
+
+@router.post("/advertisements/price")
+async def advertisement_price(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    require_user(conn, x_telegram_init_data)
+    conn.close()
+    b = await request.json()
+    targets = _clean_ad_targets(b.get("targets"))
+    return _ad_price(targets, b.get("duration_days"))
+
+
+@router.post("/advertisements/image")
+async def upload_advertisement_image(
+    request: Request,
+    actor_type: str = "user",
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Reklama")
+    if (actor_type or "user").lower() == "business":
+        resolve_actor(conn, user, "business")
+    conn.close()
+    ctype = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
+    allowed = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    if ctype not in allowed:
+        raise HTTPException(400, "Reklama uchun JPG, PNG yoki WEBP rasm yuboring.")
+    raw = await request.body()
+    if not raw:
+        raise HTTPException(400, "Rasm topilmadi.")
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(400, "Reklama rasmi 5 MB dan oshmasin.")
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "ads")
+    os.makedirs(folder, exist_ok=True)
+    name = "ad_" + str(user["id"]) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + allowed[ctype]
+    with open(os.path.join(folder, name), "wb") as f:
+        f.write(raw)
+    return {"ok": True, "image_file": "/uploads/ads/" + name}
+
+
+@router.post("/advertisements")
+async def create_advertisement(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Reklama")
+    b = await request.json()
+    actor = actor_from_body(conn, user, b)
+    title = str(b.get("title") or "").strip()
+    caption = str(b.get("caption") or "").strip()
+    image_file = str(b.get("image_file") or "").strip()
+    if not title:
+        conn.close()
+        raise HTTPException(400, "Reklama sarlavhasini kiriting.")
+    if not image_file.startswith("/uploads/ads/"):
+        conn.close()
+        raise HTTPException(400, "Reklama rasmini yuklang.")
+    targets = _clean_ad_targets(b.get("targets"))
+    try:
+        start_at = int(b.get("start_at") or 0)
+    except Exception:
+        start_at = 0
+    now = int(time.time())
+    if start_at < now - 300:
+        conn.close()
+        raise HTTPException(400, "Reklama boshlanish vaqti o'tib ketgan.")
+    if start_at > now + 180 * 86400:
+        conn.close()
+        raise HTTPException(400, "Boshlanish vaqtini 180 kundan uzoqqa qo'yib bo'lmaydi.")
+    price = _ad_price(targets, b.get("duration_days"))
+    end_at = start_at + price["days"] * 86400
+    cur = conn.execute(
+        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,
+                                       targets_json,start_at,end_at,duration_days,price,status,
+                                       views,clicks,created_at,updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
+        (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file,
+         json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
+         "active", now, now),
+    )
+    conn.commit()
+    ad_id = cur.lastrowid
+    row = conn.execute("SELECT * FROM advertisements WHERE id=?", (ad_id,)).fetchone()
+    out = _ad_dict(row)
+    out["pricing"] = price
+    conn.close()
+    return out
+
+
+@router.get("/advertisements/my")
+async def my_advertisements(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, user, actor_type)
+    if actor["type"] == "business":
+        rows = conn.execute("SELECT * FROM advertisements WHERE business_id=? ORDER BY created_at DESC", (actor["business_id"],)).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM advertisements WHERE user_id=? AND business_id IS NULL ORDER BY created_at DESC", (user["id"],)).fetchall()
+    out = [_ad_dict(r) for r in rows]
+    conn.close()
+    return out
+
+
+@router.delete("/advertisements/{ad_id}")
+async def cancel_advertisement(ad_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Reklama")
+    actor = resolve_actor(conn, user, actor_type)
+    now = int(time.time())
+    if actor["type"] == "business":
+        cur = conn.execute("UPDATE advertisements SET status='cancelled',updated_at=? WHERE id=? AND business_id=?", (now, ad_id, actor["business_id"]))
+    else:
+        cur = conn.execute("UPDATE advertisements SET status='cancelled',updated_at=? WHERE id=? AND user_id=? AND business_id IS NULL", (now, ad_id, user["id"]))
+    conn.commit()
+    conn.close()
+    if not cur.rowcount:
+        raise HTTPException(404, "Reklama topilmadi.")
+    return {"ok": True}
+
+
+@router.get("/advertisements/active")
+async def active_advertisements(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    me = optional_user(conn, x_telegram_init_data)
+    region = me["region"] if me else ""
+    district = me["district"] if me else ""
+    now = int(time.time())
+    rows = conn.execute(
+        "SELECT * FROM advertisements WHERE status='active' AND start_at<=? AND end_at>? ORDER BY created_at DESC LIMIT 100",
+        (now, now),
+    ).fetchall()
+    matched = []
+    ids = []
+    for r in rows:
+        try:
+            targets = json.loads(r["targets_json"] or "[]")
+        except Exception:
+            targets = []
+        if _ad_matches(targets, region, district):
+            d = _ad_dict(r)
+            matched.append(d)
+            ids.append(r["id"])
+            if len(matched) >= 12:
+                break
+    if ids:
+        q = ",".join("?" for _ in ids)
+        conn.execute("UPDATE advertisements SET views=views+1 WHERE id IN (" + q + ")", ids)
+        conn.commit()
+    conn.close()
+    return matched
+
+
+@router.post("/advertisements/{ad_id}/click")
+async def advertisement_click(ad_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    optional_user(conn, x_telegram_init_data)
+    conn.execute("UPDATE advertisements SET clicks=clicks+1 WHERE id=? AND status='active'", (ad_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ====================================================================
 # E'LONLAR
 # ====================================================================
 @router.post("/listings")
