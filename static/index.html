@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1464 -->
+<title>Platforma</title><!-- BUILD: v1463 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -791,7 +791,6 @@
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ai-chat"><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1138,19 +1137,6 @@
           </div>
           <button class="btn btn-primary btn-block" id="spSave">Saqlash</button>
         </div>
-      </section>
-
-      <!-- CAB: AI YORDAMCHI -->
-      <section class="screen" data-screen="ai-chat">
-        <div id="aiChatList" style="min-height:46vh;max-height:62vh;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:8px"></div>
-        <div id="aiChips" style="display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px"></div>
-        <div class="chat-compose" style="margin-top:4px">
-          <div class="chat-bar">
-            <input class="chat-input" id="aiChatInput" placeholder="Savol yozing..." autocomplete="off">
-            <button class="chat-send" id="aiChatSend" aria-label="Yuborish"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
-          </div>
-        </div>
-        <div class="idesc" style="margin-top:8px;text-align:center">AI ma'lumotlarni o'qiydi va tushuntiradi. O'zi o'zgartirish kiritmaydi.</div>
       </section>
 
       <!-- CAB: LOGIN VA PAROL (do'kon) -->
@@ -2752,14 +2738,14 @@
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
-    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
+    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", help:"cab-settings", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
     "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa",
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
   var personBack = "home";
@@ -7288,53 +7274,6 @@
     { q: "Havola (link) va QR nima uchun?", a: "Do'kon profilida havola va QR kod bor. Ularni ulashsangiz, boshqalar to'g'ridan-to'g'ri do'koningiz sahifasini ochadi." },
     { q: "Qarz daftari nima?", a: "Kassada qarzga sotilgan savdolar \"Qarz daftari\"da saqlanadi. Kim, qancha qarzdorligini ko'rasiz va to'lov qilinganda belgilaysiz." }
   ];
-  /* ---------- AI YORDAMCHI ---------- */
-  var AI_CHIPS = ["Bugungi xulosa", "Ombor holati", "Qarzlar qancha", "Eng ko'p sotilgan", "Buyurtmalar"];
-  function aiMsgHtml(role, text){
-    var mine = role==="user";
-    return '<div style="display:flex;justify-content:'+(mine?"flex-end":"flex-start")+';margin-bottom:8px">'+
-      '<div style="max-width:82%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;line-height:1.45;'+(mine?"background:var(--primary);color:#fff;border-bottom-right-radius:5px":"background:var(--card);border:1px solid var(--line);border-bottom-left-radius:5px")+'">'+esc(text)+'</div>'+
-    '</div>';
-  }
-  function renderAiChips(){
-    var box=el("aiChips"); if(!box) return;
-    box.innerHTML = AI_CHIPS.map(function(q){ return '<button class="seg-b" data-aichip="'+esc(q)+'" style="flex:0 0 auto">'+esc(q)+'</button>'; }).join("");
-    box.querySelectorAll("[data-aichip]").forEach(function(b){ b.addEventListener("click", function(){ el("aiChatInput").value=b.getAttribute("data-aichip"); sendAiMessage(); }); });
-  }
-  function aiEmptyHtml(){
-    return '<div id="aiEmpty" style="text-align:center;color:var(--soft);padding:22px 10px"><div style="font-size:36px">🤖</div><div style="margin-top:6px;font-weight:700;color:var(--ink)">AI yordamchi</div><div class="idesc" style="margin-top:4px">Savdo, ombor, qarz va buyurtmalar bo\'yicha savol bering. Masalan: "Bugun qanday?"</div></div>';
-  }
-  function loadAiChat(){
-    var box=el("aiChatList"); if(!box) return;
-    renderAiChips();
-    box.innerHTML='<div class="idesc" style="text-align:center">Yuklanmoqda...</div>';
-    api("GET","/api/ai/history?limit=30").then(function(list){
-      box.innerHTML = (list && list.length) ? list.map(function(m){ return aiMsgHtml(m.role, m.text); }).join("") : aiEmptyHtml();
-      box.scrollTop = box.scrollHeight;
-    }).catch(function(e){ box.innerHTML=aiEmptyHtml(); });
-  }
-  function sendAiMessage(){
-    var inp=el("aiChatInput"), box=el("aiChatList"); if(!inp||!box) return;
-    var msg=(inp.value||"").trim(); if(!msg) return;
-    inp.value="";
-    if(el("aiEmpty")) box.innerHTML="";
-    box.insertAdjacentHTML("beforeend", aiMsgHtml("user", msg));
-    box.insertAdjacentHTML("beforeend", '<div id="aiTyping" style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="padding:9px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--soft)">yozmoqda...</div></div>');
-    box.scrollTop = box.scrollHeight;
-    var btn=el("aiChatSend"); if(btn) btn.disabled=true;
-    api("POST","/api/ai/chat",{ message:msg }).then(function(r){
-      var t=el("aiTyping"); if(t) t.parentNode.removeChild(t);
-      box.insertAdjacentHTML("beforeend", aiMsgHtml("assistant", r.answer||"(javob yo'q)"));
-      box.scrollTop = box.scrollHeight;
-    }).catch(function(e){
-      var t=el("aiTyping"); if(t) t.parentNode.removeChild(t);
-      box.insertAdjacentHTML("beforeend", aiMsgHtml("assistant", "Xatolik: "+(e.message||"so'rov bajarilmadi")));
-      box.scrollTop = box.scrollHeight;
-    }).finally(function(){ if(btn) btn.disabled=false; });
-  }
-  el("aiChatSend") && el("aiChatSend").addEventListener("click", sendAiMessage);
-  el("aiChatInput") && el("aiChatInput").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); sendAiMessage(); } });
-
   function renderFaq(){
     var box = el("faqList"); if(!box) return;
     box.innerHTML = FAQ_ITEMS.map(function(it, i){
@@ -7407,7 +7346,6 @@
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="biz-cred") loadBizCred();
     else if(screen==="help") renderFaq();
-    else if(screen==="ai-chat") loadAiChat();
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-stats") loadStats();
     else if(screen==="cab-qarz") loadDebtors();
