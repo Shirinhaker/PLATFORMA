@@ -362,17 +362,31 @@ async def get_driver(x_telegram_init_data: str = Header(default="")):
     d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
     name = user["name"]
     phone = user["phone"]
-    conn.close()
     if not d:
+        conn.close()
         return {"exists": False, "name": name, "phone": phone}
+
+    # Joriy zakaz bor paytda haydovchi har doim avtomatik BAND bo'ladi.
+    active = conn.execute(
+        "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+        (d["id"],),
+    ).fetchone()
+    if active and d["available"]:
+        conn.execute("UPDATE drivers SET available=0 WHERE id=?", (d["id"],))
+        conn.commit()
+        d = conn.execute("SELECT * FROM drivers WHERE id=?", (d["id"],)).fetchone()
+
     rating = round(d["rating_sum"] / d["rating_cnt"], 1) if d["rating_cnt"] else 0
-    return {
+    result = {
         "exists": True, "name": name,
         "phone": d["phone"], "car_model": d["car_model"], "car_color": d["car_color"],
         "car_plate": d["car_plate"], "service": d["service"], "available": bool(d["available"]),
+        "busy": bool(active),
         "rating": rating, "rating_cnt": d["rating_cnt"], "balance": d["balance"],
         "commission": COMMISSION_PER_ORDER, "is_admin": (user["tg_id"] in ADMIN_TG_IDS),
     }
+    conn.close()
+    return result
 
 
 @router.post("/driver")
@@ -417,11 +431,24 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
     avail = 1 if b.get("available") else 0
-    cur = conn.execute("UPDATE drivers SET available=? WHERE user_id=?", (avail, user["id"]))
+    d = conn.execute("SELECT * FROM drivers WHERE user_id=?", (user["id"],)).fetchone()
+    if not d:
+        conn.close()
+        raise HTTPException(404, "Avval haydovchi sifatida ro'yxatdan o'ting.")
+
+    # Faol taxi/dostavka zakazi tugamaguncha qo'lda Bo'shman holatiga qaytib bo'lmaydi.
+    if avail:
+        active = conn.execute(
+            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+            (d["id"],),
+        ).fetchone()
+        if active:
+            conn.close()
+            raise HTTPException(400, "Joriy zakazni yakunlamaguningizcha yangi zakaz ololmaysiz.")
+
+    conn.execute("UPDATE drivers SET available=? WHERE id=?", (avail, d["id"]))
     conn.commit()
     conn.close()
-    if cur.rowcount == 0:
-        raise HTTPException(404, "Avval haydovchi sifatida ro'yxatdan o'ting.")
     return {"ok": True, "available": bool(avail)}
 
 
@@ -554,7 +581,7 @@ async def my_ride(x_telegram_init_data: str = Header(default="")):
         conn.close()
         return {"ride": None}
     out = _ride_dict(r)
-    if r["status"] == "accepted" and r["driver_id"]:
+    if r["status"] in ("accepted", "arrived", "ongoing") and r["driver_id"]:
         d = conn.execute("SELECT * FROM drivers WHERE id=?", (r["driver_id"],)).fetchone()
         if d:
             du = conn.execute("SELECT name FROM users WHERE id=?", (d["user_id"],)).fetchone()
@@ -571,17 +598,30 @@ async def cancel_ride(ride_id: int, x_telegram_init_data: str = Header(default="
     """Mijoz o'z zakazini bekor qiladi (pending yoki accepted)."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    prev = conn.execute("SELECT driver_id, status FROM rides WHERE id=? AND customer_id=?", (ride_id, user["id"])).fetchone()
-    cur = conn.execute(
-        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status IN ('pending','accepted','arrived')",
+    prev = conn.execute(
+        "SELECT driver_id, status, kind FROM rides WHERE id=? AND customer_id=?",
         (ride_id, user["id"]),
+    ).fetchone()
+    if not prev:
+        conn.close()
+        raise HTTPException(404, "Zakaz topilmadi.")
+
+    # Dostavka olib ketilgandan keyin mijoz uni bekor qila olmaydi.
+    allowed = ("pending", "accepted") if prev["kind"] == "dostavka" else ("pending", "accepted", "arrived")
+    if prev["status"] not in allowed:
+        conn.close()
+        raise HTTPException(400, "Zakaz bu bosqichda bekor qilinmaydi.")
+
+    cur = conn.execute(
+        "UPDATE rides SET status='canceled' WHERE id=? AND customer_id=? AND status=?",
+        (ride_id, user["id"], prev["status"]),
     )
-    if cur.rowcount and prev and prev["driver_id"]:
-        conn.execute("UPDATE drivers SET available = 1 WHERE id=?", (prev["driver_id"],))  # #3: haydovchi bo'shadi
+    if cur.rowcount and prev["driver_id"]:
+        conn.execute("UPDATE drivers SET available=1 WHERE id=?", (prev["driver_id"],))
     conn.commit()
     conn.close()
     if cur.rowcount == 0:
-        raise HTTPException(404, "Zakaz topilmadi yoki allaqachon yakunlangan.")
+        raise HTTPException(409, "Zakaz holati o'zgargan. Qayta tekshiring.")
     return {"ok": True}
 
 
@@ -596,6 +636,11 @@ async def pending_rides(x_telegram_init_data: str = Header(default="")):
     ).fetchone()
     current = None
     if cur_ride:
+        # Faol zakaz topilsa holatni majburan BAND qilib sinxronlaymiz.
+        if d["available"]:
+            conn.execute("UPDATE drivers SET available=0 WHERE id=?", (d["id"],))
+            conn.commit()
+            d = conn.execute("SELECT * FROM drivers WHERE id=?", (d["id"],)).fetchone()
         current = _ride_dict(cur_ride)
         cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (cur_ride["customer_id"],)).fetchone()
         current["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
@@ -619,39 +664,64 @@ async def pending_rides(x_telegram_init_data: str = Header(default="")):
 
 @router.post("/rides/{ride_id}/accept")
 async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi zakazni qabul qiladi (faqat birinchi bo'lib ulgurgan oladi)."""
+    """Haydovchi zakazni qabul qiladi; shu zahoti BAND bo'ladi va yakunlamaguncha boshqasini ololmaydi."""
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
-    if not d["available"]:
+    try:
+        # Bir haydovchi bir vaqtda ikki so'rov yuborsa ham faqat bittasi o'tishi uchun yozuvni qulflaymiz.
+        conn.execute("BEGIN IMMEDIATE")
+        d = conn.execute("SELECT * FROM drivers WHERE id=?", (d["id"],)).fetchone()
+        if not d["available"]:
+            raise HTTPException(400, "Siz bandsiz. Joriy zakazni yakunlagach yangi zakaz olasiz.")
+
+        busy = conn.execute(
+            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+            (d["id"],),
+        ).fetchone()
+        if busy:
+            raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
+
+        ride = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
+        if not ride or ride["status"] != "pending":
+            raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
+        if d["service"] != "both" and d["service"] != ride["kind"]:
+            raise HTTPException(403, "Bu zakaz siz tanlagan xizmat turiga mos emas.")
+        if (d["balance"] or 0) < COMMISSION_PER_ORDER:
+            raise HTTPException(400, "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.")
+
+        now = int(time.time())
+        cur = conn.execute(
+            "UPDATE rides SET status='accepted', driver_id=?, accepted_at=? WHERE id=? AND status='pending'",
+            (d["id"], now, ride_id),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
+
+        # Qabul qilish bilan bir tranzaksiyada komissiya yechiladi va haydovchi BAND qilinadi.
+        conn.execute(
+            "UPDATE drivers SET balance=balance-?, available=0 WHERE id=?",
+            (COMMISSION_PER_ORDER, d["id"]),
+        )
+        conn.commit()
+    except HTTPException:
+        conn.rollback()
         conn.close()
-        raise HTTPException(400, "Avval 'Bo'shman' holatiga o'ting.")
-    busy = conn.execute("SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1", (d["id"],)).fetchone()
-    if busy:
+        raise
+    except Exception:
+        conn.rollback()
         conn.close()
-        raise HTTPException(400, "Sizda hali tugamagan zakaz bor.")
-    # Balans tekshiruvi: zakaz olish uchun komissiyaga yetarli balans bo'lishi kerak
-    if (d["balance"] or 0) < COMMISSION_PER_ORDER:
-        conn.close()
-        raise HTTPException(400, "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.")
-    now = int(time.time())
-    cur = conn.execute(
-        "UPDATE rides SET status='accepted', driver_id=?, accepted_at=? WHERE id=? AND status='pending'",
-        (d["id"], now, ride_id),
-    )
-    conn.commit()
-    if cur.rowcount == 0:
-        conn.close()
-        raise HTTPException(409, "Bu zakazni boshqa haydovchi oldi.")
-    # Zakaz olindi — komissiyani balansdan yechamiz + avtomatik BAND holatiga o'tkazamiz (#3)
-    conn.execute("UPDATE drivers SET balance = balance - ?, available = 0 WHERE id=?", (COMMISSION_PER_ORDER, d["id"]))
-    conn.commit()
+        raise
+
     r = conn.execute("SELECT * FROM rides WHERE id=?", (ride_id,)).fetchone()
     out = _ride_dict(r)
     cu = conn.execute("SELECT name, phone FROM users WHERE id=?", (r["customer_id"],)).fetchone()
     out["customer"] = {"name": cu["name"] if cu else "", "phone": cu["phone"] if cu else ""}
     new_balance = conn.execute("SELECT balance FROM drivers WHERE id=?", (d["id"],)).fetchone()["balance"]
     conn.close()
-    return {"ok": True, "ride": out, "commission": COMMISSION_PER_ORDER, "balance": new_balance}
+    return {
+        "ok": True, "ride": out, "commission": COMMISSION_PER_ORDER,
+        "balance": new_balance, "available": False,
+    }
 
 
 @router.post("/rides/{ride_id}/complete")
@@ -674,25 +744,42 @@ async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default
 
 @router.post("/rides/{ride_id}/status")
 async def update_ride_status(ride_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Haydovchi safar bosqichini oldinga suradi: accepted -> arrived -> ongoing -> completed."""
+    """Taxi va dostavka uchun alohida bosqichlar.
+
+    Taxi: accepted -> arrived -> ongoing -> completed
+    Dostavka: accepted -> arrived (dostavkani oldim) -> completed (topshirdim)
+    """
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
     b = await request.json()
     new = (b.get("status") or "").strip()
-    nxt = {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
-    r = conn.execute("SELECT status FROM rides WHERE id=? AND driver_id=?", (ride_id, d["id"])).fetchone()
+    r = conn.execute(
+        "SELECT status, kind FROM rides WHERE id=? AND driver_id=?",
+        (ride_id, d["id"]),
+    ).fetchone()
     if not r:
         conn.close()
         raise HTTPException(404, "Zakaz topilmadi.")
+
+    if r["kind"] == "dostavka":
+        # 'ongoing' eski builddan qolgan faol dostavkalar uchun ham yakunlashga ruxsat.
+        nxt = {"accepted": "arrived", "arrived": "completed", "ongoing": "completed"}
+    else:
+        nxt = {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
+
     if nxt.get(r["status"]) != new:
         conn.close()
         raise HTTPException(400, "Bu bosqichga o'tib bo'lmaydi.")
+
     conn.execute("UPDATE rides SET status=? WHERE id=?", (new, ride_id))
     if new == "completed":
-        conn.execute("UPDATE drivers SET available = 1 WHERE id=?", (d["id"],))  # #3: bo'sh
+        # Faqat yakunlangandan keyin yana zakaz olishga ruxsat beriladi.
+        conn.execute("UPDATE drivers SET available=1 WHERE id=?", (d["id"],))
+    else:
+        conn.execute("UPDATE drivers SET available=0 WHERE id=?", (d["id"],))
     conn.commit()
     conn.close()
-    return {"ok": True, "status": new}
+    return {"ok": True, "status": new, "available": new == "completed"}
 
 
 @router.post("/rides/{ride_id}/progress")
