@@ -972,6 +972,9 @@ def _migrate(conn):
     _rdc = [r["name"] for r in conn.execute("PRAGMA table_info(rides)").fetchall()]
     if "src_order_id" not in _rdc:
         conn.execute("ALTER TABLE rides ADD COLUMN src_order_id INTEGER")
+    _ordc = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+    if "last_event" not in _ordc:
+        conn.execute("ALTER TABLE orders ADD COLUMN last_event TEXT DEFAULT ''")
     _bzc = [r["name"] for r in conn.execute("PRAGMA table_info(businesses)").fetchall()]
     if "rating_sum" not in _bzc:
         conn.execute("ALTER TABLE businesses ADD COLUMN rating_sum INTEGER DEFAULT 0")
