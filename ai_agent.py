@@ -223,13 +223,24 @@ def _local_chat_answer(message, ctx):
     )
 
 
-@router.post("/ai/chat")
+@router.api_route("/ai/chat", methods=["GET", "POST"])
+@router.api_route("/ai/chat/", methods=["GET", "POST"], include_in_schema=False)
 async def ai_chat(request: Request, x_telegram_init_data: str = Header(default="")):
+    """
+    AI chat. Asosiy usul POST. GET ham eski frontend/proxylarda 405 chiqmasligi
+    uchun moslik rejimi sifatida qabul qilinadi.
+    """
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     deny_staff(conn, x_telegram_init_data, "AI yordamchi")
     _ensure_ai_tables(conn)
-    b = await request.json()
+    if request.method == "GET":
+        b = {"message": request.query_params.get("message", "")}
+    else:
+        try:
+            b = await request.json()
+        except Exception:
+            b = {}
     msg = (b.get("message") or "").strip()
     if not msg:
         conn.close()
@@ -249,17 +260,37 @@ async def ai_chat(request: Request, x_telegram_init_data: str = Header(default="
 
 
 @router.get("/ai/history")
-async def ai_history(x_telegram_init_data: str = Header(default="")):
+@router.get("/ai/history/", include_in_schema=False)
+async def ai_history(limit: int = 40, x_telegram_init_data: str = Header(default="")):
+    limit = max(1, min(int(limit or 40), 100))
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     deny_staff(conn, x_telegram_init_data, "AI yordamchi")
     _ensure_ai_tables(conn)
     rows = conn.execute(
-        "SELECT role, text, created_at FROM ai_chat_history WHERE business_id=? ORDER BY id DESC LIMIT 40",
-        (biz["id"],),
+        "SELECT role, text, created_at FROM ai_chat_history WHERE business_id=? ORDER BY id DESC LIMIT ?",
+        (biz["id"], limit),
     ).fetchall()
     conn.close()
     return {"history": [{"role": r["role"], "text": r["text"], "created_at": r["created_at"]} for r in rows][::-1]}
+
+
+@router.get("/ai/status")
+async def ai_status(x_telegram_init_data: str = Header(default="")):
+    """Frontend va backend bir xil build ekanini tekshirish uchun."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "AI yordamchi")
+    _ensure_ai_tables(conn)
+    conn.commit()
+    conn.close()
+    return {
+        "ok": True,
+        "build": "v1469",
+        "business_id": biz["id"],
+        "openai_enabled": bool((os.environ.get("OPENAI_API_KEY") or "").strip()),
+        "local_fallback": True,
+    }
 
 
 # ====================================================================
