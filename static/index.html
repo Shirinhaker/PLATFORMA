@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1467 -->
+<title>Platforma</title><!-- BUILD: v1468 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2850,7 +2850,7 @@
   }
 
   function openBizSrv(id){
-    api("GET","/api/business/"+id).then(function(b){
+    api("GET","/api/business/"+id+"?"+actorQuery()).then(function(b){
       curFollow = {kind:"business", id:b.id};
       resetOrderDraft(b.id, b.name);
       // Savatcha uchun: joriy do'kon + mahsulotlar lug'ati (stepper qayta chizish uchun)
@@ -4539,7 +4539,7 @@
   }
 
   function openPersonSrv(id){
-    api("GET","/api/person/"+id).then(function(p){
+    api("GET","/api/person/"+id+"?"+actorQuery()).then(function(p){
       curFollow = {kind:"user", id:p.id};
       var sp = p.specialist;
       var ini = (p.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
@@ -4609,7 +4609,7 @@
     btn.addEventListener("click", function(){
       if(!loggedIn){ showLogin("Obuna bo'lish"); return; }
       if(!curFollow) return;
-      api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id, actor_type:"user"}).then(function(r){
+      api("POST","/api/follow",{target_kind:curFollow.kind, target_id:curFollow.id, actor_type:actorType()}).then(function(r){
         btn.textContent = r.following ? "✓ Obunadasiz" : "+ Obuna";
         if(mapMode==="biz") loadHomeMap();
       }).catch(function(e){ showMsg(e.message); });
@@ -7457,7 +7457,7 @@
       var box=el(boxId);
       if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Obunachilar yo\'q</h3><p>Sizga obuna bo\'lganlar shu yerda ko\'rinadi.</p></div>'; return; }
       box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta obunachi</div>' +
-        list.map(function(u){ return personRow({kind:"user", id:u.id, name:u.name, info:u.info}); }).join("");
+        list.map(function(u){ return personRow({kind:u.kind||"user", id:u.id, name:u.name, info:u.info}); }).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function loadSaved(){
