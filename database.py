@@ -1026,6 +1026,33 @@ def _migrate(conn):
         "WHERE NOT (f.target_kind='business' AND f.target_id=b.id)"
     )
 
+
+    # --- v1472: Bosh sahifa reklamalari ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS advertisements("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "user_id INTEGER NOT NULL, "
+        "business_id INTEGER, "
+        "actor_type TEXT NOT NULL DEFAULT 'user', "
+        "title TEXT DEFAULT '', "
+        "caption TEXT DEFAULT '', "
+        "image_file TEXT NOT NULL, "
+        "targets_json TEXT NOT NULL DEFAULT '[]', "
+        "start_at INTEGER NOT NULL, "
+        "end_at INTEGER NOT NULL, "
+        "duration_days INTEGER NOT NULL DEFAULT 1, "
+        "price INTEGER NOT NULL DEFAULT 0, "
+        "status TEXT NOT NULL DEFAULT 'active', "
+        "views INTEGER NOT NULL DEFAULT 0, "
+        "clicks INTEGER NOT NULL DEFAULT 0, "
+        "created_at INTEGER NOT NULL, "
+        "updated_at INTEGER NOT NULL, "
+        "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE, "
+        "FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_schedule ON advertisements(status, start_at, end_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_owner ON advertisements(user_id, business_id, created_at)")
+
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
     # Mahsulotni o'z nomi bo'yicha ham, tegishli biznes ma'lumoti bo'yicha ham topsa bo'ladi.
