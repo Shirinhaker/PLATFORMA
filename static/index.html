@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1468 -->
+<title>Platforma</title><!-- BUILD: v1470 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="qrcode.min.js"></script>
+<script src="qrcode.min.js?v=1470"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -127,7 +127,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="regions.js"></script>
+<script src="regions.js?v=1470"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -5513,13 +5513,12 @@
         '<button class="item-add-card" data-omb-add-item="'+esc(gid)+'"><span class="plus">+</span><span>Tovar</span></button>'+
         '</div></div>';
     }
-    var html = "";
+    var html = '<button class="item-group-add-btn" data-omb-add-group="1">+ Guruh qo\'shish</button>';
     (groups||[]).forEach(function(g){
       html += block(String(g.id), g.name, rows.filter(function(r){ return String(r.group_id||"")===String(g.id); }));
     });
     var ung = rows.filter(function(r){ return !r.group_id || !used[String(r.group_id)]; });
     if(ung.length || !(groups||[]).length) html += block("", "Guruhsiz", ung);
-    html += '<button class="item-group-add-btn" data-omb-add-group="1">+ Guruh qo\'shish</button>';
     el("omborList").innerHTML = html;
   }
   // Chiqim formasi (miqdor + izoh)
@@ -7310,10 +7309,22 @@
     var box=el("aiChatList"); if(!box) return;
     renderAiChips();
     box.innerHTML='<div class="idesc" style="text-align:center">Yuklanmoqda...</div>';
-    api("GET","/api/ai/history?limit=30").then(function(list){
-      box.innerHTML = (list && list.length) ? list.map(function(m){ return aiMsgHtml(m.role, m.text); }).join("") : aiEmptyHtml();
+    api("GET","/api/ai/history?limit=30").then(function(data){
+      var list = Array.isArray(data) ? data : ((data && Array.isArray(data.history)) ? data.history : []);
+      box.innerHTML = list.length ? list.map(function(m){ return aiMsgHtml(m.role, m.text); }).join("") : aiEmptyHtml();
       box.scrollTop = box.scrollHeight;
-    }).catch(function(e){ box.innerHTML=aiEmptyHtml(); });
+    }).catch(function(e){
+      box.innerHTML=aiEmptyHtml();
+    });
+  }
+  function requestAiAnswer(msg){
+    return api("POST","/api/ai/chat",{ message:msg }).catch(function(err){
+      var em = String((err && err.message) || "");
+      if(/method not allowed|405/i.test(em)){
+        return api("GET","/api/ai/chat?message="+encodeURIComponent(msg));
+      }
+      throw err;
+    });
   }
   function sendAiMessage(){
     var inp=el("aiChatInput"), box=el("aiChatList"); if(!inp||!box) return;
@@ -7324,13 +7335,15 @@
     box.insertAdjacentHTML("beforeend", '<div id="aiTyping" style="display:flex;justify-content:flex-start;margin-bottom:8px"><div style="padding:9px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--soft)">yozmoqda...</div></div>');
     box.scrollTop = box.scrollHeight;
     var btn=el("aiChatSend"); if(btn) btn.disabled=true;
-    api("POST","/api/ai/chat",{ message:msg }).then(function(r){
+    requestAiAnswer(msg).then(function(r){
       var t=el("aiTyping"); if(t) t.parentNode.removeChild(t);
       box.insertAdjacentHTML("beforeend", aiMsgHtml("assistant", r.answer||"(javob yo'q)"));
       box.scrollTop = box.scrollHeight;
     }).catch(function(e){
       var t=el("aiTyping"); if(t) t.parentNode.removeChild(t);
-      box.insertAdjacentHTML("beforeend", aiMsgHtml("assistant", "Xatolik: "+(e.message||"so'rov bajarilmadi")));
+      var em=String((e&&e.message)||"so'rov bajarilmadi");
+      if(/method not allowed|405/i.test(em)) em="AI backend eski versiyada. v1470 ZIPni to'liq Railway'ga deploy qiling.";
+      box.insertAdjacentHTML("beforeend", aiMsgHtml("assistant", "Xatolik: "+em));
       box.scrollTop = box.scrollHeight;
     }).finally(function(){ if(btn) btn.disabled=false; });
   }
@@ -7897,10 +7910,7 @@
       blocks += groupBlockHtml(null, ungrouped, showAdd);
     }
 
-    var html = blocks;
-    if(showAdd){
-      html += '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>';
-    }
+    var html = (showAdd ? '<button class="item-group-add-btn" data-add-group="1">+ Guruh qo\'shish</button>' : '') + blocks;
     if(!blocks){
       if(searchActive){
         html = '<div class="empty" style="padding:25px 16px"><h3>Hech narsa topilmadi</h3><p>«'+esc(itemSearch.trim())+'» bo\'yicha tovar topilmadi.</p></div>' + html;
