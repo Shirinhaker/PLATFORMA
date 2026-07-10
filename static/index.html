@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1471 -->
+<title>Platforma</title><!-- BUILD: v1472 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="qrcode.min.js?v=1471"></script>
+<script src="qrcode.min.js?v=1472"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -127,7 +127,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="regions.js?v=1471"></script>
+<script src="regions.js?v=1472"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -159,6 +159,38 @@
   @media(min-width:1080px){ .phone{max-width:840px;} .order-sheet,.order-detail-sheet{max-width:840px;} }
   /* Kabinet menyusi: keng ekranda 2 ustun */
   @media(min-width:720px){ .menu-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;} .menu-grid2 .menu-card{margin:0;} }
+
+  /* v1472 — Reklama boshqaruvi */
+  .ad{min-height:150px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(120deg,var(--primary),#0b6f6a);}
+  .ad.has-image{background:#14201d;padding:0;}
+  .ad.has-image .ad-photo{display:block;width:100%;height:170px;object-fit:cover;}
+  .ad .ad-photo{display:none;}
+  .ad.has-image .ad-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 20%,rgba(0,0,0,.78) 100%);}
+  .ad-copy{position:relative;z-index:2;padding:18px;}
+  .ad.has-image .ad-copy{position:absolute;left:0;right:0;bottom:0;padding:16px;color:#fff;}
+  .ad.has-image .tag{z-index:3;}
+  .ad.has-image .blob{display:none;}
+  .ad-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 14px;}
+  .ad-tab{height:44px;border:1.5px solid var(--line);border-radius:13px;background:var(--card);color:var(--ink);font:inherit;font-weight:800;cursor:pointer;}
+  .ad-tab.on{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);}
+  .ad-info{background:var(--primary-tint);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:12.5px;line-height:1.55;margin-bottom:12px;}
+  .ad-quality{background:var(--amber-tint);border:1px solid rgba(240,162,27,.35);border-radius:14px;padding:12px;font-size:12.5px;line-height:1.55;margin-bottom:12px;}
+  .ad-preview{display:none;position:relative;border-radius:16px;overflow:hidden;background:var(--line);margin-top:9px;}
+  .ad-preview.on{display:block;}
+  .ad-preview img{width:100%;height:150px;object-fit:cover;display:block;}
+  .ad-target-builder{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .ad-target-builder .full{grid-column:1/-1;}
+  .ad-targets{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+  .ad-target-chip{display:inline-flex;align-items:center;gap:6px;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:800;}
+  .ad-target-chip button{border:none;background:none;color:inherit;font-size:14px;font-weight:900;cursor:pointer;}
+  .ad-price-box{background:var(--card);border:1.5px solid var(--primary);border-radius:16px;padding:14px;margin:12px 0;}
+  .ad-price-box .price{font-family:var(--font-d);font-size:24px;font-weight:800;color:var(--primary);margin-top:4px;}
+  .ad-own-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px;margin-bottom:10px;box-shadow:var(--shadow);}
+  .ad-own-top{display:flex;gap:10px;align-items:center;}
+  .ad-own-top img{width:76px;height:48px;object-fit:cover;border-radius:10px;background:var(--line);}
+  .ad-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:800;}
+  .ad-status.ended,.ad-status.cancelled{background:var(--line);color:var(--soft);}
+  .ad-status.scheduled{background:var(--amber-tint);color:#8a5a06;}
 
   /* status bar (preview only) */
   .statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:12.5px;font-weight:600;color:var(--soft);flex:none;}
@@ -615,13 +647,17 @@
       <!-- HOME -->
       <section class="screen active" data-screen="home">
         <div class="ad" id="adBox">
+          <img class="ad-photo" id="adPhoto" alt="Reklama">
+          <div class="ad-overlay"></div>
           <span class="tag">Reklama</span>
-          <div class="eyebrow">Tavsiya etamiz</div>
-          <h3>Bu yerda reklamangiz</h3>
-          <p>Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
+          <div class="ad-copy">
+            <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
+            <h3 id="adTitle">Bu yerda reklamangiz</h3>
+            <p id="adText">Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
+          </div>
           <div class="blob"></div>
         </div>
-        <div class="dots-row" id="adDots"><span class="on"></span><span></span><span></span></div>
+        <div class="dots-row" id="adDots"><span class="on"></span></div>
 
         <div id="callPanel" hidden></div>
         <div class="pin-eyebrow" id="pinEyebrow">
@@ -782,7 +818,7 @@
         <div class="menu-grid2">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -888,10 +924,50 @@
         </div>
       </section>
 
-      <!-- CAB: E'LONLARIM -->
+      <!-- CAB: E'LONLARIM VA REKLAMALARIM -->
       <section class="screen" data-screen="cab-elon">
-        <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="bizElonAdd">+ E'lon joylash</button>
-        <div id="bizElonList"></div>
+        <div class="ad-tabs" data-ad-tabs="business">
+          <button class="ad-tab on" data-ad-tab="ads">Reklamalarim</button>
+          <button class="ad-tab" data-ad-tab="listings">E'lonlarim</button>
+        </div>
+        <div id="bizAdsPane">
+          <div class="ad-info">Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.</div>
+          <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="bizAdAdd">+ Reklama joylashtirish</button>
+          <div id="bizAdList"></div>
+        </div>
+        <div id="bizElonsPane" hidden>
+          <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="bizElonAdd">+ E'lon joylash</button>
+          <div id="bizElonList"></div>
+        </div>
+      </section>
+
+      <!-- CAB: REKLAMA FORMASI -->
+      <section class="screen" data-screen="cab-ad-form">
+        <div class="form-wrap" id="baForm">
+          <div class="ad-quality"><b>Rasm talabi:</b> tavsiya etiladi 1200×500 px (nisbat 2.4:1), kamida 960×400 px. JPG, PNG yoki WEBP; hajmi 5 MB gacha. Muhim yozuv va logoni rasm chetiga juda yaqin qo'ymang.</div>
+          <div class="field"><label>Reklama rasmi</label>
+            <button type="button" class="upload" id="baImageBtn">🖼 Galereyadan rasm tanlash</button>
+            <input type="file" id="baImageInput" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="ad-preview" id="baPreview"><img alt="Reklama rasmi"></div>
+            <div class="idesc" id="baImageInfo"></div>
+          </div>
+          <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="baTitle" maxlength="120" placeholder="Masalan: Bugun 20% chegirma"></div>
+          <div class="field"><label>Qisqa matn</label><textarea class="textarea" id="baCaption" maxlength="240" placeholder="Reklama haqida qisqa va aniq ma'lumot"></textarea></div>
+          <div class="field"><label>Qayerda ko'rinsin?</label>
+            <div class="ad-target-builder">
+              <select class="input full" id="baLevel"><option value="district">Tuman kesimida</option><option value="region">Viloyat kesimida</option><option value="republic">Respublika bo'ylab</option></select>
+              <select class="input" id="baRegion"></select>
+              <select class="input" id="baDistrict"></select>
+              <button type="button" class="mini-btn full" id="baTargetAdd">+ Hududni qo'shish</button>
+            </div>
+            <div class="ad-targets" id="baTargets"></div>
+          </div>
+          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="baStart"></div>
+          <div class="field"><label>Qancha vaqt?</label><select class="input" id="baDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
+          <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="baPrice">0 so'm</div><div class="idesc" id="baPriceNote">Hududni tanlang.</div></div>
+          <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
+          <button class="btn btn-primary btn-block" id="baSubmit">Reklamani joylashtirish</button>
+        </div>
       </section>
 
       <!-- CAB: E'LON FORMASI -->
@@ -1028,7 +1104,7 @@
         </div>
         <div class="menu-grid2">
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim</h4><p>Joylash va boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxasisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxasis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1062,10 +1138,50 @@
         </div>
       </section>
 
-      <!-- UCAB: E'LONLARIM -->
+      <!-- UCAB: E'LONLARIM VA REKLAMALARIM -->
       <section class="screen" data-screen="ucab-elon">
-        <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="userElonAdd">+ E'lon joylash</button>
-        <div id="userElonList"></div>
+        <div class="ad-tabs" data-ad-tabs="user">
+          <button class="ad-tab on" data-ad-tab="ads">Reklamalarim</button>
+          <button class="ad-tab" data-ad-tab="listings">E'lonlarim</button>
+        </div>
+        <div id="userAdsPane">
+          <div class="ad-info">Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.</div>
+          <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="userAdAdd">+ Reklama joylashtirish</button>
+          <div id="userAdList"></div>
+        </div>
+        <div id="userElonsPane" hidden>
+          <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="userElonAdd">+ E'lon joylash</button>
+          <div id="userElonList"></div>
+        </div>
+      </section>
+
+      <!-- UCAB: REKLAMA FORMASI -->
+      <section class="screen" data-screen="ucab-ad-form">
+        <div class="form-wrap" id="uaForm">
+          <div class="ad-quality"><b>Rasm talabi:</b> tavsiya etiladi 1200×500 px (nisbat 2.4:1), kamida 960×400 px. JPG, PNG yoki WEBP; hajmi 5 MB gacha. Muhim yozuv va logoni rasm chetiga juda yaqin qo'ymang.</div>
+          <div class="field"><label>Reklama rasmi</label>
+            <button type="button" class="upload" id="uaImageBtn">🖼 Galereyadan rasm tanlash</button>
+            <input type="file" id="uaImageInput" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="ad-preview" id="uaPreview"><img alt="Reklama rasmi"></div>
+            <div class="idesc" id="uaImageInfo"></div>
+          </div>
+          <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="uaTitle" maxlength="120" placeholder="Masalan: Yangi xizmatimiz ochildi"></div>
+          <div class="field"><label>Qisqa matn</label><textarea class="textarea" id="uaCaption" maxlength="240" placeholder="Reklama haqida qisqa va aniq ma'lumot"></textarea></div>
+          <div class="field"><label>Qayerda ko'rinsin?</label>
+            <div class="ad-target-builder">
+              <select class="input full" id="uaLevel"><option value="district">Tuman kesimida</option><option value="region">Viloyat kesimida</option><option value="republic">Respublika bo'ylab</option></select>
+              <select class="input" id="uaRegion"></select>
+              <select class="input" id="uaDistrict"></select>
+              <button type="button" class="mini-btn full" id="uaTargetAdd">+ Hududni qo'shish</button>
+            </div>
+            <div class="ad-targets" id="uaTargets"></div>
+          </div>
+          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="uaStart"></div>
+          <div class="field"><label>Qancha vaqt?</label><select class="input" id="uaDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
+          <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="uaPrice">0 so'm</div><div class="idesc" id="uaPriceNote">Hududni tanlang.</div></div>
+          <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
+          <button class="btn btn-primary btn-block" id="uaSubmit">Reklamani joylashtirish</button>
+        </div>
       </section>
 
       <!-- UCAB: E'LON FORMASI -->
@@ -2756,18 +2872,18 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
+    "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
-    ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim", "ucab-elon-form":"E'lon joylash",
+    ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
     "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
-    cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-elon-form":"cab-elon",
+    cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
-    ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-elon-form":"ucab-elon",
+    ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
     "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
@@ -7471,8 +7587,8 @@
     else if(screen==="cab-doc-in") loadDocs("ichki");
     else if(screen==="cab-doc-out") loadDocs("chiquvchi");
     else if(screen==="cab-doc-inbox") loadInbox();
-    else if(screen==="cab-elon") renderMyElons("bizElonList", "business");
-    else if(screen==="ucab-elon") renderMyElons("userElonList", "user");
+    else if(screen==="cab-elon"){ renderMyAds("bizAdList", "business"); renderMyElons("bizElonList", "business"); }
+    else if(screen==="ucab-elon"){ renderMyAds("userAdList", "user"); renderMyElons("userElonList", "user"); }
     else if(screen==="cab-orders") loadBizOrders();
     else if(screen==="ucab-orders") loadMyOrders();
     else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList", screen==="ucab-subs"?"user":"business");
@@ -8294,6 +8410,163 @@
     }).catch(function(e){ el(containerId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
 
+  /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
+  var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null;
+  function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
+  function adStatusLabel(st){
+    return st==="active"?"Faol":st==="scheduled"?"Rejalashtirilgan":st==="ended"?"Yakunlangan":st==="cancelled"?"Bekor qilingan":st;
+  }
+  function adTargetLabel(t){
+    if(t.level==="republic") return "🇺🇿 Respublika";
+    if(t.level==="region") return "Viloyat: "+t.region;
+    return t.region+" · "+t.district;
+  }
+  function renderHomeAd(){
+    var box=el("adBox"), dots=el("adDots");
+    if(!box) return;
+    if(!HOME_ADS.length){
+      box.classList.remove("has-image"); box.removeAttribute("data-ad-id");
+      el("adPhoto").removeAttribute("src"); el("adEyebrow").textContent="Tavsiya etamiz";
+      el("adTitle").textContent="Bu yerda reklamangiz"; el("adText").textContent="Bizneslar uchun bosh sahifada ko'rinish joyi.";
+      dots.innerHTML='<span class="on"></span>'; return;
+    }
+    if(HOME_AD_INDEX>=HOME_ADS.length) HOME_AD_INDEX=0;
+    var a=HOME_ADS[HOME_AD_INDEX];
+    box.classList.add("has-image"); box.setAttribute("data-ad-id",a.id);
+    el("adPhoto").src=a.image_file; el("adEyebrow").textContent="Tavsiya etamiz";
+    el("adTitle").textContent=a.title||"Reklama"; el("adText").textContent=a.caption||"Batafsil ko'rish uchun bosing.";
+    dots.innerHTML=HOME_ADS.map(function(_,i){return '<span class="'+(i===HOME_AD_INDEX?'on':'')+'" data-home-ad-dot="'+i+'"></span>';}).join("");
+  }
+  function startHomeAds(){
+    if(HOME_AD_TIMER) clearInterval(HOME_AD_TIMER);
+    if(HOME_ADS.length>1) HOME_AD_TIMER=setInterval(function(){ HOME_AD_INDEX=(HOME_AD_INDEX+1)%HOME_ADS.length; renderHomeAd(); },6000);
+  }
+  function loadHomeAds(){
+    api("GET","/api/advertisements/active").then(function(list){ HOME_ADS=list||[]; HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); }).catch(function(){ HOME_ADS=[]; renderHomeAd(); });
+  }
+  el("adDots").addEventListener("click",function(e){ var d=e.target.closest("[data-home-ad-dot]"); if(!d)return; HOME_AD_INDEX=parseInt(d.getAttribute("data-home-ad-dot"),10)||0; renderHomeAd(); startHomeAds(); });
+  el("adBox").addEventListener("click",function(){
+    if(!HOME_ADS.length) return;
+    var a=HOME_ADS[HOME_AD_INDEX];
+    api("POST","/api/advertisements/"+a.id+"/click").catch(function(){});
+    if(a.business_id) openBiz(a.business_id); else if(a.user_id) openPersonSrv(a.user_id);
+  });
+
+  var AD_FORM = {
+    ba:{actor:"business", targets:[], file:null, image_file:""},
+    ua:{actor:"user", targets:[], file:null, image_file:""}
+  };
+  function adSetDefaultStart(prefix){
+    var d=new Date(Date.now()+5*60000); d.setSeconds(0,0);
+    var pad=function(n){return String(n).padStart(2,"0");};
+    el(prefix+"Start").value=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+  function adFillRegions(prefix){
+    var regs=window.UZ_REGIONS||[];
+    el(prefix+"Region").innerHTML=regs.map(function(r){return '<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>';}).join("");
+    adFillDistricts(prefix);
+  }
+  function adFillDistricts(prefix){
+    var regs=window.UZ_REGIONS||[], rn=el(prefix+"Region").value;
+    var r=regs.filter(function(x){return x.name===rn;})[0];
+    el(prefix+"District").innerHTML=(r&&r.districts||[]).map(function(d){return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join("");
+  }
+  function adLevelUi(prefix){
+    var level=el(prefix+"Level").value;
+    el(prefix+"Region").style.display=level==="republic"?"none":"";
+    el(prefix+"District").style.display=level==="district"?"":"none";
+  }
+  function renderAdTargets(prefix){
+    var st=AD_FORM[prefix];
+    el(prefix+"Targets").innerHTML=st.targets.map(function(t,i){return '<span class="ad-target-chip">'+esc(adTargetLabel(t))+'<button type="button" data-ad-target-rm="'+prefix+':'+i+'">×</button></span>';}).join("");
+    calcAdPrice(prefix);
+  }
+  function calcAdPrice(prefix){
+    var st=AD_FORM[prefix], days=parseInt(el(prefix+"Days").value,10)||1;
+    if(!st.targets.length){ el(prefix+"Price").textContent="0 so'm"; el(prefix+"PriceNote").textContent="Hududni tanlang."; return; }
+    api("POST","/api/advertisements/price",{targets:st.targets,duration_days:days}).then(function(p){
+      el(prefix+"Price").textContent=fmtMoney(p.total);
+      el(prefix+"PriceNote").textContent="Kunlik "+fmtMoney(p.daily)+(p.discount?(" · "+p.discount+"% chegirma"):"")+" · "+p.days+" kun";
+    }).catch(function(e){ el(prefix+"PriceNote").textContent=e.message; });
+  }
+  function resetAdForm(prefix){
+    var st=AD_FORM[prefix]; st.targets=[]; st.file=null; st.image_file="";
+    el(prefix+"Title").value=""; el(prefix+"Caption").value=""; el(prefix+"Days").value="1";
+    el(prefix+"ImageInput").value=""; el(prefix+"Preview").classList.remove("on"); el(prefix+"Preview").querySelector("img").removeAttribute("src");
+    el(prefix+"ImageInfo").textContent=""; adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
+  }
+  function openAdForm(prefix){ resetAdForm(prefix); nav(prefix==="ba"?"cab-ad-form":"ucab-ad-form"); }
+  function bindAdForm(prefix){
+    var st=AD_FORM[prefix];
+    el(prefix+"ImageBtn").addEventListener("click",function(){ el(prefix+"ImageInput").click(); });
+    el(prefix+"ImageInput").addEventListener("change",function(){
+      var f=this.files&&this.files[0]; if(!f)return;
+      if(["image/jpeg","image/png","image/webp"].indexOf(f.type)<0){ showMsg("Faqat JPG, PNG yoki WEBP rasm tanlang."); this.value=""; return; }
+      if(f.size>5*1024*1024){ showMsg("Rasm hajmi 5 MB dan oshmasin."); this.value=""; return; }
+      st.file=f; st.image_file="";
+      var url=URL.createObjectURL(f), img=new Image();
+      img.onload=function(){
+        var ratio=img.width/img.height, warn=[];
+        if(img.width<960||img.height<400) warn.push("sifat past bo'lishi mumkin: kamida 960×400 tavsiya etiladi");
+        if(ratio<2.0||ratio>2.8) warn.push("nisbat 2.4:1 ga yaqin bo'lsa yaxshi ko'rinadi");
+        el(prefix+"ImageInfo").textContent=img.width+"×"+img.height+" px"+(warn.length?" · ⚠️ "+warn.join("; "):" · ✅ mos");
+      };
+      img.src=url; el(prefix+"Preview").querySelector("img").src=url; el(prefix+"Preview").classList.add("on");
+    });
+    el(prefix+"Region").addEventListener("change",function(){ adFillDistricts(prefix); });
+    el(prefix+"Level").addEventListener("change",function(){ adLevelUi(prefix); });
+    el(prefix+"Days").addEventListener("change",function(){ calcAdPrice(prefix); });
+    el(prefix+"TargetAdd").addEventListener("click",function(){
+      var level=el(prefix+"Level").value, t={level:level,region:"",district:""};
+      if(level==="republic"){ st.targets=[t]; }
+      else {
+        if(st.targets.some(function(x){return x.level==="republic";})) st.targets=[];
+        t.region=el(prefix+"Region").value;
+        if(level==="district") t.district=el(prefix+"District").value;
+        var key=JSON.stringify(t); if(!st.targets.some(function(x){return JSON.stringify(x)===key;})) st.targets.push(t);
+      }
+      renderAdTargets(prefix);
+    });
+    el(prefix+"Submit").addEventListener("click",function(){
+      var title=(el(prefix+"Title").value||"").trim(), start=el(prefix+"Start").value;
+      if(!st.file&&!st.image_file){ showMsg("Reklama rasmini tanlang."); return; }
+      if(!title){ showMsg("Reklama sarlavhasini kiriting."); return; }
+      if(!st.targets.length){ showMsg("Kamida bitta hudud tanlang."); return; }
+      if(!start){ showMsg("Boshlanish vaqtini tanlang."); return; }
+      var startAt=Math.floor(new Date(start).getTime()/1000); if(!isFinite(startAt)){ showMsg("Boshlanish vaqti noto'g'ri."); return; }
+      var btn=this; btn.disabled=true; btn.textContent="Joylashtirilmoqda...";
+      var up=st.image_file?Promise.resolve({image_file:st.image_file}):uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.file);
+      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
+      .then(function(){ showMsg("Reklama joylashtirildi ✅"); loadHomeAds(); nav(prefix==="ba"?"cab-elon":"ucab-elon"); })
+      .catch(function(e){ showMsg(e.message); })
+      .finally(function(){ btn.disabled=false; btn.textContent="Reklamani joylashtirish"; });
+    });
+  }
+  function renderMyAds(boxId, actor){
+    api("GET","/api/advertisements/my?actor_type="+actor).then(function(list){
+      var box=el(boxId); if(!list.length){ box.innerHTML='<div class="empty" style="padding:34px 16px"><div class="ic">📣</div><h3>Reklama yo\'q</h3><p>Bosh sahifaga hududiy reklama joylashtirishingiz mumkin.</p></div>'; return; }
+      box.innerHTML=list.map(function(a){
+        var tg=(a.targets||[]).map(adTargetLabel).join(", ");
+        var start=new Date(a.start_at*1000).toLocaleString("uz-UZ");
+        return '<div class="ad-own-card"><div class="ad-own-top"><img src="'+esc(a.image_file)+'" alt=""><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
+      }).join("");
+    }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+  }
+  function switchAdsTab(actor,tab){
+    var biz=actor==="business", root=document.querySelector('[data-ad-tabs="'+actor+'"]');
+    root.querySelectorAll("[data-ad-tab]").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-ad-tab")===tab);});
+    el(biz?"bizAdsPane":"userAdsPane").hidden=tab!=="ads";
+    el(biz?"bizElonsPane":"userElonsPane").hidden=tab!=="listings";
+  }
+  document.querySelectorAll("[data-ad-tabs]").forEach(function(root){ root.addEventListener("click",function(e){var b=e.target.closest("[data-ad-tab]");if(b)switchAdsTab(root.getAttribute("data-ad-tabs"),b.getAttribute("data-ad-tab"));}); });
+  document.addEventListener("click",function(e){
+    var d=e.target.closest("[data-ad-target-rm]"); if(d){var z=d.getAttribute("data-ad-target-rm").split(":"),p=z[0],i=parseInt(z[1],10);AD_FORM[p].targets.splice(i,1);renderAdTargets(p);return;}
+    var x=e.target.closest("[data-ad-del]"); if(x){var id=x.getAttribute("data-ad-del"),actor=x.getAttribute("data-ad-actor");askConfirm({text:"Reklama bekor qilinsinmi?",okText:"Bekor qilish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/advertisements/"+id+"?actor_type="+actor).then(function(){renderMyAds(actor==="business"?"bizAdList":"userAdList",actor);loadHomeAds();}).catch(function(er){showMsg(er.message);});});}
+  });
+  el("bizAdAdd").addEventListener("click",function(){openAdForm("ba");});
+  el("userAdAdd").addEventListener("click",function(){openAdForm("ua");});
+  bindAdForm("ba"); bindAdForm("ua");
+
   // tanlangan media (e'lon formasi uchun)
   var selMedia = [];
   function renderMediaList(listId){
@@ -8624,6 +8897,7 @@
     try { renderMapChip(); renderElonRow(); renderYon(); setIcon(); } catch(e){}
     nav("home");
     loadElonCounts();
+    loadHomeAds();
     // Xarita Leaflet'ga bog'liq — agar u hali yuklanmagan bo'lsa, ilova baribir ishlasin
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // serverdan joriy foydalanuvchini olamiz (kirgan bo'lsa)
@@ -8640,6 +8914,7 @@
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
         }
         loadHomeMap();
+        loadHomeAds();
         refreshOrderBadges();
       }
     }).catch(function(err){
