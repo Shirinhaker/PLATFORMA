@@ -34,6 +34,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
+APP_BUILD = "v1469"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -214,6 +215,18 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
+async def build_and_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Platforma-Build"] = APP_BUILD
+    path = request.url.path
+    if path in ("/", "/index.html") or path.startswith("/api/ai"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
+@app.middleware("http")
 async def whitelist_middleware(request: Request, call_next):
     """
     /api/... so'rovlarini global tekshiradi.
@@ -252,6 +265,15 @@ async def whitelist_middleware(request: Request, call_next):
 # Kabinet va platforma API'lari (api.py)
 from api import router as api_router
 app.include_router(api_router)
+
+# AI yordamchi (biznes kabinet uchun) — alohida modul
+from ai_agent import router as ai_router
+app.include_router(ai_router)
+
+
+@app.get("/api/build")
+async def app_build():
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True}
 
 
 @app.get("/api/_dbinfo")
