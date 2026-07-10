@@ -1494,7 +1494,7 @@ def _map_specialist_dict(row):
 
 
 @router.get("/map")
-async def home_map(x_telegram_init_data: str = Header(default="")):
+async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="")):
     """
     Bosh sahifa xaritasi uchun obyektlar.
 
@@ -1521,7 +1521,9 @@ async def home_map(x_telegram_init_data: str = Header(default="")):
         business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
 
     # 2) Foydalanuvchi obuna bo'lgan bizneslar
-    followed_rows = conn.execute(
+    # Biznes rejimida shaxsiy obunalar xaritada ko'rsatilmaydi
+    show_follows = (actor or "").strip().lower() != "business"
+    followed_rows = [] if not show_follows else conn.execute(
         """SELECT b.* FROM follows f
            JOIN businesses b ON b.id=f.target_id
            WHERE f.follower_id=?
@@ -1541,7 +1543,7 @@ async def home_map(x_telegram_init_data: str = Header(default="")):
             business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
 
     # 3) Foydalanuvchi obuna bo'lgan mutaxasislar/foydalanuvchilar
-    specialist_rows = conn.execute(
+    specialist_rows = [] if not show_follows else conn.execute(
         """SELECT s.*, u.name, u.district
            FROM follows f
            JOIN specialists s ON s.user_id=f.target_id
