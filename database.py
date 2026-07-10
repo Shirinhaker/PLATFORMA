@@ -160,6 +160,17 @@ def init_db():
             FOREIGN KEY(follower_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        -- Biznes kabinet nomidan obunalar. Oddiy foydalanuvchi obunalaridan alohida yuritiladi.
+        CREATE TABLE IF NOT EXISTS business_follows(
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_id   INTEGER NOT NULL,
+            target_kind   TEXT NOT NULL,                    -- 'user' | 'business'
+            target_id     INTEGER NOT NULL,
+            created_at    INTEGER NOT NULL,
+            UNIQUE(business_id, target_kind, target_id),
+            FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS saved(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL,
@@ -992,6 +1003,28 @@ def _migrate(conn):
         "comment TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_review_one ON reviews(target_kind, target_id, reviewer_user_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_kind, target_id)")
+
+    # --- v1468: Biznes kabinet nomidan obunalar ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS business_follows("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "target_kind TEXT NOT NULL, "
+        "target_id INTEGER NOT NULL, "
+        "created_at INTEGER NOT NULL, "
+        "UNIQUE(business_id, target_kind, target_id), "
+        "FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_business_follows_biz ON business_follows(business_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_business_follows_target ON business_follows(target_kind, target_id)")
+    # Avval biznes kabinetida bosilgan obunalar user obunasi sifatida saqlangan.
+    # Birinchi yangilanishda ularni biznes obunasiga ham ko'chiramiz, shunda xaritada yo'qolib qolmaydi.
+    conn.execute(
+        "INSERT OR IGNORE INTO business_follows(business_id, target_kind, target_id, created_at) "
+        "SELECT b.id, f.target_kind, f.target_id, f.created_at "
+        "FROM follows f JOIN businesses b ON b.user_id=f.follower_id "
+        "WHERE NOT (f.target_kind='business' AND f.target_id=b.id)"
+    )
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
