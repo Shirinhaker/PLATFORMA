@@ -34,7 +34,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1471"
+APP_BUILD = "v1472"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -219,7 +219,7 @@ async def build_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Platforma-Build"] = APP_BUILD
     path = request.url.path
-    if path in ("/", "/index.html") or path.startswith("/api/ai"):
+    if path in ("/", "/index.html") or path.startswith("/api/ai") or path.startswith("/api/advertisements"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -273,7 +273,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True}
 
 
 @app.get("/api/_dbinfo")
