@@ -116,9 +116,14 @@ def need_perm(conn, init_data, perm):
 
 
 def follower_count(conn, kind, target_id):
-    return conn.execute(
+    """Oddiy foydalanuvchi va biznes kabinet obunalarining jami."""
+    user_count = conn.execute(
         "SELECT COUNT(*) c FROM follows WHERE target_kind=? AND target_id=?", (kind, target_id)
     ).fetchone()["c"]
+    business_count = conn.execute(
+        "SELECT COUNT(*) c FROM business_follows WHERE target_kind=? AND target_id=?", (kind, target_id)
+    ).fetchone()["c"]
+    return int(user_count or 0) + int(business_count or 0)
 
 
 def following_count(conn, user_id):
@@ -127,7 +132,22 @@ def following_count(conn, user_id):
     ).fetchone()["c"]
 
 
-def is_following(conn, user_id, kind, target_id):
+def business_following_count(conn, business_id):
+    if not business_id:
+        return 0
+    return conn.execute(
+        "SELECT COUNT(*) c FROM business_follows WHERE business_id=?", (business_id,)
+    ).fetchone()["c"]
+
+
+def is_following(conn, user_id, kind, target_id, actor_type="user", business_id=None):
+    if (actor_type or "user").strip().lower() == "business":
+        if not business_id:
+            return False
+        return bool(conn.execute(
+            "SELECT 1 FROM business_follows WHERE business_id=? AND target_kind=? AND target_id=?",
+            (business_id, kind, target_id),
+        ).fetchone())
     if not user_id:
         return False
     return bool(conn.execute(
@@ -267,7 +287,7 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
         biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
         if biz:
             result["business_followers"] = follower_count(conn, "business", biz["id"])
-            result["business_following"] = 0  # biznes nomidan obuna tizimi hozircha alohida qilinmagan
+            result["business_following"] = business_following_count(conn, biz["id"])
             result["business_id"] = biz["id"]
     conn.close()
     return result
@@ -1378,49 +1398,86 @@ async def toggle_follow(request: Request, x_telegram_init_data: str = Header(def
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
     actor = actor_from_body(conn, user, b)
-    if actor["type"] != "user":
-        conn.close()
-        raise HTTPException(400, "Obuna hozircha oddiy kabinet orqali bajariladi.")
     kind = b.get("target_kind")
     target_id = b.get("target_id")
     if kind not in ("user", "business") or not target_id:
         conn.close()
         raise HTTPException(400, "Obuna nishoni noto'g'ri.")
-    if kind == "user" and target_id == user["id"]:
+    try:
+        target_id = int(target_id)
+    except Exception:
         conn.close()
-        raise HTTPException(400, "O'zingizga obuna bo'la olmaysiz.")
+        raise HTTPException(400, "Obuna nishoni noto'g'ri.")
 
-    existing = conn.execute(
-        "SELECT id FROM follows WHERE follower_id=? AND target_kind=? AND target_id=?",
-        (user["id"], kind, target_id),
-    ).fetchone()
-    if existing:
-        conn.execute("DELETE FROM follows WHERE id=?", (existing["id"],))
-        following = False
+    # Nishon haqiqatda mavjudligini tekshiramiz.
+    if kind == "business":
+        target = conn.execute("SELECT id FROM businesses WHERE id=? AND status='active'", (target_id,)).fetchone()
     else:
-        conn.execute(
-            "INSERT INTO follows(follower_id, target_kind, target_id, created_at) VALUES(?,?,?,?)",
-            (user["id"], kind, target_id, int(time.time())),
-        )
-        following = True
+        target = conn.execute("SELECT id FROM users WHERE id=?", (target_id,)).fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(404, "Obuna bo'linadigan profil topilmadi.")
+
+    if actor["type"] == "business":
+        business_id = actor["business_id"]
+        if kind == "business" and target_id == business_id:
+            conn.close()
+            raise HTTPException(400, "Biznes o'ziga obuna bo'la olmaydi.")
+        if kind == "user" and target_id == user["id"]:
+            conn.close()
+            raise HTTPException(400, "Biznes egasining o'z profiliga obuna bo'lib bo'lmaydi.")
+        existing = conn.execute(
+            "SELECT id FROM business_follows WHERE business_id=? AND target_kind=? AND target_id=?",
+            (business_id, kind, target_id),
+        ).fetchone()
+        if existing:
+            conn.execute("DELETE FROM business_follows WHERE id=?", (existing["id"],))
+            following = False
+        else:
+            conn.execute(
+                "INSERT INTO business_follows(business_id, target_kind, target_id, created_at) VALUES(?,?,?,?)",
+                (business_id, kind, target_id, int(time.time())),
+            )
+            following = True
+    else:
+        if kind == "user" and target_id == user["id"]:
+            conn.close()
+            raise HTTPException(400, "O'zingizga obuna bo'la olmaysiz.")
+        existing = conn.execute(
+            "SELECT id FROM follows WHERE follower_id=? AND target_kind=? AND target_id=?",
+            (user["id"], kind, target_id),
+        ).fetchone()
+        if existing:
+            conn.execute("DELETE FROM follows WHERE id=?", (existing["id"],))
+            following = False
+        else:
+            conn.execute(
+                "INSERT INTO follows(follower_id, target_kind, target_id, created_at) VALUES(?,?,?,?)",
+                (user["id"], kind, target_id, int(time.time())),
+            )
+            following = True
     conn.commit()
     count = follower_count(conn, kind, target_id)
     conn.close()
-    return {"following": following, "followers": count}
+    return {"following": following, "followers": count, "actor_type": actor["type"]}
 
 
 @router.get("/follows/my")
 async def my_follows(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Men obuna bo'lganlarim (obunalarim)."""
+    """Joriy kabinet (user yoki biznes) obuna bo'lgan profillar."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     actor = resolve_actor(conn, user, actor_type)
     if actor["type"] == "business":
-        conn.close()
-        return []
-    rows = conn.execute(
-        "SELECT * FROM follows WHERE follower_id=? ORDER BY created_at DESC", (user["id"],)
-    ).fetchall()
+        rows = conn.execute(
+            "SELECT target_kind, target_id, created_at FROM business_follows WHERE business_id=? ORDER BY created_at DESC",
+            (actor["business_id"],),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT target_kind, target_id, created_at FROM follows WHERE follower_id=? ORDER BY created_at DESC",
+            (user["id"],),
+        ).fetchall()
     result = []
     for r in rows:
         if r["target_kind"] == "business":
@@ -1437,23 +1494,33 @@ async def my_follows(actor_type: str = "user", x_telegram_init_data: str = Heade
 
 @router.get("/followers/my")
 async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
-    """Menga obuna bo'lganlar (obunachilarim) — kabinet turi bo'yicha alohida."""
+    """Joriy profilga obuna bo'lgan oddiy foydalanuvchi va bizneslar."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     actor = resolve_actor(conn, user, actor_type)
     if actor["type"] == "business":
-        targets = [("business", actor["business_id"])]
+        target_kind, target_id = "business", actor["business_id"]
     else:
-        targets = [("user", user["id"])]
+        target_kind, target_id = "user", user["id"]
+
     result = []
-    for kind, tid in targets:
-        rows = conn.execute(
-            "SELECT follower_id FROM follows WHERE target_kind=? AND target_id=?", (kind, tid)
-        ).fetchall()
-        for r in rows:
-            u = conn.execute("SELECT id, name, district FROM users WHERE id=?", (r["follower_id"],)).fetchone()
-            if u:
-                result.append({"id": u["id"], "name": u["name"], "info": u["district"]})
+    user_rows = conn.execute(
+        "SELECT follower_id FROM follows WHERE target_kind=? AND target_id=? ORDER BY created_at DESC",
+        (target_kind, target_id),
+    ).fetchall()
+    for r in user_rows:
+        u = conn.execute("SELECT id, name, district FROM users WHERE id=?", (r["follower_id"],)).fetchone()
+        if u:
+            result.append({"kind": "user", "id": u["id"], "name": u["name"], "info": u["district"]})
+
+    business_rows = conn.execute(
+        "SELECT business_id FROM business_follows WHERE target_kind=? AND target_id=? ORDER BY created_at DESC",
+        (target_kind, target_id),
+    ).fetchall()
+    for r in business_rows:
+        b = conn.execute("SELECT id, name, yon FROM businesses WHERE id=? AND status='active'", (r["business_id"],)).fetchone()
+        if b:
+            result.append({"kind": "business", "id": b["id"], "name": b["name"], "info": b["yon"]})
     conn.close()
     return result
 
@@ -1520,20 +1587,32 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
     for b in platform_rows:
         business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
 
-    # 2) Foydalanuvchi obuna bo'lgan bizneslar
-    # Biznes rejimida shaxsiy obunalar xaritada ko'rsatilmaydi
-    show_follows = (actor or "").strip().lower() != "business"
-    followed_rows = [] if not show_follows else conn.execute(
-        """SELECT b.* FROM follows f
-           JOIN businesses b ON b.id=f.target_id
-           WHERE f.follower_id=?
-             AND f.target_kind='business'
-             AND b.status='active'
-             AND b.lat IS NOT NULL AND b.lng IS NOT NULL
-           ORDER BY f.created_at DESC
-           LIMIT 200""",
-        (user["id"],),
-    ).fetchall()
+    # 2) Joriy kabinet obuna bo'lgan bizneslar
+    actor_ctx = resolve_actor(conn, user, "business" if (actor or "").strip().lower() == "business" else "user")
+    if actor_ctx["type"] == "business":
+        followed_rows = conn.execute(
+            """SELECT b.* FROM business_follows f
+               JOIN businesses b ON b.id=f.target_id
+               WHERE f.business_id=?
+                 AND f.target_kind='business'
+                 AND b.status='active'
+                 AND b.lat IS NOT NULL AND b.lng IS NOT NULL
+               ORDER BY f.created_at DESC
+               LIMIT 200""",
+            (actor_ctx["business_id"],),
+        ).fetchall()
+    else:
+        followed_rows = conn.execute(
+            """SELECT b.* FROM follows f
+               JOIN businesses b ON b.id=f.target_id
+               WHERE f.follower_id=?
+                 AND f.target_kind='business'
+                 AND b.status='active'
+                 AND b.lat IS NOT NULL AND b.lng IS NOT NULL
+               ORDER BY f.created_at DESC
+               LIMIT 200""",
+            (user["id"],),
+        ).fetchall()
 
     for b in followed_rows:
         if b["id"] in business_map:
@@ -1542,20 +1621,35 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
         else:
             business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
 
-    # 3) Foydalanuvchi obuna bo'lgan mutaxasislar/foydalanuvchilar
-    specialist_rows = [] if not show_follows else conn.execute(
-        """SELECT s.*, u.name, u.district
-           FROM follows f
-           JOIN specialists s ON s.user_id=f.target_id
-           JOIN users u ON u.id=s.user_id
-           WHERE f.follower_id=?
-             AND f.target_kind='user'
-             AND s.visible=1
-             AND s.lat IS NOT NULL AND s.lng IS NOT NULL
-           ORDER BY f.created_at DESC
-           LIMIT 200""",
-        (user["id"],),
-    ).fetchall()
+    # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
+    if actor_ctx["type"] == "business":
+        specialist_rows = conn.execute(
+            """SELECT s.*, u.name, u.district
+               FROM business_follows f
+               JOIN specialists s ON s.user_id=f.target_id
+               JOIN users u ON u.id=s.user_id
+               WHERE f.business_id=?
+                 AND f.target_kind='user'
+                 AND s.visible=1
+                 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+               ORDER BY f.created_at DESC
+               LIMIT 200""",
+            (actor_ctx["business_id"],),
+        ).fetchall()
+    else:
+        specialist_rows = conn.execute(
+            """SELECT s.*, u.name, u.district
+               FROM follows f
+               JOIN specialists s ON s.user_id=f.target_id
+               JOIN users u ON u.id=s.user_id
+               WHERE f.follower_id=?
+                 AND f.target_kind='user'
+                 AND s.visible=1
+                 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+               ORDER BY f.created_at DESC
+               LIMIT 200""",
+            (user["id"],),
+        ).fetchall()
 
     result = {
         "businesses": list(business_map.values()),
@@ -4201,7 +4295,7 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
 # SAHIFALAR (biznes / mutaxasis)
 # ====================================================================
 @router.get("/business/{business_id}")
-async def business_page(business_id: int, x_telegram_init_data: str = Header(default="")):
+async def business_page(business_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     viewer = optional_user(conn, x_telegram_init_data)
     biz = conn.execute("SELECT * FROM businesses WHERE id=?", (business_id,)).fetchone()
@@ -4225,13 +4319,18 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
         "SELECT * FROM listings WHERE business_id=? AND status='active' ORDER BY created_at DESC",
         (business_id,),
     ).fetchall()
+    viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "work_hours": biz["work_hours"], "address": biz["address"],
         "lat": biz["lat"], "lng": biz["lng"],
         "followers": follower_count(conn, "business", biz["id"]),
-        "is_following": is_following(conn, viewer["id"] if viewer else None, "business", biz["id"]),
+        "is_following": is_following(
+            conn, viewer["id"] if viewer else None, "business", biz["id"],
+            viewer_actor["type"] if viewer_actor else "user",
+            viewer_actor["business_id"] if viewer_actor and viewer_actor["type"] == "business" else None,
+        ),
         "item_groups": [{"id": g["id"], "name": g["name"], "kind": g["kind"]} for g in item_groups],
         "items": [{"id": i["id"], "name": i["name"], "price": i["price"],
                    "unit": i["unit"] or "dona",
@@ -4245,7 +4344,7 @@ async def business_page(business_id: int, x_telegram_init_data: str = Header(def
 
 
 @router.get("/person/{user_id}")
-async def person_page(user_id: int, x_telegram_init_data: str = Header(default="")):
+async def person_page(user_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     viewer = optional_user(conn, x_telegram_init_data)
     u = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
@@ -4257,10 +4356,15 @@ async def person_page(user_id: int, x_telegram_init_data: str = Header(default="
         "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' AND visibility='all' "
         "ORDER BY created_at DESC", (user_id,),
     ).fetchall()
+    viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     result = {
         "id": u["id"], "name": u["name"], "district": u["district"],
         "followers": follower_count(conn, "user", u["id"]),
-        "is_following": is_following(conn, viewer["id"] if viewer else None, "user", u["id"]),
+        "is_following": is_following(
+            conn, viewer["id"] if viewer else None, "user", u["id"],
+            viewer_actor["type"] if viewer_actor else "user",
+            viewer_actor["business_id"] if viewer_actor and viewer_actor["type"] == "business" else None,
+        ),
         "specialist": None,
         "listings": [listing_to_dict(conn, r) for r in listings],
     }
