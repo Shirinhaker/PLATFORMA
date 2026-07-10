@@ -253,6 +253,10 @@ async def whitelist_middleware(request: Request, call_next):
 from api import router as api_router
 app.include_router(api_router)
 
+# AI yordamchi (biznes kabinet uchun) — alohida modul
+from ai_agent import router as ai_router
+app.include_router(ai_router)
+
 
 @app.get("/api/_dbinfo")
 async def db_info():
