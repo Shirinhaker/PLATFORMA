@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1466 -->
+<title>Platforma</title><!-- BUILD: v1467 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1734,7 +1734,7 @@
   }
   function loadHomeMap(){
     if(mapMode!=="biz") return;
-    api("GET","/api/map").then(function(data){
+    api("GET","/api/map?actor="+(activeMode==="business"?"business":"user")).then(function(data){
       data = data || {};
       BIZ = (data.businesses||[]).map(function(b){
         var m = yonMeta(b.yon);
@@ -4435,8 +4435,8 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
-  function goBiz(){ activeMode="business"; nav("cabinet"); }
-  function goUser(){ activeMode="user"; nav("ucab"); }
+  function goBiz(){ activeMode="business"; nav("cabinet"); loadHomeMap(); }
+  function goUser(){ activeMode="user"; nav("ucab"); loadHomeMap(); }
 
 
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
