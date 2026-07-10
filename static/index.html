@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1470 -->
+<title>Platforma</title><!-- BUILD: v1471 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="qrcode.min.js?v=1470"></script>
+<script src="qrcode.min.js?v=1471"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -127,7 +127,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="regions.js?v=1470"></script>
+<script src="regions.js?v=1471"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -1998,7 +1998,7 @@
     }
     if(callState==="found"){
       var _st = (CUR_RIDE && CUR_RIDE.status) || "accepted";
-      pnl.innerHTML = '<div class="panel-card" style="text-align:center"><b>'+rideStatusLabel(_st)+'</b><button class="panel-x" data-ccancel>\u2715</button></div>';
+      pnl.innerHTML = '<div class="panel-card" style="text-align:center"><b>'+rideStatusLabel(_st, (CUR_RIDE&&CUR_RIDE.kind)||callTab)+'</b><button class="panel-x" data-ccancel>\u2715</button></div>';
       return;
     }
     var isTaxi = callTab==="taxi";
@@ -2205,7 +2205,11 @@
   // Jonli GPS hisoblagich (faqat haydovchi tomonida, "ongoing" + "o'zim aytaman" safarlar uchun)
   var meterWatchId=null, meterKm=0, meterLastPt=null, meterRideId=null, meterKind="taxi", _meterSendAt=0;
   // Mijozga ko'rinadigan holat yorlig'i
-  function rideStatusLabel(st){
+  function rideStatusLabel(st, kind){
+    if(kind==="dostavka"){
+      if(st==="arrived" || st==="ongoing") return "📦 Dostavka olindi — yetkazilmoqda";
+      return "🚚 Dostavkachi buyurtmani olish uchun yo'lda";
+    }
     if(st==="arrived") return "📍 Haydovchi yetib keldi!";
     if(st==="ongoing") return "🛣️ Safardasiz";
     return "🚗 Haydovchi yo'lda kelmoqda";
@@ -2250,11 +2254,14 @@
       if(!r){
         var wasFound = (callState==="found");
         // Yakuniy narxni nol qilishdan oldin saqlab olamiz (ozim -> hisoblagich narxi, aks holda -> taxmin)
-        var lastPrice = null;
+        var lastPrice = null, lastKind = CUR_RIDE && CUR_RIDE.kind;
         if(CUR_RIDE){ lastPrice = CUR_RIDE.ozim ? CUR_RIDE.final_price : CUR_RIDE.price; }
         stopRidePoll(); CUR_RIDE=null; _shownRideStatus=null;
         if(callMode && callState!=="form"){
-          if(wasFound) showMsg((lastPrice && lastPrice>0) ? ("Safar tugadi · to\u02bclov ~"+fmtSom(lastPrice)+" so\u02bcm. Rahmat!") : "Safar yakunlandi. Rahmat!");
+          if(wasFound){
+            if(lastKind==="dostavka") showMsg("Dostavka topshirildi. Rahmat!");
+            else showMsg((lastPrice && lastPrice>0) ? ("Safar tugadi · to\u02bclov ~"+fmtSom(lastPrice)+" so\u02bcm. Rahmat!") : "Safar yakunlandi. Rahmat!");
+          }
           callState="form"; renderCallPanel();
         }
         return;
@@ -2263,8 +2270,12 @@
       if(["accepted","arrived","ongoing"].indexOf(r.status)>=0){
         if(callState!=="found" || _shownRideStatus!==r.status){
           if(_shownRideStatus && _shownRideStatus!==r.status){
-            if(r.status==="arrived") showMsg("Haydovchi yetib keldi! 📍");
-            else if(r.status==="ongoing") showMsg("Safar boshlandi 🛣️");
+            if(r.kind==="dostavka"){
+              if(r.status==="arrived" || r.status==="ongoing") showMsg("Dostavka olindi va yetkazilmoqda 📦");
+            } else {
+              if(r.status==="arrived") showMsg("Haydovchi yetib keldi! 📍");
+              else if(r.status==="ongoing") showMsg("Safar boshlandi 🛣️");
+            }
           }
           showAcceptedDriver(r);
         }
@@ -2279,7 +2290,7 @@
     var car = [d.car_color, d.car_model].filter(Boolean).map(esc).join(" ");
     var plate = d.car_plate ? (" \u00b7 "+esc(d.car_plate)) : "";
     var phone = (d.phone||"").trim();
-    var canCancel = (r.status==="accepted" || r.status==="arrived");
+    var canCancel = r.kind==="dostavka" ? (r.status==="accepted") : (r.status==="accepted" || r.status==="arrived");
     var priceLine;
     if(r.ozim && r.status==="ongoing"){
       // Safar davom etmoqda — jonli hisoblagich (serverdan, ~3 soniyada yangilanadi)
@@ -2295,7 +2306,7 @@
     }
     el("driverCard").innerHTML = '<div class="panel-card" style="margin-top:14px">'+
       '<div style="display:flex;gap:12px;align-items:center">'+
-        '<div class="cab-logo" style="background:var(--amber-tint);flex:none">🚖</div>'+
+        '<div class="cab-logo" style="background:var(--amber-tint);flex:none">'+(r.kind==="dostavka"?"📦":"🚖")+'</div>'+
         '<div style="flex:1;min-width:0"><b>'+esc(d.name||"Haydovchi")+'</b>'+
         '<div class="list-sub" style="margin:3px 0 0">'+(car||"Mashina")+plate+'</div>'+
         priceLine+
@@ -4727,7 +4738,8 @@
     teardownDrvMap();   // eski xaritani tozalaymiz (innerHTML yangilanishidan oldin)
     var svcLabel = d.service==="both" ? "🚖 Taxi · 📦 Dostavka" : (d.service==="dostavka" ? "📦 Dostavka" : "🚖 Taxi");
     var carLine = d.car_model ? (esc(d.car_model)+(d.car_color?", "+esc(d.car_color):"")+(d.car_plate?" · "+esc(d.car_plate):"")+" · "+svcLabel) : svcLabel;
-    var avail = !!d.available;
+    var busy = !!d.busy;
+    var avail = !!d.available && !busy;
     // Balans ma'lumotlari
     var bal = d.balance || 0, comm = d.commission || 1000;
     var low = bal < comm;
@@ -4755,8 +4767,9 @@
         '<div><div class="cab-name">'+esc(d.name||"")+'</div><div class="cab-status" style="color:var(--soft)">'+carLine+'</div></div></div>'+
       balanceCard+
       '<div class="field"><label>Holatim</label>'+
-        '<div class="vis-card'+(avail?" on":"")+'" data-davail="1"><span class="v-ic">🟢</span><div><h5>Bo\'shman</h5><p>Yangi zakazlar menga ko\'rinadi.</p></div></div>'+
-        '<div class="vis-card'+(!avail?" on":"")+'" data-davail="0"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Zakazlar kelmaydi.</p></div></div>'+
+        '<div class="vis-card'+(avail?" on":"")+'" '+(!busy?'data-davail="1"':'style="opacity:.55"')+'><span class="v-ic">🟢</span><div><h5>Bo\'shman</h5><p>'+(busy?'Joriy zakaz yakunlangach avtomatik yoqiladi.':'Yangi zakazlar menga ko\'rinadi.')+'</p></div></div>'+
+        '<div class="vis-card'+(!avail?" on":"")+'" '+(!busy?'data-davail="0"':'')+'><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>'+(busy?'Zakaz qabul qilingani uchun avtomatik band.':'Zakazlar kelmaydi.')+'</p></div></div>'+
+        (busy?'<div class="elon-hint" style="margin:8px 2px 0;color:var(--primary);font-weight:700">🔒 Joriy zakazni yakunlamaguningizcha boshqa zakaz ololmaysiz.</div>':'')+
       '</div>'+
       '<button class="btn btn-soft btn-block" id="dEdit" style="margin-bottom:4px">✎ Ma\'lumotlarni tahrirlash</button>'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px"><h2 style="margin:0;font-size:17px">Kelayotgan zakazlar</h2><button class="sort-chip" id="drvRefresh" style="padding:4px 12px">↻ Yangilash</button></div>'+
@@ -4855,7 +4868,7 @@
     }
     if(data.current){
       var c=data.current, cust=c.customer||{};
-      var act=drvActionFor(c.status);
+      var act=drvActionFor(c.status, c.kind);
       var ongoingOzim=(c.status==="ongoing" && c.ozim);
       // Narx / jonli hisoblagich bloki
       var priceBlock;
@@ -4867,13 +4880,13 @@
         priceBlock='<div class="list-sub" style="color:var(--soft);margin-top:8px">Narx safar oxirida — hisoblagich bo\'yicha</div>';
       } else { priceBlock=''; }
       html='<div class="panel-card" style="margin-bottom:10px;border:1.5px solid var(--primary)">'+
-        '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">'+drvStatusLabel(c.status)+' · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
+        '<div style="font-weight:700;color:var(--primary);margin-bottom:6px">'+drvStatusLabel(c.status, c.kind)+' · '+(c.kind==="dostavka"?"Dostavka":"Taxi")+'</div>'+
         rideLinesHtml(c, true)+
         priceBlock+
         '<div class="list-sub" style="margin-top:6px">Mijoz: '+esc(cust.name||"—")+'</div>'+
         '<div style="display:flex;gap:9px;margin-top:10px">'+
           (cust.phone?'<a class="btn btn-soft" style="height:42px;display:flex;align-items:center;justify-content:center;text-decoration:none;flex:0 0 auto;padding:0 16px" href="tel:'+esc(cust.phone)+'">📞</a>':'')+
-          (act?'<button class="btn btn-primary" style="height:42px;flex:1" data-ride-status="'+act.next+'" data-ride-id="'+c.id+'">'+act.label+'</button>':'')+
+          (act?'<button class="btn btn-primary" style="height:42px;flex:1" data-ride-status="'+act.next+'" data-ride-id="'+c.id+'" data-ride-kind="'+c.kind+'">'+act.label+'</button>':'')+
         '</div></div>';
       box.innerHTML=html;
       if(ongoingOzim) updateMeterDisplay();
@@ -4987,38 +5000,60 @@
       showMsg(msg);
       var be=el("drvBalance");
       if(be && res && res.balance!=null) be.innerHTML=fmtSom(res.balance)+" so'm";
-      loadDriverOrders();
+      // Zakaz qabul qilingach profilni qayta yuklaymiz: holat darhol avtomatik BAND ko'rinadi.
+      openTaxiDriver();
     }).catch(function(e){
       showMsg((e&&e.message)?e.message:"Qabul qilib bo'lmadi.");
       loadDriverOrders();
     });
   }
-  function drvStatusLabel(st){
+  function drvStatusLabel(st, kind){
+    if(kind==="dostavka"){
+      if(st==="arrived" || st==="ongoing") return "📦 Dostavka olindi — egasiga olib boring";
+      return "🚚 Joriy dostavka — olib ketish joyiga boring";
+    }
     if(st==="arrived") return "📍 Yetib keldingiz — mijozni kuting";
     if(st==="ongoing") return "🛣️ Safardasiz";
     return "🟢 Joriy zakaz — mijoz oldiga boring";
   }
-  function drvActionFor(st){
+  function drvActionFor(st, kind){
+    if(kind==="dostavka"){
+      if(st==="accepted") return {label:"📦 Dostavkani oldim", next:"arrived"};
+      if(st==="arrived" || st==="ongoing") return {label:"✅ Dostavkani topshirdim", next:"completed"};
+      return null;
+    }
     if(st==="accepted") return {label:"🚗 Yetib keldim", next:"arrived"};
     if(st==="arrived") return {label:"▶️ Safarni boshlash", next:"ongoing"};
     if(st==="ongoing") return {label:"✓ Yakunlash", next:"completed"};
     return null;
   }
-  // Safar bosqichini oldinga suramiz (yakunlashda tasdiq so'raymiz)
-  function setRideStatus(id, newStatus){
+  // Taxi va dostavka bosqichlarini oldinga suramiz; yakunlangach haydovchi avtomatik BO'SH bo'ladi.
+  function setRideStatus(id, newStatus, kind){
     function go(){
       api("POST","/api/rides/"+id+"/status", {status:newStatus}).then(function(){
-        if(newStatus==="completed"){ stopMeter(); showMsg("Zakaz yakunlandi. Rahmat!"); }
-        loadDriverOrders();
+        if(newStatus==="completed"){
+          stopMeter();
+          showMsg(kind==="dostavka" ? "Dostavka topshirildi. Endi yana zakaz olishingiz mumkin." : "Safar yakunlandi. Endi yana zakaz olishingiz mumkin.");
+          openTaxiDriver();
+        } else {
+          loadDriverOrders();
+        }
       }).catch(function(e){ showMsg((e&&e.message)?e.message:"Xatolik."); loadDriverOrders(); });
     }
     if(newStatus==="completed"){
-      askConfirm({title:"Safarni yakunlash", text:"Zakaz tugadimi?", okText:"Ha, yakunlash"}).then(function(ok){
+      var isDelivery = kind==="dostavka";
+      askConfirm({
+        title:isDelivery?"Dostavkani topshirish":"Safarni yakunlash",
+        text:isDelivery?"Dostavka egasiga topshirildimi?":"Zakaz tugadimi?",
+        okText:isDelivery?"Ha, topshirildi":"Ha, yakunlash"
+      }).then(function(ok){
         if(!ok) return;
-        sendMeterThen(go);   // avval oxirgi masofani serverga saqlaymiz, keyin yakunlaymiz
+        if(isDelivery) go();
+        else sendMeterThen(go);
       });
     } else { go(); }
   }
+
 
   // ===== Jonli GPS hisoblagich (faqat haydovchi, "ongoing" + "o'zim aytaman") =====
   function startMeter(rideId, kind){
@@ -5078,7 +5113,7 @@
     var _ar=e.target.closest("[data-accept-ride]");
     if(_ar){ acceptRide(_ar.getAttribute("data-accept-ride")); return; }
     var _rs=e.target.closest("[data-ride-status]");
-    if(_rs){ setRideStatus(_rs.getAttribute("data-ride-id"), _rs.getAttribute("data-ride-status")); return; }
+    if(_rs){ setRideStatus(_rs.getAttribute("data-ride-id"), _rs.getAttribute("data-ride-status"), _rs.getAttribute("data-ride-kind")||"taxi"); return; }
     var av=e.target.closest("[data-davail]");
     if(av){ toggleDriverAvail(av.getAttribute("data-davail")==="1" ? 1 : 0); return; }
   });
