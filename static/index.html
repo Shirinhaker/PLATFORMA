@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1472 -->
+<title>Platforma</title><!-- BUILD: v1473 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="qrcode.min.js?v=1472"></script>
+<script src="qrcode.min.js?v=1473"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -127,7 +127,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="regions.js?v=1472"></script>
+<script src="regions.js?v=1473"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -404,6 +404,39 @@
   .item-photo-add.busy{opacity:.6;pointer-events:none;}
   .item-photo-preview{position:relative;width:100%;border-radius:14px;overflow:hidden;}
   .item-photo-preview img{width:100%;max-height:230px;object-fit:cover;display:block;}
+
+  /* Mutaxassis profili v1473 */
+  .sp-page-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 16px;}
+  .sp-page-head h2{font-family:var(--font-d);font-size:22px;font-weight:800;letter-spacing:-.02em;}
+  .sp-review-btn{flex:none;border:1.5px solid var(--line);background:var(--card);color:var(--ink);height:42px;padding:0 12px;border-radius:12px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:var(--shadow);white-space:nowrap;}
+  .sp-review-btn b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:10px;background:var(--amber);color:#3a2603;font-size:10px;margin-left:4px;}
+  .sp-section{margin:18px 0 4px;}
+  .sp-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:0 3px 9px;}
+  .sp-section-head h3{font-family:var(--font-d);font-size:15.5px;font-weight:800;}
+  .sp-section-head p{font-size:11.5px;color:var(--soft);margin-top:2px;line-height:1.35;}
+  .sp-hrow{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .sp-hrow::-webkit-scrollbar{display:none;}
+  .sp-add-card,.sp-media-card,.sp-offer-card{flex:none;scroll-snap-align:start;border:1.5px solid var(--line);background:var(--card);border-radius:15px;box-shadow:var(--shadow);overflow:hidden;position:relative;}
+  .sp-add-card{width:116px;height:142px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--primary);font-size:12px;font-weight:800;text-align:center;padding:10px;cursor:pointer;border-style:dashed;background:var(--primary-tint);}
+  .sp-add-card .plus{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--card);font-size:26px;line-height:1;}
+  .sp-media-card{width:132px;height:142px;background:var(--line);}
+  .sp-media-card img,.sp-media-card video{width:100%;height:100%;object-fit:cover;display:block;}
+  .sp-media-card video{background:#111;}
+  .sp-card-x{position:absolute;right:6px;top:6px;width:27px;height:27px;border-radius:50%;border:none;background:rgba(0,0,0,.66);color:#fff;font-size:18px;font-weight:900;display:grid;place-items:center;cursor:pointer;z-index:3;}
+  .sp-media-type{position:absolute;left:7px;bottom:7px;background:rgba(0,0,0,.62);color:#fff;border-radius:8px;padding:3px 7px;font-size:10px;font-weight:800;}
+  .sp-offer-card{width:148px;min-height:190px;cursor:pointer;}
+  .sp-offer-img{height:105px;background:var(--primary-tint);display:grid;place-items:center;font-size:34px;overflow:hidden;}
+  .sp-offer-img img{width:100%;height:100%;object-fit:cover;display:block;}
+  .sp-offer-body{padding:9px;}
+  .sp-offer-kind{font-size:9.5px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;}
+  .sp-offer-name{font-size:13px;font-weight:800;line-height:1.25;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .sp-offer-price{font-size:12px;font-weight:800;color:var(--primary);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sp-public-row{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none;}
+  .sp-public-row::-webkit-scrollbar{display:none;}
+  .sp-public-media{flex:none;width:148px;height:150px;border-radius:15px;overflow:hidden;background:var(--line);box-shadow:var(--shadow);}
+  .sp-public-media img,.sp-public-media video{width:100%;height:100%;object-fit:cover;display:block;}
+  .sp-review-card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow);}
+  .sp-owner-reply{margin-top:9px;padding:9px 10px;border-left:3px solid var(--primary);background:var(--primary-tint);border-radius:9px;font-size:12.5px;line-height:1.45;}
   .item-photo-remove{position:absolute;top:9px;right:9px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;}
   /* === v1382: mijoz biznes sahifasidagi tovar kartochkasi (vertikal: rasm, nom, narx, izoh, savatga) === */
   .biz-prod-card{display:flex;flex-direction:column;}
@@ -1107,7 +1140,7 @@
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxasisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxasis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxassisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxassis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p id="ucabOrderHint">Men bergan buyurtma va yozilishlar</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1221,31 +1254,36 @@
         </div>
       </section>
 
-      <!-- UCAB: MUTAXASISLIGIM -->
+      <!-- UCAB: MUTAXASSISLIGIM -->
       <section class="screen" data-screen="ucab-spec">
         <div class="form-wrap">
-          <div class="field"><label>Kasb / yo'nalish</label><input class="input" id="spKasb" placeholder="Masalan: Shifokor, Advokat, Taxi haydovchi"></div>
-          <div class="field"><label>Qisqa tavsif</label><textarea class="textarea" id="spDescr" placeholder="Tajriba va xizmatlaringiz"></textarea></div>
-          <div class="field"><label>Narx</label><input class="input" id="spNarx" placeholder="Masalan: 100 000 so'm / kelishilgan"></div>
-          <div class="field"><label>Xizmat hududi</label><input class="input" id="spHudud" placeholder="Masalan: Yunusobod tumani"></div>
-          <div class="field"><label>Davlat ishchisimisiz?</label>
-            <div class="vis-card" data-gov="ha" data-spgov="1"><span class="v-ic">🏛</span><div><h5>Ha</h5><p>Tashkilot va lavozim ko'rsatiladi, qabul ikki turda bo'ladi.</p></div></div>
-            <div class="vis-card on" data-gov="yok" data-spgov="0"><span class="v-ic">🧑‍🔧</span><div><h5>Yo'q</h5><p>Erkin mutaxasis sifatida ishlayman.</p></div></div>
+          <div class="sp-page-head">
+            <div><h2>Mutaxassisligim</h2><div class="idesc">Profilingiz mijozlarga qanday ko'rinishini boshqaring.</div></div>
+            <button type="button" class="sp-review-btn" id="spReviewsBtn">💬 Mijoz fikrlari <b id="spReviewCount">0</b></button>
           </div>
-          <div id="govFields" style="display:none">
-            <div class="field"><label>🏛 Tashkilot</label><input class="input" id="spOrg" placeholder="Masalan: 12-son poliklinika"></div>
-            <div class="field"><label>Bo'lim</label><input class="input" id="spDept" placeholder="Masalan: Terapiya bo'limi"></div>
-            <div class="field"><label>Lavozim / kasb</label><input class="input" id="spLavozim" placeholder="Masalan: Terapevt-shifokor"></div>
-            <div class="field"><label>🏛 Ish vaqtidagi qabul vaqtlari</label><input class="input" id="spWork" placeholder="Dush–Jum, 9:00–12:00"></div>
+          <div class="field"><label>Kasb / yo'nalish</label><input class="input" id="spKasb" placeholder="Masalan: Shifokor, advokat, santexnik"></div>
+          <div class="field"><label>Qisqa tavsif</label><textarea class="textarea" id="spDescr" placeholder="Tajribangiz va qanday yordam bera olishingiz haqida qisqacha yozing"></textarea></div>
+
+          <div class="sp-section">
+            <div class="sp-section-head"><div><h3>Mutaxassislikni tasdiqlovchi hujjatlar</h3><p>Diplom, sertifikat, litsenziya yoki guvohnoma rasmlarini joylang.</p></div></div>
+            <div class="sp-hrow" id="spCredentialsRow"></div>
+            <input type="file" id="spCredentialInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
           </div>
-          <div class="field"><label>🌙 Ish vaqtidan tashqari qabul vaqtlari</label><input class="input" id="spAfter" placeholder="Dush–Jum, 18:00–21:00"></div>
-          <div class="field"><label>Hozirgi holatim <span style="font-weight:400;color:var(--soft)">(taxi, dostavka, ishchi kabilar uchun)</span></label>
-            <div class="vis-card on" data-avail="1"><span class="v-ic">🟢</span><div><h5>Hozir bo'shman</h5><p>Mijozlar meni "bo'sh" deb ko'radi va chaqira oladi.</p></div></div>
-            <div class="vis-card" data-avail="0"><span class="v-ic">🔴</span><div><h5>Bandman</h5><p>Hozircha yangi mijoz qabul qilmayman.</p></div></div>
+
+          <div class="sp-section">
+            <div class="sp-section-head"><div><h3>Xizmatlarim va mahsulotlarim</h3><p>Takliflaringiz o'ng-chapga suriladigan kartochkalarda ko'rinadi.</p></div></div>
+            <div class="sp-hrow" id="spOffersRow"></div>
           </div>
-          <div class="field"><label>Ko'rinishim</label>
-            <div class="vis-card" data-vis="1"><span class="v-ic">✅</span><div><h5>Ko'rinaman</h5><p>Qidiruv va xaritada mutaxasis sifatida chiqaman.</p></div></div>
-            <div class="vis-card on" data-vis="0"><span class="v-ic">🚫</span><div><h5>Ko'rinmayman</h5><p>Hozircha oddiy foydalanuvchi bo'lib turaman.</p></div></div>
+
+          <div class="sp-section">
+            <div class="sp-section-head"><div><h3>Bajargan ishlarim</h3><p>Ish namunalari uchun rasm va videolar yuklang. Video 30 MB gacha.</p></div></div>
+            <div class="sp-hrow" id="spPortfolioRow"></div>
+            <input type="file" id="spPortfolioInput" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple hidden>
+          </div>
+
+          <div class="field" style="margin-top:18px"><label>Ko'rinishim</label>
+            <div class="vis-card" data-vis="1"><span class="v-ic">✅</span><div><h5>Ko'rinaman</h5><p>Qidiruv va xaritada mutaxassis sifatida chiqaman.</p></div></div>
+            <div class="vis-card on" data-vis="0"><span class="v-ic">🚫</span><div><h5>Ko'rinmayman</h5><p>Profilim qidiruv va xaritada ko'rinmaydi.</p></div></div>
           </div>
           <div class="field"><label>📍 Joylashuvingiz <span style="font-weight:400;color:var(--soft)">(qidiruv va xaritada shu yerda chiqasiz)</span></label>
             <div class="order-map-wrap"><div id="spMap"></div><div class="order-center-pin">📍</div><div class="order-map-help"><span>Xaritani suring — metka markazda turadi</span></div></div>
@@ -1254,6 +1292,29 @@
           </div>
           <button class="btn btn-primary btn-block" id="spSave">Saqlash</button>
         </div>
+      </section>
+
+      <!-- UCAB: MUTAXASSIS TAKLIFI FORMASI -->
+      <section class="screen" data-screen="ucab-spec-offer-form">
+        <div class="form-wrap">
+          <div class="field"><label>Rasm — ixtiyoriy</label>
+            <input type="file" accept="image/jpeg,image/png,image/webp" id="spOfferPhotoFile" hidden>
+            <button type="button" class="item-photo-add" id="spOfferPhotoAdd"><span class="ic">📷</span><span id="spOfferPhotoText">Rasm qo'shish</span></button>
+            <div class="item-photo-preview" id="spOfferPhotoPreview" style="display:none"><img id="spOfferPhotoImg" alt=""><button type="button" class="item-photo-remove" id="spOfferPhotoRemove" aria-label="Rasmni olib tashlash">×</button></div>
+          </div>
+          <div class="field"><label>Turi</label><div style="display:flex;gap:9px" id="spOfferKindRow"><button type="button" class="sort-chip on" data-sp-offer-kind="service">Xizmat</button><button type="button" class="sort-chip" data-sp-offer-kind="product">Mahsulot</button></div></div>
+          <div class="field"><label>Nomi</label><input class="input" id="spOfferName" placeholder="Masalan: Huquqiy maslahat"></div>
+          <div class="field"><label>Narxi</label><input class="input" id="spOfferPrice" placeholder="Masalan: 100 000 so'm yoki kelishilgan"></div>
+          <div class="field"><label>Qisqa tavsif</label><textarea class="textarea" id="spOfferNote" placeholder="Xizmat yoki mahsulot haqida"></textarea></div>
+          <button class="btn btn-primary btn-block" id="spOfferSave">Saqlash</button>
+          <button class="btn btn-outline btn-block" id="spOfferDelete" style="display:none;margin-top:10px;color:#DC2626">O'chirish</button>
+        </div>
+      </section>
+
+      <!-- UCAB: MIJOZ FIKRLARI -->
+      <section class="screen" data-screen="ucab-spec-reviews">
+        <div class="idesc" style="margin:4px 2px 12px">Mijozlar fikrini o'chirib bo'lmaydi. Siz har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.</div>
+        <div id="spReviewsList"></div>
       </section>
 
       <!-- CAB: AI YORDAMCHI -->
@@ -2471,13 +2532,11 @@
     return '<span class="dot-sep"></span><span style="color:#f5a623;font-weight:800">\u2605 '+rt+'</span>';
   }
   function specCardSrv(s){
-    var gov = s.is_gov ? ' <span class="pill" style="background:var(--primary-tint);color:var(--primary)">🏛 davlat ishchisi</span>' : '';
     var ini = (s.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
     return '<div class="biz-card" data-psrv="'+s.user_id+'">'+
       '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px;font-weight:800;color:var(--primary)">'+esc(ini)+'</span></div>'+
       '<div class="biz-main"><div class="biz-name">'+esc(s.name)+'</div>'+
-        '<div class="biz-meta"><span class="cat">'+esc(s.kasb)+'</span>'+(s.narx?'<span class="dot-sep"></span>'+esc(s.narx):'')+ratingBadge(s.rating, s.rating_cnt)+'</div>'+
-        (s.is_gov?'<div class="biz-meta" style="margin-top:4px">'+gov.trim()+'</div>':'')+'</div>'+
+        '<div class="biz-meta"><span class="cat">'+esc(s.kasb||"Mutaxassis")+'</span>'+ratingBadge(s.rating, s.rating_cnt)+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
   function bizCardSrv(b){
@@ -2605,6 +2664,31 @@
       '</div>';
   }
 
+  function specialistPublicSections(sp){
+    if(!sp) return "";
+    var html = '<div class="panel-card"><b>🧑‍🔧 '+esc(sp.kasb||"Mutaxassis")+'</b>'+
+      (sp.descr?'<div class="idesc" style="margin-top:7px;line-height:1.55">'+esc(sp.descr)+'</div>':'')+'</div>';
+    var creds = sp.credentials || [];
+    if(creds.length){
+      html += '<div class="sec-head" style="margin-top:15px"><h2>Tasdiqlovchi hujjatlar</h2><span class="link">'+creds.length+' ta</span></div><div class="sp-public-row">'+
+        creds.map(function(m){ return '<div class="sp-public-media"><img src="'+esc(m.file_url)+'" alt="Tasdiqlovchi hujjat" loading="lazy"></div>'; }).join("")+'</div>';
+    }
+    var offers = sp.offers || [];
+    if(offers.length){
+      html += '<div class="sec-head" style="margin-top:15px"><h2>Xizmatlar va mahsulotlar</h2><span class="link">'+offers.length+' ta</span></div><div class="sp-public-row">'+
+        offers.map(function(it){ return '<div class="sp-offer-card" style="min-height:185px;cursor:default">'+
+          '<div class="sp-offer-img">'+(it.photo_file?'<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">':(it.kind==="product"?'📦':'🧰'))+'</div>'+
+          '<div class="sp-offer-body"><div class="sp-offer-kind">'+(it.kind==="product"?'Mahsulot':'Xizmat')+'</div><div class="sp-offer-name">'+esc(it.name)+'</div>'+
+          (it.price?'<div class="sp-offer-price">'+esc(it.price)+'</div>':'')+(it.note?'<div class="idesc" style="margin-top:4px">'+esc(it.note)+'</div>':'')+'</div></div>'; }).join("")+'</div>';
+    }
+    var port = sp.portfolio || [];
+    if(port.length){
+      html += '<div class="sec-head" style="margin-top:15px"><h2>Bajargan ishlari</h2><span class="link">'+port.length+' ta</span></div><div class="sp-public-row">'+
+        port.map(function(m){ return '<div class="sp-public-media">'+(m.media_type==="video"?'<video src="'+esc(m.file_url)+'" controls playsinline preload="metadata"></video>':'<img src="'+esc(m.file_url)+'" alt="Bajarilgan ish" loading="lazy">')+'</div>'; }).join("")+'</div>';
+    }
+    return html;
+  }
+
   /* ---------- FOYDALANUVCHI OMMAVIY SAHIFASI ---------- */
   function openUser(userId){
     el("userBody").innerHTML = '<div class="idesc" style="padding:20px">Yuklanmoqda...</div>';
@@ -2620,16 +2704,7 @@
       : '<div style="width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(135deg,#6a8dff,#9a6bff)">'+esc(initial)+'</div>';
     var loc = [u.district, u.region].filter(Boolean).join(", ");
     var sp = u.specialist;
-    var spHtml = sp ? (
-      '<div class="panel-card"><b>🧑‍🔧 Mutaxassis</b>'+
-      '<div class="detail-line" style="margin-top:6px"><b>Kasb</b><span>'+esc(sp.kasb||"-")+'</span></div>'+
-      (sp.narx?'<div class="detail-line"><b>Narx</b><span>'+esc(sp.narx)+'</span></div>':'')+
-      (sp.org?'<div class="detail-line"><b>Tashkilot</b><span>'+esc(sp.org)+'</span></div>':'')+
-      (sp.lavozim?'<div class="detail-line"><b>Lavozim</b><span>'+esc(sp.lavozim)+'</span></div>':'')+
-      (sp.descr?'<div class="idesc" style="margin-top:6px">'+esc(sp.descr)+'</div>':'')+
-      '<div style="margin-top:6px"><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:800;color:'+(sp.available?"#188038":"#e53935")+';background:'+(sp.available?"rgba(24,128,56,.10)":"rgba(229,57,53,.10)")+'">'+(sp.available?"Bo\'sh":"Band")+'</span></div>'+
-      '</div>'
-    ) : "";
+    var spHtml = sp ? specialistPublicSections(sp) : "";
     var listings = (u.listings||[]);
     var listHtml = listings.length ? (
       '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+listings.length+' ta</span></div>'+
@@ -2694,6 +2769,7 @@
           '<span style="color:#f5a623;font-size:13px;flex:0 0 auto">'+rvStarsHtml(r.stars, false)+'</span>'+
         '</div>'+
         (r.comment ? '<div class="idesc" style="margin-top:3px">'+esc(r.comment)+'</div>' : '')+
+        (r.owner_reply ? '<div class="sp-owner-reply"><b>Mutaxassis javobi</b><div style="margin-top:3px">'+esc(r.owner_reply)+'</div></div>' : '')+
       '</div>';
     }).join("");
     if(!list) list = '<div class="idesc" style="text-align:center;margin:8px 0">Hozircha fikr yo\'q</div>';
@@ -2879,14 +2955,14 @@
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
-    "ucab-spec":"Mutaxasisligim", person:"Mutaxasis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
+    "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
-    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
+    "cab-admin":"cabinet", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "ucab-spec-offer-form":"ucab-spec", "ucab-spec-reviews":"ucab-spec", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
     "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa",
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
   var personBack = "home";
@@ -4676,19 +4752,9 @@
       var body = head;
       body += '<button class="btn btn-primary btn-block" style="margin-bottom:10px" id="pageMsg">✍️ Xabar yozish</button>';
       if(sp){
-        if(sp.is_gov){
-          body += '<div class="biz-desc" style="margin-bottom:12px"><b>🏛 Davlat ishchisi:</b> '+esc(sp.org||"")+(sp.dept?' · '+esc(sp.dept):'')+(sp.lavozim?' · '+esc(sp.lavozim):'')+'.'+(sp.descr?'<br>'+esc(sp.descr):'')+'</div>';
-          if(sp.work_hours) body += '<div class="item"><div><div class="iname">🏛 Ish vaqtidagi qabul</div><div class="idesc">'+esc(sp.org||"")+' · '+esc(sp.work_hours)+'</div></div><div class="iprice">Rasmiy</div></div>';
-          if(sp.after_hours) body += '<div class="item"><div><div class="iname">🌙 Ish vaqtidan tashqari</div><div class="idesc">Xususiy qabul · '+esc(sp.after_hours)+'</div></div><div class="iprice">'+esc(sp.narx||"")+'</div></div>';
-          body += '<div style="height:8px"></div><button class="btn btn-primary btn-block" data-need="Qabulga yozilish">🏛 Ish vaqtida qabulga yozilish</button>'+
-                  '<button class="btn btn-amber btn-block" style="margin-top:9px" data-need="Qabulga yozilish">🌙 Ish vaqtidan tashqari yozilish</button>';
-        } else {
-          if(sp.descr) body += '<div class="biz-desc" style="margin-bottom:12px">'+esc(sp.descr)+'</div>';
-          body += '<div class="item"><div><div class="iname">'+esc(sp.kasb)+'</div>'+(sp.hudud?'<div class="idesc">'+esc(sp.hudud)+'</div>':'')+'</div><div class="iprice">'+esc(sp.narx||"")+'</div></div>';
-          body += '<div style="height:8px"></div><button class="btn btn-primary btn-block" data-need="Buyurtma berish">Bog\'lanish / yozilish</button>';
-        }
+        body += specialistPublicSections(sp);
       } else {
-        body += '<p class="elon-hint">Bu foydalanuvchi hali mutaxasislik ma\'lumotini to\'ldirmagan.</p>';
+        body += "<p class=\"elon-hint\">Bu foydalanuvchi hali mutaxassislik ma\'lumotini to\'ldirmagan.</p>";
       }
       // foydalanuvchining platformaga ochiq e'lonlari
       if(p.listings && p.listings.length){
@@ -4699,11 +4765,13 @@
           }).join("");
       }
       body += '<button class="btn btn-soft btn-block" style="margin-top:9px" id="pageFollow">'+(p.is_following?"✓ Obunadasiz":"+ Obuna")+'</button>';
+      if(sp) body += '<div id="rvBoxPerson"></div>';
       el("personBody").innerHTML = body;
       el("tbTitle").textContent = p.name;
       nav("person");
       el("tbTitle").textContent = p.name;
       bindPageFollow();
+      if(sp) loadReviews("specialist", p.id, "rvBoxPerson");
       var pm = el("pageMsg");
       if(pm) pm.addEventListener("click", function(){ openChat("user", p.id, p.name); });
     }).catch(function(e){ showMsg(e.message); });
@@ -7545,32 +7613,141 @@
       .finally(function(){ btn.disabled=false; });
   });
 
+  var SP_DATA = {credentials:[], offers:[], portfolio:[]};
+  var spOfferEditId = null;
+  var spOfferPhoto = "";
+
+  function spAddCard(kind, label){
+    return '<button type="button" class="sp-add-card" data-sp-add="'+kind+'"><span class="plus">+</span><span>'+label+'</span></button>';
+  }
+  function renderSpCredentials(){
+    var row=el("spCredentialsRow"); if(!row) return;
+    row.innerHTML = spAddCard("credential", "Hujjat rasmi qo'shish") + (SP_DATA.credentials||[]).map(function(m){
+      return '<div class="sp-media-card"><img src="'+esc(m.file_url)+'" alt="Hujjat" loading="lazy"><button type="button" class="sp-card-x" data-sp-credential-del="'+m.id+'">×</button></div>';
+    }).join("");
+  }
+  function renderSpOffers(){
+    var row=el("spOffersRow"); if(!row) return;
+    row.innerHTML = spAddCard("offer", "Xizmat yoki mahsulot qo'shish") + (SP_DATA.offers||[]).map(function(it){
+      return '<div class="sp-offer-card" data-sp-offer="'+it.id+'"><div class="sp-offer-img">'+
+        (it.photo_file?'<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">':(it.kind==="product"?'📦':'🧰'))+'</div><div class="sp-offer-body">'+
+        '<div class="sp-offer-kind">'+(it.kind==="product"?'Mahsulot':'Xizmat')+'</div><div class="sp-offer-name">'+esc(it.name)+'</div>'+
+        (it.price?'<div class="sp-offer-price">'+esc(it.price)+'</div>':'')+'</div></div>';
+    }).join("");
+  }
+  function renderSpPortfolio(){
+    var row=el("spPortfolioRow"); if(!row) return;
+    row.innerHTML = spAddCard("portfolio", "Rasm yoki video qo'shish") + (SP_DATA.portfolio||[]).map(function(m){
+      var media = m.media_type==="video" ? '<video src="'+esc(m.file_url)+'" muted playsinline preload="metadata"></video><span class="sp-media-type">▶ VIDEO</span>' : '<img src="'+esc(m.file_url)+'" alt="Ish namunasi" loading="lazy">';
+      return '<div class="sp-media-card">'+media+'<button type="button" class="sp-card-x" data-sp-portfolio-del="'+m.id+'">×</button></div>';
+    }).join("");
+  }
+  function renderSpAll(){ renderSpCredentials(); renderSpOffers(); renderSpPortfolio(); }
+
   function loadSpecialist(){
     api("GET","/api/specialist").then(function(d){
       if(!d) return;
-      el("spKasb").value=d.kasb||""; el("spDescr").value=d.descr||""; el("spNarx").value=d.narx||"";
-      el("spHudud").value=d.hudud||""; el("spOrg").value=d.org||""; el("spDept").value=d.dept||"";
-      el("spLavozim").value=d.lavozim||""; el("spWork").value=d.work_hours||""; el("spAfter").value=d.after_hours||"";
+      el("spKasb").value=d.kasb||""; el("spDescr").value=d.descr||"";
+      SP_DATA.credentials=d.credentials||[]; SP_DATA.offers=d.offers||[]; SP_DATA.portfolio=d.portfolio||[];
+      if(el("spReviewCount")) el("spReviewCount").textContent=d.review_count||0;
+      renderSpAll();
       var spScreen = document.querySelector('[data-screen="ucab-spec"]');
-      var gov = d.is_gov ? 1 : 0;
-      setToggle(spScreen, "data-spgov", gov);
-      el("govFields").style.display = gov ? "" : "none";
       setToggle(spScreen, "data-vis", d.visible?1:0);
-      setToggle(spScreen, "data-avail", d.available?1:0);
-      // Joylashuv (lat/lng) — mavjud bo'lsa xaritaga qo'yamiz
       if(d.lat!=null && d.lng!=null && isFinite(d.lat) && isFinite(d.lng)){
         SP_POINT = { lat: parseFloat(d.lat), lng: parseFloat(d.lng) };
-      } else {
-        SP_POINT = null;
-      }
+      } else { SP_POINT = null; }
       setTimeout(initSpecMap, 180);
-    }).catch(function(){});
+    }).catch(function(e){ showMsg(e.message); });
   }
+
+  function uploadSpFiles(files, path, done){
+    var list=Array.prototype.slice.call(files||[]); if(!list.length) return;
+    var i=0, ok=0;
+    function next(){
+      if(i>=list.length){ showMsg(ok+" ta fayl yuklandi ✅"); if(done) done(); return; }
+      var f=list[i++];
+      uploadRaw("POST",path,f).then(function(){ ok++; }).catch(function(e){ showMsg(f.name+": "+e.message); }).finally(next);
+    }
+    showMsg("Fayllar yuklanmoqda..."); next();
+  }
+
+  if(el("spCredentialsRow")) el("spCredentialsRow").addEventListener("click", function(e){
+    var add=e.target.closest('[data-sp-add="credential"]'); if(add){ el("spCredentialInput").click(); return; }
+    var d=e.target.closest("[data-sp-credential-del]"); if(!d) return;
+    var id=d.getAttribute("data-sp-credential-del");
+    askConfirm({text:"Bu hujjat rasmi olib tashlansinmi?",okText:"Olib tashlash",danger:true}).then(function(ok){ if(!ok)return; api("DELETE","/api/specialist/credentials/"+id).then(loadSpecialist).catch(function(er){showMsg(er.message);}); });
+  });
+  if(el("spCredentialInput")) el("spCredentialInput").addEventListener("change", function(){
+    var inp=this; uploadSpFiles(inp.files,"/api/specialist/credentials/upload",function(){ inp.value=""; loadSpecialist(); });
+  });
+
+  if(el("spOffersRow")) el("spOffersRow").addEventListener("click", function(e){
+    if(e.target.closest('[data-sp-add="offer"]')){ openSpOfferForm(null); return; }
+    var c=e.target.closest("[data-sp-offer]"); if(!c)return;
+    var id=parseInt(c.getAttribute("data-sp-offer"),10); var it=(SP_DATA.offers||[]).find(function(x){return x.id===id;}); if(it) openSpOfferForm(it);
+  });
+
+  if(el("spPortfolioRow")) el("spPortfolioRow").addEventListener("click", function(e){
+    var add=e.target.closest('[data-sp-add="portfolio"]'); if(add){ el("spPortfolioInput").click(); return; }
+    var d=e.target.closest("[data-sp-portfolio-del]"); if(!d)return;
+    var id=d.getAttribute("data-sp-portfolio-del");
+    askConfirm({text:"Bu ish namunasi olib tashlansinmi?",okText:"Olib tashlash",danger:true}).then(function(ok){ if(!ok)return; api("DELETE","/api/specialist/portfolio/"+id).then(loadSpecialist).catch(function(er){showMsg(er.message);}); });
+  });
+  if(el("spPortfolioInput")) el("spPortfolioInput").addEventListener("change", function(){
+    var inp=this; uploadSpFiles(inp.files,"/api/specialist/portfolio/upload",function(){ inp.value=""; loadSpecialist(); });
+  });
+
+  function setSpOfferKind(kind){
+    el("spOfferKindRow").querySelectorAll("[data-sp-offer-kind]").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-sp-offer-kind")===kind);});
+  }
+  function renderSpOfferPhoto(){
+    var has=!!spOfferPhoto; el("spOfferPhotoPreview").style.display=has?"block":"none"; el("spOfferPhotoAdd").style.display=has?"none":"flex"; if(has)el("spOfferPhotoImg").src=spOfferPhoto;
+  }
+  function openSpOfferForm(it){
+    spOfferEditId=it?it.id:null; spOfferPhoto=it?(it.photo_file||""):"";
+    el("spOfferName").value=it?(it.name||""):""; el("spOfferPrice").value=it?(it.price||""):""; el("spOfferNote").value=it?(it.note||""):"";
+    setSpOfferKind(it&&it.kind==="product"?"product":"service"); renderSpOfferPhoto();
+    el("spOfferDelete").style.display=it?"flex":"none"; nav("ucab-spec-offer-form"); el("tbTitle").textContent=it?"Taklifni tahrirlash":"Yangi taklif";
+  }
+  if(el("spOfferKindRow")) el("spOfferKindRow").addEventListener("click",function(e){var b=e.target.closest("[data-sp-offer-kind]");if(b)setSpOfferKind(b.getAttribute("data-sp-offer-kind"));});
+  if(el("spOfferPhotoAdd")) el("spOfferPhotoAdd").addEventListener("click",function(){el("spOfferPhotoFile").click();});
+  if(el("spOfferPhotoRemove")) el("spOfferPhotoRemove").addEventListener("click",function(){spOfferPhoto="";el("spOfferPhotoFile").value="";renderSpOfferPhoto();});
+  if(el("spOfferPhotoFile")) el("spOfferPhotoFile").addEventListener("change",function(){
+    var inp=this,f=inp.files&&inp.files[0];if(!f)return;if(f.size>8*1024*1024){showMsg("Rasm 8 MB dan oshmasin.");inp.value="";return;}
+    var t=el("spOfferPhotoText");var old=t.textContent;t.textContent="Yuklanmoqda...";el("spOfferPhotoAdd").disabled=true;
+    uploadRaw("POST","/api/specialist/offers/image",f).then(function(r){spOfferPhoto=r.photo_file||"";renderSpOfferPhoto();}).catch(function(e){showMsg(e.message);}).finally(function(){t.textContent=old;el("spOfferPhotoAdd").disabled=false;inp.value="";});
+  });
+  if(el("spOfferSave")) el("spOfferSave").addEventListener("click",function(){
+    var name=(el("spOfferName").value||"").trim();if(!name){showMsg("Nomi kiritilishi shart.");return;}
+    var on=el("spOfferKindRow").querySelector("[data-sp-offer-kind].on");var body={kind:on?on.getAttribute("data-sp-offer-kind"):"service",name:name,price:(el("spOfferPrice").value||"").trim(),note:(el("spOfferNote").value||"").trim(),photo_file:spOfferPhoto};
+    var btn=this;btn.disabled=true;var req=spOfferEditId?api("PUT","/api/specialist/offers/"+spOfferEditId,body):api("POST","/api/specialist/offers",body);
+    req.then(function(){showMsg("Saqlandi ✅");nav("ucab-spec");loadSpecialist();}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});
+  });
+  if(el("spOfferDelete")) el("spOfferDelete").addEventListener("click",function(){if(!spOfferEditId)return;var id=spOfferEditId;askConfirm({text:"Bu mahsulot/xizmat o'chirilsinmi?",okText:"O'chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/specialist/offers/"+id).then(function(){nav("ucab-spec");loadSpecialist();showMsg("O'chirildi");}).catch(function(e){showMsg(e.message);});});});
+
+  function loadSpecialistReviews(){
+    var box=el("spReviewsList"); if(!box)return; box.innerHTML='<div class="idesc">Fikrlar yuklanmoqda...</div>';
+    api("GET","/api/specialist/reviews").then(function(d){
+      if(el("spReviewCount"))el("spReviewCount").textContent=d.count||0;
+      if(!d.reviews||!d.reviews.length){box.innerHTML='<div class="empty" style="padding:40px 18px"><h3>Hozircha fikr yo\'q</h3><p>Mijozlar qoldirgan fikrlar shu yerda ko\'rinadi.</p></div>';return;}
+      box.innerHTML=d.reviews.map(function(r){return '<div class="sp-review-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><b>'+esc(r.user_name)+'</b><span style="color:#f5a623">'+rvStarsHtml(r.stars,false)+'</span></div>'+
+        (r.comment?'<div class="idesc" style="margin-top:6px;line-height:1.5">'+esc(r.comment)+'</div>':'<div class="idesc" style="margin-top:6px">Matnsiz baho</div>')+
+        (r.owner_reply?'<div class="sp-owner-reply"><b>Sizning javobingiz</b><div style="margin-top:3px">'+esc(r.owner_reply)+'</div></div>':'')+
+        '<textarea class="textarea" data-sp-reply-text="'+r.id+'" style="margin-top:10px;min-height:72px" placeholder="Mijozga javob yozing...">'+esc(r.owner_reply||"")+'</textarea><button class="btn btn-soft btn-block" data-sp-reply-save="'+r.id+'" style="margin-top:7px">'+(r.owner_reply?'Javobni yangilash':'Javob berish')+'</button></div>';}).join("");
+    }).catch(function(e){box.innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
+  }
+  if(el("spReviewsBtn")) el("spReviewsBtn").addEventListener("click",function(){nav("ucab-spec-reviews");loadSpecialistReviews();});
+  if(el("spReviewsList")) el("spReviewsList").addEventListener("click",function(e){
+    var b=e.target.closest("[data-sp-reply-save]");if(!b)return;var id=b.getAttribute("data-sp-reply-save"),ta=this.querySelector('[data-sp-reply-text="'+id+'"]'),reply=(ta?ta.value:"").trim();if(!reply){showMsg("Javob matnini kiriting.");return;}b.disabled=true;
+    api("PUT","/api/specialist/reviews/"+id+"/reply",{reply:reply}).then(function(){showMsg("Javob saqlandi ✅");loadSpecialistReviews();}).catch(function(er){showMsg(er.message);}).finally(function(){b.disabled=false;});
+  });
+
 
   function onScreenOpen(screen){
     if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="ucab-spec") loadSpecialist();
+    else if(screen==="ucab-spec-reviews") loadSpecialistReviews();
     else if(screen==="biz-cred") loadBizCred();
     else if(screen==="help") renderFaq();
     else if(screen==="ai-chat") loadAiChat();
@@ -7754,15 +7931,9 @@
     var spScreen = document.querySelector('[data-screen="ucab-spec"]');
     var btn=this; btn.disabled=true;
     api("PUT","/api/specialist",{
-      kasb:el("spKasb").value.trim(), descr:el("spDescr").value.trim(), narx:el("spNarx").value.trim(),
-      hudud:el("spHudud").value.trim(),
-      is_gov: getToggle(spScreen,"data-spgov")==="1",
-      org:el("spOrg").value.trim(), dept:el("spDept").value.trim(), lavozim:el("spLavozim").value.trim(),
-      work_hours:el("spWork").value.trim(), after_hours:el("spAfter").value.trim(),
-      visible: getToggle(spScreen,"data-vis")==="1",
-      available: getToggle(spScreen,"data-avail")==="1",
-      lat: SP_POINT ? SP_POINT.lat : null,
-      lng: SP_POINT ? SP_POINT.lng : null
+      kasb:el("spKasb").value.trim(), descr:el("spDescr").value.trim(),
+      visible:getToggle(spScreen,"data-vis")==="1",
+      lat:SP_POINT?SP_POINT.lat:null, lng:SP_POINT?SP_POINT.lng:null
     }).then(function(){ showMsg("Saqlandi ✅"); }).catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; });
   });
