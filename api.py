@@ -351,6 +351,53 @@ async def upload_profile_avatar(request: Request, x_telegram_init_data: str = He
     return {"ok": True, "avatar_file": avatar_url}
 
 
+@router.post("/business/logo")
+async def upload_business_logo(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Biznes profil rasmini yuklaydi va businesses.logo_file ga saqlaydi."""
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Biznes rasmi")
+
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed = {
+        "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png",
+        "image/webp": ".webp", "image/gif": ".gif",
+    }
+    if ctype not in allowed:
+        conn.close()
+        raise HTTPException(400, "Biznes rasmi JPG, PNG, WEBP yoki GIF formatida bo'lsin.")
+    raw = await request.body()
+    if not raw:
+        conn.close()
+        raise HTTPException(400, "Rasm fayli topilmadi.")
+    if len(raw) > 8 * 1024 * 1024:
+        conn.close()
+        raise HTTPException(400, "Biznes rasmi hajmi 8 MB dan oshmasin.")
+
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "business_logos")
+    os.makedirs(folder, exist_ok=True)
+    safe_name = "business_" + str(biz["id"]) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + allowed[ctype]
+    full_path = os.path.join(folder, safe_name)
+    with open(full_path, "wb") as f:
+        f.write(raw)
+
+    logo_url = "/uploads/business_logos/" + safe_name
+    old_logo = _row_val(biz, "logo_file", "") or ""
+    conn.execute("UPDATE businesses SET logo_file=? WHERE id=?", (logo_url, biz["id"]))
+    conn.commit()
+    conn.close()
+
+    if old_logo.startswith("/uploads/business_logos/") and old_logo != logo_url:
+        try:
+            old_path = os.path.join(folder, os.path.basename(old_logo))
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except Exception:
+            pass
+    return {"ok": True, "logo_file": logo_url}
+
+
 # ====================================================================
 # MUTAXASSISLIGIM — profil, hujjatlar, xizmat/mahsulot va portfolio
 # ====================================================================
@@ -4933,6 +4980,7 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
+        "logo_file": _row_val(biz, "logo_file", "") or "",
         "work_hours": biz["work_hours"], "address": biz["address"],
         "lat": biz["lat"], "lng": biz["lng"],
         "followers": follower_count(conn, "business", biz["id"]),
