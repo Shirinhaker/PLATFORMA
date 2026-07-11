@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1475 -->
+<title>Platforma</title><!-- BUILD: v1476 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -7480,6 +7480,7 @@
     if(!parts.length && d && d.region) parts.push(d.region);
     return parts.join(" · ") || "Joylashuv kiritilmagan";
   }
+  var CURRENT_USER_AVATAR="";
   function renderUserAvatar(targetId, avatar){
     var box=el(targetId);
     if(!box) return;
@@ -7487,6 +7488,12 @@
       box.innerHTML='<img src="'+esc(avatar)+'" alt="Profil rasmi">';
     }else{
       box.innerHTML='🙂';
+    }
+    if(targetId==="upAvatarView" || targetId==="ucabAvatar"){
+      CURRENT_USER_AVATAR=avatar||"";
+      box.classList.toggle("no-photo", !avatar);
+      box.style.cursor=avatar ? "zoom-in" : "default";
+      box.title=avatar ? "Rasmni kattalashtirish" : "";
     }
   }
   var CURRENT_BIZ_LOGO="";
@@ -8017,6 +8024,12 @@
 
   el("upAvatarBtn") && el("upAvatarBtn").addEventListener("click", function(){
     if(el("upAvatarInput")) el("upAvatarInput").click();
+  });
+  el("upAvatarView") && el("upAvatarView").addEventListener("click", function(){
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR);
+  });
+  el("ucabAvatar") && el("ucabAvatar").addEventListener("click", function(){
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR);
   });
   el("upAvatarInput") && el("upAvatarInput").addEventListener("change", function(){
     var inp=this, file=inp.files && inp.files[0];
