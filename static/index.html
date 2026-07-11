@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1473 -->
+<title>Platforma</title><!-- BUILD: v1474 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="qrcode.min.js?v=1473"></script>
+<script src="qrcode.min.js?v=1474"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
 <style id="accessLockStyle">
   body { display: none !important; }
@@ -127,7 +127,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="regions.js?v=1473"></script>
+<script src="regions.js?v=1474"></script>
 <style>
   :root{
     --bg:#F4F7F5; --card:#FFFFFF; --ink:#11201B; --soft:#5C6E66; --line:#E4EBE7;
@@ -455,7 +455,24 @@
   .item-auto-kind{font-size:12.5px;color:var(--soft);background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;margin-top:7px;}
   /* cabinet */
   .cab-head{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-top:4px;margin-bottom:16px;}
-  .cab-logo{flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px;}
+  .cab-logo{flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px;overflow:hidden;}
+  .cab-logo img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  /* Oddiy foydalanuvchi profil kartasi — v1474 */
+  .user-profile-card{position:relative;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px 54px 15px 13px;box-shadow:var(--shadow);margin:4px 0 18px;min-height:96px;}
+  .user-profile-avatar{flex:none;width:60px;height:60px;border-radius:17px;background:var(--amber-tint);display:grid;place-items:center;font-size:29px;overflow:hidden;border:1px solid rgba(240,162,27,.15);}
+  .user-profile-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .user-profile-main{flex:1;min-width:0;}
+  .user-profile-name{font-family:var(--font-d);font-size:17px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-profile-location{display:flex;align-items:center;gap:6px;color:var(--primary);font-size:12.5px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-profile-location::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary);flex:none;}
+  .user-profile-stats{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;}
+  .user-profile-stat{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:4px 11px;font-size:11.5px;font-weight:700;color:var(--ink);cursor:pointer;}
+  .user-profile-stat.following{background:var(--primary-tint);border-color:transparent;color:var(--primary);}
+  .user-avatar-camera{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);}
+  .user-avatar-camera svg{width:18px;height:18px;}
+  .user-avatar-camera:active{transform:scale(.94);}
+  .user-avatar-camera[disabled]{opacity:.55;cursor:wait;}
   .cab-name{font-family:var(--font-d);font-weight:800;font-size:17px;}
   .cab-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;}
   .cab-status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary);}
@@ -1131,7 +1148,7 @@
       <!-- UCAB: FOYDALANUVCHI KABINETI -->
       <section class="screen" data-screen="ucab">
         <div class="cab-head">
-          <div class="cab-logo" style="background:var(--amber-tint)">🙂</div>
+          <div class="cab-logo" id="ucabAvatar" style="background:var(--amber-tint)">🙂</div>
           <div><div class="cab-name" id="ucabName">—</div><div class="cab-status" id="ucabStatus"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="ucab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="ucab-subs"><b>0</b> obuna</span></div></div>
         </div>
@@ -1151,6 +1168,21 @@
       <!-- UCAB: PROFIL -->
       <section class="screen" data-screen="ucab-profil">
         <div class="form-wrap">
+          <div class="user-profile-card">
+            <div class="user-profile-avatar" id="upAvatarView">🙂</div>
+            <div class="user-profile-main">
+              <div class="user-profile-name" id="upCardName">—</div>
+              <div class="user-profile-location" id="upCardLocation">Joylashuv kiritilmagan</div>
+              <div class="user-profile-stats">
+                <button type="button" class="user-profile-stat" id="upCardFollowers" data-nav="ucab-followers">0 obunachi</button>
+                <button type="button" class="user-profile-stat following" id="upCardFollowing" data-nav="ucab-subs">0 obuna</button>
+              </div>
+            </div>
+            <button type="button" class="user-avatar-camera" id="upAvatarBtn" aria-label="Profil rasmini yuklash" title="Profil rasmini yuklash">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4l1.5 2H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l1.5-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            </button>
+            <input type="file" id="upAvatarInput" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+          </div>
           <div class="field"><label>Ism familiya</label><input class="input" id="upName" placeholder="Ismingiz"></div>
           <div class="field"><label>Telefon</label><input class="input" id="upPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
           <div class="field"><label>Username (sahifa manzili)</label>
@@ -7377,10 +7409,37 @@
     return on ? on.getAttribute(attr) : null;
   }
 
+  function userLocationText(d){
+    var parts=[];
+    if(d && d.mahalla) parts.push(d.mahalla);
+    if(d && d.district && parts.indexOf(d.district)<0) parts.push(d.district);
+    if(!parts.length && d && d.region) parts.push(d.region);
+    return parts.join(" · ") || "Joylashuv kiritilmagan";
+  }
+  function renderUserAvatar(targetId, avatar){
+    var box=el(targetId);
+    if(!box) return;
+    if(avatar){
+      box.innerHTML='<img src="'+esc(avatar)+'" alt="Profil rasmi">';
+    }else{
+      box.innerHTML='🙂';
+    }
+  }
+  function renderUserProfileCard(d){
+    if(!d) return;
+    if(el("upCardName")) el("upCardName").textContent=d.name||"Foydalanuvchi";
+    if(el("upCardLocation")) el("upCardLocation").textContent=userLocationText(d);
+    if(el("upCardFollowers")) el("upCardFollowers").textContent=(d.followers||0)+" obunachi";
+    if(el("upCardFollowing")) el("upCardFollowing").textContent=(d.following||0)+" obuna";
+    renderUserAvatar("upAvatarView", d.avatar_file||"");
+    renderUserAvatar("ucabAvatar", d.avatar_file||"");
+  }
   function loadUserProfile(){
     api("GET","/api/profile").then(function(d){
       if(el("upName")){ el("upName").value=d.name||""; el("upPhone").value=d.phone||""; }
       if(el("upUsername")) el("upUsername").value=d.pub_username||"";
+      renderUserProfileCard(d);
+      if(ME){ ME.avatar_file=d.avatar_file||""; ME.name=d.name||ME.name; }
       showUserShare(d.pub_username||"", d.id||null);
     }).catch(function(){});
   }
@@ -7840,7 +7899,9 @@
       if(f) f.textContent = d.followers;
       if(g) g.textContent = d.following;
       if(el("ucabName")) el("ucabName").textContent = d.name || "Foydalanuvchi";
-      if(el("ucabStatus")) el("ucabStatus").textContent = LOC || "";
+      if(el("ucabStatus")) el("ucabStatus").textContent = userLocationText(d);
+      renderUserAvatar("ucabAvatar", d.avatar_file||"");
+      if(ME) ME.avatar_file=d.avatar_file||"";
     }).catch(function(){});
     // biznes ochilgan bo'lsa, tugma matnini o'zgartiramiz
     var bo = el("bizOpenBtn");
@@ -7854,6 +7915,39 @@
   // Saqlash tugmalari
   function bindSave(id, fn){ var b=el(id); if(b) b.addEventListener("click", fn); }
 
+  el("upAvatarBtn") && el("upAvatarBtn").addEventListener("click", function(){
+    if(el("upAvatarInput")) el("upAvatarInput").click();
+  });
+  el("upAvatarInput") && el("upAvatarInput").addEventListener("change", function(){
+    var inp=this, file=inp.files && inp.files[0];
+    if(!file) return;
+    var allowed=["image/jpeg","image/png","image/webp","image/gif"];
+    if(allowed.indexOf((file.type||"").toLowerCase())<0){
+      showMsg("Profil rasmi JPG, PNG, WEBP yoki GIF formatida bo'lsin.");
+      inp.value="";
+      return;
+    }
+    if(file.size>8*1024*1024){
+      showMsg("Profil rasmi hajmi 8 MB dan oshmasin.");
+      inp.value="";
+      return;
+    }
+    var btn=el("upAvatarBtn");
+    if(btn) btn.disabled=true;
+    uploadRaw("POST","/api/profile/avatar",file).then(function(res){
+      var avatar=res.avatar_file||"";
+      renderUserAvatar("upAvatarView",avatar);
+      renderUserAvatar("ucabAvatar",avatar);
+      if(ME) ME.avatar_file=avatar;
+      showMsg("Profil rasmi saqlandi ✅");
+    }).catch(function(er){
+      showMsg(er.message);
+    }).finally(function(){
+      if(btn) btn.disabled=false;
+      inp.value="";
+    });
+  });
+
   el("upUsername") && el("upUsername").addEventListener("input", function(){
     var c = this.value.toLowerCase().replace(/^@+/,"").replace(/[^a-z0-9_]/g,"");
     if(this.value!==c) this.value=c;
@@ -7866,6 +7960,7 @@
       .then(function(){
         ME.name = nm;
         if(el("ucabName")) el("ucabName").textContent = nm || "Foydalanuvchi";
+        if(el("upCardName")) el("upCardName").textContent = nm || "Foydalanuvchi";
         showMsg("Saqlandi ✅");
         showUserShare(pubu, (ME && ME.id) || null);
       }).catch(function(e){ showMsg(e.message); })
