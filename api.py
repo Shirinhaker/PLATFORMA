@@ -279,6 +279,7 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
         "id": user["id"], "role": user["role"], "name": user["name"], "phone": user["phone"],
         "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
         "lat": user["lat"], "lng": user["lng"],
+        "avatar_file": _row_val(user, "avatar_file", "") or "",
         "pub_username": _row_val(user, "pub_username", "") or "",
         "followers": follower_count(conn, "user", user["id"]),
         "following": following_count(conn, user["id"]),
@@ -291,6 +292,63 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
             result["business_id"] = biz["id"]
     conn.close()
     return result
+
+
+@router.post("/profile/avatar")
+async def upload_profile_avatar(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Oddiy foydalanuvchi profil rasmini yuklaydi va users.avatar_file ga saqlaydi."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Profil rasmi")
+
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }
+    if ctype not in allowed:
+        conn.close()
+        raise HTTPException(400, "Profil rasmi JPG, PNG, WEBP yoki GIF formatida bo'lsin.")
+
+    raw = await request.body()
+    if not raw:
+        conn.close()
+        raise HTTPException(400, "Rasm fayli topilmadi.")
+    if len(raw) > 8 * 1024 * 1024:
+        conn.close()
+        raise HTTPException(400, "Profil rasmi hajmi 8 MB dan oshmasin.")
+
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "avatars")
+    os.makedirs(folder, exist_ok=True)
+    safe_name = (
+        "avatar_" + str(user["id"]) + "_" + str(int(time.time())) + "_" +
+        secrets.token_hex(8) + allowed[ctype]
+    )
+    full_path = os.path.join(folder, safe_name)
+    with open(full_path, "wb") as f:
+        f.write(raw)
+
+    avatar_url = "/uploads/avatars/" + safe_name
+    old_avatar = _row_val(user, "avatar_file", "") or ""
+    conn.execute("UPDATE users SET avatar_file=? WHERE id=?", (avatar_url, user["id"]))
+    conn.commit()
+    conn.close()
+
+    # Faqat o'zimizning eski avatar faylimizni ehtiyotkorlik bilan tozalaymiz.
+    if old_avatar.startswith("/uploads/avatars/") and old_avatar != avatar_url:
+        old_name = os.path.basename(old_avatar)
+        old_path = os.path.join(folder, old_name)
+        try:
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except Exception:
+            pass
+
+    return {"ok": True, "avatar_file": avatar_url}
 
 
 # ====================================================================
