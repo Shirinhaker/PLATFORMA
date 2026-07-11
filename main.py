@@ -34,7 +34,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1474"
+APP_BUILD = "v1475"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -273,7 +273,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True}
 
 
 @app.get("/api/_dbinfo")
@@ -725,6 +725,7 @@ async def me(x_telegram_init_data: str = Header(default="")):
         result["business"] = {
             "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
             "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
+            "logo_file": biz["logo_file"] if "logo_file" in _bk else "",
             "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
             "lat": biz["lat"], "lng": biz["lng"],
             # v1422: to'lov ma'lumotlari (ustunlar bo'lmasa ham xavfsiz)
