@@ -1003,6 +1003,37 @@ def _migrate(conn):
         "comment TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_review_one ON reviews(target_kind, target_id, reviewer_user_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_kind, target_id)")
+    # Mutaxassis/biznes egasining mijoz fikriga javobi. Fikrning o'zi egasi tomonidan o'chirilmaydi.
+    _rvc = [r["name"] for r in conn.execute("PRAGMA table_info(reviews)").fetchall()]
+    if "owner_reply" not in _rvc:
+        conn.execute("ALTER TABLE reviews ADD COLUMN owner_reply TEXT DEFAULT ''")
+    if "owner_replied_at" not in _rvc:
+        conn.execute("ALTER TABLE reviews ADD COLUMN owner_replied_at INTEGER DEFAULT 0")
+
+    # --- v1473: Mutaxassis hujjatlari, xizmat/mahsulotlari va portfolio ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_credentials("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "file_url TEXT NOT NULL, pos INTEGER DEFAULT 0, created_at INTEGER NOT NULL, "
+        "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_credentials_user ON specialist_credentials(user_id, pos, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_offers("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL DEFAULT 'service', name TEXT NOT NULL, price TEXT DEFAULT '', "
+        "note TEXT DEFAULT '', photo_file TEXT DEFAULT '', created_at INTEGER NOT NULL, "
+        "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_offers_user ON specialist_offers(user_id, created_at, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_portfolio("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "media_type TEXT NOT NULL DEFAULT 'photo', file_url TEXT NOT NULL, "
+        "created_at INTEGER NOT NULL, "
+        "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_portfolio_user ON specialist_portfolio(user_id, created_at, id)")
 
     # --- v1468: Biznes kabinet nomidan obunalar ---
     conn.execute(
