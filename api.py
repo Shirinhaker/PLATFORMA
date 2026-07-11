@@ -294,22 +294,112 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
 
 
 # ====================================================================
-# MUTAXASISLIK ("Mutaxasisligim va xizmatlarim")
+# MUTAXASSISLIGIM — profil, hujjatlar, xizmat/mahsulot va portfolio
 # ====================================================================
+def _ensure_specialist_content_tables(conn):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_credentials("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "file_url TEXT NOT NULL, pos INTEGER DEFAULT 0, created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_credentials_user ON specialist_credentials(user_id, pos, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_offers("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL DEFAULT 'service', name TEXT NOT NULL, price TEXT DEFAULT '', "
+        "note TEXT DEFAULT '', photo_file TEXT DEFAULT '', created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_offers_user ON specialist_offers(user_id, created_at, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS specialist_portfolio("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, "
+        "media_type TEXT NOT NULL DEFAULT 'photo', file_url TEXT NOT NULL, created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sp_portfolio_user ON specialist_portfolio(user_id, created_at, id)")
+
+
+def _specialist_content(conn, user_id):
+    _ensure_specialist_content_tables(conn)
+    credentials = conn.execute(
+        "SELECT id, file_url, pos, created_at FROM specialist_credentials WHERE user_id=? ORDER BY pos, id",
+        (user_id,),
+    ).fetchall()
+    offers = conn.execute(
+        "SELECT id, kind, name, price, note, photo_file, created_at FROM specialist_offers "
+        "WHERE user_id=? ORDER BY created_at, id",
+        (user_id,),
+    ).fetchall()
+    portfolio = conn.execute(
+        "SELECT id, media_type, file_url, created_at FROM specialist_portfolio "
+        "WHERE user_id=? ORDER BY created_at, id",
+        (user_id,),
+    ).fetchall()
+    return {
+        "credentials": [dict(r) for r in credentials],
+        "offers": [dict(r) for r in offers],
+        "portfolio": [dict(r) for r in portfolio],
+    }
+
+
+def _specialist_upload_kind(ctype, allow_video=False):
+    images = {
+        "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png",
+        "image/webp": ".webp", "image/gif": ".gif",
+    }
+    videos = {"video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+    if ctype in images:
+        return "photo", images[ctype]
+    if allow_video and ctype in videos:
+        return "video", videos[ctype]
+    return None, None
+
+
+async def _save_specialist_raw(request: Request, user_id: int, prefix: str, allow_video=False, max_mb=8):
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    mtype, ext = _specialist_upload_kind(ctype, allow_video=allow_video)
+    if not ext:
+        msg = "Faqat JPG, PNG yoki WEBP rasm yuboring."
+        if allow_video:
+            msg = "Faqat JPG, PNG, WEBP rasm yoki MP4/WEBM video yuboring."
+        raise HTTPException(400, msg)
+    raw = await request.body()
+    if not raw:
+        raise HTTPException(400, "Fayl topilmadi.")
+    if len(raw) > max_mb * 1024 * 1024:
+        raise HTTPException(400, "Fayl hajmi %s MB dan oshmasin." % max_mb)
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "specialists")
+    os.makedirs(folder, exist_ok=True)
+    safe_name = "%s_%s_%s_%s%s" % (prefix, user_id, int(time.time()), secrets.token_hex(6), ext)
+    path = os.path.join(folder, safe_name)
+    with open(path, "wb") as f:
+        f.write(raw)
+    return mtype, "/uploads/specialists/" + safe_name
+
+
 @router.get("/specialist")
 async def get_specialist(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    _ensure_specialist_content_tables(conn)
     sp = conn.execute("SELECT * FROM specialists WHERE user_id=?", (user["id"],)).fetchone()
+    content = _specialist_content(conn, user["id"])
+    # Kabinetdagi fikrlar soni yuqoridagi tugmada ko'rsatiladi.
+    try:
+        _ensure_reviews(conn)
+        review_count = conn.execute(
+            "SELECT COUNT(*) c FROM reviews WHERE target_kind='specialist' AND target_id=?", (user["id"],)
+        ).fetchone()["c"]
+    except Exception:
+        review_count = 0
     conn.close()
     if not sp:
-        return {"exists": False}
+        return {"exists": False, "visible": False, "lat": None, "lng": None,
+                "review_count": review_count, **content}
     return {
-        "exists": True, "kasb": sp["kasb"], "descr": sp["descr"], "narx": sp["narx"],
-        "hudud": sp["hudud"], "is_gov": bool(sp["is_gov"]), "org": sp["org"],
-        "dept": sp["dept"], "lavozim": sp["lavozim"], "work_hours": sp["work_hours"],
-        "after_hours": sp["after_hours"], "visible": bool(sp["visible"]),
-        "available": bool(sp["available"]), "lat": sp["lat"], "lng": sp["lng"],
+        "exists": True, "kasb": sp["kasb"] or "", "descr": sp["descr"] or "",
+        "visible": bool(sp["visible"]), "lat": sp["lat"], "lng": sp["lng"],
+        "review_count": review_count, **content,
     }
 
 
@@ -318,35 +408,126 @@ async def update_specialist(request: Request, x_telegram_init_data: str = Header
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     b = await request.json()
-    kasb = (b.get("kasb") or "").strip()
-    if b.get("visible") and not kasb:
+    kasb = (b.get("kasb") or "").strip()[:180]
+    descr = (b.get("descr") or "").strip()[:3000]
+    visible = 1 if b.get("visible") else 0
+    if visible and not kasb:
         conn.close()
         raise HTTPException(400, "Ko'rinish uchun kasb/yo'nalish kiritilishi shart.")
-    is_gov = 1 if b.get("is_gov") else 0
-    if is_gov and not (b.get("org") or "").strip():
-        conn.close()
-        raise HTTPException(400, "Davlat ishchisi uchun tashkilot kiritilishi shart.")
     now = int(time.time())
+    # Eski ustunlar bazada saqlanadi, lekin yangi kabinetda ishlatilmaydi.
     conn.execute(
         """INSERT INTO specialists(user_id, kasb, descr, narx, hudud, is_gov, org, dept, lavozim,
                                    work_hours, after_hours, visible, available, lat, lng, created_at)
            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
            ON CONFLICT(user_id) DO UPDATE SET
-             kasb=excluded.kasb, descr=excluded.descr, narx=excluded.narx, hudud=excluded.hudud,
-             is_gov=excluded.is_gov, org=excluded.org, dept=excluded.dept, lavozim=excluded.lavozim,
-             work_hours=excluded.work_hours, after_hours=excluded.after_hours,
-             visible=excluded.visible, available=excluded.available,
-             lat=excluded.lat, lng=excluded.lng""",
-        (user["id"], kasb, (b.get("descr") or "").strip(), (b.get("narx") or "").strip(),
-         (b.get("hudud") or "").strip(), is_gov, (b.get("org") or "").strip(),
-         (b.get("dept") or "").strip(), (b.get("lavozim") or "").strip(),
-         (b.get("work_hours") or "").strip(), (b.get("after_hours") or "").strip(),
-         1 if b.get("visible") else 0, 1 if b.get("available", True) else 0,
+             kasb=excluded.kasb, descr=excluded.descr, narx='', hudud='', is_gov=0,
+             org='', dept='', lavozim='', work_hours='', after_hours='',
+             visible=excluded.visible, available=1, lat=excluded.lat, lng=excluded.lng""",
+        (user["id"], kasb, descr, "", "", 0, "", "", "", "", "", visible, 1,
          b.get("lat"), b.get("lng"), now),
     )
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@router.post("/specialist/credentials/upload")
+async def specialist_credential_upload(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    _ensure_specialist_content_tables(conn)
+    cnt = conn.execute("SELECT COUNT(*) c FROM specialist_credentials WHERE user_id=?", (user["id"],)).fetchone()["c"]
+    if cnt >= 12:
+        conn.close()
+        raise HTTPException(400, "Tasdiqlovchi hujjatlar 12 tadan oshmasin.")
+    _, url = await _save_specialist_raw(request, user["id"], "credential", allow_video=False, max_mb=8)
+    cur = conn.execute(
+        "INSERT INTO specialist_credentials(user_id, file_url, pos, created_at) VALUES(?,?,?,?)",
+        (user["id"], url, cnt, int(time.time())),
+    )
+    conn.commit(); rid = cur.lastrowid; conn.close()
+    return {"ok": True, "id": rid, "file_url": url}
+
+
+@router.delete("/specialist/credentials/{media_id}")
+async def specialist_credential_delete(media_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data)
+    conn.execute("DELETE FROM specialist_credentials WHERE id=? AND user_id=?", (media_id, user["id"]))
+    conn.commit(); conn.close()
+    return {"ok": True}
+
+
+@router.post("/specialist/offers/image")
+async def specialist_offer_image(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data); conn.close()
+    _, url = await _save_specialist_raw(request, user["id"], "offer", allow_video=False, max_mb=8)
+    return {"ok": True, "photo_file": url}
+
+
+@router.post("/specialist/offers")
+async def specialist_offer_add(body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data); _ensure_specialist_content_tables(conn)
+    name = (body.get("name") or "").strip()[:160]
+    if not name:
+        conn.close(); raise HTTPException(400, "Mahsulot/xizmat nomini kiriting.")
+    kind = "product" if (body.get("kind") or "") == "product" else "service"
+    cnt = conn.execute("SELECT COUNT(*) c FROM specialist_offers WHERE user_id=?", (user["id"],)).fetchone()["c"]
+    if cnt >= 60:
+        conn.close(); raise HTTPException(400, "Mahsulot va xizmatlar 60 tadan oshmasin.")
+    cur = conn.execute(
+        "INSERT INTO specialist_offers(user_id, kind, name, price, note, photo_file, created_at) VALUES(?,?,?,?,?,?,?)",
+        (user["id"], kind, name, (body.get("price") or "").strip()[:120],
+         (body.get("note") or "").strip()[:1000], (body.get("photo_file") or "").strip()[:500], int(time.time())),
+    )
+    conn.commit(); rid = cur.lastrowid; conn.close()
+    return {"ok": True, "id": rid}
+
+
+@router.put("/specialist/offers/{offer_id}")
+async def specialist_offer_edit(offer_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data); _ensure_specialist_content_tables(conn)
+    name = (body.get("name") or "").strip()[:160]
+    if not name:
+        conn.close(); raise HTTPException(400, "Mahsulot/xizmat nomini kiriting.")
+    kind = "product" if (body.get("kind") or "") == "product" else "service"
+    cur = conn.execute(
+        "UPDATE specialist_offers SET kind=?, name=?, price=?, note=?, photo_file=? WHERE id=? AND user_id=?",
+        (kind, name, (body.get("price") or "").strip()[:120], (body.get("note") or "").strip()[:1000],
+         (body.get("photo_file") or "").strip()[:500], offer_id, user["id"]),
+    )
+    if not cur.rowcount:
+        conn.close(); raise HTTPException(404, "Mahsulot/xizmat topilmadi.")
+    conn.commit(); conn.close(); return {"ok": True}
+
+
+@router.delete("/specialist/offers/{offer_id}")
+async def specialist_offer_delete(offer_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data)
+    conn.execute("DELETE FROM specialist_offers WHERE id=? AND user_id=?", (offer_id, user["id"]))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
+@router.post("/specialist/portfolio/upload")
+async def specialist_portfolio_upload(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data); _ensure_specialist_content_tables(conn)
+    cnt = conn.execute("SELECT COUNT(*) c FROM specialist_portfolio WHERE user_id=?", (user["id"],)).fetchone()["c"]
+    if cnt >= 40:
+        conn.close(); raise HTTPException(400, "Bajarilgan ishlar media fayllari 40 tadan oshmasin.")
+    mtype, url = await _save_specialist_raw(request, user["id"], "portfolio", allow_video=True, max_mb=30)
+    cur = conn.execute(
+        "INSERT INTO specialist_portfolio(user_id, media_type, file_url, created_at) VALUES(?,?,?,?)",
+        (user["id"], mtype, url, int(time.time())),
+    )
+    conn.commit(); rid = cur.lastrowid; conn.close()
+    return {"ok": True, "id": rid, "media_type": mtype, "file_url": url}
+
+
+@router.delete("/specialist/portfolio/{media_id}")
+async def specialist_portfolio_delete(media_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user = require_user(conn, x_telegram_init_data)
+    conn.execute("DELETE FROM specialist_portfolio WHERE id=? AND user_id=?", (media_id, user["id"]))
+    conn.commit(); conn.close(); return {"ok": True}
 
 
 # ====================================================================
@@ -2400,9 +2581,8 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     specialist = None
     if sp:
         specialist = {
-            "kasb": sp["kasb"] or "", "descr": sp["descr"] or "", "narx": sp["narx"] or "",
-            "available": bool(sp["available"]), "org": _row_val(sp, "org", "") or "",
-            "lavozim": _row_val(sp, "lavozim", "") or "",
+            "kasb": sp["kasb"] or "", "descr": sp["descr"] or "",
+            **_specialist_content(conn, user_id),
         }
     result = {
         "id": u["id"], "name": u["name"] or "Foydalanuvchi",
@@ -4742,10 +4922,8 @@ async def person_page(user_id: int, actor_type: str = "user", x_telegram_init_da
     }
     if sp:
         result["specialist"] = {
-            "kasb": sp["kasb"], "descr": sp["descr"], "narx": sp["narx"], "hudud": sp["hudud"],
-            "is_gov": bool(sp["is_gov"]), "org": sp["org"], "dept": sp["dept"],
-            "lavozim": sp["lavozim"], "work_hours": sp["work_hours"],
-            "after_hours": sp["after_hours"], "available": bool(sp["available"]),
+            "kasb": sp["kasb"] or "", "descr": sp["descr"] or "",
+            **_specialist_content(conn, user_id),
         }
     conn.close()
     return result
@@ -6218,8 +6396,14 @@ def _ensure_reviews(conn):
         "CREATE TABLE IF NOT EXISTS reviews("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, target_kind TEXT NOT NULL, target_id INTEGER NOT NULL, "
         "reviewer_user_id INTEGER NOT NULL, order_id INTEGER, stars INTEGER NOT NULL, "
-        "comment TEXT DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+        "comment TEXT DEFAULT '', owner_reply TEXT DEFAULT '', owner_replied_at INTEGER DEFAULT 0, "
+        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
     try:
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(reviews)").fetchall()]
+        if "owner_reply" not in cols:
+            conn.execute("ALTER TABLE reviews ADD COLUMN owner_reply TEXT DEFAULT ''")
+        if "owner_replied_at" not in cols:
+            conn.execute("ALTER TABLE reviews ADD COLUMN owner_replied_at INTEGER DEFAULT 0")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_review_one ON reviews(target_kind, target_id, reviewer_user_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_reviews_target ON reviews(target_kind, target_id)")
     except Exception:
@@ -6290,6 +6474,8 @@ async def reviews_list(target_kind: str = "", target_id: int = 0, x_telegram_ini
         "id": r["id"], "stars": r["stars"], "comment": r["comment"] or "",
         "user_name": _reviewer_name(conn, r["reviewer_user_id"]),
         "reviewer_user_id": r["reviewer_user_id"], "created_at": r["created_at"],
+        "owner_reply": (r["owner_reply"] or "") if "owner_reply" in r.keys() else "",
+        "owner_replied_at": (r["owner_replied_at"] or 0) if "owner_replied_at" in r.keys() else 0,
     } for r in rows]
     ssum = sum(r["stars"] for r in rows)
     scnt = len(rows)
@@ -6367,6 +6553,42 @@ async def review_save(body: dict, x_telegram_init_data: str = Header(default="")
     conn.close()
     avg = round(ssum / scnt, 1) if scnt else 0
     return {"ok": True, "avg": avg, "count": scnt}
+
+
+@router.get("/specialist/reviews")
+async def specialist_reviews_manage(x_telegram_init_data: str = Header(default="")):
+    """Mutaxassisning o'ziga yozilgan fikrlar. Mutaxassis faqat javob beradi, fikrni o'chira olmaydi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); _ensure_reviews(conn)
+    rows = conn.execute(
+        "SELECT * FROM reviews WHERE target_kind='specialist' AND target_id=? ORDER BY id DESC LIMIT 200",
+        (me["id"],),
+    ).fetchall()
+    items = [{
+        "id": r["id"], "stars": r["stars"], "comment": r["comment"] or "",
+        "user_name": _reviewer_name(conn, r["reviewer_user_id"]),
+        "created_at": r["created_at"],
+        "owner_reply": (r["owner_reply"] or "") if "owner_reply" in r.keys() else "",
+        "owner_replied_at": (r["owner_replied_at"] or 0) if "owner_replied_at" in r.keys() else 0,
+    } for r in rows]
+    conn.close(); return {"reviews": items, "count": len(items)}
+
+
+@router.put("/specialist/reviews/{review_id}/reply")
+async def specialist_review_reply(review_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Mutaxassis mijoz fikriga javob beradi yoki javobini tahrirlaydi. Fikr o'chirilmaydi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); _ensure_reviews(conn)
+    row = conn.execute(
+        "SELECT id FROM reviews WHERE id=? AND target_kind='specialist' AND target_id=?",
+        (review_id, me["id"]),
+    ).fetchone()
+    if not row:
+        conn.close(); raise HTTPException(404, "Fikr topilmadi.")
+    reply = (body.get("reply") or "").strip()[:1500]
+    if not reply:
+        conn.close(); raise HTTPException(400, "Javob matnini kiriting.")
+    conn.execute("UPDATE reviews SET owner_reply=?, owner_replied_at=? WHERE id=?",
+                 (reply, int(time.time()), review_id))
+    conn.commit(); conn.close(); return {"ok": True}
 
 
 @router.delete("/reviews")
