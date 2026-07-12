@@ -22,6 +22,7 @@ import time
 import hmac
 import secrets
 import hashlib
+import asyncio
 from urllib.parse import parse_qsl
 from contextlib import asynccontextmanager
 
@@ -34,7 +35,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1487"
+APP_BUILD = "v1489"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -259,7 +260,19 @@ async def setup_bot():
 async def lifespan(app):
     init_db()
     await setup_bot()
-    yield
+    push_task = None
+    if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH"):
+        from push_worker import push_worker_loop
+        push_task = asyncio.create_task(push_worker_loop())
+    try:
+        yield
+    finally:
+        if push_task:
+            push_task.cancel()
+            try:
+                await push_task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(lifespan=lifespan)
@@ -341,7 +354,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "phone_login_ui": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "phone_login_ui": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True}
 
 
 @app.get("/api/_dbinfo")
