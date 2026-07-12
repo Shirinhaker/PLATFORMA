@@ -509,6 +509,24 @@ def _migrate(conn):
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_codes_phone ON mobile_verification_codes(phone, purpose, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_codes_expiry ON mobile_verification_codes(expires_at, verified_at)")
+    # v1481: yangi foydalanuvchini telefon kodi tasdiqlanguncha vaqtincha saqlash.
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS mobile_pending_registrations(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT NOT NULL,
+            name TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            yon TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            code_hash TEXT NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 5,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            verified_at INTEGER DEFAULT 0
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_pending_phone ON mobile_pending_registrations(phone, created_at)")
     # login_requests jadvali bormi? (CREATE TABLE IF NOT EXISTS yuqorida bor, lekin ishonch uchun)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS login_requests(
