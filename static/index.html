@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1481 -->
+<title>Platforma</title><!-- BUILD: v1482 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -798,10 +798,9 @@
           <div class="lead">Kabinetga kirish</div>
           <div class="lead-sub" id="loginReason" style="display:none;color:var(--primary);font-weight:600"></div>
           <div id="loginStep1">
-            <div class="lead-sub">Login va parolingizni kiriting.</div>
-            <div class="field"><label>Login</label><input class="input" id="loginUser" placeholder="Loginingiz" autocapitalize="off" /></div>
-            <div class="field"><label>Parol</label><input class="input" id="loginPass" type="password" placeholder="Parolingiz" /></div>
-            <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Kirish</button>
+            <div class="lead-sub">Akkauntingizga biriktirilgan telefon raqamini kiriting.</div>
+            <div class="field"><label>Telefon raqami</label><input class="input" id="loginPhone" inputmode="tel" placeholder="+998 90 123 45 67" autocomplete="tel" /></div>
+            <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Tasdiqlash kodini olish</button>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
             <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)">
               <button class="btn btn-soft btn-block" id="goStaffLogin">👥 Xodimlar uchun kirish</button>
@@ -809,13 +808,12 @@
             </div>
           </div>
           <div id="loginStep2" hidden>
-            <div style="text-align:center;padding:20px 0">
-              <div style="font-size:46px;margin-bottom:12px">📲</div>
-              <div class="lead" style="font-size:18px">Tasdiqlash kutilmoqda</div>
-              <div class="lead-sub" style="margin-top:8px">Asosiy Telegram akkauntingizga tasdiqlash so'rovi yuborildi.<br>O'sha yerda <b>✅ Tasdiqlash</b> tugmasini bosing — keyin avtomatik kirasiz.</div>
-              <div class="dots" style="margin:18px 0;color:var(--primary);font-weight:700">• • •</div>
-            </div>
-            <div class="form-foot"><b id="loginBack">← Bekor qilish</b></div>
+            <div class="lead-sub"><b id="loginCodePhone"></b> raqamiga yuborilgan 6 xonali kodni kiriting.</div>
+            <div class="ad-info" id="loginTestCode" style="display:none;margin-bottom:12px"></div>
+            <div class="field"><label>Tasdiqlash kodi</label><input class="input" id="loginCode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" /></div>
+            <button class="btn btn-primary btn-block" id="loginVerify">Tasdiqlash va kirish</button>
+            <button class="btn btn-outline btn-block" id="loginResend" style="margin-top:10px" disabled>Kodni qayta yuborish (60)</button>
+            <div class="form-foot"><b id="loginBack">← Telefon raqamini o'zgartirish</b></div>
           </div>
         </div>
       </section>
@@ -5678,49 +5676,56 @@
     nav(role==="business" ? "cabinet" : "ucab");
   }
 
-  // KIRISH: login+parol -> agar shu qurilma asosiy bo'lsa to'g'ridan-to'g'ri kiradi;
-  // boshqa qurilma bo'lsa, asosiy akkauntga tasdiqlash so'rovi boradi va kutamiz
-  var loginPoll = null;
-  function stopPoll(){ if(loginPoll){ clearInterval(loginPoll); loginPoll=null; } }
-  el("loginGo").addEventListener("click", function(){
-    var login=(el("loginUser").value||"").trim();
-    var pass=el("loginPass").value||"";
-    if(!login || !pass){ showMsg("Login va parolni kiriting."); return; }
-    var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
-    api("POST","/api/auth/login",{login:login,password:pass}).then(function(r){
-      if(r.approved){
-        // asosiy qurilma — to'g'ridan-to'g'ri kirish
-        el("loginUser").value=""; el("loginPass").value="";
-        afterAuth(r.role);
-        return;
-      }
-      // boshqa qurilma — kutish ekrani + so'rov holatini tekshirib turamiz
+  // KIRISH: telefon -> 6 xonali kod -> mobil Bearer token
+  var loginRequestId=0, loginRequestPhone="", loginResendTimer=null;
+  function stopLoginTimer(){ if(loginResendTimer){ clearInterval(loginResendTimer); loginResendTimer=null; } }
+  function startLoginResendTimer(){
+    stopLoginTimer();
+    var left=60, b=el("loginResend");
+    b.disabled=true; b.textContent="Kodni qayta yuborish ("+left+")";
+    loginResendTimer=setInterval(function(){
+      left--;
+      if(left<=0){ stopLoginTimer(); b.disabled=false; b.textContent="Kodni qayta yuborish"; }
+      else b.textContent="Kodni qayta yuborish ("+left+")";
+    },1000);
+  }
+  function requestLoginCode(phone){
+    var btn=el("loginGo"); btn.disabled=true; btn.textContent="Kod yuborilmoqda...";
+    return api("POST","/api/mobile-auth/request-code",{phone:phone}).then(function(r){
+      loginRequestId=r.request_id; loginRequestPhone=phone;
+      el("loginCodePhone").textContent=phone;
+      el("loginCode").value="";
+      if(r.test_code){ el("loginTestCode").style.display="block"; el("loginTestCode").innerHTML='Sinov kodi: <b style="font-size:18px">'+esc(r.test_code)+'</b>'; }
+      else { el("loginTestCode").style.display="none"; el("loginTestCode").textContent=""; }
       el("loginStep1").hidden=true; el("loginStep2").hidden=false;
-      var rid = r.request_id;
-      stopPoll();
-      loginPoll = setInterval(function(){
-        api("GET","/api/auth/login/status?request_id="+rid).then(function(s){
-          if(s.status==="approved"){
-            stopPoll();
-            el("loginUser").value=""; el("loginPass").value="";
-            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-            afterAuth(s.role);
-          } else if(s.status==="rejected"){
-            stopPoll();
-            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-            showMsg("Kirish rad etildi. Asosiy akkaunt egasi ruxsat bermadi.");
-          } else if(s.status==="expired"){
-            stopPoll();
-            el("loginStep1").hidden=false; el("loginStep2").hidden=true;
-            showMsg("So'rov muddati tugadi. Qaytadan urinib ko'ring.");
-          }
-        }).catch(function(){});
-      }, 2500);
-    }).catch(function(e){ showMsg(e.message); })
-      .finally(function(){ btn.disabled=false; btn.textContent="Kirish"; });
+      startLoginResendTimer();
+      setTimeout(function(){ try{ el("loginCode").focus(); }catch(e){} },100);
+    }).finally(function(){ btn.disabled=false; btn.textContent="Tasdiqlash kodini olish"; });
+  }
+  el("loginGo").addEventListener("click", function(){
+    var phone=(el("loginPhone").value||"").trim();
+    if(!phone){ showMsg("Telefon raqamini kiriting."); return; }
+    requestLoginCode(phone).catch(function(e){ showMsg(e.message); });
+  });
+  el("loginVerify").addEventListener("click",function(){
+    var code=(el("loginCode").value||"").replace(/\D/g,"");
+    if(code.length!==6){ showMsg("6 xonali kodni kiriting."); return; }
+    var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
+    api("POST","/api/mobile-auth/verify-code",{
+      phone:loginRequestPhone,request_id:loginRequestId,code:code,device_name:navigator.userAgent.slice(0,100)
+    }).then(function(r){
+      MOBILE_TOKEN=r.access_token;
+      try{ localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN); }catch(e){}
+      stopLoginTimer(); el("loginPhone").value=""; el("loginCode").value="";
+      el("loginStep1").hidden=false; el("loginStep2").hidden=true;
+      afterAuth(r.user&&r.user.role?r.user.role:"user");
+    }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; btn.textContent="Tasdiqlash va kirish"; });
+  });
+  el("loginResend").addEventListener("click",function(){
+    requestLoginCode(loginRequestPhone).catch(function(e){ showMsg(e.message); });
   });
   el("loginBack").addEventListener("click", function(){
-    stopPoll();
+    stopLoginTimer(); loginRequestId=0; loginRequestPhone="";
     el("loginStep1").hidden=false; el("loginStep2").hidden=true;
   });
 
