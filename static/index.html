@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1480 -->
+<title>Platforma</title><!-- BUILD: v1481 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1743,12 +1743,20 @@
   var INIT_DATA = TG ? (TG.initData || "") : "";
   var STAFF_TOKEN = null;
   try { STAFF_TOKEN = localStorage.getItem("koprik_staff_token") || null; } catch(e){}
+  var MOBILE_TOKEN = null;
+  try { MOBILE_TOKEN = localStorage.getItem("koprik_mobile_token") || null; } catch(e){}
   var STAFF_INFO = null;
   function authHeader(){ return STAFF_TOKEN ? ("staff:" + STAFF_TOKEN) : INIT_DATA; }
 
+  function apiHeaders(){
+    var h = { "X-Telegram-Init-Data": authHeader() };
+    if(STAFF_TOKEN) h["X-Staff-Token"] = STAFF_TOKEN;
+    if(MOBILE_TOKEN && !STAFF_TOKEN) h["Authorization"] = "Bearer " + MOBILE_TOKEN;
+    return h;
+  }
+
   function api(method, path, body){
-    var opts = { method: method, headers: { "X-Telegram-Init-Data": authHeader() } };
-    if(STAFF_TOKEN) opts.headers["X-Staff-Token"] = STAFF_TOKEN;
+    var opts = { method: method, headers: apiHeaders() };
     if(body !== undefined && body !== null){
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(body);
@@ -1765,8 +1773,7 @@
   }
   function mediaUrl(fileId){ return String(fileId||"").charAt(0)==="/" ? fileId : ("/media/" + fileId); }
   function uploadRaw(method, path, file){
-    var opts = { method: method, headers: { "X-Telegram-Init-Data": authHeader() } };
-    if(STAFF_TOKEN) opts.headers["X-Staff-Token"] = STAFF_TOKEN;
+    var opts = { method: method, headers: apiHeaders() };
     if(file){
       opts.headers["Content-Type"] = file.type || "application/octet-stream";
       opts.body = file;
@@ -2963,15 +2970,14 @@
     var fieldsHtml = isBiz
       ? '<div class="field"><label>Biznes nomi</label><input class="input" id="rgName" placeholder="Masalan: Anvar Market"></div>'+
         '<div class="field"><label>Faoliyat yo\'nalishi</label><select class="input" id="rgYon">'+yonOptions+'</select></div>'+
-        '<div class="field"><label>Manzil</label><input class="input" id="rgAddr" placeholder="Tuman, mahalla, ko\'cha"></div>'+
-        '<div class="field"><label>Telefon</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>'
+        '<div class="field"><label>Manzil</label><input class="input" id="rgAddr" placeholder="Tuman, mahalla, ko\'cha"></div>'
       : '<div class="field"><label>Ism familiya</label><input class="input" id="rgName" placeholder="Ismingiz"></div>';
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">'+(isBiz?'Biznes ro\'yxati':'Foydalanuvchi ro\'yxati')+'</div>'+
-      '<div class="lead-sub">Telegram username\'ingizni kiriting. Login va parolni platforma o\'zi yaratib, Telegramingizga yuboradi.</div>'+
-      '<div class="field"><label>Telegram username</label><input class="input" id="rgUsername" placeholder="@username" autocapitalize="off"></div>'+
+      '<div class="lead-sub">Telefon raqamingizni kiriting. Raqamga 6 xonali tasdiqlash kodi yuboriladi.</div>'+
+      '<div class="field"><label>Telefon raqami</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 90 123 45 67" autocomplete="tel"></div>'+
       fieldsHtml+
-      '<button class="btn btn-primary btn-block" id="rgSubmit">Ro\'yxatdan o\'tish</button>'+
+      '<button class="btn btn-primary btn-block" id="rgSubmit">Tasdiqlash kodini olish</button>'+
       '</div>';
     el("rgSubmit").addEventListener("click", submitRegister);
   }
@@ -2979,44 +2985,54 @@
   function submitRegister(){
     var name = (el("rgName").value||"").trim();
     if(!name){ showMsg(regRole==="business"?"Biznes nomi kiritilishi shart.":"Ism kiritilishi shart."); return; }
+    var phone = (el("rgPhone").value||"").trim();
+    if(!phone){ showMsg("Telefon raqamini kiriting."); return; }
     var body = { role:regRole, name:name,
-                 username:(el("rgUsername")?el("rgUsername").value.trim():""),
-                 phone:(el("rgPhone")?el("rgPhone").value.trim():"") };
+                 phone:phone };
     if(regRole==="business"){
       body.yon = el("rgYon") ? el("rgYon").value : "";
       body.address = el("rgAddr") ? el("rgAddr").value.trim() : "";
     }
     var btn = el("rgSubmit"); btn.disabled = true; btn.textContent = "Yuborilmoqda...";
-    api("POST", "/api/auth/register", body).then(function(r){
-      if(r.added_business){
-        // mavjud akkauntga biznes qo'shildi — biznes login/parolni ko'rsatamiz
-        el("regBody").innerHTML =
-          '<div class="form-wrap"><div class="lead">Biznes kabinet ochildi! ✅</div>'+
-          '<div class="lead-sub">Biznes kabinetingiz uchun alohida login va parol. Saqlab qo\'ying — Telegramingizga ham yuborildi.</div>'+
-          '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
-            '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🏪 Biznes login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(r.biz_login)+'</div></div>'+
-            '<div><div style="font-size:12px;color:var(--soft)">🔐 Biznes parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(r.biz_password)+'</div></div>'+
-          '</div>'+
-          '<button class="btn btn-primary btn-block" id="bizCredDone2">Biznes kabinetga o\'tish</button></div>';
-        el("tbTitle").textContent="Biznes ochildi";
-        // ME yangilash
-        api("GET","/api/me").then(function(d){ if(d&&d.registered){ ME={registered:true,role:d.role,name:d.name,id:d.id,has_business:!!d.has_business,business_id:d.business?d.business.id:null}; } }).catch(function(){});
-        var b2=el("bizCredDone2"); if(b2) b2.addEventListener("click", function(){ loggedIn=true; nav("cabinet"); });
-        return;
-      }
-      // oddiy ro'yxat — login va parolni ko'rsatamiz (Telegramga ham yuborilgan)
-      showCredentials(r.login, r.password, r.role);
+    api("POST", "/api/mobile-auth/register/request-code", body).then(function(r){
+      renderRegisterCode(phone, r.request_id, r.test_code || "");
     }).catch(function(e){
       showMsg(e.message);
     }).finally(function(){
-      btn.disabled = false; btn.textContent = "Ro'yxatdan o'tish";
+      btn.disabled = false; btn.textContent = "Tasdiqlash kodini olish";
     });
+  }
+
+  function renderRegisterCode(phone, requestId, testCode){
+    el("regBody").innerHTML =
+      '<div class="form-wrap"><div class="lead">Telefonni tasdiqlash</div>'+
+      '<div class="lead-sub"><b>'+esc(phone)+'</b> raqamiga yuborilgan 6 xonali kodni kiriting.</div>'+
+      (testCode?'<div class="ad-info" style="margin-bottom:12px">Sinov kodi: <b style="font-size:18px">'+esc(testCode)+'</b></div>':'')+
+      '<div class="field"><label>Tasdiqlash kodi</label><input class="input" id="rgCode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"></div>'+
+      '<button class="btn btn-primary btn-block" id="rgVerify">Tasdiqlash va kirish</button>'+
+      '<button class="btn btn-outline btn-block" id="rgCodeBack" style="margin-top:10px">Telefonni o\'zgartirish</button></div>';
+    el("rgCodeBack").addEventListener("click",function(){ renderReg(regRole); });
+    el("rgVerify").addEventListener("click",function(){
+      var code=(el("rgCode").value||"").replace(/\D/g,"");
+      if(code.length!==6){ showMsg("6 xonali kodni kiriting."); return; }
+      var btn=this; btn.disabled=true; btn.textContent="Tekshirilmoqda...";
+      api("POST","/api/mobile-auth/register/verify-code",{
+        phone:phone,request_id:requestId,code:code,device_name:navigator.userAgent.slice(0,100)
+      }).then(function(r){
+        MOBILE_TOKEN=r.access_token;
+        try{ localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN); }catch(e){}
+        showCredentials(r.login,r.password,r.role);
+      }).catch(function(e){ showMsg(e.message); }).finally(function(){
+        btn.disabled=false; btn.textContent="Tasdiqlash va kirish";
+      });
+    });
+    setTimeout(function(){ try{ el("rgCode").focus(); }catch(e){} },100);
   }
 
   function showCredentials(login, password, role){
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">Ro\'yxatdan o\'tdingiz! ✅</div>'+
-      '<div class="lead-sub">Quyidagi login va parolni saqlab qo\'ying. Bu ma\'lumotlar Telegramingizga ham yuborildi. Boshqa qurilmadan kirganda shular kerak bo\'ladi.</div>'+
+      '<div class="lead-sub">Telefon raqamingiz tasdiqlandi. Quyidagi login va parolni ham xavfsiz joyda saqlab qo\'ying.</div>'+
       '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
         '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🔑 Login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(login)+'</div></div>'+
         '<div><div style="font-size:12px;color:var(--soft)">🔐 Parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(password)+'</div></div>'+
@@ -5711,6 +5727,11 @@
   document.addEventListener("click", function(e){
     var lo=e.target.closest("[data-logout]");
     if(lo){
+      if(MOBILE_TOKEN){
+        api("POST","/api/mobile-auth/logout").catch(function(){});
+        MOBILE_TOKEN=null;
+        try{ localStorage.removeItem("koprik_mobile_token"); }catch(e2){}
+      }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null};
       nav("home");
       return;
