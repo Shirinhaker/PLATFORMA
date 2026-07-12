@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1489 -->
+<title>Platforma</title><!-- BUILD: v1490 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -647,6 +647,11 @@
   /* === Ilova ichidagi vositalar (tizim oynasi alert/prompt/confirm o'rniga) === */
   .app-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);width:calc(100% - 48px);max-width:360px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:13px;font-size:14px;font-weight:600;text-align:center;line-height:1.4;box-shadow:var(--shadow-lg);z-index:6000;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
   .app-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+  .action-notify{position:fixed;left:50%;top:76px;transform:translate(-50%,-18px);width:calc(100% - 28px);max-width:492px;background:var(--card);border:2px solid var(--primary);border-radius:17px;padding:12px 42px 12px 13px;box-shadow:var(--shadow-lg);z-index:2900;opacity:0;pointer-events:none;transition:.2s;cursor:pointer;}
+  .action-notify.on{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+  .action-notify-title{font-size:14.5px;font-weight:900;color:var(--ink);margin-bottom:3px;}
+  .action-notify-body{font-size:12.5px;font-weight:600;color:var(--soft);line-height:1.35;}
+  .action-notify-close{position:absolute;right:8px;top:8px;width:28px;height:28px;border:none;border-radius:50%;background:var(--line);color:var(--ink);font-size:16px;cursor:pointer;}
   .app-modal-back{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:5200;display:none;}
   .app-modal-back.on{display:block;}
   .app-confirm{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:calc(100% - 56px);max-width:340px;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:18px;z-index:5201;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;}
@@ -692,6 +697,12 @@
         <div class="tb-title" id="tbTitle">Sahifa</div>
       </div>
     </header>
+
+    <div class="action-notify" id="actionNotify" role="button" aria-live="polite">
+      <button class="action-notify-close" id="actionNotifyClose" aria-label="Yopish">×</button>
+      <div class="action-notify-title" id="actionNotifyTitle">Tasdiqlash kerak</div>
+      <div class="action-notify-body" id="actionNotifyBody"></div>
+    </div>
 
     <div id="bizCartBar" style="display:none;flex:none;padding:8px 14px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
       <button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">
@@ -3091,6 +3102,7 @@
     if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
+    if(home && typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
@@ -4862,6 +4874,38 @@
     if(!loggedIn)return;
     api("GET","/api/notifications?"+actorQuery()).then(function(d){updateNotifyBadges(d.unread||0);}).catch(function(){});
   }
+  var ACTION_NOTIFY_CURRENT=null, ACTION_NOTIFY_DISMISSED={}, ACTION_NOTIFY_TIMER=null;
+  function hideActionNotify(){el("actionNotify").classList.remove("on");ACTION_NOTIFY_CURRENT=null;}
+  function pollActionNotifications(){
+    if(!loggedIn)return;
+    api("GET","/api/notifications/actions").then(function(d){
+      var items=(d.items||[]).filter(function(n){return !ACTION_NOTIFY_DISMISSED[n.id];});
+      updateNotifyBadges(d.count||0);
+      if(current!=="home"||!items.length){hideActionNotify();return;}
+      var n=items[0];
+      if(!ACTION_NOTIFY_CURRENT||ACTION_NOTIFY_CURRENT.id!==n.id){
+        ACTION_NOTIFY_CURRENT=n;el("actionNotifyTitle").textContent="🔔 "+n.title;el("actionNotifyBody").textContent=n.body||"Amalni bajarish uchun bosing.";el("actionNotify").classList.add("on");
+        try{if(navigator.vibrate)navigator.vibrate(120);}catch(e){}
+      }
+    }).catch(function(){});
+  }
+  function openActionNotification(n){
+    if(!n||!n.order_id)return;
+    var business=n.actor_kind==="business",mode=business?"inbox":"mine";
+    activeMode=business?"business":"user";
+    api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
+    api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
+      if(business){ORDERS_INBOX=list||[];nav("cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox","bizOrdersList");}
+      else{ORDERS_MINE=list||[];nav("ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine","myOrdersList");}
+      hideActionNotify();openOrderDetail(parseInt(n.order_id,10),mode);
+    }).catch(function(e){showMsg(e.message);});
+  }
+  el("actionNotify") && el("actionNotify").addEventListener("click",function(e){if(e.target.closest("#actionNotifyClose"))return;openActionNotification(ACTION_NOTIFY_CURRENT);});
+  el("actionNotifyClose") && el("actionNotifyClose").addEventListener("click",function(e){e.stopPropagation();if(ACTION_NOTIFY_CURRENT)ACTION_NOTIFY_DISMISSED[ACTION_NOTIFY_CURRENT.id]=1;hideActionNotify();});
+  function startActionNotifyPolling(){
+    if(ACTION_NOTIFY_TIMER)clearInterval(ACTION_NOTIFY_TIMER);
+    pollActionNotifications();ACTION_NOTIFY_TIMER=setInterval(pollActionNotifications,10000);
+  }
   el("orderNotifyList") && el("orderNotifyList").addEventListener("click",function(e){
     var n=e.target.closest("[data-notification]");if(!n)return;
     var id=parseInt(n.getAttribute("data-notification"),10),oid=parseInt(n.getAttribute("data-noid"),10);
@@ -5814,6 +5858,7 @@
       }
     }).catch(function(){});
     nav(role==="business" ? "cabinet" : "ucab");
+    startActionNotifyPolling();
   }
 
   // KIRISH: telefon -> 6 xonali kod -> mobil Bearer token
@@ -9488,6 +9533,7 @@
         loadHomeAds();
         refreshOrderBadges();
         refreshNotifyBadge();
+        startActionNotifyPolling();
       }
     }).catch(function(err){
       // Telegram ID oq ro'yxatda bo'lmasa (403) — bu ehtimol xodim. Login oynasini ko'rsatamiz.
