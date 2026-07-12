@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1484 -->
+<title>Platforma</title><!-- BUILD: v1486 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -3482,11 +3482,11 @@
     });
   }
   function orderStatusText(st){
-    var m={new:"Yangi",accepted:"Qabul qilindi",rejected:"Rad etildi",done:"Yakunlandi",cancelled:"Bekor qilindi",tayyor:"Tayyor — kuryer qidirilmoqda"};
+    var m={new:"Yangi",accepted:"To'lov kutilmoqda",preparing:"Tayyorlanmoqda",rejected:"Rad etildi",done:"Yakunlandi",cancelled:"Bekor qilindi",tayyor:"Tayyor",courier_assigned:"Dostavkachi biriktirildi",courier_arrived_store:"Dostavkachi sotuvchiga yetib keldi",handoff_waiting_seller:"Topshirish tasdig'i kutilmoqda",in_delivery:"Yo'lda",courier_arrived_customer:"Dostavkachi yetib keldi",delivered_waiting_customer:"Qabul tasdig'i kutilmoqda",pickup_waiting_customer:"Qabul tasdig'i kutilmoqda"};
     return m[st] || st || "—";
   }
   function orderStatusClass(st){
-    if(st==="accepted" || st==="done" || st==="tayyor") return "credit";
+    if(st==="accepted" || st==="preparing" || st==="done" || st==="tayyor") return "credit";
     if(st==="rejected" || st==="cancelled") return "debit";
     return "";
   }
@@ -3665,7 +3665,7 @@
     if(textId && el(textId)) el(textId).textContent = n>0 ? textWhenOn.replace("{n}", n) : textWhenOff;
   }
   function orderIsProblem(o){ return !!(o && o.problem_open); }
-  function orderIsActive(o){ return o && !orderIsProblem(o) && ["new","accepted","tayyor"].indexOf(o.status)>=0; }
+  function orderIsActive(o){ return o && !orderIsProblem(o) && ["new","accepted","preparing","tayyor","courier_assigned","courier_arrived_store","handoff_waiting_seller","in_delivery","courier_arrived_customer","delivered_waiting_customer","pickup_waiting_customer"].indexOf(o.status)>=0; }
   var ORDER_PROBLEM_REASONS={not_received:"Pul hisobga tushmadi",amount_short:"To'langan summa kam",receipt_mismatch:"Chek ma'lumoti mos kelmadi",receipt_unreadable:"Chek rasmi o'qilmaydi",wrong_receipt:"Noto'g'ri chek yuborilgan",other:"Boshqa to'lov muammosi"};
   function updateOrderBadges(){
     var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !!o.is_unread; }).length;
@@ -3699,39 +3699,49 @@
     if(mode==="inbox"){
       if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       else if(o.status==="accepted"){
-        var readyBtn = (o.order_type==="delivery" && o.payment_status==="confirmed") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
         var problemBtn = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
-        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+problemBtn+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+problemBtn+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
       }
-      else if(o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      else if(o.status==="preparing") actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Buyurtma tayyor</button></div>';
+      else if(o.status==="tayyor" && o.order_type==="delivery") actions = '<div class="idesc" style="margin-top:10px;color:var(--primary);font-weight:700">Dostavkachi qidirilmoqda</div>';
+      else if(o.status==="handoff_waiting_seller") actions = '<div style="margin-top:10px"><button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-handoff="'+o.id+'">📦 Dostavkachiga topshirdim</button></div>';
+      else if(o.status==="tayyor" && o.order_type==="pickup") actions = '<div style="margin-top:10px"><button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-handoff="'+o.id+'">🏪 Buyurtmachiga topshirdim</button></div>';
     } else {
-      if(o.status==="new" || o.status==="accepted" || o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      if(o.status==="new" || o.status==="accepted") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      else if(o.status==="preparing") actions = '<div class="idesc" style="margin-top:10px;color:var(--primary);font-weight:700">Buyurtma tayyorlanmoqda</div>';
+      else if(o.status==="tayyor") actions = '<div class="idesc" style="margin-top:10px;color:var(--primary);font-weight:700">'+(o.order_type==="delivery"?"Dostavkachi qidirilmoqda":"Do\'kondan olib ketishingiz mumkin")+'</div>';
+      else if(o.status==="delivered_waiting_customer" || o.status==="pickup_waiting_customer") actions = '<div style="margin-top:10px"><button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-received="'+o.id+'">✅ Buyurtmani qabul qildim</button></div>';
     }
     if(o.problem_open){
       actions = mode==="mine" ? '<div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-psolution="pickup" data-oid="'+o.id+'">🏪 Do\'konga boraman</button><button class="mini-btn" data-psolution="wait" data-oid="'+o.id+'">⏳ Kutaman</button><button class="mini-btn" data-psolution="new_receipt" data-oid="'+o.id+'">🧾 Yangi chek</button></div>' : '';
     }
     var pickupInfo=(o.problem_solution==="pickup")?'<div style="margin-top:5px"><b>Do\'kon:</b> '+esc(o.provider_address||"Manzil kiritilmagan")+(o.provider_phone?' · '+esc(o.provider_phone):'')+(o.provider_work_hours?' · '+esc(o.provider_work_hours):'')+'</div>':'';
+    var driverInfo=(o.delivery&&o.delivery.driver_name)?'<div style="margin-top:8px;padding:8px;border-radius:10px;background:var(--primary-tint);font-size:12.5px"><b>🚚 Dostavkachi: '+esc(o.delivery.driver_name)+'</b><div>'+esc(o.delivery.driver_phone||"")+(o.delivery.car_model?' · '+esc(o.delivery.car_color||"")+' '+esc(o.delivery.car_model)+' · '+esc(o.delivery.car_plate||""):'')+'</div></div>':'';
     var problemInfo=o.problem_open?'<div style="margin-top:9px;padding:9px;border-radius:10px;background:#FFF7ED;color:#9A3412;font-size:12.5px"><b>⚠️ To\'lov aniqlashtirilmoqda</b><div>'+esc(ORDER_PROBLEM_REASONS[o.problem_reason]||o.problem_reason||"")+'</div>'+(o.problem_note?'<div>Izoh: '+esc(o.problem_note)+'</div>':'')+pickupInfo+'</div>':'';
     var cls = 'item order-card' + (o.status==="new" ? ' order-new' : '') + (o.is_unread ? ' order-unread' : '');
     var unread = o.is_unread ? '<div class="order-unread-pill">'+(o.last_event==="msg" ? '💬 Xabar keldi' : (mode==="inbox" ? '🔔 Yangi buyurtma' : '🔔 Status yangilandi'))+'</div>' : '';
     var chatPreview = o.last_chat ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.last_chat)+'</div>' : (o.chat_count ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.chat_count)+' ta xabar</div>' : '');
     var hint = '<div class="idesc" style="margin-top:8px;color:var(--primary);font-weight:700">Batafsil ko‘rish va chat uchun bosing</div>';
     return '<div class="'+cls+'" style="display:block" data-order-open="'+o.id+'" data-order-mode="'+mode+'">'+
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+problemInfo+itemsHtml+chatPreview+actions+hint+'</div>';
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+problemInfo+driverInfo+itemsHtml+chatPreview+actions+hint+'</div>';
   }
   function orderActionButtons(o, mode){
     if(!o) return "";
     if(mode==="inbox"){
       if(o.status==="new") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       if(o.status==="accepted"){
-        var rb = (o.order_type==="delivery" && o.payment_status==="confirmed") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
         var pb = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
-        return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+rb+pb+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+        return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+pb+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
       }
-      if(o.status==="tayyor") return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
-    } else if(o.status==="new" || o.status==="accepted" || o.status==="tayyor"){
-      return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      if(o.status==="preparing") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Buyurtma tayyor</button></div>';
+      if(o.status==="tayyor" && o.order_type==="delivery") return '<div class="idesc" style="margin-top:10px;color:var(--primary);font-weight:700">Dostavkachi qidirilmoqda</div>';
+      if(o.status==="handoff_waiting_seller") return '<div style="margin-top:10px"><button class="mini-btn" data-handoff="'+o.id+'">📦 Dostavkachiga topshirdim</button></div>';
+      if(o.status==="tayyor" && o.order_type==="pickup") return '<div style="margin-top:10px"><button class="mini-btn" data-handoff="'+o.id+'">🏪 Buyurtmachiga topshirdim</button></div>';
+    } else if(o.status==="new" || o.status==="accepted" || o.status==="preparing" || o.status==="tayyor"){
+      if(o.status==="new" || o.status==="accepted") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+      return '<div class="idesc" style="margin-top:10px;color:var(--primary);font-weight:700">'+(o.status==="preparing"?"Buyurtma tayyorlanmoqda":(o.order_type==="delivery"?"Dostavkachi qidirilmoqda":"Do\'kondan olib ketishingiz mumkin"))+'</div>';
     }
+    if(mode!=="inbox" && (o.status==="delivered_waiting_customer" || o.status==="pickup_waiting_customer")) return '<div style="margin-top:10px"><button class="mini-btn" data-received="'+o.id+'">✅ Buyurtmani qabul qildim</button></div>';
     return "";
   }
   function findOrderById(id, mode){
@@ -3841,6 +3851,8 @@
     sh.querySelectorAll("[data-oproblem]").forEach(function(btn){
       btn.addEventListener("click",function(e){e.stopPropagation();closeOrderDetail();openOrderProblemForm(parseInt(btn.getAttribute("data-oproblem"),10));});
     });
+    sh.querySelectorAll("[data-handoff]").forEach(function(btn){btn.addEventListener("click",function(e){e.stopPropagation();closeOrderDetail();confirmOrderHandoff(parseInt(btn.getAttribute("data-handoff"),10));});});
+    sh.querySelectorAll("[data-received]").forEach(function(btn){btn.addEventListener("click",function(e){e.stopPropagation();closeOrderDetail();confirmOrderReceived(parseInt(btn.getAttribute("data-received"),10));});});
     // Nusxalash (summa/karta)
     sh.querySelectorAll("[data-copy]").forEach(function(btn){
       btn.addEventListener("click", function(e){ e.stopPropagation(); copyText(btn.getAttribute("data-copy")); });
@@ -4392,6 +4404,16 @@
       else if(solution==="pickup") showMsg("Buyurtma O'zim olib ketaman turiga o'tkazildi.");
       else showMsg("To'lov tushishi kutilmoqda.");
     }).catch(function(e){showMsg(e.message);});
+  }
+  function confirmOrderHandoff(id){
+    askConfirm({text:"Buyurtma qarshi tomonga topshirildimi?",okText:"Ha, topshirdim"}).then(function(ok){
+      if(!ok)return; api("POST","/api/orders/"+id+"/handoff",{}).then(function(){showMsg("Topshirish tasdiqlandi ✅");loadBizOrders();}).catch(function(e){showMsg(e.message);});
+    });
+  }
+  function confirmOrderReceived(id){
+    askConfirm({text:"Buyurtmani to'liq qabul qildingizmi?",okText:"Ha, qabul qildim"}).then(function(ok){
+      if(!ok)return; api("POST","/api/orders/"+id+"/received",withActor({},"user")).then(function(){showMsg("Buyurtma yakunlandi ✅");loadMyOrders();refreshOrderBadges();}).catch(function(e){showMsg(e.message);});
+    });
   }
 
 
@@ -5339,8 +5361,13 @@
   }
   function drvStatusLabel(st, kind){
     if(kind==="dostavka"){
-      if(st==="arrived" || st==="ongoing") return "📦 Dostavka olindi — egasiga olib boring";
-      return "🚚 Joriy dostavka — olib ketish joyiga boring";
+      if(st==="accepted") return "🚚 Sotuvchi manziliga boring";
+      if(st==="arrived_store") return "📍 Sotuvchiga yetib keldingiz";
+      if(st==="pickup_requested") return "⏳ Sotuvchi topshirishni tasdiqlashi kutilmoqda";
+      if(st==="in_delivery") return "📦 Buyurtmachiga olib boring";
+      if(st==="arrived_customer") return "📍 Buyurtmachiga yetib keldingiz";
+      if(st==="delivered_waiting_customer") return "⏳ Buyurtmachi qabul qilganini tasdiqlashi kutilmoqda";
+      return "🚚 Joriy dostavka";
     }
     if(st==="arrived") return "📍 Yetib keldingiz — mijozni kuting";
     if(st==="ongoing") return "🛣️ Safardasiz";
@@ -5348,8 +5375,10 @@
   }
   function drvActionFor(st, kind){
     if(kind==="dostavka"){
-      if(st==="accepted") return {label:"📦 Dostavkani oldim", next:"arrived"};
-      if(st==="arrived" || st==="ongoing") return {label:"✅ Dostavkani topshirdim", next:"completed"};
+      if(st==="accepted") return {label:"📍 Sotuvchiga yetib keldim", next:"arrived_store"};
+      if(st==="arrived_store") return {label:"📦 Dostavkani oldim", next:"pickup_requested"};
+      if(st==="in_delivery") return {label:"📍 Buyurtmachiga yetib keldim", next:"arrived_customer"};
+      if(st==="arrived_customer") return {label:"✅ Buyurtmani topshirdim", next:"delivered_waiting_customer"};
       return null;
     }
     if(st==="accepted") return {label:"🚗 Yetib keldim", next:"arrived"};
@@ -5659,6 +5688,8 @@
     var c=e.target.closest("[data-chat]"); if(c) openChat(c.getAttribute("data-chat-kind")||"user", parseInt(c.getAttribute("data-chat"),10), c.getAttribute("data-name"));
   });
   el("bizOrdersList").addEventListener("click", function(e){
+    var h=e.target.closest("[data-handoff]");
+    if(h){e.stopPropagation();confirmOrderHandoff(parseInt(h.getAttribute("data-handoff"),10));return;}
     var p=e.target.closest("[data-oproblem]");
     if(p){ e.stopPropagation(); openOrderProblemForm(parseInt(p.getAttribute("data-oproblem"),10)); return; }
     var b=e.target.closest("[data-ostatus]");
@@ -5667,6 +5698,8 @@
     if(c) openOrderDetail(parseInt(c.getAttribute("data-order-open"),10), c.getAttribute("data-order-mode")||"inbox");
   });
   el("myOrdersList").addEventListener("click", function(e){
+    var r=e.target.closest("[data-received]");
+    if(r){e.stopPropagation();confirmOrderReceived(parseInt(r.getAttribute("data-received"),10));return;}
     var p=e.target.closest("[data-psolution]");
     if(p){ e.stopPropagation(); chooseOrderProblemSolution(parseInt(p.getAttribute("data-oid"),10),p.getAttribute("data-psolution")); return; }
     var b=e.target.closest("[data-ostatus]");
