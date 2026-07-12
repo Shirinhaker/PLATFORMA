@@ -21,6 +21,7 @@ import os
 import math
 import calendar
 import secrets
+import hashlib
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
@@ -71,6 +72,24 @@ def require_user(conn, init_data):
     ctx = _staff_ctx(conn, init_data)
     if ctx:
         return ctx[2]  # do'kon egasi (owner)
+    if (init_data or "").startswith("mobile:"):
+        token = init_data[7:].strip()
+        if not token:
+            raise HTTPException(401, "Mobil sessiya tokeni topilmadi.")
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        now = int(time.time())
+        sess = conn.execute(
+            "SELECT * FROM mobile_sessions WHERE token_hash=? AND revoked_at=0 AND expires_at>?",
+            (token_hash, now),
+        ).fetchone()
+        if not sess:
+            raise HTTPException(401, "Mobil sessiya tugagan yoki bekor qilingan.")
+        user = conn.execute("SELECT * FROM users WHERE id=?", (sess["user_id"],)).fetchone()
+        if not user:
+            raise HTTPException(401, "Foydalanuvchi topilmadi.")
+        conn.execute("UPDATE mobile_sessions SET last_used_at=? WHERE id=?", (now, sess["id"]))
+        conn.commit()
+        return user
     tg = _tg(init_data)
     user = conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
     if not user:
@@ -158,6 +177,11 @@ def is_following(conn, user_id, kind, target_id, actor_type="user", business_id=
 
 def optional_user(conn, init_data):
     """Kirgan bo'lsa user, bo'lmasa None (mehmon rejimi)."""
+    if (init_data or "").startswith("mobile:"):
+        try:
+            return require_user(conn, init_data)
+        except HTTPException:
+            return None
     try:
         tg = _tg(init_data)
     except HTTPException:
