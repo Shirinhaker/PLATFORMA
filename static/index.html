@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1477 -->
+<title>Platforma</title><!-- BUILD: v1478 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1062,7 +1062,8 @@
           <div class="field"><label>Narx</label><input class="input" id="bePrice" placeholder="Narx yoki «kelishilgan»"></div>
           <div class="field"><label>Tavsif</label><textarea class="textarea" id="beDescr" placeholder="E'lon haqida batafsil"></textarea></div>
           <div class="field"><label>Rasm va video</label>
-            <div class="upload" id="beMediaBtn">📷 Rasm/video qo'shish</div>
+            <button type="button" class="upload" id="beMediaBtn">📷 Galereya yoki papkadan tanlash</button>
+            <input type="file" id="beMediaInput" accept="image/*,video/*" multiple hidden>
             <div id="beMediaList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
           </div>
           <div class="field"><label>Joylashuv</label>
@@ -1291,7 +1292,8 @@
           <div class="field"><label>Narx</label><input class="input" id="uePrice" placeholder="Narx yoki «kelishilgan»"></div>
           <div class="field"><label>Tavsif</label><textarea class="textarea" id="ueDescr" placeholder="E'lon haqida batafsil"></textarea></div>
           <div class="field"><label>Rasm va video</label>
-            <div class="upload" id="ueMediaBtn">📷 Rasm/video qo'shish</div>
+            <button type="button" class="upload" id="ueMediaBtn">📷 Galereya yoki papkadan tanlash</button>
+            <input type="file" id="ueMediaInput" accept="image/*,video/*" multiple hidden>
             <div id="ueMediaList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
           </div>
           <div class="field"><label>Joylashuv</label>
@@ -1761,7 +1763,7 @@
       });
     });
   }
-  function mediaUrl(fileId){ return "/media/" + fileId; }
+  function mediaUrl(fileId){ return String(fileId||"").charAt(0)==="/" ? fileId : ("/media/" + fileId); }
   function uploadRaw(method, path, file){
     var opts = { method: method, headers: { "X-Telegram-Init-Data": authHeader() } };
     if(STAFF_TOKEN) opts.headers["X-Staff-Token"] = STAFF_TOKEN;
@@ -8969,19 +8971,23 @@
         '<button data-rmmedia="'+i+'" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#EF4444;color:#fff;font-size:11px;cursor:pointer">✕</button></div>';
     }).join("");
   }
-  function pickMedia(listId){
-    api("GET","/api/media/inbox").then(function(items){
-      if(!items.length){
-        showMsg("Avval rasm yoki videoni shu botga yuboring (chat oynasida), keyin bu yerga qaytib tanlang.");
-        return;
-      }
-      // oddiy tanlov: birinchi kelganini qo'shamiz (haqiqiy UI keyin — hozir botdan kelgan oxirgilarni qo'shadi)
-      var added=0;
-      items.forEach(function(m){
-        if(selMedia.length<10 && !selMedia.some(function(x){return x.file_id===m.file_id;})){ selMedia.push(m); added++; }
+  function uploadListingFiles(prefix, listId, files){
+    files=Array.prototype.slice.call(files||[]);
+    if(!files.length) return;
+    var room=10-selMedia.length;
+    if(room<=0){ showMsg("Bitta e'longa ko'pi bilan 10 ta rasm yoki video qo'shiladi."); return; }
+    files=files.slice(0,room);
+    var actor=(prefix==="be"?"business":"user"), done=0;
+    showMsg("Media yuklanmoqda: 0/"+files.length);
+    files.reduce(function(chain,file){
+      return chain.then(function(){
+        return uploadRaw("POST","/api/listings/media?actor_type="+encodeURIComponent(actor),file).then(function(m){
+          selMedia.push({file_id:m.file_id,type:m.type}); done++;
+          renderMediaList(listId); showMsg("Media yuklanmoqda: "+done+"/"+files.length);
+        });
       });
-      renderMediaList(listId);
-      if(added) showMsg(added+" ta media qo'shildi.");
+    },Promise.resolve()).then(function(){
+      showMsg(done+" ta media galereya yoki papkadan qo'shildi ✅");
     }).catch(function(e){ showMsg(e.message); });
   }
 
@@ -9136,7 +9142,12 @@
   });
 
   function bindElonForm(prefix, listId, catsId, getVisibility){
-    el(prefix+"MediaBtn").addEventListener("click", function(){ pickMedia(listId); });
+    var mediaInput=el(prefix+"MediaInput");
+    el(prefix+"MediaBtn").addEventListener("click", function(){ mediaInput.click(); });
+    mediaInput.addEventListener("change", function(){
+      uploadListingFiles(prefix,listId,this.files);
+      this.value="";
+    });
     el(prefix+"PickBtn").addEventListener("click", function(){ openPicker(prefix); });
     el(listId).addEventListener("click", function(e){
       var rm=e.target.closest("[data-rmmedia]"); if(rm){ selMedia.splice(parseInt(rm.getAttribute("data-rmmedia"),10),1); renderMediaList(listId); }
