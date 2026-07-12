@@ -642,12 +642,25 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN provider_seen_at INTEGER DEFAULT 0")
     if "customer_seen_at" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN customer_seen_at INTEGER DEFAULT 0")
+    # v1483: to'lov bo'yicha muammoli buyurtmalar alohida yuritiladi.
+    for _c, _t in (
+        ("problem_open", "INTEGER DEFAULT 0"),
+        ("problem_reason", "TEXT DEFAULT ''"),
+        ("problem_note", "TEXT DEFAULT ''"),
+        ("problem_solution", "TEXT DEFAULT ''"),
+        ("problem_opened_at", "INTEGER DEFAULT 0"),
+        ("problem_resolved_at", "INTEGER DEFAULT 0"),
+    ):
+        if _c not in ocols:
+            conn.execute("ALTER TABLE orders ADD COLUMN %s %s" % (_c, _t))
+    conn.execute("UPDATE orders SET problem_open=0 WHERE problem_open IS NULL")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider_seen ON orders(provider_kind, provider_actor_id, provider_seen_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer_seen ON orders(customer_kind, customer_actor_id, customer_seen_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_problem ON orders(problem_open, updated_at)")
     conn.execute(
         """CREATE TABLE IF NOT EXISTS order_items(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
