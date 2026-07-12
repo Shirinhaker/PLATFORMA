@@ -678,7 +678,7 @@ async def get_driver(x_telegram_init_data: str = Header(default="")):
 
     # Joriy zakaz bor paytda haydovchi har doim avtomatik BAND bo'ladi.
     active = conn.execute(
-        "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+        "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') LIMIT 1",
         (d["id"],),
     ).fetchone()
     if active and d["available"]:
@@ -749,7 +749,7 @@ async def set_driver_available(request: Request, x_telegram_init_data: str = Hea
     # Faol taxi/dostavka zakazi tugamaguncha qo'lda Bo'shman holatiga qaytib bo'lmaydi.
     if avail:
         active = conn.execute(
-            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') LIMIT 1",
             (d["id"],),
         ).fetchone()
         if active:
@@ -821,7 +821,7 @@ def _ride_dict(r):
         "meter_km": g("meter_km"),
         "final_price": _calc_price(r["kind"], g("meter_km")),
         "ozim": bool(r["ozim"]), "cargo": r["cargo"], "car_type": r["car_type"], "note": r["note"],
-        "status": r["status"], "created_at": r["created_at"],
+        "status": r["status"], "created_at": r["created_at"], "src_order_id": g("src_order_id"),
     }
 
 
@@ -849,7 +849,7 @@ async def create_ride(request: Request, x_telegram_init_data: str = Header(defau
         conn.close()
         raise HTTPException(400, "Qayerga borishni kiriting yoki 'O'zim aytaman'ni tanlang.")
     active = conn.execute(
-        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') LIMIT 1",
+        "SELECT id FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') LIMIT 1",
         (user["id"],),
     ).fetchone()
     if active:
@@ -884,14 +884,14 @@ async def my_ride(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
     r = conn.execute(
-        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM rides WHERE customer_id=? AND status IN ('pending','accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') ORDER BY id DESC LIMIT 1",
         (user["id"],),
     ).fetchone()
     if not r:
         conn.close()
         return {"ride": None}
     out = _ride_dict(r)
-    if r["status"] in ("accepted", "arrived", "ongoing") and r["driver_id"]:
+    if r["status"] in ("accepted", "arrived", "ongoing", "arrived_store", "pickup_requested", "in_delivery", "arrived_customer", "delivered_waiting_customer") and r["driver_id"]:
         d = conn.execute("SELECT * FROM drivers WHERE id=?", (r["driver_id"],)).fetchone()
         if d:
             du = conn.execute("SELECT name FROM users WHERE id=?", (d["user_id"],)).fetchone()
@@ -941,7 +941,7 @@ async def pending_rides(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
     cur_ride = conn.execute(
-        "SELECT * FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') ORDER BY id DESC LIMIT 1",
         (d["id"],),
     ).fetchone()
     current = None
@@ -985,7 +985,7 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
             raise HTTPException(400, "Siz bandsiz. Joriy zakazni yakunlagach yangi zakaz olasiz.")
 
         busy = conn.execute(
-            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing') LIMIT 1",
+            "SELECT id FROM rides WHERE driver_id=? AND status IN ('accepted','arrived','ongoing','arrived_store','pickup_requested','in_delivery','arrived_customer','delivered_waiting_customer') LIMIT 1",
             (d["id"],),
         ).fetchone()
         if busy:
@@ -1012,6 +1012,11 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
             "UPDATE drivers SET balance=balance-?, available=0 WHERE id=?",
             (COMMISSION_PER_ORDER, d["id"]),
         )
+        if ride["kind"] == "dostavka" and _row_val(ride, "src_order_id", None):
+            conn.execute(
+                "UPDATE orders SET status='courier_assigned',updated_at=?,customer_seen_at=0,provider_seen_at=0,last_event='delivery' WHERE id=?",
+                (now, ride["src_order_id"]),
+            )
         conn.commit()
     except HTTPException:
         conn.rollback()
@@ -1040,7 +1045,7 @@ async def complete_ride(ride_id: int, x_telegram_init_data: str = Header(default
     conn = db()
     user, d = _require_driver(conn, x_telegram_init_data)
     cur = conn.execute(
-        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND status IN ('accepted','arrived','ongoing')",
+        "UPDATE rides SET status='completed' WHERE id=? AND driver_id=? AND kind<>'dostavka' AND status IN ('accepted','arrived','ongoing')",
         (ride_id, d["id"]),
     )
     if cur.rowcount:
@@ -1064,7 +1069,7 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
     b = await request.json()
     new = (b.get("status") or "").strip()
     r = conn.execute(
-        "SELECT status, kind FROM rides WHERE id=? AND driver_id=?",
+        "SELECT status, kind, src_order_id FROM rides WHERE id=? AND driver_id=?",
         (ride_id, d["id"]),
     ).fetchone()
     if not r:
@@ -1072,8 +1077,12 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
         raise HTTPException(404, "Zakaz topilmadi.")
 
     if r["kind"] == "dostavka":
-        # 'ongoing' eski builddan qolgan faol dostavkalar uchun ham yakunlashga ruxsat.
-        nxt = {"accepted": "arrived", "arrived": "completed", "ongoing": "completed"}
+        nxt = {
+            "accepted": "arrived_store",
+            "arrived_store": "pickup_requested",
+            "in_delivery": "arrived_customer",
+            "arrived_customer": "delivered_waiting_customer",
+        }
     else:
         nxt = {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
 
@@ -1082,6 +1091,18 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
         raise HTTPException(400, "Bu bosqichga o'tib bo'lmaydi.")
 
     conn.execute("UPDATE rides SET status=? WHERE id=?", (new, ride_id))
+    if r["kind"] == "dostavka" and r["src_order_id"]:
+        order_status = {
+            "arrived_store": "courier_arrived_store",
+            "pickup_requested": "handoff_waiting_seller",
+            "arrived_customer": "courier_arrived_customer",
+            "delivered_waiting_customer": "delivered_waiting_customer",
+        }.get(new)
+        if order_status:
+            conn.execute(
+                "UPDATE orders SET status=?,updated_at=?,customer_seen_at=0,provider_seen_at=0,last_event='delivery' WHERE id=?",
+                (order_status, int(time.time()), r["src_order_id"]),
+            )
     if new == "completed":
         # Faqat yakunlangandan keyin yana zakaz olishga ruxsat beriladi.
         conn.execute("UPDATE drivers SET available=1 WHERE id=?", (d["id"],))
@@ -5736,6 +5757,17 @@ def _order_to_dict(conn, r, view="customer"):
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
     last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
+    delivery = None
+    if (r["order_type"] or "") == "delivery":
+        rr = conn.execute(
+            """SELECT rd.status AS ride_status,u.name AS driver_name,d.phone AS driver_phone,
+                      d.car_model,d.car_color,d.car_plate
+               FROM rides rd LEFT JOIN drivers d ON d.id=rd.driver_id
+               LEFT JOIN users u ON u.id=d.user_id WHERE rd.src_order_id=? ORDER BY rd.id DESC LIMIT 1""",
+            (r["id"],),
+        ).fetchone()
+        if rr:
+            delivery = dict(rr)
     return {
         "id": r["id"],
         "customer_kind": r["customer_kind"],
@@ -5766,6 +5798,8 @@ def _order_to_dict(conn, r, view="customer"):
         "problem_solution": _row_val(r, "problem_solution", "") or "",
         "problem_opened_at": int(_row_val(r, "problem_opened_at", 0) or 0),
         "problem_resolved_at": int(_row_val(r, "problem_resolved_at", 0) or 0),
+        "seller_completed_at": int(_row_val(r, "seller_completed_at", 0) or 0),
+        "customer_received_at": int(_row_val(r, "customer_received_at", 0) or 0),
         "pay_card": _pay_card, "pay_holder": _pay_holder, "pay_qr": _pay_qr,
         "provider_address": _provider_address, "provider_phone": _provider_phone,
         "provider_work_hours": _provider_hours,
@@ -5779,6 +5813,7 @@ def _order_to_dict(conn, r, view="customer"):
         "chat_count": chat_count,
         "last_chat": ((last_chat["text"] if last_chat and last_chat["text"] else "📷 Rasm") if last_chat else ""),
         "last_chat_at": (last_chat["created_at"] if last_chat else 0),
+        "delivery": delivery,
         "view": view,
     }
 
@@ -6050,6 +6085,12 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     if new_status in ("tayyor", "done") and (_row_val(row, "payment_status", "") or "") != "confirmed":
         conn.close()
         raise HTTPException(409, "To'lov tasdiqlanmaguncha buyurtmani tayyorlash yoki yakunlash mumkin emas.")
+    if new_status == "tayyor" and row["status"] != "preparing":
+        conn.close()
+        raise HTTPException(409, "Buyurtma faqat Tayyorlanmoqda holatidan tayyor qilinadi.")
+    if new_status == "done":
+        conn.close()
+        raise HTTPException(409, "Buyurtmani sotuvchi bu bosqichda yakunlay olmaydi. Topshirish va qabul tasdig'i kerak.")
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
@@ -6081,6 +6122,8 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             "cancelled": "Bekor qilindi",
             "tayyor": "Tayyor bo'ldi — yetkazish uchun kuryer qidirilmoqda",
         }.get(new_status, new_status) + "\n\n" + (row["title"] or "Buyurtma")
+        if new_status == "tayyor" and (row["order_type"] or "") == "pickup":
+            notify_text = "🔔 Buyurtmangiz tayyor. Do'kondan olib ketishingiz mumkin.\n\n" + (row["title"] or "Buyurtma")
     elif new_status == "cancelled" and is_customer:
         # Mijoz bekor qildi — biznes tomonda yangi o'zgarish sifatida ko'rinadi.
         conn.execute(
@@ -6304,7 +6347,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
     now = int(time.time())
     if status == "confirmed":
         conn.execute(
-            """UPDATE orders SET payment_status=?,problem_open=0,problem_resolved_at=?,updated_at=?,
+            """UPDATE orders SET payment_status=?,status='preparing',problem_open=0,problem_resolved_at=?,updated_at=?,
                customer_seen_at=0,last_event='payment' WHERE id=?""",
             (status, now, now, order_id),
         )
@@ -6323,7 +6366,63 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         )
     conn.commit()
     conn.close()
-    return {"ok": True, "payment_status": status}
+    return {"ok": True, "payment_status": status, "status": ("preparing" if status == "confirmed" else r["status"])}
+
+
+@router.post("/orders/{order_id}/handoff")
+async def confirm_order_handoff(order_id: int, x_telegram_init_data: str = Header(default="")):
+    """Sotuvchi buyurtmani dostavkachiga yoki olib ketayotgan mijozga topshirganini tasdiqlaydi."""
+    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row or row["provider_kind"] != "business" or int(row["provider_actor_id"]) != int(biz["id"]):
+        conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
+    now = int(time.time())
+    if row["order_type"] == "delivery":
+        ride = conn.execute("SELECT * FROM rides WHERE src_order_id=? ORDER BY id DESC LIMIT 1", (order_id,)).fetchone()
+        if not ride or ride["status"] != "pickup_requested":
+            conn.close(); raise HTTPException(409, "Dostavkachi 'Dostavkani oldim' tugmasini hali bosmagan.")
+        conn.execute("UPDATE rides SET status='in_delivery' WHERE id=?", (ride["id"],))
+        new_status = "in_delivery"
+    else:
+        if row["status"] != "tayyor":
+            conn.close(); raise HTTPException(409, "Buyurtma hali topshirishga tayyor emas.")
+        new_status = "pickup_waiting_customer"
+    conn.execute(
+        "UPDATE orders SET status=?,seller_completed_at=?,updated_at=?,customer_seen_at=0,provider_seen_at=?,last_event='delivery' WHERE id=?",
+        (new_status, now, now, now, order_id),
+    )
+    _stock_deduct_for_order(conn, row, user["id"])
+    _kassa_add_for_order(conn, row, user["id"])
+    conn.commit(); conn.close()
+    return {"ok": True, "status": new_status, "seller_completed_at": now}
+
+
+@router.post("/orders/{order_id}/received")
+async def confirm_order_received(order_id: int, request: Request,
+                                 x_telegram_init_data: str = Header(default="")):
+    """Buyurtmachi buyurtmani olganini tasdiqlaydi; shundan keyin hamma tomon yakunlanadi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row or row["customer_kind"] != kind or int(row["customer_actor_id"]) != int(actor_id):
+        conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
+    allowed_status = "delivered_waiting_customer" if row["order_type"] == "delivery" else "pickup_waiting_customer"
+    if row["status"] != allowed_status:
+        conn.close(); raise HTTPException(409, "Buyurtmani qabul qilish bosqichi hali kelmagan.")
+    now = int(time.time())
+    if row["order_type"] == "delivery":
+        ride = conn.execute("SELECT * FROM rides WHERE src_order_id=? ORDER BY id DESC LIMIT 1", (order_id,)).fetchone()
+        if not ride or ride["status"] != "delivered_waiting_customer":
+            conn.close(); raise HTTPException(409, "Dostavkachi topshirishni hali tasdiqlamagan.")
+        conn.execute("UPDATE rides SET status='completed' WHERE id=?", (ride["id"],))
+        if ride["driver_id"]:
+            conn.execute("UPDATE drivers SET available=1 WHERE id=?", (ride["driver_id"],))
+    conn.execute(
+        "UPDATE orders SET status='done',customer_received_at=?,updated_at=?,customer_seen_at=?,provider_seen_at=0,last_event='delivery' WHERE id=?",
+        (now, now, now, order_id),
+    )
+    conn.commit(); conn.close()
+    return {"ok": True, "status": "done", "customer_received_at": now}
 
 
 @router.get("/orders/{order_id}/chat")
