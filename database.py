@@ -336,6 +336,9 @@ def init_db():
             body            TEXT DEFAULT '',
             order_id        INTEGER,
             ride_id         INTEGER,
+            requires_action INTEGER DEFAULT 0,
+            action_type     TEXT DEFAULT '',
+            resolved_at     INTEGER DEFAULT 0,
             is_read         INTEGER DEFAULT 0,
             created_at      INTEGER NOT NULL,
             read_at         INTEGER DEFAULT 0,
@@ -438,6 +441,13 @@ def _migrate(conn):
         created_at INTEGER NOT NULL,read_at INTEGER DEFAULT 0,
         UNIQUE(user_id,actor_kind,actor_id,event_key))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(user_id,actor_kind,actor_id,is_read,created_at)")
+    ncols = [r["name"] for r in conn.execute("PRAGMA table_info(notifications)").fetchall()]
+    if "requires_action" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN requires_action INTEGER DEFAULT 0")
+    if "action_type" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN action_type TEXT DEFAULT ''")
+    if "resolved_at" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN resolved_at INTEGER DEFAULT 0")
     conn.execute("""CREATE TABLE IF NOT EXISTS push_devices(
         id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,token TEXT NOT NULL UNIQUE,
         platform TEXT NOT NULL DEFAULT 'android',device_name TEXT DEFAULT '',app_version TEXT DEFAULT '',
