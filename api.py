@@ -1017,6 +1017,11 @@ async def accept_ride(ride_id: int, x_telegram_init_data: str = Header(default="
                 "UPDATE orders SET status='courier_assigned',updated_at=?,customer_seen_at=0,provider_seen_at=0,last_event='delivery' WHERE id=?",
                 (now, ride["src_order_id"]),
             )
+            order = conn.execute("SELECT * FROM orders WHERE id=?", (ride["src_order_id"],)).fetchone()
+            if order:
+                driver_name = user["name"] or "Dostavkachi"
+                _notify_order_side(conn, order, "customer", "courier_assigned", "Dostavkachi buyurtmani qabul qildi", driver_name)
+                _notify_order_side(conn, order, "provider", "courier_assigned", "Dostavkachi biriktirildi", driver_name)
         conn.commit()
     except HTTPException:
         conn.rollback()
@@ -1103,6 +1108,13 @@ async def update_ride_status(ride_id: int, request: Request, x_telegram_init_dat
                 "UPDATE orders SET status=?,updated_at=?,customer_seen_at=0,provider_seen_at=0,last_event='delivery' WHERE id=?",
                 (order_status, int(time.time()), r["src_order_id"]),
             )
+            order = conn.execute("SELECT * FROM orders WHERE id=?", (r["src_order_id"],)).fetchone()
+            if order and new == "pickup_requested":
+                _notify_order_side(conn, order, "provider", "courier_pickup_requested", "Dostavkachi buyurtmani olishga tayyor", "Buyurtmani dostavkachiga topshiring.", ride_id)
+            elif order and new == "arrived_customer":
+                _notify_order_side(conn, order, "customer", "courier_arrived", "Dostavkachi yetib keldi", "Buyurtmani qabul qilishga tayyorlaning.", ride_id)
+            elif order and new == "delivered_waiting_customer":
+                _notify_order_side(conn, order, "customer", "delivery_handed", "Buyurtma topshirildi", "Buyurtmani olganingizni tasdiqlang.", ride_id)
     if new == "completed":
         # Faqat yakunlangandan keyin yana zakaz olishga ruxsat beriladi.
         conn.execute("UPDATE drivers SET available=1 WHERE id=?", (d["id"],))
@@ -5729,6 +5741,65 @@ def _order_seen_value(r, view):
     return int(_row_val(r, "customer_seen_at", 0) or 0)
 
 
+def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None):
+    """Bir hodisani bir aktyorga faqat bir marta yozadi."""
+    if not user_id or not actor_id or not event_key:
+        return
+    conn.execute(
+        """INSERT OR IGNORE INTO notifications
+           (user_id,actor_kind,actor_id,event_key,title,body,order_id,ride_id,is_read,created_at)
+           VALUES(?,?,?,?,?,?,?,?,0,?)""",
+        (int(user_id), actor_kind, int(actor_id), str(event_key), title, body,
+         order_id, ride_id, int(time.time())),
+    )
+
+
+def _notify_order_side(conn, order, side, event, title, body="", ride_id=None):
+    if side == "customer":
+        _add_notification(conn, order["customer_user_id"], order["customer_kind"],
+                          order["customer_actor_id"], "order:%s:%s" % (order["id"], event),
+                          title, body, order["id"], ride_id)
+    else:
+        _add_notification(conn, order["provider_user_id"], order["provider_kind"],
+                          order["provider_actor_id"], "order:%s:%s" % (order["id"], event),
+                          title, body, order["id"], ride_id)
+
+
+@router.get("/notifications")
+async def list_notifications(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type); kind, actor_id, _ = _actor_identity(actor)
+    rows = conn.execute(
+        """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=?
+           ORDER BY created_at DESC,id DESC LIMIT 200""", (me["id"], kind, actor_id)).fetchall()
+    unread = conn.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0",
+        (me["id"], kind, actor_id)).fetchone()[0]
+    out = [dict(r) for r in rows]; conn.close()
+    return {"items": out, "unread": unread}
+
+
+@router.put("/notifications/{notification_id}/read")
+async def read_notification(notification_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
+    cur = conn.execute("""UPDATE notifications SET is_read=1,read_at=?
+        WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?""",
+        (now, notification_id, me["id"], kind, actor_id))
+    conn.commit(); conn.close()
+    if not cur.rowcount: raise HTTPException(404, "Bildirishnoma topilmadi.")
+    return {"ok": True, "read_at": now}
+
+
+@router.put("/notifications/read-all/all")
+async def read_all_notifications(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
+    conn.execute("""UPDATE notifications SET is_read=1,read_at=?
+        WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0""", (now, me["id"], kind, actor_id))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
 def _ensure_order_pay_column(conn):
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
     if "payment_status" not in cols:
@@ -5896,6 +5967,9 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     )
     oid = cur.lastrowid
     conn.execute("UPDATE orders SET customer_seen_at=?, provider_seen_at=0 WHERE id=?", (now, oid))
+    created_order = conn.execute("SELECT * FROM orders WHERE id=?", (oid,)).fetchone()
+    _notify_order_side(conn, created_order, "provider", "created", "Yangi buyurtma keldi",
+                       "Buyurtmani ko'rib, qabul qiling.")
     for oi in order_items:
         conn.execute(
             """INSERT INTO order_items(order_id, item_id, item_name, price_text, qty, unit, line_total, note, created_at)
@@ -6113,6 +6187,13 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         )
         if new_status == "accepted":
             conn.execute("UPDATE orders SET payment_status='pending' WHERE id=?", (order_id,))
+            _notify_order_side(conn, row, "customer", "accepted", "Buyurtma qabul qilindi",
+                               "To'lovni amalga oshirib, chekni yuboring.")
+        elif new_status == "tayyor":
+            _notify_order_side(conn, row, "customer", "ready", "Buyurtma tayyor bo'ldi",
+                               "Olib ketish yoki dostavka jarayonini kuzating.")
+        elif new_status in ("rejected", "cancelled"):
+            _notify_order_side(conn, row, "customer", new_status, "Buyurtma bekor qilindi", row["title"] or "Buyurtma")
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
         notify_tg = cu["tg_id"] if cu else None
         notify_text = "🔔 Buyurtma holati: " + {
@@ -6133,6 +6214,7 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         pu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["provider_user_id"],)).fetchone()
         notify_tg = pu["tg_id"] if pu else None
         notify_text = "⚠️ Mijoz buyurtmani bekor qildi\n\n" + (row["title"] or "Buyurtma")
+        _notify_order_side(conn, row, "provider", "cancelled_by_customer", "Mijoz buyurtmani bekor qildi", row["title"] or "Buyurtma")
     else:
         conn.execute("UPDATE orders SET status=?, updated_at=? WHERE id=?", (new_status, now, order_id))
 
@@ -6319,6 +6401,8 @@ async def submit_order_payment(order_id: int, request: Request,
            customer_seen_at=?,last_event='payment' WHERE id=?""",
         (now, now, order_id),
     )
+    _notify_order_side(conn, row, "provider", "payment_submitted", "To'lov qilindi",
+                       "To'lov cheki yuborildi. To'lovni tekshirib tasdiqlang.")
     conn.commit(); conn.close()
     return {"ok": True, "payment_status": "submitted", "receipt_message_id": receipt["id"]}
 
@@ -6351,6 +6435,8 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
                customer_seen_at=0,last_event='payment' WHERE id=?""",
             (status, now, now, order_id),
         )
+        _notify_order_side(conn, r, "customer", "payment_confirmed", "To'lov tasdiqlandi",
+                           "Buyurtma tayyorlanmoqda.")
     else:
         conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
     # Suhbatga tizim xabari
@@ -6391,6 +6477,8 @@ async def confirm_order_handoff(order_id: int, x_telegram_init_data: str = Heade
         "UPDATE orders SET status=?,seller_completed_at=?,updated_at=?,customer_seen_at=0,provider_seen_at=?,last_event='delivery' WHERE id=?",
         (new_status, now, now, now, order_id),
     )
+    _notify_order_side(conn, row, "customer", "seller_handoff", "Buyurtma topshirildi",
+                       "Buyurtma sizga yo'l oldi." if row["order_type"] == "delivery" else "Buyurtmani qabul qilganingizni tasdiqlang.")
     _stock_deduct_for_order(conn, row, user["id"])
     _kassa_add_for_order(conn, row, user["id"])
     conn.commit(); conn.close()
@@ -6421,6 +6509,8 @@ async def confirm_order_received(order_id: int, request: Request,
         "UPDATE orders SET status='done',customer_received_at=?,updated_at=?,customer_seen_at=?,provider_seen_at=0,last_event='delivery' WHERE id=?",
         (now, now, now, order_id),
     )
+    _notify_order_side(conn, row, "provider", "customer_received", "Buyurtma qabul qilindi",
+                       "Buyurtmachi buyurtmani olganini tasdiqladi.")
     conn.commit(); conn.close()
     return {"ok": True, "status": "done", "customer_received_at": now}
 
