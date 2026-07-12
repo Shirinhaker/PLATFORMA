@@ -342,6 +342,25 @@ def init_db():
             UNIQUE(user_id, actor_kind, actor_id, event_key)
         );
 
+        CREATE TABLE IF NOT EXISTS push_devices(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,platform TEXT NOT NULL DEFAULT 'android',
+            device_name TEXT DEFAULT '',app_version TEXT DEFAULT '',enabled INTEGER DEFAULT 1,
+            created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,last_seen_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS push_preferences(
+            user_id INTEGER NOT NULL,actor_kind TEXT NOT NULL,actor_id INTEGER NOT NULL,
+            enabled INTEGER DEFAULT 1,orders_enabled INTEGER DEFAULT 1,
+            updated_at INTEGER NOT NULL,PRIMARY KEY(user_id,actor_kind,actor_id)
+        );
+        CREATE TABLE IF NOT EXISTS push_outbox(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,notification_id INTEGER NOT NULL,
+            device_id INTEGER NOT NULL,status TEXT DEFAULT 'pending',attempts INTEGER DEFAULT 0,
+            provider_message_id TEXT DEFAULT '',last_error TEXT DEFAULT '',
+            created_at INTEGER NOT NULL,sent_at INTEGER DEFAULT 0,
+            UNIQUE(notification_id,device_id)
+        );
+
         CREATE TABLE IF NOT EXISTS drivers(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL UNIQUE,           -- haydovchi (foydalanuvchi)
@@ -398,6 +417,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(status, created_at);
         CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(user_id,actor_kind,actor_id,is_read,created_at);
+        CREATE INDEX IF NOT EXISTS idx_push_outbox_status ON push_outbox(status,created_at);
         CREATE INDEX IF NOT EXISTS idx_debtors_biz    ON debtors(business_id);
         CREATE INDEX IF NOT EXISTS idx_qtx_debtor     ON qarz_tx(debtor_id);
         CREATE INDEX IF NOT EXISTS idx_drivers_user   ON drivers(user_id);
@@ -418,6 +438,20 @@ def _migrate(conn):
         created_at INTEGER NOT NULL,read_at INTEGER DEFAULT 0,
         UNIQUE(user_id,actor_kind,actor_id,event_key))""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(user_id,actor_kind,actor_id,is_read,created_at)")
+    conn.execute("""CREATE TABLE IF NOT EXISTS push_devices(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,token TEXT NOT NULL UNIQUE,
+        platform TEXT NOT NULL DEFAULT 'android',device_name TEXT DEFAULT '',app_version TEXT DEFAULT '',
+        enabled INTEGER DEFAULT 1,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,last_seen_at INTEGER NOT NULL)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS push_preferences(
+        user_id INTEGER NOT NULL,actor_kind TEXT NOT NULL,actor_id INTEGER NOT NULL,
+        enabled INTEGER DEFAULT 1,orders_enabled INTEGER DEFAULT 1,updated_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,actor_kind,actor_id))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS push_outbox(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,notification_id INTEGER NOT NULL,device_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending',attempts INTEGER DEFAULT 0,provider_message_id TEXT DEFAULT '',
+        last_error TEXT DEFAULT '',created_at INTEGER NOT NULL,sent_at INTEGER DEFAULT 0,
+        UNIQUE(notification_id,device_id))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_push_outbox_status ON push_outbox(status,created_at)")
     # Mahsulot/xizmat guruhlari — v1379. CASCADE qo'ymaymiz: guruh o'chsa, tovarlar Guruhsizga o'tadi.
     conn.execute(
         """CREATE TABLE IF NOT EXISTS item_groups(
