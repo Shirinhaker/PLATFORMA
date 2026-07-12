@@ -326,6 +326,22 @@ def init_db():
             created_at    INTEGER NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS notifications(
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER NOT NULL,
+            actor_kind      TEXT NOT NULL DEFAULT 'user',
+            actor_id        INTEGER NOT NULL,
+            event_key       TEXT NOT NULL,
+            title           TEXT NOT NULL,
+            body            TEXT DEFAULT '',
+            order_id        INTEGER,
+            ride_id         INTEGER,
+            is_read         INTEGER DEFAULT 0,
+            created_at      INTEGER NOT NULL,
+            read_at         INTEGER DEFAULT 0,
+            UNIQUE(user_id, actor_kind, actor_id, event_key)
+        );
+
         CREATE TABLE IF NOT EXISTS drivers(
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id       INTEGER NOT NULL UNIQUE,           -- haydovchi (foydalanuvchi)
@@ -381,6 +397,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(status, created_at);
+        CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(user_id,actor_kind,actor_id,is_read,created_at);
         CREATE INDEX IF NOT EXISTS idx_debtors_biz    ON debtors(business_id);
         CREATE INDEX IF NOT EXISTS idx_qtx_debtor     ON qarz_tx(debtor_id);
         CREATE INDEX IF NOT EXISTS idx_drivers_user   ON drivers(user_id);
@@ -393,6 +410,14 @@ def init_db():
 
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
+    conn.execute("""CREATE TABLE IF NOT EXISTS notifications(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,
+        actor_kind TEXT NOT NULL DEFAULT 'user',actor_id INTEGER NOT NULL,
+        event_key TEXT NOT NULL,title TEXT NOT NULL,body TEXT DEFAULT '',
+        order_id INTEGER,ride_id INTEGER,is_read INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,read_at INTEGER DEFAULT 0,
+        UNIQUE(user_id,actor_kind,actor_id,event_key))""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications(user_id,actor_kind,actor_id,is_read,created_at)")
     # Mahsulot/xizmat guruhlari — v1379. CASCADE qo'ymaymiz: guruh o'chsa, tovarlar Guruhsizga o'tadi.
     conn.execute(
         """CREATE TABLE IF NOT EXISTS item_groups(
