@@ -34,7 +34,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1479"
+APP_BUILD = "v1480"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -64,6 +64,9 @@ def resolve_upload_dir():
 UPLOAD_DIR = resolve_upload_dir()
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
+MOBILE_CODE_TTL = 5 * 60
+MOBILE_SESSION_TTL = 30 * 24 * 60 * 60
+MOBILE_OTP_SECRET = os.environ.get("MOBILE_OTP_SECRET", WEBHOOK_SECRET)
 
 # ---------- Bot va Mini App uchun ruxsat berilgan Telegram IDlar ----------
 # Faqat shu ID egalari botdan va platformadan foydalana oladi.
@@ -169,6 +172,32 @@ def gen_code():
     return "".join(secrets.choice("0123456789") for _ in range(6))
 
 
+def normalize_uz_phone(value):
+    """O'zbekiston raqamini +998XXXXXXXXX ko'rinishiga keltiradi."""
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if digits.startswith("998") and len(digits) == 12:
+        return "+" + digits
+    if len(digits) == 9:
+        return "+998" + digits
+    return ""
+
+
+def mobile_code_hash(phone, code):
+    raw = phone + ":" + str(code or "") + ":" + MOBILE_OTP_SECRET
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def find_user_by_phone(conn, phone):
+    """Bazadagi turli yozilishdagi telefonlarni yagona formatda solishtiradi."""
+    matches = []
+    for row in conn.execute("SELECT * FROM users WHERE COALESCE(phone,'')<>''").fetchall():
+        if normalize_uz_phone(row["phone"]) == phone:
+            matches.append(row)
+    if len(matches) > 1:
+        raise HTTPException(409, "Bu telefon bir nechta akkauntga biriktirilgan. Yordam xizmatiga murojaat qiling.")
+    return matches[0] if matches else None
+
+
 # ---------- Telegram bot ----------
 async def tg_call(method, payload):
     if TEST_MODE:
@@ -266,7 +295,7 @@ async def whitelist_middleware(request: Request, call_next):
         # XODIM (staff) kirishi Telegram whitelistdan ozod:
         #  1) /api/staff-auth* (login / me / logout)
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
-        if path.startswith("/api/staff-auth"):
+        if path.startswith("/api/staff-auth") or path in ("/api/mobile-auth/request-code", "/api/mobile-auth/verify-code"):
             return await call_next(request)
         init_data = request.headers.get("x-telegram-init-data", "")
         staff_token = request.headers.get("x-staff-token", "")
@@ -309,7 +338,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True}
 
 
 @app.get("/api/_dbinfo")
@@ -487,6 +516,117 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
 
 
 # ---------- Katalog ----------
+@app.post("/api/mobile-auth/request-code")
+async def mobile_request_code(request: Request):
+    """Mavjud akkaunt telefoniga 6 xonali kirish kodi tayyorlaydi."""
+    body = await request.json()
+    phone = normalize_uz_phone(body.get("phone"))
+    if not phone:
+        raise HTTPException(400, "Telefon raqamini +998XXXXXXXXX ko'rinishida kiriting.")
+    conn = db()
+    user = find_user_by_phone(conn, phone)
+    if not user:
+        conn.close()
+        raise HTTPException(404, "Bu telefon raqamiga biriktirilgan akkaunt topilmadi.")
+    now = int(time.time())
+    recent = conn.execute(
+        "SELECT created_at FROM mobile_verification_codes WHERE phone=? AND purpose='login' ORDER BY id DESC LIMIT 1",
+        (phone,),
+    ).fetchone()
+    if recent and now - int(recent["created_at"] or 0) < 60:
+        wait = 60 - (now - int(recent["created_at"] or 0))
+        conn.close()
+        raise HTTPException(429, "Yangi kod olish uchun " + str(wait) + " soniya kuting.")
+    if not TEST_MODE:
+        conn.close()
+        # Haqiqiy SMS provayderi keyingi bosqichda shu yerga ulanadi.
+        raise HTTPException(503, "SMS provayder hali ulanmagan. Hozircha TEST_MODE=1 da sinash mumkin.")
+    code = gen_code()
+    cur = conn.execute(
+        """INSERT INTO mobile_verification_codes
+           (user_id,phone,code_hash,purpose,attempts,max_attempts,created_at,expires_at,verified_at)
+           VALUES(?,?,?,'login',0,5,?,?,0)""",
+        (user["id"], phone, mobile_code_hash(phone, code), now, now + MOBILE_CODE_TTL),
+    )
+    request_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "request_id": request_id, "expires_in": MOBILE_CODE_TTL,
+            "resend_after": 60, "test_code": code}
+
+
+@app.post("/api/mobile-auth/verify-code")
+async def mobile_verify_code(request: Request):
+    """Bir martalik kodni tekshiradi va 30 kunlik mobil token beradi."""
+    body = await request.json()
+    try:
+        request_id = int(body.get("request_id") or 0)
+    except Exception:
+        request_id = 0
+    phone = normalize_uz_phone(body.get("phone"))
+    code = "".join(ch for ch in str(body.get("code") or "") if ch.isdigit())
+    if not request_id or not phone or len(code) != 6:
+        raise HTTPException(400, "Telefon, request_id va 6 xonali kodni to'g'ri kiriting.")
+    conn = db()
+    row = conn.execute(
+        "SELECT * FROM mobile_verification_codes WHERE id=? AND phone=? AND purpose='login'",
+        (request_id, phone),
+    ).fetchone()
+    now = int(time.time())
+    if not row or int(row["verified_at"] or 0):
+        conn.close()
+        raise HTTPException(400, "Tasdiqlash so'rovi topilmadi yoki ishlatilgan.")
+    if int(row["expires_at"] or 0) <= now:
+        conn.close()
+        raise HTTPException(400, "Tasdiqlash kodi muddati tugagan.")
+    if int(row["attempts"] or 0) >= int(row["max_attempts"] or 5):
+        conn.close()
+        raise HTTPException(429, "Kod kiritish urinishlari tugagan. Yangi kod oling.")
+    if not hmac.compare_digest(row["code_hash"], mobile_code_hash(phone, code)):
+        conn.execute("UPDATE mobile_verification_codes SET attempts=attempts+1 WHERE id=?", (request_id,))
+        conn.commit()
+        left = max(0, int(row["max_attempts"] or 5) - int(row["attempts"] or 0) - 1)
+        conn.close()
+        raise HTTPException(400, "Kod noto'g'ri. Qolgan urinish: " + str(left) + ".")
+
+    token = secrets.token_urlsafe(48)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    device_name = str(body.get("device_name") or "Mobil qurilma").strip()[:120]
+    expires_at = now + MOBILE_SESSION_TTL
+    conn.execute("UPDATE mobile_verification_codes SET verified_at=? WHERE id=?", (now, request_id))
+    conn.execute(
+        """INSERT INTO mobile_sessions
+           (user_id,token_hash,device_name,created_at,expires_at,last_used_at,revoked_at)
+           VALUES(?,?,?,?,?,?,0)""",
+        (row["user_id"], token_hash, device_name, now, expires_at, now),
+    )
+    user = conn.execute("SELECT id,name,role FROM users WHERE id=?", (row["user_id"],)).fetchone()
+    conn.commit()
+    conn.close()
+    return {"ok": True, "access_token": token, "token_type": "Bearer",
+            "expires_in": MOBILE_SESSION_TTL, "expires_at": expires_at,
+            "user": {"id": user["id"], "name": user["name"], "role": user["role"]}}
+
+
+@app.post("/api/mobile-auth/logout")
+async def mobile_logout(request: Request):
+    auth = (request.headers.get("authorization") or "").strip()
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(401, "Mobil token topilmadi.")
+    token_hash = hashlib.sha256(auth[7:].strip().encode()).hexdigest()
+    conn = db()
+    cur = conn.execute(
+        "UPDATE mobile_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at=0",
+        (int(time.time()), token_hash),
+    )
+    conn.commit()
+    conn.close()
+    if not cur.rowcount:
+        raise HTTPException(401, "Mobil sessiya topilmadi.")
+    return {"ok": True}
+
+
 @app.get("/api/catalog")
 async def get_catalog():
     return {"yonalishlar": CATALOG, "elon_toifalari": LISTING_CATS}
