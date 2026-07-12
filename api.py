@@ -5719,6 +5719,8 @@ def _order_to_dict(conn, r, view="customer"):
     provider = _actor_brief(conn, r["provider_kind"], r["provider_actor_id"])
     # Provayder biznes bo'lsa — to'lov ma'lumotini qo'shamiz (onlayn to'lov uchun)
     _pay_card = _pay_holder = _pay_qr = ""
+    _provider_address = _provider_phone = _provider_hours = ""
+    _provider_lat = _provider_lng = None
     if (r["provider_kind"] or "") == "business":
         _pb = conn.execute("SELECT * FROM businesses WHERE id=?", (r["provider_actor_id"],)).fetchone()
         if _pb:
@@ -5726,6 +5728,10 @@ def _order_to_dict(conn, r, view="customer"):
             _pay_card = (_pb["pay_card"] if "pay_card" in _pbk else "") or ""
             _pay_holder = (_pb["pay_holder"] if "pay_holder" in _pbk else "") or ""
             _pay_qr = (_pb["pay_qr"] if "pay_qr" in _pbk else "") or ""
+            _provider_address = _pb["address"] or ""
+            _provider_phone = _pb["phone"] or ""
+            _provider_hours = _pb["work_hours"] or ""
+            _provider_lat, _provider_lng = _pb["lat"], _pb["lng"]
     items = _order_items_to_dict(conn, r["id"])
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
@@ -5754,7 +5760,16 @@ def _order_to_dict(conn, r, view="customer"):
         "total_text": _fmt_summa(total_amount),
         "status": r["status"],
         "payment_status": _row_val(r, "payment_status", "") or "",
+        "problem_open": bool(_row_val(r, "problem_open", 0) or 0),
+        "problem_reason": _row_val(r, "problem_reason", "") or "",
+        "problem_note": _row_val(r, "problem_note", "") or "",
+        "problem_solution": _row_val(r, "problem_solution", "") or "",
+        "problem_opened_at": int(_row_val(r, "problem_opened_at", 0) or 0),
+        "problem_resolved_at": int(_row_val(r, "problem_resolved_at", 0) or 0),
         "pay_card": _pay_card, "pay_holder": _pay_holder, "pay_qr": _pay_qr,
+        "provider_address": _provider_address, "provider_phone": _provider_phone,
+        "provider_work_hours": _provider_hours,
+        "provider_lat": _provider_lat, "provider_lng": _provider_lng,
         "created_at": r["created_at"],
         "updated_at": r["updated_at"],
         "provider_seen_at": _row_val(r, "provider_seen_at", 0),
@@ -6029,6 +6044,10 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
         conn.close()
         raise HTTPException(404, "Buyurtma topilmadi.")
 
+    if bool(_row_val(row, "problem_open", 0) or 0) and new_status in ("tayyor", "done"):
+        conn.close()
+        raise HTTPException(409, "Muammoli buyurtmani tayyorlash yoki yakunlash mumkin emas. Avval to'lov muammosini hal qiling.")
+
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
     if new_status in ("accepted", "rejected", "done", "tayyor") and not is_provider:
@@ -6168,6 +6187,64 @@ def _mark_order_changed_for_side(conn, order_id, side, now=None):
     return now
 
 
+@router.post("/orders/{order_id}/problem")
+async def open_order_problem(order_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Sotuvchi to'lov muammosini ochadi; dostavka va yakunlash bloklanadi."""
+    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row or row["provider_kind"] != "business" or int(row["provider_actor_id"]) != int(biz["id"]):
+        conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
+    if row["status"] in ("done", "cancelled", "rejected"):
+        conn.close(); raise HTTPException(409, "Yakunlangan buyurtmada muammo ochib bo'lmaydi.")
+    reasons = {
+        "not_received": "Pul hisobga tushmadi",
+        "amount_short": "To'langan summa kam",
+        "receipt_mismatch": "Chek ma'lumoti mos kelmadi",
+        "receipt_unreadable": "Chek rasmi o'qilmaydi",
+        "wrong_receipt": "Noto'g'ri chek yuborilgan",
+        "other": "Boshqa to'lov muammosi",
+    }
+    reason = str(body.get("reason") or "").strip()
+    if reason not in reasons:
+        conn.close(); raise HTTPException(400, "Muammo sababini tanlang.")
+    note = str(body.get("note") or "").strip()[:1000]
+    now = int(time.time())
+    conn.execute(
+        """UPDATE orders SET problem_open=1,problem_reason=?,problem_note=?,problem_solution='',
+           problem_opened_at=?,problem_resolved_at=0,payment_status='disputed',updated_at=?,
+           customer_seen_at=0,provider_seen_at=?,last_event='problem' WHERE id=?""",
+        (reason, note, now, now, now, order_id),
+    )
+    conn.commit(); conn.close()
+    return {"ok": True, "problem_open": True, "reason": reason, "reason_text": reasons[reason]}
+
+
+@router.put("/orders/{order_id}/problem/solution")
+async def choose_order_problem_solution(order_id: int, request: Request,
+                                        x_telegram_init_data: str = Header(default="")):
+    """Buyurtmachi: do'konga borish, kutish yoki yangi chek yuborishni tanlaydi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row or row["customer_kind"] != kind or int(row["customer_actor_id"]) != int(actor_id):
+        conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
+    if not bool(_row_val(row, "problem_open", 0) or 0):
+        conn.close(); raise HTTPException(409, "Bu buyurtmada ochiq muammo yo'q.")
+    solution = str(body.get("solution") or "").strip()
+    if solution not in ("pickup", "wait", "new_receipt"):
+        conn.close(); raise HTTPException(400, "Yechimni tanlang.")
+    now = int(time.time())
+    payment_status = "recheck" if solution == "new_receipt" else "disputed"
+    order_type = "pickup" if solution == "pickup" else row["order_type"]
+    conn.execute(
+        """UPDATE orders SET problem_solution=?,payment_status=?,order_type=?,updated_at=?,
+           provider_seen_at=0,customer_seen_at=?,last_event='problem' WHERE id=?""",
+        (solution, payment_status, order_type, now, now, order_id),
+    )
+    conn.commit(); conn.close()
+    return {"ok": True, "solution": solution, "order_type": order_type, "payment_status": payment_status}
+
+
 @router.post("/orders/{order_id}/payment")
 async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     """Provayder biznes buyurtma to'lovini tasdiqlaydi yoki rad etadi. Suhbatga xabar yoziladi."""
@@ -6186,7 +6263,14 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(400, "Holat noto'g'ri.")
     now = int(time.time())
-    conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
+    if status == "confirmed":
+        conn.execute(
+            """UPDATE orders SET payment_status=?,problem_open=0,problem_resolved_at=?,updated_at=?,
+               customer_seen_at=0,last_event='payment' WHERE id=?""",
+            (status, now, now, order_id),
+        )
+    else:
+        conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
     # Suhbatga tizim xabari
     msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!",
            "rejected": "❌ To'lov tasdiqlanmadi. Iltimos, to'lovni tekshiring yoki qayta yuboring.",
