@@ -4699,7 +4699,8 @@ FRACTIONAL_UNITS = ("kg", "g", "litr", "ml", "metr", "sm", "m²", "soat")
 
 
 @router.get("/search")
-async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Header(default="")):
+async def search(q: str = "", scope: str = "", actor_type: str = "user",
+                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -4710,13 +4711,16 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
         conn.commit()
     except Exception:
         pass
-    # Qadam 3: foydalanuvchi joylashuvi (masofa filtri uchun). Bo'lmasa filtr qo'llanmaydi.
+    # Qidiruv joriy kabinet nomidan bajariladi. Oddiy kabinet uchun users,
+    # biznes kabinet uchun businesses koordinatasi olinadi; ular aralashtirilmaydi.
     ulat = ulng = None
-    try:
-        _u = require_user(conn, x_telegram_init_data)
+    _u = require_user(conn, x_telegram_init_data)
+    actor_ctx = resolve_actor(conn, _u, actor_type)
+    if actor_ctx["type"] == "business":
+        _biz = actor_ctx["business"]
+        ulat, ulng = _biz["lat"], _biz["lng"]
+    else:
         ulat, ulng = _u["lat"], _u["lng"]
-    except Exception:
-        ulat = ulng = None
 
     def _fetch(qq):
         terms = _search_terms(qq)
@@ -4853,6 +4857,7 @@ async def search(q: str = "", scope: str = "", x_telegram_init_data: str = Heade
     result = {
         "q": q,
         "scope": scope,
+        "actor_type": actor_ctx["type"],
         "corrected": corrected,
         "terms": _search_terms(corrected or q),
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"], "unit": p["unit"] or "dona",
