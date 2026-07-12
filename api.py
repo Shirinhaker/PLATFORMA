@@ -5752,6 +5752,21 @@ def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, bod
         (int(user_id), actor_kind, int(actor_id), str(event_key), title, body,
          order_id, ride_id, int(time.time())),
     )
+    notification = conn.execute(
+        "SELECT id FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND event_key=?",
+        (int(user_id), actor_kind, int(actor_id), str(event_key)),
+    ).fetchone()
+    pref = conn.execute(
+        "SELECT enabled,orders_enabled FROM push_preferences WHERE user_id=? AND actor_kind=? AND actor_id=?",
+        (int(user_id), actor_kind, int(actor_id)),
+    ).fetchone()
+    if notification and (not pref or (pref["enabled"] and pref["orders_enabled"])):
+        now = int(time.time())
+        devices = conn.execute("SELECT id FROM push_devices WHERE user_id=? AND enabled=1", (int(user_id),)).fetchall()
+        for device in devices:
+            conn.execute(
+                """INSERT OR IGNORE INTO push_outbox(notification_id,device_id,status,attempts,created_at)
+                   VALUES(?,?,'pending',0,?)""", (notification["id"], device["id"], now))
 
 
 def _notify_order_side(conn, order, side, event, title, body="", ride_id=None):
@@ -5765,6 +5780,67 @@ def _notify_order_side(conn, order, side, event, title, body="", ride_id=None):
                           title, body, order["id"], ride_id)
 
 
+@router.post("/push/devices")
+async def register_push_device(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Mobil ilova FCM/APNs tokenini joriy akkauntga xavfsiz bog'laydi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    token = str(body.get("token") or "").strip()
+    platform = str(body.get("platform") or "android").strip().lower()
+    if len(token) < 20 or len(token) > 4096:
+        conn.close(); raise HTTPException(400, "Qurilma tokeni noto'g'ri.")
+    if platform not in ("android", "ios", "web"):
+        conn.close(); raise HTTPException(400, "Qurilma platformasi noto'g'ri.")
+    now = int(time.time())
+    conn.execute("""INSERT INTO push_devices(user_id,token,platform,device_name,app_version,enabled,created_at,updated_at,last_seen_at)
+        VALUES(?,?,?,?,?,1,?,?,?) ON CONFLICT(token) DO UPDATE SET user_id=excluded.user_id,
+        platform=excluded.platform,device_name=excluded.device_name,app_version=excluded.app_version,
+        enabled=1,updated_at=excluded.updated_at,last_seen_at=excluded.last_seen_at""",
+        (me["id"], token, platform, str(body.get("device_name") or "")[:120],
+         str(body.get("app_version") or "")[:40], now, now, now))
+    conn.commit(); row = conn.execute("SELECT id FROM push_devices WHERE token=?", (token,)).fetchone(); conn.close()
+    return {"ok": True, "device_id": row["id"]}
+
+
+@router.delete("/push/devices")
+async def unregister_push_device(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    token = str(body.get("token") or "").strip()
+    conn.execute("UPDATE push_devices SET enabled=0,updated_at=? WHERE user_id=? AND token=?",
+                 (int(time.time()), me["id"], token)); conn.commit(); conn.close()
+    return {"ok": True}
+
+
+@router.get("/push/preferences")
+async def get_push_preferences(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type); kind, actor_id, _ = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM push_preferences WHERE user_id=? AND actor_kind=? AND actor_id=?",
+                       (me["id"], kind, actor_id)).fetchone(); conn.close()
+    return {"enabled": bool(row["enabled"]) if row else True,
+            "orders_enabled": bool(row["orders_enabled"]) if row else True}
+
+
+@router.put("/push/preferences")
+async def set_push_preferences(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
+    enabled = 1 if body.get("enabled", True) else 0
+    orders_enabled = 1 if body.get("orders_enabled", True) else 0
+    conn.execute("""INSERT INTO push_preferences(user_id,actor_kind,actor_id,enabled,orders_enabled,updated_at)
+        VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,actor_kind,actor_id) DO UPDATE SET
+        enabled=excluded.enabled,orders_enabled=excluded.orders_enabled,updated_at=excluded.updated_at""",
+        (me["id"], kind, actor_id, enabled, orders_enabled, now)); conn.commit(); conn.close()
+    return {"ok": True, "enabled": bool(enabled), "orders_enabled": bool(orders_enabled)}
+
+
+@router.get("/push/status")
+async def push_status(x_telegram_init_data: str = Header(default="")):
+    conn = db(); me = require_user(conn, x_telegram_init_data)
+    devices = conn.execute("SELECT COUNT(*) FROM push_devices WHERE user_id=? AND enabled=1", (me["id"],)).fetchone()[0]
+    pending = conn.execute("""SELECT COUNT(*) FROM push_outbox po JOIN push_devices pd ON pd.id=po.device_id
+        WHERE pd.user_id=? AND po.status='pending'""", (me["id"],)).fetchone()[0]; conn.close()
+    return {"provider": "firebase", "configured": bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH")),
+            "active_devices": devices, "pending": pending}
 @router.get("/notifications")
 async def list_notifications(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data)
