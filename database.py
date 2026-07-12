@@ -474,6 +474,23 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN lat REAL")
     if "lng" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN lng REAL")
+    # v1479: kelajakdagi Android/iOS ilovasi uchun Telegramdan mustaqil sessiyalar.
+    # Bazada tokenning o'zi emas, SHA-256 xeshi saqlanadi.
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS mobile_sessions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            device_name TEXT DEFAULT '',
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            last_used_at INTEGER DEFAULT 0,
+            revoked_at INTEGER DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_sessions_user ON mobile_sessions(user_id, revoked_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_sessions_expiry ON mobile_sessions(expires_at, revoked_at)")
     # login_requests jadvali bormi? (CREATE TABLE IF NOT EXISTS yuqorida bor, lekin ishonch uchun)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS login_requests(
