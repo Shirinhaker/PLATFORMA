@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1476 -->
+<title>Platforma</title><!-- BUILD: v1477 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -2687,7 +2687,7 @@
     if(!q){ exitResults(); nav("home"); return; }
     el("searchInput").value = q;
     el("catSearch").value = q;
-    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)).then(function(data){
+    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()).then(function(data){
       if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
       var r = buildResults(data, '"'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
