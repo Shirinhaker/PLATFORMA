@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1483 -->
+<title>Platforma</title><!-- BUILD: v1484 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -3699,8 +3699,9 @@
     if(mode==="inbox"){
       if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       else if(o.status==="accepted"){
-        var readyBtn = (o.order_type==="delivery") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
-        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+'<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+        var readyBtn = (o.order_type==="delivery" && o.payment_status==="confirmed") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
+        var problemBtn = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
+        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+problemBtn+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
       }
       else if(o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     } else {
@@ -3723,8 +3724,9 @@
     if(mode==="inbox"){
       if(o.status==="new") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       if(o.status==="accepted"){
-        var rb = (o.order_type==="delivery") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
-        return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+rb+'<button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+        var rb = (o.order_type==="delivery" && o.payment_status==="confirmed") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
+        var pb = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
+        return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+rb+pb+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
       }
       if(o.status==="tayyor") return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     } else if(o.status==="new" || o.status==="accepted" || o.status==="tayyor"){
@@ -3833,6 +3835,12 @@
         setOrderPayment(o.id, btn.getAttribute("data-paystatus"), mode);
       });
     });
+    sh.querySelectorAll("[data-payment-submit]").forEach(function(btn){
+      btn.addEventListener("click",function(e){e.stopPropagation();submitOrderPayment(parseInt(btn.getAttribute("data-payment-submit"),10));});
+    });
+    sh.querySelectorAll("[data-oproblem]").forEach(function(btn){
+      btn.addEventListener("click",function(e){e.stopPropagation();closeOrderDetail();openOrderProblemForm(parseInt(btn.getAttribute("data-oproblem"),10));});
+    });
     // Nusxalash (summa/karta)
     sh.querySelectorAll("[data-copy]").forEach(function(btn){
       btn.addEventListener("click", function(e){ e.stopPropagation(); copyText(btn.getAttribute("data-copy")); });
@@ -3851,11 +3859,14 @@
   function payStatusInfo(st){
     if(st==="confirmed") return { text:"To'lov tasdiqlandi", color:"#188038", bg:"rgba(24,128,56,.10)" };
     if(st==="rejected")  return { text:"To'lov rad etildi", color:"#e53935", bg:"rgba(229,57,53,.10)" };
+    if(st==="submitted" || st==="recheck") return { text:"To'lov tekshirilmoqda", color:"#2563EB", bg:"rgba(37,99,235,.10)" };
+    if(st==="disputed") return { text:"To'lov aniqlashtirilmoqda", color:"#D97706", bg:"rgba(217,119,6,.12)" };
     return { text:"To'lov kutilmoqda", color:"#e6a100", bg:"rgba(230,161,0,.12)" };
   }
   function orderPaymentHtml(o, mode){
     var hasPay = (o.pay_card && o.pay_card.trim()) || (o.pay_qr && o.pay_qr.trim());
     if(!hasPay) return "";   // biznesda to'lov ma'lumoti yo'q -> ko'rsatilmaydi
+    if(o.status==="new") return ""; // sotuvchi qabul qilmaguncha to'lov ochilmaydi
     var st = o.payment_status || "";
     var info = payStatusInfo(st);
     var badge = '<div style="display:inline-block;padding:4px 10px;border-radius:20px;font-weight:800;font-size:13px;color:'+info.color+';background:'+info.bg+'">'+info.text+'</div>';
@@ -3863,15 +3874,15 @@
     if(mode==="inbox"){
       // Biznes tomoni: tasdiqlash / rad etish
       html += '<div class="idesc" style="margin-top:8px">Mijoz chek (to\'lov skrinshoti)ni suhbatga tashlaydi. Tekshirib tasdiqlang.</div>';
-      if(st!=="confirmed"){
+      if(st==="submitted" || st==="recheck" || st==="disputed"){
         html += '<button class="btn btn-primary btn-block" style="margin-top:8px" data-paystatus="confirmed">✅ To\'lovni tasdiqlash</button>';
-      }
-      if(st!=="rejected"){
-        html += '<button class="btn btn-soft btn-block" style="margin-top:6px" data-paystatus="rejected">❌ Rad etish</button>';
+        html += '<button class="btn btn-soft btn-block" style="margin-top:6px" data-oproblem="'+o.id+'">⚠️ To\'lov bo\'yicha muammo</button>';
       }
     } else {
       // Mijoz tomoni: QR/karta ko'rsatiladi
-      if(st!=="confirmed"){
+      if(st==="submitted" || st==="recheck" || st==="disputed"){
+        html += '<div class="idesc" style="margin-top:8px">To\'lov ma\'lumoti sotuvchiga yuborildi. Tekshiruv natijasini kuting.</div>';
+      } else if(st!=="confirmed"){
         html += '<div class="idesc" style="margin-top:8px">To\'lash uchun: summa va karta raqamini nusxalang, to\'lov ilovangizni (Click/Payme/bank) oching va o\'tkazing. So\'ng kvitansiya (chek) rasmini yuboring.</div>';
         // Summa (nusxalanadi)
         if(o.total_text){
@@ -3894,6 +3905,7 @@
         }
         // Kvitansiya yuborish (pastdagi chatga rasm biriktiradi)
         html += '<button class="btn btn-primary btn-block" style="margin-top:14px" data-receipt="1">📎 Kvitansiyani yuborish</button>';
+        html += '<button class="btn btn-primary btn-block" style="margin-top:8px" data-payment-submit="'+o.id+'">✅ To\'lov qildim</button>';
         html += '<div class="idesc" style="margin-top:6px;text-align:center">To\'lagach chek rasmini yuboring — do\'kon tekshirib tasdiqlaydi.</div>';
       } else {
         html += '<div class="idesc" style="margin-top:8px">To\'lovingiz do\'kon tomonidan tasdiqlandi. Rahmat!</div>';
@@ -3918,6 +3930,11 @@
         })
         .catch(function(e){ showMsg(e.message); });
     });
+  }
+  function submitOrderPayment(orderId){
+    api("POST","/api/orders/"+orderId+"/payment/submit",withActor({},"user")).then(function(){
+      showMsg("To'lov tekshirish uchun sotuvchiga yuborildi ✅"); closeOrderDetail(); loadMyOrders(); refreshOrderBadges();
+    }).catch(function(e){showMsg(e.message);});
   }
   function orderChatHtml(o, mode){
     return '<div class="panel-card order-chat-box">'+
