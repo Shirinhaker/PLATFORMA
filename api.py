@@ -6047,6 +6047,9 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
     if bool(_row_val(row, "problem_open", 0) or 0) and new_status in ("tayyor", "done"):
         conn.close()
         raise HTTPException(409, "Muammoli buyurtmani tayyorlash yoki yakunlash mumkin emas. Avval to'lov muammosini hal qiling.")
+    if new_status in ("tayyor", "done") and (_row_val(row, "payment_status", "") or "") != "confirmed":
+        conn.close()
+        raise HTTPException(409, "To'lov tasdiqlanmaguncha buyurtmani tayyorlash yoki yakunlash mumkin emas.")
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
@@ -6067,6 +6070,8 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             "UPDATE orders SET status=?, updated_at=?, customer_seen_at=0, provider_seen_at=?, last_event='status' WHERE id=?",
             (new_status, now, now, order_id),
         )
+        if new_status == "accepted":
+            conn.execute("UPDATE orders SET payment_status='pending' WHERE id=?", (order_id,))
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
         notify_tg = cu["tg_id"] if cu else None
         notify_text = "🔔 Buyurtma holati: " + {
@@ -6196,6 +6201,8 @@ async def open_order_problem(order_id: int, body: dict, x_telegram_init_data: st
         conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
     if row["status"] in ("done", "cancelled", "rejected"):
         conn.close(); raise HTTPException(409, "Yakunlangan buyurtmada muammo ochib bo'lmaydi.")
+    if (_row_val(row, "payment_status", "") or "") not in ("submitted", "recheck", "disputed"):
+        conn.close(); raise HTTPException(409, "Avval buyurtmachi to'lov qilganini bildirishi kerak.")
     reasons = {
         "not_received": "Pul hisobga tushmadi",
         "amount_short": "To'langan summa kam",
@@ -6245,6 +6252,34 @@ async def choose_order_problem_solution(order_id: int, request: Request,
     return {"ok": True, "solution": solution, "order_type": order_type, "payment_status": payment_status}
 
 
+@router.post("/orders/{order_id}/payment/submit")
+async def submit_order_payment(order_id: int, request: Request,
+                               x_telegram_init_data: str = Header(default="")):
+    """Buyurtmachi chek rasmini yuborgach, to'lovni tekshirishga topshiradi."""
+    conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
+    actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor)
+    row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not row or row["customer_kind"] != kind or int(row["customer_actor_id"]) != int(actor_id):
+        conn.close(); raise HTTPException(404, "Buyurtma topilmadi.")
+    if row["status"] != "accepted":
+        conn.close(); raise HTTPException(409, "Buyurtma sotuvchi tomonidan qabul qilinmagan.")
+    receipt = conn.execute(
+        """SELECT id FROM order_messages WHERE order_id=? AND sender_kind=? AND sender_actor_id=?
+           AND media_type='photo' AND COALESCE(is_deleted,0)=0 ORDER BY id DESC LIMIT 1""",
+        (order_id, kind, actor_id),
+    ).fetchone()
+    if not receipt:
+        conn.close(); raise HTTPException(400, "Avval to'lov cheki rasmini buyurtma chatiga yuboring.")
+    now = int(time.time())
+    conn.execute(
+        """UPDATE orders SET payment_status='submitted',updated_at=?,provider_seen_at=0,
+           customer_seen_at=?,last_event='payment' WHERE id=?""",
+        (now, now, order_id),
+    )
+    conn.commit(); conn.close()
+    return {"ok": True, "payment_status": "submitted", "receipt_message_id": receipt["id"]}
+
+
 @router.post("/orders/{order_id}/payment")
 async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     """Provayder biznes buyurtma to'lovini tasdiqlaydi yoki rad etadi. Suhbatga xabar yoziladi."""
@@ -6262,6 +6297,10 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
     if status not in ("confirmed", "rejected", "pending"):
         conn.close()
         raise HTTPException(400, "Holat noto'g'ri.")
+    current_payment = _row_val(r, "payment_status", "") or ""
+    if status == "confirmed" and current_payment not in ("submitted", "recheck", "disputed"):
+        conn.close()
+        raise HTTPException(409, "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini yubormagan.")
     now = int(time.time())
     if status == "confirmed":
         conn.execute(
