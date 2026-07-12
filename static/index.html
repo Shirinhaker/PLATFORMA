@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1482 -->
+<title>Platforma</title><!-- BUILD: v1483 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -3664,7 +3664,9 @@
     }
     if(textId && el(textId)) el(textId).textContent = n>0 ? textWhenOn.replace("{n}", n) : textWhenOff;
   }
-  function orderIsActive(o){ return o && ["new","accepted","tayyor"].indexOf(o.status)>=0; }
+  function orderIsProblem(o){ return !!(o && o.problem_open); }
+  function orderIsActive(o){ return o && !orderIsProblem(o) && ["new","accepted","tayyor"].indexOf(o.status)>=0; }
+  var ORDER_PROBLEM_REASONS={not_received:"Pul hisobga tushmadi",amount_short:"To'langan summa kam",receipt_mismatch:"Chek ma'lumoti mos kelmadi",receipt_unreadable:"Chek rasmi o'qilmaydi",wrong_receipt:"Noto'g'ri chek yuborilgan",other:"Boshqa to'lov muammosi"};
   function updateOrderBadges(){
     var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !!o.is_unread; }).length;
     var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !!o.is_unread; }).length;
@@ -3698,18 +3700,23 @@
       if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       else if(o.status==="accepted"){
         var readyBtn = (o.order_type==="delivery") ? '<button class="mini-btn" style="border-color:#16A34A;background:#16A34A;color:#fff" data-ostatus="tayyor" data-oid="'+o.id+'">✅ Tayyor bo\'ldi</button>' : '';
-        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+'<button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
+        actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+readyBtn+'<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
       }
       else if(o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-ostatus="done" data-oid="'+o.id+'">Yakunlash</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     } else {
       if(o.status==="new" || o.status==="accepted" || o.status==="tayyor") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
     }
+    if(o.problem_open){
+      actions = mode==="mine" ? '<div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap"><button class="mini-btn" data-psolution="pickup" data-oid="'+o.id+'">🏪 Do\'konga boraman</button><button class="mini-btn" data-psolution="wait" data-oid="'+o.id+'">⏳ Kutaman</button><button class="mini-btn" data-psolution="new_receipt" data-oid="'+o.id+'">🧾 Yangi chek</button></div>' : '';
+    }
+    var pickupInfo=(o.problem_solution==="pickup")?'<div style="margin-top:5px"><b>Do\'kon:</b> '+esc(o.provider_address||"Manzil kiritilmagan")+(o.provider_phone?' · '+esc(o.provider_phone):'')+(o.provider_work_hours?' · '+esc(o.provider_work_hours):'')+'</div>':'';
+    var problemInfo=o.problem_open?'<div style="margin-top:9px;padding:9px;border-radius:10px;background:#FFF7ED;color:#9A3412;font-size:12.5px"><b>⚠️ To\'lov aniqlashtirilmoqda</b><div>'+esc(ORDER_PROBLEM_REASONS[o.problem_reason]||o.problem_reason||"")+'</div>'+(o.problem_note?'<div>Izoh: '+esc(o.problem_note)+'</div>':'')+pickupInfo+'</div>':'';
     var cls = 'item order-card' + (o.status==="new" ? ' order-new' : '') + (o.is_unread ? ' order-unread' : '');
     var unread = o.is_unread ? '<div class="order-unread-pill">'+(o.last_event==="msg" ? '💬 Xabar keldi' : (mode==="inbox" ? '🔔 Yangi buyurtma' : '🔔 Status yangilandi'))+'</div>' : '';
     var chatPreview = o.last_chat ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.last_chat)+'</div>' : (o.chat_count ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.chat_count)+' ta xabar</div>' : '');
     var hint = '<div class="idesc" style="margin-top:8px;color:var(--primary);font-weight:700">Batafsil ko‘rish va chat uchun bosing</div>';
     return '<div class="'+cls+'" style="display:block" data-order-open="'+o.id+'" data-order-mode="'+mode+'">'+
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+itemsHtml+chatPreview+actions+hint+'</div>';
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+problemInfo+itemsHtml+chatPreview+actions+hint+'</div>';
   }
   function orderActionButtons(o, mode){
     if(!o) return "";
@@ -4297,23 +4304,25 @@
       box.innerHTML = '<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>'+(mode==="inbox"?"Biznesingizga kelgan buyurtma va yozilishlar shu yerda ko\'rinadi.":"Biznes sahifasidan buyurtma yoki navbatga yozilish yuborsangiz, shu yerda ko\'rinadi.")+'</p></div>';
       return;
     }
+    var problem = list.filter(orderIsProblem);
     var active = list.filter(orderIsActive);
-    var done = list.filter(function(o){ return !orderIsActive(o); });
+    var done = list.filter(function(o){ return !orderIsActive(o) && !orderIsProblem(o); });
     var cur = ordersTab[tabKey];
-    if(cur!=="active" && cur!=="done"){
+    if(cur!=="active" && cur!=="problem" && cur!=="done"){
       // Birinchi ochilish: faol bo'lsa — Buyurtmalar, aks holda Yakunlangan
-      cur = active.length ? "active" : "done";
+      cur = active.length ? "active" : (problem.length ? "problem" : "done");
     }
-    var shown = (cur==="done") ? done : active;
+    var shown = cur==="done" ? done : (cur==="problem" ? problem : active);
     var uA = active.filter(function(o){return !!o.is_unread;}).length;
     var uD = done.filter(function(o){return !!o.is_unread;}).length;
-    var tabs = '<div style="display:flex;gap:8px;margin:8px 0 12px">'+
+    var tabs = '<div style="display:flex;gap:6px;margin:8px 0 12px">'+
       '<button class="seg-b'+(cur==="active"?" on":"")+'" data-otab="active" style="flex:1;height:38px">Buyurtmalar ('+active.length+')'+(uA?' 🔔':'')+'</button>'+
+      '<button class="seg-b'+(cur==="problem"?" on":"")+'" data-otab="problem" style="flex:1;height:38px">Muammoli ('+problem.length+')</button>'+
       '<button class="seg-b'+(cur==="done"?" on":"")+'" data-otab="done" style="flex:1;height:38px">Yakunlangan ('+done.length+')'+(uD?' 🔔':'')+'</button>'+
     '</div>';
     var listHtml = shown.length
       ? shown.map(function(o){ return orderCard(o, mode); }).join("")
-      : '<div class="empty" style="padding:26px 16px"><h3>'+(cur==="done"?"Yakunlangan buyurtma yo\'q":"Faol buyurtma yo\'q")+'</h3></div>';
+      : '<div class="empty" style="padding:26px 16px"><h3>'+(cur==="done"?"Yakunlangan buyurtma yo\'q":(cur==="problem"?"Muammoli buyurtma yo\'q":"Faol buyurtma yo\'q"))+'</h3></div>';
     box.innerHTML = tabs + listHtml;
     box.querySelectorAll("[data-otab]").forEach(function(btn){
       btn.addEventListener("click", function(){
@@ -4342,6 +4351,30 @@
       if(mode==="inbox") loadBizOrders(); else loadMyOrders();
       refreshOrderBadges();
     }).catch(function(e){ showMsg(e.message); });
+  }
+  function openOrderProblemForm(id){
+    var old=el("orderProblemBackdrop"); if(old) old.remove();
+    var back=document.createElement("div"); back.id="orderProblemBackdrop"; back.className="sheet-backdrop on";
+    var sh=document.createElement("div"); sh.className="order-sheet on"; sh.innerHTML=
+      '<button class="order-close" id="orderProblemClose">×</button><div class="order-grip"></div><div class="lead" style="font-size:20px">To\'lov bo\'yicha muammo</div>'+
+      '<div class="lead-sub">Sababni tanlang. Muammo hal bo\'lmaguncha tayyorlash, dostavka va yakunlash bloklanadi.</div>'+
+      '<div class="field"><label>Muammo sababi</label><select class="input" id="orderProblemReason"><option value="not_received">Pul hisobga tushmadi</option><option value="amount_short">To\'langan summa kam</option><option value="receipt_mismatch">Chek ma\'lumoti mos kelmadi</option><option value="receipt_unreadable">Chek rasmi o\'qilmaydi</option><option value="wrong_receipt">Noto\'g\'ri chek yuborilgan</option><option value="other">Boshqa muammo</option></select></div>'+
+      '<div class="field"><label>Izoh</label><textarea class="textarea" id="orderProblemNote" placeholder="Muammoni qisqacha tushuntiring"></textarea></div><button class="btn btn-primary btn-block" id="orderProblemSave">Muammoli buyurtmaga o\'tkazish</button>';
+    document.body.appendChild(back); document.body.appendChild(sh);
+    function close(){ back.remove(); sh.remove(); }
+    back.addEventListener("click",close); el("orderProblemClose").addEventListener("click",close);
+    el("orderProblemSave").addEventListener("click",function(){
+      var btn=this; btn.disabled=true;
+      api("POST","/api/orders/"+id+"/problem",{reason:el("orderProblemReason").value,note:(el("orderProblemNote").value||"").trim()}).then(function(){close();loadBizOrders();showMsg("Buyurtma Muammoli bo'limiga o'tkazildi.");}).catch(function(e){showMsg(e.message);btn.disabled=false;});
+    });
+  }
+  function chooseOrderProblemSolution(id,solution){
+    api("PUT","/api/orders/"+id+"/problem/solution",withActor({solution:solution},"user")).then(function(){
+      loadMyOrders();
+      if(solution==="new_receipt") showMsg("Yangi chekni buyurtma chatiga yuboring.");
+      else if(solution==="pickup") showMsg("Buyurtma O'zim olib ketaman turiga o'tkazildi.");
+      else showMsg("To'lov tushishi kutilmoqda.");
+    }).catch(function(e){showMsg(e.message);});
   }
 
 
@@ -5609,12 +5642,16 @@
     var c=e.target.closest("[data-chat]"); if(c) openChat(c.getAttribute("data-chat-kind")||"user", parseInt(c.getAttribute("data-chat"),10), c.getAttribute("data-name"));
   });
   el("bizOrdersList").addEventListener("click", function(e){
+    var p=e.target.closest("[data-oproblem]");
+    if(p){ e.stopPropagation(); openOrderProblemForm(parseInt(p.getAttribute("data-oproblem"),10)); return; }
     var b=e.target.closest("[data-ostatus]");
     if(b){ updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "inbox"); return; }
     var c=e.target.closest("[data-order-open]");
     if(c) openOrderDetail(parseInt(c.getAttribute("data-order-open"),10), c.getAttribute("data-order-mode")||"inbox");
   });
   el("myOrdersList").addEventListener("click", function(e){
+    var p=e.target.closest("[data-psolution]");
+    if(p){ e.stopPropagation(); chooseOrderProblemSolution(parseInt(p.getAttribute("data-oid"),10),p.getAttribute("data-psolution")); return; }
     var b=e.target.closest("[data-ostatus]");
     if(b){ updateOrderStatus(parseInt(b.getAttribute("data-oid"),10), b.getAttribute("data-ostatus"), "mine"); return; }
     var c=e.target.closest("[data-order-open]");
