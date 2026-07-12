@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1486 -->
+<title>Platforma</title><!-- BUILD: v1487 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1460,7 +1460,12 @@
       <section class="screen" data-screen="notify">
         <div class="form-wrap">
           <div class="lead">Bildirishnomalarim</div>
-          <div class="lead-sub">Qiziqishlaringizni belgilang. Mos e'lon joylanganda Telegramingizga xabar keladi.</div>
+          <div class="lead-sub">Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b>Buyurtma bildirishnomalari</b><button class="mini-btn" id="notifyReadAll">Barchasini o'qish</button></div>
+          <div id="orderNotifyList"><div class="list-sub">Yuklanmoqda...</div></div>
+          <div style="height:1px;background:var(--line);margin:18px 0"></div>
+          <div class="lead" style="font-size:18px">E'lon filtrlari</div>
+          <div class="lead-sub">Mos e'lon joylanganda Telegramingizga xabar keladi.</div>
           <button class="btn btn-primary btn-block" id="notifyAdd">➕ Yangi filtr qo'shish</button>
           <div id="notifyList" style="margin-top:14px"></div>
         </div>
@@ -4806,8 +4811,8 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
-  function goBiz(){ activeMode="business"; nav("cabinet"); loadHomeMap(); }
-  function goUser(){ activeMode="user"; nav("ucab"); loadHomeMap(); }
+  function goBiz(){ activeMode="business"; nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
+  function goUser(){ activeMode="user"; nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
 
 
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
@@ -4817,8 +4822,44 @@
     el("notifyList").innerHTML='<div class="list-sub">Yuklanmoqda...</div>';
     nav("notify");
     el("tbTitle").textContent="Bildirishnomalarim";
+    loadOrderNotifications();
     loadNotifyFilters();
   }
+  function notifyTime(ts){
+    if(!ts) return ""; var d=new Date(ts*1000);
+    return d.toLocaleDateString("uz-UZ")+" · "+d.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
+  }
+  function loadOrderNotifications(){
+    var box=el("orderNotifyList"); if(!box)return;
+    box.innerHTML='<div class="list-sub">Yuklanmoqda...</div>';
+    api("GET","/api/notifications?"+actorQuery()).then(function(d){
+      updateNotifyBadges(d.unread||0);
+      var items=d.items||[];
+      if(!items.length){box.innerHTML='<div class="empty" style="padding:18px 12px"><h3>Hozircha xabar yo\'q</h3><p>Buyurtma yangiliklari shu yerda chiqadi.</p></div>';return;}
+      box.innerHTML=items.map(function(n){return '<div class="menu-card" data-notification="'+n.id+'" data-noid="'+(n.order_id||0)+'" style="'+(!n.is_read?'border-color:var(--primary);':'')+'"><div class="menu-ic">'+(n.is_read?'🔔':'🟢')+'</div><div class="menu-main"><h4>'+esc(n.title)+'</h4><p>'+esc(n.body||'')+'</p><small style="color:var(--soft)">'+notifyTime(n.created_at)+'</small></div><span class="chev">›</span></div>';}).join("");
+    }).catch(function(e){box.innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
+  }
+  function updateNotifyBadges(count){
+    document.querySelectorAll("[data-notify]").forEach(function(card){
+      var b=card.querySelector(".notify-count");
+      if(!b){b=document.createElement("span");b.className="order-badge notify-count";var ch=card.querySelector(".chev");card.insertBefore(b,ch||null);}
+      b.textContent=count>99?"99+":String(count);b.hidden=!count;
+    });
+  }
+  function refreshNotifyBadge(){
+    if(!loggedIn)return;
+    api("GET","/api/notifications?"+actorQuery()).then(function(d){updateNotifyBadges(d.unread||0);}).catch(function(){});
+  }
+  el("orderNotifyList") && el("orderNotifyList").addEventListener("click",function(e){
+    var n=e.target.closest("[data-notification]");if(!n)return;
+    var id=parseInt(n.getAttribute("data-notification"),10),oid=parseInt(n.getAttribute("data-noid"),10);
+    api("PUT","/api/notifications/"+id+"/read",withActor({},actorType())).then(function(){
+      if(oid){var mode=actorType()==="business"?"inbox":"mine"; if(mode==="inbox")loadBizOrders();else loadMyOrders(); setTimeout(function(){openOrderDetail(oid,mode);},250);}else loadOrderNotifications();
+    }).catch(function(err){showMsg(err.message);});
+  });
+  el("notifyReadAll") && el("notifyReadAll").addEventListener("click",function(){
+    api("PUT","/api/notifications/read-all/all",withActor({},actorType())).then(function(){loadOrderNotifications();showMsg("Barcha bildirishnomalar o'qildi ✅");}).catch(function(e){showMsg(e.message);});
+  });
   function loadNotifyFilters(){
     api("GET","/api/notify/filters").then(function(list){
       if(!list.length){ el("notifyList").innerHTML='<div class="empty" style="padding:24px 16px"><h3>Filtr yo\'q</h3><p>«Yangi filtr» orqali qiziqishlaringizni belgilang.</p></div>'; return; }
@@ -9434,6 +9475,7 @@
         loadHomeMap();
         loadHomeAds();
         refreshOrderBadges();
+        refreshNotifyBadge();
       }
     }).catch(function(err){
       // Telegram ID oq ro'yxatda bo'lmasa (403) — bu ehtimol xodim. Login oynasini ko'rsatamiz.
