@@ -650,6 +650,8 @@ def _migrate(conn):
         ("problem_solution", "TEXT DEFAULT ''"),
         ("problem_opened_at", "INTEGER DEFAULT 0"),
         ("problem_resolved_at", "INTEGER DEFAULT 0"),
+        ("seller_completed_at", "INTEGER DEFAULT 0"),
+        ("customer_received_at", "INTEGER DEFAULT 0"),
     ):
         if _c not in ocols:
             conn.execute("ALTER TABLE orders ADD COLUMN %s %s" % (_c, _t))
