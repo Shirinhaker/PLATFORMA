@@ -1796,6 +1796,50 @@ async def advertisement_click(ad_id: int, x_telegram_init_data: str = Header(def
 # ====================================================================
 # E'LONLAR
 # ====================================================================
+@router.post("/listings/media")
+async def upload_listing_media(request: Request, actor_type: str = "user",
+                               x_telegram_init_data: str = Header(default="")):
+    """E'lon rasmi yoki videosini qurilmadan bevosita serverga yuklaydi."""
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "E'lon mediasi")
+    resolve_actor(conn, user, actor_type)
+    conn.close()
+
+    ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    allowed_images = {
+        "image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png",
+        "image/webp": ".webp", "image/gif": ".gif", "image/heic": ".heic",
+        "image/heif": ".heif",
+    }
+    allowed_videos = {
+        "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov",
+        "video/x-m4v": ".m4v",
+    }
+    if ctype in allowed_images:
+        mtype, ext, max_size = "photo", allowed_images[ctype], 10 * 1024 * 1024
+    elif ctype in allowed_videos:
+        mtype, ext, max_size = "video", allowed_videos[ctype], 50 * 1024 * 1024
+    else:
+        raise HTTPException(400, "JPG, PNG, WEBP, GIF, HEIC, MP4, WEBM yoki MOV fayl tanlang.")
+
+    raw = await request.body()
+    if not raw:
+        raise HTTPException(400, "Media fayl topilmadi.")
+    if len(raw) > max_size:
+        limit_mb = 10 if mtype == "photo" else 50
+        raise HTTPException(400, "Fayl hajmi " + str(limit_mb) + " MB dan oshmasin.")
+
+    from main import UPLOAD_DIR
+    folder = os.path.join(UPLOAD_DIR, "listings")
+    os.makedirs(folder, exist_ok=True)
+    safe_name = "listing_" + str(user["id"]) + "_" + str(int(time.time())) + "_" + secrets.token_hex(8) + ext
+    with open(os.path.join(folder, safe_name), "wb") as f:
+        f.write(raw)
+    media_url = "/uploads/listings/" + safe_name
+    return {"ok": True, "file_id": media_url, "type": mtype, "media_url": media_url}
+
+
 @router.post("/listings")
 async def create_listing(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
