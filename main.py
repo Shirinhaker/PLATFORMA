@@ -34,7 +34,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1478"
+APP_BUILD = "v1479"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -125,6 +125,28 @@ def require_tg(init_data):
 def current_user(conn, tg_id):
     """Shu Telegramga bog'langan akkauntni topadi (bo'lmasa None)."""
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
+
+
+def mobile_user_from_token(conn, token, touch=False):
+    """Mobil Bearer token orqali faol foydalanuvchini topadi."""
+    token = (token or "").strip()
+    if not token:
+        return None
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    now = int(time.time())
+    try:
+        row = conn.execute(
+            """SELECT u.*, ms.id AS mobile_session_id
+               FROM mobile_sessions ms JOIN users u ON u.id=ms.user_id
+               WHERE ms.token_hash=? AND ms.revoked_at=0 AND ms.expires_at>?""",
+            (token_hash, now),
+        ).fetchone()
+    except Exception:
+        return None
+    if row and touch:
+        conn.execute("UPDATE mobile_sessions SET last_used_at=? WHERE id=?", (now, row["mobile_session_id"]))
+        conn.commit()
+    return row
 
 
 # ---------- Parol (xavfsiz saqlash) ----------
@@ -250,6 +272,20 @@ async def whitelist_middleware(request: Request, call_next):
         staff_token = request.headers.get("x-staff-token", "")
         if staff_token or init_data.startswith("staff:"):
             return await call_next(request)
+        # Mobil ilova Telegram initData o'rniga Bearer token yuboradi.
+        auth = (request.headers.get("authorization") or "").strip()
+        if auth.lower().startswith("bearer "):
+            mobile_token = auth[7:].strip()
+            conn = db()
+            mobile_user = mobile_user_from_token(conn, mobile_token)
+            conn.close()
+            if not mobile_user:
+                return JSONResponse(status_code=401, content={"detail": "Mobil sessiya tugagan yoki noto'g'ri."})
+            # Mavjud endpointlar o'zgarmasligi uchun ichki mobil sessiya belgisi uzatiladi.
+            headers = [(k, v) for k, v in request.scope.get("headers", []) if k.lower() != b"x-telegram-init-data"]
+            headers.append((b"x-telegram-init-data", ("mobile:" + mobile_token).encode()))
+            request.scope["headers"] = headers
+            return await call_next(request)
         tg = verify_init_data(init_data)
         if not tg:
             return JSONResponse(
@@ -273,7 +309,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True}
 
 
 @app.get("/api/_dbinfo")
@@ -704,9 +740,12 @@ async def login_status(request_id: int, x_telegram_init_data: str = Header(defau
 # ---------- Joriy foydalanuvchi ----------
 @app.get("/api/me")
 async def me(x_telegram_init_data: str = Header(default="")):
-    tg = require_tg(x_telegram_init_data)
     conn = db()
-    user = current_user(conn, tg["id"])
+    if (x_telegram_init_data or "").startswith("mobile:"):
+        user = mobile_user_from_token(conn, x_telegram_init_data[7:], touch=True)
+    else:
+        tg = require_tg(x_telegram_init_data)
+        user = current_user(conn, tg["id"])
     if not user:
         conn.close()
         return {"registered": False}
