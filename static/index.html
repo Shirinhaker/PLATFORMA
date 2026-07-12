@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1487 -->
+<title>Platforma</title><!-- BUILD: v1489 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -1461,6 +1461,8 @@
         <div class="form-wrap">
           <div class="lead">Bildirishnomalarim</div>
           <div class="lead-sub">Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi.</div>
+          <div class="set-row" style="cursor:default"><span>📲 Push notification</span><label style="margin-left:auto;display:flex;align-items:center;gap:8px"><input type="checkbox" id="pushEnabled" checked> Yoqilgan</label></div>
+          <div class="elon-hint" id="pushStatusText" style="margin:-3px 2px 12px">Mobil ilova qurilmasi ulanmagan.</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b>Buyurtma bildirishnomalari</b><button class="mini-btn" id="notifyReadAll">Barchasini o'qish</button></div>
           <div id="orderNotifyList"><div class="list-sub">Yuklanmoqda...</div></div>
           <div style="height:1px;background:var(--line);margin:18px 0"></div>
@@ -4823,8 +4825,18 @@
     nav("notify");
     el("tbTitle").textContent="Bildirishnomalarim";
     loadOrderNotifications();
+    loadPushSettings();
     loadNotifyFilters();
   }
+  function loadPushSettings(){
+    api("GET","/api/push/preferences?"+actorQuery()).then(function(p){el("pushEnabled").checked=!!p.enabled&&!!p.orders_enabled;}).catch(function(){});
+    api("GET","/api/push/status").then(function(s){
+      el("pushStatusText").textContent=s.active_devices ? (s.configured?"Push xizmati faol · ":"Firebase kaliti kutilmoqda · ")+s.active_devices+" ta qurilma" : "Mobil ilova qurilmasi ulanmagan.";
+    }).catch(function(){});
+  }
+  el("pushEnabled") && el("pushEnabled").addEventListener("change",function(){
+    var on=this.checked; api("PUT","/api/push/preferences",withActor({enabled:on,orders_enabled:on},actorType())).then(function(){showMsg(on?"Push notification yoqildi ✅":"Push notification o'chirildi");}).catch(function(e){showMsg(e.message);});
+  });
   function notifyTime(ts){
     if(!ts) return ""; var d=new Date(ts*1000);
     return d.toLocaleDateString("uz-UZ")+" · "+d.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
