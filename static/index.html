@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1490 -->
+<title>Platforma</title><!-- BUILD: v1491 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -3102,6 +3102,7 @@
     if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
+    if(!home && typeof hideActionNotify === "function") hideActionNotify();
     if(home && typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
@@ -4878,7 +4879,7 @@
   function hideActionNotify(){el("actionNotify").classList.remove("on");ACTION_NOTIFY_CURRENT=null;}
   function pollActionNotifications(){
     if(!loggedIn)return;
-    api("GET","/api/notifications/actions").then(function(d){
+    api("GET","/api/notifications/actions?"+actorQuery()).then(function(d){
       var items=(d.items||[]).filter(function(n){return !ACTION_NOTIFY_DISMISSED[n.id];});
       updateNotifyBadges(d.count||0);
       if(current!=="home"||!items.length){hideActionNotify();return;}
