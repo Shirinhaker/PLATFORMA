@@ -5862,12 +5862,14 @@ async def list_notifications(actor_type: str = "user", x_telegram_init_data: str
 
 
 @router.get("/notifications/actions")
-async def actionable_notifications(x_telegram_init_data: str = Header(default="")):
+async def actionable_notifications(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     """Bosh ekranda faqat hali amal bajarilmagan tasdiqlovchi xabarlar chiqadi."""
     conn = db(); me = require_user(conn, x_telegram_init_data)
+    actor = resolve_actor(conn, me, actor_type); kind, actor_id, _ = _actor_identity(actor)
     rows = conn.execute(
-        """SELECT * FROM notifications WHERE user_id=? AND requires_action=1 AND resolved_at=0
-           ORDER BY created_at ASC,id ASC LIMIT 20""", (me["id"],)
+        """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=?
+           AND requires_action=1 AND resolved_at=0 ORDER BY created_at ASC,id ASC LIMIT 20""",
+        (me["id"], kind, actor_id)
     ).fetchall()
     out = [dict(r) for r in rows]; conn.close()
     return {"items": out, "count": len(out)}
