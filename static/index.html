@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1496 -->
+<title>Platforma</title><!-- BUILD: v1497 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -814,11 +814,11 @@
           <div class="lead">Kabinetga kirish</div>
           <div class="lead-sub" id="loginReason" style="display:none;color:var(--primary);font-weight:600"></div>
           <div id="loginStep1">
-            <div class="lead-sub">Kirish usulini tanlang.</div>
-            <button class="btn btn-primary btn-block" id="loginTelegram" style="margin-bottom:12px">✈️ Telegram orqali kirish</button>
-            <div class="idesc" style="text-align:center;margin:4px 0 12px">yoki telefon raqami orqali</div>
-            <div class="field"><label>Telefon raqami</label><input class="input" id="loginPhone" inputmode="tel" placeholder="+998 90 123 45 67" autocomplete="tel" /></div>
-            <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Tasdiqlash kodini olish</button>
+            <div class="lead-sub">Ro'yxatdan o'tganda berilgan login va parolni kiriting.</div>
+            <div class="field"><label>Login</label><input class="input" id="passwordLogin" autocomplete="username" placeholder="Login" /></div>
+            <div class="field"><label>Parol</label><input class="input" id="passwordPass" type="password" autocomplete="current-password" placeholder="Parol" /></div>
+            <button class="btn btn-primary btn-block" style="margin-top:8px" id="passwordLoginGo">Kabinetga kirish</button>
+            <div hidden><input id="loginPhone"><button id="loginGo"></button><button id="loginTelegram"></button></div>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
             <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)">
               <button class="btn btn-soft btn-block" id="goStaffLogin">👥 Xodimlar uchun kirish</button>
@@ -3039,7 +3039,7 @@
     api("POST","/api/auth/register",body).then(function(r){
       if(r.added_business){
         el("regBody").innerHTML='<div class="form-wrap"><div class="lead">Biznes profilingiz ochildi ✅</div><div class="lead-sub">Biznes login va parolini xavfsiz saqlang.</div><div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px"><div><b>Login:</b> '+esc(r.biz_login||"")+'</div><div style="margin-top:8px"><b>Parol:</b> '+esc(r.biz_password||"")+'</div></div><button class="btn btn-primary btn-block" id="tgRegDone">Biznes kabinetga o\'tish</button></div>';
-        el("tgRegDone").addEventListener("click",function(){afterAuth("business");});
+        el("tgRegDone").addEventListener("click",function(){if(el("passwordLogin"))el("passwordLogin").value=r.biz_login||"";nav("login");});
       }else showCredentials(r.login,r.password,r.role);
     }).catch(function(e){showMsg(e.message);btn.disabled=false;btn.textContent="✈️ Telegram orqali ro'yxatdan o'tish";});
   }
@@ -3081,8 +3081,6 @@
       api("POST","/api/mobile-auth/register/verify-code",{
         phone:phone,request_id:requestId,code:code,device_name:navigator.userAgent.slice(0,100)
       }).then(function(r){
-        MOBILE_TOKEN=r.access_token;
-        try{ localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN); }catch(e){}
         showCredentials(r.login,r.password,r.role);
       }).catch(function(e){ showMsg(e.message); }).finally(function(){
         btn.disabled=false; btn.textContent="Tasdiqlash va kirish";
@@ -3099,9 +3097,12 @@
         '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🔑 Login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(login)+'</div></div>'+
         '<div><div style="font-size:12px;color:var(--soft)">🔐 Parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(password)+'</div></div>'+
       '</div>'+
-      '<button class="btn btn-primary btn-block" id="credDone">Kabinetimga o\'tish</button>'+
+      '<button class="btn btn-primary btn-block" id="credDone">Login orqali kirish</button>'+ 
       '</div>';
-    el("credDone").addEventListener("click", function(){ afterAuth(role); });
+    el("credDone").addEventListener("click", function(){
+      if(el("passwordLogin"))el("passwordLogin").value=login||"";
+      nav("login");setTimeout(function(){try{el("passwordPass").focus();}catch(e){}},100);
+    });
   }
 
   /* ---------- navigation ---------- */
@@ -5933,14 +5934,19 @@
 
   // KIRISH: telefon -> 6 xonali kod -> mobil Bearer token
   var loginRequestId=0, loginRequestPhone="", loginResendTimer=null;
-  el("loginTelegram") && el("loginTelegram").addEventListener("click",function(){
-    var btn=this;btn.disabled=true;btn.textContent="Telegram tekshirilmoqda...";
-    api("GET","/api/me").then(function(d){
-      if(!d||!d.registered){showMsg("Bu Telegram akkaunti ro'yxatdan o'tmagan. Avval Telegram orqali ro'yxatdan o'ting.");return;}
-      afterAuth(d.role||"user");
-    }).catch(function(e){showMsg("Telegram orqali kirish uchun ilovani Telegram ichida oching. "+(e.message||""));})
-      .finally(function(){btn.disabled=false;btn.textContent="✈️ Telegram orqali kirish";});
-  });
+  function submitPasswordLogin(){
+    var login=(el("passwordLogin").value||"").trim().toLowerCase();
+    var password=el("passwordPass").value||"";
+    if(!login||!password){showMsg("Login va parolni kiriting.");return;}
+    var btn=el("passwordLoginGo");btn.disabled=true;btn.textContent="Tekshirilmoqda...";
+    api("POST","/api/password-auth/login",{login:login,password:password,device_name:navigator.userAgent.slice(0,100)}).then(function(r){
+      MOBILE_TOKEN=r.access_token;STAFF_TOKEN=null;
+      try{localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN);localStorage.removeItem("koprik_staff_token");}catch(e){}
+      el("passwordPass").value="";afterAuth(r.login_role||"user");
+    }).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;btn.textContent="Kabinetga kirish";});
+  }
+  el("passwordLoginGo") && el("passwordLoginGo").addEventListener("click",submitPasswordLogin);
+  el("passwordPass") && el("passwordPass").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();submitPasswordLogin();}});
   function stopLoginTimer(){ if(loginResendTimer){ clearInterval(loginResendTimer); loginResendTimer=null; } }
   function startLoginResendTimer(){
     stopLoginTimer();
@@ -9598,8 +9604,8 @@
     loadHomeAds();
     // Xarita Leaflet'ga bog'liq — agar u hali yuklanmagan bo'lsa, ilova baribir ishlasin
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
-    // serverdan joriy foydalanuvchini olamiz (kirgan bo'lsa)
-    api("GET", "/api/me").then(function(d){
+    // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
+    if(MOBILE_TOKEN) api("GET", "/api/me").then(function(d){
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
                phone:d.phone || "", region:d.region || "", district:d.district || "", mahalla:d.mahalla || "",
