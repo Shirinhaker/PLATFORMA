@@ -7171,6 +7171,45 @@ async def specialist_reviews_manage(x_telegram_init_data: str = Header(default="
     conn.close(); return {"reviews": items, "count": len(items)}
 
 
+@router.get("/business/reviews")
+async def business_reviews_manage(x_telegram_init_data: str = Header(default="")):
+    """Biznes egasiga o'z do'koniga yozilgan baho va fikrlarni qaytaradi."""
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
+    rows = conn.execute(
+        "SELECT * FROM reviews WHERE target_kind='business' AND target_id=? ORDER BY id DESC LIMIT 200",
+        (biz["id"],),
+    ).fetchall()
+    items = [{
+        "id": r["id"], "stars": r["stars"], "comment": r["comment"] or "",
+        "user_name": _reviewer_name(conn, r["reviewer_user_id"]),
+        "created_at": r["created_at"],
+        "owner_reply": (r["owner_reply"] or "") if "owner_reply" in r.keys() else "",
+        "owner_replied_at": (r["owner_replied_at"] or 0) if "owner_replied_at" in r.keys() else 0,
+    } for r in rows]
+    total = sum(int(r["stars"] or 0) for r in rows)
+    count = len(items)
+    conn.close()
+    return {"reviews": items, "count": count, "avg": round(total / count, 1) if count else 0}
+
+
+@router.put("/business/reviews/{review_id}/reply")
+async def business_review_reply(review_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
+    """Biznes egasi fikrni o'chirmasdan unga javob beradi yoki javobini yangilaydi."""
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
+    row = conn.execute(
+        "SELECT id FROM reviews WHERE id=? AND target_kind='business' AND target_id=?",
+        (review_id, biz["id"]),
+    ).fetchone()
+    if not row:
+        conn.close(); raise HTTPException(404, "Fikr topilmadi.")
+    reply = (body.get("reply") or "").strip()[:1500]
+    if not reply:
+        conn.close(); raise HTTPException(400, "Javob matnini kiriting.")
+    conn.execute("UPDATE reviews SET owner_reply=?, owner_replied_at=? WHERE id=?",
+                 (reply, int(time.time()), review_id))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
 @router.put("/specialist/reviews/{review_id}/reply")
 async def specialist_review_reply(review_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     """Mutaxassis mijoz fikriga javob beradi yoki javobini tahrirlaydi. Fikr o'chirilmaydi."""
