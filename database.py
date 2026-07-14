@@ -53,6 +53,9 @@ def init_db():
             lat           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             lng           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             avatar_file   TEXT DEFAULT '',                  -- Telegram file_id
+            avatar_x      REAL NOT NULL DEFAULT 50,
+            avatar_y      REAL NOT NULL DEFAULT 50,
+            avatar_zoom   REAL NOT NULL DEFAULT 1,
             created_at    INTEGER NOT NULL
         );
 
@@ -70,6 +73,9 @@ def init_db():
             lat           REAL,
             lng           REAL,
             logo_file     TEXT DEFAULT '',
+            logo_x        REAL NOT NULL DEFAULT 50,
+            logo_y        REAL NOT NULL DEFAULT 50,
+            logo_zoom     REAL NOT NULL DEFAULT 1,
             biz_login     TEXT,                             -- biznes uchun alohida login
             biz_pass_hash TEXT,                             -- biznes uchun alohida parol
             status        TEXT DEFAULT 'active',
@@ -543,6 +549,12 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN lat REAL")
     if "lng" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN lng REAL")
+    if "avatar_x" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_x REAL NOT NULL DEFAULT 50")
+    if "avatar_y" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_y REAL NOT NULL DEFAULT 50")
+    if "avatar_zoom" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN avatar_zoom REAL NOT NULL DEFAULT 1")
     # v1479: kelajakdagi Android/iOS ilovasi uchun Telegramdan mustaqil sessiyalar.
     # Bazada tokenning o'zi emas, SHA-256 xeshi saqlanadi.
     conn.execute(
@@ -811,6 +823,12 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN biz_pass_hash TEXT")
     if "map_visible" not in bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN map_visible INTEGER DEFAULT 0")
+    if "logo_x" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN logo_x REAL NOT NULL DEFAULT 50")
+    if "logo_y" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN logo_y REAL NOT NULL DEFAULT 50")
+    if "logo_zoom" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN logo_zoom REAL NOT NULL DEFAULT 1")
 
     # --- v1395: To'liq matnli qidiruv (FTS5) — nom/sarlavha alohida ustun ---
     # Har tur uchun: 'name' ustuni (asosiy nom/sarlavha) + 'body' ustuni (qolgan matn).
