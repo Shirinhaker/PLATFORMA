@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1495 -->
+<title>Platforma</title><!-- BUILD: v1496 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -814,7 +814,9 @@
           <div class="lead">Kabinetga kirish</div>
           <div class="lead-sub" id="loginReason" style="display:none;color:var(--primary);font-weight:600"></div>
           <div id="loginStep1">
-            <div class="lead-sub">Akkauntingizga biriktirilgan telefon raqamini kiriting.</div>
+            <div class="lead-sub">Kirish usulini tanlang.</div>
+            <button class="btn btn-primary btn-block" id="loginTelegram" style="margin-bottom:12px">✈️ Telegram orqali kirish</button>
+            <div class="idesc" style="text-align:center;margin:4px 0 12px">yoki telefon raqami orqali</div>
             <div class="field"><label>Telefon raqami</label><input class="input" id="loginPhone" inputmode="tel" placeholder="+998 90 123 45 67" autocomplete="tel" /></div>
             <button class="btn btn-primary btn-block" style="margin-top:8px" id="loginGo">Tasdiqlash kodini olish</button>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
@@ -838,6 +840,12 @@
       <section class="screen" data-screen="register">
         <div class="form-wrap">
           <div class="lead">Ro'yxatdan o'tish</div>
+          <div id="regMethodChoice">
+            <div class="lead-sub">Ro'yxatdan o'tish usulini tanlang.</div>
+            <div class="role-card" data-reg-method="telegram"><div class="role-ic" style="background:#E0F2FE;color:#0284C7">✈️</div><div class="role-main"><h3>Telegram orqali</h3><p>Telegram akkauntingiz orqali SMS kodsiz ro'yxatdan o'ting.</p></div><span class="chev">›</span></div>
+            <div class="role-card" data-reg-method="phone"><div class="role-ic" style="background:var(--primary-tint);color:var(--primary)">📱</div><div class="role-main"><h3>Telefon orqali</h3><p>Telefon raqamingizga yuborilgan 6 xonali kod bilan.</p></div><span class="chev">›</span></div>
+          </div>
+          <div id="regRoleChoice" hidden>
           <div class="lead-sub">Kim sifatida ro'yxatdan o'tmoqchisiz?</div>
           <div class="role-card" data-role="biznes">
             <div class="role-ic" style="background:var(--primary-tint);color:var(--primary)">🏪</div>
@@ -848,6 +856,8 @@
             <div class="role-ic" style="background:var(--amber-tint);color:#8a5a06">🙂</div>
             <div class="role-main"><h3>Oddiy foydalanuvchi</h3><p>Bizneslarni toping, buyurtma bering, navbatga yoziling.</p></div>
             <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+          <div class="form-foot"><b id="regMethodBack">← Ro'yxatdan o'tish usulini o'zgartirish</b></div>
           </div>
         </div>
       </section>
@@ -2982,7 +2992,12 @@
   }
 
   /* ---------- ro'yxatdan o'tish formasi ---------- */
-  var regRole = "user";
+  var regRole = "user", regMethod = "phone";
+  function chooseRegisterMethod(method){
+    regMethod=method==="telegram"?"telegram":"phone";
+    el("regMethodChoice").hidden=true;el("regRoleChoice").hidden=false;
+  }
+  function resetRegisterMethod(){el("regRoleChoice").hidden=true;el("regMethodChoice").hidden=false;}
   function renderReg(role){
     regRole = (role==="biznes" || role==="business") ? "business" : "user";
     var isBiz = regRole==="business";
@@ -2993,6 +3008,15 @@
         '<div class="field"><label>Faoliyat yo\'nalishi</label><select class="input" id="rgYon">'+yonOptions+'</select></div>'+
         '<div class="field"><label>Manzil</label><input class="input" id="rgAddr" placeholder="Tuman, mahalla, ko\'cha"></div>'
       : '<div class="field"><label>Ism familiya</label><input class="input" id="rgName" placeholder="Ismingiz"></div>';
+    if(regMethod==="telegram"){
+      el("regBody").innerHTML =
+        '<div class="form-wrap"><div class="lead">'+(isBiz?'Telegram orqali biznes':'Telegram orqali ro\'yxat')+'</div>'+ 
+        '<div class="lead-sub">Telegram akkauntingiz avtomatik tasdiqlanadi. SMS kod talab qilinmaydi.</div>'+fieldsHtml+
+        '<div class="field"><label>Telefon raqami — ixtiyoriy</label><input class="input" id="rgPhone" inputmode="tel" placeholder="+998 90 123 45 67" autocomplete="tel"></div>'+ 
+        '<button class="btn btn-primary btn-block" id="rgSubmit">✈️ Telegram orqali ro\'yxatdan o\'tish</button></div>';
+      el("rgSubmit").addEventListener("click",submitTelegramRegister);
+      return;
+    }
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">'+(isBiz?'Biznes ro\'yxati':'Foydalanuvchi ro\'yxati')+'</div>'+
       '<div class="lead-sub">Telefon raqamingizni kiriting. Raqamga 6 xonali tasdiqlash kodi yuboriladi.</div>'+
@@ -3001,6 +3025,23 @@
       '<button class="btn btn-primary btn-block" id="rgSubmit">Tasdiqlash kodini olish</button>'+
       '</div>';
     el("rgSubmit").addEventListener("click", submitRegister);
+  }
+
+  function submitTelegramRegister(){
+    var name=(el("rgName").value||"").trim();
+    if(!name){showMsg(regRole==="business"?"Biznes nomini kiriting.":"Ism-familiyani kiriting.");return;}
+    var body={role:regRole,name:name,phone:(el("rgPhone").value||"").trim()};
+    if(regRole==="business"){
+      body.yon=el("rgYon")?el("rgYon").value:"";body.address=el("rgAddr")?el("rgAddr").value.trim():"";
+    }
+    try{body.username=(TG&&TG.initDataUnsafe&&TG.initDataUnsafe.user&&TG.initDataUnsafe.user.username)||"";}catch(e){}
+    var btn=el("rgSubmit");btn.disabled=true;btn.textContent="Ro'yxatdan o'tkazilmoqda...";
+    api("POST","/api/auth/register",body).then(function(r){
+      if(r.added_business){
+        el("regBody").innerHTML='<div class="form-wrap"><div class="lead">Biznes profilingiz ochildi ✅</div><div class="lead-sub">Biznes login va parolini xavfsiz saqlang.</div><div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px"><div><b>Login:</b> '+esc(r.biz_login||"")+'</div><div style="margin-top:8px"><b>Parol:</b> '+esc(r.biz_password||"")+'</div></div><button class="btn btn-primary btn-block" id="tgRegDone">Biznes kabinetga o\'tish</button></div>';
+        el("tgRegDone").addEventListener("click",function(){afterAuth("business");});
+      }else showCredentials(r.login,r.password,r.role);
+    }).catch(function(e){showMsg(e.message);btn.disabled=false;btn.textContent="✈️ Telegram orqali ro'yxatdan o'tish";});
   }
 
   function submitRegister(){
@@ -5872,7 +5913,7 @@
     else showMsg("Buyurtma / navbatga yozilish — keyingi bosqichlarda qo'shiladi.");
   });
 
-  el("goRegister").addEventListener("click", function(){ nav("register"); });
+  el("goRegister").addEventListener("click", function(){ resetRegisterMethod(); nav("register"); });
 
   function afterAuth(role){
     loggedIn = true;
@@ -5892,6 +5933,14 @@
 
   // KIRISH: telefon -> 6 xonali kod -> mobil Bearer token
   var loginRequestId=0, loginRequestPhone="", loginResendTimer=null;
+  el("loginTelegram") && el("loginTelegram").addEventListener("click",function(){
+    var btn=this;btn.disabled=true;btn.textContent="Telegram tekshirilmoqda...";
+    api("GET","/api/me").then(function(d){
+      if(!d||!d.registered){showMsg("Bu Telegram akkaunti ro'yxatdan o'tmagan. Avval Telegram orqali ro'yxatdan o'ting.");return;}
+      afterAuth(d.role||"user");
+    }).catch(function(e){showMsg("Telegram orqali kirish uchun ilovani Telegram ichida oching. "+(e.message||""));})
+      .finally(function(){btn.disabled=false;btn.textContent="✈️ Telegram orqali kirish";});
+  });
   function stopLoginTimer(){ if(loginResendTimer){ clearInterval(loginResendTimer); loginResendTimer=null; } }
   function startLoginResendTimer(){
     stopLoginTimer();
@@ -6021,6 +6070,10 @@
   document.querySelectorAll('[data-role]').forEach(function(rc){
     rc.addEventListener("click", function(){ renderReg(rc.getAttribute("data-role")); nav("regform"); });
   });
+  document.querySelectorAll('[data-reg-method]').forEach(function(rc){
+    rc.addEventListener("click",function(){chooseRegisterMethod(rc.getAttribute("data-reg-method"));});
+  });
+  el("regMethodBack") && el("regMethodBack").addEventListener("click",resetRegisterMethod);
 
   /* ---------- OMBOR (qoldiq + kirim-chiqim, guruhli ko'rinish) ---------- */
   function stockColor(q){ q = parseFloat(q)||0; if(q < 0) return "#e53935"; if(q === 0) return "#e6a100"; return "inherit"; }
