@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1508 -->
+<title>Platforma</title><!-- BUILD: v1509 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2581,15 +2581,21 @@
   }
   function specCardSrv(s){
     var ini = (s.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
+    var av = s.avatar_file
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(s.avatar_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      : '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px;font-weight:800;color:var(--primary)">'+esc(ini)+'</span></div>';
     return '<div class="biz-card" data-psrv="'+s.user_id+'">'+
-      '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px;font-weight:800;color:var(--primary)">'+esc(ini)+'</span></div>'+
+      av+
       '<div class="biz-main"><div class="biz-name">'+esc(s.name)+'</div>'+
         '<div class="biz-meta"><span class="cat">'+esc(s.kasb||"Mutaxassis")+'</span>'+ratingBadge(s.rating, s.rating_cnt)+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
   function bizCardSrv(b){
+    var logo = b.logo_file
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(b.logo_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      : '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px">🏪</span></div>';
     return '<div class="biz-card" data-bsrv="'+b.id+'">'+
-      '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px">🏪</span></div>'+
+      logo+
       '<div class="biz-main"><div class="biz-name">'+esc(b.name)+'</div>'+
         '<div class="biz-meta"><span class="cat">'+esc(b.tur||b.yon||"")+'</span>'+ratingBadge(b.rating, b.rating_cnt)+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
@@ -2608,6 +2614,10 @@
   function validPin(lat, lng){
     var a = parseFloat(lat), b = parseFloat(lng);
     return isFinite(a) && isFinite(b);
+  }
+  function searchThumb(src, fallback, isVideo){
+    if(src && !isVideo) return '<div class="li-thumb" style="background:var(--primary-tint)"><img src="'+esc(mediaUrl(src))+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>';
+    return '<div class="li-thumb" style="background:var(--primary-tint)"><span>'+(isVideo?'▶':fallback)+'</span></div>';
   }
   function buildResults(data, headerLabel, callBtn){
     var pins=[], html=callBtn||"";
@@ -2632,10 +2642,13 @@
     }
 
     if(prods.length) html += '<div class="list-sub">'+(data.result_type==="service"?'🧰 Xizmatlar':data.result_type==="product"?'🛍 Mahsulotlar':'🛍 Mahsulot va xizmatlar')+'</div>'+prods.map(function(p){
-      return '<div class="item" data-bsrv="'+p.business_id+'" style="cursor:pointer"><div><div class="iname">'+esc(p.name)+'</div><div class="idesc">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
+      var ico = String(p.kind||"").toLowerCase()==="service" ? "🧰" : "🛍️";
+      return '<div class="elon-item" data-bsrv="'+p.business_id+'">'+searchThumb(p.photo_file,ico,false)+
+        '<div class="li-main"><div class="li-title">'+esc(p.name)+'</div><div class="li-meta">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
     }).join("");
     if(lists.length) html += '<div class="list-sub" style="margin-top:6px">📢 E\'lonlar</div>'+lists.map(function(e2){
-      return '<div class="elon-item" data-lsrv="'+e2.id+'"><div class="li-thumb" style="background:var(--primary-tint)"><span>📦</span></div>'+
+      var media=(e2.media||[]), photo=media.filter(function(m){return m.type!=="video";})[0], first=photo||media[0];
+      return '<div class="elon-item" data-lsrv="'+e2.id+'">'+searchThumb(first&&first.file_id,"📦",!!(first&&first.type==="video"))+
         '<div class="li-main"><div class="li-title">'+esc(e2.title)+'</div><div class="li-price">'+esc(e2.price||"")+'</div><div class="li-meta">'+esc(e2.address||"")+'</div></div></div>';
     }).join("");
     if(specs.length) html += '<div class="list-sub" style="margin-top:6px">👤 Mutaxasislar</div>'+specs.map(specCardSrv).join("");
