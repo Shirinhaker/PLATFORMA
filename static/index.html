@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1507 -->
+<title>Platforma</title><!-- BUILD: v1508 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -659,6 +659,15 @@
         <div class="search" style="margin-top:4px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           <input id="catSearch" placeholder="Nima qidiryapsiz? (biznes, mutaxasis...)" />
+        </div>
+        <div class="list-sub" style="margin:12px 4px 8px">Nimani qidiryapsiz?</div>
+        <div class="sort-row" id="searchTypeRow">
+          <button class="sort-chip on" data-search-type="all">Barchasi</button>
+          <button class="sort-chip" data-search-type="product">Mahsulot</button>
+          <button class="sort-chip" data-search-type="service">Xizmat</button>
+          <button class="sort-chip" data-search-type="business">Biznes</button>
+          <button class="sort-chip" data-search-type="specialist">Mutaxassis</button>
+          <button class="sort-chip" data-search-type="user">Foydalanuvchi</button>
         </div>
         <div class="list-sub" style="margin:12px 4px 8px">Qidiruv kengligi:</div>
         <div class="sort-row" id="scopeRow">
@@ -2083,6 +2092,9 @@
 
   /* ---------- render: yo'nalishlar (katalog) ---------- */
   var scope = "Tuman";
+  var searchResultType = "all";
+  var SEARCH_TYPE_LABELS = {all:"Barchasi",product:"Mahsulot",service:"Xizmat",business:"Biznes",specialist:"Mutaxassis",user:"Foydalanuvchi"};
+  var SEARCH_TYPE_PLACEHOLDERS = {all:"Nima qidiryapsiz?",product:"Mahsulot qidirish...",service:"Xizmat qidirish...",business:"Biznes qidirish...",specialist:"Mutaxassis qidirish...",user:"Foydalanuvchi qidirish..."};
   var curYon = null;
   var listBack = "home";
   function initials2(name){ return name.trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase(); }
@@ -2619,7 +2631,7 @@
       html += '<div class="elon-hint" style="margin:2px 0 8px;padding:8px 12px;background:var(--primary-tint);border-radius:10px">🔎 «'+esc(data.corrected)+'» bo\'yicha natijalar ko\'rsatilmoqda</div>';
     }
 
-    if(prods.length) html += '<div class="list-sub">🛍 Mahsulot va xizmatlar</div>'+prods.map(function(p){
+    if(prods.length) html += '<div class="list-sub">'+(data.result_type==="service"?'🧰 Xizmatlar':data.result_type==="product"?'🛍 Mahsulotlar':'🛍 Mahsulot va xizmatlar')+'</div>'+prods.map(function(p){
       return '<div class="item" data-bsrv="'+p.business_id+'" style="cursor:pointer"><div><div class="iname">'+esc(p.name)+'</div><div class="idesc">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
     }).join("");
     if(lists.length) html += '<div class="list-sub" style="margin-top:6px">📢 E\'lonlar</div>'+lists.map(function(e2){
@@ -2643,9 +2655,9 @@
     if(!q){ exitResults(); nav("home"); return; }
     el("searchInput").value = q;
     el("catSearch").value = q;
-    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()).then(function(data){
+    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&"+actorQuery()).then(function(data){
       if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
-      var r = buildResults(data, '"'+q+'"', "");
+      var r = buildResults(data, (SEARCH_TYPE_LABELS[searchResultType]||"Barchasi")+' · "'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
       enterResults('<p class="elon-hint">'+esc(e.message)+'</p>', [], 0);
@@ -5095,7 +5107,7 @@
     nav("catalog");
     setTimeout(function(){ el("catSearch").focus(); }, 150);
   });
-  el("catSearch").addEventListener("keyup", function(e){ if(e.key==="Enter") runSearch(this.value); });
+  el("catSearch").addEventListener("keydown", function(e){ if(e.key==="Enter"){e.preventDefault();runSearch(this.value);} });
   el("clearSearch").addEventListener("click", exitResults);
   el("taxiBtn").addEventListener("click", function(){ if(callMode) exitCall(); else enterCall(); });
   el("taxiCabBtn").addEventListener("click", function(){ if(!loggedIn){ showLogin("Taxi bo'limi"); return; } openTaxiDriver(); nav("taxidrv"); });
@@ -5571,6 +5583,13 @@
     this.querySelectorAll(".sort-chip").forEach(function(x){ x.classList.toggle("on", x===c); });
     var _q=(el("searchInput").value||"").trim();
     if(_q){ runSearch(_q); }   // kenglik o'zgardi — natijalarni yangilaymiz
+  });
+  el("searchTypeRow").addEventListener("click",function(e){
+    var b=e.target.closest("[data-search-type]");if(!b)return;
+    searchResultType=b.getAttribute("data-search-type")||"all";
+    this.querySelectorAll("[data-search-type]").forEach(function(x){x.classList.toggle("on",x===b);});
+    el("catSearch").placeholder=SEARCH_TYPE_PLACEHOLDERS[searchResultType]||"Nima qidiryapsiz?";
+    var q=(el("catSearch").value||"").trim();if(q)runSearch(q);
   });
   el("yonList").addEventListener("click", function(e){
     var y=e.target.closest("[data-yon]"); if(y) openYon(parseInt(y.getAttribute("data-yon"),10));
