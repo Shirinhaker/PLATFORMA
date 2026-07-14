@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1499 -->
+<title>Platforma</title><!-- BUILD: v1500 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -791,6 +791,7 @@
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -874,6 +875,16 @@
           </div>
           <button class="btn btn-primary btn-block" id="bpSave">Saqlash</button>
         </div>
+      </section>
+
+      <!-- CAB: MIJOZ FIKRLARI -->
+      <section class="screen" data-screen="cab-reviews">
+        <div class="panel-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+          <div><div class="idesc">O'rtacha baho</div><div style="font-size:28px;font-weight:800"><span id="bizReviewAvg">0</span> <span style="color:#f5a623">★</span></div></div>
+          <div style="text-align:right"><div class="idesc">Jami fikr</div><div style="font-size:22px;font-weight:800" id="bizReviewCount">0</div></div>
+        </div>
+        <div class="idesc" style="margin:4px 2px 12px">Mijoz fikrini o'chirib bo'lmaydi. Har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.</div>
+        <div id="bizReviewsList"></div>
       </section>
 
       <!-- CAB: MAHSULOTLAR -->
@@ -2996,7 +3007,7 @@
   /* ---------- navigation ---------- */
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
-    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
+    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
@@ -3006,7 +3017,7 @@
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-my-docs":"Mening hujjatlarim", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
-    cabinet:"home", "cab-profil":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
+    cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
@@ -8090,10 +8101,39 @@
     api("PUT","/api/specialist/reviews/"+id+"/reply",{reply:reply}).then(function(){showMsg("Javob saqlandi ✅");loadSpecialistReviews();}).catch(function(er){showMsg(er.message);}).finally(function(){b.disabled=false;});
   });
 
+  function setBusinessReviewSummary(d){
+    var avg=(d&&d.avg)||0,count=(d&&d.count)||0;
+    if(el("cabReviewAvg"))el("cabReviewAvg").textContent=avg;
+    if(el("cabReviewCount"))el("cabReviewCount").textContent=count;
+    if(el("bizReviewAvg"))el("bizReviewAvg").textContent=avg;
+    if(el("bizReviewCount"))el("bizReviewCount").textContent=count;
+  }
+  function loadBusinessReviews(summaryOnly){
+    var box=el("bizReviewsList");
+    if(box&&!summaryOnly)box.innerHTML='<div class="idesc">Fikrlar yuklanmoqda...</div>';
+    return api("GET","/api/business/reviews").then(function(d){
+      setBusinessReviewSummary(d);
+      if(summaryOnly||!box)return;
+      if(!d.reviews||!d.reviews.length){box.innerHTML='<div class="empty" style="padding:40px 18px"><h3>Hozircha fikr yo\'q</h3><p>Mijozlar qoldirgan baho va fikrlar shu yerda ko\'rinadi.</p></div>';return;}
+      box.innerHTML=d.reviews.map(function(r){return '<div class="sp-review-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><b>'+esc(r.user_name)+'</b><div class="idesc" style="font-size:11px;margin-top:2px">'+notifyTime(r.created_at)+'</div></div><span style="color:#f5a623">'+rvStarsHtml(r.stars,false)+'</span></div>'+
+        (r.comment?'<div class="idesc" style="margin-top:6px;line-height:1.5">'+esc(r.comment)+'</div>':'<div class="idesc" style="margin-top:6px">Matnsiz baho</div>')+
+        (r.owner_reply?'<div class="sp-owner-reply"><b>Sizning javobingiz</b><div style="margin-top:3px">'+esc(r.owner_reply)+'</div></div>':'')+
+        '<textarea class="textarea" data-biz-review-reply="'+r.id+'" style="margin-top:10px;min-height:72px" placeholder="Mijozga javob yozing...">'+esc(r.owner_reply||"")+'</textarea><button class="btn btn-soft btn-block" data-biz-review-save="'+r.id+'" style="margin-top:7px">'+(r.owner_reply?'Javobni yangilash':'Javob berish')+'</button></div>';}).join("");
+    }).catch(function(e){if(box&&!summaryOnly)box.innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
+  }
+  if(el("bizReviewsList"))el("bizReviewsList").addEventListener("click",function(e){
+    var b=e.target.closest("[data-biz-review-save]");if(!b)return;
+    var id=b.getAttribute("data-biz-review-save"),ta=this.querySelector('[data-biz-review-reply="'+id+'"]'),reply=(ta?ta.value:"").trim();
+    if(!reply){showMsg("Javob matnini kiriting.");return;}
+    b.disabled=true;
+    api("PUT","/api/business/reviews/"+id+"/reply",{reply:reply}).then(function(){showMsg("Javob saqlandi ✅");loadBusinessReviews(false);}).catch(function(er){showMsg(er.message);}).finally(function(){b.disabled=false;});
+  });
+
 
   function onScreenOpen(screen){
     if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
+    else if(screen==="cab-reviews") loadBusinessReviews(false);
     else if(screen==="cab-my-docs") loadMyDocuments();
     else if(screen==="ucab-spec") loadSpecialist();
     else if(screen==="ucab-spec-reviews") loadSpecialistReviews();
@@ -8166,6 +8206,7 @@
   }
   function loadCabinetCounts(){
     refreshOrderBadges();
+    loadBusinessReviews(true);
     api("GET","/api/profile").then(function(d){
       var f=document.querySelector('[data-nav="cab-followers"] b'), g=document.querySelector('[data-nav="cab-following"] b');
       if(f) f.textContent = (d.business_followers!=null?d.business_followers:d.followers);
