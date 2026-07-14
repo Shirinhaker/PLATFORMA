@@ -1671,6 +1671,9 @@ def _ad_dict(row):
         "crop_x": float(_row_val(row, "crop_x", 50) or 50),
         "crop_y": float(_row_val(row, "crop_y", 50) or 50),
         "crop_zoom": float(_row_val(row, "crop_zoom", 1) or 1),
+        "daily_all_day": bool(int(_row_val(row, "daily_all_day", 1) or 0)),
+        "daily_start": str(_row_val(row, "daily_start", "00:00") or "00:00"),
+        "daily_end": str(_row_val(row, "daily_end", "23:59") or "23:59"),
         "start_at": row["start_at"], "end_at": row["end_at"],
         "duration_days": row["duration_days"], "price": row["price"],
         "status": _ad_status(row), "views": row["views"], "clicks": row["clicks"],
@@ -1747,6 +1750,15 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
         crop_zoom = max(1.0, min(3.0, float(b.get("crop_zoom", 1))))
     except (TypeError, ValueError):
         crop_x, crop_y, crop_zoom = 50.0, 50.0, 1.0
+    daily_all_day = bool(b.get("daily_all_day", True))
+    daily_start = str(b.get("daily_start") or "00:00").strip()
+    daily_end = str(b.get("daily_end") or "23:59").strip()
+    if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", daily_start) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", daily_end):
+        conn.close()
+        raise HTTPException(400, "Kunlik reklama vaqtini to'g'ri kiriting.")
+    if not daily_all_day and daily_start == daily_end:
+        conn.close()
+        raise HTTPException(400, "Boshlanish va tugash vaqti bir xil bo'lmasin.")
     if not title:
         conn.close()
         raise HTTPException(400, "Reklama sarlavhasini kiriting.")
@@ -1768,11 +1780,12 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     price = _ad_price(targets, b.get("duration_days"))
     end_at = start_at + price["days"] * 86400
     cur = conn.execute(
-        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,crop_x,crop_y,crop_zoom,
+        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,crop_x,crop_y,crop_zoom,daily_all_day,daily_start,daily_end,
                                        targets_json,start_at,end_at,duration_days,price,status,
                                        views,clicks,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
         (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, crop_x, crop_y, crop_zoom,
+         1 if daily_all_day else 0, daily_start, daily_end,
          json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
          "active", now, now),
     )
@@ -1830,7 +1843,19 @@ async def active_advertisements(x_telegram_init_data: str = Header(default="")):
     ).fetchall()
     matched = []
     ids = []
+    uz_now = time.gmtime(now + 5 * 3600)
+    minute_now = uz_now.tm_hour * 60 + uz_now.tm_min
     for r in rows:
+        if not bool(int(_row_val(r, "daily_all_day", 1) or 0)):
+            try:
+                sh, sm = map(int, str(_row_val(r, "daily_start", "00:00")).split(":"))
+                eh, em = map(int, str(_row_val(r, "daily_end", "23:59")).split(":"))
+                start_minute, end_minute = sh * 60 + sm, eh * 60 + em
+                in_window = (start_minute <= minute_now < end_minute) if start_minute < end_minute else (minute_now >= start_minute or minute_now < end_minute)
+                if not in_window:
+                    continue
+            except Exception:
+                pass
         try:
             targets = json.loads(r["targets_json"] or "[]")
         except Exception:
