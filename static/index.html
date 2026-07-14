@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1505 -->
+<title>Platforma</title><!-- BUILD: v1506 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,6 +52,8 @@
   .ad.has-image{background:#14201d;padding:0;}
   .ad.has-image .ad-photo{display:block;width:100%;height:170px;object-fit:cover;}
   .ad .ad-photo{display:none;}
+  .ad .ad-photo,.ad .ad-copy{opacity:1;transition:opacity 1s ease}
+  .ad.ad-transitioning .ad-photo,.ad.ad-transitioning .ad-copy{opacity:0}
   .ad.has-image .ad-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 20%,rgba(0,0,0,.78) 100%);}
   .ad-copy{position:relative;z-index:2;padding:18px;}
   .ad.has-image .ad-copy{position:absolute;left:0;right:0;bottom:0;padding:16px;color:#fff;}
@@ -9054,14 +9056,13 @@
   }
 
   /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
-  var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [];
+  var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [], HOME_AD_SWITCHING = false;
   var DEMO_HOME_ADS = [
     {id:-1,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
     {id:-2,title:"Samarqand Coffee",caption:"Issiq qahva va yangi desertlar",image_file:"/demo_ads/demo_cafe.svg",crop_x:72,crop_y:52,crop_zoom:1.12,is_demo:true},
     {id:-3,title:"Smart Texnika",caption:"Telefon va aksessuarlarga foydali taklif",image_file:"/demo_ads/demo_tech.svg",crop_x:77,crop_y:48,crop_zoom:1.05,is_demo:true},
     {id:-4,title:"Orzu Mebel",caption:"Uyingiz uchun zamonaviy yechimlar",image_file:"/demo_ads/demo_home.svg",crop_x:78,crop_y:50,crop_zoom:1.10,is_demo:true},
-    {id:-5,title:"Nafis Beauty",caption:"Go'zalligingiz uchun yangi xizmatlar",image_file:"/demo_ads/demo_beauty.svg",crop_x:76,crop_y:50,crop_zoom:1.10,is_demo:true},
-    {id:-6,title:"Tez Yetkazish",caption:"Buyurtmangizni tez va ishonchli yetkazamiz",image_file:"/demo_ads/demo_delivery.svg",crop_x:78,crop_y:55,crop_zoom:1.06,is_demo:true}
+    {id:-5,title:"Nafis Beauty",caption:"Go'zalligingiz uchun yangi xizmatlar",image_file:"/demo_ads/demo_beauty.svg",crop_x:76,crop_y:50,crop_zoom:1.10,is_demo:true}
   ];
   function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
   function adStatusLabel(st){
@@ -9099,24 +9100,41 @@
   }
   function flushHomeAdViews(){
     if(!HOME_AD_SEEN.length)return Promise.resolve();
-    var ids=HOME_AD_SEEN.slice(0,6);
+    var ids=HOME_AD_SEEN.slice(0,5);
     return api("POST","/api/advertisements/views",{ids:ids}).then(function(){HOME_AD_SEEN=HOME_AD_SEEN.filter(function(id){return ids.indexOf(id)<0;});}).catch(function(){});
+  }
+  function transitionHomeAd(nextIndex,nextAds){
+    if(HOME_AD_SWITCHING)return;
+    HOME_AD_SWITCHING=true;
+    var box=el("adBox");box.classList.add("ad-transitioning");
+    setTimeout(function(){
+      if(nextAds)HOME_ADS=nextAds;
+      HOME_AD_INDEX=Math.max(0,Math.min(nextIndex,HOME_ADS.length-1));
+      renderHomeAd();
+      requestAnimationFrame(function(){box.classList.remove("ad-transitioning");setTimeout(function(){HOME_AD_SWITCHING=false;},1000);});
+    },1000);
   }
   function startHomeAds(){
     if(HOME_AD_TIMER) clearInterval(HOME_AD_TIMER);
     if(HOME_ADS.length>1) HOME_AD_TIMER=setInterval(function(){
-      if(HOME_AD_INDEX>=HOME_ADS.length-1){flushHomeAdViews().then(loadHomeAds);return;}
-      HOME_AD_INDEX++;renderHomeAd();
+      if(HOME_AD_SWITCHING)return;
+      if(HOME_AD_INDEX>=HOME_ADS.length-1){flushHomeAdViews().then(function(){loadHomeAds(true);});return;}
+      transitionHomeAd(HOME_AD_INDEX+1);
     },10000);
   }
-  function loadHomeAds(){
-    api("GET","/api/advertisements/active").then(function(list){ HOME_ADS=(list&&list.length)?list:DEMO_HOME_ADS.slice(); HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); }).catch(function(){ HOME_ADS=DEMO_HOME_ADS.slice(); HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); });
+  function applyHomeAds(list,animate){
+    var next=(list&&list.length)?list:DEMO_HOME_ADS.slice();
+    if(animate&&HOME_ADS.length)transitionHomeAd(0,next);else{HOME_ADS=next;HOME_AD_INDEX=0;renderHomeAd();}
+    startHomeAds();
+  }
+  function loadHomeAds(animate){
+    api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);});
   }
   document.addEventListener("visibilitychange",function(){
     if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
     else if(HOME_ADS.length){renderHomeAd();startHomeAds();}
   });
-  el("adDots").addEventListener("click",function(e){ var d=e.target.closest("[data-home-ad-dot]"); if(!d)return; HOME_AD_INDEX=parseInt(d.getAttribute("data-home-ad-dot"),10)||0; renderHomeAd(); startHomeAds(); });
+  el("adDots").addEventListener("click",function(e){ var d=e.target.closest("[data-home-ad-dot]"); if(!d||HOME_AD_SWITCHING)return; transitionHomeAd(parseInt(d.getAttribute("data-home-ad-dot"),10)||0); startHomeAds(); });
   el("adBox").addEventListener("click",function(){
     if(!HOME_ADS.length) return;
     var a=HOME_ADS[HOME_AD_INDEX];
