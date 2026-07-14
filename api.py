@@ -4910,7 +4910,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 products = conn.execute(
-                    "SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, "
+                    "SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.photo_file, "
                     "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
@@ -4927,7 +4927,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 terms,
             )
             products = conn.execute(
-                """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind,
+                """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.photo_file,
                           b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
                    FROM items i JOIN businesses b ON b.id=i.business_id
                    WHERE b.status='active' AND """ + product_where + """
@@ -4964,7 +4964,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 specialists = conn.execute(
-                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, "
+                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, "
                     "bm25(specialists_fts, 10.0, 1.0) AS _rank "
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
@@ -4981,7 +4981,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 terms,
             )
             specialists = conn.execute(
-                """SELECT s.*, u.name, u.region, u.district, u.mahalla
+                """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + """
                    ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
@@ -5054,19 +5054,22 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         "terms": _search_terms(corrected or q),
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"], "unit": p["unit"] or "dona",
                       "note": p["note"], "kind": p["kind"],
+                      "photo_file": _row_val(p, "photo_file", "") or "",
                       "business_id": p["biz_id"], "business_name": p["biz_name"],
                       "business_yon": p["biz_yon"], "business_tur": p["biz_tur"],
                       "address": p["address"], "lat": p["lat"], "lng": p["lng"]} for p in products],
-        "listings": [listing_to_dict(conn, r, with_media=False) for r in listings],
+        "listings": [listing_to_dict(conn, r, with_media=True) for r in listings],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
                          "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
                          "available": bool(s["available"]), "region": s["region"],
                          "district": s["district"], "mahalla": s["mahalla"],
+                         "avatar_file": _row_val(s, "avatar_file", "") or "",
                          "lat": s["lat"], "lng": s["lng"],
                          "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
                          "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
+                        "logo_file": _row_val(b, "logo_file", "") or "",
                         "lat": b["lat"], "lng": b["lng"],
                         "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
                         "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
