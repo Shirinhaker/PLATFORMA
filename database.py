@@ -1208,6 +1208,9 @@ def _migrate(conn):
         "crop_x REAL NOT NULL DEFAULT 50, "
         "crop_y REAL NOT NULL DEFAULT 50, "
         "crop_zoom REAL NOT NULL DEFAULT 1, "
+        "daily_all_day INTEGER NOT NULL DEFAULT 1, "
+        "daily_start TEXT NOT NULL DEFAULT '00:00', "
+        "daily_end TEXT NOT NULL DEFAULT '23:59', "
         "targets_json TEXT NOT NULL DEFAULT '[]', "
         "start_at INTEGER NOT NULL, "
         "end_at INTEGER NOT NULL, "
@@ -1230,6 +1233,12 @@ def _migrate(conn):
         conn.execute("ALTER TABLE advertisements ADD COLUMN crop_y REAL NOT NULL DEFAULT 50")
     if "crop_zoom" not in adcols:
         conn.execute("ALTER TABLE advertisements ADD COLUMN crop_zoom REAL NOT NULL DEFAULT 1")
+    if "daily_all_day" not in adcols:
+        conn.execute("ALTER TABLE advertisements ADD COLUMN daily_all_day INTEGER NOT NULL DEFAULT 1")
+    if "daily_start" not in adcols:
+        conn.execute("ALTER TABLE advertisements ADD COLUMN daily_start TEXT NOT NULL DEFAULT '00:00'")
+    if "daily_end" not in adcols:
+        conn.execute("ALTER TABLE advertisements ADD COLUMN daily_end TEXT NOT NULL DEFAULT '23:59'")
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
