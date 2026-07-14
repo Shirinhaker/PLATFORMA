@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1494 -->
+<title>Platforma</title><!-- BUILD: v1495 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -4918,13 +4918,15 @@
   }
   function openActionNotification(n){
     if(!n||!n.order_id)return;
+    ACTION_NOTIFY_DISMISSED[n.id]=1;
+    hideActionNotify();
     var business=n.actor_kind==="business",mode=business?"inbox":"mine";
     activeMode=business?"business":"user";
     api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
     api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
       if(business){ORDERS_INBOX=list||[];nav("cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox","bizOrdersList");}
       else{ORDERS_MINE=list||[];nav("ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine","myOrdersList");}
-      hideActionNotify();openOrderDetail(parseInt(n.order_id,10),mode);
+      openOrderDetail(parseInt(n.order_id,10),mode);
     }).catch(function(e){showMsg(e.message);});
   }
   el("actionNotify") && el("actionNotify").addEventListener("click",function(e){if(e.target.closest("#actionNotifyClose"))return;openActionNotification(ACTION_NOTIFY_CURRENT);});
