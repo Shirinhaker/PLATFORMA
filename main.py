@@ -36,7 +36,7 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1498"
+APP_BUILD = "v1499"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -323,7 +323,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True}
 
 
 @app.get("/api/_dbinfo")
@@ -485,9 +485,9 @@ async def mobile_register_request_code(request: Request):
     if len(name) < 2:
         raise HTTPException(400, "Ism-familiya yoki biznes nomini kiriting.")
     conn = db()
-    if find_user_by_phone(conn, phone):
+    if conn.execute("SELECT 1 FROM users WHERE phone=? AND role=?", (phone, role)).fetchone():
         conn.close()
-        raise HTTPException(409, "Bu telefon raqami bilan akkaunt mavjud. Kirish bo'limidan foydalaning.")
+        raise HTTPException(409, "Bu telefon raqami bilan shu turdagi profil mavjud. Kirish bo'limidan foydalaning.")
     now = int(time.time())
     recent = conn.execute(
         "SELECT created_at FROM mobile_pending_registrations WHERE phone=? ORDER BY id DESC LIMIT 1",
@@ -541,24 +541,36 @@ async def mobile_register_verify_code(request: Request):
         conn.commit()
         left = max(0, int(row["max_attempts"] or 5) - int(row["attempts"] or 0) - 1)
         conn.close(); raise HTTPException(400, "Kod noto'g'ri. Qolgan urinish: " + str(left) + ".")
-    if find_user_by_phone(conn, phone):
-        conn.close(); raise HTTPException(409, "Bu telefon bilan akkaunt allaqachon yaratilgan.")
-    for _ in range(30):
-        login = gen_login()
-        if not conn.execute("SELECT 1 FROM users WHERE login=?", (login,)).fetchone():
-            break
-    password = gen_pass()
+    if conn.execute("SELECT 1 FROM users WHERE phone=? AND role=?", (phone, row["role"])).fetchone():
+        conn.close(); raise HTTPException(409, "Bu telefon bilan shu turdagi profil allaqachon yaratilgan.")
+    is_business = row["role"] == "business"
+    if is_business:
+        login = gen_owner_key()
+        password = None
+        for _ in range(30):
+            biz_login = gen_biz_login()
+            if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
+                break
+        biz_password = gen_pass()
+    else:
+        for _ in range(30):
+            login = gen_login()
+            if not conn.execute("SELECT 1 FROM users WHERE login=?", (login,)).fetchone():
+                break
+        password = gen_pass()
+        biz_login = None
+        biz_password = None
     cur = conn.execute(
         """INSERT INTO users(tg_id,username,login,pass_hash,role,name,phone,created_at)
            VALUES(NULL,'',?,?,?,?,?,?)""",
-        (login, hash_password(password), row["role"], row["name"], phone, now),
+        (login, hash_password(password) if password else "", row["role"], row["name"], phone, now),
     )
     user_id = cur.lastrowid
-    if row["role"] == "business":
+    if is_business:
         conn.execute(
-            """INSERT INTO businesses(user_id,name,yon,address,phone,status,created_at)
-               VALUES(?,?,?,?,?,'active',?)""",
-            (user_id, row["name"], row["yon"], row["address"], phone, now),
+            """INSERT INTO businesses(user_id,name,yon,address,phone,biz_login,biz_pass_hash,status,created_at)
+               VALUES(?,?,?,?,?,?,?,'active',?)""",
+            (user_id, row["name"], row["yon"], row["address"], phone, biz_login, hash_password(biz_password), now),
         )
     token = secrets.token_urlsafe(48)
     expires_at = now + MOBILE_SESSION_TTL
@@ -573,7 +585,9 @@ async def mobile_register_verify_code(request: Request):
     conn.commit(); conn.close()
     return {"ok": True, "access_token": token, "token_type": "Bearer",
             "expires_in": MOBILE_SESSION_TTL, "expires_at": expires_at,
-            "login": login, "password": password, "role": row["role"],
+            "login": biz_login if is_business else login,
+            "password": biz_password if is_business else password,
+            "biz_login": biz_login, "biz_password": biz_password, "role": row["role"],
             "user": {"id": user_id, "name": row["name"], "role": row["role"]}}
 
 
@@ -734,6 +748,10 @@ def gen_login():
 def gen_biz_login():
     return "biz" + "".join(secrets.choice("0123456789") for _ in range(6))
 
+def gen_owner_key():
+    """Biznes egasining faqat ichki bog'lanish kaliti; kirish uchun ishlamaydi."""
+    return "owner_" + secrets.token_hex(12)
+
 def gen_pass():
     alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(8))
@@ -760,69 +778,37 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     conn = db()
     existing = current_user(conn, tg["id"])
 
-    # Shu Telegramda allaqachon akkaunt bor — ikkinchi profilni qo'shamiz (xato emas)
+    # Oddiy va biznes profillar bitta users yozuviga qo'shilmaydi.
     if existing:
-        if role == "business":
-            # biznesi bormi?
-            has_biz = conn.execute("SELECT id FROM businesses WHERE user_id=?", (existing["id"],)).fetchone()
-            if has_biz:
-                conn.close()
-                raise HTTPException(400, "Sizda allaqachon biznes kabinet bor. Kabinetingizdan «Biznes kabinetga o'tish» orqali kiring.")
-            # biznes profil + alohida biznes login qo'shamiz
-            for _ in range(20):
-                biz_login = gen_biz_login()
-                if not conn.execute("SELECT 1 FROM businesses WHERE biz_login=?", (biz_login,)).fetchone() and \
-                   not conn.execute("SELECT 1 FROM users WHERE login=?", (biz_login,)).fetchone():
-                    break
-            biz_pass = gen_pass()
-            now = int(time.time())
-            conn.execute(
-                "INSERT INTO businesses(user_id, name, yon, tur, phone, address, lat, lng, biz_login, biz_pass_hash, status, created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                (existing["id"], name, (body.get("yon") or "").strip(), (body.get("tur") or "").strip(),
-                 (body.get("phone") or "").strip(), (body.get("address") or "").strip(),
-                 body.get("lat"), body.get("lng"), biz_login, hash_password(biz_pass), "active", now),
-            )
-            conn.execute("UPDATE users SET role='business' WHERE id=?", (existing["id"],))
-            conn.commit()
-            conn.close()
-            try:
-                await tg_call("sendMessage", {
-                    "chat_id": tg["id"],
-                    "text": ("\U0001F3EA Biznes kabinetingiz ochildi!\n\n"
-                             "Biznes login: " + biz_login + "\n"
-                             "Biznes parol: " + biz_pass + "\n\n"
-                             "Bu login/parol bilan biznes kabinetga alohida kirishingiz mumkin. Saqlab qo'ying."),
-                })
-            except Exception:
-                pass
-            return {"ok": True, "role": "business", "added_business": True,
-                    "biz_login": biz_login, "biz_password": biz_pass,
-                    "message": "Biznes kabinet ochildi!"}
-        else:
-            # oddiy kabinet allaqachon bor (har bir akkaunt oddiy asosga ega)
-            conn.close()
-            raise HTTPException(400, "Sizda oddiy kabinet allaqachon bor. Kabinetingizga kiring.")
+        conn.close()
+        same = (existing["role"] or "user") == role
+        if same:
+            raise HTTPException(400, "Bu Telegram akkauntida tanlangan profil allaqachon mavjud. Login-parol orqali kiring.")
+        raise HTTPException(409, "Oddiy va biznes profil alohida bo'lishi kerak. Ikkinchi profilni telefon orqali alohida ro'yxatdan o'tkazing.")
 
     # Telefon orqali avval ochilgan akkauntni Telegram orqali takroran yaratmaymiz.
     if phone:
-        phone_owner = find_user_by_phone(conn, phone)
+        phone_owner = conn.execute("SELECT 1 FROM users WHERE phone=? AND role=?", (phone, role)).fetchone()
         if phone_owner:
             conn.close()
-            raise HTTPException(409, "Bu telefon raqami bilan akkaunt mavjud. Telefon orqali kiring; keyin Telegramni akkauntga bog'lash mumkin.")
+            raise HTTPException(409, "Bu telefon raqami bilan shu turdagi profil mavjud. Login-parol orqali kiring.")
 
-    # Login/parolni platforma o'zi yaratadi (noyob login)
-    for _ in range(20):
-        login = gen_login()
-        if not conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone():
-            break
-    password = gen_pass()
+    # Oddiy profilga login beriladi; biznes egasining users yozuvi faqat ichki bog'lanishdir.
+    if role == "business":
+        login = gen_owner_key()
+        password = None
+    else:
+        for _ in range(20):
+            login = gen_login()
+            if not conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone():
+                break
+        password = gen_pass()
 
     now = int(time.time())
     cur = conn.execute(
         "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
         "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-        (tg["id"], username, login, hash_password(password), role, name,
+        (tg["id"], username, login, hash_password(password) if password else "", role, name,
          phone, (body.get("region") or "").strip(),
          (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
     )
@@ -846,18 +832,17 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     conn.commit()
     conn.close()
 
-    # Login va parolni foydalanuvchining Telegramiga yuboramiz
-    msg = ("Platformaga xush kelibsiz! \u2705\n\n"
-           "Kabinetingizga kirish ma'lumotlari:\n\n"
-           "\U0001F511 Login: " + login + "\n"
-           "\U0001F510 Parol: " + password + "\n\n"
+    # Tanlangan profilga tegishli yagona login-parolni ko'rsatamiz.
+    shown_login = biz_login if role == "business" else login
+    shown_password = biz_pass if role == "business" else password
+    cabinet_name = "Biznes kabinetingiz" if role == "business" else "Kabinetingiz"
+    msg = ("Platformaga xush kelibsiz! \u2705\n\n" + cabinet_name + " uchun kirish ma'lumotlari:\n\n"
+           "\U0001F511 Login: " + shown_login + "\n"
+           "\U0001F510 Parol: " + shown_password + "\n\n"
            "Bu ma'lumotlarni saqlab qo'ying. Boshqa qurilmadan kirganda shu login va parol kerak bo'ladi.")
-    if role == "business" and biz_login:
-        msg += ("\n\n\U0001F3EA Biznes kabinet uchun alohida:\n"
-                "Biznes login: " + biz_login + "\nBiznes parol: " + biz_pass)
     await tg_call("sendMessage", {"chat_id": tg["id"], "text": msg})
     # Ro'yxatdan o'tgan qurilma to'g'ridan-to'g'ri kiradi
-    return {"ok": True, "role": role, "login": login, "password": password,
+    return {"ok": True, "role": role, "login": shown_login, "password": shown_password,
             "biz_login": biz_login, "biz_password": biz_pass,
             "message": "Ro'yxatdan o'tdingiz! Login va parol Telegramingizga yuborildi."}
 
