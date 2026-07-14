@@ -1668,6 +1668,9 @@ def _ad_dict(row):
         "id": row["id"], "user_id": row["user_id"], "business_id": row["business_id"],
         "actor_type": row["actor_type"], "title": row["title"], "caption": row["caption"],
         "image_file": row["image_file"], "targets": targets,
+        "crop_x": float(_row_val(row, "crop_x", 50) or 50),
+        "crop_y": float(_row_val(row, "crop_y", 50) or 50),
+        "crop_zoom": float(_row_val(row, "crop_zoom", 1) or 1),
         "start_at": row["start_at"], "end_at": row["end_at"],
         "duration_days": row["duration_days"], "price": row["price"],
         "status": _ad_status(row), "views": row["views"], "clicks": row["clicks"],
@@ -1738,6 +1741,12 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     title = str(b.get("title") or "").strip()
     caption = str(b.get("caption") or "").strip()
     image_file = str(b.get("image_file") or "").strip()
+    try:
+        crop_x = max(0.0, min(100.0, float(b.get("crop_x", 50))))
+        crop_y = max(0.0, min(100.0, float(b.get("crop_y", 50))))
+        crop_zoom = max(1.0, min(3.0, float(b.get("crop_zoom", 1))))
+    except (TypeError, ValueError):
+        crop_x, crop_y, crop_zoom = 50.0, 50.0, 1.0
     if not title:
         conn.close()
         raise HTTPException(400, "Reklama sarlavhasini kiriting.")
@@ -1759,11 +1768,11 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     price = _ad_price(targets, b.get("duration_days"))
     end_at = start_at + price["days"] * 86400
     cur = conn.execute(
-        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,
+        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,crop_x,crop_y,crop_zoom,
                                        targets_json,start_at,end_at,duration_days,price,status,
                                        views,clicks,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
-        (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file,
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
+        (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, crop_x, crop_y, crop_zoom,
          json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
          "active", now, now),
     )
