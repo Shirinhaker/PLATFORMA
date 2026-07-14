@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1500 -->
+<title>Platforma</title><!-- BUILD: v1501 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,6 +65,15 @@
   .ad-preview{display:none;position:relative;border-radius:16px;overflow:hidden;background:var(--line);margin-top:9px;}
   .ad-preview.on{display:block;}
   .ad-preview img{width:100%;height:150px;object-fit:cover;display:block;}
+  .ad-crop-box{display:none;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+  .ad-crop-box.on{display:block}
+  .ad-crop-hint{font-size:12px;color:var(--soft);margin-bottom:8px;line-height:1.4}
+  .ad-crop-stage{height:150px;border-radius:12px;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;user-select:none}
+  .ad-crop-stage:active{cursor:grabbing}
+  .ad-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform,object-position}
+  .ad-crop-stage:after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.5);border-radius:12px;pointer-events:none}
+  .ad-crop-controls{display:flex;align-items:center;gap:9px;margin-top:10px}
+  .ad-crop-controls input[type="range"]{flex:1;accent-color:var(--primary)}
   .ad-target-builder{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .ad-target-builder .full{grid-column:1/-1;}
   .ad-targets{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
@@ -953,6 +962,7 @@
             <button type="button" class="upload" id="baImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="baImageInput" accept="image/jpeg,image/png,image/webp" hidden>
             <div class="ad-preview" id="baPreview"><img alt="Reklama rasmi"></div>
+            <div class="ad-crop-box" id="baCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="baCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="baCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="baCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="baImageInfo"></div>
           </div>
           <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="baTitle" maxlength="120" placeholder="Masalan: Bugun 20% chegirma"></div>
@@ -1183,6 +1193,7 @@
             <button type="button" class="upload" id="uaImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="uaImageInput" accept="image/jpeg,image/png,image/webp" hidden>
             <div class="ad-preview" id="uaPreview"><img alt="Reklama rasmi"></div>
+            <div class="ad-crop-box" id="uaCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="uaCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="uaCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="uaCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="uaImageInfo"></div>
           </div>
           <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="uaTitle" maxlength="120" placeholder="Masalan: Yangi xizmatimiz ochildi"></div>
@@ -9056,14 +9067,18 @@
     if(!box) return;
     if(!HOME_ADS.length){
       box.classList.remove("has-image"); box.removeAttribute("data-ad-id");
-      el("adPhoto").removeAttribute("src"); el("adEyebrow").textContent="Tavsiya etamiz";
+      el("adPhoto").removeAttribute("src");el("adPhoto").style.objectPosition="50% 50%";el("adPhoto").style.transform="none";el("adPhoto").style.transformOrigin="50% 50%"; el("adEyebrow").textContent="Tavsiya etamiz";
       el("adTitle").textContent="Bu yerda reklamangiz"; el("adText").textContent="Bizneslar uchun bosh sahifada ko'rinish joyi.";
       dots.innerHTML='<span class="on"></span>'; return;
     }
     if(HOME_AD_INDEX>=HOME_ADS.length) HOME_AD_INDEX=0;
     var a=HOME_ADS[HOME_AD_INDEX];
     box.classList.add("has-image"); box.setAttribute("data-ad-id",a.id);
-    el("adPhoto").src=a.image_file; el("adEyebrow").textContent="Tavsiya etamiz";
+    el("adPhoto").src=a.image_file;
+    el("adPhoto").style.objectPosition=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
+    el("adPhoto").style.transform="scale("+(a.crop_zoom||1)+")";
+    el("adPhoto").style.transformOrigin=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
+    el("adEyebrow").textContent="Tavsiya etamiz";
     el("adTitle").textContent=a.title||"Reklama"; el("adText").textContent=a.caption||"Batafsil ko'rish uchun bosing.";
     dots.innerHTML=HOME_ADS.map(function(_,i){return '<span class="'+(i===HOME_AD_INDEX?'on':'')+'" data-home-ad-dot="'+i+'"></span>';}).join("");
   }
@@ -9083,9 +9098,18 @@
   });
 
   var AD_FORM = {
-    ba:{actor:"business", targets:[], file:null, image_file:""},
-    ua:{actor:"user", targets:[], file:null, image_file:""}
+    ba:{actor:"business", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1},
+    ua:{actor:"user", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1}
   };
+  function clampAdCrop(v){return Math.max(0,Math.min(100,v));}
+  function renderAdCrop(prefix){
+    var st=AD_FORM[prefix],stage=el(prefix+"CropStage"),img=stage&&stage.querySelector("img");if(!img)return;
+    img.style.objectPosition=st.crop_x+"% "+st.crop_y+"%";
+    img.style.transform="scale("+st.crop_zoom+")";
+    img.style.transformOrigin=st.crop_x+"% "+st.crop_y+"%";
+    el(prefix+"CropZoom").value=st.crop_zoom;
+  }
+  function resetAdCrop(prefix){var st=AD_FORM[prefix];st.crop_x=50;st.crop_y=50;st.crop_zoom=1;renderAdCrop(prefix);}
   function adSetDefaultStart(prefix){
     var d=new Date(Date.now()+5*60000); d.setSeconds(0,0);
     var pad=function(n){return String(n).padStart(2,"0");};
@@ -9120,20 +9144,33 @@
     }).catch(function(e){ el(prefix+"PriceNote").textContent=e.message; });
   }
   function resetAdForm(prefix){
-    var st=AD_FORM[prefix]; st.targets=[]; st.file=null; st.image_file="";
+    var st=AD_FORM[prefix]; st.targets=[]; st.file=null; st.image_file="";st.crop_x=50;st.crop_y=50;st.crop_zoom=1;
     el(prefix+"Title").value=""; el(prefix+"Caption").value=""; el(prefix+"Days").value="1";
     el(prefix+"ImageInput").value=""; el(prefix+"Preview").classList.remove("on"); el(prefix+"Preview").querySelector("img").removeAttribute("src");
+    el(prefix+"CropBox").classList.remove("on");el(prefix+"CropStage").querySelector("img").removeAttribute("src");renderAdCrop(prefix);
     el(prefix+"ImageInfo").textContent=""; adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
   }
   function openAdForm(prefix){ resetAdForm(prefix); nav(prefix==="ba"?"cab-ad-form":"ucab-ad-form"); }
   function bindAdForm(prefix){
     var st=AD_FORM[prefix];
+    var cropStage=el(prefix+"CropStage"),drag=null;
+    cropStage.addEventListener("pointerdown",function(e){
+      if(!st.file&&!st.image_file)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:st.crop_x,cy:st.crop_y};cropStage.setPointerCapture(e.pointerId);e.preventDefault();
+    });
+    cropStage.addEventListener("pointermove",function(e){
+      if(!drag||drag.id!==e.pointerId)return;var r=cropStage.getBoundingClientRect();st.crop_x=clampAdCrop(drag.cx-(e.clientX-drag.x)/Math.max(1,r.width)*100/st.crop_zoom);st.crop_y=clampAdCrop(drag.cy-(e.clientY-drag.y)/Math.max(1,r.height)*100/st.crop_zoom);renderAdCrop(prefix);e.preventDefault();
+    });
+    function stopCropDrag(e){if(drag&&(!e||drag.id===e.pointerId))drag=null;}
+    cropStage.addEventListener("pointerup",stopCropDrag);cropStage.addEventListener("pointercancel",stopCropDrag);
+    el(prefix+"CropZoom").addEventListener("input",function(){st.crop_zoom=Math.max(1,Math.min(3,parseFloat(this.value)||1));renderAdCrop(prefix);});
+    el(prefix+"CropReset").addEventListener("click",function(){resetAdCrop(prefix);});
     el(prefix+"ImageBtn").addEventListener("click",function(){ el(prefix+"ImageInput").click(); });
     el(prefix+"ImageInput").addEventListener("change",function(){
       var f=this.files&&this.files[0]; if(!f)return;
       if(["image/jpeg","image/png","image/webp"].indexOf(f.type)<0){ showMsg("Faqat JPG, PNG yoki WEBP rasm tanlang."); this.value=""; return; }
       if(f.size>5*1024*1024){ showMsg("Rasm hajmi 5 MB dan oshmasin."); this.value=""; return; }
       st.file=f; st.image_file="";
+      resetAdCrop(prefix);
       var url=URL.createObjectURL(f), img=new Image();
       img.onload=function(){
         var ratio=img.width/img.height, warn=[];
@@ -9142,6 +9179,7 @@
         el(prefix+"ImageInfo").textContent=img.width+"×"+img.height+" px"+(warn.length?" · ⚠️ "+warn.join("; "):" · ✅ mos");
       };
       img.src=url; el(prefix+"Preview").querySelector("img").src=url; el(prefix+"Preview").classList.add("on");
+      el(prefix+"CropStage").querySelector("img").src=url;el(prefix+"CropBox").classList.add("on");renderAdCrop(prefix);
     });
     el(prefix+"Region").addEventListener("change",function(){ adFillDistricts(prefix); });
     el(prefix+"Level").addEventListener("change",function(){ adLevelUi(prefix); });
@@ -9166,7 +9204,7 @@
       var startAt=Math.floor(new Date(start).getTime()/1000); if(!isFinite(startAt)){ showMsg("Boshlanish vaqti noto'g'ri."); return; }
       var btn=this; btn.disabled=true; btn.textContent="Joylashtirilmoqda...";
       var up=st.image_file?Promise.resolve({image_file:st.image_file}):uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.file);
-      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
+      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
       .then(function(){ showMsg("Reklama joylashtirildi ✅"); loadHomeAds(); nav(prefix==="ba"?"cab-elon":"ucab-elon"); })
       .catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Reklamani joylashtirish"; });
@@ -9178,7 +9216,8 @@
       box.innerHTML=list.map(function(a){
         var tg=(a.targets||[]).map(adTargetLabel).join(", ");
         var start=new Date(a.start_at*1000).toLocaleString("uz-UZ");
-        return '<div class="ad-own-card"><div class="ad-own-top"><img src="'+esc(a.image_file)+'" alt=""><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
+        var crop='object-position:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%;transform:scale('+(a.crop_zoom||1)+');transform-origin:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%';
+        return '<div class="ad-own-card"><div class="ad-own-top"><div style="width:76px;height:48px;overflow:hidden;border-radius:10px;background:var(--line);flex:none"><img src="'+esc(a.image_file)+'" alt="" style="width:100%;height:100%;'+crop+'"></div><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
       }).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
