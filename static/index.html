@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1509 -->
+<title>Platforma</title><!-- BUILD: v1510 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,6 +74,9 @@
   .ad-crop-stage:active{cursor:grabbing}
   .ad-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform,object-position}
   .ad-crop-stage:after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.5);border-radius:12px;pointer-events:none}
+  .avatar-crop-box{display:none;margin:10px 0 16px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+  .avatar-crop-box.on{display:block}.avatar-crop-stage{width:180px;height:180px;margin:0 auto 10px;border-radius:50%;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;user-select:none}
+  .avatar-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform,object-position}.avatar-crop-actions{display:flex;gap:8px;margin-top:9px}.avatar-crop-actions .btn{flex:1}
   .ad-crop-controls{display:flex;align-items:center;gap:9px;margin-top:10px}
   .ad-crop-controls input[type="range"]{flex:1;accent-color:var(--primary)}
   .ad-target-builder{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -843,6 +846,13 @@
             </button>
             <input type="file" id="bpLogoInput" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
           </div>
+          <button type="button" class="btn btn-outline btn-block" id="bpAvatarAdjust" style="display:none;margin-bottom:10px">🖼 Rasm joylashuvini sozlash</button>
+          <div class="avatar-crop-box" id="bpAvatarCropBox">
+            <div class="avatar-crop-stage" id="bpAvatarCropStage"><img id="bpAvatarCropImg" alt="Biznes rasmi"></div>
+            <label>Kattalashtirish</label><input type="range" id="bpAvatarCropZoom" min="1" max="3" step="0.05" value="1" style="width:100%">
+            <div class="idesc">Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.</div>
+            <div class="avatar-crop-actions"><button type="button" class="btn btn-outline" id="bpAvatarCropReset">Markazga</button><button type="button" class="btn btn-primary" id="bpAvatarCropSave">Saqlash</button></div>
+          </div>
 
           <div class="field"><label>Biznes nomi</label><input class="input" id="bpName" placeholder="Biznes nomi"></div>
           <div class="field"><label>Telefon raqami</label><input class="input" id="bpPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
@@ -1159,6 +1169,13 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4l1.5 2H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l1.5-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
             </button>
             <input type="file" id="upAvatarInput" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+          </div>
+          <button type="button" class="btn btn-outline btn-block" id="upAvatarAdjust" style="display:none;margin-bottom:10px">🖼 Rasm joylashuvini sozlash</button>
+          <div class="avatar-crop-box" id="upAvatarCropBox">
+            <div class="avatar-crop-stage" id="upAvatarCropStage"><img id="upAvatarCropImg" alt="Profil rasmi"></div>
+            <label>Kattalashtirish</label><input type="range" id="upAvatarCropZoom" min="1" max="3" step="0.05" value="1" style="width:100%">
+            <div class="idesc">Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.</div>
+            <div class="avatar-crop-actions"><button type="button" class="btn btn-outline" id="upAvatarCropReset">Markazga</button><button type="button" class="btn btn-primary" id="upAvatarCropSave">Saqlash</button></div>
           </div>
           <div class="field"><label>Ism familiya</label><input class="input" id="upName" placeholder="Ismingiz"></div>
           <div class="field"><label>Telefon</label><input class="input" id="upPhone" inputmode="tel" placeholder="+998 __ ___ __ __"></div>
@@ -2579,10 +2596,14 @@
     if(!cnt || !rt) return "";
     return '<span class="dot-sep"></span><span style="color:#f5a623;font-weight:800">\u2605 '+rt+'</span>';
   }
+  function avatarImageStyle(x,y,z){
+    x=x==null?50:x;y=y==null?50:y;z=z||1;
+    return 'width:100%;height:100%;object-fit:cover;object-position:'+x+'% '+y+'%;transform:scale('+z+');transform-origin:'+x+'% '+y+'%';
+  }
   function specCardSrv(s){
     var ini = (s.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
     var av = s.avatar_file
-      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(s.avatar_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(s.avatar_file)+'" alt="" style="'+avatarImageStyle(s.avatar_x,s.avatar_y,s.avatar_zoom)+'"></div>'
       : '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px;font-weight:800;color:var(--primary)">'+esc(ini)+'</span></div>';
     return '<div class="biz-card" data-psrv="'+s.user_id+'">'+
       av+
@@ -2592,7 +2613,7 @@
   }
   function bizCardSrv(b){
     var logo = b.logo_file
-      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(b.logo_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(b.logo_file)+'" alt="" style="'+avatarImageStyle(b.logo_x,b.logo_y,b.logo_zoom)+'"></div>'
       : '<div class="biz-logo" style="background:var(--primary-tint)"><span style="font-size:18px">🏪</span></div>';
     return '<div class="biz-card" data-bsrv="'+b.id+'">'+
       logo+
@@ -2603,7 +2624,7 @@
   function userCardSrv(u){
     var ini = (u.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
     var av = u.avatar_file
-      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+      ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="'+avatarImageStyle(u.avatar_x,u.avatar_y,u.avatar_zoom)+'"></div>'
       : '<div class="biz-logo" style="background:linear-gradient(135deg,#6a8dff,#9a6bff)"><span style="font-size:16px;font-weight:800;color:#fff">'+esc(ini)+'</span></div>';
     var loc = [u.district, u.region].filter(Boolean).join(", ");
     return '<div class="biz-card" data-usrv="'+u.id+'">'+av+
@@ -2761,7 +2782,7 @@
   function renderUser(u){
     var initial = (u.name||"F").trim().charAt(0).toUpperCase();
     var avatar = u.avatar_file
-      ? '<img src="'+esc(u.avatar_file)+'" alt="" style="width:84px;height:84px;border-radius:50%;object-fit:cover">'
+      ? '<span style="display:block;width:84px;height:84px;border-radius:50%;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="'+avatarImageStyle(u.avatar_x,u.avatar_y,u.avatar_zoom)+'"></span>'
       : '<div style="width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(135deg,#6a8dff,#9a6bff)">'+esc(initial)+'</div>';
     var loc = [u.district, u.region].filter(Boolean).join(", ");
     var sp = u.specialist;
@@ -7733,27 +7754,30 @@
     if(!parts.length && d && d.region) parts.push(d.region);
     return parts.join(" · ") || "Joylashuv kiritilmagan";
   }
-  var CURRENT_USER_AVATAR="";
-  function renderUserAvatar(targetId, avatar){
+  var CURRENT_USER_AVATAR="", CURRENT_USER_CROP={x:50,y:50,zoom:1};
+  function renderUserAvatar(targetId, avatar, crop){
     var box=el(targetId);
     if(!box) return;
+    crop=crop||CURRENT_USER_CROP;
     if(avatar){
-      box.innerHTML='<img src="'+esc(avatar)+'" alt="Profil rasmi">';
+      box.innerHTML='<img src="'+esc(avatar)+'" alt="Profil rasmi" style="'+avatarImageStyle(crop.x,crop.y,crop.zoom)+'">';
     }else{
       box.innerHTML='🙂';
     }
     if(targetId==="upAvatarView" || targetId==="ucabAvatar"){
       CURRENT_USER_AVATAR=avatar||"";
+      CURRENT_USER_CROP={x:crop.x==null?50:crop.x,y:crop.y==null?50:crop.y,zoom:crop.zoom||1};
       box.classList.toggle("no-photo", !avatar);
       box.style.cursor=avatar ? "zoom-in" : "default";
       box.title=avatar ? "Rasmni kattalashtirish" : "";
     }
   }
-  var CURRENT_BIZ_LOGO="";
-  function renderBusinessLogo(targetId, logo){
+  var CURRENT_BIZ_LOGO="", CURRENT_BIZ_CROP={x:50,y:50,zoom:1};
+  function renderBusinessLogo(targetId, logo, crop){
     var box=el(targetId); if(!box)return;
+    crop=crop||CURRENT_BIZ_CROP;
     if(logo){
-      box.innerHTML='<img src="'+esc(logo)+'" alt="Biznes rasmi">';
+      box.innerHTML='<img src="'+esc(logo)+'" alt="Biznes rasmi" style="'+avatarImageStyle(crop.x,crop.y,crop.zoom)+'">';
       box.classList.remove("no-photo");
     }else{
       box.innerHTML='🏪';
@@ -7763,11 +7787,13 @@
   function renderBusinessProfileCard(b){
     b=b||{};
     CURRENT_BIZ_LOGO=b.logo_file||"";
+    CURRENT_BIZ_CROP={x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1};
     if(el("bpCardName")) el("bpCardName").textContent=b.name||"Biznes";
     var meta=[b.yon||"",b.tur||""].filter(Boolean).join(" · ")||"Yo'nalish tanlanmagan";
     if(el("bpCardMeta")) el("bpCardMeta").textContent=meta;
-    renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO);
-    renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO);
+    renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);
+    renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);
+    if(el("bpAvatarAdjust")) el("bpAvatarAdjust").style.display=CURRENT_BIZ_LOGO?"":"none";
   }
   function openImageViewer(src){
     if(!src)return;
@@ -7783,8 +7809,10 @@
     if(el("upCardLocation")) el("upCardLocation").textContent=userLocationText(d);
     if(el("upCardFollowers")) el("upCardFollowers").textContent=(d.followers||0)+" obunachi";
     if(el("upCardFollowing")) el("upCardFollowing").textContent=(d.following||0)+" obuna";
-    renderUserAvatar("upAvatarView", d.avatar_file||"");
-    renderUserAvatar("ucabAvatar", d.avatar_file||"");
+    var crop={x:d.avatar_x==null?50:d.avatar_x,y:d.avatar_y==null?50:d.avatar_y,zoom:d.avatar_zoom||1};
+    renderUserAvatar("upAvatarView", d.avatar_file||"",crop);
+    renderUserAvatar("ucabAvatar", d.avatar_file||"",crop);
+    if(el("upAvatarAdjust")) el("upAvatarAdjust").style.display=d.avatar_file?"":"none";
   }
   function loadUserProfile(){
     api("GET","/api/profile").then(function(d){
@@ -8262,7 +8290,7 @@
     api("GET","/api/me").then(function(d){
       var b=d.business||{};
       if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
-      renderBusinessLogo("cabLogo", b.logo_file||"");
+      renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
@@ -8305,6 +8333,21 @@
     api("PUT","/api/business",{director:director,inn:inn}).then(function(){showMsg("Hujjat ma'lumotlari saqlandi ✅");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});
   });
 
+  function bindAvatarCrop(prefix, kind){
+    var box=el(prefix+"AvatarCropBox"),stage=el(prefix+"AvatarCropStage"),img=el(prefix+"AvatarCropImg"),zoom=el(prefix+"AvatarCropZoom"),drag=null;
+    function state(){return kind==="user"?CURRENT_USER_CROP:CURRENT_BIZ_CROP;}
+    function src(){return kind==="user"?CURRENT_USER_AVATAR:CURRENT_BIZ_LOGO;}
+    function draw(){var s=state();img.src=src();img.style.objectPosition=s.x+"% "+s.y+"%";img.style.transform="scale("+s.zoom+")";img.style.transformOrigin=s.x+"% "+s.y+"%";zoom.value=s.zoom;}
+    el(prefix+"AvatarAdjust").addEventListener("click",function(){box.classList.toggle("on");if(box.classList.contains("on"))draw();});
+    stage.addEventListener("pointerdown",function(e){var s=state();drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:s.x,cy:s.y};stage.setPointerCapture(e.pointerId);e.preventDefault();});
+    stage.addEventListener("pointermove",function(e){if(!drag||drag.id!==e.pointerId)return;var s=state(),r=stage.getBoundingClientRect();s.x=clampAdCrop(drag.cx-(e.clientX-drag.x)/Math.max(1,r.width)*100/s.zoom);s.y=clampAdCrop(drag.cy-(e.clientY-drag.y)/Math.max(1,r.height)*100/s.zoom);draw();e.preventDefault();});
+    function stop(e){if(drag&&(!e||e.pointerId===drag.id))drag=null;}stage.addEventListener("pointerup",stop);stage.addEventListener("pointercancel",stop);
+    zoom.addEventListener("input",function(){state().zoom=Math.max(1,Math.min(3,parseFloat(this.value)||1));draw();});
+    el(prefix+"AvatarCropReset").addEventListener("click",function(){var s=state();s.x=50;s.y=50;s.zoom=1;draw();});
+    el(prefix+"AvatarCropSave").addEventListener("click",function(){var btn=this,s=state(),url=kind==="user"?"/api/profile/avatar-position":"/api/business/logo-position";btn.disabled=true;api("PUT",url,{x:s.x,y:s.y,zoom:s.zoom}).then(function(){if(kind==="user"){renderUserAvatar("upAvatarView",CURRENT_USER_AVATAR,s);renderUserAvatar("ucabAvatar",CURRENT_USER_AVATAR,s);}else{renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO,s);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO,s);}box.classList.remove("on");showMsg("Rasm joylashuvi saqlandi ✅");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
+  }
+  bindAvatarCrop("up","user");bindAvatarCrop("bp","business");
+
   el("upAvatarBtn") && el("upAvatarBtn").addEventListener("click", function(){
     if(el("upAvatarInput")) el("upAvatarInput").click();
   });
@@ -8332,8 +8375,10 @@
     if(btn) btn.disabled=true;
     uploadRaw("POST","/api/profile/avatar",file).then(function(res){
       var avatar=res.avatar_file||"";
+      CURRENT_USER_CROP={x:50,y:50,zoom:1};
       renderUserAvatar("upAvatarView",avatar);
       renderUserAvatar("ucabAvatar",avatar);
+      el("upAvatarAdjust").style.display="";
       if(ME) ME.avatar_file=avatar;
       showMsg("Profil rasmi saqlandi ✅");
     }).catch(function(er){
@@ -8383,7 +8428,7 @@
     if(file.size>8*1024*1024){showMsg("Biznes rasmi hajmi 8 MB dan oshmasin.");inp.value="";return;}
     var btn=el("bpLogoBtn");if(btn)btn.disabled=true;
     uploadRaw("POST","/api/business/logo",file).then(function(r){
-      CURRENT_BIZ_LOGO=r.logo_file||"";renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO);showMsg("Biznes rasmi saqlandi ✅");
+      CURRENT_BIZ_LOGO=r.logo_file||"";CURRENT_BIZ_CROP={x:50,y:50,zoom:1};renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO);el("bpAvatarAdjust").style.display="";showMsg("Biznes rasmi saqlandi ✅");
     }).catch(function(e){showMsg(e.message);}).finally(function(){if(btn)btn.disabled=false;inp.value="";});
   });
   el("bpPickBtn") && el("bpPickBtn").addEventListener("click", function(){ openPicker("bp"); });
@@ -8428,7 +8473,7 @@
     api("PUT","/api/business",body).then(function(){
       if(el("cabName"))el("cabName").textContent=nm||"Biznes";
       if(el("cabStatus"))el("cabStatus").textContent="Faol · "+yon;
-      renderBusinessProfileCard({name:nm,yon:yon,tur:tur,logo_file:CURRENT_BIZ_LOGO});
+      renderBusinessProfileCard({name:nm,yon:yon,tur:tur,logo_file:CURRENT_BIZ_LOGO,logo_x:CURRENT_BIZ_CROP.x,logo_y:CURRENT_BIZ_CROP.y,logo_zoom:CURRENT_BIZ_CROP.zoom});
       showMsg("Saqlandi ✅");showBizShare(body.username||"",window.__bizId||null);
     }).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});
   });
