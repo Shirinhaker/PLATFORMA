@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1492 -->
+<title>Platforma</title><!-- BUILD: v1493 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -647,7 +647,7 @@
   /* === Ilova ichidagi vositalar (tizim oynasi alert/prompt/confirm o'rniga) === */
   .app-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);width:calc(100% - 48px);max-width:360px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:13px;font-size:14px;font-weight:600;text-align:center;line-height:1.4;box-shadow:var(--shadow-lg);z-index:6000;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
   .app-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
-  .action-notify{position:fixed;left:50%;top:76px;transform:translate(-50%,-18px);width:calc(100% - 28px);max-width:492px;background:var(--card);border:2px solid var(--primary);border-radius:17px;padding:12px 42px 12px 13px;box-shadow:var(--shadow-lg);z-index:2900;opacity:0;pointer-events:none;transition:.2s;cursor:pointer;}
+  .action-notify{position:fixed;left:50%;top:76px;transform:translate(-50%,-18px);width:calc(100% - 28px);max-width:492px;background:var(--card);border:2px solid var(--primary);border-radius:17px;padding:12px 42px 12px 13px;box-shadow:var(--shadow-lg);z-index:6100;opacity:0;pointer-events:none;transition:.2s;cursor:pointer;}
   .action-notify.on{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
   .action-notify-title{font-size:14.5px;font-weight:900;color:var(--ink);margin-bottom:3px;}
   .action-notify-body{font-size:12.5px;font-weight:600;color:var(--soft);line-height:1.35;}
@@ -3699,6 +3699,11 @@
       api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){ ORDERS_INBOX = list||[]; updateOrderBadges(); }).catch(function(){});
     }
   }
+  function orderCreatedText(ts){
+    if(!ts)return "—";
+    var d=new Date(Number(ts)*1000);
+    return d.toLocaleDateString("uz-UZ",{day:"2-digit",month:"2-digit",year:"numeric"})+" · "+d.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
+  }
   function orderCard(o, mode){
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
     var subtitle = mode==="inbox" ? "Mijoz" : "Qabul qiluvchi";
@@ -3742,6 +3747,7 @@
     var chatPreview = o.last_chat ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.last_chat)+'</div>' : (o.chat_count ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.chat_count)+' ta xabar</div>' : '');
     var hint = '<div class="idesc" style="margin-top:8px;color:var(--primary);font-weight:700">Batafsil ko‘rish va chat uchun bosing</div>';
     return '<div class="'+cls+'" style="display:block" data-order-open="'+o.id+'" data-order-mode="'+mode+'">'+
+      '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-weight:800"><span>Buyurtma №'+esc(o.id)+'</span><span>🕒 '+esc(orderCreatedText(o.created_at))+'</span></div>'+ 
       '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+problemInfo+driverInfo+itemsHtml+chatPreview+actions+hint+'</div>';
   }
   function orderActionButtons(o, mode){
@@ -3832,6 +3838,7 @@
       '<div class="lead" style="font-size:20px;margin-bottom:4px">'+title+' №'+esc(o.id)+'</div>'+ 
       '<div class="lead-sub" style="margin-bottom:12px">'+esc(o.title||"Buyurtma")+'</div>'+ 
       '<div class="panel-card">'+
+        '<div class="detail-line"><b>Buyurtma vaqti</b><span>'+esc(orderCreatedText(o.created_at))+'</span></div>'+ 
         '<div class="detail-line"><b>Status</b><span>'+esc(orderStatusText(o.status))+'</span></div>'+ 
         '<div class="detail-line"><b>'+(mode==="inbox"?'Mijoz':'Qabul qiluvchi')+'</b><span>'+esc(other||"—")+'</span></div>'+ 
         '<div class="detail-line"><b>Turi</b><span>'+esc(orderTypeText(o.order_type))+'</span></div>'+ 
