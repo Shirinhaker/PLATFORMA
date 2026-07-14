@@ -35,7 +35,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1496"
+APP_BUILD = "v1497"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -309,6 +309,7 @@ async def whitelist_middleware(request: Request, call_next):
         #  1) /api/staff-auth* (login / me / logout)
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
         if path.startswith("/api/staff-auth") or path in (
+            "/api/password-auth/login",
             "/api/mobile-auth/request-code", "/api/mobile-auth/verify-code",
             "/api/mobile-auth/register/request-code", "/api/mobile-auth/register/verify-code",
         ):
@@ -354,7 +355,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "phone_login_ui": True, "telegram_registration_ui": True, "telegram_login_ui": True, "auth_method_choice": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True}
 
 
 @app.get("/api/_dbinfo")
@@ -747,6 +748,40 @@ async def mobile_logout(request: Request):
     if not cur.rowcount:
         raise HTTPException(401, "Mobil sessiya topilmadi.")
     return {"ok": True}
+
+
+@app.post("/api/password-auth/login")
+async def password_auth_login(request: Request):
+    """Oddiy yoki biznes login-paroli orqali 30 kunlik xavfsiz sessiya beradi."""
+    body = await request.json()
+    login = str(body.get("login") or "").strip().lower()
+    password = str(body.get("password") or "")
+    if len(login) < 3 or len(password) < 4:
+        raise HTTPException(400, "Login va parolni kiriting.")
+    conn = db(); user = None; login_role = "user"
+    user_row = conn.execute("SELECT * FROM users WHERE lower(login)=?", (login,)).fetchone()
+    if user_row and check_password(password, user_row["pass_hash"] or ""):
+        user = user_row
+    else:
+        biz = conn.execute("SELECT * FROM businesses WHERE lower(biz_login)=? AND status='active'", (login,)).fetchone()
+        if biz and check_password(password, biz["biz_pass_hash"] or ""):
+            user = conn.execute("SELECT * FROM users WHERE id=?", (biz["user_id"],)).fetchone()
+            login_role = "business"
+    if not user:
+        # Login mavjud yoki yo'qligini oshkor qilmaymiz.
+        conn.close(); raise HTTPException(401, "Login yoki parol noto'g'ri.")
+    now = int(time.time()); token = secrets.token_urlsafe(48); expires_at = now + MOBILE_SESSION_TTL
+    conn.execute(
+        """INSERT INTO mobile_sessions(user_id,token_hash,device_name,created_at,expires_at,last_used_at,revoked_at)
+           VALUES(?,?,?,?,?,?,0)""",
+        (user["id"], hashlib.sha256(token.encode()).hexdigest(),
+         str(body.get("device_name") or "Qurilma")[:120], now, expires_at, now),
+    )
+    conn.commit(); conn.close()
+    return {"ok": True, "access_token": token, "token_type": "Bearer",
+            "expires_in": MOBILE_SESSION_TTL, "expires_at": expires_at,
+            "login_role": login_role,
+            "user": {"id": user["id"], "name": user["name"], "role": login_role}}
 
 
 @app.get("/api/catalog")
