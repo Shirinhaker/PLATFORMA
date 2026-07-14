@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1498 -->
+<title>Platforma</title><!-- BUILD: v1499 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2927,10 +2927,7 @@
     try{body.username=(TG&&TG.initDataUnsafe&&TG.initDataUnsafe.user&&TG.initDataUnsafe.user.username)||"";}catch(e){}
     var btn=el("rgSubmit");btn.disabled=true;btn.textContent="Ro'yxatdan o'tkazilmoqda...";
     api("POST","/api/auth/register",body).then(function(r){
-      if(r.added_business){
-        el("regBody").innerHTML='<div class="form-wrap"><div class="lead">Biznes profilingiz ochildi ✅</div><div class="lead-sub">Biznes login va parolini xavfsiz saqlang.</div><div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px"><div><b>Login:</b> '+esc(r.biz_login||"")+'</div><div style="margin-top:8px"><b>Parol:</b> '+esc(r.biz_password||"")+'</div></div><button class="btn btn-primary btn-block" id="tgRegDone">Biznes kabinetga o\'tish</button></div>';
-        el("tgRegDone").addEventListener("click",function(){if(el("passwordLogin"))el("passwordLogin").value=r.biz_login||"";nav("login");});
-      }else showCredentials(r.login,r.password,r.role);
+      showCredentials(r.login,r.password,r.role);
     }).catch(function(e){showMsg(e.message);btn.disabled=false;btn.textContent="✈️ Telegram orqali ro'yxatdan o'tish";});
   }
 
@@ -2980,9 +2977,10 @@
   }
 
   function showCredentials(login, password, role){
+    var isBusiness = role === "business";
     el("regBody").innerHTML =
-      '<div class="form-wrap"><div class="lead">Ro\'yxatdan o\'tdingiz! ✅</div>'+
-      '<div class="lead-sub">Telefon raqamingiz tasdiqlandi. Quyidagi login va parolni ham xavfsiz joyda saqlab qo\'ying.</div>'+
+      '<div class="form-wrap"><div class="lead">'+(isBusiness?'Biznes profilingiz ochildi! ✅':'Ro\'yxatdan o\'tdingiz! ✅')+'</div>'+
+      '<div class="lead-sub">'+(isBusiness?'Biznes kabinet uchun yagona login va parolni':'Quyidagi login va parolni')+' xavfsiz joyda saqlab qo\'ying.</div>'+
       '<div class="cred-box" style="background:var(--primary-tint);border-radius:14px;padding:16px;margin:8px 0 16px">'+
         '<div style="margin-bottom:10px"><div style="font-size:12px;color:var(--soft)">🔑 Login</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(login)+'</div></div>'+
         '<div><div style="font-size:12px;color:var(--soft)">🔐 Parol</div><div style="font-size:18px;font-weight:800;color:var(--ink);letter-spacing:1px">'+esc(password)+'</div></div>'+
