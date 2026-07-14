@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1491 -->
+<title>Platforma</title><!-- BUILD: v1492 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -3102,8 +3102,7 @@
     if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
-    if(!home && typeof hideActionNotify === "function") hideActionNotify();
-    if(home && typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
+    if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
@@ -4875,14 +4874,20 @@
     if(!loggedIn)return;
     api("GET","/api/notifications?"+actorQuery()).then(function(d){updateNotifyBadges(d.unread||0);}).catch(function(){});
   }
-  var ACTION_NOTIFY_CURRENT=null, ACTION_NOTIFY_DISMISSED={}, ACTION_NOTIFY_TIMER=null;
+  var ACTION_NOTIFY_CURRENT=null, ACTION_NOTIFY_DISMISSED={}, ACTION_NOTIFY_TIMER=null, ACTION_NOTIFY_SIGNATURE="";
   function hideActionNotify(){el("actionNotify").classList.remove("on");ACTION_NOTIFY_CURRENT=null;}
   function pollActionNotifications(){
     if(!loggedIn)return;
     api("GET","/api/notifications/actions?"+actorQuery()).then(function(d){
       var items=(d.items||[]).filter(function(n){return !ACTION_NOTIFY_DISMISSED[n.id];});
       updateNotifyBadges(d.count||0);
-      if(current!=="home"||!items.length){hideActionNotify();return;}
+      var signature=(d.items||[]).map(function(n){return n.id+":"+n.action_type;}).join(",");
+      if(signature!==ACTION_NOTIFY_SIGNATURE){
+        ACTION_NOTIFY_SIGNATURE=signature;
+        if(activeMode==="business" && current==="cab-orders")loadBizOrders();
+        if(activeMode!=="business" && current==="ucab-orders")loadMyOrders();
+      }
+      if(!items.length){hideActionNotify();return;}
       var n=items[0];
       if(!ACTION_NOTIFY_CURRENT||ACTION_NOTIFY_CURRENT.id!==n.id){
         ACTION_NOTIFY_CURRENT=n;el("actionNotifyTitle").textContent="🔔 "+n.title;el("actionNotifyBody").textContent=n.body||"Amalni bajarish uchun bosing.";el("actionNotify").classList.add("on");
@@ -4905,7 +4910,7 @@
   el("actionNotifyClose") && el("actionNotifyClose").addEventListener("click",function(e){e.stopPropagation();if(ACTION_NOTIFY_CURRENT)ACTION_NOTIFY_DISMISSED[ACTION_NOTIFY_CURRENT.id]=1;hideActionNotify();});
   function startActionNotifyPolling(){
     if(ACTION_NOTIFY_TIMER)clearInterval(ACTION_NOTIFY_TIMER);
-    pollActionNotifications();ACTION_NOTIFY_TIMER=setInterval(pollActionNotifications,10000);
+    pollActionNotifications();ACTION_NOTIFY_TIMER=setInterval(pollActionNotifications,2000);
   }
   el("orderNotifyList") && el("orderNotifyList").addEventListener("click",function(e){
     var n=e.target.closest("[data-notification]");if(!n)return;
