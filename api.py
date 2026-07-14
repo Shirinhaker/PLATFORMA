@@ -5879,9 +5879,10 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
 async def read_notification(notification_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
     actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
-    cur = conn.execute("""UPDATE notifications SET is_read=1,read_at=?
+    cur = conn.execute("""UPDATE notifications SET is_read=1,read_at=?,
+        resolved_at=CASE WHEN action_type='view_ready' THEN ? ELSE resolved_at END
         WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?""",
-        (now, notification_id, me["id"], kind, actor_id))
+        (now, now, notification_id, me["id"], kind, actor_id))
     conn.commit(); conn.close()
     if not cur.rowcount: raise HTTPException(404, "Bildirishnoma topilmadi.")
     return {"ok": True, "read_at": now}
@@ -6287,7 +6288,8 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
                                "To'lovni amalga oshirib, chekni yuboring.", action_type="make_payment")
         elif new_status == "tayyor":
             _notify_order_side(conn, row, "customer", "ready", "Buyurtma tayyor bo'ldi",
-                               "Olib ketish yoki dostavka jarayonini kuzating.")
+                               ("Do'kondan olib ketishingiz mumkin." if (row["order_type"] or "") == "pickup"
+                                else "Dostavka jarayoni boshlandi."), action_type="view_ready")
         elif new_status in ("rejected", "cancelled"):
             _notify_order_side(conn, row, "customer", new_status, "Buyurtma bekor qilindi", row["title"] or "Buyurtma")
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
@@ -6581,6 +6583,7 @@ async def confirm_order_handoff(order_id: int, x_telegram_init_data: str = Heade
                        "Buyurtma sizga yo'l oldi." if row["order_type"] == "delivery" else "Buyurtmani qabul qilganingizni tasdiqlang.",
                        action_type=("" if row["order_type"] == "delivery" else "confirm_received"))
     _resolve_order_action(conn, order_id, "confirm_handoff")
+    _resolve_order_action(conn, order_id, "view_ready")
     _stock_deduct_for_order(conn, row, user["id"])
     _kassa_add_for_order(conn, row, user["id"])
     conn.commit(); conn.close()
