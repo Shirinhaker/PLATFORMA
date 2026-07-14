@@ -1681,6 +1681,26 @@ def _ad_dict(row):
     }
 
 
+def _demo_advertisements():
+    """Haqiqiy reklama navbati to'lmaganda ko'rinishni sinash uchun demo bannerlar."""
+    rows = [
+        ("Mahalla Market", "Bugungi mahsulotlarga maxsus chegirma", "/demo_ads/demo_market.svg", 38, 50, 1.08),
+        ("Samarqand Coffee", "Issiq qahva va yangi desertlar", "/demo_ads/demo_cafe.svg", 72, 52, 1.12),
+        ("Smart Texnika", "Telefon va aksessuarlarga foydali taklif", "/demo_ads/demo_tech.svg", 77, 48, 1.05),
+        ("Orzu Mebel", "Uyingiz uchun zamonaviy yechimlar", "/demo_ads/demo_home.svg", 78, 50, 1.10),
+        ("Nafis Beauty", "Go'zalligingiz uchun yangi xizmatlar", "/demo_ads/demo_beauty.svg", 76, 50, 1.10),
+    ]
+    return [{
+        "id": -(i + 1), "user_id": None, "business_id": None, "actor_type": "demo",
+        "title": title, "caption": caption, "image_file": image,
+        "crop_x": x, "crop_y": y, "crop_zoom": zoom,
+        "daily_all_day": True, "daily_start": "00:00", "daily_end": "23:59",
+        "targets": [{"level": "republic", "region": "", "district": ""}],
+        "start_at": 0, "end_at": 0, "duration_days": 0, "price": 0,
+        "status": "demo", "views": 0, "clicks": 0, "created_at": 0, "is_demo": True,
+    } for i, (title, caption, image, x, y, zoom) in enumerate(rows)]
+
+
 @router.get("/advertisements/rates")
 async def advertisement_rates(x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -1838,11 +1858,10 @@ async def active_advertisements(x_telegram_init_data: str = Header(default="")):
     district = me["district"] if me else ""
     now = int(time.time())
     rows = conn.execute(
-        "SELECT * FROM advertisements WHERE status='active' AND start_at<=? AND end_at>? ORDER BY created_at DESC LIMIT 100",
+        "SELECT * FROM advertisements WHERE status='active' AND start_at<=? AND end_at>? ORDER BY views ASC, created_at ASC, id ASC LIMIT 200",
         (now, now),
     ).fetchall()
     matched = []
-    ids = []
     uz_now = time.gmtime(now + 5 * 3600)
     minute_now = uz_now.tm_hour * 60 + uz_now.tm_min
     for r in rows:
@@ -1863,15 +1882,36 @@ async def active_advertisements(x_telegram_init_data: str = Header(default="")):
         if _ad_matches(targets, region, district):
             d = _ad_dict(r)
             matched.append(d)
-            ids.append(r["id"])
-            if len(matched) >= 12:
+            if len(matched) >= 5:
                 break
-    if ids:
-        q = ",".join("?" for _ in ids)
-        conn.execute("UPDATE advertisements SET views=views+1 WHERE id IN (" + q + ")", ids)
-        conn.commit()
+    if len(matched) < 5:
+        matched.extend(_demo_advertisements()[:5 - len(matched)])
     conn.close()
     return matched
+
+
+@router.post("/advertisements/views")
+async def advertisement_views(request: Request, x_telegram_init_data: str = Header(default="")):
+    """Ekranda kamida 2 soniya ko'ringan reklamalarning paket hisobini yozadi."""
+    conn = db()
+    require_user(conn, x_telegram_init_data)
+    body = await request.json()
+    clean_ids = []
+    for value in (body.get("ids") if isinstance(body, dict) else []) or []:
+        try:
+            ad_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if ad_id > 0 and ad_id not in clean_ids:
+            clean_ids.append(ad_id)
+        if len(clean_ids) >= 5:
+            break
+    if clean_ids:
+        q = ",".join("?" for _ in clean_ids)
+        conn.execute("UPDATE advertisements SET views=views+1 WHERE id IN (" + q + ") AND status='active'", clean_ids)
+        conn.commit()
+    conn.close()
+    return {"ok": True, "count": len(clean_ids)}
 
 
 @router.post("/advertisements/{ad_id}/click")
@@ -4834,12 +4874,16 @@ FRACTIONAL_UNITS = ("kg", "g", "litr", "ml", "metr", "sm", "m²", "soat")
 
 
 @router.get("/search")
-async def search(q: str = "", scope: str = "", actor_type: str = "user",
+async def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
                  x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
     conn = db()
+    result_type = (result_type or "all").strip().lower()
+    if result_type not in ("all", "product", "service", "business", "specialist", "user"):
+        conn.close()
+        raise HTTPException(400, "Qidiruv turi noto'g'ri.")
     try:
         _ensure_pay_columns(conn)       # businesses.username kafolati
         _ensure_user_username(conn)     # users.pub_username kafolati
@@ -4977,6 +5021,18 @@ async def search(q: str = "", scope: str = "", actor_type: str = "user",
             specialists = [r for r in specialists if _within_radius(r, ulat, ulng, _radius)]
             businesses  = [r for r in businesses  if _within_radius(r, ulat, ulng, _radius)]
 
+        if result_type == "product":
+            products = [r for r in products if str(_row_val(r, "kind", "product") or "product").lower() != "service"]
+            listings, specialists, businesses = [], [], []
+        elif result_type == "service":
+            products = [r for r in products if str(_row_val(r, "kind", "") or "").lower() == "service"]
+            listings, specialists, businesses = [], [], []
+        elif result_type == "business":
+            products, listings, specialists = [], [], []
+        elif result_type == "specialist":
+            products, listings, businesses = [], [], []
+        elif result_type == "user":
+            products, listings, specialists, businesses = [], [], [], []
         return products, listings, specialists, businesses
 
     products, listings, specialists, businesses = _fetch(q)
@@ -4992,6 +5048,7 @@ async def search(q: str = "", scope: str = "", actor_type: str = "user",
     result = {
         "q": q,
         "scope": scope,
+        "result_type": result_type,
         "actor_type": actor_ctx["type"],
         "corrected": corrected,
         "terms": _search_terms(corrected or q),
@@ -5018,17 +5075,18 @@ async def search(q: str = "", scope: str = "", actor_type: str = "user",
     try:
         uq = (corrected or q).strip().lstrip("@").lower()
         users = []
-        if uq:
+        if uq and result_type in ("all", "user"):
             like = "%" + uq + "%"
             # FAQAT username maydonlari bo'yicha (ism/mahsulot aralashmaydi):
             #  - tanlangan pub_username, YOKI
             #  - pub_username bo'sh bo'lsa, Telegram username (registratsiyadagi)
             urows = conn.execute(
                 "SELECT id, name, pub_username, username, region, district, avatar_file FROM users "
-                "WHERE (COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
+                "WHERE role='user' AND ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
                 "   OR (COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
+                "   OR lower(name) LIKE ?) "
                 "LIMIT 30",
-                (like, like),
+                (like, like, like),
             ).fetchall()
             for u in urows:
                 handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
