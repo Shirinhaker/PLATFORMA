@@ -304,6 +304,9 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
         "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
         "lat": user["lat"], "lng": user["lng"],
         "avatar_file": _row_val(user, "avatar_file", "") or "",
+        "avatar_x": float(_row_val(user, "avatar_x", 50) or 50),
+        "avatar_y": float(_row_val(user, "avatar_y", 50) or 50),
+        "avatar_zoom": float(_row_val(user, "avatar_zoom", 1) or 1),
         "pub_username": _row_val(user, "pub_username", "") or "",
         "followers": follower_count(conn, "user", user["id"]),
         "following": following_count(conn, user["id"]),
@@ -358,7 +361,7 @@ async def upload_profile_avatar(request: Request, x_telegram_init_data: str = He
 
     avatar_url = "/uploads/avatars/" + safe_name
     old_avatar = _row_val(user, "avatar_file", "") or ""
-    conn.execute("UPDATE users SET avatar_file=? WHERE id=?", (avatar_url, user["id"]))
+    conn.execute("UPDATE users SET avatar_file=?, avatar_x=50, avatar_y=50, avatar_zoom=1 WHERE id=?", (avatar_url, user["id"]))
     conn.commit()
     conn.close()
 
@@ -373,6 +376,24 @@ async def upload_profile_avatar(request: Request, x_telegram_init_data: str = He
             pass
 
     return {"ok": True, "avatar_file": avatar_url}
+
+
+@router.put("/profile/avatar-position")
+async def update_profile_avatar_position(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user = require_user(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Profil rasmi")
+    b = await request.json()
+    try:
+        x = max(0.0, min(100.0, float(b.get("x", 50))))
+        y = max(0.0, min(100.0, float(b.get("y", 50))))
+        zoom = max(1.0, min(3.0, float(b.get("zoom", 1))))
+    except Exception:
+        conn.close()
+        raise HTTPException(400, "Rasm joylashuvi noto'g'ri.")
+    conn.execute("UPDATE users SET avatar_x=?, avatar_y=?, avatar_zoom=? WHERE id=?", (x, y, zoom, user["id"]))
+    conn.commit(); conn.close()
+    return {"ok": True, "avatar_x": x, "avatar_y": y, "avatar_zoom": zoom}
 
 
 @router.post("/business/logo")
@@ -408,7 +429,7 @@ async def upload_business_logo(request: Request, x_telegram_init_data: str = Hea
 
     logo_url = "/uploads/business_logos/" + safe_name
     old_logo = _row_val(biz, "logo_file", "") or ""
-    conn.execute("UPDATE businesses SET logo_file=? WHERE id=?", (logo_url, biz["id"]))
+    conn.execute("UPDATE businesses SET logo_file=?, logo_x=50, logo_y=50, logo_zoom=1 WHERE id=?", (logo_url, biz["id"]))
     conn.commit()
     conn.close()
 
@@ -420,6 +441,24 @@ async def upload_business_logo(request: Request, x_telegram_init_data: str = Hea
         except Exception:
             pass
     return {"ok": True, "logo_file": logo_url}
+
+
+@router.put("/business/logo-position")
+async def update_business_logo_position(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = require_business(conn, x_telegram_init_data)
+    deny_staff(conn, x_telegram_init_data, "Biznes rasmi")
+    b = await request.json()
+    try:
+        x = max(0.0, min(100.0, float(b.get("x", 50))))
+        y = max(0.0, min(100.0, float(b.get("y", 50))))
+        zoom = max(1.0, min(3.0, float(b.get("zoom", 1))))
+    except Exception:
+        conn.close()
+        raise HTTPException(400, "Rasm joylashuvi noto'g'ri.")
+    conn.execute("UPDATE businesses SET logo_x=?, logo_y=?, logo_zoom=? WHERE id=?", (x, y, zoom, biz["id"]))
+    conn.commit(); conn.close()
+    return {"ok": True, "logo_x": x, "logo_y": y, "logo_zoom": zoom}
 
 
 # ====================================================================
@@ -2867,6 +2906,8 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     result = {
         "id": u["id"], "name": u["name"] or "Foydalanuvchi",
         "avatar_file": _row_val(u, "avatar_file", "") or "",
+        "avatar_x": float(_row_val(u, "avatar_x", 50) or 50), "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
+        "avatar_zoom": float(_row_val(u, "avatar_zoom", 1) or 1),
         "pub_username": _row_val(u, "pub_username", "") or "",
         "region": u["region"] or "", "district": u["district"] or "",
         "listings": listings, "specialist": specialist,
@@ -4964,7 +5005,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 specialists = conn.execute(
-                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, "
+                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom, "
                     "bm25(specialists_fts, 10.0, 1.0) AS _rank "
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
@@ -4981,7 +5022,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 terms,
             )
             specialists = conn.execute(
-                """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file
+                """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + """
                    ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
@@ -5064,12 +5105,16 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                          "available": bool(s["available"]), "region": s["region"],
                          "district": s["district"], "mahalla": s["mahalla"],
                          "avatar_file": _row_val(s, "avatar_file", "") or "",
+                         "avatar_x": float(_row_val(s, "avatar_x", 50) or 50), "avatar_y": float(_row_val(s, "avatar_y", 50) or 50),
+                         "avatar_zoom": float(_row_val(s, "avatar_zoom", 1) or 1),
                          "lat": s["lat"], "lng": s["lng"],
                          "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
                          "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
                         "logo_file": _row_val(b, "logo_file", "") or "",
+                        "logo_x": float(_row_val(b, "logo_x", 50) or 50), "logo_y": float(_row_val(b, "logo_y", 50) or 50),
+                        "logo_zoom": float(_row_val(b, "logo_zoom", 1) or 1),
                         "lat": b["lat"], "lng": b["lng"],
                         "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
                         "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
@@ -5084,7 +5129,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             #  - tanlangan pub_username, YOKI
             #  - pub_username bo'sh bo'lsa, Telegram username (registratsiyadagi)
             urows = conn.execute(
-                "SELECT id, name, pub_username, username, region, district, avatar_file FROM users "
+                "SELECT id, name, pub_username, username, region, district, avatar_file, avatar_x, avatar_y, avatar_zoom FROM users "
                 "WHERE role='user' AND ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
                 "   OR (COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
                 "   OR lower(name) LIKE ?) "
@@ -5096,7 +5141,10 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 users.append({"id": u["id"], "name": u["name"] or "Foydalanuvchi",
                               "pub_username": handle,
                               "region": u["region"] or "", "district": u["district"] or "",
-                              "avatar_file": _row_val(u, "avatar_file", "") or ""})
+                              "avatar_file": _row_val(u, "avatar_file", "") or "",
+                              "avatar_x": float(_row_val(u, "avatar_x", 50) or 50),
+                              "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
+                              "avatar_zoom": float(_row_val(u, "avatar_zoom", 1) or 1)})
         result["users"] = users
     except Exception:
         result["users"] = []
@@ -5182,6 +5230,8 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "logo_file": _row_val(biz, "logo_file", "") or "",
+        "logo_x": float(_row_val(biz, "logo_x", 50) or 50), "logo_y": float(_row_val(biz, "logo_y", 50) or 50),
+        "logo_zoom": float(_row_val(biz, "logo_zoom", 1) or 1),
         "work_hours": biz["work_hours"], "address": biz["address"],
         "lat": biz["lat"], "lng": biz["lng"],
         "followers": follower_count(conn, "business", biz["id"]),
