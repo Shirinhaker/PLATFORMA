@@ -36,7 +36,7 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1509"
+APP_BUILD = "v1510"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -997,6 +997,9 @@ async def me(x_telegram_init_data: str = Header(default="")):
             "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
             "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
             "logo_file": biz["logo_file"] if "logo_file" in _bk else "",
+            "logo_x": biz["logo_x"] if "logo_x" in _bk else 50,
+            "logo_y": biz["logo_y"] if "logo_y" in _bk else 50,
+            "logo_zoom": biz["logo_zoom"] if "logo_zoom" in _bk else 1,
             "work_hours": biz["work_hours"], "address": biz["address"], "status": biz["status"],
             "lat": biz["lat"], "lng": biz["lng"],
             # v1422: to'lov ma'lumotlari (ustunlar bo'lmasa ham xavfsiz)
