@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1510 -->
+<title>Platforma</title><!-- BUILD: v1513 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
   .ad-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform,object-position}
   .ad-crop-stage:after{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.5);border-radius:12px;pointer-events:none}
   .avatar-crop-box{display:none;margin:10px 0 16px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
-  .avatar-crop-box.on{display:block}.avatar-crop-stage{width:180px;height:180px;margin:0 auto 10px;border-radius:50%;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;user-select:none}
+  .avatar-crop-box.on{display:block}.avatar-crop-stage{width:180px;height:180px;margin:0 auto 10px;border-radius:24px;overflow:hidden;position:relative;background:#111;touch-action:none;cursor:grab;user-select:none}
   .avatar-crop-stage img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;will-change:transform,object-position}.avatar-crop-actions{display:flex;gap:8px;margin-top:9px}.avatar-crop-actions .btn{flex:1}
   .ad-crop-controls{display:flex;align-items:center;gap:9px;margin-top:10px}
   .ad-crop-controls input[type="range"]{flex:1;accent-color:var(--primary)}
@@ -151,6 +151,7 @@
   .leaflet-pin{background:none;border:none;}
   .pin{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
   .pin .dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.28);}
+  .pin .dot.has-photo{overflow:hidden;background:#fff!important}.pin .dot.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
   [data-theme="dark"] .pin .dot{border-color:#0e1413;}
   .pin .tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;margin-top:-2px;}
   [data-theme="dark"] .pin .tail{border-top-color:#0e1413;}
@@ -381,6 +382,7 @@
   .image-viewer{position:fixed;inset:0;z-index:5000;background:rgba(4,10,8,.88);display:none;align-items:center;justify-content:center;padding:24px;}
   .image-viewer.on{display:flex;}
   .image-viewer img{display:block;max-width:min(94vw,760px);max-height:88vh;object-fit:contain;border-radius:18px;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff;}
+  .image-viewer-frame{display:flex;align-items:center;justify-content:center}.image-viewer.cropped .image-viewer-frame{width:min(88vw,480px);height:min(88vw,480px);border-radius:28px;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff}.image-viewer.cropped img{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;border-radius:0;box-shadow:none;}
   .image-viewer-close{position:absolute;top:max(18px,env(safe-area-inset-top));right:18px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.14);color:#fff;font-size:27px;display:grid;place-items:center;cursor:pointer;}
   .cab-name{font-family:var(--font-d);font-weight:800;font-size:17px;}
   .cab-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;}
@@ -1698,7 +1700,7 @@
 
   <div class="image-viewer" id="imageViewer" aria-hidden="true">
     <button type="button" class="image-viewer-close" id="imageViewerClose" aria-label="Yopish">×</button>
-    <img id="imageViewerImg" alt="Kattalashtirilgan rasm">
+    <div class="image-viewer-frame"><img id="imageViewerImg" alt="Sozlangan avatar rasmi"></div>
   </div>
 
 <script>
@@ -1870,11 +1872,12 @@
     LMARKERS.forEach(function(m){ try{ LMAP.removeLayer(m); }catch(e){} });
     LMARKERS = [];
   }
-  function dotIcon(bg, inner, label, small){
+  function dotIcon(bg, inner, label, small, photo, px, py, pz){
     if(typeof L === "undefined") return null;
     var lab = label ? '<div class="plabel">'+label+'</div>' : '';
     var fs = small ? 'font-size:12px;font-weight:800;color:#fff;' : '';
-    var html = '<div class="pin">'+lab+'<div class="dot" style="background:'+bg+';'+fs+'">'+inner+'</div><div class="tail"></div></div>';
+    var pic=photo?'<img src="'+esc(mediaUrl(photo))+'" alt="" style="object-position:'+(px==null?50:px)+'% '+(py==null?50:py)+'%;transform:scale('+(pz||1)+');transform-origin:'+(px==null?50:px)+'% '+(py==null?50:py)+'%">':inner;
+    var html = '<div class="pin">'+lab+'<div class="dot'+(photo?' has-photo':'')+'" style="background:'+bg+';'+fs+'">'+pic+'</div><div class="tail"></div></div>';
     return L.divIcon({ html:html, className:"leaflet-pin", iconSize:[40,48], iconAnchor:[20,46] });
   }
   function addMarker(lat, lng, icon, onClick){
@@ -1894,13 +1897,13 @@
       selElon=null;
       BIZ.forEach(function(b){
         var ll = (b.lat!=null) ? [b.lat,b.lng] : xyToLatLng(b.x,b.y);
-        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false), function(){
+        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false,b.logo_file,b.logo_x,b.logo_y,b.logo_zoom), function(){
           if(b.srv){ openBizSrv(b.id); } else { openBiz(b.id); }
         });
       });
       SPEC.forEach(function(sp){
         var ll = (sp.lat!=null) ? [sp.lat,sp.lng] : xyToLatLng(sp.x,sp.y);
-        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), "", true), function(){
+        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), "", true,sp.avatar_file,sp.avatar_x,sp.avatar_y,sp.avatar_zoom), function(){
           personBack=current;
           if(sp.srv){ openPersonSrv(sp.id); } else { openPerson(sp.id); }
         });
@@ -1908,7 +1911,7 @@
     } else if(mapMode==="result"){
       RES.pins.forEach(function(r){
         var ll = (r.lat!=null) ? [r.lat,r.lng] : xyToLatLng(r.x,r.y);
-        var icon = dotIcon(r.c, r.t, r.label||"", r.rk==="spec");
+        var icon = dotIcon(r.c, r.t, r.label||"", r.rk==="spec",r.photo,r.photo_x,r.photo_y,r.photo_zoom);
         addMarker(ll[0], ll[1], icon, function(){
           if(r.rk==="spec"){ personBack=current; openPersonSrv(r.id); }
           else if(r.rk==="biz"){ openBizSrv(r.id); }
@@ -1919,7 +1922,8 @@
       ELONS.filter(function(e){ return e.cat===mapMode; }).forEach(function(e){
         var sel=(e.id===selElon);
         var ll = (e.lat!=null) ? [e.lat,e.lng] : xyToLatLng(e.x,e.y);
-        addMarker(ll[0], ll[1], dotIcon(e.c, e.ic, sel?(e.title+' · '+e.price):"", false), function(){ toggleElon(e.id); });
+        var pm=(e.media||[]).filter(function(m){return m.type!=="video";})[0];
+        addMarker(ll[0], ll[1], dotIcon(e.c, e.ic, sel?(e.title+' · '+e.price):"", false,pm&&pm.file_id||""), function(){ toggleElon(e.id); });
       });
     }
   }
@@ -1980,6 +1984,7 @@
         return {
           id:b.id, name:b.name||"Biznes", cat:b.yon||"Biznes", tur:b.tur||"",
           ic:m.ic||"🏪", c:m.c||"#0E8C84", lat:b.lat, lng:b.lng,
+          logo_file:b.logo_file||"",logo_x:b.logo_x,logo_y:b.logo_y,logo_zoom:b.logo_zoom,
           address:b.address||"", source:b.source||"", srv:true
         };
       });
@@ -1987,6 +1992,7 @@
         return {
           id:sp.user_id, name:sp.name||"Foydalanuvchi", kasb:sp.kasb||"Mutaxasis",
           c:sp.is_gov ? "#2563EB" : "#16A34A", lat:sp.lat, lng:sp.lng,
+          avatar_file:sp.avatar_file||"",avatar_x:sp.avatar_x,avatar_y:sp.avatar_y,avatar_zoom:sp.avatar_zoom,
           source:sp.source||"obuna", srv:true
         };
       });
@@ -2651,11 +2657,12 @@
     });
     Object.keys(byBiz).forEach(function(k){
       var g=byBiz[k];
-      if(validPin(g.lat, g.lng)) pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:g.prices.join("<br>")});
+      var fp=prods.filter(function(p){return String(p.business_id)===String(k);})[0]||{};
+      if(validPin(g.lat, g.lng)) pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:g.prices.join("<br>"),photo:fp.photo_file||""});
     });
-    specs.forEach(function(s){ if(validPin(s.lat, s.lng)) pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:s.narx||""}); });
-    lists.forEach(function(e2){ if(validPin(e2.lat, e2.lng)) pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||""}); });
-    bizs.forEach(function(b){ if(validPin(b.lat, b.lng)) pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:""}); });
+    specs.forEach(function(s){ if(validPin(s.lat, s.lng)) pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:s.narx||"",photo:s.avatar_file||"",photo_x:s.avatar_x,photo_y:s.avatar_y,photo_zoom:s.avatar_zoom}); });
+    lists.forEach(function(e2){var mm=(e2.media||[]).filter(function(m){return m.type!=="video";})[0]; if(validPin(e2.lat, e2.lng)) pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||"",photo:mm&&mm.file_id||""}); });
+    bizs.forEach(function(b){ if(validPin(b.lat, b.lng)) pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:"",photo:b.logo_file||"",photo_x:b.logo_x,photo_y:b.logo_y,photo_zoom:b.logo_zoom}); });
     pins = dedupePins(pins);
 
     if(data.corrected){
@@ -7795,13 +7802,15 @@
     renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);
     if(el("bpAvatarAdjust")) el("bpAvatarAdjust").style.display=CURRENT_BIZ_LOGO?"":"none";
   }
-  function openImageViewer(src){
+  function openImageViewer(src,crop){
     if(!src)return;
     var v=el("imageViewer"),img=el("imageViewerImg"); if(!v||!img)return;
-    img.src=src; v.classList.add("on"); v.setAttribute("aria-hidden","false");
+    crop=crop||{x:50,y:50,zoom:1};
+    img.src=src;img.style.objectPosition=(crop.x==null?50:crop.x)+"% "+(crop.y==null?50:crop.y)+"%";img.style.transform="scale("+(crop.zoom||1)+")";img.style.transformOrigin=(crop.x==null?50:crop.x)+"% "+(crop.y==null?50:crop.y)+"%";
+    v.classList.add("cropped");v.classList.add("on"); v.setAttribute("aria-hidden","false");
   }
   function closeImageViewer(){
-    var v=el("imageViewer"),img=el("imageViewerImg"); if(v){v.classList.remove("on");v.setAttribute("aria-hidden","true");} if(img)img.removeAttribute("src");
+    var v=el("imageViewer"),img=el("imageViewerImg"); if(v){v.classList.remove("on");v.classList.remove("cropped");v.setAttribute("aria-hidden","true");} if(img){img.removeAttribute("src");img.removeAttribute("style");}
   }
   function renderUserProfileCard(d){
     if(!d) return;
@@ -8352,10 +8361,10 @@
     if(el("upAvatarInput")) el("upAvatarInput").click();
   });
   el("upAvatarView") && el("upAvatarView").addEventListener("click", function(){
-    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR);
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("ucabAvatar") && el("ucabAvatar").addEventListener("click", function(){
-    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR);
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("upAvatarInput") && el("upAvatarInput").addEventListener("change", function(){
     var inp=this, file=inp.files && inp.files[0];
@@ -8417,7 +8426,7 @@
   });
   el("bpName") && el("bpName").addEventListener("input",function(){if(el("bpCardName"))el("bpCardName").textContent=this.value.trim()||"Biznes";});
   el("bpLogoBtn") && el("bpLogoBtn").addEventListener("click",function(){if(el("bpLogoInput"))el("bpLogoInput").click();});
-  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO);});
+  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
   el("imageViewerClose") && el("imageViewerClose").addEventListener("click",closeImageViewer);
   el("imageViewer") && el("imageViewer").addEventListener("click",function(e){if(e.target===this)closeImageViewer();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeImageViewer();});
