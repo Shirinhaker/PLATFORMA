@@ -35,7 +35,7 @@ from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1495"
+APP_BUILD = "v1496"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -354,7 +354,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "phone_login_ui": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "phone_login_ui": True, "telegram_registration_ui": True, "telegram_login_ui": True, "auth_method_choice": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True}
 
 
 @app.get("/api/_dbinfo")
@@ -778,7 +778,11 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
     name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(400, "Ism (yoki biznes nomi) kiritilishi shart.")
-    username = (body.get("username") or "").strip().lstrip("@")
+    username = (body.get("username") or tg.get("username") or "").strip().lstrip("@")
+    raw_phone = (body.get("phone") or "").strip()
+    phone = normalize_uz_phone(raw_phone) if raw_phone else ""
+    if raw_phone and not phone:
+        raise HTTPException(400, "Telefon raqamini +998XXXXXXXXX ko'rinishida kiriting.")
 
     conn = db()
     existing = current_user(conn, tg["id"])
@@ -827,6 +831,13 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
             conn.close()
             raise HTTPException(400, "Sizda oddiy kabinet allaqachon bor. Kabinetingizga kiring.")
 
+    # Telefon orqali avval ochilgan akkauntni Telegram orqali takroran yaratmaymiz.
+    if phone:
+        phone_owner = find_user_by_phone(conn, phone)
+        if phone_owner:
+            conn.close()
+            raise HTTPException(409, "Bu telefon raqami bilan akkaunt mavjud. Telefon orqali kiring; keyin Telegramni akkauntga bog'lash mumkin.")
+
     # Login/parolni platforma o'zi yaratadi (noyob login)
     for _ in range(20):
         login = gen_login()
@@ -839,7 +850,7 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
         "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
         "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (tg["id"], username, login, hash_password(password), role, name,
-         (body.get("phone") or "").strip(), (body.get("region") or "").strip(),
+         phone, (body.get("region") or "").strip(),
          (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
     )
     user_id = cur.lastrowid
