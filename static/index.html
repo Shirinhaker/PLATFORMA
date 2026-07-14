@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1502 -->
+<title>Platforma</title><!-- BUILD: v1504 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9054,7 +9054,7 @@
   }
 
   /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
-  var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null;
+  var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [];
   function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
   function adStatusLabel(st){
     return st==="active"?"Faol":st==="scheduled"?"Rejalashtirilgan":st==="ended"?"Yakunlangan":st==="cancelled"?"Bekor qilingan":st;
@@ -9083,18 +9083,36 @@
     el("adEyebrow").textContent="Tavsiya etamiz";
     el("adTitle").textContent=a.title||"Reklama"; el("adText").textContent=a.caption||"Batafsil ko'rish uchun bosing.";
     dots.innerHTML=HOME_ADS.map(function(_,i){return '<span class="'+(i===HOME_AD_INDEX?'on':'')+'" data-home-ad-dot="'+i+'"></span>';}).join("");
+    if(HOME_AD_VIEW_TIMER)clearTimeout(HOME_AD_VIEW_TIMER);
+    var shownId=a.id,shownIndex=HOME_AD_INDEX;
+    HOME_AD_VIEW_TIMER=setTimeout(function(){
+      if(!document.hidden&&HOME_ADS[shownIndex]&&HOME_AD_INDEX===shownIndex&&HOME_ADS[shownIndex].id===shownId&&HOME_AD_SEEN.indexOf(shownId)<0)HOME_AD_SEEN.push(shownId);
+    },2000);
+  }
+  function flushHomeAdViews(){
+    if(!HOME_AD_SEEN.length)return Promise.resolve();
+    var ids=HOME_AD_SEEN.slice(0,6);
+    return api("POST","/api/advertisements/views",{ids:ids}).then(function(){HOME_AD_SEEN=HOME_AD_SEEN.filter(function(id){return ids.indexOf(id)<0;});}).catch(function(){});
   }
   function startHomeAds(){
     if(HOME_AD_TIMER) clearInterval(HOME_AD_TIMER);
-    if(HOME_ADS.length>1) HOME_AD_TIMER=setInterval(function(){ HOME_AD_INDEX=(HOME_AD_INDEX+1)%HOME_ADS.length; renderHomeAd(); },6000);
+    if(HOME_ADS.length>1) HOME_AD_TIMER=setInterval(function(){
+      if(HOME_AD_INDEX>=HOME_ADS.length-1){flushHomeAdViews().then(loadHomeAds);return;}
+      HOME_AD_INDEX++;renderHomeAd();
+    },10000);
   }
   function loadHomeAds(){
     api("GET","/api/advertisements/active").then(function(list){ HOME_ADS=list||[]; HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); }).catch(function(){ HOME_ADS=[]; renderHomeAd(); });
   }
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
+    else if(HOME_ADS.length){renderHomeAd();startHomeAds();}
+  });
   el("adDots").addEventListener("click",function(e){ var d=e.target.closest("[data-home-ad-dot]"); if(!d)return; HOME_AD_INDEX=parseInt(d.getAttribute("data-home-ad-dot"),10)||0; renderHomeAd(); startHomeAds(); });
   el("adBox").addEventListener("click",function(){
     if(!HOME_ADS.length) return;
     var a=HOME_ADS[HOME_AD_INDEX];
+    if(a.is_demo){showMsg("Bu namoyish uchun joylangan demo reklama.");return;}
     api("POST","/api/advertisements/"+a.id+"/click").catch(function(){});
     if(a.business_id) openBiz(a.business_id); else if(a.user_id) openPersonSrv(a.user_id);
   });
