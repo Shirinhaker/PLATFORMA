@@ -5855,7 +5855,7 @@ async def list_notifications(actor_type: str = "user", x_telegram_init_data: str
         """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1
            ORDER BY created_at DESC,id DESC LIMIT 200""", (me["id"], kind, actor_id)).fetchall()
     unread = conn.execute(
-        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1 AND resolved_at=0",
+        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1 AND resolved_at=0 AND is_read=0",
         (me["id"], kind, actor_id)).fetchone()[0]
     out = [dict(r) for r in rows]; conn.close()
     return {"items": out, "unread": unread}
@@ -5868,7 +5868,8 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
     actor = resolve_actor(conn, me, actor_type); kind, actor_id, _ = _actor_identity(actor)
     rows = conn.execute(
         """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=?
-           AND requires_action=1 AND resolved_at=0 ORDER BY created_at ASC,id ASC LIMIT 20""",
+           AND requires_action=1 AND resolved_at=0 AND is_read=0
+           ORDER BY created_at ASC,id ASC LIMIT 20""",
         (me["id"], kind, actor_id)
     ).fetchall()
     out = [dict(r) for r in rows]; conn.close()
