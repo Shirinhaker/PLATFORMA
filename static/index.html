@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1504 -->
+<title>Platforma</title><!-- BUILD: v1505 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9055,6 +9055,14 @@
 
   /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
   var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [];
+  var DEMO_HOME_ADS = [
+    {id:-1,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
+    {id:-2,title:"Samarqand Coffee",caption:"Issiq qahva va yangi desertlar",image_file:"/demo_ads/demo_cafe.svg",crop_x:72,crop_y:52,crop_zoom:1.12,is_demo:true},
+    {id:-3,title:"Smart Texnika",caption:"Telefon va aksessuarlarga foydali taklif",image_file:"/demo_ads/demo_tech.svg",crop_x:77,crop_y:48,crop_zoom:1.05,is_demo:true},
+    {id:-4,title:"Orzu Mebel",caption:"Uyingiz uchun zamonaviy yechimlar",image_file:"/demo_ads/demo_home.svg",crop_x:78,crop_y:50,crop_zoom:1.10,is_demo:true},
+    {id:-5,title:"Nafis Beauty",caption:"Go'zalligingiz uchun yangi xizmatlar",image_file:"/demo_ads/demo_beauty.svg",crop_x:76,crop_y:50,crop_zoom:1.10,is_demo:true},
+    {id:-6,title:"Tez Yetkazish",caption:"Buyurtmangizni tez va ishonchli yetkazamiz",image_file:"/demo_ads/demo_delivery.svg",crop_x:78,crop_y:55,crop_zoom:1.06,is_demo:true}
+  ];
   function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
   function adStatusLabel(st){
     return st==="active"?"Faol":st==="scheduled"?"Rejalashtirilgan":st==="ended"?"Yakunlangan":st==="cancelled"?"Bekor qilingan":st;
@@ -9102,7 +9110,7 @@
     },10000);
   }
   function loadHomeAds(){
-    api("GET","/api/advertisements/active").then(function(list){ HOME_ADS=list||[]; HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); }).catch(function(){ HOME_ADS=[]; renderHomeAd(); });
+    api("GET","/api/advertisements/active").then(function(list){ HOME_ADS=(list&&list.length)?list:DEMO_HOME_ADS.slice(); HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); }).catch(function(){ HOME_ADS=DEMO_HOME_ADS.slice(); HOME_AD_INDEX=0; renderHomeAd(); startHomeAds(); });
   }
   document.addEventListener("visibilitychange",function(){
     if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
