@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1501 -->
+<title>Platforma</title><!-- BUILD: v1502 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -977,6 +977,7 @@
             <div class="ad-targets" id="baTargets"></div>
           </div>
           <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="baStart"></div>
+          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="baAllDay" checked> Kun bo'yi ko'rinsin</label><div id="baDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><input class="input" type="time" id="baDailyStart" value="19:00" aria-label="Kunlik boshlanish"><span>—</span><input class="input" type="time" id="baDailyEnd" value="21:00" aria-label="Kunlik tugash"></div><div class="idesc" id="baDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
           <div class="field"><label>Qancha vaqt?</label><select class="input" id="baDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
           <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="baPrice">0 so'm</div><div class="idesc" id="baPriceNote">Hududni tanlang.</div></div>
           <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
@@ -1208,6 +1209,7 @@
             <div class="ad-targets" id="uaTargets"></div>
           </div>
           <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="uaStart"></div>
+          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="uaAllDay" checked> Kun bo'yi ko'rinsin</label><div id="uaDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><input class="input" type="time" id="uaDailyStart" value="19:00" aria-label="Kunlik boshlanish"><span>—</span><input class="input" type="time" id="uaDailyEnd" value="21:00" aria-label="Kunlik tugash"></div><div class="idesc" id="uaDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
           <div class="field"><label>Qancha vaqt?</label><select class="input" id="uaDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
           <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="uaPrice">0 so'm</div><div class="idesc" id="uaPriceNote">Hududni tanlang.</div></div>
           <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
@@ -9110,6 +9112,11 @@
     el(prefix+"CropZoom").value=st.crop_zoom;
   }
   function resetAdCrop(prefix){var st=AD_FORM[prefix];st.crop_x=50;st.crop_y=50;st.crop_zoom=1;renderAdCrop(prefix);}
+  function adDailyUi(prefix){
+    var all=el(prefix+"AllDay").checked,start=el(prefix+"DailyStart").value||"19:00",end=el(prefix+"DailyEnd").value||"21:00";
+    el(prefix+"DailyTimes").style.display=all?"none":"flex";
+    el(prefix+"DailyHint").textContent=all?"Reklama kun davomida uzluksiz ko'rinadi.":("Har kuni "+start+" dan "+end+" gacha ko'rinadi"+(start>end?" (ertasi kungacha).":"."));
+  }
   function adSetDefaultStart(prefix){
     var d=new Date(Date.now()+5*60000); d.setSeconds(0,0);
     var pad=function(n){return String(n).padStart(2,"0");};
@@ -9146,6 +9153,7 @@
   function resetAdForm(prefix){
     var st=AD_FORM[prefix]; st.targets=[]; st.file=null; st.image_file="";st.crop_x=50;st.crop_y=50;st.crop_zoom=1;
     el(prefix+"Title").value=""; el(prefix+"Caption").value=""; el(prefix+"Days").value="1";
+    el(prefix+"AllDay").checked=true;el(prefix+"DailyStart").value="19:00";el(prefix+"DailyEnd").value="21:00";adDailyUi(prefix);
     el(prefix+"ImageInput").value=""; el(prefix+"Preview").classList.remove("on"); el(prefix+"Preview").querySelector("img").removeAttribute("src");
     el(prefix+"CropBox").classList.remove("on");el(prefix+"CropStage").querySelector("img").removeAttribute("src");renderAdCrop(prefix);
     el(prefix+"ImageInfo").textContent=""; adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
@@ -9164,6 +9172,9 @@
     cropStage.addEventListener("pointerup",stopCropDrag);cropStage.addEventListener("pointercancel",stopCropDrag);
     el(prefix+"CropZoom").addEventListener("input",function(){st.crop_zoom=Math.max(1,Math.min(3,parseFloat(this.value)||1));renderAdCrop(prefix);});
     el(prefix+"CropReset").addEventListener("click",function(){resetAdCrop(prefix);});
+    el(prefix+"AllDay").addEventListener("change",function(){adDailyUi(prefix);});
+    el(prefix+"DailyStart").addEventListener("input",function(){adDailyUi(prefix);});
+    el(prefix+"DailyEnd").addEventListener("input",function(){adDailyUi(prefix);});
     el(prefix+"ImageBtn").addEventListener("click",function(){ el(prefix+"ImageInput").click(); });
     el(prefix+"ImageInput").addEventListener("change",function(){
       var f=this.files&&this.files[0]; if(!f)return;
@@ -9201,10 +9212,13 @@
       if(!title){ showMsg("Reklama sarlavhasini kiriting."); return; }
       if(!st.targets.length){ showMsg("Kamida bitta hudud tanlang."); return; }
       if(!start){ showMsg("Boshlanish vaqtini tanlang."); return; }
+      var allDay=el(prefix+"AllDay").checked,dailyStart=el(prefix+"DailyStart").value,dailyEnd=el(prefix+"DailyEnd").value;
+      if(!allDay&&(!dailyStart||!dailyEnd)){showMsg("Kunlik boshlanish va tugash vaqtini tanlang.");return;}
+      if(!allDay&&dailyStart===dailyEnd){showMsg("Kunlik boshlanish va tugash vaqti bir xil bo'lmasin.");return;}
       var startAt=Math.floor(new Date(start).getTime()/1000); if(!isFinite(startAt)){ showMsg("Boshlanish vaqti noto'g'ri."); return; }
       var btn=this; btn.disabled=true; btn.textContent="Joylashtirilmoqda...";
       var up=st.image_file?Promise.resolve({image_file:st.image_file}):uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.file);
-      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
+      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"23:59",targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
       .then(function(){ showMsg("Reklama joylashtirildi ✅"); loadHomeAds(); nav(prefix==="ba"?"cab-elon":"ucab-elon"); })
       .catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Reklamani joylashtirish"; });
@@ -9216,8 +9230,9 @@
       box.innerHTML=list.map(function(a){
         var tg=(a.targets||[]).map(adTargetLabel).join(", ");
         var start=new Date(a.start_at*1000).toLocaleString("uz-UZ");
+        var daily=a.daily_all_day?"Kun bo'yi":("Har kuni "+a.daily_start+"–"+a.daily_end);
         var crop='object-position:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%;transform:scale('+(a.crop_zoom||1)+');transform-origin:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%';
-        return '<div class="ad-own-card"><div class="ad-own-top"><div style="width:76px;height:48px;overflow:hidden;border-radius:10px;background:var(--line);flex:none"><img src="'+esc(a.image_file)+'" alt="" style="width:100%;height:100%;'+crop+'"></div><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
+        return '<div class="ad-own-card"><div class="ad-own-top"><div style="width:76px;height:48px;overflow:hidden;border-radius:10px;background:var(--line);flex:none"><img src="'+esc(a.image_file)+'" alt="" style="width:100%;height:100%;'+crop+'"></div><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div><div class="li-meta">🕒 '+esc(daily)+'</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
       }).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
