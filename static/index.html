@@ -4,124 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1497 -->
+<title>Platforma</title><!-- BUILD: v1498 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
-<!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
-<style id="accessLockStyle">
-  body { display: none !important; }
-</style>
-<script>
-(function () {
-  const ALLOWED_TG_IDS = [1423181561, 607563067];
-
-  const CLOSED_MESSAGE =
-    "Loyihamiz to'liq ishga tushmadi. " +
-    "Loyihamiz to'liq ishga tushganda barcha uchun ochiladi. " +
-    "Iltimos kutib turing.";
-
-  function closePage() {
-    document.documentElement.setAttribute("data-access-denied", "1");
-
-    document.body.innerHTML = `
-      <div style="
-        min-height:100vh;
-        min-height:100dvh;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:linear-gradient(180deg,#eef8f6 0%,#ffffff 100%);
-        padding:24px;
-        box-sizing:border-box;
-        font-family:Arial, Helvetica, sans-serif;
-        text-align:center;
-      ">
-        <div style="
-          width:100%;
-          max-width:390px;
-          background:#ffffff;
-          border-radius:22px;
-          padding:26px 22px;
-          box-shadow:0 12px 35px rgba(0,0,0,0.10);
-          border:1px solid rgba(0,0,0,0.06);
-        ">
-          <div style="
-            width:58px;
-            height:58px;
-            border-radius:50%;
-            margin:0 auto 16px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:#e9f7f5;
-            color:#0f8f86;
-            font-size:28px;
-          ">⏳</div>
-
-          <h2 style="
-            margin:0 0 12px;
-            font-size:22px;
-            line-height:1.25;
-            color:#16222a;
-          ">Iltimos kutib turing</h2>
-
-          <p style="
-            margin:0;
-            font-size:15px;
-            line-height:1.55;
-            color:#42515c;
-          ">${CLOSED_MESSAGE}</p>
-        </div>
-      </div>
-    `;
-
-    const lockStyle = document.getElementById("accessLockStyle");
-    if (lockStyle) lockStyle.remove();
-  }
-
-  function getTelegramUserId() {
-    try {
-      const tg = window.Telegram && window.Telegram.WebApp;
-      if (!tg) return null;
-
-      tg.ready();
-      tg.expand();
-
-      const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
-      if (!user || !user.id) return null;
-
-      return Number(user.id);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  const userId = getTelegramUserId();
-
-  if (!ALLOWED_TG_IDS.includes(userId)) {
-    window.__ACCESS_DENIED__ = true;
-
-    // Ruxsatsiz holatda API so'rovlarini ham frontend tomondan to'xtatamiz.
-    const deniedFetch = function () {
-      return Promise.reject(new Error(CLOSED_MESSAGE));
-    };
-    try { window.fetch = deniedFetch; } catch (e) {}
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", closePage);
-    } else {
-      closePage();
-    }
-  } else {
-    window.__ACCESS_DENIED__ = false;
-
-    const lockStyle = document.getElementById("accessLockStyle");
-    if (lockStyle) lockStyle.remove();
-  }
-})();
-</script>
-<!-- /ACCESS GUARD -->
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -148,6 +33,8 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
     --shadow-lg:0 16px 44px rgba(0,0,0,.55);
   }
+  [data-privileged-only]{display:none!important}
+  body.is-privileged [data-privileged-only]{display:flex!important}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   body{background:#cfd6d2;font-family:var(--font-b);color:var(--ink);display:flex;justify-content:center;min-height:100vh;}
   [data-theme="dark"] body{background:#050807;}
@@ -909,9 +796,9 @@
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ai-chat"><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ai-chat" data-privileged-only><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-report"><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
+        <div class="menu-card" data-nav="cab-report" data-privileged-only><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
         <button class="btn btn-outline btn-block" style="margin-top:10px" id="toUserBtn">👤 Oddiy kabinetga qaytish</button>
@@ -1821,7 +1708,10 @@
   }
 
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
-  var ME = { registered:false, role:null, name:"", id:null, business_id:null };
+  var ME = { registered:false, role:null, name:"", id:null, business_id:null, is_privileged:false };
+  function applyPrivilegedVisibility(){
+    document.body.classList.toggle("is-privileged", !!(ME && ME.is_privileged));
+  }
   var activeMode = "user";   // hozir qaysi kabinetdamiz: "user" yoki "business"
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
   function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
@@ -3135,6 +3025,10 @@
     nav("login");
   }
   function nav(screen){
+    if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged)){
+      showMsg("Bu bo'lim ushbu profil uchun yopiq.");
+      screen = "cabinet";
+    }
     if(screen!=="chat" && typeof stopChatPoll==="function") stopChatPoll();
     current = screen;
     var secs = document.querySelectorAll(".screen");
@@ -4870,7 +4764,7 @@
     api("POST","/api/business/open",body).then(function(r){
       // ME ni fonda yangilaymiz
       api("GET","/api/me").then(function(d){
-        if(d&&d.registered){ ME={registered:true, role:d.role, name:d.name, id:d.id, has_business:!!d.has_business, business_id:d.business?d.business.id:null}; }
+        if(d&&d.registered){ ME={registered:true, role:d.role, name:d.name, id:d.id, has_business:!!d.has_business, business_id:d.business?d.business.id:null, is_privileged:!!d.is_privileged}; applyPrivilegedVisibility(); }
       }).catch(function(){});
       // biznes login/parolni ko'rsatamiz (registratsiya uslubidagi ekran)
       el("regBody").innerHTML =
@@ -5925,7 +5819,9 @@
       if(d && d.registered){
         ME = { registered:true, role:d.role, name:d.name, id:d.id,
                has_business: !!d.has_business,
-               business_id: d.business ? d.business.id : null };
+               business_id: d.business ? d.business.id : null,
+               is_privileged: !!d.is_privileged };
+        applyPrivilegedVisibility();
       }
     }).catch(function(){});
     nav(role==="business" ? "cabinet" : "ucab");
@@ -6006,7 +5902,7 @@
         MOBILE_TOKEN=null;
         try{ localStorage.removeItem("koprik_mobile_token"); }catch(e2){}
       }
-      loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null};
+      loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
       nav("home");
       return;
     }
@@ -9611,7 +9507,9 @@
                phone:d.phone || "", region:d.region || "", district:d.district || "", mahalla:d.mahalla || "",
                lat:d.lat, lng:d.lng,
                has_business: !!d.has_business,
-               business_id: d.business ? d.business.id : null };
+               business_id: d.business ? d.business.id : null,
+               is_privileged: !!d.is_privileged };
+        applyPrivilegedVisibility();
         loggedIn = true;
         // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
         if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
