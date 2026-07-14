@@ -33,9 +33,10 @@ from fastapi.responses import JSONResponse
 
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
+from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1497"
+APP_BUILD = "v1498"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -68,25 +69,6 @@ CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 MOBILE_CODE_TTL = 5 * 60
 MOBILE_SESSION_TTL = 30 * 24 * 60 * 60
 MOBILE_OTP_SECRET = os.environ.get("MOBILE_OTP_SECRET", WEBHOOK_SECRET)
-
-# ---------- Bot va Mini App uchun ruxsat berilgan Telegram IDlar ----------
-# Faqat shu ID egalari botdan va platformadan foydalana oladi.
-ALLOWED_TG_IDS = {1423181561, 607563067}
-
-CLOSED_MESSAGE = (
-    "Loyihamiz to\'liq ishga tushmadi. "
-    "Loyihamiz to\'liq ishga tushganda barcha uchun ochiladi. "
-    "Iltimos kutib turing."
-)
-
-
-def is_allowed_tg_id(tg_id):
-    """Telegram ID ruxsat berilganlar ro'yxatidami — tekshiradi."""
-    try:
-        return int(tg_id) in ALLOWED_TG_IDS
-    except Exception:
-        return False
-
 
 # Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
 _test_codes = {}
@@ -121,8 +103,6 @@ def require_tg(init_data):
     tg = verify_init_data(init_data)
     if not tg:
         raise HTTPException(401, "Iltimos, ilovani Telegram bot orqali oching.")
-    if not is_allowed_tg_id(tg.get("id")):
-        raise HTTPException(403, CLOSED_MESSAGE)
     return tg
 
 
@@ -238,19 +218,10 @@ async def setup_bot():
         "secret_token": WEBHOOK_SECRET,
         "allowed_updates": ["message", "callback_query"],
     })
-    # Hamma uchun pastdagi global "Platforma" tugmasini o'chiramiz.
-    # Aks holda ruxsatsiz odam ham asosiy sahifani ochib ko'rishi mumkin.
+    # Platforma endi hamma uchun ochiq: global Web App menyusi.
     await tg_call("setChatMenuButton", {
-        "menu_button": {"type": "commands"},
+        "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
     })
-
-    # Faqat ruxsat berilgan Telegram IDlar uchun alohida Web App tugmasi qo'yamiz.
-    # Telegram Bot API bu yerda user_id emas, chat_id kutadi.
-    for uid in ALLOWED_TG_IDS:
-        await tg_call("setChatMenuButton", {
-            "chat_id": uid,
-            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
-        })
 
     print("Bot sozlandi:", BASE_URL)
 
@@ -295,7 +266,7 @@ async def whitelist_middleware(request: Request, call_next):
     """
     /api/... so'rovlarini global tekshiradi.
     Bu api.py ichidagi alohida endpointlarni ham ruxsatsiz foydalanuvchilardan yopadi.
-    Static sahifa server tomonda Telegram IDni bilmaydi, shuning uchun frontend guard ham kerak.
+    Telegram imzosi yoki mobil sessiyani tekshiradi.
     """
     path = request.url.path
 
@@ -338,9 +309,6 @@ async def whitelist_middleware(request: Request, call_next):
                 status_code=401,
                 content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
             )
-        if not is_allowed_tg_id(tg.get("id")):
-            return JSONResponse(status_code=403, content={"detail": CLOSED_MESSAGE})
-
     return await call_next(request)
 
 
@@ -355,7 +323,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True}
 
 
 @app.get("/api/_dbinfo")
@@ -402,14 +370,8 @@ async def manual_setup():
         result["setWebhook_xato"] = str(e)
     try:
         result["menu_global"] = await tg_call("setChatMenuButton", {
-            "menu_button": {"type": "commands"},
+            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
         })
-        result["menu_allowed"] = []
-        for uid in ALLOWED_TG_IDS:
-            result["menu_allowed"].append(await tg_call("setChatMenuButton", {
-                "chat_id": uid,
-                "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
-            }))
     except Exception as e:
         result["menu_xato"] = str(e)
     try:
@@ -428,30 +390,6 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
     update = await request.json()
     msg = update.get("message")
     cq = update.get("callback_query")
-
-    # Whitelist: ruxsat berilmagan Telegram IDlar botdan foydalana olmaydi.
-    incoming_tg_id = None
-    incoming_chat_id = None
-    if msg:
-        incoming_tg_id = (msg.get("from") or {}).get("id") or (msg.get("chat") or {}).get("id")
-        incoming_chat_id = (msg.get("chat") or {}).get("id")
-    elif cq:
-        incoming_tg_id = (cq.get("from") or {}).get("id")
-        incoming_chat_id = ((cq.get("message") or {}).get("chat") or {}).get("id") or incoming_tg_id
-
-    if incoming_tg_id is not None and not is_allowed_tg_id(incoming_tg_id):
-        if cq:
-            await tg_call("answerCallbackQuery", {
-                "callback_query_id": cq.get("id"),
-                "text": CLOSED_MESSAGE,
-                "show_alert": True,
-            })
-        elif incoming_chat_id:
-            await tg_call("sendMessage", {
-                "chat_id": incoming_chat_id,
-                "text": CLOSED_MESSAGE,
-            })
-        return {"ok": True}
 
     # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
     if cq:
@@ -1063,6 +1001,7 @@ async def me(x_telegram_init_data: str = Header(default="")):
         "phone": user["phone"], "region": user["region"],
         "district": user["district"], "mahalla": user["mahalla"],
         "lat": user["lat"], "lng": user["lng"],
+        "is_privileged": is_privileged_tg_id(user["tg_id"]),
     }
     # Biznes ma'lumotini rol nima bo'lishidan qat'i nazar qaytaramiz (agar businesses yozuvi bo'lsa)
     biz = conn.execute("SELECT * FROM businesses WHERE user_id=?", (user["id"],)).fetchone()
