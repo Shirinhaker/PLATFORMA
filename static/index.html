@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1493 -->
+<title>Platforma</title><!-- BUILD: v1494 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <!-- ACCESS GUARD: faqat ruxsat berilgan Telegram IDlar sahifani ko'radi -->
@@ -626,6 +626,11 @@
   .order-card.order-new{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,140,132,.10),var(--shadow);}
   .order-card.order-unread{border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.10),var(--shadow);}
   .order-unread-pill{display:inline-flex;align-items:center;gap:5px;background:#FEE2E2;color:#B91C1C;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;margin-top:6px;}
+  .order-no-pill{display:inline-flex;align-items:center;background:var(--primary);color:#fff;border-radius:9px;padding:5px 9px;font-size:12px;font-weight:900;letter-spacing:.2px;}
+  .order-receipt-item{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px;margin-top:8px;}
+  .order-receipt-name{font-weight:900;color:var(--ink);font-size:14px;margin-bottom:7px;}
+  .order-receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:12.5px;color:var(--soft);}
+  .order-receipt-meta b{color:var(--ink);text-align:right;}
   [data-theme="dark"] .order-unread-pill{background:#3A1515;color:#FCA5A5;}
   .order-notice{display:flex;align-items:center;gap:10px;background:var(--primary-tint);color:var(--primary);border:1.5px solid var(--primary);border-radius:16px;padding:12px 14px;margin:6px 0 12px;font-weight:800;box-shadow:var(--shadow);}
   .order-notice small{display:block;color:var(--soft);font-weight:600;margin-top:2px;}
@@ -3704,6 +3709,18 @@
     var d=new Date(Number(ts)*1000);
     return d.toLocaleDateString("uz-UZ",{day:"2-digit",month:"2-digit",year:"numeric"})+" · "+d.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
   }
+  function orderReceiptHtml(o){
+    var items=o.items||[];
+    if(!items.length)return '<div class="panel-card"><b>🧾 Buyurtma cheki</b><div class="idesc" style="margin-top:8px">Mahsulotlar kiritilmagan.</div></div>';
+    var rows=items.map(function(it){
+      var unitPrice=it.price||"Narx kelishiladi";
+      var total=it.line_total?moneyText(it.line_total):"—";
+      return '<div class="order-receipt-item"><div class="order-receipt-name">'+esc(it.name||"Mahsulot")+'</div>'+ 
+        '<div class="order-receipt-meta"><span>Miqdori</span><b>'+esc(qtyUnitText(it.qty,it.unit))+'</b>'+ 
+        '<span>Dona narxi</span><b>'+esc(unitPrice)+'</b><span>Jami</span><b>'+esc(total)+'</b></div></div>';
+    }).join("");
+    return '<div class="panel-card" style="margin:10px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>🧾 Buyurtma cheki №'+esc(o.id)+'</b><span class="idesc">'+esc(orderCreatedText(o.created_at))+'</span></div>'+rows+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:12px">Umumiy jami: '+esc(o.total_text)+'</div>':'')+'</div>';
+  }
   function orderCard(o, mode){
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
     var subtitle = mode==="inbox" ? "Mijoz" : "Qabul qiluvchi";
@@ -3747,7 +3764,7 @@
     var chatPreview = o.last_chat ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.last_chat)+'</div>' : (o.chat_count ? '<div class="idesc" style="margin-top:7px;color:var(--primary);font-weight:700">💬 '+esc(o.chat_count)+' ta xabar</div>' : '');
     var hint = '<div class="idesc" style="margin-top:8px;color:var(--primary);font-weight:700">Batafsil ko‘rish va chat uchun bosing</div>';
     return '<div class="'+cls+'" style="display:block" data-order-open="'+o.id+'" data-order-mode="'+mode+'">'+
-      '<div class="idesc" style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-weight:800"><span>Buyurtma №'+esc(o.id)+'</span><span>🕒 '+esc(orderCreatedText(o.created_at))+'</span></div>'+ 
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><span class="order-no-pill">BUYURTMA №'+esc(o.id)+'</span><span class="idesc" style="font-weight:800">🕒 '+esc(orderCreatedText(o.created_at))+'</span></div>'+ 
       '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div class="iname">'+esc(o.title||"Buyurtma")+'</div><div class="idesc">'+subtitle+': '+esc(other||"—")+'</div>'+unread+detail+phone+note+'</div>'+st+'</div>'+problemInfo+driverInfo+itemsHtml+chatPreview+actions+hint+'</div>';
   }
   function orderActionButtons(o, mode){
@@ -3827,17 +3844,14 @@
     ensureOrderDetailSheet();
     var other = mode==="inbox" ? o.customer_name : o.provider_name;
     var title = mode==="inbox" ? "Kelgan buyurtma" : "Mening buyurtmam";
-    var items=(o.items||[]);
-    var itemsHtml = items.length ? '<div class="panel-card" style="margin:10px 0"><b>Mahsulot/xizmatlar</b>'+items.map(function(it){
-      var line = it.line_total ? moneyText(it.line_total) : (it.price||"Narx kelishiladi");
-      return '<div class="detail-line"><b>'+esc(it.name)+' × '+esc(qtyUnitText(it.qty, it.unit))+'</b><span>'+esc(line||"—")+'</span></div>';
-    }).join("")+(o.total_text?'<div class="iprice" style="text-align:right;margin-top:8px">Jami: '+esc(o.total_text)+'</div>':'')+'</div>' : '';
+    var itemsHtml = orderReceiptHtml(o);
     var mapHtml = (o.delivery_lat!=null && o.delivery_lng!=null) ? '<div class="panel-card"><b>Yetkazib berish metkasi</b><div id="orderDetailMap" class="order-detail-map"></div><div class="idesc">🗺 '+esc(Number(o.delivery_lat).toFixed(6)+", "+Number(o.delivery_lng).toFixed(6))+'</div></div>' : '';
     var sh=el("orderDetailSheet");
     sh.innerHTML = '<button class="order-close" id="orderDetailClose">×</button><div class="order-grip"></div>'+ 
       '<div class="lead" style="font-size:20px;margin-bottom:4px">'+title+' №'+esc(o.id)+'</div>'+ 
       '<div class="lead-sub" style="margin-bottom:12px">'+esc(o.title||"Buyurtma")+'</div>'+ 
       '<div class="panel-card">'+
+        '<div class="detail-line"><b>Buyurtma raqami</b><span class="order-no-pill">№'+esc(o.id)+'</span></div>'+ 
         '<div class="detail-line"><b>Buyurtma vaqti</b><span>'+esc(orderCreatedText(o.created_at))+'</span></div>'+ 
         '<div class="detail-line"><b>Status</b><span>'+esc(orderStatusText(o.status))+'</span></div>'+ 
         '<div class="detail-line"><b>'+(mode==="inbox"?'Mijoz':'Qabul qiluvchi')+'</b><span>'+esc(other||"—")+'</span></div>'+ 
