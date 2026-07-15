@@ -2911,7 +2911,6 @@ async def resolve_share(param: str = "", x_telegram_init_data: str = Header(defa
 @router.get("/user/{user_id}")
 async def public_user(user_id: int, x_telegram_init_data: str = Header(default="")):
     """Foydalanuvchining ommaviy sahifasi: ism, avatar, e'lonlari, (bo'lsa) mutaxassislik."""
-    _tg(x_telegram_init_data)
     conn = db()
     u = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     if not u:
@@ -5138,20 +5137,21 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 "((" + alias + ".lng-(" + repr(lo) + "))*85.0)*((" + alias + ".lng-(" + repr(lo) + "))*85.0))")
 
     def _fetch(qq):
-        terms = _search_terms(qq)
-        _match = _fts_match(qq)
+        search_q = qq.strip()[1:] if qq.strip().startswith("@") else qq
+        terms = _search_terms(search_q)
+        _match = _fts_match(search_q)
         product_filter, product_filter_params = _search_prefilter_sql("bu", "b")
         listing_filter, listing_filter_params = _search_prefilter_sql("u", "l")
         specialist_filter, specialist_filter_params = _search_prefilter_sql("u", "s")
         business_filter, business_filter_params = _search_prefilter_sql("u", "b")
         product_quality, product_quality_params = _search_quality_sql(
-            ["i.name"], qq, ["i.note", "b.name", "b.yon", "b.tur", "b.descr", "b.address"])
+            ["i.name"], search_q, ["i.note", "b.name", "b.yon", "b.tur", "b.descr", "b.address"])
         listing_quality, listing_quality_params = _search_quality_sql(
-            ["l.title"], qq, ["l.cat", "l.descr", "l.address"])
+            ["l.title"], search_q, ["l.cat", "l.descr", "l.address"])
         specialist_quality, specialist_quality_params = _search_quality_sql(
-            ["s.kasb", "u.name"], qq, ["s.descr", "s.hudud", "s.org", "s.lavozim"])
+            ["s.kasb", "u.name"], search_q, ["s.descr", "s.hudud", "s.org", "s.lavozim"])
         business_quality, business_quality_params = _search_quality_sql(
-            ["b.name"], qq, ["b.yon", "b.tur", "b.descr", "b.address"])
+            ["b.name"], search_q, ["b.yon", "b.tur", "b.descr", "b.address", "b.username"])
         product_distance = _distance_order_sql("b")
         listing_distance = _distance_order_sql("l")
         specialist_distance = _distance_order_sql("s")
@@ -5366,20 +5366,33 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
     }
     # Foydalanuvchilarni username (yoki ism) bo'yicha topamiz — mutaxassis bo'lmasa ham
     try:
-        uq = (corrected or q).strip().lstrip("@").lower()
+        raw_user_q = (corrected or q).strip()
+        username_mode = raw_user_q.startswith("@")
+        uq = raw_user_q.lstrip("@").lower()
         users = []
         if uq and result_type in ("all", "user"):
             like = "%" + uq + "%"
+            prefix_like = uq + "%"
             # FAQAT username maydonlari bo'yicha (ism/mahsulot aralashmaydi):
             #  - tanlangan pub_username, YOKI
             #  - pub_username bo'sh bo'lsa, Telegram username (registratsiyadagi)
+            user_name_clause = "" if username_mode else " OR lower(name) LIKE ?"
+            user_params = [like, like]
+            if not username_mode:
+                user_params.append(like)
+            user_params.extend([uq, uq, prefix_like, prefix_like])
             urows = conn.execute(
                 "SELECT id, name, pub_username, username, region, district, avatar_file, avatar_x, avatar_y, avatar_zoom FROM users "
-                "WHERE role='user' AND ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
+                "WHERE ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
                 "   OR (COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
-                "   OR lower(name) LIKE ?) "
+                + user_name_clause + ") "
+                "ORDER BY CASE "
+                " WHEN lower(COALESCE(pub_username,''))=? THEN 0 "
+                " WHEN lower(COALESCE(username,''))=? THEN 1 "
+                " WHEN lower(COALESCE(pub_username,'')) LIKE ? THEN 2 "
+                " WHEN lower(COALESCE(username,'')) LIKE ? THEN 3 ELSE 4 END, name COLLATE NOCASE "
                 "LIMIT 30",
-                (like, like, like),
+                user_params,
             ).fetchall()
             for u in urows:
                 handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
@@ -5391,6 +5404,13 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                               "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
                               "avatar_zoom": float(_row_val(u, "avatar_zoom", 1) or 1)})
         result["users"] = users
+        # @username oddiy/Barchasi rejimida foydalanuvchi identifikatori ustuvor.
+        # Biznes username qidiruvi alohida "Biznes" filtrida ishlashda davom etadi.
+        if username_mode and result_type in ("all", "user"):
+            result["products"] = []
+            result["listings"] = []
+            result["specialists"] = []
+            result["businesses"] = []
     except Exception:
         result["users"] = []
     conn.close()
