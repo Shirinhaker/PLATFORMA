@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1519 -->
+<title>Platforma</title><!-- BUILD: v1522 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2717,7 +2717,7 @@
       callBtn = '<button class="btn btn-amber btn-block" style="margin:4px 0 14px" data-alert="Chaqiruv tizimi 2-bosqichda ishlaydi (namuna).">🚖 Chaqirish <span class="soon-mini" style="margin-left:8px">tez orada</span></button>';
     }
     el("searchInput").value = t;
-    api("GET","/api/browse?tur="+encodeURIComponent(t)).then(function(data){
+    api("GET","/api/browse?tur="+encodeURIComponent(t)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()).then(function(data){
       var r = buildResults({products:[],listings:[],specialists:data.specialists,businesses:data.businesses}, t, callBtn);
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
