@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1542 -->
+<title>Platforma</title><!-- BUILD: v1543 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -952,7 +952,7 @@
       </section>
 
       <section class="screen" data-screen="cab-dining-order">
-        <div class="form-wrap"><div class="panel-card" style="margin-bottom:10px"><b id="dorderPlaceName">Zakaz</b><div class="idesc">Mahsulotlarni + va − orqali tanlang.</div></div><div id="dorderItems"></div><div class="dorder-total"><div class="panel-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Jami</b><b id="dorderTotal">0 so'm</b></div><input class="input" id="dorderCustomer" placeholder="Mijoz ismi — ixtiyoriy" style="margin-bottom:8px"><input class="input" id="dorderNote" placeholder="Izoh — ixtiyoriy" style="margin-bottom:8px"><button class="btn btn-primary btn-block" id="dorderSave">Zakazni saqlash</button></div></div>
+        <div class="form-wrap"><div class="panel-card" style="margin-bottom:10px"><b id="dorderPlaceName">Zakaz</b><div class="idesc">Mahsulotlarni + va − orqali tanlang.</div></div><div class="item-search" style="margin-bottom:10px"><span class="ic">🔍</span><input id="dorderSearch" type="search" placeholder="Mahsulot yoki guruhni qidirish..." autocomplete="off"></div><div id="dorderItems"></div><div class="dorder-total"><div class="panel-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Jami</b><b id="dorderTotal">0 so'm</b></div><input class="input" id="dorderCustomer" placeholder="Mijoz ismi — ixtiyoriy" style="margin-bottom:8px"><input class="input" id="dorderNote" placeholder="Izoh — ixtiyoriy" style="margin-bottom:8px"><button class="btn btn-primary btn-block" id="dorderSave">Zakazni saqlash</button></div></div>
       </section>
 
       <!-- CAB: MAHSULOT FORMASI -->
@@ -8468,18 +8468,22 @@
     document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;sheet.querySelector(".acf-cancel").onclick=close;
     sheet.querySelector(".acf-ok").onclick=function(){var body={customer_name:(sheet.querySelector("[data-bname]").value||"").trim(),phone:(sheet.querySelector("[data-bphone]").value||"").trim(),booking_date:sheet.querySelector("[data-bdate]").value,booking_time:sheet.querySelector("[data-btime]").value,guests:parseInt(sheet.querySelector("[data-bguests]").value||"1",10)||1,note:(sheet.querySelector("[data-bnote]").value||"").trim()};if(!body.customer_name||!body.booking_date||!body.booking_time){showMsg("Mijoz ismi, sana va vaqtni kiriting.");return;}api("POST","/api/dining/places/"+p.id+"/booking",body).then(function(){close();loadDiningPlaces();showMsg("Bron saqlandi ✅");}).catch(function(e){showMsg(e.message);});};
   }
-  var DORDER_PLACE=null,DORDER_ROWS=[],DORDER_CART={};
+  var DORDER_PLACE=null,DORDER_ROWS=[],DORDER_CART={},DORDER_QUERY="";
   function openDiningOrder(p){DORDER_PLACE=p;DORDER_CART={};nav("cab-dining-order");}
   function loadDiningOrder(){
-    if(!DORDER_PLACE){nav("cab-dining");return;}el("dorderPlaceName").textContent=DORDER_PLACE.name+" — zakaz";el("dorderItems").innerHTML='<div class="idesc">Mahsulotlar yuklanmoqda...</div>';el("dorderCustomer").value="";el("dorderNote").value="";
+    if(!DORDER_PLACE){nav("cab-dining");return;}DORDER_QUERY="";el("dorderSearch").value="";el("dorderPlaceName").textContent=DORDER_PLACE.name+" — zakaz";el("dorderItems").innerHTML='<div class="idesc">Mahsulotlar yuklanmoqda...</div>';el("dorderCustomer").value="";el("dorderNote").value="";
     api("GET","/api/items").then(function(rows){DORDER_ROWS=rows||[];renderDiningOrder();}).catch(function(e){el("dorderItems").innerHTML='<div class="idesc">'+esc(e.message)+'</div>';});
   }
   function renderDiningOrder(){
     var box=el("dorderItems");if(!DORDER_ROWS.length){box.innerHTML='<div class="empty"><h3>Mahsulot yo\'q</h3><p>Avval Mahsulot va xizmatlar bo\'limida mahsulot qo\'shing.</p></div>';diningOrderTotal();return;}
-    box.innerHTML=DORDER_ROWS.map(function(it){var q=DORDER_CART[it.id]||0,price=parsePriceAmount(it.price)||0;return '<div class="dorder-row"><div><b>'+esc(it.name)+'</b><div class="idesc">'+moneyText(price)+' so\'m · '+esc(it.unit||"dona")+'</div></div><div class="dorder-step"><button data-do-minus="'+it.id+'">−</button><b>'+q+'</b><button data-do-plus="'+it.id+'">+</button></div></div>';}).join("");diningOrderTotal();
+    var qtext=DORDER_QUERY.toLocaleLowerCase("uz").replace(/[ʻʼ‘’`]/g,"'").trim();
+    var visible=DORDER_ROWS.filter(function(it){if(!qtext)return true;var hay=[it.name,it.group_name,it.group_kind,it.kind,it.note].join(" ").toLocaleLowerCase("uz").replace(/[ʻʼ‘’`]/g,"'");return hay.indexOf(qtext)>=0;});
+    if(!visible.length){box.innerHTML='<div class="empty" style="padding:35px 16px"><h3>Topilmadi</h3><p>Boshqa nom bilan qidirib ko\'ring.</p></div>';diningOrderTotal();return;}
+    box.innerHTML=visible.map(function(it){var q=DORDER_CART[it.id]||0,price=parsePriceAmount(it.price)||0;return '<div class="dorder-row"><div><b>'+esc(it.name)+'</b>'+(it.group_name?'<div class="idesc">'+esc(it.group_name)+'</div>':'')+'<div class="idesc">'+moneyText(price)+' so\'m · '+esc(it.unit||"dona")+'</div></div><div class="dorder-step"><button data-do-minus="'+it.id+'">−</button><b>'+q+'</b><button data-do-plus="'+it.id+'">+</button></div></div>';}).join("");diningOrderTotal();
   }
   function diningOrderTotal(){var total=0;DORDER_ROWS.forEach(function(it){total+=(DORDER_CART[it.id]||0)*(parsePriceAmount(it.price)||0);});el("dorderTotal").textContent=moneyText(total)+" so'm";return total;}
   if(el("dorderItems"))el("dorderItems").addEventListener("click",function(e){var plus=e.target.closest("[data-do-plus]"),minus=e.target.closest("[data-do-minus]"),id=parseInt((plus||minus)?(plus?plus.dataset.doPlus:minus.dataset.doMinus):0,10);if(!id)return;DORDER_CART[id]=Math.max(0,(DORDER_CART[id]||0)+(plus?1:-1));renderDiningOrder();});
+  if(el("dorderSearch"))el("dorderSearch").addEventListener("input",function(){DORDER_QUERY=this.value||"";renderDiningOrder();});
   if(el("dorderSave"))el("dorderSave").addEventListener("click",function(){if(!DORDER_PLACE)return;var items=Object.keys(DORDER_CART).filter(function(id){return DORDER_CART[id]>0;}).map(function(id){return {item_id:parseInt(id,10),qty:DORDER_CART[id]};});if(!items.length){showMsg("Kamida bitta mahsulot tanlang.");return;}var btn=this;btn.disabled=true;api("POST","/api/dining/places/"+DORDER_PLACE.id+"/order",{items:items,customer_name:el("dorderCustomer").value.trim(),note:el("dorderNote").value.trim()}).then(function(){showMsg("Zakaz saqlandi ✅");nav("cab-dining");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
   if(el("diningAdd"))el("diningAdd").addEventListener("click",openDiningChoose);
 
