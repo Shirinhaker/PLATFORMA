@@ -4793,7 +4793,8 @@ def _search_terms(q):
             for x in group:
                 add(x)
 
-    return variants[:24]
+    # Bitta so'rov haddan tashqari ko'p SQL/FTS sharti yaratmasin.
+    return variants[:16]
 
 
 _APOS_CHARS = ("'", "’", "‘", "`", "ʻ", "ʼ")
@@ -4820,6 +4821,8 @@ def _like_where(columns, terms):
         ct = ct.strip()
         if len(ct) >= 2 and ct not in cterms:
             cterms.append(ct)
+        if len(cterms) >= 16:
+            break
     if not cterms:
         return "1=0", []
     clauses = []
@@ -4842,6 +4845,10 @@ def _fts_match(q):
             w2 = "".join(ch for ch in w.lower() if ch.isalnum())
             if len(w2) >= 2 and w2 not in toks:
                 toks.append(w2)
+            if len(toks) >= 24:
+                break
+        if len(toks) >= 24:
+            break
     if not toks:
         return ""
     return " OR ".join(t + "*" for t in toks)
@@ -4852,7 +4859,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
     raw = (q or "").strip().lower()
     for a in _APOS_CHARS:
         raw = raw.replace(a, "")
-    words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2]
+    words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
         return "0", []
     secondary_columns = secondary_columns or []
@@ -5068,7 +5075,7 @@ def _fuzzy_correct(conn, q):
     raw = raw_q.lower()
     for a in _APOS_CHARS:
         raw = raw.replace(a, "")
-    toks = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2]
+    toks = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not toks:
         return None
     changed = False
@@ -5131,15 +5138,26 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
-    conn = db()
+    if len(q) > 120:
+        raise HTTPException(400, "Qidiruv matni 120 belgidan oshmasin.")
+    useful_words = re.findall(r"[0-9a-z\u0400-\u04ff]+", q.lower())
+    if not useful_words:
+        raise HTTPException(400, "Qidiruv uchun harf yoki raqam kiriting.")
+    if len(useful_words) > 12:
+        raise HTTPException(400, "Qidiruvda ko'pi bilan 12 ta so'z kiriting.")
+    scope = (scope or "Tuman").strip()
+    if scope not in ("Mahalla", "Tuman", "Shahar", "Viloyat", "Respublika"):
+        raise HTTPException(400, "Qidiruv hududi noto'g'ri.")
     result_type = (result_type or "all").strip().lower()
     page = max(1, int(page or 1))
+    if page > 100:
+        raise HTTPException(400, "Qidiruv sahifasi chegaradan oshdi.")
     page_size = max(5, min(50, int(page_size or 20)))
     fetch_limit = page_size + 1
     fetch_offset = (page - 1) * page_size
     if result_type not in ("all", "product", "service", "business", "specialist", "user"):
-        conn.close()
         raise HTTPException(400, "Qidiruv turi noto'g'ri.")
+    conn = db()
     try:
         _ensure_pay_columns(conn)       # businesses.username kafolati
         _ensure_user_username(conn)     # users.pub_username kafolati
