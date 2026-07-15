@@ -1347,3 +1347,16 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL, "
         "updated_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_places_biz ON dining_places(business_id, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_bookings("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, place_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL CHECK(kind IN ('order','booking')), customer_name TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', booking_date TEXT DEFAULT '', booking_time TEXT DEFAULT '', "
+        "guests INTEGER DEFAULT 0, note TEXT DEFAULT '', total INTEGER DEFAULT 0, "
+        "status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_bookings_place ON dining_bookings(business_id,place_id,status,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_booking_items("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id INTEGER NOT NULL, item_id INTEGER, "
+        "name TEXT NOT NULL, qty REAL NOT NULL DEFAULT 1, unit TEXT DEFAULT '', price INTEGER DEFAULT 0, total INTEGER DEFAULT 0)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_booking_items ON dining_booking_items(booking_id,id)")
