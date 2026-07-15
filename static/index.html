@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1545 -->
+<title>Platforma</title><!-- BUILD: v1546 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1798,6 +1798,12 @@
     document.body.classList.toggle("is-privileged", !!(ME && ME.is_privileged));
   }
   var activeMode = "user";   // hozir qaysi kabinetdamiz: "user" yoki "business"
+  try{ activeMode=localStorage.getItem("koprik_active_mode")==="business"?"business":"user"; }catch(e){}
+  function setActiveMode(mode){
+    activeMode=mode==="business"?"business":"user";
+    try{localStorage.setItem("koprik_active_mode",activeMode);}catch(e){}
+    return activeMode;
+  }
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
   function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
   function withActor(body, type){ body = body || {}; body.actor_type = type || actorType(); return body; }
@@ -4996,8 +5002,8 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
-  function goBiz(){ activeMode="business"; nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
-  function goUser(){ activeMode="user"; nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
+  function goBiz(){ setActiveMode("business"); nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
+  function goUser(){ setActiveMode("user"); nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
 
 
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
@@ -5071,7 +5077,7 @@
     ACTION_NOTIFY_DISMISSED[n.id]=1;
     hideActionNotify();
     var business=n.actor_kind==="business",mode=business?"inbox":"mine";
-    activeMode=business?"business":"user";
+    setActiveMode(business?"business":"user");
     api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
     api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
       var found=(list||[]).filter(function(o){return Number(o.id)===Number(n.order_id);})[0],cat=orderIsService(found)?"service":"product";
@@ -6069,7 +6075,7 @@
 
   function afterAuth(role){
     loggedIn = true;
-    activeMode = (role==="business") ? "business" : "user";
+    setActiveMode((role==="business") ? "business" : "user");
     el("loginReason").style.display="none";
     // serverdan to'liq profilni yangilaymiz
     api("GET","/api/me").then(function(d){
@@ -6159,7 +6165,7 @@
       if(MOBILE_TOKEN){
         api("POST","/api/mobile-auth/logout").catch(function(){});
         MOBILE_TOKEN=null;
-        try{ localStorage.removeItem("koprik_mobile_token"); }catch(e2){}
+        try{ localStorage.removeItem("koprik_mobile_token");localStorage.removeItem("koprik_active_mode"); }catch(e2){}
       }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
       nav("home");
@@ -10035,6 +10041,7 @@
                has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null,
                is_privileged: !!d.is_privileged };
+        if(activeMode==="business" && !ME.has_business)setActiveMode("user");
         applyPrivilegedVisibility();
         loggedIn = true;
         // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
