@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1514 -->
+<title>Platforma</title><!-- BUILD: v1515 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,12 +150,12 @@
   .zoom button:first-child{border-bottom:1px solid var(--line);}
   .leaflet-pin{background:none;border:none;}
   .pin{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
-  .pin .dot{position:relative;overflow:hidden;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.28);}
-  .pin .dot.has-photo{overflow:hidden;background:#fff!important}.pin .dot.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .pin .dot{position:relative;overflow:hidden;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:18px;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.28);}
+  .pin .dot.has-photo{background:#fff!important}.pin .dot.has-photo img{display:block;z-index:2}.pin .pin-fallback{position:absolute;inset:0;display:grid;place-items:center;z-index:1}
   [data-theme="dark"] .pin .dot{border-color:#0e1413;}
   .pin .tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;margin-top:-2px;}
   [data-theme="dark"] .pin .tail{border-top-color:#0e1413;}
-  .pin .plabel{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);text-align:center;line-height:1.5;}
+  .pin .plabel{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);text-align:center;line-height:1.5;}
 
   /* business cards */
   .biz-card{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px;box-shadow:var(--shadow);cursor:pointer;margin-bottom:11px;}
@@ -1876,9 +1876,10 @@
     if(typeof L === "undefined") return null;
     var lab = label ? '<div class="plabel">'+label+'</div>' : '';
     var fs = small ? 'font-size:12px;font-weight:800;color:#fff;' : '';
-    var pic=photo?'<img src="'+esc(mediaUrl(photo))+'" alt="" style="'+avatarImageStyle(px,py,pz)+'">':inner;
+    var fallback='<span class="pin-fallback">'+inner+'</span>';
+    var pic=photo?fallback+'<img src="'+esc(mediaUrl(photo))+'" alt="" style="'+avatarImageStyle(px,py,pz)+'" onerror="this.remove()">':fallback;
     var html = '<div class="pin">'+lab+'<div class="dot'+(photo?' has-photo':'')+'" style="background:'+bg+';'+fs+'">'+pic+'</div><div class="tail"></div></div>';
-    return L.divIcon({ html:html, className:"leaflet-pin", iconSize:[40,48], iconAnchor:[20,46] });
+    return L.divIcon({ html:html, className:"leaflet-pin", iconSize:[46,54], iconAnchor:[23,52] });
   }
   function addMarker(lat, lng, icon, onClick){
     if(!LMAP || !icon) return;
@@ -1897,13 +1898,13 @@
       selElon=null;
       BIZ.forEach(function(b){
         var ll = (b.lat!=null) ? [b.lat,b.lng] : xyToLatLng(b.x,b.y);
-        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, "", false,b.logo_file,b.logo_x,b.logo_y,b.logo_zoom), function(){
+        addMarker(ll[0], ll[1], dotIcon(b.c, b.ic, esc(b.name||"Biznes"), false,b.logo_file,b.logo_x,b.logo_y,b.logo_zoom), function(){
           if(b.srv){ openBizSrv(b.id); } else { openBiz(b.id); }
         });
       });
       SPEC.forEach(function(sp){
         var ll = (sp.lat!=null) ? [sp.lat,sp.lng] : xyToLatLng(sp.x,sp.y);
-        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), "", true,sp.avatar_file,sp.avatar_x,sp.avatar_y,sp.avatar_zoom), function(){
+        addMarker(ll[0], ll[1], dotIcon(sp.c, sp.name.trim().charAt(0), esc(sp.name||"Mutaxassis"), true,sp.avatar_file,sp.avatar_x,sp.avatar_y,sp.avatar_zoom), function(){
           personBack=current;
           if(sp.srv){ openPersonSrv(sp.id); } else { openPerson(sp.id); }
         });
@@ -1977,7 +1978,7 @@
   }
   function loadHomeMap(){
     if(mapMode!=="biz") return;
-    api("GET","/api/map?actor="+(activeMode==="business"?"business":"user")).then(function(data){
+    api("GET","/api/map?actor="+(activeMode==="business"?"business":"user")+"&_="+Date.now()).then(function(data){
       data = data || {};
       BIZ = (data.businesses||[]).map(function(b){
         var m = yonMeta(b.yon);
@@ -2662,11 +2663,11 @@
     Object.keys(byBiz).forEach(function(k){
       var g=byBiz[k];
       var fp=prods.filter(function(p){return String(p.business_id)===String(k);})[0]||{};
-      if(validPin(g.lat, g.lng)) pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:g.prices.join("<br>"),photo:fp.photo_file||""});
+      if(validPin(g.lat, g.lng)) pins.push({rk:"biz", id:parseInt(k,10), lat:g.lat, lng:g.lng, c:"#0E8C84", t:"🛒", label:esc(fp.business_name||fp.name||"Biznes")+(g.prices.length?"<br>"+g.prices.map(esc).join("<br>"):""),photo:fp.photo_file||""});
     });
-    specs.forEach(function(s){ if(validPin(s.lat, s.lng)) pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:s.narx||"",photo:s.avatar_file||"",photo_x:s.avatar_x,photo_y:s.avatar_y,photo_zoom:s.avatar_zoom}); });
-    lists.forEach(function(e2){var mm=(e2.media||[]).filter(function(m){return m.type!=="video";})[0]; if(validPin(e2.lat, e2.lng)) pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:e2.price||"",photo:mm&&mm.file_id||""}); });
-    bizs.forEach(function(b){ if(validPin(b.lat, b.lng)) pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:"",photo:b.logo_file||"",photo_x:b.logo_x,photo_y:b.logo_y,photo_zoom:b.logo_zoom}); });
+    specs.forEach(function(s){ if(validPin(s.lat, s.lng)) pins.push({rk:"spec", id:s.user_id, lat:s.lat, lng:s.lng, c:"#16A34A", t:(s.name||"?").trim().charAt(0), label:esc(s.name||"Mutaxassis")+(s.narx?"<br>"+esc(s.narx):""),photo:s.avatar_file||"",photo_x:s.avatar_x,photo_y:s.avatar_y,photo_zoom:s.avatar_zoom}); });
+    lists.forEach(function(e2){var mm=(e2.media||[]).filter(function(m){return m.type!=="video";})[0]; if(validPin(e2.lat, e2.lng)) pins.push({rk:"elon", id:e2.id, lat:e2.lat, lng:e2.lng, c:"#EF4444", t:"📦", label:esc(e2.title||"E'lon")+(e2.price?"<br>"+esc(e2.price):""),photo:mm&&mm.file_id||""}); });
+    bizs.forEach(function(b){ if(validPin(b.lat, b.lng)) pins.push({rk:"biz", id:b.id, lat:b.lat, lng:b.lng, c:"#2563EB", t:"🏪", label:esc(b.name||"Biznes"),photo:b.logo_file||"",photo_x:b.logo_x,photo_y:b.logo_y,photo_zoom:b.logo_zoom}); });
     pins = dedupePins(pins);
 
     if(data.corrected){
@@ -8357,7 +8358,7 @@
     function stop(e){if(drag&&(!e||e.pointerId===drag.id))drag=null;}stage.addEventListener("pointerup",stop);stage.addEventListener("pointercancel",stop);
     zoom.addEventListener("input",function(){state().zoom=Math.max(1,Math.min(3,parseFloat(this.value)||1));draw();});
     el(prefix+"AvatarCropReset").addEventListener("click",function(){var s=state();s.x=50;s.y=50;s.zoom=1;draw();});
-    el(prefix+"AvatarCropSave").addEventListener("click",function(){var btn=this,s=state(),url=kind==="user"?"/api/profile/avatar-position":"/api/business/logo-position";btn.disabled=true;api("PUT",url,{x:s.x,y:s.y,zoom:s.zoom}).then(function(){if(kind==="user"){renderUserAvatar("upAvatarView",CURRENT_USER_AVATAR,s);renderUserAvatar("ucabAvatar",CURRENT_USER_AVATAR,s);}else{renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO,s);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO,s);}box.classList.remove("on");showMsg("Rasm joylashuvi saqlandi ✅");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
+    el(prefix+"AvatarCropSave").addEventListener("click",function(){var btn=this,s=state(),url=kind==="user"?"/api/profile/avatar-position":"/api/business/logo-position";btn.disabled=true;api("PUT",url,{x:s.x,y:s.y,zoom:s.zoom}).then(function(){if(kind==="user"){renderUserAvatar("upAvatarView",CURRENT_USER_AVATAR,s);renderUserAvatar("ucabAvatar",CURRENT_USER_AVATAR,s);}else{renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO,s);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO,s);}box.classList.remove("on");loadHomeMap();showMsg("Rasm joylashuvi saqlandi ✅");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
   }
   bindAvatarCrop("up","user");bindAvatarCrop("bp","business");
 
@@ -8393,6 +8394,7 @@
       renderUserAvatar("ucabAvatar",avatar);
       el("upAvatarAdjust").style.display="";
       if(ME) ME.avatar_file=avatar;
+      loadHomeMap();
       showMsg("Profil rasmi saqlandi ✅");
     }).catch(function(er){
       showMsg(er.message);
@@ -8441,7 +8443,7 @@
     if(file.size>8*1024*1024){showMsg("Biznes rasmi hajmi 8 MB dan oshmasin.");inp.value="";return;}
     var btn=el("bpLogoBtn");if(btn)btn.disabled=true;
     uploadRaw("POST","/api/business/logo",file).then(function(r){
-      CURRENT_BIZ_LOGO=r.logo_file||"";CURRENT_BIZ_CROP={x:50,y:50,zoom:1};renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO);el("bpAvatarAdjust").style.display="";showMsg("Biznes rasmi saqlandi ✅");
+      CURRENT_BIZ_LOGO=r.logo_file||"";CURRENT_BIZ_CROP={x:50,y:50,zoom:1};renderBusinessLogo("bpAvatarView",CURRENT_BIZ_LOGO);renderBusinessLogo("cabLogo",CURRENT_BIZ_LOGO);el("bpAvatarAdjust").style.display="";loadHomeMap();showMsg("Biznes rasmi saqlandi ✅");
     }).catch(function(e){showMsg(e.message);}).finally(function(){if(btn)btn.disabled=false;inp.value="";});
   });
   el("bpPickBtn") && el("bpPickBtn").addEventListener("click", function(){ openPicker("bp"); });
