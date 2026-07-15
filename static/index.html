@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1543 -->
+<title>Platforma</title><!-- BUILD: v1544 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -819,12 +819,13 @@
         </div>
         <div class="menu-grid2">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4 id="cabItemsMenuTitle">Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="diningPlacesMenu" data-nav="cab-dining" style="display:none"><div class="menu-ic">🍽️</div><div class="menu-main"><h4>Stollar va xonalar</h4><p>Zal rejasini joylashtirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1061,6 +1062,9 @@
       <section class="screen" data-screen="cab-orders">
         <div id="bizOrdersList" style="padding:6px 0"></div>
       </section>
+      <section class="screen" data-screen="cab-service-orders">
+        <div id="bizServiceOrdersList" style="padding:6px 0"></div>
+      </section>
 
       <!-- CAB: QARZ DAFTARI -->
       <section class="screen" data-screen="cab-qarz">
@@ -1169,7 +1173,8 @@
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxassisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxassis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p id="ucabOrderHint">Men bergan buyurtma va yozilishlar</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalarim</h4><p id="ucabOrderHint">Mahsulot buyurtmalarim</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalarim</h4><p id="ucabServiceOrderHint">Xizmat va qabullarim</p></div><span class="order-badge" id="ucabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
@@ -1498,6 +1503,9 @@
       <!-- UCAB: BUYURTMALARIM -->
       <section class="screen" data-screen="ucab-orders">
         <div id="myOrdersList" style="padding:6px 0"></div>
+      </section>
+      <section class="screen" data-screen="ucab-service-orders">
+        <div id="myServiceOrdersList" style="padding:6px 0"></div>
       </section>
 
       <!-- UCAB: SAQLANGANLAR -->
@@ -3190,19 +3198,19 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
+    "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
-    "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
+    "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-service-orders":"Xizmat buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-my-docs":"Mening hujjatlarim", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
-    "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
+    "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
-    "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
+    "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-service-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
     "cab-admin":"cabinet", "cab-my-docs":"cab-admin", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "ucab-spec-offer-form":"ucab-spec", "ucab-spec-reviews":"ucab-spec", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
     "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa", "cab-dining":"cabinet", "cab-dining-order":"cab-dining",
@@ -3825,13 +3833,18 @@
     if(textId && el(textId)) el(textId).textContent = n>0 ? textWhenOn.replace("{n}", n) : textWhenOff;
   }
   function orderIsProblem(o){ return !!(o && o.problem_open); }
+  function orderIsService(o){ return !!(o && o.order_category==="service"); }
   function orderIsActive(o){ return o && !orderIsProblem(o) && ["new","accepted","preparing","tayyor","courier_assigned","courier_arrived_store","handoff_waiting_seller","in_delivery","courier_arrived_customer","delivered_waiting_customer","pickup_waiting_customer"].indexOf(o.status)>=0; }
   var ORDER_PROBLEM_REASONS={not_received:"Pul hisobga tushmadi",amount_short:"To'langan summa kam",receipt_mismatch:"Chek ma'lumoti mos kelmadi",receipt_unreadable:"Chek rasmi o'qilmaydi",wrong_receipt:"Noto'g'ri chek yuborilgan",other:"Boshqa to'lov muammosi"};
   function updateOrderBadges(){
-    var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !!o.is_unread; }).length;
-    var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !!o.is_unread; }).length;
-    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Kelgan buyurtma va yozilishlar");
-    setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Men bergan buyurtma va yozilishlar");
+    var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
+    var newServiceInbox = (ORDERS_INBOX||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
+    var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
+    var updatesServiceMine = (ORDERS_MINE||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
+    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Mahsulot buyurtmalari");
+    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", "Xizmat va navbatlar");
+    setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Mahsulot buyurtmalarim");
+    setBadge("ucabServiceOrderBadge", updatesServiceMine, "ucabServiceOrderHint", "🔔 {n} ta xizmat yangilanishi", "Xizmat va qabullarim");
   }
   function refreshOrderBadges(){
     if(!loggedIn) return;
@@ -4500,22 +4513,19 @@
   }
 
 
-  var ordersTab = { mine:null, inbox:null }; // null = foydalanuvchi hali tanlamagan (avto)
-  function renderOrdersTabbed(list, mode, boxId){
+  var ordersTab = { mine_product:null, mine_service:null, inbox_product:null, inbox_service:null }; // null = avto
+  function renderOrdersTabbed(list, mode, boxId, category){
     var box = el(boxId); if(!box) return;
-    var tabKey = (mode==="inbox") ? "inbox" : "mine";
-    list = list || [];
-    if(!list.length){
-      box.innerHTML = '<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>'+(mode==="inbox"?"Biznesingizga kelgan buyurtma va yozilishlar shu yerda ko\'rinadi.":"Biznes sahifasidan buyurtma yoki navbatga yozilish yuborsangiz, shu yerda ko\'rinadi.")+'</p></div>';
-      return;
-    }
+    category = category==="service" ? "service" : "product";
+    var tabKey = ((mode==="inbox") ? "inbox_" : "mine_")+category;
+    list = (list || []).filter(function(o){return category==="service"?orderIsService(o):!orderIsService(o);});
     var problem = list.filter(orderIsProblem);
     var active = list.filter(orderIsActive);
     var done = list.filter(function(o){ return !orderIsActive(o) && !orderIsProblem(o); });
     var cur = ordersTab[tabKey];
     if(cur!=="active" && cur!=="problem" && cur!=="done"){
       // Birinchi ochilish: faol bo'lsa — Buyurtmalar, aks holda Yakunlangan
-      cur = active.length ? "active" : (problem.length ? "problem" : "done");
+      cur = active.length ? "active" : (problem.length ? "problem" : (done.length ? "done" : "active"));
     }
     var shown = cur==="done" ? done : (cur==="problem" ? problem : active);
     var uA = active.filter(function(o){return !!o.is_unread;}).length;
@@ -4532,23 +4542,27 @@
     box.querySelectorAll("[data-otab]").forEach(function(btn){
       btn.addEventListener("click", function(){
         ordersTab[tabKey] = btn.getAttribute("data-otab");
-        renderOrdersTabbed(list, mode, boxId);
+        renderOrdersTabbed(category==="service"?list.filter(orderIsService):list.filter(function(o){return !orderIsService(o);}), mode, boxId, category);
       });
     });
   }
-  function loadMyOrders(){
+  function loadMyOrders(category){
+    category=category||((current==="ucab-service-orders")?"service":"product");
+    var boxId=category==="service"?"myServiceOrdersList":"myOrdersList";
     api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
       ORDERS_MINE = list||[];
       updateOrderBadges();
-      renderOrdersTabbed(ORDERS_MINE, "mine", "myOrdersList");
-    }).catch(function(e){ el("myOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+      renderOrdersTabbed(ORDERS_MINE, "mine", boxId, category);
+    }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  function loadBizOrders(){
+  function loadBizOrders(category){
+    category=category||((current==="cab-service-orders")?"service":"product");
+    var boxId=category==="service"?"bizServiceOrdersList":"bizOrdersList";
     api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){
       ORDERS_INBOX = list||[];
       updateOrderBadges();
-      renderOrdersTabbed(ORDERS_INBOX, "inbox", "bizOrdersList");
-    }).catch(function(e){ el("bizOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+      renderOrdersTabbed(ORDERS_INBOX, "inbox", boxId, category);
+    }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
@@ -5041,8 +5055,8 @@
       var signature=(d.items||[]).map(function(n){return n.id+":"+n.action_type;}).join(",");
       if(signature!==ACTION_NOTIFY_SIGNATURE){
         ACTION_NOTIFY_SIGNATURE=signature;
-        if(activeMode==="business" && current==="cab-orders")loadBizOrders();
-        if(activeMode!=="business" && current==="ucab-orders")loadMyOrders();
+        if(activeMode==="business" && (current==="cab-orders"||current==="cab-service-orders"))loadBizOrders();
+        if(activeMode!=="business" && (current==="ucab-orders"||current==="ucab-service-orders"))loadMyOrders();
       }
       if(!items.length){hideActionNotify();return;}
       var n=items[0];
@@ -5060,8 +5074,9 @@
     activeMode=business?"business":"user";
     api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
     api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
-      if(business){ORDERS_INBOX=list||[];nav("cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox","bizOrdersList");}
-      else{ORDERS_MINE=list||[];nav("ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine","myOrdersList");}
+      var found=(list||[]).filter(function(o){return Number(o.id)===Number(n.order_id);})[0],cat=orderIsService(found)?"service":"product";
+      if(business){ORDERS_INBOX=list||[];nav(cat==="service"?"cab-service-orders":"cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox",cat==="service"?"bizServiceOrdersList":"bizOrdersList",cat);}
+      else{ORDERS_MINE=list||[];nav(cat==="service"?"ucab-service-orders":"ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine",cat==="service"?"myServiceOrdersList":"myOrdersList",cat);}
       openOrderDetail(parseInt(n.order_id,10),mode);
     }).catch(function(e){showMsg(e.message);});
   }
@@ -8516,7 +8531,9 @@
     else if(screen==="cab-elon"){ renderMyAds("bizAdList", "business"); renderMyElons("bizElonList", "business"); }
     else if(screen==="ucab-elon"){ renderMyAds("userAdList", "user"); renderMyElons("userElonList", "user"); }
     else if(screen==="cab-orders") loadBizOrders();
+    else if(screen==="cab-service-orders") loadBizOrders("service");
     else if(screen==="ucab-orders") loadMyOrders();
+    else if(screen==="ucab-service-orders") loadMyOrders("service");
     else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList", screen==="ucab-subs"?"user":"business");
     else if(screen==="ucab-followers" || screen==="cab-followers") loadFollowers(screen==="ucab-followers"?"uFollowersList":"cabFollowersList", screen==="ucab-followers"?"user":"business");
     else if(screen==="ucab-saved") loadSaved();
@@ -8577,6 +8594,9 @@
       if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
+      var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
+      if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
+      titles["cab-items"]=diningMenuName;
       if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = b.yon==="Umumiy ovqatlanish" ? "" : "none";
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
@@ -9923,7 +9943,7 @@
   var STAFF_SECTIONS = {
     kassa:   { title:"Kassa", ic:"🧾", desc:"Savdo daftari va kunlik tushum", nav:"cab-kassa" },
     ombor:   { title:"Ombor", ic:"📦", desc:"Qoldiq va kirim-chiqim", nav:"cab-ombor" },
-    buyurtma:{ title:"Buyurtmalar", ic:"📥", desc:"Kelgan buyurtma va yozilishlar", nav:"cab-orders" }
+    buyurtma:{ title:"Buyurtmalar", ic:"📦", desc:"Kelgan mahsulot buyurtmalari", nav:"cab-orders" }
   };
   function showStaffLogin(){
     if(el("slErr")) el("slErr").style.display="none";
@@ -9936,7 +9956,7 @@
       STAFF_INFO = d;
       loggedIn = true;
       // Orqaga tugma xodim bo'limlaridan staff-home ga qaytsin
-      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home";
+      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home"; BACKMAP["cab-service-orders"]="staff-home";
       renderStaffHome(d);
       nav("staff-home");
     }).catch(function(){
@@ -9950,7 +9970,9 @@
     var perms = d.perms || [];
     var cards = perms.map(function(k){
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
-      return '<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+      var first='<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+      if(k!=="buyurtma")return first;
+      return first+'<div class="menu-card" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p>Xizmat va navbatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
     }).join("");
     if(!cards) cards = '<div class="item" style="display:block">Sizga hali birorta bo\'lim ruxsat etilmagan. Rahbaringizga murojaat qiling.</div>';
     el("staffHomeBody").innerHTML =
