@@ -1332,3 +1332,18 @@ def _migrate(conn):
         conn.execute(
             "INSERT INTO app_meta(key,value) VALUES('search_fts_version',?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (fts_version,))
+
+    # --- v1540: Umumiy ovqatlanish — zal rejasidagi stol va xonalar ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_places("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL CHECK(kind IN ('table','room')), "
+        "name TEXT NOT NULL, "
+        "seats INTEGER DEFAULT 0, "
+        "x REAL NOT NULL DEFAULT 4, "
+        "y REAL NOT NULL DEFAULT 4, "
+        "locked INTEGER NOT NULL DEFAULT 1, "
+        "created_at INTEGER NOT NULL, "
+        "updated_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_places_biz ON dining_places(business_id, id)")
