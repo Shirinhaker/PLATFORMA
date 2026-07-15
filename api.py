@@ -5067,12 +5067,17 @@ FRACTIONAL_UNITS = ("kg", "g", "litr", "ml", "metr", "sm", "m²", "soat")
 
 @router.get("/search")
 async def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+                 page: int = 1, page_size: int = 20,
                  x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
     conn = db()
     result_type = (result_type or "all").strip().lower()
+    page = max(1, int(page or 1))
+    page_size = max(5, min(50, int(page_size or 20)))
+    fetch_limit = page_size + 1
+    fetch_offset = (page - 1) * page_size
     if result_type not in ("all", "product", "service", "business", "specialist", "user"):
         conn.close()
         raise HTTPException(400, "Qidiruv turi noto'g'ri.")
@@ -5173,8 +5178,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
                     "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
-                    "ORDER BY " + product_quality + ", " + product_distance + ", " + product_rating + " DESC, _rank LIMIT 50",
-                    [_match] + product_filter_params + product_quality_params,
+                    "ORDER BY " + product_quality + ", " + product_distance + ", " + product_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    [_match] + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 products = None
@@ -5189,8 +5194,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
                    WHERE b.status='active' AND """ + product_where + product_filter + """
-                   ORDER BY """ + product_quality + ", " + product_distance + ", " + product_rating + " DESC, i.created_at DESC LIMIT 50",
-                product_params + product_filter_params + product_quality_params,
+                   ORDER BY """ + product_quality + ", " + product_distance + ", " + product_rating + " DESC, i.created_at DESC LIMIT ? OFFSET ?",
+                product_params + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
         # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
@@ -5204,8 +5209,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
                     "JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                     "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' " + listing_filter + " "
-                    "ORDER BY " + listing_quality + ", " + listing_distance + ", " + listing_rating + " DESC, _rank LIMIT 50",
-                    [_match] + listing_filter_params + listing_quality_params,
+                    "ORDER BY " + listing_quality + ", " + listing_distance + ", " + listing_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    [_match] + listing_filter_params + listing_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 listings = None
@@ -5219,8 +5224,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 "u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM listings l JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                 "WHERE l.status='active' AND l.visibility='all' AND " + listing_where + listing_filter +
-                " ORDER BY " + listing_quality + ", " + listing_distance + ", l.created_at DESC LIMIT 50",
-                listing_params + listing_filter_params + listing_quality_params,
+                " ORDER BY " + listing_quality + ", " + listing_distance + ", l.created_at DESC LIMIT ? OFFSET ?",
+                listing_params + listing_filter_params + listing_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
         # Mutaxassislar — FTS (bm25 moslik, kasb+ism 10x). Bo'sh (available) birinchi, keyin moslik.
@@ -5234,8 +5239,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
                     "WHERE specialists_fts MATCH ? AND s.visible=1 " + specialist_filter + " "
-                    "ORDER BY " + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, _rank LIMIT 50",
-                    [_match] + specialist_filter_params + specialist_quality_params,
+                    "ORDER BY " + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, _rank LIMIT ? OFFSET ?",
+                    [_match] + specialist_filter_params + specialist_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 specialists = None
@@ -5250,8 +5255,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + specialist_filter + """
-                   ORDER BY """ + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, s.created_at DESC LIMIT 50",
-                specialist_params + specialist_filter_params + specialist_quality_params,
+                   ORDER BY """ + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, s.created_at DESC LIMIT ? OFFSET ?",
+                specialist_params + specialist_filter_params + specialist_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
         # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
@@ -5264,8 +5269,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(businesses_fts, 10.0, 1.0) AS _rank "
                     "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid JOIN users u ON u.id=b.user_id "
                     "WHERE businesses_fts MATCH ? AND b.status='active' " + business_filter + " "
-                    "ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, _rank LIMIT 50",
-                    [_match] + business_filter_params + business_quality_params,
+                    "ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    [_match] + business_filter_params + business_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 businesses = None
@@ -5277,8 +5282,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             businesses = conn.execute(
                 "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where + business_filter +
-                " ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, b.created_at DESC LIMIT 50",
-                business_params + business_filter_params + business_quality_params,
+                " ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, b.created_at DESC LIMIT ? OFFSET ?",
+                business_params + business_filter_params + business_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
         # Metkasi yo'q obyekt hech bir qidiruv kengligida ko'rinmaydi.
@@ -5313,16 +5318,19 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             products, listings, businesses = [], [], []
         elif result_type == "user":
             products, listings, specialists, businesses = [], [], [], []
-        return products, listings, specialists, businesses
+        has_more = any(len(arr) > page_size for arr in (products, listings, specialists, businesses))
+        return (products[:page_size], listings[:page_size], specialists[:page_size],
+                businesses[:page_size], has_more)
 
-    products, listings, specialists, businesses = _fetch(q)
+    products, listings, specialists, businesses, has_more = _fetch(q)
     corrected = None
     if (len(products) + len(listings) + len(specialists) + len(businesses)) == 0:
         cq = _fuzzy_correct(conn, q)
         if cq and cq != q:
-            p2, l2, s2, b2 = _fetch(cq)
+            p2, l2, s2, b2, hm2 = _fetch(cq)
             if (len(p2) + len(l2) + len(s2) + len(b2)) > 0:
                 products, listings, specialists, businesses = p2, l2, s2, b2
+                has_more = hm2
                 corrected = cq
 
     result = {
@@ -5330,6 +5338,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         "scope": scope,
         "result_type": result_type,
         "actor_type": actor_ctx["type"],
+        "page": page,
+        "page_size": page_size,
+        "has_more": has_more,
         "location_available": ulat is not None and ulng is not None,
         "location_required": False,
         "corrected": corrected,
@@ -5370,6 +5381,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         username_mode = raw_user_q.startswith("@")
         uq = raw_user_q.lstrip("@").lower()
         users = []
+        user_more = False
         if uq and result_type in ("all", "user"):
             like = "%" + uq + "%"
             prefix_like = uq + "%"
@@ -5381,6 +5393,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             if not username_mode:
                 user_params.append(like)
             user_params.extend([uq, uq, prefix_like, prefix_like])
+            user_params.extend([fetch_limit, fetch_offset])
             urows = conn.execute(
                 "SELECT id, name, pub_username, username, region, district, avatar_file, avatar_x, avatar_y, avatar_zoom FROM users "
                 "WHERE ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
@@ -5391,10 +5404,11 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 " WHEN lower(COALESCE(username,''))=? THEN 1 "
                 " WHEN lower(COALESCE(pub_username,'')) LIKE ? THEN 2 "
                 " WHEN lower(COALESCE(username,'')) LIKE ? THEN 3 ELSE 4 END, name COLLATE NOCASE "
-                "LIMIT 30",
+                "LIMIT ? OFFSET ?",
                 user_params,
             ).fetchall()
-            for u in urows:
+            user_more = len(urows) > page_size
+            for u in urows[:page_size]:
                 handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
                 users.append({"id": u["id"], "name": u["name"] or "Foydalanuvchi",
                               "pub_username": handle,
@@ -5404,6 +5418,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                               "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
                               "avatar_zoom": float(_row_val(u, "avatar_zoom", 1) or 1)})
         result["users"] = users
+        result["has_more"] = bool(result.get("has_more") or user_more)
         # @username oddiy/Barchasi rejimida foydalanuvchi identifikatori ustuvor.
         # Biznes username qidiruvi alohida "Biznes" filtrida ishlashda davom etadi.
         if username_mode and result_type in ("all", "user"):
@@ -5411,6 +5426,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             result["listings"] = []
             result["specialists"] = []
             result["businesses"] = []
+            result["has_more"] = user_more
     except Exception:
         result["users"] = []
     conn.close()
