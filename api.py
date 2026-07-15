@@ -358,9 +358,16 @@ async def upload_profile_avatar(request: Request, x_telegram_init_data: str = He
     full_path = os.path.join(folder, safe_name)
     with open(full_path, "wb") as f:
         f.write(raw)
+        f.flush()
+        os.fsync(f.fileno())
 
-    avatar_url = "/uploads/avatars/" + safe_name
+    avatar_url = "/profile-media/user/" + str(user["id"]) + "?v=" + str(int(time.time()))
     old_avatar = _row_val(user, "avatar_file", "") or ""
+    conn.execute(
+        "INSERT INTO profile_images(owner_kind,owner_id,mime_type,content,updated_at) VALUES('user',?,?,?,?) "
+        "ON CONFLICT(owner_kind,owner_id) DO UPDATE SET mime_type=excluded.mime_type,content=excluded.content,updated_at=excluded.updated_at",
+        (user["id"], ctype, raw, int(time.time())),
+    )
     conn.execute("UPDATE users SET avatar_file=?, avatar_x=50, avatar_y=50, avatar_zoom=1 WHERE id=?", (avatar_url, user["id"]))
     conn.commit()
     conn.close()
@@ -426,9 +433,16 @@ async def upload_business_logo(request: Request, x_telegram_init_data: str = Hea
     full_path = os.path.join(folder, safe_name)
     with open(full_path, "wb") as f:
         f.write(raw)
+        f.flush()
+        os.fsync(f.fileno())
 
-    logo_url = "/uploads/business_logos/" + safe_name
+    logo_url = "/profile-media/business/" + str(biz["id"]) + "?v=" + str(int(time.time()))
     old_logo = _row_val(biz, "logo_file", "") or ""
+    conn.execute(
+        "INSERT INTO profile_images(owner_kind,owner_id,mime_type,content,updated_at) VALUES('business',?,?,?,?) "
+        "ON CONFLICT(owner_kind,owner_id) DO UPDATE SET mime_type=excluded.mime_type,content=excluded.content,updated_at=excluded.updated_at",
+        (biz["id"], ctype, raw, int(time.time())),
+    )
     conn.execute("UPDATE businesses SET logo_file=?, logo_x=50, logo_y=50, logo_zoom=1 WHERE id=?", (logo_url, biz["id"]))
     conn.commit()
     conn.close()
@@ -2409,6 +2423,10 @@ def _map_business_dict(row, source, following=False):
         "yon": row["yon"],
         "tur": row["tur"],
         "address": row["address"],
+        "logo_file": _row_val(row, "logo_file", "") or "",
+        "logo_x": float(_row_val(row, "logo_x", 50) or 50),
+        "logo_y": float(_row_val(row, "logo_y", 50) or 50),
+        "logo_zoom": float(_row_val(row, "logo_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
         "source": source,
@@ -2426,6 +2444,10 @@ def _map_specialist_dict(row):
         "is_gov": bool(row["is_gov"]),
         "available": bool(row["available"]),
         "district": row["district"],
+        "avatar_file": _row_val(row, "avatar_file", "") or "",
+        "avatar_x": float(_row_val(row, "avatar_x", 50) or 50),
+        "avatar_y": float(_row_val(row, "avatar_y", 50) or 50),
+        "avatar_zoom": float(_row_val(row, "avatar_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
         "source": "obuna",
@@ -2496,7 +2518,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
     # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
     if actor_ctx["type"] == "business":
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.district
+            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM business_follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
@@ -2510,7 +2532,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
         ).fetchall()
     else:
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.district
+            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
@@ -5173,7 +5195,7 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
         terms,
     )
     specialists = conn.execute(
-        """SELECT s.*, u.name, u.region, u.district, u.mahalla
+        """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
            FROM specialists s JOIN users u ON u.id=s.user_id
            WHERE s.visible=1 AND """ + specialist_where + """
            ORDER BY s.available DESC, s.created_at DESC LIMIT 100""",
@@ -5182,6 +5204,9 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
     result = {
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
+                        "logo_file": _row_val(b, "logo_file", "") or "",
+                        "logo_x": float(_row_val(b, "logo_x", 50) or 50), "logo_y": float(_row_val(b, "logo_y", 50) or 50),
+                        "logo_zoom": float(_row_val(b, "logo_zoom", 1) or 1),
                         "lat": b["lat"], "lng": b["lng"],
                         "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
                         "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
@@ -5189,6 +5214,9 @@ async def browse_by_type(tur: str = "", x_telegram_init_data: str = Header(defau
                          "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
                          "available": bool(s["available"]), "region": s["region"],
                          "district": s["district"], "mahalla": s["mahalla"],
+                         "avatar_file": _row_val(s, "avatar_file", "") or "",
+                         "avatar_x": float(_row_val(s, "avatar_x", 50) or 50), "avatar_y": float(_row_val(s, "avatar_y", 50) or 50),
+                         "avatar_zoom": float(_row_val(s, "avatar_zoom", 1) or 1),
                          "lat": s["lat"], "lng": s["lng"],
                          "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
                          "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
