@@ -4884,6 +4884,19 @@ def _within_radius(row, ulat, ulng, radius_km):
     return (dlat * dlat + dlng * dlng) <= (radius_km * radius_km)
 
 
+def _has_search_marker(row):
+    """Qidiruvga faqat haqiqiy xarita metkasi bor yozuvlarni o'tkazadi."""
+    try:
+        keys = row.keys()
+        lat = row["lat"] if "lat" in keys else None
+        lng = row["lng"] if "lng" in keys else None
+        lat = float(lat)
+        lng = float(lng)
+        return -90 <= lat <= 90 and -180 <= lng <= 180
+    except (TypeError, ValueError, KeyError):
+        return False
+
+
 def _edit_distance(a, b):
     """Levenshtein masofasi (necha harf o'zgargani). Katta farqni tez rad etadi."""
     if a == b:
@@ -5122,6 +5135,12 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 " ORDER BY created_at DESC LIMIT 50",
                 business_params,
             ).fetchall()
+
+        # Metkasi yo'q obyekt hech bir qidiruv kengligida ko'rinmaydi.
+        products = [r for r in products if _has_search_marker(r)]
+        listings = [r for r in listings if _has_search_marker(r)]
+        specialists = [r for r in specialists if _has_search_marker(r)]
+        businesses = [r for r in businesses if _has_search_marker(r)]
 
         # Qidiruv kengligi haqiqiy viloyat/tuman/mahalla nomlari bo'yicha ishlaydi.
         if scope in ("Mahalla", "Tuman", "Shahar", "Viloyat", "Respublika"):
