@@ -22,12 +22,19 @@ import math
 import calendar
 import secrets
 import hashlib
+import threading
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
 from database import db
 
 router = APIRouter(prefix="/api")
+
+_SEARCH_RATE_LOCK = threading.Lock()
+_SEARCH_RATE = {}
+_FUZZY_CACHE_LOCK = threading.Lock()      # faqat keshni o'qish/yozish uchun (qisqa)
+_FUZZY_BUILD_LOCK = threading.Lock()      # to'liq skanni bitta threadga cheklaydi
+_FUZZY_CACHE = {"expires": 0.0, "weights": None}
 
 
 # ---------- Yordamchilar ----------
@@ -4802,11 +4809,24 @@ _APOS_CHARS = ("'", "’", "‘", "`", "ʻ", "ʼ")
 
 def _canon_sql(col):
     """Ustun qiymatini kanonik shaklga keltiruvchi SQL ifoda:
-    kichik harf + barcha apostrof ko'rinishlarini olib tashlash."""
+    kichik harf + barcha apostrof ko'rinishlarini olib tashlash + chetki bo'shliqni kesish.
+
+    DIQQAT: bu ifoda _canon_py() bilan AYNAN bir xil natija berishi shart. Ikkalasi
+    yon/tur kabi qiymatlarni bir-biriga solishtirishda ishlatiladi; qoida ajralib
+    ketsa, taqqoslash jimgina buziladi (v1535 dagi 'Import-eksport' xatosi shundan).
+    """
     expr = "LOWER(COALESCE(" + col + ", ''))"
     for a in _APOS_CHARS:
         expr = "REPLACE(" + expr + ", '" + a.replace("'", "''") + "', '')"
-    return expr
+    return "TRIM(" + expr + ")"
+
+
+def _canon_py(v):
+    """_canon_sql ning Python ko'rinishi. Ikkisi bir xil qoidada bo'lishi shart."""
+    s = str(v or "").lower()
+    for a in _APOS_CHARS:
+        s = s.replace(a, "")
+    return s.strip()
 
 
 def _like_where(columns, terms):
@@ -4851,7 +4871,9 @@ def _fts_match(q):
             break
     if not toks:
         return ""
-    return " OR ".join(t + "*" for t in toks)
+    # 2–3 harfli prefikslar (sto*, dom*, uy*) juda ko'p begona so'zni tutadi.
+    # Qisqa token FTS5 da aniq, 4+ token esa prefiks bo'yicha qidiriladi.
+    return " OR ".join((t + "*") if len(t) >= 4 else ('"' + t + '"') for t in toks)
 
 
 def _search_quality_sql(primary_columns, q, secondary_columns=None):
@@ -4879,62 +4901,9 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
     return sql, params
 
 
-# Qidiruv kengligi (scope) -> radius (km). None = cheklovsiz (Respublika).
-_SCOPE_RADIUS_KM = {
-    "Mahalla": 3.0,
-    "Tuman": 12.0,
-    "Shahar": 35.0,
-    "Viloyat": 150.0,
-    "Respublika": None,
-}
-
-
 def _scope_text(v):
     """Hudud nomlarini registr va ortiqcha bo'shliqlardan mustaqil taqqoslaydi."""
     return " ".join(str(v or "").strip().lower().split())
-
-
-def _within_admin_scope(row, scope, viewer_region, viewer_district, viewer_mahalla):
-    """Natijani haqiqiy ma'muriy hudud bo'yicha tekshiradi.
-
-    target_region/target_district/target_mahalla SELECT so'rovlarida natija egasining
-    users profilidan olinadi. Respublika cheklanmaydi. Hudud tanlangan, ammo tomonda
-    zarur ma'lumot bo'lmasa natija mos hisoblanmaydi; radius hudud o'rnini bosmaydi.
-    """
-    if scope == "Respublika":
-        return True
-    try:
-        keys = row.keys()
-    except Exception:
-        keys = []
-    tr = _scope_text(row["target_region"] if "target_region" in keys else "")
-    td = _scope_text(row["target_district"] if "target_district" in keys else "")
-    tm = _scope_text(row["target_mahalla"] if "target_mahalla" in keys else "")
-    vr = _scope_text(viewer_region)
-    vd = _scope_text(viewer_district)
-    vm = _scope_text(viewer_mahalla)
-    if scope == "Viloyat":
-        return bool(vr and tr and vr == tr)
-    if scope in ("Tuman", "Shahar"):
-        return bool(vr and vd and tr and td and vr == tr and vd == td)
-    if scope == "Mahalla":
-        return bool(vr and vd and vm and tr and td and tm and vr == tr and vd == td and vm == tm)
-    return False
-
-
-def _within_radius(row, ulat, ulng, radius_km):
-    """Natija foydalanuvchidan radius_km ichidami? Koordinatasi yo'q bo'lsa True (yashirmaymiz)."""
-    try:
-        keys = row.keys()
-    except Exception:
-        keys = []
-    lat = row["lat"] if "lat" in keys else None
-    lng = row["lng"] if "lng" in keys else None
-    if lat is None or lng is None:
-        return True
-    dlat = (lat - ulat) * 111.0
-    dlng = (lng - ulng) * 111.0 * math.cos(math.radians(ulat))
-    return (dlat * dlat + dlng * dlng) <= (radius_km * radius_km)
 
 
 def _distance_km_value(lat, lng, ulat, ulng):
@@ -4950,56 +4919,43 @@ def _distance_km_value(lat, lng, ulat, ulng):
     return round(6371.0 * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1 - a))), 1)
 
 
-def _has_search_marker(row):
-    """Qidiruvga faqat haqiqiy xarita metkasi bor yozuvlarni o'tkazadi."""
+# Xizmat ko'rsatuvchi yo'nalishlar — catalog_data.CATALOG dagi nom bilan AYNAN bir xil
+# yozilishi shart. To'g'ridan-to'g'ri qo'lda kanonik ("import eksport") yozmang: SQL
+# tomonda _canon_sql vergul/chiziqchani olib tashlamaydi, shuning uchun qo'lda yozilgan
+# shakl mos kelmay qoladi. Bu yerda faqat asl nom turadi, kanonizatsiyani _canon_py qiladi.
+_SERVICE_DIRECTION_NAMES = (
+    "Transport va logistika",
+    "Xizmat ko'rsatish",
+    "Maishiy xizmatlar",
+    "Umumiy ovqatlanish",
+    "Qurilish",
+    "Tibbiy xizmatlar",
+    "Ta'lim faoliyati",
+    "Ko'chmas mulk",
+    "Axborot texnologiyalari",
+    "Konsalting va professional",
+    "Madaniyat, sport, ko'ngilochar",
+    "Turizm va mehmonxona",
+    "Reklama va marketing",
+    "Poligrafiya va nashriyot",
+    "Moliyaviy faoliyat",
+    "Import-eksport",
+)
+
+# Xizmat EMAS (mahsulot ishlab chiqaruvchi/sotuvchi): Savdo, Qishloq xo'jaligi,
+# Ishlab chiqarish, Hunarmandchilik.
+_SERVICE_DIRECTIONS = {_canon_py(x) for x in _SERVICE_DIRECTION_NAMES}
+
+
+def _check_service_directions():
+    """Katalogdagi yo'nalish nomi o'zgarsa, xizmat filtri jimgina buzilmasin.
+    Startupda chaqiriladi: mos kelmagan nomlarni ro'yxat qilib qaytaradi."""
     try:
-        keys = row.keys()
-        lat = row["lat"] if "lat" in keys else None
-        lng = row["lng"] if "lng" in keys else None
-        lat = float(lat)
-        lng = float(lng)
-        return -90 <= lat <= 90 and -180 <= lng <= 180
-    except (TypeError, ValueError, KeyError):
-        return False
-
-
-_SERVICE_DIRECTIONS = {
-    "transport va logistika", "xizmat korsatish", "maishiy xizmatlar",
-    "umumiy ovqatlanish", "qurilish", "tibbiy xizmatlar", "talim faoliyati",
-    "kochmas mulk", "axborot texnologiyalari", "konsalting va professional",
-    "madaniyat sport kongilochar", "turizm va mehmonxona", "reklama va marketing",
-    "poligrafiya va nashriyot", "moliyaviy faoliyat", "import eksport",
-}
-
-
-def _service_text(v):
-    s = _scope_text(v)
-    for a in _APOS_CHARS:
-        s = s.replace(a, "")
-    return " ".join(re.sub(r"[^0-9a-z\u0400-\u04ff ]+", " ", s).split())
-
-
-def _business_is_service(row):
-    yon = _service_text(_row_val(row, "yon", ""))
-    tur = _service_text(_row_val(row, "tur", ""))
-    if yon in _SERVICE_DIRECTIONS:
-        return True
-    markers = ("xizmat", "tamir", "usta", "konsult", "kurs", "tashish", "yetkazib", "ijara")
-    return any(x in tur for x in markers)
-
-
-def _listing_is_service(row):
-    yon = _service_text(_row_val(row, "listing_business_yon", ""))
-    tur = _service_text(_row_val(row, "listing_business_tur", ""))
-    if yon in _SERVICE_DIRECTIONS:
-        return True
-    text = _service_text(" ".join(str(_row_val(row, k, "") or "") for k in ("cat", "title", "descr")))
-    markers = (
-        "xizmat", "tamir", "usta", "santexnik", "elektrik", "massaj", "tozalash",
-        "repetitor", "advokat", "buxgalter", "konsult", "dizayn", "dasturlash",
-        "yetkazib", "tashish", "ijara", "montaj", "qurilish", "shifokor",
-    )
-    return any(x in (tur + " " + text) for x in markers)
+        from catalog_data import CATALOG
+    except Exception:
+        return []
+    known = {c.get("name", "") for c in CATALOG}
+    return [n for n in _SERVICE_DIRECTION_NAMES if n not in known]
 
 
 def _edit_distance(a, b):
@@ -5035,42 +4991,79 @@ _FUZZY_MISSPELLINGS = {
     "stamatolog": "stomatolog", "stomotolog": "stomatolog",
     "restaran": "restoran", "restaron": "restoran",
     "darixona": "dorixona", "dorihona": "dorixona",
-    "santehnik": "santexnik", "santexnik": "santexnik",
+    "santehnik": "santexnik",
     "kampyuter": "kompyuter", "kompyutr": "kompyuter",
     "telifon": "telefon", "televon": "telefon",
     "avtaservis": "avtoservis", "aftoservis": "avtoservis",
 }
 
 
-def _fuzzy_correct(conn, q):
-    """Qidiruv bo'sh natija berganda: xato yozilgan so'zlarni yaqin (mavjud) so'zlarga
-    tuzatadi. Lug'at FTS indekslaridagi nom va tavsiflardan avtomatik boyiydi.
-    Qisqa so'zlar va @username hech qachon taxmin bilan o'zgartirilmaydi."""
-    raw_q = (q or "").strip()
-    if not raw_q or raw_q.startswith("@"):
-        return None
-
-    # Kattaroq weight — nomlarda va ko'p uchragan haqiqiy so'zlarda ustuvorlik.
+def _build_fuzzy_weights(conn):
+    """FTS nomlaridan lug'at quradi. To'liq skan — LOCK USHLAMAGAN holda chaqiriladi."""
     weights = {w: 5 for w in _FUZZY_VOCAB}
 
-    def add_words(text, weight):
+    def add_name_words(text):
         canon = (text or "").lower()
         for a in _APOS_CHARS:
             canon = canon.replace(a, "")
         for word in re.findall(r"[a-z\u0400-\u04ff]+", canon):
             if 4 <= len(word) <= 32:
-                weights[word] = weights.get(word, 0) + weight
+                weights[word] = weights.get(word, 0) + 6
 
     try:
+        # Tavsiflar olinmaydi: foydalanuvchi tavsifidagi xato "to'g'ri so'z" bo'lib qolmasin.
         for tbl in ("businesses_fts", "listings_fts", "items_fts", "specialists_fts"):
-            for row in conn.execute("SELECT name, body FROM " + tbl):
-                add_words(row[0], 6)  # biznes/mahsulot/kasb/e'lon nomi
-                add_words(row[1], 1)  # tavsif va yo'nalishlar
+            for row in conn.execute("SELECT name FROM " + tbl):
+                add_name_words(row[0])
     except Exception:
         pass
-    # To'g'ri shakllar lug'atda bo'lishini kafolatlaymiz.
     for correct in _FUZZY_MISSPELLINGS.values():
         weights[correct] = max(weights.get(correct, 0), 8)
+    return weights
+
+
+def _fuzzy_weights(conn):
+    """Keshlangan lug'atni qaytaradi (TTL 5 daqiqa).
+
+    Skan lock ichida emas — faqat o'qish/yozish lock ostida. Bir vaqtda ko'p so'rov
+    kelsa, faqat BITTA thread quradi (_FUZZY_BUILD_LOCK); qolganlari kutib qolmay,
+    eskirgan keshni ishlatib javob beradi. Kesh butunlay bo'sh bo'lsagina kutiladi.
+    """
+    now_mono = time.monotonic()
+    with _FUZZY_CACHE_LOCK:
+        cached = _FUZZY_CACHE.get("weights")
+        expires = float(_FUZZY_CACHE.get("expires", 0))
+    if cached is not None and now_mono < expires:
+        return cached
+
+    # Kesh sovuq bo'lsa kutamiz; shunchaki eskirgan bo'lsa — kutmaymiz.
+    if not _FUZZY_BUILD_LOCK.acquire(blocking=(cached is None)):
+        return cached
+    try:
+        with _FUZZY_CACHE_LOCK:   # boshqa thread biz kutayotganda qurib qo'ygan bo'lishi mumkin
+            cached2 = _FUZZY_CACHE.get("weights")
+            if cached2 is not None and time.monotonic() < float(_FUZZY_CACHE.get("expires", 0)):
+                return cached2
+        weights = _build_fuzzy_weights(conn)
+        with _FUZZY_CACHE_LOCK:
+            _FUZZY_CACHE["weights"] = weights
+            _FUZZY_CACHE["expires"] = time.monotonic() + 300.0
+        return weights
+    finally:
+        _FUZZY_BUILD_LOCK.release()
+
+
+def _fuzzy_correct(conn, q):
+    """Qidiruv bo'sh natija berganda: xato yozilgan so'zlarni yaqin (mavjud) so'zlarga
+    tuzatadi. Lug'at FTS indekslaridagi nomlardan avtomatik boyiydi.
+    Qisqa so'zlar va @username hech qachon taxmin bilan o'zgartirilmaydi."""
+    raw_q = (q or "").strip()
+    if not raw_q or raw_q.startswith("@"):
+        return None
+
+    weights = _fuzzy_weights(conn)
+    if not weights:
+        return None
 
     raw = raw_q.lower()
     for a in _APOS_CHARS:
@@ -5116,6 +5109,56 @@ def _fuzzy_correct(conn, q):
     return " ".join(out)
 
 
+def check_search_health():
+    """Startup tekshiruvi. Qidiruv jimgina o'lib qolmasligi uchun:
+
+    1) Xizmat yo'nalishlari katalogdagi nomlarga mos kelyaptimi;
+    2) Manba jadvalda yozuv bor, FTS indeksi esa bo'sh emasmi.
+
+    v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
+    bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
+    Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
+    """
+    problems = []
+    missing = _check_service_directions()
+    if missing:
+        problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
+
+    pairs = (
+        ("businesses_fts", "businesses"),
+        ("listings_fts", "listings"),
+        ("items_fts", "items"),
+        ("specialists_fts", "specialists"),
+    )
+    conn = db()
+    try:
+        for fts, src in pairs:
+            try:
+                n_fts = conn.execute("SELECT COUNT(*) FROM " + fts).fetchone()[0]
+                n_src = conn.execute("SELECT COUNT(*) FROM " + src).fetchone()[0]
+            except Exception as exc:
+                problems.append(fts + " o'qilmadi: " + type(exc).__name__)
+                continue
+            if n_src > 0 and n_fts == 0:
+                problems.append(
+                    fts + " BO'SH, lekin " + src + " da " + str(n_src) + " yozuv bor "
+                    "— qidiruv bu turni topa olmaydi (indeksni qayta quring)")
+    finally:
+        conn.close()
+    return problems
+
+
+def warm_search_cache():
+    """Ilova startupida fuzzy nomlar keshini tayyorlaydi va qidiruv sog'ligini tekshiradi."""
+    for msg in check_search_health():
+        print("QIDIRUV OGOHLANTIRISHI:", msg)
+    conn = db()
+    try:
+        _fuzzy_weights(conn)
+    finally:
+        conn.close()
+
+
 # O'lchov birliklari — ruxsat etilgan ro'yxat (frontend tanlovi bilan bir xil bo'lishi shart)
 UNITS = ("dona", "kg", "g", "litr", "ml", "metr", "sm", "m²",
          "to'plam", "quti", "juft", "porsiya", "soat", "kun", "marta")
@@ -5131,10 +5174,47 @@ def _clean_unit(v):
 FRACTIONAL_UNITS = ("kg", "g", "litr", "ml", "metr", "sm", "m²", "soat")
 
 
+def _search_rate_limit():
+    """Bir daqiqadagi ruxsat etilgan qidiruvlar soni (0 = cheklovsiz)."""
+    try:
+        return max(0, int(os.environ.get("SEARCH_RATE_PER_MIN", "30")))
+    except (TypeError, ValueError):
+        return 30
+
+
+def _check_search_rate(user_id):
+    """Bitta profil uchun 60 soniyada N ta qidiruv; pagination ham hisoblanadi.
+
+    DIQQAT: hisoblagich PROTSESS xotirasida. Bir nechta worker bilan ishlatilsa
+    (masalan `gunicorn -w 4`) amaldagi chegara N*worker bo'ladi va restartda nolga
+    tushadi. Bitta worker uchun yetarli; ko'p worker kerak bo'lsa umumiy saqlash
+    (Redis yoki SQLite jadvali) kerak.
+    """
+    limit = _search_rate_limit()
+    if limit <= 0:
+        return
+    now_mono = time.monotonic()
+    key = str(user_id or "0")
+    with _SEARCH_RATE_LOCK:
+        recent = [t for t in _SEARCH_RATE.get(key, []) if now_mono - t < 60.0]
+        if len(recent) >= limit:
+            raise HTTPException(429, "Juda ko'p qidiruv yuborildi. Bir daqiqadan keyin qayta urinib ko'ring.")
+        recent.append(now_mono)
+        _SEARCH_RATE[key] = recent
+        # Xotira o'sib ketmasligi uchun vaqti-vaqti bilan eski profillarni tozalaymiz.
+        if len(_SEARCH_RATE) > 2000:
+            for old_key in list(_SEARCH_RATE):
+                vals = [t for t in _SEARCH_RATE[old_key] if now_mono - t < 60.0]
+                if vals:
+                    _SEARCH_RATE[old_key] = vals
+                else:
+                    _SEARCH_RATE.pop(old_key, None)
+
+
 @router.get("/search")
-async def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
-                 page: int = 1, page_size: int = 20,
-                 x_telegram_init_data: str = Header(default="")):
+def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+           page: int = 1, page_size: int = 20,
+           x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -5146,7 +5226,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
     if len(useful_words) > 12:
         raise HTTPException(400, "Qidiruvda ko'pi bilan 12 ta so'z kiriting.")
     scope = (scope or "Tuman").strip()
-    if scope not in ("Mahalla", "Tuman", "Shahar", "Viloyat", "Respublika"):
+    if scope not in ("Mahalla", "Tuman", "Viloyat", "Respublika"):
         raise HTTPException(400, "Qidiruv hududi noto'g'ri.")
     result_type = (result_type or "all").strip().lower()
     page = max(1, int(page or 1))
@@ -5169,6 +5249,11 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
     ulat = ulng = None
     viewer_region = viewer_district = viewer_mahalla = ""
     _u = require_user(conn, x_telegram_init_data)
+    try:
+        _check_search_rate(_row_val(_u, "id", 0))
+    except Exception:
+        conn.close()
+        raise
     actor_ctx = resolve_actor(conn, _u, actor_type)
     if actor_ctx["type"] == "business":
         _biz = actor_ctx["business"]
@@ -5192,7 +5277,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             if vr:
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
-        elif scope in ("Tuman", "Shahar"):
+        elif scope == "Tuman":
             if vr and vd:
                 parts.extend([
                     "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
@@ -5210,22 +5295,83 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """SQLite qo'shimcha geografik funksiyasiz taxminiy masofa kvadrati."""
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            return "1e30"
-        return ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
-                "((" + alias + ".lng-(" + repr(lo) + "))*85.0)*((" + alias + ".lng-(" + repr(lo) + "))*85.0))")
+            return "0", "0"
+        lon_scale = 111.0 * math.cos(math.radians(la))
+        raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
+               "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
+        bucket = ("CAST((ABS(" + alias + ".lat-(" + repr(la) + "))*111.0 + "
+                  "ABS(" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")/2.0 AS INTEGER)")
+        return bucket, raw
 
     def _fetch(qq):
-        search_q = qq.strip()[1:] if qq.strip().startswith("@") else qq
-        terms = _search_terms(search_q)
-        _match = _fts_match(search_q)
+        username_mode = qq.strip().startswith("@")
+        search_q = qq.strip()[1:] if username_mode else qq
+        protected_q = qq if username_mode else search_q
+        terms = _search_terms(protected_q)
+        _match = _fts_match(protected_q)
+        # Username ichidagi nuqta/pastki chiziq FTS tokenizerida bo'linishi mumkin;
+        # username rejimida parametrli LIKE aniqroq va sinonimsiz ishlaydi.
+        if username_mode:
+            _match = ""
         product_filter, product_filter_params = _search_prefilter_sql("bu", "b")
         listing_filter, listing_filter_params = _search_prefilter_sql("u", "l")
         specialist_filter, specialist_filter_params = _search_prefilter_sql("u", "s")
         business_filter, business_filter_params = _search_prefilter_sql("u", "b")
+
+        def append_filter(sql, params, clause, clause_params=()):
+            return sql + " AND (" + clause + ")", params + list(clause_params)
+
+        directions = sorted(_SERVICE_DIRECTIONS)
+        direction_marks = ",".join("?" for _ in directions)
+        service_markers = ("xizmat", "tamir", "usta", "konsult", "kurs", "tashish", "yetkazib", "ijara")
+        business_service_sql = (
+            _canon_sql("b.yon") + " IN (" + direction_marks + ") OR " +
+            " OR ".join(_canon_sql("b.tur") + " LIKE ?" for _ in service_markers)
+        )
+        business_service_params = directions + ["%" + x + "%" for x in service_markers]
+        listing_markers = (
+            "xizmat", "tamir", "usta", "santexnik", "elektrik", "massaj", "tozalash",
+            "repetitor", "advokat", "buxgalter", "konsult", "dizayn", "dasturlash",
+            "yetkazib", "tashish", "ijara", "montaj", "qurilish", "shifokor",
+        )
+        listing_text = _canon_sql("(COALESCE(lb.tur,'') || ' ' || COALESCE(l.cat,'') || ' ' || COALESCE(l.title,'') || ' ' || COALESCE(l.descr,''))")
+        listing_service_sql = (
+            _canon_sql("lb.yon") + " IN (" + direction_marks + ") OR " +
+            " OR ".join(listing_text + " LIKE ?" for _ in listing_markers)
+        )
+        listing_service_params = directions + ["%" + x + "%" for x in listing_markers]
+
+        if username_mode and result_type in ("all", "user"):
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "1=0")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, "1=0")
+            specialist_filter, specialist_filter_params = append_filter(specialist_filter, specialist_filter_params, "1=0")
+            business_filter, business_filter_params = append_filter(business_filter, business_filter_params, "1=0")
+        elif result_type == "product":
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "LOWER(COALESCE(i.kind,'product'))<>'service'")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, "1=0")
+            specialist_filter, specialist_filter_params = append_filter(specialist_filter, specialist_filter_params, "1=0")
+            business_filter, business_filter_params = append_filter(business_filter, business_filter_params, "1=0")
+        elif result_type == "service":
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "LOWER(COALESCE(i.kind,''))='service'")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, listing_service_sql, listing_service_params)
+            business_filter, business_filter_params = append_filter(business_filter, business_filter_params, business_service_sql, business_service_params)
+        elif result_type == "business":
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "1=0")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, "1=0")
+            specialist_filter, specialist_filter_params = append_filter(specialist_filter, specialist_filter_params, "1=0")
+        elif result_type == "specialist":
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "1=0")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, "1=0")
+            business_filter, business_filter_params = append_filter(business_filter, business_filter_params, "1=0")
+        elif result_type == "user":
+            product_filter, product_filter_params = append_filter(product_filter, product_filter_params, "1=0")
+            listing_filter, listing_filter_params = append_filter(listing_filter, listing_filter_params, "1=0")
+            specialist_filter, specialist_filter_params = append_filter(specialist_filter, specialist_filter_params, "1=0")
+            business_filter, business_filter_params = append_filter(business_filter, business_filter_params, "1=0")
         product_quality, product_quality_params = _search_quality_sql(
             ["i.name"], search_q, ["i.note", "b.name", "b.yon", "b.tur", "b.descr", "b.address"])
         listing_quality, listing_quality_params = _search_quality_sql(
@@ -5234,10 +5380,10 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             ["s.kasb", "u.name"], search_q, ["s.descr", "s.hudud", "s.org", "s.lavozim"])
         business_quality, business_quality_params = _search_quality_sql(
             ["b.name"], search_q, ["b.yon", "b.tur", "b.descr", "b.address", "b.username"])
-        product_distance = _distance_order_sql("b")
-        listing_distance = _distance_order_sql("l")
-        specialist_distance = _distance_order_sql("s")
-        business_distance = _distance_order_sql("b")
+        product_bucket, product_distance = _distance_order_sql("b")
+        listing_bucket, listing_distance = _distance_order_sql("l")
+        specialist_bucket, specialist_distance = _distance_order_sql("s")
+        business_bucket, business_distance = _distance_order_sql("b")
         product_rating = "CASE WHEN COALESCE(b.rating_cnt,0)>0 THEN b.rating_sum*1.0/b.rating_cnt ELSE 0 END"
         listing_rating = "0"
         specialist_rating = "CASE WHEN COALESCE(s.rating_cnt,0)>0 THEN s.rating_sum*1.0/s.rating_cnt ELSE 0 END"
@@ -5255,12 +5401,12 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
                     "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
-                    "ORDER BY " + product_quality + ", " + product_distance + ", " + product_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    "ORDER BY " + product_quality + ", " + product_bucket + ", _rank, " + product_rating + " DESC, " + product_distance + " LIMIT ? OFFSET ?",
                     [_match] + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 products = None
-        if not products:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
+        if products is None:   # Faqat FTS xatosida LIKE zaxirasiga o'tamiz; bo'sh sahifada emas.
             product_where, product_params = _like_where(
                 ["i.name", "i.note", "i.kind", "b.name", "b.yon", "b.tur", "b.descr", "b.address"],
                 terms,
@@ -5271,7 +5417,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
                    WHERE b.status='active' AND """ + product_where + product_filter + """
-                   ORDER BY """ + product_quality + ", " + product_distance + ", " + product_rating + " DESC, i.created_at DESC LIMIT ? OFFSET ?",
+                   ORDER BY """ + product_quality + ", " + product_bucket + ", " + product_rating + " DESC, " + product_distance + ", i.created_at DESC LIMIT ? OFFSET ?",
                 product_params + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
@@ -5286,12 +5432,12 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
                     "JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                     "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' " + listing_filter + " "
-                    "ORDER BY " + listing_quality + ", " + listing_distance + ", " + listing_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    "ORDER BY " + listing_quality + ", " + listing_bucket + ", _rank, " + listing_rating + " DESC, " + listing_distance + " LIMIT ? OFFSET ?",
                     [_match] + listing_filter_params + listing_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 listings = None
-        if not listings:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
+        if listings is None:
             listing_where, listing_params = _like_where(
                 ["l.title", "l.cat", "l.price", "l.descr", "l.address"],
                 terms,
@@ -5301,7 +5447,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 "u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM listings l JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                 "WHERE l.status='active' AND l.visibility='all' AND " + listing_where + listing_filter +
-                " ORDER BY " + listing_quality + ", " + listing_distance + ", l.created_at DESC LIMIT ? OFFSET ?",
+                " ORDER BY " + listing_quality + ", " + listing_bucket + ", " + listing_distance + ", l.created_at DESC LIMIT ? OFFSET ?",
                 listing_params + listing_filter_params + listing_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
@@ -5316,12 +5462,12 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
                     "WHERE specialists_fts MATCH ? AND s.visible=1 " + specialist_filter + " "
-                    "ORDER BY " + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, _rank LIMIT ? OFFSET ?",
+                    "ORDER BY " + specialist_quality + ", " + specialist_bucket + ", _rank, " + specialist_rating + " DESC, s.available DESC, " + specialist_distance + " LIMIT ? OFFSET ?",
                     [_match] + specialist_filter_params + specialist_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 specialists = None
-        if not specialists:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
+        if specialists is None:
             specialist_where, specialist_params = _like_where(
                 ["s.kasb", "s.descr", "s.narx", "s.hudud", "s.org", "s.dept", "s.lavozim",
                  "u.name", "u.region", "u.district", "u.mahalla"],
@@ -5332,7 +5478,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + specialist_filter + """
-                   ORDER BY """ + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, s.created_at DESC LIMIT ? OFFSET ?",
+                   ORDER BY """ + specialist_quality + ", " + specialist_bucket + ", " + specialist_rating + " DESC, s.available DESC, " + specialist_distance + ", s.created_at DESC LIMIT ? OFFSET ?",
                 specialist_params + specialist_filter_params + specialist_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
@@ -5346,12 +5492,12 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(businesses_fts, 10.0, 1.0) AS _rank "
                     "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid JOIN users u ON u.id=b.user_id "
                     "WHERE businesses_fts MATCH ? AND b.status='active' " + business_filter + " "
-                    "ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, _rank LIMIT ? OFFSET ?",
+                    "ORDER BY " + business_quality + ", " + business_bucket + ", _rank, " + business_rating + " DESC, " + business_distance + " LIMIT ? OFFSET ?",
                     [_match] + business_filter_params + business_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
             except Exception:
                 businesses = None
-        if not businesses:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
+        if businesses is None:
             business_where, business_params = _like_where(
                 ["b.name", "b.yon", "b.tur", "b.descr", "b.address", "b.phone", "b.telegram", "b.work_hours", "b.username"],
                 terms,
@@ -5359,36 +5505,15 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             businesses = conn.execute(
                 "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where + business_filter +
-                " ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, b.created_at DESC LIMIT ? OFFSET ?",
+                " ORDER BY " + business_quality + ", " + business_bucket + ", " + business_rating + " DESC, " + business_distance + ", b.created_at DESC LIMIT ? OFFSET ?",
                 business_params + business_filter_params + business_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
-        # Metkasi yo'q obyekt hech bir qidiruv kengligida ko'rinmaydi.
-        products = [r for r in products if _has_search_marker(r)]
-        listings = [r for r in listings if _has_search_marker(r)]
-        specialists = [r for r in specialists if _has_search_marker(r)]
-        businesses = [r for r in businesses if _has_search_marker(r)]
-
-        # Qidiruv kengligi haqiqiy viloyat/tuman/mahalla nomlari bo'yicha ishlaydi.
-        scope_ready = (
-            scope == "Respublika" or
-            (scope == "Viloyat" and bool(_scope_text(viewer_region))) or
-            (scope in ("Tuman", "Shahar") and bool(_scope_text(viewer_region) and _scope_text(viewer_district))) or
-            (scope == "Mahalla" and bool(_scope_text(viewer_region) and _scope_text(viewer_district) and _scope_text(viewer_mahalla)))
-        )
-        if scope_ready:
-            products = [r for r in products if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
-            listings = [r for r in listings if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
-            specialists = [r for r in specialists if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
-            businesses = [r for r in businesses if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
-
+        # Metka, hudud va result_type filtrlari LIMIT/OFFSETdan oldin SQL ichida bajarildi.
         if result_type == "product":
-            products = [r for r in products if str(_row_val(r, "kind", "product") or "product").lower() != "service"]
             listings, specialists, businesses = [], [], []
         elif result_type == "service":
-            products = [r for r in products if str(_row_val(r, "kind", "") or "").lower() == "service"]
-            listings = [r for r in listings if _listing_is_service(r)]
-            businesses = [r for r in businesses if _business_is_service(r)]
+            pass
         elif result_type == "business":
             products, listings, specialists = [], [], []
         elif result_type == "specialist":
@@ -5401,7 +5526,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
 
     products, listings, specialists, businesses, has_more = _fetch(q)
     corrected = None
-    if (len(products) + len(listings) + len(specialists) + len(businesses)) == 0:
+    if page == 1 and (len(products) + len(listings) + len(specialists) + len(businesses)) == 0:
         cq = _fuzzy_correct(conn, q)
         if cq and cq != q:
             p2, l2, s2, b2, hm2 = _fetch(cq)
@@ -5419,7 +5544,6 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         "page_size": page_size,
         "has_more": has_more,
         "location_available": ulat is not None and ulng is not None,
-        "location_required": False,
         "corrected": corrected,
         "terms": _search_terms(corrected or q),
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"], "unit": p["unit"] or "dona",
@@ -5511,9 +5635,13 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
 
 
 @router.get("/browse")
-async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
-                         x_telegram_init_data: str = Header(default="")):
-    """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar."""
+def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
+                   x_telegram_init_data: str = Header(default="")):
+    """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
+
+    `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
+    threadpool'da yuritadi, shuning uchun event loop bloklanmaydi (/search kabi).
+    """
     tur = (tur or "").strip()
     if not tur:
         raise HTTPException(400, "Faoliyat turi kiritilmadi.")
@@ -5552,7 +5680,7 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
             if vr:
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
-        elif scope in ("Tuman", "Shahar"):
+        elif scope == "Tuman":
             if vr and vd:
                 parts.extend([
                     "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
@@ -5599,7 +5727,6 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
         "scope": scope,
         "actor_type": actor_ctx["type"],
         "location_available": browse_lat is not None and browse_lng is not None,
-        "location_required": False,
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
                         "logo_file": _row_val(b, "logo_file", "") or "",
