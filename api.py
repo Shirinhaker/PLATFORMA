@@ -5014,9 +5014,50 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         ulat, ulng = _u["lat"], _u["lng"]
         viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
 
+    def _search_prefilter_sql(user_alias, geo_alias):
+        """Metka va ma'muriy hududni LIMITdan oldin SQL ichida filtrlaydi."""
+        parts = [
+            geo_alias + ".lat IS NOT NULL", geo_alias + ".lng IS NOT NULL",
+            geo_alias + ".lat BETWEEN -90 AND 90", geo_alias + ".lng BETWEEN -180 AND 180",
+        ]
+        params = []
+        vr, vd, vm = _scope_text(viewer_region), _scope_text(viewer_district), _scope_text(viewer_mahalla)
+        if scope == "Viloyat":
+            if not vr:
+                parts.append("1=0")
+            else:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
+                params.append(vr)
+        elif scope in ("Tuman", "Shahar"):
+            if not (vr and vd):
+                parts.append("1=0")
+            else:
+                parts.extend([
+                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
+                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
+                ])
+                params.extend([vr, vd])
+        elif scope == "Mahalla":
+            if not (vr and vd and vm):
+                parts.append("1=0")
+            else:
+                parts.extend([
+                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
+                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
+                    "LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?",
+                ])
+                params.extend([vr, vd, vm])
+        elif scope != "Respublika":
+            parts.append("1=0")
+        return " AND " + " AND ".join(parts), params
+
     def _fetch(qq):
         terms = _search_terms(qq)
         _match = _fts_match(qq)
+        product_filter, product_filter_params = _search_prefilter_sql("bu", "b")
+        listing_filter, listing_filter_params = _search_prefilter_sql("u", "l")
+        specialist_filter, specialist_filter_params = _search_prefilter_sql("u", "s")
+        business_filter, business_filter_params = _search_prefilter_sql("u", "b")
 
         # Mahsulotlar — FTS (bm25 moslik, mahsulot nomi 10x). Xatolik bo'lsa eski LIKE'ga qaytadi.
         products = None
@@ -5029,9 +5070,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
-                    "WHERE items_fts MATCH ? AND b.status='active' "
+                    "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
                     "ORDER BY _rank LIMIT 50",
-                    (_match,),
+                    [_match] + product_filter_params,
                 ).fetchall()
             except Exception:
                 products = None
@@ -5045,9 +5086,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng,
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
-                   WHERE b.status='active' AND """ + product_where + """
+                   WHERE b.status='active' AND """ + product_where + product_filter + """
                    ORDER BY i.created_at DESC LIMIT 50""",
-                product_params,
+                product_params + product_filter_params,
             ).fetchall()
 
         # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
@@ -5059,9 +5100,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(listings_fts, 10.0, 1.0) AS _rank "
                     "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
                     "JOIN users u ON u.id=l.user_id "
-                    "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' "
+                    "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' " + listing_filter + " "
                     "ORDER BY _rank LIMIT 50",
-                    (_match,),
+                    [_match] + listing_filter_params,
                 ).fetchall()
             except Exception:
                 listings = None
@@ -5073,9 +5114,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             listings = conn.execute(
                 "SELECT l.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM listings l JOIN users u ON u.id=l.user_id "
-                "WHERE l.status='active' AND l.visibility='all' AND " + listing_where +
-                " ORDER BY created_at DESC LIMIT 50",
-                listing_params,
+                "WHERE l.status='active' AND l.visibility='all' AND " + listing_where + listing_filter +
+                " ORDER BY l.created_at DESC LIMIT 50",
+                listing_params + listing_filter_params,
             ).fetchall()
 
         # Mutaxassislar — FTS (bm25 moslik, kasb+ism 10x). Bo'sh (available) birinchi, keyin moslik.
@@ -5088,9 +5129,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(specialists_fts, 10.0, 1.0) AS _rank "
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
-                    "WHERE specialists_fts MATCH ? AND s.visible=1 "
+                    "WHERE specialists_fts MATCH ? AND s.visible=1 " + specialist_filter + " "
                     "ORDER BY s.available DESC, _rank LIMIT 50",
-                    (_match,),
+                    [_match] + specialist_filter_params,
                 ).fetchall()
             except Exception:
                 specialists = None
@@ -5104,9 +5145,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.region target_region,
                           u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
-                   WHERE s.visible=1 AND """ + specialist_where + """
+                   WHERE s.visible=1 AND """ + specialist_where + specialist_filter + """
                    ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
-                specialist_params,
+                specialist_params + specialist_filter_params,
             ).fetchall()
 
         # Bizneslar — FTS (bm25 moslik bo'yicha tartiblash). Xatolik yoki indeks bo'lmasa
@@ -5118,9 +5159,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla, "
                     "bm25(businesses_fts, 10.0, 1.0) AS _rank "
                     "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid JOIN users u ON u.id=b.user_id "
-                    "WHERE businesses_fts MATCH ? AND b.status='active' "
+                    "WHERE businesses_fts MATCH ? AND b.status='active' " + business_filter + " "
                     "ORDER BY _rank LIMIT 50",
-                    (_match,),
+                    [_match] + business_filter_params,
                 ).fetchall()
             except Exception:
                 businesses = None
@@ -5131,9 +5172,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             )
             businesses = conn.execute(
                 "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
-                "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where +
-                " ORDER BY created_at DESC LIMIT 50",
-                business_params,
+                "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where + business_filter +
+                " ORDER BY b.created_at DESC LIMIT 50",
+                business_params + business_filter_params,
             ).fetchall()
 
         # Metkasi yo'q obyekt hech bir qidiruv kengligida ko'rinmaydi.
