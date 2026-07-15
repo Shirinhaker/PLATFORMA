@@ -5007,20 +5007,50 @@ _FUZZY_VOCAB = {
     "kabob", "somsa", "pizza", "burger", "stomatolog", "vrach", "kir", "yuvish",
 }
 
+# Tez-tez uchraydigan imlo xatolari. Bu sinonim emas: faqat bir so'zning
+# xato yozilgan ko'rinishini to'g'ri shakliga o'tkazadi.
+_FUZZY_MISSPELLINGS = {
+    "stamatolog": "stomatolog", "stomotolog": "stomatolog",
+    "restaran": "restoran", "restaron": "restoran",
+    "darixona": "dorixona", "dorihona": "dorixona",
+    "santehnik": "santexnik", "santexnik": "santexnik",
+    "kampyuter": "kompyuter", "kompyutr": "kompyuter",
+    "telifon": "telefon", "televon": "telefon",
+    "avtaservis": "avtoservis", "aftoservis": "avtoservis",
+}
+
 
 def _fuzzy_correct(conn, q):
     """Qidiruv bo'sh natija berganda: xato yozilgan so'zlarni yaqin (mavjud) so'zlarga
-    tuzatadi. Lug'at: FTS nom ustunlaridagi haqiqiy so'zlar + keng tarqalgan atamalar."""
-    vocab = set(_FUZZY_VOCAB)
+    tuzatadi. Lug'at FTS indekslaridagi nom va tavsiflardan avtomatik boyiydi.
+    Qisqa so'zlar va @username hech qachon taxmin bilan o'zgartirilmaydi."""
+    raw_q = (q or "").strip()
+    if not raw_q or raw_q.startswith("@"):
+        return None
+
+    # Kattaroq weight — nomlarda va ko'p uchragan haqiqiy so'zlarda ustuvorlik.
+    weights = {w: 5 for w in _FUZZY_VOCAB}
+
+    def add_words(text, weight):
+        canon = (text or "").lower()
+        for a in _APOS_CHARS:
+            canon = canon.replace(a, "")
+        for word in re.findall(r"[a-z\u0400-\u04ff]+", canon):
+            if 4 <= len(word) <= 32:
+                weights[word] = weights.get(word, 0) + weight
+
     try:
         for tbl in ("businesses_fts", "listings_fts", "items_fts", "specialists_fts"):
-            for row in conn.execute("SELECT name FROM " + tbl):
-                for w in (row[0] or "").split():
-                    if len(w) >= 3:
-                        vocab.add(w)
+            for row in conn.execute("SELECT name, body FROM " + tbl):
+                add_words(row[0], 6)  # biznes/mahsulot/kasb/e'lon nomi
+                add_words(row[1], 1)  # tavsif va yo'nalishlar
     except Exception:
         pass
-    raw = (q or "").lower()
+    # To'g'ri shakllar lug'atda bo'lishini kafolatlaymiz.
+    for correct in _FUZZY_MISSPELLINGS.values():
+        weights[correct] = max(weights.get(correct, 0), 8)
+
+    raw = raw_q.lower()
     for a in _APOS_CHARS:
         raw = raw.replace(a, "")
     toks = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2]
@@ -5029,18 +5059,32 @@ def _fuzzy_correct(conn, q):
     changed = False
     out = []
     for t in toks:
-        if t in vocab:
+        if t in weights:
             out.append(t)
             continue
-        thr = 1 if len(t) < 7 else 2
-        best, bestd = None, thr + 1
-        for v in vocab:
+        # 2–3 harfli so'zlarda bitta harf ham ma'noni keskin o'zgartiradi.
+        if len(t) <= 3:
+            out.append(t)
+            continue
+        if t in _FUZZY_MISSPELLINGS:
+            out.append(_FUZZY_MISSPELLINGS[t])
+            changed = True
+            continue
+        thr = 1 if len(t) <= 6 else 2
+        candidates = []
+        for v, weight in weights.items():
             if abs(len(v) - len(t)) > thr:
                 continue
             d = _edit_distance(t, v)
-            if d < bestd:
-                bestd, best = d, v
-        if best is not None and bestd <= thr:
+            if d <= thr:
+                # Masofasi teng bo'lsa birinchi harfi mos va ko'p uchragan so'z yutadi.
+                candidates.append((d, 0 if v[:1] == t[:1] else 1, -weight, abs(len(v) - len(t)), v))
+        candidates.sort()
+        best = candidates[0][4] if candidates else None
+        bestd = candidates[0][0] if candidates else thr + 1
+        # Ikki harfli tuzatishda bosh harf mos bo'lmasa ishonchsiz deb hisoblaymiz.
+        confident = best is not None and bestd <= thr and (bestd == 1 or best[:1] == t[:1])
+        if confident:
             out.append(best)
             changed = True
         else:
