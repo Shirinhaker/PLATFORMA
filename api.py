@@ -4826,20 +4826,29 @@ def _fts_match(q):
     return " OR ".join(t + "*" for t in toks)
 
 
-def _search_quality_sql(columns, q):
-    """Ko'p so'zli qidiruv uchun tartib: aniq ibora -> barcha so'z -> qisman moslik."""
+def _search_quality_sql(primary_columns, q, secondary_columns=None):
+    """Tartib: nomda aniq/barcha so'z -> tavsifda aniq/barcha so'z -> qisman."""
     raw = (q or "").strip().lower()
     for a in _APOS_CHARS:
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2]
     if not words:
         return "0", []
-    blob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in columns)
-    canon_blob = _canon_sql("(" + blob + ")")
+    secondary_columns = secondary_columns or []
+    pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
+    sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
+    pcanon = _canon_sql("(" + pblob + ")")
+    scanon = _canon_sql("(" + sblob + ")")
     phrase = " ".join(words)
-    all_words = " AND ".join(canon_blob + " LIKE ?" for _ in words)
-    params = ["%" + phrase + "%"] + ["%" + w + "%" for w in words]
-    return "CASE WHEN " + canon_blob + " LIKE ? THEN 0 WHEN (" + all_words + ") THEN 1 ELSE 2 END", params
+    p_all = " AND ".join(pcanon + " LIKE ?" for _ in words)
+    s_all = " AND ".join(scanon + " LIKE ?" for _ in words)
+    params = (["%" + phrase + "%"] + ["%" + w + "%" for w in words] +
+              ["%" + phrase + "%"] + ["%" + w + "%" for w in words])
+    sql = ("CASE WHEN " + pcanon + " LIKE ? THEN 0 "
+           "WHEN (" + p_all + ") THEN 1 "
+           "WHEN " + scanon + " LIKE ? THEN 2 "
+           "WHEN (" + s_all + ") THEN 3 ELSE 4 END")
+    return sql, params
 
 
 # Qidiruv kengligi (scope) -> radius (km). None = cheklovsiz (Respublika).
@@ -5106,6 +5115,15 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             parts.append("1=0")
         return " AND " + " AND ".join(parts), params
 
+    def _distance_order_sql(alias):
+        """SQLite qo'shimcha geografik funksiyasiz taxminiy masofa kvadrati."""
+        try:
+            la, lo = float(ulat), float(ulng)
+        except (TypeError, ValueError):
+            return "1e30"
+        return ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
+                "((" + alias + ".lng-(" + repr(lo) + "))*85.0)*((" + alias + ".lng-(" + repr(lo) + "))*85.0))")
+
     def _fetch(qq):
         terms = _search_terms(qq)
         _match = _fts_match(qq)
@@ -5114,13 +5132,21 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         specialist_filter, specialist_filter_params = _search_prefilter_sql("u", "s")
         business_filter, business_filter_params = _search_prefilter_sql("u", "b")
         product_quality, product_quality_params = _search_quality_sql(
-            ["i.name", "i.note", "b.name", "b.yon", "b.tur", "b.descr", "b.address"], qq)
+            ["i.name"], qq, ["i.note", "b.name", "b.yon", "b.tur", "b.descr", "b.address"])
         listing_quality, listing_quality_params = _search_quality_sql(
-            ["l.title", "l.cat", "l.descr", "l.address"], qq)
+            ["l.title"], qq, ["l.cat", "l.descr", "l.address"])
         specialist_quality, specialist_quality_params = _search_quality_sql(
-            ["s.kasb", "u.name", "s.descr", "s.hudud", "s.org", "s.lavozim"], qq)
+            ["s.kasb", "u.name"], qq, ["s.descr", "s.hudud", "s.org", "s.lavozim"])
         business_quality, business_quality_params = _search_quality_sql(
-            ["b.name", "b.yon", "b.tur", "b.descr", "b.address"], qq)
+            ["b.name"], qq, ["b.yon", "b.tur", "b.descr", "b.address"])
+        product_distance = _distance_order_sql("b")
+        listing_distance = _distance_order_sql("l")
+        specialist_distance = _distance_order_sql("s")
+        business_distance = _distance_order_sql("b")
+        product_rating = "CASE WHEN COALESCE(b.rating_cnt,0)>0 THEN b.rating_sum*1.0/b.rating_cnt ELSE 0 END"
+        listing_rating = "0"
+        specialist_rating = "CASE WHEN COALESCE(s.rating_cnt,0)>0 THEN s.rating_sum*1.0/s.rating_cnt ELSE 0 END"
+        business_rating = "CASE WHEN COALESCE(b.rating_cnt,0)>0 THEN b.rating_sum*1.0/b.rating_cnt ELSE 0 END"
 
         # Mahsulotlar — FTS (bm25 moslik, mahsulot nomi 10x). Xatolik bo'lsa eski LIKE'ga qaytadi.
         products = None
@@ -5134,7 +5160,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
                     "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
-                    "ORDER BY " + product_quality + ", _rank LIMIT 50",
+                    "ORDER BY " + product_quality + ", " + product_distance + ", " + product_rating + " DESC, _rank LIMIT 50",
                     [_match] + product_filter_params + product_quality_params,
                 ).fetchall()
             except Exception:
@@ -5150,7 +5176,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
                    WHERE b.status='active' AND """ + product_where + product_filter + """
-                   ORDER BY """ + product_quality + ", i.created_at DESC LIMIT 50",
+                   ORDER BY """ + product_quality + ", " + product_distance + ", " + product_rating + " DESC, i.created_at DESC LIMIT 50",
                 product_params + product_filter_params + product_quality_params,
             ).fetchall()
 
@@ -5165,7 +5191,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
                     "JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                     "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' " + listing_filter + " "
-                    "ORDER BY " + listing_quality + ", _rank LIMIT 50",
+                    "ORDER BY " + listing_quality + ", " + listing_distance + ", " + listing_rating + " DESC, _rank LIMIT 50",
                     [_match] + listing_filter_params + listing_quality_params,
                 ).fetchall()
             except Exception:
@@ -5180,7 +5206,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 "u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM listings l JOIN users u ON u.id=l.user_id LEFT JOIN businesses lb ON lb.id=l.business_id "
                 "WHERE l.status='active' AND l.visibility='all' AND " + listing_where + listing_filter +
-                " ORDER BY " + listing_quality + ", l.created_at DESC LIMIT 50",
+                " ORDER BY " + listing_quality + ", " + listing_distance + ", l.created_at DESC LIMIT 50",
                 listing_params + listing_filter_params + listing_quality_params,
             ).fetchall()
 
@@ -5195,7 +5221,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
                     "WHERE specialists_fts MATCH ? AND s.visible=1 " + specialist_filter + " "
-                    "ORDER BY " + specialist_quality + ", s.available DESC, _rank LIMIT 50",
+                    "ORDER BY " + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, _rank LIMIT 50",
                     [_match] + specialist_filter_params + specialist_quality_params,
                 ).fetchall()
             except Exception:
@@ -5211,7 +5237,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + specialist_filter + """
-                   ORDER BY """ + specialist_quality + ", s.available DESC, s.created_at DESC LIMIT 50",
+                   ORDER BY """ + specialist_quality + ", " + specialist_distance + ", " + specialist_rating + " DESC, s.available DESC, s.created_at DESC LIMIT 50",
                 specialist_params + specialist_filter_params + specialist_quality_params,
             ).fetchall()
 
@@ -5225,7 +5251,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(businesses_fts, 10.0, 1.0) AS _rank "
                     "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid JOIN users u ON u.id=b.user_id "
                     "WHERE businesses_fts MATCH ? AND b.status='active' " + business_filter + " "
-                    "ORDER BY " + business_quality + ", _rank LIMIT 50",
+                    "ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, _rank LIMIT 50",
                     [_match] + business_filter_params + business_quality_params,
                 ).fetchall()
             except Exception:
@@ -5238,7 +5264,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             businesses = conn.execute(
                 "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
                 "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where + business_filter +
-                " ORDER BY " + business_quality + ", b.created_at DESC LIMIT 50",
+                " ORDER BY " + business_quality + ", " + business_distance + ", " + business_rating + " DESC, b.created_at DESC LIMIT 50",
                 business_params + business_filter_params + business_quality_params,
             ).fetchall()
 
@@ -5360,6 +5386,19 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
     viewer_region = user["region"] or ""
     viewer_district = user["district"] or ""
     viewer_mahalla = user["mahalla"] or ""
+    if actor_ctx["type"] == "business":
+        _ab = actor_ctx["business"]
+        browse_lat, browse_lng = _ab["lat"], _ab["lng"]
+    else:
+        browse_lat, browse_lng = user["lat"], user["lng"]
+
+    def browse_distance(alias):
+        try:
+            la, lo = float(browse_lat), float(browse_lng)
+        except (TypeError, ValueError):
+            return "1e30"
+        return ("((" + alias + ".lat-(" + repr(la) + "))*(" + alias + ".lat-(" + repr(la) + "))*12321.0 + "
+                "(" + alias + ".lng-(" + repr(lo) + "))*(" + alias + ".lng-(" + repr(lo) + "))*7225.0)")
 
     def browse_filter(user_alias, geo_alias):
         parts = [
@@ -5404,7 +5443,9 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
     businesses = conn.execute(
         "SELECT b.* FROM businesses b JOIN users u ON u.id=b.user_id "
         "WHERE b.status='active' AND " + business_where + biz_filter +
-        " ORDER BY b.created_at DESC LIMIT 100",
+        " ORDER BY " + browse_distance("b") + ", "
+        "CASE WHEN COALESCE(b.rating_cnt,0)>0 THEN b.rating_sum*1.0/b.rating_cnt ELSE 0 END DESC, "
+        "b.created_at DESC LIMIT 100",
         business_params + biz_filter_params,
     ).fetchall()
 
@@ -5416,7 +5457,9 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
         """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
            FROM specialists s JOIN users u ON u.id=s.user_id
            WHERE s.visible=1 AND """ + specialist_where + spec_filter + """
-           ORDER BY s.available DESC, s.created_at DESC LIMIT 100""",
+           ORDER BY """ + browse_distance("s") + ", "
+        "CASE WHEN COALESCE(s.rating_cnt,0)>0 THEN s.rating_sum*1.0/s.rating_cnt ELSE 0 END DESC, "
+        "s.available DESC, s.created_at DESC LIMIT 100",
         specialist_params + spec_filter_params,
     ).fetchall()
     result = {
