@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1526 -->
+<title>Platforma</title><!-- BUILD: v1523 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -701,11 +701,6 @@
           <div class="field"><label>Viloyat / shahar</label><select class="input" id="locViloyat"></select></div>
           <div class="field"><label>Tuman</label><select class="input" id="locTuman"></select></div>
           <div class="field"><label>Mahalla — ixtiyoriy</label><input class="input" id="locMahalla" placeholder="Mahalla nomi (agar bilsangiz)"></div>
-          <div class="field"><label>Xaritada aniq joy — ixtiyoriy</label>
-            <div class="order-map-wrap"><div id="userLocMap" style="width:100%;height:100%"></div><div class="order-center-pin">📍</div><div class="order-map-help"><span>Xaritani suring — metka markazda turadi</span></div></div>
-            <div id="userLocMapInfo" class="idesc" style="margin-top:7px">Xaritadagi joy belgilanmagan</div>
-            <div class="idesc" style="margin-top:4px">Bu joy faqat masofa va yaqin natijalarni hisoblash uchun ishlatiladi. Boshqa foydalanuvchilarga ko‘rsatilmaydi.</div>
-          </div>
           <button class="btn btn-primary btn-block" id="locSave">Saqlash</button>
         </div>
       </section>
@@ -2614,12 +2609,6 @@
     if(!cnt || !rt) return "";
     return '<span class="dot-sep"></span><span style="color:#f5a623;font-weight:800">\u2605 '+rt+'</span>';
   }
-  function distanceText(v){
-    if(v===null || v===undefined || !isFinite(parseFloat(v))) return "";
-    var n=parseFloat(v);
-    return n<1 ? Math.max(1,Math.round(n*1000))+" m" : (n<10?n.toFixed(1):Math.round(n))+" km";
-  }
-  function distanceMeta(v){ var t=distanceText(v); return t?'<span class="dot-sep"></span>'+esc(t):''; }
   function avatarImageStyle(x,y,z){
     x=x==null?50:x;y=y==null?50:y;z=z||1;
     return 'position:absolute;width:'+(z*100)+'%;height:'+(z*100)+'%;max-width:none;max-height:none;object-fit:cover;left:'+(50-x*z)+'%;top:'+(50-y*z)+'%;transform:none';
@@ -2632,7 +2621,7 @@
     return '<div class="biz-card" data-psrv="'+s.user_id+'">'+
       av+
       '<div class="biz-main"><div class="biz-name">'+esc(s.name)+'</div>'+
-        '<div class="biz-meta"><span class="cat">'+esc(s.kasb||"Mutaxassis")+'</span>'+distanceMeta(s.distance_km)+ratingBadge(s.rating, s.rating_cnt)+'</div></div>'+
+        '<div class="biz-meta"><span class="cat">'+esc(s.kasb||"Mutaxassis")+'</span>'+ratingBadge(s.rating, s.rating_cnt)+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
   function bizCardSrv(b){
@@ -2642,7 +2631,7 @@
     return '<div class="biz-card" data-bsrv="'+b.id+'">'+
       logo+
       '<div class="biz-main"><div class="biz-name">'+esc(b.name)+'</div>'+
-        '<div class="biz-meta"><span class="cat">'+esc(b.tur||b.yon||"")+'</span>'+distanceMeta(b.distance_km)+ratingBadge(b.rating, b.rating_cnt)+'</div></div>'+
+        '<div class="biz-meta"><span class="cat">'+esc(b.tur||b.yon||"")+'</span>'+ratingBadge(b.rating, b.rating_cnt)+'</div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
   function userCardSrv(u){
@@ -2690,12 +2679,12 @@
     if(prods.length) html += '<div class="list-sub">'+(data.result_type==="service"?'🧰 Xizmatlar':data.result_type==="product"?'🛍 Mahsulotlar':'🛍 Mahsulot va xizmatlar')+'</div>'+prods.map(function(p){
       var ico = String(p.kind||"").toLowerCase()==="service" ? "🧰" : "🛍️";
       return '<div class="elon-item" data-bsrv="'+p.business_id+'">'+searchThumb(p.photo_file,ico,false)+
-        '<div class="li-main"><div class="li-title">'+esc(p.name)+'</div><div class="li-meta">🏪 '+esc(p.business_name)+(distanceText(p.distance_km)?' · '+esc(distanceText(p.distance_km)):'')+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
+        '<div class="li-main"><div class="li-title">'+esc(p.name)+'</div><div class="li-meta">🏪 '+esc(p.business_name)+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
     }).join("");
     if(lists.length) html += '<div class="list-sub" style="margin-top:6px">📢 E\'lonlar</div>'+lists.map(function(e2){
       var media=(e2.media||[]), photo=media.filter(function(m){return m.type!=="video";})[0], first=photo||media[0];
       return '<div class="elon-item" data-lsrv="'+e2.id+'">'+searchThumb(first&&first.file_id,"📦",!!(first&&first.type==="video"))+
-        '<div class="li-main"><div class="li-title">'+esc(e2.title)+'</div><div class="li-price">'+esc(e2.price||"")+'</div><div class="li-meta">'+esc([e2.address||"",distanceText(e2.distance_km)].filter(Boolean).join(" · "))+'</div></div></div>';
+        '<div class="li-main"><div class="li-title">'+esc(e2.title)+'</div><div class="li-price">'+esc(e2.price||"")+'</div><div class="li-meta">'+esc(e2.address||"")+'</div></div></div>';
     }).join("");
     if(specs.length) html += '<div class="list-sub" style="margin-top:6px">👤 Mutaxasislar</div>'+specs.map(specCardSrv).join("");
     if(bizs.length) html += '<div class="list-sub" style="margin-top:6px">🏪 Bizneslar</div>'+bizs.map(bizCardSrv).join("");
@@ -2704,7 +2693,7 @@
 
     var total = prods.length + lists.length + specs.length + bizs.length + usrs.length;
     if(total===0){
-      html += '<div class="empty" style="padding:30px 16px"><h3>Hech narsa topilmadi</h3><p>'+esc(headerLabel)+' bo\'yicha natija yo\'q. Boshqa so\'z bilan qidiring yoki katalogdan tanlang.</p></div>';
+      html = (callBtn||"") + '<div class="empty" style="padding:30px 16px"><h3>Hech narsa topilmadi</h3><p>'+esc(headerLabel)+' bo\'yicha natija yo\'q. Boshqa so\'z bilan qidiring yoki katalogdan tanlang.</p></div>';
     }
     return {html:html, pins:pins, total:total};
   }
@@ -5676,14 +5665,14 @@
         var place = g.address || tuman || "Joylashuvim";
         applyHomeLocation(viloyat, tuman || place, "", lat, lng, 15);
         if(loggedIn){
-          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:(tuman||place), mahalla:"", lat:lat, lng:lng, location_exact:1 });
+          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:(tuman||place), mahalla:"", lat:lat, lng:lng });
         }
       }).then(function(){
         done(); nav("home");
       }).catch(function(){
         // Geocode ishlamasa ham koordinata saqlanadi; xarita pin chiqarmasdan shu joyga yaqinlashadi.
         if(loggedIn){
-          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng, location_exact:1 })
+          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng })
             .finally(function(){ done(); nav("home"); });
         } else {
           done(); nav("home");
@@ -5698,42 +5687,13 @@
     }, {enableHighAccuracy:true, timeout:10000, maximumAge:60000});
   });
   /* ---------- MANZIL TANLASH (viloyat -> tuman) ---------- */
-  var USER_LOC_MAP=null, USER_LOC_POINT=null, USER_LOC_EXACT=false;
-  function userLocInfo(){
-    if(!el("userLocMapInfo")) return;
-    el("userLocMapInfo").textContent=USER_LOC_EXACT&&USER_LOC_POINT
-      ? "📍 Aniq joy belgilandi: "+USER_LOC_POINT.lat.toFixed(6)+", "+USER_LOC_POINT.lng.toFixed(6)
-      : "Xaritadagi aniq joy belgilanmagan — ixtiyoriy";
-  }
-  function initUserLocMap(){
-    if(typeof L==="undefined"||!el("userLocMap")) return;
-    api("GET","/api/profile").then(function(d){
-      var exact=!!d.location_exact&&d.lat!=null&&d.lng!=null;
-      var s=selectedLoc(), start=exact?[parseFloat(d.lat),parseFloat(d.lng)]:(s?[s.lat,s.lng]:(CENTER||[41.311,69.280]));
-      USER_LOC_EXACT=exact;
-      USER_LOC_POINT=exact?{lat:start[0],lng:start[1]}:null;
-      if(!USER_LOC_MAP){
-        USER_LOC_MAP=L.map("userLocMap",{zoomControl:true,attributionControl:false}).setView(start,exact?16:12);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(USER_LOC_MAP);
-        USER_LOC_MAP.on("dragstart",function(){USER_LOC_EXACT=true;});
-        USER_LOC_MAP.on("moveend",function(){
-          if(!USER_LOC_EXACT)return;
-          var c=USER_LOC_MAP.getCenter();USER_LOC_POINT={lat:c.lat,lng:c.lng};userLocInfo();
-        });
-        USER_LOC_MAP.on("click",function(e){USER_LOC_EXACT=true;USER_LOC_MAP.setView(e.latlng,USER_LOC_MAP.getZoom());});
-      }else USER_LOC_MAP.setView(start,exact?16:12);
-      userLocInfo();
-      setTimeout(function(){try{USER_LOC_MAP.invalidateSize();}catch(e){}},120);
-    }).catch(function(){userLocInfo();});
-  }
   function fillRegionSelects(){
     var R = window.UZ_REGIONS || [];
     var vs = el("locViloyat");
     if(!vs || vs.options.length) return; // bir marta to'ldiramiz
     vs.innerHTML = R.map(function(v,i){ return '<option value="'+i+'">'+v.name+'</option>'; }).join("");
     fillDistricts();
-    vs.addEventListener("change", function(){ fillDistricts(); moveUserLocToSelected(); });
-    el("locTuman").addEventListener("change", moveUserLocToSelected);
+    vs.addEventListener("change", fillDistricts);
   }
   function fillDistricts(){
     var R = window.UZ_REGIONS || [];
@@ -5748,10 +5708,6 @@
     var v = R[vi]; if(!v) return null;
     var d = v.districts[di] || v;
     return { viloyat:v.name, tuman:d.name, lat:d.lat, lng:d.lng };
-  }
-  function moveUserLocToSelected(){
-    var s=selectedLoc(); if(!s||!USER_LOC_MAP)return;
-    USER_LOC_EXACT=false;USER_LOC_POINT=null;USER_LOC_MAP.setView([s.lat,s.lng],12);userLocInfo();
   }
   function normLocText(v){
     return String(v||"").toLowerCase()
@@ -5837,12 +5793,10 @@
     var s = selectedLoc();
     if(!s){ nav("home"); return; }
     var mahalla = (el("locMahalla").value||"").trim();
-    var saveLat=USER_LOC_EXACT&&USER_LOC_POINT?USER_LOC_POINT.lat:s.lat;
-    var saveLng=USER_LOC_EXACT&&USER_LOC_POINT?USER_LOC_POINT.lng:s.lng;
-    applyHomeLocation(s.viloyat, s.tuman, mahalla, saveLat, saveLng, USER_LOC_EXACT?16:13);
+    applyHomeLocation(s.viloyat, s.tuman, mahalla, s.lat, s.lng, 13);
     // serverga ham matn + koordinatani saqlaymiz (qayta kirganda xarita shu tuman/viloyatga qaytishi uchun)
     if(loggedIn){
-      api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:saveLat, lng:saveLng, location_exact:USER_LOC_EXACT?1:0 })
+      api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:s.lat, lng:s.lng })
         .then(function(){ nav("home"); })
         .catch(function(e){ showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
     } else {
@@ -8275,8 +8229,7 @@
 
 
   function onScreenOpen(screen){
-    if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
-    else if(screen==="ucab-profil") loadUserProfile();
+    if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="cab-reviews") loadBusinessReviews(false);
     else if(screen==="cab-my-docs") loadMyDocuments();
