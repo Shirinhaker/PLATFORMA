@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1513 -->
+<title>Platforma</title><!-- BUILD: v1514 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,7 +150,7 @@
   .zoom button:first-child{border-bottom:1px solid var(--line);}
   .leaflet-pin{background:none;border:none;}
   .pin{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
-  .pin .dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.28);}
+  .pin .dot{position:relative;overflow:hidden;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:16px;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.28);}
   .pin .dot.has-photo{overflow:hidden;background:#fff!important}.pin .dot.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
   [data-theme="dark"] .pin .dot{border-color:#0e1413;}
   .pin .tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;margin-top:-2px;}
@@ -160,7 +160,7 @@
   /* business cards */
   .biz-card{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px;box-shadow:var(--shadow);cursor:pointer;margin-bottom:11px;}
   .biz-card:active{transform:scale(.99);}
-  .biz-logo{flex:none;width:54px;height:54px;border-radius:14px;display:grid;place-items:center;font-size:24px;}
+  .biz-logo{position:relative;overflow:hidden;flex:none;width:54px;height:54px;border-radius:14px;display:grid;place-items:center;font-size:24px;}
   .biz-main{flex:1;min-width:0;}
   .biz-name{font-family:var(--font-d);font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .biz-meta{display:flex;align-items:center;gap:8px;margin-top:3px;font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;}
@@ -357,12 +357,12 @@
   .item-auto-kind{font-size:12.5px;color:var(--soft);background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;margin-top:7px;}
   /* cabinet */
   .cab-head{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-top:4px;margin-bottom:16px;}
-  .cab-logo{flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px;overflow:hidden;}
+  .cab-logo{position:relative;flex:none;width:56px;height:56px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px;overflow:hidden;}
   .cab-logo img{width:100%;height:100%;object-fit:cover;display:block;}
 
   /* Oddiy foydalanuvchi profil kartasi — v1474 */
   .user-profile-card{position:relative;display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px 54px 15px 13px;box-shadow:var(--shadow);margin:4px 0 18px;min-height:96px;}
-  .user-profile-avatar{flex:none;width:60px;height:60px;border-radius:17px;background:var(--amber-tint);display:grid;place-items:center;font-size:29px;overflow:hidden;border:1px solid rgba(240,162,27,.15);}
+  .user-profile-avatar{position:relative;flex:none;width:60px;height:60px;border-radius:17px;background:var(--amber-tint);display:grid;place-items:center;font-size:29px;overflow:hidden;border:1px solid rgba(240,162,27,.15);}
   .user-profile-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
   .user-profile-main{flex:1;min-width:0;}
   .user-profile-name{font-family:var(--font-d);font-size:17px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -382,7 +382,7 @@
   .image-viewer{position:fixed;inset:0;z-index:5000;background:rgba(4,10,8,.88);display:none;align-items:center;justify-content:center;padding:24px;}
   .image-viewer.on{display:flex;}
   .image-viewer img{display:block;max-width:min(94vw,760px);max-height:88vh;object-fit:contain;border-radius:18px;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff;}
-  .image-viewer-frame{display:flex;align-items:center;justify-content:center}.image-viewer.cropped .image-viewer-frame{width:min(88vw,480px);height:min(88vw,480px);border-radius:28px;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff}.image-viewer.cropped img{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;border-radius:0;box-shadow:none;}
+  .image-viewer-frame{position:relative;display:flex;align-items:center;justify-content:center}.image-viewer.cropped .image-viewer-frame{width:min(88vw,480px);height:min(88vw,480px);border-radius:28px;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.55);background:#fff}.image-viewer.cropped img{max-width:none;max-height:none;object-fit:cover;border-radius:0;box-shadow:none;}
   .image-viewer-close{position:absolute;top:max(18px,env(safe-area-inset-top));right:18px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.32);background:rgba(255,255,255,.14);color:#fff;font-size:27px;display:grid;place-items:center;cursor:pointer;}
   .cab-name{font-family:var(--font-d);font-weight:800;font-size:17px;}
   .cab-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--primary);font-weight:700;margin-top:4px;}
@@ -1876,7 +1876,7 @@
     if(typeof L === "undefined") return null;
     var lab = label ? '<div class="plabel">'+label+'</div>' : '';
     var fs = small ? 'font-size:12px;font-weight:800;color:#fff;' : '';
-    var pic=photo?'<img src="'+esc(mediaUrl(photo))+'" alt="" style="object-position:'+(px==null?50:px)+'% '+(py==null?50:py)+'%;transform:scale('+(pz||1)+');transform-origin:'+(px==null?50:px)+'% '+(py==null?50:py)+'%">':inner;
+    var pic=photo?'<img src="'+esc(mediaUrl(photo))+'" alt="" style="'+avatarImageStyle(px,py,pz)+'">':inner;
     var html = '<div class="pin">'+lab+'<div class="dot'+(photo?' has-photo':'')+'" style="background:'+bg+';'+fs+'">'+pic+'</div><div class="tail"></div></div>';
     return L.divIcon({ html:html, className:"leaflet-pin", iconSize:[40,48], iconAnchor:[20,46] });
   }
@@ -2593,7 +2593,11 @@
     pins.forEach(function(r){
       var k=r.rk+"_"+r.id;
       if(seen[k]===undefined){ seen[k]=out.length; out.push(r); }
-      else if(r.label && !out[seen[k]].label){ out[seen[k]]=r; }
+      else {
+        var old=out[seen[k]];
+        if(r.label && !old.label) old.label=r.label;
+        if(r.photo && !old.photo){old.photo=r.photo;old.photo_x=r.photo_x;old.photo_y=r.photo_y;old.photo_zoom=r.photo_zoom;}
+      }
     });
     return out;
   }
@@ -2604,7 +2608,7 @@
   }
   function avatarImageStyle(x,y,z){
     x=x==null?50:x;y=y==null?50:y;z=z||1;
-    return 'width:100%;height:100%;object-fit:cover;object-position:'+x+'% '+y+'%;transform:scale('+z+');transform-origin:'+x+'% '+y+'%';
+    return 'position:absolute;width:'+(z*100)+'%;height:'+(z*100)+'%;max-width:none;max-height:none;object-fit:cover;left:'+(50-x*z)+'%;top:'+(50-y*z)+'%;transform:none';
   }
   function specCardSrv(s){
     var ini = (s.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
@@ -7806,7 +7810,7 @@
     if(!src)return;
     var v=el("imageViewer"),img=el("imageViewerImg"); if(!v||!img)return;
     crop=crop||{x:50,y:50,zoom:1};
-    img.src=src;img.style.objectPosition=(crop.x==null?50:crop.x)+"% "+(crop.y==null?50:crop.y)+"%";img.style.transform="scale("+(crop.zoom||1)+")";img.style.transformOrigin=(crop.x==null?50:crop.x)+"% "+(crop.y==null?50:crop.y)+"%";
+    img.src=src;img.style.cssText=avatarImageStyle(crop.x,crop.y,crop.zoom);
     v.classList.add("cropped");v.classList.add("on"); v.setAttribute("aria-hidden","false");
   }
   function closeImageViewer(){
@@ -8346,7 +8350,7 @@
     var box=el(prefix+"AvatarCropBox"),stage=el(prefix+"AvatarCropStage"),img=el(prefix+"AvatarCropImg"),zoom=el(prefix+"AvatarCropZoom"),drag=null;
     function state(){return kind==="user"?CURRENT_USER_CROP:CURRENT_BIZ_CROP;}
     function src(){return kind==="user"?CURRENT_USER_AVATAR:CURRENT_BIZ_LOGO;}
-    function draw(){var s=state();img.src=src();img.style.objectPosition=s.x+"% "+s.y+"%";img.style.transform="scale("+s.zoom+")";img.style.transformOrigin=s.x+"% "+s.y+"%";zoom.value=s.zoom;}
+    function draw(){var s=state();img.src=src();img.style.cssText=avatarImageStyle(s.x,s.y,s.zoom);zoom.value=s.zoom;}
     el(prefix+"AvatarAdjust").addEventListener("click",function(){box.classList.toggle("on");if(box.classList.contains("on"))draw();});
     stage.addEventListener("pointerdown",function(e){var s=state();drag={id:e.pointerId,x:e.clientX,y:e.clientY,cx:s.x,cy:s.y};stage.setPointerCapture(e.pointerId);e.preventDefault();});
     stage.addEventListener("pointermove",function(e){if(!drag||drag.id!==e.pointerId)return;var s=state(),r=stage.getBoundingClientRect();s.x=clampAdCrop(drag.cx-(e.clientX-drag.x)/Math.max(1,r.width)*100/s.zoom);s.y=clampAdCrop(drag.cy-(e.clientY-drag.y)/Math.max(1,r.height)*100/s.zoom);draw();e.preventDefault();});
