@@ -439,6 +439,10 @@ def init_db():
 
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
+    conn.execute("""CREATE TABLE IF NOT EXISTS profile_images(
+        owner_kind TEXT NOT NULL, owner_id INTEGER NOT NULL, mime_type TEXT NOT NULL,
+        content BLOB NOT NULL, updated_at INTEGER NOT NULL,
+        PRIMARY KEY(owner_kind, owner_id))""")
     conn.execute("""CREATE TABLE IF NOT EXISTS notifications(
         id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,
         actor_kind TEXT NOT NULL DEFAULT 'user',actor_id INTEGER NOT NULL,
