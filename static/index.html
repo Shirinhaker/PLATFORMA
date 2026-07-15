@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1537 -->
+<title>Platforma</title><!-- BUILD: v1538 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,6 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.css" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.16.0/mapbox-gl.js"></script>
 <script src="regions.js?v=1475"></script>
 <style>
   :root{
@@ -1854,8 +1856,9 @@
   var LOC = "Yunusobod tumani";
   var RES = {pins:[], html:"", count:0};
 
-  /* ---------- Leaflet xaritasi ---------- */
+  /* ---------- Bosh xarita: Mapbox GL; qolgan kichik xaritalar Leaflet ---------- */
   var LMAP = null, LMARKERS = [];
+  var MAIN_MAPBOX = false;
   var MAPBOX_PUBLIC_TOKEN = null;           // null = config hali olinmagan
   var MAP_CONFIG_LOADING = false;
   var CENTER = [41.3111, 69.2797];           // Toshkent markazi (boshlang'ich)
@@ -1868,7 +1871,7 @@
   }
   function ensureMap(){
     if(LMAP) return LMAP;
-    if(typeof L === "undefined" || !el("leafletMap")) return null;
+    if(!el("leafletMap")) return null;
     if(MAPBOX_PUBLIC_TOKEN===null){
       if(!MAP_CONFIG_LOADING){
         MAP_CONFIG_LOADING=true;
@@ -1883,17 +1886,38 @@
       }
       return null;
     }
-    LMAP = L.map("leafletMap", { zoomControl:true, attributionControl:true }).setView(CENTER, 14);
-    if(MAPBOX_PUBLIC_TOKEN){
-      L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}?access_token="+encodeURIComponent(MAPBOX_PUBLIC_TOKEN), {
-        tileSize:512, zoomOffset:-1, maxZoom:22,
-        attribution:'© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(LMAP);
-    }else{
+    if(MAPBOX_PUBLIC_TOKEN && typeof mapboxgl!=="undefined"){
+      MAIN_MAPBOX=true;
+      mapboxgl.accessToken=MAPBOX_PUBLIC_TOKEN;
+      LMAP=new mapboxgl.Map({
+        container:"leafletMap", style:"mapbox://styles/mapbox/streets-v12",
+        center:[CENTER[1],CENTER[0]], zoom:14, attributionControl:true
+      });
+      LMAP.addControl(new mapboxgl.NavigationControl({showCompass:false}),"top-right");
+      var nativeFit=LMAP.fitBounds.bind(LMAP), nativeRemove=LMAP.removeLayer.bind(LMAP);
+      LMAP.setView=function(ll,z,opt){
+        var cfg={center:[Number(ll[1]),Number(ll[0])],zoom:(z==null?this.getZoom():z)};
+        if(opt&&opt.animate) this.easeTo(cfg); else this.jumpTo(cfg); return this;
+      };
+      LMAP.fitBounds=function(points,opt){
+        var converted=(points||[]).map(function(p){return [Number(p[1]),Number(p[0])];});
+        if(!converted.length) return this;
+        var minLng=converted[0][0],maxLng=minLng,minLat=converted[0][1],maxLat=minLat;
+        converted.forEach(function(p){minLng=Math.min(minLng,p[0]);maxLng=Math.max(maxLng,p[0]);minLat=Math.min(minLat,p[1]);maxLat=Math.max(maxLat,p[1]);});
+        return nativeFit([[minLng,minLat],[maxLng,maxLat]],{padding:(opt&&opt.padding)||40,maxZoom:(opt&&opt.maxZoom)||15,duration:(opt&&opt.animate)?500:0});
+      };
+      LMAP.invalidateSize=function(){ this.resize(); return this; };
+      LMAP.removeLayer=function(layer){
+        if(layer&&typeof layer.remove==="function"){ layer.remove(); return this; }
+        return nativeRemove(layer);
+      };
+    }else if(typeof L!=="undefined"){
+      MAIN_MAPBOX=false;
+      LMAP=L.map("leafletMap",{zoomControl:true,attributionControl:true}).setView(CENTER,14);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(LMAP);
-    }
+    }else return null;
     LMAP.on("moveend", onOrderMapMove);   // zakaz formasida markaz manzilini kuzatadi
     setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 200);
     return LMAP;
@@ -1915,10 +1939,29 @@
   function addMarker(lat, lng, icon, onClick){
     if(!LMAP || !icon) return;
     if(lat==null || lng==null) return;
-    var m = L.marker([lat,lng], { icon:icon }).addTo(LMAP);
-    if(onClick) m.on("click", onClick);
+    var m;
+    if(MAIN_MAPBOX){
+      var node=document.createElement("div");
+      node.className="leaflet-pin";
+      node.innerHTML=(icon.options&&icon.options.html)||"";
+      if(onClick) node.addEventListener("click",function(ev){ev.stopPropagation();onClick();});
+      m=new mapboxgl.Marker({element:node,anchor:"bottom"}).setLngLat([Number(lng),Number(lat)]).addTo(LMAP);
+    }else{
+      m=L.marker([lat,lng],{icon:icon}).addTo(LMAP);
+      if(onClick) m.on("click",onClick);
+    }
     LMARKERS.push(m);
     return m;
+  }
+
+  function addLooseMainMarker(ll,icon){
+    if(!LMAP||!ll||!icon) return null;
+    if(MAIN_MAPBOX){
+      var node=document.createElement("div"); node.className="leaflet-pin";
+      node.innerHTML=(icon.options&&icon.options.html)||"";
+      return new mapboxgl.Marker({element:node,anchor:"bottom"}).setLngLat([Number(ll[1]),Number(ll[0])]).addTo(LMAP);
+    }
+    return L.marker(ll,{icon:icon}).addTo(LMAP);
   }
 
   function renderPins(mode){
@@ -2350,11 +2393,11 @@
     if(!LMAP || typeof L==="undefined") return;
     if(FROM_PIN){ try{ LMAP.removeLayer(FROM_PIN); }catch(e){} FROM_PIN=null; }
     if(pickMode!=="from" && FROM_LL){
-      FROM_PIN=L.marker(FROM_LL,{ icon:dotIcon("#16A34A","","",false) }).addTo(LMAP);
+      FROM_PIN=addLooseMainMarker(FROM_LL,dotIcon("#16A34A","","",false));
     }
     if(TO_PIN){ try{ LMAP.removeLayer(TO_PIN); }catch(e){} TO_PIN=null; }
     if(pickMode!=="to" && TO_LL && !ozim){
-      TO_PIN=L.marker(TO_LL,{ icon:dotIcon("#DC2626","","",false) }).addTo(LMAP);
+      TO_PIN=addLooseMainMarker(TO_LL,dotIcon("#DC2626","","",false));
     }
   }
   // Markazni biror nuqtaga dasturiy olib boramiz (onOrderMapMove ishlamasin)
@@ -2468,7 +2511,20 @@
       if(!j || !j.routes || !j.routes.length){ clearRoute(); return; }
       var route=j.routes[0];
       if(ROUTE_LINE){ try{ LMAP.removeLayer(ROUTE_LINE); }catch(e){} ROUTE_LINE=null; }
-      ROUTE_LINE=L.geoJSON(route.geometry, { style:{ color:"#2563EB", weight:5, opacity:0.85 } }).addTo(LMAP);
+      if(MAIN_MAPBOX){
+        var sourceId="platforma-order-route",layerId="platforma-order-route-line";
+        if(LMAP.getSource(sourceId)) LMAP.getSource(sourceId).setData(route.geometry);
+        else{
+          LMAP.addSource(sourceId,{type:"geojson",data:route.geometry});
+          LMAP.addLayer({id:layerId,type:"line",source:sourceId,paint:{"line-color":"#2563EB","line-width":5,"line-opacity":0.85}});
+        }
+        ROUTE_LINE={remove:function(){
+          try{if(LMAP.getLayer(layerId))LMAP.removeLayer(layerId);}catch(e){}
+          try{if(LMAP.getSource(sourceId))LMAP.removeSource(sourceId);}catch(e){}
+        }};
+      }else{
+        ROUTE_LINE=L.geoJSON(route.geometry,{style:{color:"#2563EB",weight:5,opacity:0.85}}).addTo(LMAP);
+      }
       ORDER_DIST_KM=route.distance/1000;
       ORDER_DUR_MIN=Math.round(route.duration/60);
       if(el("cPrice")) el("cPrice").innerHTML=priceText();
@@ -9864,7 +9920,7 @@
     nav("home");
     loadElonCounts();
     loadHomeAds();
-    // Xarita Leaflet'ga bog'liq — agar u hali yuklanmagan bo'lsa, ilova baribir ishlasin
+    // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
     if(MOBILE_TOKEN) api("GET", "/api/me").then(function(d){
@@ -9900,8 +9956,8 @@
   }
   function bootWhenReady(){
     boot();
-    // Agar Leaflet kech yuklansa, xaritani keyin bir marta tiklaymiz
-    if(typeof L === "undefined"){
+    // Xarita kutubxonalari kech yuklansa, xaritani keyin bir marta tiklaymiz.
+    if(typeof L === "undefined" || typeof mapboxgl === "undefined"){
       var tries = 0;
       var iv = setInterval(function(){
         tries++;
