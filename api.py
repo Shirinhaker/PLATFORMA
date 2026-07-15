@@ -238,11 +238,6 @@ def listing_to_dict(conn, r, with_media=True):
 # ====================================================================
 def _ensure_user_username(conn):
     cols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
-    if "location_exact" not in cols:
-        try:
-            conn.execute("ALTER TABLE users ADD COLUMN location_exact INTEGER DEFAULT 0")
-        except Exception:
-            pass
     if "pub_username" not in cols:
         try:
             conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
@@ -275,8 +270,6 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
     new_lat = b["lat"] if ("lat" in b and b["lat"] is not None) else user["lat"]
     new_lng = b["lng"] if ("lng" in b and b["lng"] is not None) else user["lng"]
-    old_exact = int(_row_val(user, "location_exact", 0) or 0)
-    new_exact = 1 if str(b.get("location_exact", old_exact)).lower() in ("1", "true") else 0
     # pub_username (ixtiyoriy, band emasligi tekshiriladi)
     new_pubu = _row_val(user, "pub_username", "") or ""
     if "pub_username" in b:
@@ -292,8 +285,8 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
                 raise HTTPException(400, "Bu username band. Boshqasini tanlang.")
         new_pubu = cand
     conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=?, location_exact=?, pub_username=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, new_exact, new_pubu, user["id"]),
+        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=?, pub_username=? WHERE id=?",
+        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, new_pubu, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -309,7 +302,7 @@ async def get_profile(x_telegram_init_data: str = Header(default="")):
     result = {
         "id": user["id"], "role": user["role"], "name": user["name"], "phone": user["phone"],
         "region": user["region"], "district": user["district"], "mahalla": user["mahalla"],
-        "lat": user["lat"], "lng": user["lng"], "location_exact": bool(_row_val(user, "location_exact", 0)),
+        "lat": user["lat"], "lng": user["lng"],
         "avatar_file": _row_val(user, "avatar_file", "") or "",
         "avatar_x": float(_row_val(user, "avatar_x", 50) or 50),
         "avatar_y": float(_row_val(user, "avatar_y", 50) or 50),
@@ -4916,19 +4909,6 @@ def _within_radius(row, ulat, ulng, radius_km):
     return (dlat * dlat + dlng * dlng) <= (radius_km * radius_km)
 
 
-def _distance_km_value(lat, lng, ulat, ulng):
-    """Frontendga ko'rsatish uchun Haversine bo'yicha masofa (km)."""
-    try:
-        lat, lng, ulat, ulng = float(lat), float(lng), float(ulat), float(ulng)
-    except (TypeError, ValueError):
-        return None
-    p1, p2 = math.radians(ulat), math.radians(lat)
-    dp = math.radians(lat - ulat)
-    dl = math.radians(lng - ulng)
-    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return round(6371.0 * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1 - a))), 1)
-
-
 def _has_search_marker(row):
     """Qidiruvga faqat haqiqiy xarita metkasi bor yozuvlarni o'tkazadi."""
     try:
@@ -5095,8 +5075,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         # Biznesda alohida ma'muriy ustunlar yo'q; egasining profil hududi olinadi.
         viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
     else:
-        if int(_row_val(_u, "location_exact", 0) or 0):
-            ulat, ulng = _u["lat"], _u["lng"]
+        ulat, ulng = _u["lat"], _u["lng"]
         viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
 
     def _search_prefilter_sql(user_alias, geo_alias):
@@ -5108,24 +5087,32 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         params = []
         vr, vd, vm = _scope_text(viewer_region), _scope_text(viewer_district), _scope_text(viewer_mahalla)
         if scope == "Viloyat":
-            if vr:
+            if not vr:
+                parts.append("1=0")
+            else:
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
         elif scope in ("Tuman", "Shahar"):
-            if vr and vd:
+            if not (vr and vd):
+                parts.append("1=0")
+            else:
                 parts.extend([
                     "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
                     "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
                 ])
                 params.extend([vr, vd])
         elif scope == "Mahalla":
-            if vr and vd and vm:
+            if not (vr and vd and vm):
+                parts.append("1=0")
+            else:
                 parts.extend([
                     "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
                     "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
                     "LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?",
                 ])
                 params.extend([vr, vd, vm])
+        elif scope != "Respublika":
+            parts.append("1=0")
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
@@ -5288,13 +5275,7 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         businesses = [r for r in businesses if _has_search_marker(r)]
 
         # Qidiruv kengligi haqiqiy viloyat/tuman/mahalla nomlari bo'yicha ishlaydi.
-        scope_ready = (
-            scope == "Respublika" or
-            (scope == "Viloyat" and bool(_scope_text(viewer_region))) or
-            (scope in ("Tuman", "Shahar") and bool(_scope_text(viewer_region) and _scope_text(viewer_district))) or
-            (scope == "Mahalla" and bool(_scope_text(viewer_region) and _scope_text(viewer_district) and _scope_text(viewer_mahalla)))
-        )
-        if scope_ready:
+        if scope in ("Mahalla", "Tuman", "Shahar", "Viloyat", "Respublika"):
             products = [r for r in products if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
             listings = [r for r in listings if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
             specialists = [r for r in specialists if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
@@ -5330,8 +5311,6 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         "scope": scope,
         "result_type": result_type,
         "actor_type": actor_ctx["type"],
-        "location_available": ulat is not None and ulng is not None,
-        "location_required": False,
         "corrected": corrected,
         "terms": _search_terms(corrected or q),
         "products": [{"id": p["id"], "name": p["name"], "price": p["price"], "unit": p["unit"] or "dona",
@@ -5339,10 +5318,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                       "photo_file": _row_val(p, "photo_file", "") or "",
                       "business_id": p["biz_id"], "business_name": p["biz_name"],
                       "business_yon": p["biz_yon"], "business_tur": p["biz_tur"],
-                      "address": p["address"], "lat": p["lat"], "lng": p["lng"],
-                      "distance_km": _distance_km_value(p["lat"], p["lng"], ulat, ulng)} for p in products],
-        "listings": [{**listing_to_dict(conn, r, with_media=True),
-                       "distance_km": _distance_km_value(r["lat"], r["lng"], ulat, ulng)} for r in listings],
+                      "address": p["address"], "lat": p["lat"], "lng": p["lng"]} for p in products],
+        "listings": [listing_to_dict(conn, r, with_media=True) for r in listings],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
                          "descr": s["descr"], "narx": s["narx"], "is_gov": bool(s["is_gov"]),
                          "available": bool(s["available"]), "region": s["region"],
@@ -5351,7 +5328,6 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                          "avatar_x": float(_row_val(s, "avatar_x", 50) or 50), "avatar_y": float(_row_val(s, "avatar_y", 50) or 50),
                          "avatar_zoom": float(_row_val(s, "avatar_zoom", 1) or 1),
                          "lat": s["lat"], "lng": s["lng"],
-                         "distance_km": _distance_km_value(s["lat"], s["lng"], ulat, ulng),
                          "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
                          "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
@@ -5360,7 +5336,6 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                         "logo_x": float(_row_val(b, "logo_x", 50) or 50), "logo_y": float(_row_val(b, "logo_y", 50) or 50),
                         "logo_zoom": float(_row_val(b, "logo_zoom", 1) or 1),
                         "lat": b["lat"], "lng": b["lng"],
-                        "distance_km": _distance_km_value(b["lat"], b["lng"], ulat, ulng),
                         "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
                         "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
     }
@@ -5415,10 +5390,7 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
         _ab = actor_ctx["business"]
         browse_lat, browse_lng = _ab["lat"], _ab["lng"]
     else:
-        if int(_row_val(user, "location_exact", 0) or 0):
-            browse_lat, browse_lng = user["lat"], user["lng"]
-        else:
-            browse_lat = browse_lng = None
+        browse_lat, browse_lng = user["lat"], user["lng"]
 
     def browse_distance(alias):
         try:
@@ -5439,6 +5411,8 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
             if vr:
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
+            else:
+                parts.append("1=0")
         elif scope in ("Tuman", "Shahar"):
             if vr and vd:
                 parts.extend([
@@ -5446,6 +5420,8 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
                     "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
                 ])
                 params.extend([vr, vd])
+            else:
+                parts.append("1=0")
         elif scope == "Mahalla":
             if vr and vd and vm:
                 parts.extend([
@@ -5454,6 +5430,10 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
                     "LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?",
                 ])
                 params.extend([vr, vd, vm])
+            else:
+                parts.append("1=0")
+        elif scope != "Respublika":
+            parts.append("1=0")
         return " AND " + " AND ".join(parts), params
 
     biz_filter, biz_filter_params = browse_filter("u", "b")
@@ -5485,15 +5465,12 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
     result = {
         "scope": scope,
         "actor_type": actor_ctx["type"],
-        "location_available": browse_lat is not None and browse_lng is not None,
-        "location_required": False,
         "businesses": [{"id": b["id"], "name": b["name"], "yon": b["yon"], "tur": b["tur"],
                         "descr": b["descr"], "address": b["address"],
                         "logo_file": _row_val(b, "logo_file", "") or "",
                         "logo_x": float(_row_val(b, "logo_x", 50) or 50), "logo_y": float(_row_val(b, "logo_y", 50) or 50),
                         "logo_zoom": float(_row_val(b, "logo_zoom", 1) or 1),
                         "lat": b["lat"], "lng": b["lng"],
-                        "distance_km": _distance_km_value(b["lat"], b["lng"], browse_lat, browse_lng),
                         "rating": (round(_row_val(b,"rating_sum",0)/_row_val(b,"rating_cnt",0),1) if _row_val(b,"rating_cnt",0) else 0),
                         "rating_cnt": _row_val(b,"rating_cnt",0) or 0} for b in businesses],
         "specialists": [{"user_id": s["user_id"], "name": s["name"], "kasb": s["kasb"],
@@ -5504,7 +5481,6 @@ async def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = 
                          "avatar_x": float(_row_val(s, "avatar_x", 50) or 50), "avatar_y": float(_row_val(s, "avatar_y", 50) or 50),
                          "avatar_zoom": float(_row_val(s, "avatar_zoom", 1) or 1),
                          "lat": s["lat"], "lng": s["lng"],
-                         "distance_km": _distance_km_value(s["lat"], s["lng"], browse_lat, browse_lng),
                          "rating": (round(_row_val(s,"rating_sum",0)/_row_val(s,"rating_cnt",0),1) if _row_val(s,"rating_cnt",0) else 0),
                          "rating_cnt": _row_val(s,"rating_cnt",0) or 0} for s in specialists],
     }
