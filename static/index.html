@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1536 -->
+<title>Platforma</title><!-- BUILD: v1537 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1856,6 +1856,8 @@
 
   /* ---------- Leaflet xaritasi ---------- */
   var LMAP = null, LMARKERS = [];
+  var MAPBOX_PUBLIC_TOKEN = null;           // null = config hali olinmagan
+  var MAP_CONFIG_LOADING = false;
   var CENTER = [41.3111, 69.2797];           // Toshkent markazi (boshlang'ich)
   var HOME_POINT = null;                     // bosh xarita markazi: foydalanuvchi tanlagan viloyat/tuman
   function xyToLatLng(x, y){
@@ -1867,10 +1869,31 @@
   function ensureMap(){
     if(LMAP) return LMAP;
     if(typeof L === "undefined" || !el("leafletMap")) return null;
-    LMAP = L.map("leafletMap", { zoomControl:true, attributionControl:false }).setView(CENTER, 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap"
-    }).addTo(LMAP);
+    if(MAPBOX_PUBLIC_TOKEN===null){
+      if(!MAP_CONFIG_LOADING){
+        MAP_CONFIG_LOADING=true;
+        api("GET","/api/map-config").then(function(cfg){
+          MAPBOX_PUBLIC_TOKEN=(cfg&&cfg.public_token)||"";
+        }).catch(function(){
+          MAPBOX_PUBLIC_TOKEN="";
+        }).finally(function(){
+          MAP_CONFIG_LOADING=false;
+          try{ ensureMap(); renderPins(mapMode||"biz"); }catch(e){}
+        });
+      }
+      return null;
+    }
+    LMAP = L.map("leafletMap", { zoomControl:true, attributionControl:true }).setView(CENTER, 14);
+    if(MAPBOX_PUBLIC_TOKEN){
+      L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}?access_token="+encodeURIComponent(MAPBOX_PUBLIC_TOKEN), {
+        tileSize:512, zoomOffset:-1, maxZoom:22,
+        attribution:'© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(LMAP);
+    }else{
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(LMAP);
+    }
     LMAP.on("moveend", onOrderMapMove);   // zakaz formasida markaz manzilini kuzatadi
     setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 200);
     return LMAP;
