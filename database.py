@@ -834,6 +834,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE businesses ADD COLUMN logo_y REAL NOT NULL DEFAULT 50")
     if "logo_zoom" not in bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN logo_zoom REAL NOT NULL DEFAULT 1")
+    if "username" not in bcols:
+        conn.execute("ALTER TABLE businesses ADD COLUMN username TEXT DEFAULT ''")
 
     # --- v1395: To'liq matnli qidiruv (FTS5) — nom/sarlavha alohida ustun ---
     # Har tur uchun: 'name' ustuni (asosiy nom/sarlavha) + 'body' ustuni (qolgan matn).
@@ -871,49 +873,8 @@ def _migrate(conn):
             conn.execute("INSERT INTO " + fts + "(rowid, name, body) SELECT " + id_col + ", "
                          + tval("") + ", " + bval("") + " FROM " + table)
 
-    _setup_fts("businesses", "name", ["yon", "tur", "descr", "address", "phone", "telegram", "work_hours"], "biz")
+    _setup_fts("businesses", "name", ["yon", "tur", "descr", "address", "phone", "telegram", "work_hours", "username"], "biz")
     _setup_fts("listings", "title", ["cat", "price", "descr", "address"], "lst")
-
-    # --- v1396: Mahsulotlar (items) uchun FTS — mahsulot + tegishli biznes maydonlari ---
-    # 'name' = mahsulot nomi (10x og'irlik); 'body' = izoh/tur + biznes nomi/yo'nalishi/manzili.
-    # Biznes maydonlari mahsulot YOZILGANDA qo'shiladi. Bu triggerlar faqat mahsulot
-    # yozuvida ishlaydi (biznes tahririga ta'sir qilmaydi -> xavfsiz).
-    icols = [r["name"] for r in conn.execute("PRAGMA table_info(items_fts)").fetchall()]
-    if icols and icols != ["name", "body"]:
-        conn.execute("DROP TABLE IF EXISTS items_fts")
-    conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(name, body)")
-    for suf in ("ai", "ad", "au"):
-        conn.execute("DROP TRIGGER IF EXISTS item_fts_" + suf)
-
-    _it_name_new = _canon_expr("COALESCE(new.name,'')")
-    _it_body_new = _canon_expr(
-        "COALESCE(new.note,'') || ' ' || COALESCE(new.kind,'') || ' ' || "
-        "COALESCE(b.name,'') || ' ' || COALESCE(b.yon,'') || ' ' || COALESCE(b.tur,'') || ' ' || "
-        "COALESCE(b.descr,'') || ' ' || COALESCE(b.address,'')")
-    conn.execute(
-        "CREATE TRIGGER item_fts_ai AFTER INSERT ON items BEGIN "
-        "INSERT INTO items_fts(rowid, name, body) "
-        "SELECT new.id, " + _it_name_new + ", " + _it_body_new + " "
-        "FROM businesses b WHERE b.id = new.business_id; END")
-    conn.execute(
-        "CREATE TRIGGER item_fts_ad AFTER DELETE ON items BEGIN "
-        "DELETE FROM items_fts WHERE rowid = old.id; END")
-    conn.execute(
-        "CREATE TRIGGER item_fts_au AFTER UPDATE ON items BEGIN "
-        "DELETE FROM items_fts WHERE rowid = old.id; "
-        "INSERT INTO items_fts(rowid, name, body) "
-        "SELECT new.id, " + _it_name_new + ", " + _it_body_new + " "
-        "FROM businesses b WHERE b.id = new.business_id; END")
-    if conn.execute("SELECT COUNT(*) FROM items_fts").fetchone()[0] == 0:
-        _it_name_i = _canon_expr("COALESCE(i.name,'')")
-        _it_body_i = _canon_expr(
-            "COALESCE(i.note,'') || ' ' || COALESCE(i.kind,'') || ' ' || "
-            "COALESCE(b.name,'') || ' ' || COALESCE(b.yon,'') || ' ' || COALESCE(b.tur,'') || ' ' || "
-            "COALESCE(b.descr,'') || ' ' || COALESCE(b.address,'')")
-        conn.execute(
-            "INSERT INTO items_fts(rowid, name, body) "
-            "SELECT i.id, " + _it_name_i + ", " + _it_body_i + " "
-            "FROM items i JOIN businesses b ON b.id = i.business_id")
 
     # --- v1397: Mutaxassislar (specialists) uchun FTS — mutaxassis + foydalanuvchi maydonlari ---
     # 'name' = kasb + foydalanuvchi ismi (10x og'irlik); 'body' = tavsif/narx/hudud/tashkilot/
@@ -958,18 +919,6 @@ def _migrate(conn):
         "INSERT INTO specialists_fts(rowid, name, body) "
         "SELECT s.user_id, " + _sp_name_user + ", " + _sp_body_user + " "
         "FROM specialists s WHERE s.user_id = new.id; END")
-    # Eski BUILDlardan qolgan eskirgan indekslarni HAR ishga tushishda manbadan sinxronlaymiz.
-    _sp_name_s = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
-    _sp_body_s = _canon_expr(
-        "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
-        "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
-        "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
-    conn.execute("DELETE FROM specialists_fts")
-    conn.execute(
-        "INSERT INTO specialists_fts(rowid, name, body) "
-        "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
-        "FROM specialists s JOIN users u ON u.id = s.user_id")
-
     # --- v1401: O'lchov birliklari — items.unit va order_items.unit (eski bazaga xavfsiz) ---
     _icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "unit" not in _icols:
@@ -1324,3 +1273,62 @@ def _migrate(conn):
             "INSERT INTO items_fts(rowid, name, body) "
             "SELECT i.id, " + _item_name("i.") + ", " + _item_body("i.", "b.") + " "
             "FROM items i JOIN businesses b ON b.id = i.business_id")
+
+    # --- v1535: FTS kontent migratsiyasi versiyasi ---
+    # Ustunlar o'zgarmasa ham kanonizatsiya qoidasi yangilanishi mumkin. Versiya
+    # oshganda to'rtta indeks bir marta manba jadvallardan qayta quriladi.
+    conn.execute("CREATE TABLE IF NOT EXISTS app_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    fts_version = "2"
+    old_fts_version = conn.execute(
+        "SELECT value FROM app_meta WHERE key='search_fts_version'"
+    ).fetchone()
+    version_changed = (not old_fts_version) or old_fts_version[0] != fts_version
+
+    # --- v1536: indeks bo'sh qolib ketgan bo'lsa ham qayta quramiz ---
+    # Qidiruv FTS bo'sh qaytarganda LIKE zaxirasiga o'tmaydi (bu pagination uchun
+    # ataylab shunday). Demak bo'sh indeks = jimgina "hech narsa topilmadi".
+    # Backup FTSsiz tiklansa yoki trigger jimgina yiqilsa shu holat yuzaga keladi.
+    def _index_broken():
+        for fts, src in (("businesses_fts", "businesses"), ("listings_fts", "listings"),
+                         ("items_fts", "items"), ("specialists_fts", "specialists")):
+            try:
+                n_fts = conn.execute("SELECT COUNT(*) FROM " + fts).fetchone()[0]
+                n_src = conn.execute("SELECT COUNT(*) FROM " + src).fetchone()[0]
+            except Exception:
+                return True
+            if n_src > 0 and n_fts == 0:
+                return True
+        return False
+
+    if version_changed or _index_broken():
+        conn.execute("DELETE FROM businesses_fts")
+        conn.execute(
+            "INSERT INTO businesses_fts(rowid,name,body) SELECT id," +
+            _canon_expr("COALESCE(name,'')") + "," +
+            _canon_expr(_concat("", ["yon", "tur", "descr", "address", "phone", "telegram", "work_hours", "username"])) +
+            " FROM businesses")
+
+        conn.execute("DELETE FROM listings_fts")
+        conn.execute(
+            "INSERT INTO listings_fts(rowid,name,body) SELECT id," +
+            _canon_expr("COALESCE(title,'')") + "," +
+            _canon_expr(_concat("", ["cat", "price", "descr", "address"])) +
+            " FROM listings")
+
+        conn.execute("DELETE FROM items_fts")
+        conn.execute(
+            "INSERT INTO items_fts(rowid,name,body) SELECT i.id," + _item_name("i.") + "," +
+            _item_body("i.", "b.") + " FROM items i JOIN businesses b ON b.id=i.business_id")
+
+        sp_name = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
+        sp_body = _canon_expr(
+            "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
+            "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
+            "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
+        conn.execute("DELETE FROM specialists_fts")
+        conn.execute(
+            "INSERT INTO specialists_fts(rowid,name,body) SELECT s.user_id," + sp_name + "," + sp_body +
+            " FROM specialists s JOIN users u ON u.id=s.user_id")
+        conn.execute(
+            "INSERT INTO app_meta(key,value) VALUES('search_fts_version',?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (fts_version,))
