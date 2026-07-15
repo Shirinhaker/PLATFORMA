@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1527 -->
+<title>Platforma</title><!-- BUILD: v1528 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -533,6 +533,8 @@
   .order-receipt-item{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px;margin-top:8px;}
   .order-receipt-name{font-weight:900;color:var(--ink);font-size:14px;margin-bottom:7px;}
   .order-receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-size:12.5px;color:var(--soft);}
+  @keyframes searchTargetPulse{0%,100%{box-shadow:0 0 0 2px rgba(14,140,132,.25)}50%{box-shadow:0 0 0 6px rgba(14,140,132,.18)}}
+  .search-target-pulse{border-color:var(--primary)!important;animation:searchTargetPulse .75s ease-in-out 3;}
   .order-receipt-meta b{color:var(--ink);text-align:right;}
   [data-theme="dark"] .order-unread-pill{background:#3A1515;color:#FCA5A5;}
   .order-notice{display:flex;align-items:center;gap:10px;background:var(--primary-tint);color:var(--primary);border:1.5px solid var(--primary);border-radius:16px;padding:12px 14px;margin:6px 0 12px;font-weight:800;box-shadow:var(--shadow);}
@@ -2689,7 +2691,7 @@
 
     if(prods.length) html += '<div class="list-sub">'+(data.result_type==="service"?'🧰 Xizmatlar':data.result_type==="product"?'🛍 Mahsulotlar':'🛍 Mahsulot va xizmatlar')+'</div>'+prods.map(function(p){
       var ico = String(p.kind||"").toLowerCase()==="service" ? "🧰" : "🛍️";
-      return '<div class="elon-item" data-bsrv="'+p.business_id+'">'+searchThumb(p.photo_file,ico,false)+
+      return '<div class="elon-item" data-bsrv="'+p.business_id+'" data-focus-item="'+p.id+'">'+searchThumb(p.photo_file,ico,false)+
         '<div class="li-main"><div class="li-title">'+esc(p.name)+'</div><div class="li-meta">🏪 '+esc(p.business_name)+(distanceText(p.distance_km)?' · '+esc(distanceText(p.distance_km)):'')+'</div></div><span class="iprice">'+esc((p.price||"")+unitSuffix(p.unit))+'</span></div>';
     }).join("");
     if(lists.length) html += '<div class="list-sub" style="margin-top:6px">📢 E\'lonlar</div>'+lists.map(function(e2){
@@ -3164,7 +3166,7 @@
     if(it) cont.innerHTML = itemCtrlHtml(it, { id:parseInt(bid,10), name:curBiz.name });
   }
   function bizItemCardHtml(it, b){
-    return '<div class="item-card2 biz-prod-card">'+
+    return '<div class="item-card2 biz-prod-card" data-public-item="'+it.id+'">'+
       '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+
@@ -3203,7 +3205,7 @@
     return blocks || '<p class="elon-hint">Hozircha mahsulot yo\'q.</p>';
   }
 
-  function openBizSrv(id){
+  function openBizSrv(id, focusItemId){
     api("GET","/api/business/"+id+"?"+actorQuery()).then(function(b){
       curFollow = {kind:"business", id:b.id};
       resetOrderDraft(b.id, b.name);
@@ -3243,6 +3245,15 @@
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
       loadReviews("business", b.id, "rvBoxBiz");
+      if(focusItemId){
+        setTimeout(function(){
+          var target=document.querySelector('[data-public-item="'+parseInt(focusItemId,10)+'"]');
+          if(!target)return;
+          try{target.scrollIntoView({behavior:"smooth",block:"center",inline:"center"});}catch(e){target.scrollIntoView();}
+          target.classList.add("search-target-pulse");
+          setTimeout(function(){target.classList.remove("search-target-pulse");},2600);
+        },180);
+      }
       // Qidiruv (#4): mahsulot nomi/izohi bo'yicha filtrlash
       var bs = el("bizSearch");
       if(bs) bs.addEventListener("input", function(){
@@ -6053,7 +6064,7 @@
     var cp=e.target.closest("[data-callphone]");
     if(cp){ window.location.href = "tel:" + cp.getAttribute("data-callphone").replace(/\s/g,""); return; }
     var gbs=e.target.closest("[data-bsrv]");
-    if(gbs){ openBizSrv(parseInt(gbs.getAttribute("data-bsrv"),10)); return; }
+    if(gbs){ openBizSrv(parseInt(gbs.getAttribute("data-bsrv"),10),gbs.getAttribute("data-focus-item")); return; }
     var gus=e.target.closest("[data-usrv]");
     if(gus){ openUser(parseInt(gus.getAttribute("data-usrv"),10)); return; }
     var gps=e.target.closest("[data-psrv]");
