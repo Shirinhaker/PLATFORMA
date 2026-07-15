@@ -36,7 +36,7 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1538"
+APP_BUILD = "v1540"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
@@ -355,10 +355,10 @@ async def app_build():
 
 @app.get("/api/map-config")
 def map_config():
-    """Frontendga faqat brauzerda ishlatiladigan Mapbox public tokenini beradi."""
+    """Frontend xarita provayderi: OpenStreetMap."""
     return {
-        "provider": "mapbox" if os.environ.get("MAPBOX_PUBLIC_TOKEN", "").strip() else "openstreetmap",
-        "public_token": os.environ.get("MAPBOX_PUBLIC_TOKEN", "").strip(),
+        "provider": "openstreetmap",
+        "public_token": "",
     }
 
 
