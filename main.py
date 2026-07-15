@@ -36,8 +36,19 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1534"
+APP_BUILD = "v1536"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+
+
+def _init_data_max_age():
+    """Telegram initData imzosining amal qilish muddati (soniya). 0 = cheksiz."""
+    try:
+        return max(0, int(os.environ.get("INIT_DATA_MAX_AGE_SEC", "86400")))
+    except (TypeError, ValueError):
+        return 86400
+
+
+INIT_DATA_MAX_AGE = _init_data_max_age()
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
@@ -91,6 +102,20 @@ def verify_init_data(init_data):
     calc_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(calc_hash, received_hash):
         return None
+    # Imzo to'g'ri, lekin u abadiy amal qilmasligi kerak: sizib chiqqan initData
+    # muddati o'tgach ishlamaydi (replay himoyasi). Telegram har ochilishda yangisini
+    # beradi, shuning uchun oddiy foydalanuvchiga sezilmaydi.
+    if INIT_DATA_MAX_AGE > 0:
+        try:
+            auth_date = int(parsed.get("auth_date", "0"))
+        except (TypeError, ValueError):
+            return None
+        if auth_date <= 0:
+            return None
+        age = time.time() - auth_date
+        # -300: qurilma/server soatidagi kichik farqqa yo'l qo'yamiz.
+        if age > INIT_DATA_MAX_AGE or age < -300:
+            return None
     try:
         user = json.loads(parsed.get("user", "{}"))
     except Exception:
@@ -230,6 +255,8 @@ async def setup_bot():
 @asynccontextmanager
 async def lifespan(app):
     init_db()
+    from api import warm_search_cache
+    warm_search_cache()
     await setup_bot()
     push_task = None
     if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH"):
