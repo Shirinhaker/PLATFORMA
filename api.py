@@ -6555,6 +6555,7 @@ def _load_order_items_payload(conn, body, provider, item_id=None):
             "unit": unit,
             "line_total": int(round(price_val * qty)) if price_val else 0,
             "note": it["note"] or "",
+            "kind": (_row_val(it, "kind", "product") or "product").lower(),
         })
     return normalized
 
@@ -6805,6 +6806,21 @@ def _order_to_dict(conn, r, view="customer"):
             _provider_hours = _pb["work_hours"] or ""
             _provider_lat, _provider_lng = _pb["lat"], _pb["lng"]
     items = _order_items_to_dict(conn, r["id"])
+    # Navbat/qabul doim xizmat hisoblanadi. Savatdagi barcha pozitsiyalar xizmat
+    # bo'lsa ham xizmat buyurtmasi; aralash savat esa oddiy buyurtmada qoladi.
+    order_category = (_row_val(r, "order_category", "") or "").lower()
+    if order_category not in ("product", "service"):
+        order_category = "service" if (r["order_type"] or "") == "booking" else "product"
+    if order_category != "service" and items:
+        item_ids = [int(x["item_id"]) for x in items if x.get("item_id")]
+        if item_ids:
+            marks = ",".join("?" for _ in item_ids)
+            kinds = [(_row_val(x, "kind", "product") or "product").lower() for x in conn.execute(
+                "SELECT kind FROM items WHERE id IN (" + marks + ")", item_ids).fetchall()]
+            if kinds and len(kinds) == len(item_ids) and all(x == "service" for x in kinds):
+                order_category = "service"
+    if order_category != "service" and (r["provider_kind"] or "") == "user" and not items:
+        order_category = "service"
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
     last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
@@ -6833,6 +6849,7 @@ def _order_to_dict(conn, r, view="customer"):
         "note": r["note"] or "",
         "phone": r["phone"] or "",
         "order_type": r["order_type"] or "delivery",
+        "order_category": order_category,
         "address": r["address"] or "",
         "desired_time": r["desired_time"] or "",
         "delivery_lat": r["delivery_lat"],
@@ -6923,6 +6940,11 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     note = (b.get("note") or "").strip()[:1000]
     phone = (b.get("phone") or "").strip()[:80]
     order_type = _clean_order_type(b.get("order_type"))
+    order_category = "service" if order_type == "booking" else "product"
+    if order_items and all((x.get("kind") or "product") == "service" for x in order_items):
+        order_category = "service"
+    elif not order_items and provider["kind"] == "user":
+        order_category = "service"
     address = (b.get("address") or "").strip()[:500]
     desired_time = (b.get("desired_time") or "").strip()[:160]
     delivery_lat = _clean_coord(b.get("delivery_lat"), -90, 90)
@@ -6937,12 +6959,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     cur = conn.execute(
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
-                              item_id, listing_id, title, note, phone, order_type, address, desired_time,
+                              item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
                               delivery_lat, delivery_lng, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, order_type, address, desired_time,
+         item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
          delivery_lat, delivery_lng, qty, "new", now, now),
     )
     oid = cur.lastrowid
