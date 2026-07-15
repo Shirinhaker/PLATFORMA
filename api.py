@@ -4710,6 +4710,44 @@ async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: st
 # ====================================================================
 # QIDIRUV (mahsulot + e'lon + mutaxasis + biznes)
 # ====================================================================
+_SEARCH_SYNONYM_GROUPS = (
+    ("muhr", "tamga", "pechat", "shtamp", "stamp"),
+    ("taksi", "taxi", "yo'lovchi tashish"),
+    ("dori", "dorixona", "apteka", "аптека", "farmatsevtika"),
+    ("usta", "ta'mir", "tamir", "remont", "ремонт", "tuzatish"),
+    ("santexnik", "santexnika", "vodoprovod", "kanalizatsiya"),
+    ("elektrik", "elektrchi", "elektromontaj"),
+    ("repetitor", "o'qituvchi", "oqituvchi", "ustoz", "dars"),
+    ("advokat", "yurist", "huquqshunos", "huquq"),
+    ("dokon", "do'kon", "magazin", "магазин", "market"),
+    ("oshxona", "restoran", "kafe", "choyxona", "ovqatlanish"),
+    ("non", "nonvoy", "nonvoyxona", "pekarnya"),
+    ("gosht", "go'sht", "qassob", "myaso"),
+    ("kiyim", "kiyim-kechak", "libos", "odejda", "одежда"),
+    ("sartarosh", "barber", "salon", "soch", "go'zallik"),
+    ("shifokor", "doktor", "vrach", "врач", "klinika", "poliklinika"),
+    ("tish", "stomatolog", "dentist", "stomatologiya"),
+    ("mebel", "divan", "stol", "shkaf", "garnitur"),
+    ("gul", "gulchi", "guldasta", "buket"),
+    ("telefon", "smartfon", "mobil", "gadjet"),
+    ("kompyuter", "komp", "noutbuk", "laptop"),
+    ("qurilish", "quruvchi", "stroitel", "stroymaterial"),
+    ("avtoservis", "avtotamir", "avtoremont", "sto"),
+    ("yuk tashish", "tashish", "yuk", "gruz", "груз", "perevozka", "перевозка", "transport"),
+    ("yetkazib berish", "yetkazish", "dostavka", "доставка", "kuryer"),
+    ("ijara", "arenda", "аренда", "prokat"),
+    ("uy", "xonadon", "kvartira", "dom"),
+    ("mashina", "avtomobil", "avto", "car"),
+    ("fotograf", "foto", "suratchi", "fotosessiya"),
+    ("tikuvchi", "tikuvchilik", "atelye", "shveya"),
+    ("tozalash", "klining", "uborka", "уборка", "yuvish"),
+    ("tarjimon", "tarjima", "perevod", "translator"),
+    ("hisobchi", "buxgalter", "buxgalteriya", "accounting"),
+    ("reklama", "marketing", "smm", "target"),
+    ("sayt", "vebsayt", "web", "dasturlash"),
+)
+
+
 def _search_terms(q):
     """Qidiruv so'zini tozalab, variantlar va sinonimlarni tayyorlaydi.
     Apostrof (', ', `, ʻ, ʼ) bir xil qilinadi va so'z ichidan olib tashlanadi
@@ -4736,46 +4774,23 @@ def _search_terms(q):
     for part in norm.replace("-", " ").split():
         add(part.replace("'", ""))
 
+    # @username identifikator hisoblanadi; unga sinonim qo'shilmaydi.
+    if base.startswith("@"):
+        add(canon.lstrip("@"))
+        return variants[:4]
+
     # Sinonimlar — ANIQ so'z bo'yicha (substring emas: "telefon" ichidagi "non" kabi
     # noto'g'ri mosliklarning oldini oladi). Kalitlar apostrofsiz (kanonik) yoziladi.
     words = set(canon.replace("-", " ").split())
     words.add(canon)
 
-    syns = {
-        "muhr": ["muhr", "tamga", "pechat", "shtamp", "stamp"],
-        "tamga": ["muhr", "tamga", "pechat", "shtamp"],
-        "pechat": ["muhr", "tamga", "pechat", "shtamp"],
-        "shtamp": ["muhr", "tamga", "pechat", "shtamp"],
-        "taksi": ["taksi", "taxi", "yo'lovchi", "mashina"],
-        "taxi": ["taksi", "taxi", "yo'lovchi", "mashina"],
-        "dori": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "dorixona": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "apteka": ["dori", "dorixona", "apteka", "farmatsevtika"],
-        "usta": ["usta", "ta'mir", "santexnik", "elektrik", "montaj", "quruvchi"],
-        "repetitor": ["repetitor", "o'qituvchi", "ustoz", "kurs"],
-        "advokat": ["advokat", "yurist", "huquq", "konsalting"],
-        "dokon": ["dokon", "do'kon", "magazin", "market"],
-        "magazin": ["dokon", "do'kon", "magazin", "market"],
-        "oshxona": ["oshxona", "restoran", "kafe", "choyxona", "ovqat"],
-        "restoran": ["oshxona", "restoran", "kafe", "choyxona"],
-        "kafe": ["oshxona", "restoran", "kafe", "choyxona"],
-        "non": ["non", "nonvoy", "nonvoyxona", "pekarnya"],
-        "gosht": ["gosht", "qassob", "molgosht"],
-        "qassob": ["gosht", "qassob"],
-        "kiyim": ["kiyim", "kiyim-kechak", "odejda"],
-        "sartarosh": ["sartarosh", "salon", "soch", "go'zallik"],
-        "salon": ["sartarosh", "salon", "go'zallik"],
-        "shifokor": ["shifokor", "klinika", "poliklinika", "tibbiyot", "vrach"],
-        "klinika": ["shifokor", "klinika", "poliklinika", "tibbiyot"],
-        "mebel": ["mebel", "divan", "stol", "shkaf"],
-        "gul": ["gul", "gulchi", "guldasta", "buket"],
-        "telefon": ["telefon", "smartfon", "aksessuar", "gadjet"],
-        "qurilish": ["qurilish", "gisht", "stroymaterial", "sement"],
-        "avtoservis": ["avtoservis", "avtomashina", "remont", "moylash"],
-    }
-    for key, arr in syns.items():
-        if key in words:
-            for x in arr:
+    for group in _SEARCH_SYNONYM_GROUPS:
+        keys = set()
+        for x in group:
+            key = x.lower().replace("'", "")
+            keys.add(key)
+        if words.intersection(keys):
+            for x in group:
                 add(x)
 
     return variants[:24]
