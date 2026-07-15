@@ -4836,6 +4836,39 @@ _SCOPE_RADIUS_KM = {
 }
 
 
+def _scope_text(v):
+    """Hudud nomlarini registr va ortiqcha bo'shliqlardan mustaqil taqqoslaydi."""
+    return " ".join(str(v or "").strip().lower().split())
+
+
+def _within_admin_scope(row, scope, viewer_region, viewer_district, viewer_mahalla):
+    """Natijani haqiqiy ma'muriy hudud bo'yicha tekshiradi.
+
+    target_region/target_district/target_mahalla SELECT so'rovlarida natija egasining
+    users profilidan olinadi. Respublika cheklanmaydi. Hudud tanlangan, ammo tomonda
+    zarur ma'lumot bo'lmasa natija mos hisoblanmaydi; radius hudud o'rnini bosmaydi.
+    """
+    if scope == "Respublika":
+        return True
+    try:
+        keys = row.keys()
+    except Exception:
+        keys = []
+    tr = _scope_text(row["target_region"] if "target_region" in keys else "")
+    td = _scope_text(row["target_district"] if "target_district" in keys else "")
+    tm = _scope_text(row["target_mahalla"] if "target_mahalla" in keys else "")
+    vr = _scope_text(viewer_region)
+    vd = _scope_text(viewer_district)
+    vm = _scope_text(viewer_mahalla)
+    if scope == "Viloyat":
+        return bool(vr and tr and vr == tr)
+    if scope in ("Tuman", "Shahar"):
+        return bool(vr and vd and tr and td and vr == tr and vd == td)
+    if scope == "Mahalla":
+        return bool(vr and vd and vm and tr and td and tm and vr == tr and vd == td and vm == tm)
+    return False
+
+
 def _within_radius(row, ulat, ulng, radius_km):
     """Natija foydalanuvchidan radius_km ichidami? Koordinatasi yo'q bo'lsa True (yashirmaymiz)."""
     try:
@@ -4956,13 +4989,17 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
     # Qidiruv joriy kabinet nomidan bajariladi. Oddiy kabinet uchun users,
     # biznes kabinet uchun businesses koordinatasi olinadi; ular aralashtirilmaydi.
     ulat = ulng = None
+    viewer_region = viewer_district = viewer_mahalla = ""
     _u = require_user(conn, x_telegram_init_data)
     actor_ctx = resolve_actor(conn, _u, actor_type)
     if actor_ctx["type"] == "business":
         _biz = actor_ctx["business"]
         ulat, ulng = _biz["lat"], _biz["lng"]
+        # Biznesda alohida ma'muriy ustunlar yo'q; egasining profil hududi olinadi.
+        viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
     else:
         ulat, ulng = _u["lat"], _u["lng"]
+        viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
 
     def _fetch(qq):
         terms = _search_terms(qq)
@@ -4975,9 +5012,10 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 products = conn.execute(
                     "SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.photo_file, "
                     "b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng, "
+                    "bu.region target_region, bu.district target_district, bu.mahalla target_mahalla, "
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
-                    "JOIN businesses b ON b.id = i.business_id "
+                    "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
                     "WHERE items_fts MATCH ? AND b.status='active' "
                     "ORDER BY _rank LIMIT 50",
                     (_match,),
@@ -4991,8 +5029,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
             )
             products = conn.execute(
                 """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.photo_file,
-                          b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng
-                   FROM items i JOIN businesses b ON b.id=i.business_id
+                          b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng,
+                          bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
+                   FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
                    WHERE b.status='active' AND """ + product_where + """
                    ORDER BY i.created_at DESC LIMIT 50""",
                 product_params,
@@ -5003,8 +5042,10 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 listings = conn.execute(
-                    "SELECT l.*, bm25(listings_fts, 10.0, 1.0) AS _rank "
+                    "SELECT l.*, u.region target_region, u.district target_district, u.mahalla target_mahalla, "
+                    "bm25(listings_fts, 10.0, 1.0) AS _rank "
                     "FROM listings_fts JOIN listings l ON l.id = listings_fts.rowid "
+                    "JOIN users u ON u.id=l.user_id "
                     "WHERE listings_fts MATCH ? AND l.status='active' AND l.visibility='all' "
                     "ORDER BY _rank LIMIT 50",
                     (_match,),
@@ -5017,7 +5058,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 terms,
             )
             listings = conn.execute(
-                "SELECT * FROM listings WHERE status='active' AND visibility='all' AND " + listing_where +
+                "SELECT l.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
+                "FROM listings l JOIN users u ON u.id=l.user_id "
+                "WHERE l.status='active' AND l.visibility='all' AND " + listing_where +
                 " ORDER BY created_at DESC LIMIT 50",
                 listing_params,
             ).fetchall()
@@ -5027,7 +5070,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 specialists = conn.execute(
-                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom, "
+                    "SELECT s.*, u.name, u.region, u.district, u.mahalla, u.region target_region, "
+                    "u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom, "
                     "bm25(specialists_fts, 10.0, 1.0) AS _rank "
                     "FROM specialists_fts JOIN specialists s ON s.user_id = specialists_fts.rowid "
                     "JOIN users u ON u.id = s.user_id "
@@ -5044,7 +5088,8 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 terms,
             )
             specialists = conn.execute(
-                """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
+                """SELECT s.*, u.name, u.region, u.district, u.mahalla, u.region target_region,
+                          u.district target_district, u.mahalla target_mahalla, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                    FROM specialists s JOIN users u ON u.id=s.user_id
                    WHERE s.visible=1 AND """ + specialist_where + """
                    ORDER BY s.available DESC, s.created_at DESC LIMIT 50""",
@@ -5057,8 +5102,9 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
         if _match:
             try:
                 businesses = conn.execute(
-                    "SELECT b.*, bm25(businesses_fts, 10.0, 1.0) AS _rank "
-                    "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid "
+                    "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla, "
+                    "bm25(businesses_fts, 10.0, 1.0) AS _rank "
+                    "FROM businesses_fts JOIN businesses b ON b.id = businesses_fts.rowid JOIN users u ON u.id=b.user_id "
                     "WHERE businesses_fts MATCH ? AND b.status='active' "
                     "ORDER BY _rank LIMIT 50",
                     (_match,),
@@ -5067,22 +5113,22 @@ async def search(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 businesses = None
         if not businesses:   # FTS xato BERSA ham, BO'SH bo'lsa ham oddiy qidiruvga o'tamiz
             business_where, business_params = _like_where(
-                ["name", "yon", "tur", "descr", "address", "phone", "telegram", "work_hours", "username"],
+                ["b.name", "b.yon", "b.tur", "b.descr", "b.address", "b.phone", "b.telegram", "b.work_hours", "b.username"],
                 terms,
             )
             businesses = conn.execute(
-                "SELECT * FROM businesses WHERE status='active' AND " + business_where +
+                "SELECT b.*, u.region target_region, u.district target_district, u.mahalla target_mahalla "
+                "FROM businesses b JOIN users u ON u.id=b.user_id WHERE b.status='active' AND " + business_where +
                 " ORDER BY created_at DESC LIMIT 50",
                 business_params,
             ).fetchall()
 
-        # Qadam 3: "Qidiruv kengligi" bo'yicha masofa filtri (qattiq). Koordinatasiz natija qoladi.
-        _radius = _SCOPE_RADIUS_KM.get(scope)
-        if _radius is not None and ulat is not None and ulng is not None:
-            products    = [r for r in products    if _within_radius(r, ulat, ulng, _radius)]
-            listings    = [r for r in listings    if _within_radius(r, ulat, ulng, _radius)]
-            specialists = [r for r in specialists if _within_radius(r, ulat, ulng, _radius)]
-            businesses  = [r for r in businesses  if _within_radius(r, ulat, ulng, _radius)]
+        # Qidiruv kengligi haqiqiy viloyat/tuman/mahalla nomlari bo'yicha ishlaydi.
+        if scope in ("Mahalla", "Tuman", "Shahar", "Viloyat", "Respublika"):
+            products = [r for r in products if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
+            listings = [r for r in listings if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
+            specialists = [r for r in specialists if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
+            businesses = [r for r in businesses if _within_admin_scope(r, scope, viewer_region, viewer_district, viewer_mahalla)]
 
         if result_type == "product":
             products = [r for r in products if str(_row_val(r, "kind", "product") or "product").lower() != "service"]
