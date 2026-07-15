@@ -52,7 +52,6 @@ def init_db():
             mahalla       TEXT DEFAULT '',
             lat           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             lng           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
-            location_exact INTEGER DEFAULT 0,               -- xaritada/GPS bilan aniq belgilanganmi
             avatar_file   TEXT DEFAULT '',                  -- Telegram file_id
             avatar_x      REAL NOT NULL DEFAULT 50,
             avatar_y      REAL NOT NULL DEFAULT 50,
@@ -1055,8 +1054,6 @@ def _migrate(conn):
     if "inn" not in _bcols:
         conn.execute("ALTER TABLE businesses ADD COLUMN inn TEXT DEFAULT ''")
     _ucols = [r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
-    if "location_exact" not in _ucols:
-        conn.execute("ALTER TABLE users ADD COLUMN location_exact INTEGER DEFAULT 0")
     if "pub_username" not in _ucols:
         conn.execute("ALTER TABLE users ADD COLUMN pub_username TEXT DEFAULT ''")
     try:
