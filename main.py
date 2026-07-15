@@ -36,7 +36,7 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1515"
+APP_BUILD = "v1516"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
@@ -1105,6 +1105,23 @@ async def reverse_geocode(lat: float, lng: float):
 async def geocode(lat: float, lng: float):
     """Koordinatadan o'qiladigan manzil qaytaradi (OpenStreetMap orqali)."""
     return await reverse_geocode(lat, lng)
+
+
+@app.get("/profile-media/{owner_kind}/{owner_id}")
+async def profile_media(owner_kind: str, owner_id: int):
+    """Avatar/logotipni doimiy SQLite manbasidan beradi; xarita <img> so'rovi uchun ochiq."""
+    from fastapi.responses import Response
+    if owner_kind not in ("user", "business"):
+        raise HTTPException(404, "Rasm topilmadi.")
+    conn = db()
+    row = conn.execute(
+        "SELECT mime_type,content,updated_at FROM profile_images WHERE owner_kind=? AND owner_id=?",
+        (owner_kind, owner_id),
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Rasm topilmadi.")
+    return Response(content=row["content"], media_type=row["mime_type"], headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 _file_path_cache = {}
