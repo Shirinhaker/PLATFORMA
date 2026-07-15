@@ -1605,6 +1605,97 @@ async def delete_item(item_id: int, x_telegram_init_data: str = Header(default="
 
 
 # ====================================================================
+# UMUMIY OVQATLANISH — STOLLAR VA XONALAR
+# ====================================================================
+def _require_dining_business(conn, init_data):
+    user, biz = require_business(conn, init_data)
+    if (biz["yon"] or "").strip() != "Umumiy ovqatlanish":
+        conn.close()
+        raise HTTPException(403, "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun.")
+    return user, biz
+
+
+@router.get("/dining/places")
+async def dining_places(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        "SELECT id,kind,name,seats,x,y,locked FROM dining_places WHERE business_id=? ORDER BY id",
+        (biz["id"],),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@router.post("/dining/places")
+async def dining_place_add(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    b = await request.json()
+    kind = (b.get("kind") or "").strip()
+    if kind not in ("table", "room"):
+        conn.close()
+        raise HTTPException(400, "Stol yoki xona turini tanlang.")
+    name = (b.get("name") or "").strip()[:60]
+    if not name:
+        name = "Stol" if kind == "table" else "Xona"
+    try:
+        seats = max(0, min(100, int(b.get("seats") or 0))) if kind == "table" else 0
+    except (TypeError, ValueError):
+        seats = 0
+    now = int(time.time())
+    # Yangi belgilar yuqorida, bir-biridan ozgina surilgan holda paydo bo'ladi.
+    count = conn.execute("SELECT COUNT(*) FROM dining_places WHERE business_id=?", (biz["id"],)).fetchone()[0]
+    x = 4 + (count % 5) * 18
+    cur = conn.execute(
+        "INSERT INTO dining_places(business_id,kind,name,seats,x,y,locked,created_at,updated_at) VALUES(?,?,?,?,?,?,1,?,?)",
+        (biz["id"], kind, name, seats, x, 4, now, now),
+    )
+    conn.commit()
+    place_id = cur.lastrowid
+    conn.close()
+    return {"id": place_id, "kind": kind, "name": name, "seats": seats, "x": x, "y": 4, "locked": 1}
+
+
+@router.put("/dining/places/{place_id}")
+async def dining_place_edit(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    row = conn.execute("SELECT * FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"])).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Stol yoki xona topilmadi.")
+    b = await request.json()
+    name = (b.get("name") if "name" in b else row["name"])
+    name = str(name or "").strip()[:60] or row["name"]
+    try:
+        seats = max(0, min(100, int(b.get("seats", row["seats"]) or 0))) if row["kind"] == "table" else 0
+        x = max(0.0, min(90.0, float(b.get("x", row["x"]))))
+        y = max(0.0, min(88.0, float(b.get("y", row["y"]))))
+    except (TypeError, ValueError):
+        conn.close()
+        raise HTTPException(400, "Joylashuv qiymati noto'g'ri.")
+    locked = 1 if str(b.get("locked", row["locked"])).lower() in ("1", "true") else 0
+    conn.execute(
+        "UPDATE dining_places SET name=?,seats=?,x=?,y=?,locked=?,updated_at=? WHERE id=? AND business_id=?",
+        (name, seats, x, y, locked, int(time.time()), place_id, biz["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/dining/places/{place_id}")
+async def dining_place_delete(place_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    conn.execute("DELETE FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+# ====================================================================
 # MEDIA QUTISI (botga yuborilgan rasm/videolar)
 # ====================================================================
 @router.get("/media/inbox")
