@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1533 -->
+<title>Platforma</title><!-- BUILD: v1534 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2129,6 +2129,8 @@
   var SEARCH_PAGE = 1;
   var SEARCH_DATA = null;
   var SEARCH_QUERY = "";
+  var SEARCH_REQUEST_SEQ = 0;
+  var SEARCH_PENDING_KEY = "";
   var SEARCH_TYPE_LABELS = {all:"Barchasi",product:"Mahsulot",service:"Xizmat",business:"Biznes",specialist:"Mutaxassis",user:"Foydalanuvchi"};
   var SEARCH_TYPE_PLACEHOLDERS = {all:"Nima qidiryapsiz?",product:"Mahsulot qidirish...",service:"Xizmat qidirish...",business:"Biznes qidirish...",specialist:"Mutaxassis qidirish...",user:"Foydalanuvchi qidirish..."};
   var curYon = null;
@@ -2731,9 +2733,17 @@
     if(!q){ exitResults(); nav("home"); return; }
     if(!append){ SEARCH_PAGE=1; SEARCH_DATA=null; SEARCH_QUERY=q; }
     var requestedPage = append ? SEARCH_PAGE+1 : 1;
+    var requestKey=[q,scope,searchResultType,actorType(),requestedPage].join("|");
+    if(SEARCH_PENDING_KEY===requestKey) return;
+    SEARCH_PENDING_KEY=requestKey;
+    var requestSeq=++SEARCH_REQUEST_SEQ;
     el("searchInput").value = q;
     el("catSearch").value = q;
+    if(!append){
+      enterResults('<div class="empty" style="padding:30px 16px"><h3>Qidirilmoqda…</h3><p>Iltimos, biroz kuting.</p></div>', [], 0);
+    }
     api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&page="+requestedPage+"&page_size=20&"+actorQuery()).then(function(data){
+      if(requestSeq!==SEARCH_REQUEST_SEQ) return;
       if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
       if(append && SEARCH_DATA){
         SEARCH_DATA.products=mergeSearchRows(SEARCH_DATA.products,data.products,"id");
@@ -2752,8 +2762,11 @@
       var r = buildResults(SEARCH_DATA, (SEARCH_TYPE_LABELS[searchResultType]||"Barchasi")+' · "'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
+      if(requestSeq!==SEARCH_REQUEST_SEQ) return;
       if(append && SEARCH_DATA) showMsg(e.message);
       else enterResults('<p class="elon-hint">'+esc(e.message)+'</p>', [], 0);
+    }).finally(function(){
+      if(SEARCH_PENDING_KEY===requestKey) SEARCH_PENDING_KEY="";
     });
   }
   function openType(t){
