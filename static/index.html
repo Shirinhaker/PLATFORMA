@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1530 -->
+<title>Platforma</title><!-- BUILD: v1531 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2126,6 +2126,9 @@
   /* ---------- render: yo'nalishlar (katalog) ---------- */
   var scope = "Tuman";
   var searchResultType = "all";
+  var SEARCH_PAGE = 1;
+  var SEARCH_DATA = null;
+  var SEARCH_QUERY = "";
   var SEARCH_TYPE_LABELS = {all:"Barchasi",product:"Mahsulot",service:"Xizmat",business:"Biznes",specialist:"Mutaxassis",user:"Foydalanuvchi"};
   var SEARCH_TYPE_PLACEHOLDERS = {all:"Nima qidiryapsiz?",product:"Mahsulot qidirish...",service:"Xizmat qidirish...",business:"Biznes qidirish...",specialist:"Mutaxassis qidirish...",user:"Foydalanuvchi qidirish..."};
   var curYon = null;
@@ -2708,20 +2711,49 @@
     if(total===0){
       html += '<div class="empty" style="padding:30px 16px"><h3>Hech narsa topilmadi</h3><p>'+esc(headerLabel)+' bo\'yicha natija yo\'q. Boshqa so\'z bilan qidiring yoki katalogdan tanlang.</p></div>';
     }
+    if(data.has_more){
+      html += '<button class="btn btn-soft btn-block" style="margin:14px 0 6px" data-search-more>Yana ko\'rsatish</button>';
+    }
     return {html:html, pins:pins, total:total};
   }
 
-  function runSearch(q){
+  function mergeSearchRows(oldRows, newRows, keyName){
+    var seen={};
+    return (oldRows||[]).concat(newRows||[]).filter(function(row){
+      var key=String(row[keyName]);
+      if(seen[key]) return false;
+      seen[key]=true;
+      return true;
+    });
+  }
+  function runSearch(q, append){
     q=(q||"").trim();
     if(!q){ exitResults(); nav("home"); return; }
+    if(!append){ SEARCH_PAGE=1; SEARCH_DATA=null; SEARCH_QUERY=q; }
+    var requestedPage = append ? SEARCH_PAGE+1 : 1;
     el("searchInput").value = q;
     el("catSearch").value = q;
-    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&"+actorQuery()).then(function(data){
+    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&page="+requestedPage+"&page_size=20&"+actorQuery()).then(function(data){
       if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
-      var r = buildResults(data, (SEARCH_TYPE_LABELS[searchResultType]||"Barchasi")+' · "'+q+'"', "");
+      if(append && SEARCH_DATA){
+        SEARCH_DATA.products=mergeSearchRows(SEARCH_DATA.products,data.products,"id");
+        SEARCH_DATA.listings=mergeSearchRows(SEARCH_DATA.listings,data.listings,"id");
+        SEARCH_DATA.specialists=mergeSearchRows(SEARCH_DATA.specialists,data.specialists,"user_id");
+        SEARCH_DATA.businesses=mergeSearchRows(SEARCH_DATA.businesses,data.businesses,"id");
+        SEARCH_DATA.users=mergeSearchRows(SEARCH_DATA.users,data.users,"id");
+        SEARCH_DATA.has_more=!!data.has_more;
+        SEARCH_DATA.page=data.page||requestedPage;
+        if(data.corrected) SEARCH_DATA.corrected=data.corrected;
+      }else{
+        SEARCH_DATA=data;
+      }
+      SEARCH_PAGE=SEARCH_DATA.page||requestedPage;
+      SEARCH_QUERY=q;
+      var r = buildResults(SEARCH_DATA, (SEARCH_TYPE_LABELS[searchResultType]||"Barchasi")+' · "'+q+'"', "");
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
-      enterResults('<p class="elon-hint">'+esc(e.message)+'</p>', [], 0);
+      if(append && SEARCH_DATA) showMsg(e.message);
+      else enterResults('<p class="elon-hint">'+esc(e.message)+'</p>', [], 0);
     });
   }
   function openType(t){
@@ -6043,6 +6075,8 @@
   });
 
   document.addEventListener("click", function(e){
+    var sm=e.target.closest("[data-search-more]");
+    if(sm){ sm.disabled=true; runSearch(SEARCH_QUERY||el("catSearch").value,true); return; }
     var lo=e.target.closest("[data-logout]");
     if(lo){
       if(MOBILE_TOKEN){
