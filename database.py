@@ -925,6 +925,7 @@ def _migrate(conn):
     conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS specialists_fts USING fts5(name, body)")
     for suf in ("ai", "ad", "au"):
         conn.execute("DROP TRIGGER IF EXISTS spec_fts_" + suf)
+    conn.execute("DROP TRIGGER IF EXISTS spec_fts_user_au")
 
     _sp_name_new = _canon_expr("COALESCE(new.kasb,'') || ' ' || COALESCE(u.name,'')")
     _sp_body_new = _canon_expr(
@@ -945,17 +946,29 @@ def _migrate(conn):
         "INSERT INTO specialists_fts(rowid, name, body) "
         "SELECT new.user_id, " + _sp_name_new + ", " + _sp_body_new + " "
         "FROM users u WHERE u.id = new.user_id; END")
-    # Indeksga tushmay qolgan mutaxassislarni HAR ishga tushishda to'ldiramiz (bo'sh bo'lishini kutmaymiz)
+    # Foydalanuvchi ismi yoki hududi o'zgarsa mutaxassis indeksini ham darhol yangilaymiz.
+    _sp_name_user = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(new.name,'')")
+    _sp_body_user = _canon_expr(
+        "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
+        "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
+        "COALESCE(new.region,'') || ' ' || COALESCE(new.district,'') || ' ' || COALESCE(new.mahalla,'')")
+    conn.execute(
+        "CREATE TRIGGER spec_fts_user_au AFTER UPDATE OF name, region, district, mahalla ON users BEGIN "
+        "DELETE FROM specialists_fts WHERE rowid = new.id; "
+        "INSERT INTO specialists_fts(rowid, name, body) "
+        "SELECT s.user_id, " + _sp_name_user + ", " + _sp_body_user + " "
+        "FROM specialists s WHERE s.user_id = new.id; END")
+    # Eski BUILDlardan qolgan eskirgan indekslarni HAR ishga tushishda manbadan sinxronlaymiz.
     _sp_name_s = _canon_expr("COALESCE(s.kasb,'') || ' ' || COALESCE(u.name,'')")
     _sp_body_s = _canon_expr(
         "COALESCE(s.descr,'') || ' ' || COALESCE(s.narx,'') || ' ' || COALESCE(s.hudud,'') || ' ' || "
         "COALESCE(s.org,'') || ' ' || COALESCE(s.dept,'') || ' ' || COALESCE(s.lavozim,'') || ' ' || "
         "COALESCE(u.region,'') || ' ' || COALESCE(u.district,'') || ' ' || COALESCE(u.mahalla,'')")
+    conn.execute("DELETE FROM specialists_fts")
     conn.execute(
         "INSERT INTO specialists_fts(rowid, name, body) "
         "SELECT s.user_id, " + _sp_name_s + ", " + _sp_body_s + " "
-        "FROM specialists s JOIN users u ON u.id = s.user_id "
-        "WHERE s.user_id NOT IN (SELECT rowid FROM specialists_fts)")
+        "FROM specialists s JOIN users u ON u.id = s.user_id")
 
     # --- v1401: O'lchov birliklari — items.unit va order_items.unit (eski bazaga xavfsiz) ---
     _icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
