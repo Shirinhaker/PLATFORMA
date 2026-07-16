@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1556 -->
+<title>Platforma</title><!-- BUILD: v1557 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4606,7 +4606,8 @@
     var items=(o.items||[]).map(function(x){return '<div class="idesc" style="margin-top:3px">'+esc(x.name)+' · '+esc(x.qty)+' '+esc(x.unit||"dona")+'</div>';}).join("");
     var kitchen=o.kitchen_status==="done"?"Tayyor":(o.kitchen_status==="preparing"?"Tayyorlanmoqda":"Yangi");
     var payment=o.payment_status==="confirmed"?"To‘lov tasdiqlandi":"Hisob ochiq";
-    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div></div>';
+    var canKitchen=!STAFF_INFO||(STAFF_INFO.perms||[]).indexOf("kitchen")>=0;var readyBtn=canKitchen&&o.status==="active"&&o.kitchen_status!=="done"?'<button class="mini-btn" data-kitchen-done="'+o.id+'" style="width:100%;margin-top:9px;border-color:#16A34A;color:#16A34A">✅ Tayyor bo‘ldi</button>':'';
+    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div>'+readyBtn+'</div>';
   }
   function renderInternalOrders(){
     var box=el("bizInternalOrdersList");if(!box)return;
@@ -4632,6 +4633,7 @@
     }).catch(function(e){showMsg(e.message);});
   }
   if(el("diningOrderTypeTabs"))el("diningOrderTypeTabs").addEventListener("click",function(e){var b=e.target.closest("[data-dining-source]");if(!b)return;DINING_ORDER_SOURCE=b.dataset.diningSource;renderDiningOrderSourceTabs();if(DINING_ORDER_SOURCE==="internal")loadInternalOrders();else loadBizOrders("product");});
+  if(el("bizInternalOrdersList"))el("bizInternalOrdersList").addEventListener("click",function(e){var b=e.target.closest('[data-kitchen-done]');if(!b)return;api('PUT','/api/dining/orders/'+b.dataset.kitchenDone+'/kitchen',{status:'done'}).then(function(){showMsg('Taom tayyor deb belgilandi ✅');loadInternalOrders();}).catch(function(er){showMsg(er.message);});});
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
     api("PUT","/api/orders/"+id+"/status", withActor({status:status}, atype)).then(function(){
@@ -6604,7 +6606,7 @@
   ];
   var STAFF_PERM_TEMPLATES={
     waiter:["dining_places","dining_internal","chats","notifications"],
-    cook:["buyurtma","service_orders","dining_internal","dining_external","kitchen","notifications"],
+    cook:["dining_internal","dining_external","kitchen","notifications"],
     cashier:["buyurtma","service_orders","kassa","open_accounts","payment_review","payment_confirm","payment_problems","debts"],
     storekeeper:["ombor","ready_food","raw_stock","recipes","production","expenses"],
     manager:[]
@@ -10103,7 +10105,8 @@
     ads:{title:"E'lon va reklamalar",ic:"📢",desc:"Reklama boshqaruvi",nav:"cab-elon"},
     documents:{title:"Hujjatlar",ic:"📄",desc:"Firma hujjatlari",nav:"cab-docs"},
     reports:{title:"Hisobotlar",ic:"📑",desc:"Biznes hisobotlari",nav:"cab-report"},
-    dining_places:{title:"Stollar va xonalar",ic:"🍽️",desc:"Zal rejasi",nav:"cab-dining"}
+    dining_places:{title:"Stollar va xonalar",ic:"🍽️",desc:"Zal rejasi",nav:"cab-dining"},
+    kitchen:{title:"Oshpaz buyurtmalari",ic:"👨‍🍳",desc:"Ichki va tashqi zakazlar",nav:"cab-orders"}
   };
   function showStaffLogin(){
     if(el("slErr")) el("slErr").style.display="none";
@@ -10133,6 +10136,7 @@
     window.__businessDirectionLoaded=true;
     STAFF_SECTIONS.items.title=d.business_direction==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
     var cards = perms.map(function(k){
+      if(k==="buyurtma"&&perms.indexOf("kitchen")>=0)return "";
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
       var attr=sc.attr||(sc.nav?('data-nav="'+sc.nav+'"'):'');
       return '<div class="menu-card" '+attr+'><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
