@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1547 -->
+<title>Platforma</title><!-- BUILD: v1548 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1060,7 +1060,12 @@
 
       <!-- CAB: BUYURTMALAR -->
       <section class="screen" data-screen="cab-orders">
+        <div id="diningOrderTypeTabs" style="display:none;gap:7px;margin:8px 0 10px">
+          <button class="seg-b on" data-dining-source="external" style="flex:1;height:40px">🚚 Tashqi buyurtmalar</button>
+          <button class="seg-b" data-dining-source="internal" style="flex:1;height:40px">🍽️ Ichki buyurtmalar</button>
+        </div>
         <div id="bizOrdersList" style="padding:6px 0"></div>
+        <div id="bizInternalOrdersList" style="padding:6px 0;display:none"></div>
       </section>
       <section class="screen" data-screen="cab-service-orders">
         <div id="bizServiceOrdersList" style="padding:6px 0"></div>
@@ -4564,6 +4569,10 @@
   }
   function loadBizOrders(category){
     category=category||((current==="cab-service-orders")?"service":"product");
+    if(category==="product" && window.__businessDirection==="Umumiy ovqatlanish"){
+      renderDiningOrderSourceTabs();
+      if(DINING_ORDER_SOURCE==="internal"){ loadInternalOrders(); return; }
+    }else if(el("diningOrderTypeTabs")){ el("diningOrderTypeTabs").style.display="none"; }
     var boxId=category==="service"?"bizServiceOrdersList":"bizOrdersList";
     api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){
       ORDERS_INBOX = list||[];
@@ -4571,6 +4580,35 @@
       renderOrdersTabbed(ORDERS_INBOX, "inbox", boxId, category);
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
+  var DINING_ORDER_SOURCE="external", DINING_INTERNAL_TAB=null, DINING_INTERNAL_ORDERS=[];
+  function renderDiningOrderSourceTabs(){
+    var tabs=el("diningOrderTypeTabs"),external=el("bizOrdersList"),internal=el("bizInternalOrdersList");if(!tabs)return;
+    tabs.style.display="flex";
+    tabs.querySelectorAll("[data-dining-source]").forEach(function(b){b.classList.toggle("on",b.dataset.diningSource===DINING_ORDER_SOURCE);});
+    external.style.display=DINING_ORDER_SOURCE==="external"?"":"none";
+    internal.style.display=DINING_ORDER_SOURCE==="internal"?"":"none";
+  }
+  function internalOrderCard(o){
+    var items=(o.items||[]).map(function(x){return '<div class="idesc" style="margin-top:3px">'+esc(x.name)+' · '+esc(x.qty)+' '+esc(x.unit||"dona")+'</div>';}).join("");
+    var kitchen=o.kitchen_status==="done"?"Tayyor":(o.kitchen_status==="preparing"?"Tayyorlanmoqda":"Yangi");
+    var payment=o.payment_status==="confirmed"?"To‘lov tasdiqlandi":"Hisob ochiq";
+    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div></div>';
+  }
+  function renderInternalOrders(){
+    var box=el("bizInternalOrdersList");if(!box)return;
+    var problem=DINING_INTERNAL_ORDERS.filter(function(o){return !!o.problem_open;});
+    var active=DINING_INTERNAL_ORDERS.filter(function(o){return o.status==="active"&&!o.problem_open;});
+    var done=DINING_INTERNAL_ORDERS.filter(function(o){return o.status==="done"&&!o.problem_open;});
+    var cur=DINING_INTERNAL_TAB;if(cur!=="active"&&cur!=="problem"&&cur!=="done")cur=active.length?"active":(problem.length?"problem":(done.length?"done":"active"));
+    DINING_INTERNAL_TAB=cur;var shown=cur==="done"?done:(cur==="problem"?problem:active);
+    box.innerHTML='<div style="display:flex;gap:6px;margin:8px 0 12px"><button class="seg-b '+(cur==="active"?'on':'')+'" data-iotab="active" style="flex:1;height:38px">Buyurtmalar ('+active.length+')</button><button class="seg-b '+(cur==="problem"?'on':'')+'" data-iotab="problem" style="flex:1;height:38px">Muammoli ('+problem.length+')</button><button class="seg-b '+(cur==="done"?'on':'')+'" data-iotab="done" style="flex:1;height:38px">Yakunlangan ('+done.length+')</button></div>'+(shown.length?shown.map(internalOrderCard).join(""):'<div class="empty" style="padding:26px 16px"><h3>Buyurtma yo‘q</h3></div>');
+    box.querySelectorAll("[data-iotab]").forEach(function(b){b.onclick=function(){DINING_INTERNAL_TAB=b.dataset.iotab;renderInternalOrders();};});
+  }
+  function loadInternalOrders(){
+    renderDiningOrderSourceTabs();el("bizInternalOrdersList").innerHTML='<div class="idesc">Ichki buyurtmalar yuklanmoqda...</div>';
+    api("GET","/api/dining/orders").then(function(rows){DINING_INTERNAL_ORDERS=rows||[];renderInternalOrders();}).catch(function(e){el("bizInternalOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
+  }
+  if(el("diningOrderTypeTabs"))el("diningOrderTypeTabs").addEventListener("click",function(e){var b=e.target.closest("[data-dining-source]");if(!b)return;DINING_ORDER_SOURCE=b.dataset.diningSource;renderDiningOrderSourceTabs();if(DINING_ORDER_SOURCE==="internal")loadInternalOrders();else loadBizOrders("product");});
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
     api("PUT","/api/orders/"+id+"/status", withActor({status:status}, atype)).then(function(){
@@ -8644,6 +8682,7 @@
       if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
+      window.__businessDirection=b.yon||"";
       var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
       if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
       titles["cab-items"]=diningMenuName;
@@ -10033,6 +10072,7 @@
   }
   function renderStaffHome(d){
     var perms = d.perms || [];
+    window.__businessDirection=d.business_direction||"";
     STAFF_SECTIONS.items.title=d.business_direction==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
     var cards = perms.map(function(k){
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
