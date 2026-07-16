@@ -1517,7 +1517,7 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
              "min_qty": _row_val(r, "min_qty", 0) or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
-             "photo_file": r["photo_file"]} for r in rows]
+             "photo_file": r["photo_file"], "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
 
 
 @router.post("/items")
@@ -1534,10 +1534,11 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, stock_type, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b), int(time.time())),
+         (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b),
+         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -1565,10 +1566,11 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=?, stock_type=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b), item_id, biz["id"]),
+         (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b),
+         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -3063,7 +3065,7 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     need_perm(conn, x_telegram_init_data, "ombor")
     _ensure_item_min_qty(conn)
     rows = conn.execute(
-        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, "
+        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
         "g.name AS group_name FROM items i "
         "LEFT JOIN item_groups g ON g.id = i.group_id "
         "WHERE i.business_id=? AND i.track_stock=1 "
@@ -3074,7 +3076,7 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
                "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
                "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
-               "group_name": r["group_name"] or ""} for r in rows]
+               "group_name": r["group_name"] or "", "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
     conn.close()
     return result
 
