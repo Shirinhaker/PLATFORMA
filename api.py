@@ -3086,6 +3086,21 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     return result
 
 
+@router.get("/stock/recipe/{ready_item_id}")
+async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ombor")
+    ready = conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND stock_type='ready_food'", (ready_item_id, biz["id"])).fetchone()
+    if not ready:
+        conn.close(); raise HTTPException(404, "Tayyor taom topilmadi.")
+    rows = conn.execute(
+        """SELECT r.ingredient_item_id AS item_id,r.qty_per_unit,i.name,i.unit
+           FROM item_recipes r JOIN items i ON i.id=r.ingredient_item_id
+           WHERE r.business_id=? AND r.ready_item_id=? ORDER BY i.name COLLATE NOCASE""",
+        (biz["id"], ready_item_id)).fetchall()
+    conn.close(); return [dict(r) for r in rows]
+
+
 @router.post("/stock/move")
 async def stock_move(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -3154,6 +3169,11 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
                 "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,cost,order_id,user_id,created_at) VALUES(?,?,?,?,?,?,NULL,?,?)",
                 (biz["id"], rit["id"], -rq, "chiqim", "Ishlab chiqarish #%d: %s" % (batch, it["name"]), 0, user["id"], now))
         conn.execute("UPDATE stock_moves SET note=? WHERE id=?", ("Ishlab chiqarish #%d" % batch + (" — " + note if note else ""), cur_m.lastrowid))
+        if body.get("save_recipe"):
+            conn.execute("DELETE FROM item_recipes WHERE business_id=? AND ready_item_id=?", (biz["id"], item_id))
+            conn.executemany(
+                "INSERT INTO item_recipes(business_id,ready_item_id,ingredient_item_id,qty_per_unit,updated_at) VALUES(?,?,?,?,?)",
+                [(biz["id"], item_id, rit["id"], round(float(rq)/float(delta), 6), now) for rit, rq in production_inputs])
     # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
     if delta > 0 and cost > 0:
         _spent = int(round(cost * float(delta)))
