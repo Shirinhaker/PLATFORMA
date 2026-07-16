@@ -945,6 +945,8 @@ def _migrate(conn):
     _icols2 = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "track_stock" not in _icols2:
         conn.execute("ALTER TABLE items ADD COLUMN track_stock INTEGER DEFAULT 0")
+    if "stock_type" not in _icols2:
+        conn.execute("ALTER TABLE items ADD COLUMN stock_type TEXT DEFAULT 'ready_food'")
     if "stock_qty" not in _icols2:
         conn.execute("ALTER TABLE items ADD COLUMN stock_qty REAL DEFAULT 0")
     conn.execute(
