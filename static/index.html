@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1552 -->
+<title>Platforma</title><!-- BUILD: v1553 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -968,6 +968,7 @@
           <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
           <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
           <div class="field"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
+          <div class="field" id="itStockTypeWrap" style="display:none"><label>Ombor bo‘limi</label><select class="input" id="itStockType"><option value="ready_food">Tayyor taomlar</option><option value="raw_material">Mahsulotlar (xomashyo)</option></select></div>
           <div class="field" id="itStockWrap" style="display:none"><label>Boshlang'ich qoldiq (ombordagi hozirgi soni)</label><input class="input" id="itStockQty" inputmode="decimal" placeholder="0"></div>
           <div class="field" id="itMinWrap" style="display:none"><label>Kam qoldi chegarasi (shu songa tushsa ⚠️ belgisi chiqadi)</label><input class="input" id="itMinQty" inputmode="decimal" placeholder="masalan: 5"></div>
           <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
@@ -1081,6 +1082,7 @@
       <!-- CAB: OMBOR -->
       <section class="screen" data-screen="cab-ombor">
         <div class="idesc" style="margin:2px 2px 10px">Qoldiq yuritish uchun mahsulot tahririda «Omborda hisoblash»ni yoqing. Kirim — tovar keldi, Chiqim — sotildi/chiqdi.</div>
+        <div id="diningStockTabs" style="display:none;gap:7px;margin:8px 0 12px"><button class="seg-b on" data-stock-type="ready_food" style="flex:1;height:40px">🍽️ Tayyor taomlar</button><button class="seg-b" data-stock-type="raw_material" style="flex:1;height:40px">🥕 Mahsulotlar</button></div>
         <div id="omborList"></div>
       </section>
 
@@ -4604,8 +4606,7 @@
     var items=(o.items||[]).map(function(x){return '<div class="idesc" style="margin-top:3px">'+esc(x.name)+' · '+esc(x.qty)+' '+esc(x.unit||"dona")+'</div>';}).join("");
     var kitchen=o.kitchen_status==="done"?"Tayyor":(o.kitchen_status==="preparing"?"Tayyorlanmoqda":"Yangi");
     var payment=o.payment_status==="confirmed"?"To‘lov tasdiqlandi":"Hisob ochiq";
-    var add=o.status==="active"&&o.payment_status!=="confirmed"?'<button class="mini-btn" data-dining-add="'+o.id+'" style="margin-top:9px">+ Taom qo‘shish</button>':'';
-    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div>'+add+'</div>';
+    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div></div>';
   }
   function renderInternalOrders(){
     var box=el("bizInternalOrdersList");if(!box)return;
@@ -4630,7 +4631,6 @@
       sheet.querySelector('.acf-ok').onclick=function(){var items=Object.keys(cart).filter(function(k){return cart[k]>0;}).map(function(k){return {item_id:+k,qty:cart[k]};});if(!items.length){showMsg("Taom tanlang.");return;}api("POST","/api/dining/orders/"+orderId+"/items",{items:items}).then(function(){close();showMsg("Taom qo‘shildi ✅");if(current==="cab-kassa")loadKassa();else loadInternalOrders();}).catch(function(e){showMsg(e.message);});};
     }).catch(function(e){showMsg(e.message);});
   }
-  if(el("bizInternalOrdersList"))el("bizInternalOrdersList").addEventListener("click",function(e){var b=e.target.closest("[data-dining-add]");if(b)openDiningAddItems(+b.dataset.diningAdd);});
   if(el("diningOrderTypeTabs"))el("diningOrderTypeTabs").addEventListener("click",function(e){var b=e.target.closest("[data-dining-source]");if(!b)return;DINING_ORDER_SOURCE=b.dataset.diningSource;renderDiningOrderSourceTabs();if(DINING_ORDER_SOURCE==="internal")loadInternalOrders();else loadBizOrders("product");});
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
@@ -6305,12 +6305,15 @@
   el("regMethodBack") && el("regMethodBack").addEventListener("click",resetRegisterMethod);
 
   /* ---------- OMBOR (qoldiq + kirim-chiqim, guruhli ko'rinish) ---------- */
+  var OMBOR_STOCK_TYPE="ready_food", OMBOR_LAST_GROUPS=[], OMBOR_LAST_ROWS=[];
   function stockColor(q){ q = parseFloat(q)||0; if(q < 0) return "#e53935"; if(q === 0) return "#e6a100"; return "inherit"; }
   function loadOmbor(){
     var box = el("omborList");
+    if(!window.__businessDirectionLoaded){api("GET","/api/me").then(function(d){window.__businessDirection=((d.business||{}).yon||"");window.__businessDirectionLoaded=true;loadOmbor();}).catch(function(){window.__businessDirectionLoaded=true;loadOmbor();});return;}
+    var tabs=el("diningStockTabs"),dining=window.__businessDirection==="Umumiy ovqatlanish";if(tabs)tabs.style.display=dining?"flex":"none";
     box.innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
     Promise.all([api("GET","/api/item-groups"), api("GET","/api/stock")]).then(function(res){
-      renderOmbor(res[0]||[], res[1]||[]);
+      OMBOR_LAST_GROUPS=res[0]||[];OMBOR_LAST_ROWS=res[1]||[];renderOmbor(OMBOR_LAST_GROUPS, OMBOR_LAST_ROWS);
     }).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function _ombCard(r){
@@ -6328,6 +6331,9 @@
     '</div>';
   }
   function renderOmbor(groups, rows){
+    var dining=window.__businessDirection==="Umumiy ovqatlanish";
+    if(dining)rows=(rows||[]).filter(function(r){return (r.stock_type||"ready_food")===OMBOR_STOCK_TYPE;});
+    var tabs=el("diningStockTabs");if(tabs)tabs.querySelectorAll("[data-stock-type]").forEach(function(b){b.classList.toggle("on",b.dataset.stockType===OMBOR_STOCK_TYPE);});
     var used = {};
     (groups||[]).forEach(function(g){ used[String(g.id)] = true; });
     function block(gid, title, arr){
@@ -6344,6 +6350,7 @@
     if(ung.length || !(groups||[]).length) html += block("", "Guruhsiz", ung);
     el("omborList").innerHTML = html;
   }
+  if(el("diningStockTabs"))el("diningStockTabs").addEventListener("click",function(e){var b=e.target.closest("[data-stock-type]");if(!b)return;OMBOR_STOCK_TYPE=b.dataset.stockType;renderOmbor(OMBOR_LAST_GROUPS,OMBOR_LAST_ROWS);});
   // Chiqim formasi (miqdor + izoh)
   function stockMoveForm(id, name, unit, sign){
     askInput({
@@ -9292,6 +9299,8 @@
     el("itPrice").value = data ? (data.price || "") : "";
     el("itUnit").value = data ? (data.unit || "dona") : "dona";
     el("itTrack").value = data ? String(data.track_stock || 0) : (itemFormReturnTo==="cab-ombor" ? "1" : "0");
+    el("itStockType").value=data?(data.stock_type||"ready_food"):(itemFormReturnTo==="cab-ombor"?OMBOR_STOCK_TYPE:"ready_food");
+    el("itStockTypeWrap").style.display=(window.__businessDirection==="Umumiy ovqatlanish"&&el("itTrack").value==="1")?"block":"none";
     el("itStockQty").value = "";
     el("itStockWrap").style.display = (!data && el("itTrack").value==="1") ? "block" : "none";
     el("itMinQty").value = (data && data.min_qty>0) ? String(data.min_qty) : "";
@@ -9338,6 +9347,7 @@
   el("itTrack").addEventListener("change", function(){
     el("itStockWrap").style.display = (!editItemId && el("itTrack").value==="1") ? "block" : "none";
     el("itMinWrap").style.display = (el("itTrack").value==="1") ? "block" : "none";
+    el("itStockTypeWrap").style.display=(window.__businessDirection==="Umumiy ovqatlanish"&&el("itTrack").value==="1")?"block":"none";
   });
   el("itKindRow").addEventListener("click", function(e){
     var c=e.target.closest("[data-kind]"); if(!c) return;
@@ -9349,7 +9359,7 @@
     var on = el("itKindRow").querySelector("[data-kind].on");
     var kind = on ? on.getAttribute("data-kind") : "product";
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl,
+    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), stock_type:el("itStockType").value||"ready_food", note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl,
       min_qty: (parseInt(el("itTrack").value||"0",10)===1 ? (parseFloat(String(el("itMinQty").value||"").replace(",", "."))||0) : 0)};
     var wasEdit = !!editItemId;
     var initQty = (!editItemId && parseInt(el("itTrack").value||"0",10)===1)
