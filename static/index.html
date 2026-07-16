@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1554 -->
+<title>Platforma</title><!-- BUILD: v1555 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6324,7 +6324,7 @@
       ((r.min_qty>0 && (r.stock_qty||0)<=r.min_qty) ? '<div style="display:inline-block;margin-top:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;color:#b45309;background:rgba(230,161,0,.15)">⚠️ Kam qoldi</div>' : '')+
       (r.cost_price ? '<div class="idesc">Tannarx: '+moneyText(r.cost_price)+'</div>' : '<div class="idesc">Tannarx yo\'q</div>')+
       '<div style="display:flex;gap:4px;margin-top:6px">'+
-        '<button class="mini-btn" style="flex:1;height:32px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-cost="'+(r.cost_price||0)+'">+</button>'+
+        '<button class="mini-btn" style="flex:1;height:32px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-cost="'+(r.cost_price||0)+'" data-st-type="'+(window.__businessDirection==="Umumiy ovqatlanish"?esc(r.stock_type||"ready_food"):"general")+'">+</button>'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-stock="'+(r.stock_qty||0)+'">−</button>'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-hist="'+r.id+'" data-st-name="'+esc(r.name)+'">🕒</button>'+
       '</div>'+
@@ -6371,7 +6371,7 @@
     });
   }
   // Kirim oynasi: Miqdor / Tannarx (1 birlik) / Umumiy — uchalasi o'zaro bog'langan
-  function openKirimForm(id, name, unit, cost0){
+  function openKirimForm(id, name, unit, cost0, stockType){
     var back = document.getElementById("kirimBack"), sheet = document.getElementById("kirimSheet");
     if(!back){
       back = document.createElement("div"); back.id = "kirimBack"; back.className = "app-modal-back";
@@ -6379,6 +6379,8 @@
       document.body.appendChild(back); document.body.appendChild(sheet);
     }
     var frac = unitAllowsFraction(unit);
+    var rawItems=(OMBOR_LAST_ROWS||[]).filter(function(r){return (r.stock_type||"ready_food")==="raw_material";});
+    var productionHtml=stockType==="ready_food"?'<div style="text-align:left;margin:12px 2px 5px;font-size:13px;font-weight:800">Sarflangan mahsulotlar</div><div class="idesc" style="text-align:left;margin-bottom:7px">Ushbu kirim uchun jami sarflangan xomashyo miqdorini kiriting.</div>'+(rawItems.length?'<div style="max-height:190px;overflow:auto">'+rawItems.map(function(r){return '<div class="dorder-row"><div><b>'+esc(r.name)+'</b><div class="idesc">Qoldiq: '+fmtQty(r.stock_qty||0)+' '+esc(r.unit||"dona")+'</div></div><input class="input" data-prod-raw="'+r.id+'" inputmode="decimal" placeholder="0 '+esc(r.unit||"dona")+'" style="width:105px;height:38px"></div>';}).join('')+'</div>':'<div class="idesc" style="color:#b45309;text-align:left">Avval “Mahsulotlar” bo‘limiga xomashyo qo‘shing.</div>'):'';
     sheet.innerHTML =
       '<div class="acf-title" style="margin-bottom:2px">Kirim: '+esc(name)+'</div>'+
       '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(unit)+')'+(frac?'':' — butun son')+'</div>'+
@@ -6389,6 +6391,7 @@
       '<input class="input" id="kirTot" type="text" inputmode="numeric">'+
       '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Izoh (ixtiyoriy)</div>'+
       '<input class="input" id="kirNote" type="text" placeholder="masalan: yangi partiya">'+
+      productionHtml+
       '<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
     function close(){ back.classList.remove("on"); sheet.classList.remove("on"); }
     var qEl = sheet.querySelector("#kirQty"), cEl = sheet.querySelector("#kirCost"), tEl = sheet.querySelector("#kirTot");
@@ -6408,7 +6411,9 @@
       if(!frac) q = Math.floor(q+0.5);
       q = Math.round(q*1000)/1000;
       if(!(q>0)){ showMsg("Miqdor noto'g'ri."); return; }
-      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: q, cost: rc(), note: (sheet.querySelector("#kirNote").value||"").trim() })
+      var ingredients=[];sheet.querySelectorAll('[data-prod-raw]').forEach(function(inp){var v=parseFloat(String(inp.value||"").replace(",","."));if(v>0)ingredients.push({item_id:parseInt(inp.dataset.prodRaw,10),qty:v});});
+      if(stockType==="ready_food"&&!ingredients.length){showMsg("Sarflangan mahsulotlarni kiriting.");return;}
+      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: q, cost: rc(), note: (sheet.querySelector("#kirNote").value||"").trim(), ingredients:ingredients })
         .then(function(){ close(); showMsg("Kirim yozildi ✅"); loadOmbor(); })
         .catch(function(e){ showMsg(e.message); });
     };
@@ -6504,7 +6509,7 @@
   }
   document.addEventListener("click", function(e){
     var a = e.target.closest("[data-st-in]");
-    if(a){ openKirimForm(a.getAttribute("data-st-in"), a.getAttribute("data-st-name"), a.getAttribute("data-st-unit"), parseInt(a.getAttribute("data-st-cost")||"0",10)); return; }
+    if(a){ openKirimForm(a.getAttribute("data-st-in"), a.getAttribute("data-st-name"), a.getAttribute("data-st-unit"), parseInt(a.getAttribute("data-st-cost")||"0",10), a.getAttribute("data-st-type")||"ready_food"); return; }
     var b = e.target.closest("[data-st-out]");
     if(b){ openChiqimForm(b.getAttribute("data-st-out"), b.getAttribute("data-st-name"), b.getAttribute("data-st-unit"), parseFloat(b.getAttribute("data-st-stock")||"0")||0); return; }
     var h = e.target.closest("[data-st-hist]");
