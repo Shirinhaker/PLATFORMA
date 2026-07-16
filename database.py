@@ -1367,7 +1367,19 @@ def _migrate(conn):
         "kind TEXT NOT NULL CHECK(kind IN ('order','booking')), customer_name TEXT DEFAULT '', "
         "phone TEXT DEFAULT '', booking_date TEXT DEFAULT '', booking_time TEXT DEFAULT '', "
         "guests INTEGER DEFAULT 0, note TEXT DEFAULT '', total INTEGER DEFAULT 0, "
+        "waiter_staff_id INTEGER, waiter_name TEXT DEFAULT '', problem_open INTEGER DEFAULT 0, "
+        "kitchen_status TEXT DEFAULT 'new', payment_status TEXT DEFAULT 'open', "
         "status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+    _dbc = [r["name"] for r in conn.execute("PRAGMA table_info(dining_bookings)").fetchall()]
+    for _name, _sql in (
+        ("waiter_staff_id", "ALTER TABLE dining_bookings ADD COLUMN waiter_staff_id INTEGER"),
+        ("waiter_name", "ALTER TABLE dining_bookings ADD COLUMN waiter_name TEXT DEFAULT ''"),
+        ("problem_open", "ALTER TABLE dining_bookings ADD COLUMN problem_open INTEGER DEFAULT 0"),
+        ("kitchen_status", "ALTER TABLE dining_bookings ADD COLUMN kitchen_status TEXT DEFAULT 'new'"),
+        ("payment_status", "ALTER TABLE dining_bookings ADD COLUMN payment_status TEXT DEFAULT 'open'"),
+    ):
+        if _name not in _dbc:
+            conn.execute(_sql)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_bookings_place ON dining_bookings(business_id,place_id,status,id)")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS dining_booking_items("
