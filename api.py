@@ -1827,6 +1827,22 @@ async def dining_orders(x_telegram_init_data: str = Header(default="")):
     return result
 
 
+@router.put("/dining/orders/{order_id}/kitchen")
+async def dining_order_kitchen(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kitchen")
+    body = await request.json(); status = (body.get("status") or "").strip()
+    if status not in ("preparing", "done"):
+        conn.close(); raise HTTPException(400, "Oshxona holati noto'g'ri.")
+    row = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
+    if not row:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if row["status"] != "active":
+        conn.close(); raise HTTPException(409, "Yakunlangan buyurtma o'zgartirilmaydi.")
+    conn.execute("UPDATE dining_bookings SET kitchen_status=?,updated_at=? WHERE id=?", (status, int(time.time()), order_id))
+    conn.commit(); conn.close(); return {"ok": True, "kitchen_status": status}
+
+
 def _dining_prepare_items(conn, biz_id, incoming):
     wanted = {}
     for it in (incoming or [])[:100]:
