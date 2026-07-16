@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1548 -->
+<title>Platforma</title><!-- BUILD: v1549 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1086,6 +1086,7 @@
 
       <!-- CAB: KASSA -->
       <section class="screen" data-screen="cab-kassa">
+        <div id="diningOpenAccounts" style="display:none"></div>
         <div class="q-total"><div class="eyebrow" id="kassaDayLbl">Bugungi tushum</div><div class="q-amount" id="kassaTotal">0 so'm</div><div class="q-sub" id="kassaBreak"></div></div>
         <div style="display:flex;gap:6px;margin:10px 0 8px">
           <button class="mini-btn" style="flex:1;height:38px" id="kassaPrevDay">← Oldingi</button>
@@ -4592,7 +4593,8 @@
     var items=(o.items||[]).map(function(x){return '<div class="idesc" style="margin-top:3px">'+esc(x.name)+' · '+esc(x.qty)+' '+esc(x.unit||"dona")+'</div>';}).join("");
     var kitchen=o.kitchen_status==="done"?"Tayyor":(o.kitchen_status==="preparing"?"Tayyorlanmoqda":"Yangi");
     var payment=o.payment_status==="confirmed"?"To‘lov tasdiqlandi":"Hisob ochiq";
-    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div></div>';
+    var add=o.status==="active"&&o.payment_status!=="confirmed"?'<button class="mini-btn" data-dining-add="'+o.id+'" style="margin-top:9px">+ Taom qo‘shish</button>':'';
+    return '<div class="panel-card" style="margin:9px 0"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>'+(o.place_kind==="room"?'🚪':'🪑')+' '+esc(o.place_name||"")+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><span class="idesc">'+notifyTime(o.created_at)+'</span></div>'+items+'<div style="display:flex;justify-content:space-between;gap:8px;align-items:end;margin-top:10px"><div><span class="order-status-pill">👨‍🍳 '+esc(kitchen)+'</span><div class="idesc" style="margin-top:5px">💳 '+esc(payment)+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div>'+add+'</div>';
   }
   function renderInternalOrders(){
     var box=el("bizInternalOrdersList");if(!box)return;
@@ -4608,6 +4610,16 @@
     renderDiningOrderSourceTabs();el("bizInternalOrdersList").innerHTML='<div class="idesc">Ichki buyurtmalar yuklanmoqda...</div>';
     api("GET","/api/dining/orders").then(function(rows){DINING_INTERNAL_ORDERS=rows||[];renderInternalOrders();}).catch(function(e){el("bizInternalOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
   }
+  function openDiningAddItems(orderId){
+    api("GET","/api/items").then(function(rows){
+      var back=document.createElement("div"),sheet=document.createElement("div"),cart={};back.className="app-modal-back on";sheet.className="app-confirm on";
+      sheet.innerHTML='<div class="acf-title">Taom qo‘shish</div><div style="max-height:48vh;overflow:auto;margin:10px 0">'+(rows||[]).map(function(it){return '<div class="dorder-row"><div><b>'+esc(it.name)+'</b><div class="idesc">'+moneyText(parsePriceAmount(it.price)||0)+' so‘m</div></div><div class="dorder-step"><button data-dia-minus="'+it.id+'">−</button><b data-dia-qty="'+it.id+'">0</b><button data-dia-plus="'+it.id+'">+</button></div></div>';}).join('')+'</div><div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Qo‘shish</button></div>';
+      document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;sheet.querySelector('.acf-cancel').onclick=close;
+      sheet.onclick=function(e){var p=e.target.closest('[data-dia-plus]'),m=e.target.closest('[data-dia-minus]');if(!p&&!m)return;var id=(p?p.dataset.diaPlus:m.dataset.diaMinus);cart[id]=Math.max(0,(cart[id]||0)+(p?1:-1));sheet.querySelector('[data-dia-qty="'+id+'"]').textContent=cart[id];};
+      sheet.querySelector('.acf-ok').onclick=function(){var items=Object.keys(cart).filter(function(k){return cart[k]>0;}).map(function(k){return {item_id:+k,qty:cart[k]};});if(!items.length){showMsg("Taom tanlang.");return;}api("POST","/api/dining/orders/"+orderId+"/items",{items:items}).then(function(){close();showMsg("Taom qo‘shildi ✅");if(current==="cab-kassa")loadKassa();else loadInternalOrders();}).catch(function(e){showMsg(e.message);});};
+    }).catch(function(e){showMsg(e.message);});
+  }
+  if(el("bizInternalOrdersList"))el("bizInternalOrdersList").addEventListener("click",function(e){var b=e.target.closest("[data-dining-add]");if(b)openDiningAddItems(+b.dataset.diningAdd);});
   if(el("diningOrderTypeTabs"))el("diningOrderTypeTabs").addEventListener("click",function(e){var b=e.target.closest("[data-dining-source]");if(!b)return;DINING_ORDER_SOURCE=b.dataset.diningSource;renderDiningOrderSourceTabs();if(DINING_ORDER_SOURCE==="internal")loadInternalOrders();else loadBizOrders("product");});
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
@@ -7664,6 +7676,9 @@
       .catch(function(e){ el("kassaList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function renderKassa(data){
+    var da=el("diningOpenAccounts"),opens=data.dining_open||[];
+    window.__diningCashOrders={};opens.forEach(function(o){window.__diningCashOrders[o.id]=o;});
+    if(da){da.style.display=opens.length?"":"none";da.innerHTML=opens.length?'<div class="item" style="display:block;margin-bottom:10px"><b>🍽️ Ochiq ichki hisoblar ('+opens.length+')</b>'+opens.map(function(o){return '<div style="border-top:1px solid var(--line);padding-top:9px;margin-top:9px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(o.place_name)+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div><button class="mini-btn" data-dining-cash-edit="'+o.id+'" style="margin-top:7px;width:100%">Tarkibni tahrirlash</button><div style="display:flex;gap:6px;margin-top:7px"><button class="mini-btn" data-dining-pay="'+o.id+'" data-pay-type="naqd" style="flex:1">Naqd tasdiqlash</button><button class="mini-btn" data-dining-pay="'+o.id+'" data-pay-type="karta" style="flex:1">Karta tasdiqlash</button></div></div>';}).join('')+'</div>':'';}
     var t = data.totals || {};
     el("kassaDayLbl").textContent = kassaDay ? (data.day+" tushumi") : "Bugungi tushum";
     el("kassaTotal").textContent = moneyText(t.all||0)+" so'm";
@@ -7691,6 +7706,8 @@
         title = "Buyurtma #"+g.order_id;
         var curPay = g.lines[0].pay_type||"";
         delBtn = '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-order-pay="'+g.sale_id+'">'+(curPay ? "O\'zgartirish" : "To\'lov turini belgilash")+'</button>';
+      } else if(g.source==="dining"){
+        title = "🍽️ Ichki buyurtma #"+g.order_id;
       } else if(g.source==="qarzpay"){
         title = "💵 "+esc(g.lines[0].item_name);
         delBtn = '<button class="mini-btn" style="height:30px;flex:0 0 auto" data-ks-del="'+g.sale_id+'">O\'chirish</button>';
@@ -7704,7 +7721,7 @@
       var linesHtml = g.source==="qarzpay" ? "" : g.lines.map(function(sl){
         return '<div class="idesc" style="margin-top:2px">• '+esc(sl.item_name)+' × '+fmtQty(sl.qty)+((sl.unit&&sl.unit!=="dona")?" "+esc(sl.unit):"")+' — '+moneyText(sl.total)+'</div>';
       }).join("");
-      var srcTxt = g.source==="order" ? "Buyurtmadan" : (g.source==="qarzpay" ? (g.who?esc(g.who):"") : ('Qo\'lda'+(g.who?' · '+esc(g.who):'')));
+      var srcTxt = g.source==="order" ? "Tashqi buyurtmadan" : (g.source==="dining" ? "Ichki buyurtmadan" : (g.source==="qarzpay" ? (g.who?esc(g.who):"") : ('Qo\'lda'+(g.who?' · '+esc(g.who):''))));
       return '<div class="item" style="display:block;margin-bottom:7px">'+
         '<div style="display:flex;justify-content:space-between;gap:8px"><div class="iname" style="min-width:0">'+title+'</div><div class="iprice" style="flex:0 0 auto">'+moneyText(g.total)+'</div></div>'+
         linesHtml+
@@ -7712,6 +7729,14 @@
       '</div>';
     }).join("");
   }
+  function openDiningCashEdit(id){
+    var o=(window.__diningCashOrders||{})[id];if(!o)return;var back=document.createElement("div"),sheet=document.createElement("div"),qty={};back.className="app-modal-back on";sheet.className="app-confirm on";(o.items||[]).forEach(function(x){qty[x.id]=parseFloat(x.qty)||0;});
+    sheet.innerHTML='<div class="acf-title">Kassir — hisobni tahrirlash</div><div style="max-height:48vh;overflow:auto;margin:10px 0">'+(o.items||[]).map(function(x){return '<div class="dorder-row"><div><b>'+esc(x.name)+'</b><div class="idesc">'+moneyText(x.price||0)+' so‘m</div></div><div class="dorder-step"><button data-dce-minus="'+x.id+'">−</button><b data-dce-qty="'+x.id+'">'+fmtQty(qty[x.id])+'</b><button data-dce-plus="'+x.id+'">+</button></div></div>';}).join('')+'</div><button class="mini-btn" data-dce-add style="width:100%;margin-bottom:8px">+ Yangi taom qo‘shish</button><div class="idesc">0 ga tushirilgan taom hisobdan o‘chadi.</div><div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
+    document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;sheet.querySelector('.acf-cancel').onclick=close;
+    sheet.addEventListener('click',function(e){if(e.target.closest('[data-dce-add]')){close();openDiningAddItems(id);return;}var p=e.target.closest('[data-dce-plus]'),m=e.target.closest('[data-dce-minus]');if(!p&&!m)return;var k=+(p?p.dataset.dcePlus:m.dataset.dceMinus);qty[k]=Math.max(0,(qty[k]||0)+(p?1:-1));sheet.querySelector('[data-dce-qty="'+k+'"]').textContent=fmtQty(qty[k]);});
+    sheet.querySelector('.acf-ok').onclick=function(){var items=Object.keys(qty).map(function(k){return {line_id:+k,qty:qty[k]};});api('PUT','/api/dining/orders/'+id+'/cashier-items',{items:items}).then(function(){close();showMsg('Hisob yangilandi ✅');loadKassa();}).catch(function(er){showMsg(er.message);});};
+  }
+  if(el("diningOpenAccounts"))el("diningOpenAccounts").addEventListener("click",function(e){var ed=e.target.closest('[data-dining-cash-edit]');if(ed){openDiningCashEdit(+ed.dataset.diningCashEdit);return;}var b=e.target.closest("[data-dining-pay]");if(!b)return;askConfirm({text:"To‘lov qabul qilinganini tasdiqlaysizmi?",okText:"Tasdiqlash"}).then(function(ok){if(!ok)return;api("POST","/api/dining/orders/"+b.dataset.diningPay+"/payment",{pay_type:b.dataset.payType}).then(function(){showMsg("To‘lov tasdiqlandi ✅");loadKassa();}).catch(function(er){showMsg(er.message);});});});
 
   /* --- Kassa cheki: bir nechta mahsulot, miqdor <-> summa bog'langan --- */
   var ksSel = {};    // key -> {key,item_id,name,unit,pv,price,qty,custom}
