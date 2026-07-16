@@ -1428,7 +1428,9 @@ async def item_groups(x_telegram_init_data: str = Header(default="")):
         (biz["id"],),
     ).fetchall()
     conn.close()
-    return [{"id": r["id"], "name": r["name"], "kind": r["kind"], "created_at": r["created_at"]} for r in rows]
+    return [{"id": r["id"], "name": r["name"], "kind": r["kind"],
+             "storage_type": _row_val(r, "storage_type", "ready_food") or "ready_food",
+             "created_at": r["created_at"]} for r in rows]
 
 
 @router.post("/item-groups")
@@ -1444,13 +1446,14 @@ async def add_item_group(request: Request, x_telegram_init_data: str = Header(de
         raise HTTPException(400, "Guruh nomi kiritilishi shart.")
     kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
     cur = conn.execute(
-        "INSERT INTO item_groups(business_id, name, kind, created_at) VALUES(?,?,?,?)",
-        (biz["id"], name, kind, int(time.time())),
+        "INSERT INTO item_groups(business_id, name, kind, storage_type, created_at) VALUES(?,?,?,?,?)",
+        (biz["id"], name, kind, "raw_material" if b.get("storage_type") == "raw_material" else "ready_food", int(time.time())),
     )
     conn.commit()
     gid = cur.lastrowid
     conn.close()
-    return {"id": gid, "name": name, "kind": kind}
+    return {"id": gid, "name": name, "kind": kind,
+            "storage_type": "raw_material" if b.get("storage_type") == "raw_material" else "ready_food"}
 
 
 @router.put("/item-groups/{group_id}")
