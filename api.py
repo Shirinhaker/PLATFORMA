@@ -1938,9 +1938,31 @@ async def dining_order_cashier_items(order_id: int, request: Request, x_telegram
     conn.commit(); conn.close(); return {"ok": True, "total": total}
 
 
+@router.post("/dining/orders/{order_id}/finalize")
+async def dining_order_finalize(order_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_confirm")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if order["status"] == "done":
+        conn.close(); return {"ok": True, "already_done": True}
+    if order["payment_status"] != "confirmed":
+        conn.close(); raise HTTPException(409, "Avval to'lovni tasdiqlang.")
+    if order["kitchen_status"] != "done":
+        conn.close(); raise HTTPException(409, "Oshpaz buyurtmani hali tayyor qilmagan.")
+    conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE id=?", (int(time.time()), order_id))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
 @router.post("/dining/places/{place_id}/clear")
 async def dining_place_clear(place_id: int, x_telegram_init_data: str = Header(default="")):
     conn=db();user,biz=_require_dining_business(conn,x_telegram_init_data);_dining_place(conn,biz["id"],place_id)
+    unfinished = conn.execute(
+        """SELECT id FROM dining_bookings WHERE business_id=? AND place_id=? AND kind='order' AND status='active'
+           AND (payment_status<>'confirmed' OR kitchen_status<>'done') LIMIT 1""", (biz["id"], place_id)).fetchone()
+    if unfinished:
+        conn.close(); raise HTTPException(409, "Stolni bo'shatish uchun taom tayyor va to'lov tasdiqlangan bo'lishi kerak.")
     conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE business_id=? AND place_id=? AND status='active'",
                  (int(time.time()),biz["id"],place_id))
     conn.commit();conn.close();return {"ok":True}
@@ -4741,6 +4763,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         else:
             totals["order"] += t
     dining_open = []
+    dining_finalize = []
     external_payment = []
     if (biz["yon"] or "").strip() == "Umumiy ovqatlanish":
         drows = conn.execute(
@@ -4756,6 +4779,12 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
                 "SELECT id,item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id", (r["id"],)
             ).fetchall()]
             dining_open.append(entry)
+        frows = conn.execute(
+            """SELECT d.id,d.total,d.kitchen_status,d.created_at,d.waiter_name,p.name AS place_name,p.kind AS place_kind
+               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
+               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status='confirmed'
+               ORDER BY d.id DESC""", (biz["id"],)).fetchall()
+        dining_finalize = [dict(r) for r in frows]
         erows = conn.execute(
             """SELECT o.id,o.title,o.payment_status,o.status,o.created_at,u.name AS customer_name,
                       COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
@@ -4767,7 +4796,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         ).fetchall()
         external_payment = [dict(r) for r in erows]
     conn.close()
-    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open,
+    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open, "dining_finalize": dining_finalize,
             "external_payment": external_payment}
 
 
