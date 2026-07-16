@@ -483,6 +483,9 @@ def _migrate(conn):
             created_at INTEGER NOT NULL
         )"""
     )
+    _igcols = [r["name"] for r in conn.execute("PRAGMA table_info(item_groups)").fetchall()]
+    if "storage_type" not in _igcols:
+        conn.execute("ALTER TABLE item_groups ADD COLUMN storage_type TEXT DEFAULT 'ready_food'")
     icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "group_id" not in icols:
         # Eski mahsulotlar avtomatik Guruhsiz bo'lib qolishi uchun NULL ustun qo'shamiz.
