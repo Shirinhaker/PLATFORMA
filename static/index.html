@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1555 -->
+<title>Platforma</title><!-- BUILD: v1556 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6379,8 +6379,8 @@
       document.body.appendChild(back); document.body.appendChild(sheet);
     }
     var frac = unitAllowsFraction(unit);
-    var rawItems=(OMBOR_LAST_ROWS||[]).filter(function(r){return (r.stock_type||"ready_food")==="raw_material";});
-    var productionHtml=stockType==="ready_food"?'<div style="text-align:left;margin:12px 2px 5px;font-size:13px;font-weight:800">Sarflangan mahsulotlar</div><div class="idesc" style="text-align:left;margin-bottom:7px">Ushbu kirim uchun jami sarflangan xomashyo miqdorini kiriting.</div>'+(rawItems.length?'<div style="max-height:190px;overflow:auto">'+rawItems.map(function(r){return '<div class="dorder-row"><div><b>'+esc(r.name)+'</b><div class="idesc">Qoldiq: '+fmtQty(r.stock_qty||0)+' '+esc(r.unit||"dona")+'</div></div><input class="input" data-prod-raw="'+r.id+'" inputmode="decimal" placeholder="0 '+esc(r.unit||"dona")+'" style="width:105px;height:38px"></div>';}).join('')+'</div>':'<div class="idesc" style="color:#b45309;text-align:left">Avval “Mahsulotlar” bo‘limiga xomashyo qo‘shing.</div>'):'';
+    var rawItems=(OMBOR_LAST_ROWS||[]).filter(function(r){return (r.stock_type||"ready_food")==="raw_material";}),recipeMap={};
+    var productionHtml=stockType==="ready_food"?'<div style="text-align:left;margin:12px 2px 5px;font-size:13px;font-weight:800">Sarflangan mahsulotlar</div><div class="idesc" id="kirRecipeStatus" style="text-align:left;margin-bottom:7px">Retsept tekshirilmoqda...</div>'+(rawItems.length?'<div style="max-height:190px;overflow:auto">'+rawItems.map(function(r){return '<div class="dorder-row"><div><b>'+esc(r.name)+'</b><div class="idesc">Qoldiq: '+fmtQty(r.stock_qty||0)+' '+esc(r.unit||"dona")+'</div></div><input class="input" data-prod-raw="'+r.id+'" inputmode="decimal" placeholder="0 '+esc(r.unit||"dona")+'" style="width:105px;height:38px"></div>';}).join('')+'</div><label style="display:flex;align-items:center;gap:8px;text-align:left;margin-top:9px;font-size:13px"><input type="checkbox" id="kirSaveRecipe"> Ushbu sarfni 1 '+esc(unit)+' uchun retsept sifatida saqlash</label>':'<div class="idesc" style="color:#b45309;text-align:left">Avval “Mahsulotlar” bo‘limiga xomashyo qo‘shing.</div>'):'';
     sheet.innerHTML =
       '<div class="acf-title" style="margin-bottom:2px">Kirim: '+esc(name)+'</div>'+
       '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(unit)+')'+(frac?'':' — butun son')+'</div>'+
@@ -6398,9 +6398,10 @@
     function rq(){ var v = parseFloat(String(qEl.value||"").replace(",", ".")); return (isNaN(v)||v<0)?0:v; }
     function rc(){ return parseInt(String(cEl.value||"").replace(/[^0-9]/g,""),10)||0; }
     function rt(){ return parseInt(String(tEl.value||"").replace(/[^0-9]/g,""),10)||0; }
+    function applyRecipe(){var q=rq();if(!(q>0))return;sheet.querySelectorAll('[data-prod-raw]').forEach(function(inp){var per=recipeMap[inp.dataset.prodRaw];if(per>0)inp.value=fmtQty(Math.round(per*q*1000)/1000);});}
     qEl.addEventListener("input", function(){
       if(!frac){ var c = qEl.value.replace(/[^0-9]/g,""); if(qEl.value!==c) qEl.value=c; }
-      var q = rq(); if(q>0 && rc()>0) tEl.value = String(Math.round(rc()*q));
+      var q = rq(); if(q>0 && rc()>0) tEl.value = String(Math.round(rc()*q));applyRecipe();
     });
     cEl.addEventListener("input", function(){ var q = rq(); if(q>0 && rc()>0) tEl.value = String(Math.round(rc()*q)); });
     tEl.addEventListener("input", function(){ var q = rq(); if(q>0 && rt()>0) cEl.value = String(Math.round(rt()/q)); });
@@ -6413,11 +6414,12 @@
       if(!(q>0)){ showMsg("Miqdor noto'g'ri."); return; }
       var ingredients=[];sheet.querySelectorAll('[data-prod-raw]').forEach(function(inp){var v=parseFloat(String(inp.value||"").replace(",","."));if(v>0)ingredients.push({item_id:parseInt(inp.dataset.prodRaw,10),qty:v});});
       if(stockType==="ready_food"&&!ingredients.length){showMsg("Sarflangan mahsulotlarni kiriting.");return;}
-      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: q, cost: rc(), note: (sheet.querySelector("#kirNote").value||"").trim(), ingredients:ingredients })
+      api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: q, cost: rc(), note: (sheet.querySelector("#kirNote").value||"").trim(), ingredients:ingredients, save_recipe:!!(sheet.querySelector("#kirSaveRecipe")&&sheet.querySelector("#kirSaveRecipe").checked) })
         .then(function(){ close(); showMsg("Kirim yozildi ✅"); loadOmbor(); })
         .catch(function(e){ showMsg(e.message); });
     };
     back.classList.add("on"); sheet.classList.add("on");
+    if(stockType==="ready_food")api("GET","/api/stock/recipe/"+id).then(function(rows){(rows||[]).forEach(function(x){recipeMap[String(x.item_id)]=parseFloat(x.qty_per_unit)||0;});var st=sheet.querySelector("#kirRecipeStatus");if(st)st.textContent=(rows||[]).length?"Saqlangan retsept porsiya miqdoriga qarab avtomatik hisoblandi.":"Retsept yo‘q — sarfni kiriting va pastdagi belgini yoqib saqlang.";applyRecipe();}).catch(function(){var st=sheet.querySelector("#kirRecipeStatus");if(st)st.textContent="Retsept yuklanmadi — sarfni qo‘lda kiriting.";});
     setTimeout(function(){ qEl.focus(); }, 60);
   }
   // O6: Chiqim oynasi — kirim kabi chiroyli modal (+O2: qoldiqdan ortiq chiqimda ogohlantirish)
