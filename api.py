@@ -1762,6 +1762,7 @@ async def dining_booking_add(place_id: int, request: Request, x_telegram_init_da
 async def dining_order_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = _require_dining_business(conn, x_telegram_init_data)
+    staff = _staff_session(conn, x_telegram_init_data)
     _dining_place(conn, biz["id"], place_id)
     b = await request.json(); incoming = b.get("items") or []
     wanted = {}
@@ -1786,14 +1787,134 @@ async def dining_order_add(place_id: int, request: Request, x_telegram_init_data
         prepared.append((r["id"],r["name"],qty,r["unit"] or "dona",price,line))
     now=int(time.time())
     cur=conn.execute(
-        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,note,total,status,created_at,updated_at) VALUES(?,?, 'order',?,?,?,'active',?,?)",
-        (biz["id"],place_id,(b.get("customer_name") or "").strip()[:80],(b.get("note") or "").strip()[:300],total,now,now),
+        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,note,total,waiter_staff_id,waiter_name,problem_open,kitchen_status,payment_status,status,created_at,updated_at) VALUES(?,?, 'order',?,?,?,?,?,0,'preparing','open','active',?,?)",
+        (biz["id"],place_id,(b.get("customer_name") or "").strip()[:80],(b.get("note") or "").strip()[:300],total,
+         staff["id"] if staff else None, (staff["name"] if staff else (user["name"] or "Rahbar"))[:80], now, now),
     )
     order_id=cur.lastrowid
     conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
                      [(order_id,*x) for x in prepared])
     conn.commit();conn.close()
     return {"id":order_id,"total":total,"ok":True}
+
+
+@router.get("/dining/orders")
+async def dining_orders(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "dining_internal", "kitchen", "kassa", "open_accounts", "buyurtma")
+    rows = conn.execute(
+        """SELECT d.*,p.name AS place_name,p.kind AS place_kind
+           FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
+           WHERE d.business_id=? AND d.kind='order'
+           ORDER BY d.id DESC""", (biz["id"],)
+    ).fetchall()
+    result = []
+    for row in rows:
+        item_rows = conn.execute(
+            "SELECT item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id",
+            (row["id"],),
+        ).fetchall()
+        order = dict(row)
+        order["items"] = [dict(x) for x in item_rows]
+        result.append(order)
+    conn.close()
+    return result
+
+
+def _dining_prepare_items(conn, biz_id, incoming):
+    wanted = {}
+    for it in (incoming or [])[:100]:
+        try:
+            iid = int(it.get("item_id")); qty = max(0.01, min(999.0, float(it.get("qty") or 0)))
+            wanted[iid] = wanted.get(iid, 0) + qty
+        except (TypeError, ValueError, AttributeError):
+            continue
+    if not wanted:
+        raise HTTPException(400, "Qo'shiladigan taom tanlanmadi.")
+    marks = ",".join("?" for _ in wanted)
+    rows = conn.execute("SELECT id,name,price,unit FROM items WHERE business_id=? AND id IN ("+marks+")",
+                        (biz_id, *wanted.keys())).fetchall()
+    prepared = []
+    for r in rows:
+        qty = wanted[r["id"]]; price = _price_to_int(r["price"]); line = int(round(price * qty))
+        prepared.append((r["id"], r["name"], qty, r["unit"] or "dona", price, line))
+    if not prepared:
+        raise HTTPException(400, "Tanlangan taomlar topilmadi.")
+    return prepared
+
+
+@router.post("/dining/orders/{order_id}/items")
+async def dining_order_add_items(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Ofitsiant mavjud qatorni o'zgartirmaydi; faqat yangi qo'shimcha zakaz kiritadi."""
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "dining_internal", "kassa")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
+                         (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if order["status"] != "active" or order["payment_status"] == "confirmed":
+        conn.close(); raise HTTPException(400, "Yakunlangan hisobga taom qo'shib bo'lmaydi.")
+    body = await request.json(); prepared = _dining_prepare_items(conn, biz["id"], body.get("items"))
+    conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
+                     [(order_id, *x) for x in prepared])
+    added = sum(x[5] for x in prepared); now = int(time.time())
+    conn.execute("UPDATE dining_bookings SET total=COALESCE(total,0)+?,updated_at=? WHERE id=?", (added, now, order_id))
+    conn.commit(); conn.close(); return {"ok": True, "added_total": added}
+
+
+@router.post("/dining/orders/{order_id}/payment")
+async def dining_order_confirm_payment(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "payment_confirm", "kassa")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
+                         (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    body = await request.json(); pay = (body.get("pay_type") or "").strip()
+    if pay not in ("naqd", "karta"):
+        conn.close(); raise HTTPException(400, "To'lov turini tanlang.")
+    if order["payment_status"] == "confirmed":
+        conn.close(); return {"ok": True, "already_confirmed": True}
+    items = conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=? ORDER BY id", (order_id,)).fetchall()
+    now = int(time.time()); chek = _next_chek_no(conn, biz["id"])
+    for it in items:
+        conn.execute(
+            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,note,user_id,created_at,chek_no) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (biz["id"], "dining", order_id, it["item_id"], it["name"], it["qty"], it["unit"], it["price"], it["total"], pay,
+             "Ichki buyurtma #%d" % order_id, user["id"], now, chek))
+    conn.execute("UPDATE dining_bookings SET payment_status='confirmed',updated_at=? WHERE id=?", (now, order_id))
+    conn.commit(); conn.close(); return {"ok": True, "pay_type": pay, "chek_no": chek}
+
+
+@router.put("/dining/orders/{order_id}/cashier-items")
+async def dining_order_cashier_items(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """Kassir hisob yopilguncha qator miqdorini o'zgartirishi yoki qatorni o'chirishi mumkin."""
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
+                         (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if order["status"] != "active" or order["payment_status"] == "confirmed":
+        conn.close(); raise HTTPException(400, "Yopilgan hisobni tahrirlab bo'lmaydi.")
+    body = await request.json(); changes = body.get("items") or []
+    owned = {r["id"]: r for r in conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=?", (order_id,)).fetchall()}
+    for x in changes[:200]:
+        try: line_id = int(x.get("line_id")); qty = float(x.get("qty") or 0)
+        except (TypeError, ValueError, AttributeError): continue
+        row = owned.get(line_id)
+        if not row: continue
+        if qty <= 0:
+            conn.execute("DELETE FROM dining_booking_items WHERE id=? AND booking_id=?", (line_id, order_id))
+        else:
+            qty = min(999.0, qty); total = int(round(int(row["price"] or 0) * qty))
+            conn.execute("UPDATE dining_booking_items SET qty=?,total=? WHERE id=? AND booking_id=?", (qty, total, line_id, order_id))
+    total = conn.execute("SELECT COALESCE(SUM(total),0) FROM dining_booking_items WHERE booking_id=?", (order_id,)).fetchone()[0]
+    if total <= 0:
+        conn.rollback(); conn.close(); raise HTTPException(400, "Hisobda kamida bitta taom qolishi kerak.")
+    conn.execute("UPDATE dining_bookings SET total=?,updated_at=? WHERE id=?", (total, int(time.time()), order_id))
+    conn.commit(); conn.close(); return {"ok": True, "total": total}
 
 
 @router.post("/dining/places/{place_id}/clear")
@@ -4503,7 +4624,7 @@ def _kassa_add_for_order(conn, order, actor_user_id):
     """Buyurtma "Bajarildi" bo'lganda savdo daftariga avtomatik yozish (faqat bir marta)."""
     if (order["provider_kind"] or "") != "business":
         return
-    if conn.execute("SELECT COUNT(*) FROM sales WHERE order_id=?", (order["id"],)).fetchone()[0]:
+    if conn.execute("SELECT COUNT(*) FROM sales WHERE source='order' AND order_id=?", (order["id"],)).fetchone()[0]:
         return
     rows = conn.execute("SELECT * FROM order_items WHERE order_id=?", (order["id"],)).fetchall()
     now = int(time.time())
@@ -4547,8 +4668,23 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
             totals[pt] += t
         else:
             totals["order"] += t
+    dining_open = []
+    if (biz["yon"] or "").strip() == "Umumiy ovqatlanish":
+        drows = conn.execute(
+            """SELECT d.id,d.place_id,d.waiter_name,d.total,d.payment_status,d.kitchen_status,d.created_at,
+                      p.name AS place_name,p.kind AS place_kind
+               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
+               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status<>'confirmed'
+               ORDER BY d.id DESC""", (biz["id"],)
+        ).fetchall()
+        for r in drows:
+            entry = dict(r)
+            entry["items"] = [dict(x) for x in conn.execute(
+                "SELECT id,item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id", (r["id"],)
+            ).fetchall()]
+            dining_open.append(entry)
     conn.close()
-    return {"day": dstr, "sales": out, "totals": totals}
+    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open}
 
 
 @router.post("/kassa")
