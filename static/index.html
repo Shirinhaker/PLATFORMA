@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1551 -->
+<title>Platforma</title><!-- BUILD: v1552 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1086,6 +1086,7 @@
 
       <!-- CAB: KASSA -->
       <section class="screen" data-screen="cab-kassa">
+        <div id="externalPaymentReview" style="display:none"></div>
         <div id="diningOpenAccounts" style="display:none"></div>
         <div class="q-total"><div class="eyebrow" id="kassaDayLbl">Bugungi tushum</div><div class="q-amount" id="kassaTotal">0 so'm</div><div class="q-sub" id="kassaBreak"></div></div>
         <div style="display:flex;gap:6px;margin:10px 0 8px">
@@ -4077,6 +4078,10 @@
     if(st==="disputed") return { text:"To'lov aniqlashtirilmoqda", color:"#D97706", bg:"rgba(217,119,6,.12)" };
     return { text:"To'lov kutilmoqda", color:"#e6a100", bg:"rgba(230,161,0,.12)" };
   }
+  function canConfirmOrderPayment(){
+    if(!STAFF_INFO)return true;
+    var p=STAFF_INFO.perms||[];return p.indexOf("kassa")>=0||p.indexOf("payment_review")>=0||p.indexOf("payment_confirm")>=0;
+  }
   function orderPaymentHtml(o, mode){
     var hasPay = (o.pay_card && o.pay_card.trim()) || (o.pay_qr && o.pay_qr.trim());
     if(!hasPay) return "";   // biznesda to'lov ma'lumoti yo'q -> ko'rsatilmaydi
@@ -4088,9 +4093,11 @@
     if(mode==="inbox"){
       // Biznes tomoni: tasdiqlash / rad etish
       html += '<div class="idesc" style="margin-top:8px">Mijoz chek (to\'lov skrinshoti)ni suhbatga tashlaydi. Tekshirib tasdiqlang.</div>';
-      if(st==="submitted" || st==="recheck" || st==="disputed"){
+      if((st==="submitted" || st==="recheck" || st==="disputed") && canConfirmOrderPayment()){
         html += '<button class="btn btn-primary btn-block" style="margin-top:8px" data-paystatus="confirmed">✅ To\'lovni tasdiqlash</button>';
         html += '<button class="btn btn-soft btn-block" style="margin-top:6px" data-oproblem="'+o.id+'">⚠️ To\'lov bo\'yicha muammo</button>';
+      }else if(st==="submitted" || st==="recheck" || st==="disputed"){
+        html += '<div class="idesc" style="margin-top:8px;color:#D97706;font-weight:700">⏳ Kassir to‘lovni tekshirishi kutilmoqda.</div>';
       }
     } else {
       // Mijoz tomoni: QR/karta ko'rsatiladi
@@ -4136,7 +4143,7 @@
         .then(function(){
           showMsg(status==="confirmed" ? "To'lov tasdiqlandi ✅" : "To'lov rad etildi");
           // buyurtmani yangilab, detalni qayta ochamiz
-          if(typeof loadMyOrders==="function") loadMyOrders();
+          if(mode==="inbox") loadBizOrders(); else loadMyOrders();
           var o2 = findOrderById(orderId, mode);
           if(o2){ o2.payment_status = status; }
           closeOrderDetail();
@@ -7681,6 +7688,8 @@
   }
   function renderKassa(data){
     var da=el("diningOpenAccounts"),opens=data.dining_open||[];
+    var ep=el("externalPaymentReview"),ext=data.external_payment||[];
+    if(ep){ep.style.display=ext.length?"":"none";ep.innerHTML=ext.length?'<div class="item" style="display:block;margin-bottom:10px"><b>🚚 Tashqi buyurtma to‘lovlari ('+ext.length+')</b>'+ext.map(function(o){var ready=["submitted","recheck","disputed"].indexOf(o.payment_status)>=0;return '<div style="border-top:1px solid var(--line);padding-top:9px;margin-top:9px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>Buyurtma №'+o.id+'</b><div class="idesc">'+esc(o.customer_name||"Mijoz")+' · '+(ready?'Chek tekshirilsin':'Mijoz to‘lovi kutilmoqda')+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div>'+(ready?'<button class="mini-btn" data-external-pay="'+o.id+'" style="width:100%;margin-top:7px;border-color:#16A34A;color:#16A34A">✅ To‘lovni tasdiqlash</button>':'<div class="idesc" style="margin-top:7px">⏳ To‘lov cheki yuborilishi kutilmoqda</div>')+'</div>';}).join('')+'</div>':'';}
     window.__diningCashOrders={};opens.forEach(function(o){window.__diningCashOrders[o.id]=o;});
     if(da){da.style.display=opens.length?"":"none";da.innerHTML=opens.length?'<div class="item" style="display:block;margin-bottom:10px"><b>🍽️ Ochiq ichki hisoblar ('+opens.length+')</b>'+opens.map(function(o){return '<div style="border-top:1px solid var(--line);padding-top:9px;margin-top:9px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(o.place_name)+'</b><div class="idesc">Ofitsiant: '+esc(o.waiter_name||"Rahbar")+'</div></div><b>'+moneyText(o.total||0)+' so‘m</b></div><button class="mini-btn" data-dining-cash-edit="'+o.id+'" style="margin-top:7px;width:100%">Tarkibni tahrirlash</button><div style="display:flex;gap:6px;margin-top:7px"><button class="mini-btn" data-dining-pay="'+o.id+'" data-pay-type="naqd" style="flex:1">Naqd tasdiqlash</button><button class="mini-btn" data-dining-pay="'+o.id+'" data-pay-type="karta" style="flex:1">Karta tasdiqlash</button></div></div>';}).join('')+'</div>':'';}
     var t = data.totals || {};
@@ -7741,6 +7750,7 @@
     sheet.querySelector('.acf-ok').onclick=function(){var items=Object.keys(qty).map(function(k){return {line_id:+k,qty:qty[k]};});api('PUT','/api/dining/orders/'+id+'/cashier-items',{items:items}).then(function(){close();showMsg('Hisob yangilandi ✅');loadKassa();}).catch(function(er){showMsg(er.message);});};
   }
   if(el("diningOpenAccounts"))el("diningOpenAccounts").addEventListener("click",function(e){var ed=e.target.closest('[data-dining-cash-edit]');if(ed){openDiningCashEdit(+ed.dataset.diningCashEdit);return;}var b=e.target.closest("[data-dining-pay]");if(!b)return;askConfirm({text:"To‘lov qabul qilinganini tasdiqlaysizmi?",okText:"Tasdiqlash"}).then(function(ok){if(!ok)return;api("POST","/api/dining/orders/"+b.dataset.diningPay+"/payment",{pay_type:b.dataset.payType}).then(function(){showMsg("To‘lov tasdiqlandi ✅");loadKassa();}).catch(function(er){showMsg(er.message);});});});
+  if(el("externalPaymentReview"))el("externalPaymentReview").addEventListener("click",function(e){var b=e.target.closest('[data-external-pay]');if(!b)return;askConfirm({text:"Chekni tekshirdingizmi va to‘lov tushganmi?",okText:"Tasdiqlash"}).then(function(ok){if(!ok)return;api('POST','/api/orders/'+b.dataset.externalPay+'/payment',{status:'confirmed'}).then(function(){showMsg('To‘lov tasdiqlandi — oshpaz tayyorlashni boshlaydi ✅');loadKassa();refreshOrderBadges();}).catch(function(er){showMsg(er.message);});});});
 
   /* --- Kassa cheki: bir nechta mahsulot, miqdor <-> summa bog'langan --- */
   var ksSel = {};    // key -> {key,item_id,name,unit,pv,price,qty,custom}
