@@ -4669,6 +4669,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         else:
             totals["order"] += t
     dining_open = []
+    external_payment = []
     if (biz["yon"] or "").strip() == "Umumiy ovqatlanish":
         drows = conn.execute(
             """SELECT d.id,d.place_id,d.waiter_name,d.total,d.payment_status,d.kitchen_status,d.created_at,
@@ -4683,8 +4684,19 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
                 "SELECT id,item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id", (r["id"],)
             ).fetchall()]
             dining_open.append(entry)
+        erows = conn.execute(
+            """SELECT o.id,o.title,o.payment_status,o.status,o.created_at,u.name AS customer_name,
+                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
+               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
+               WHERE o.provider_kind='business' AND o.provider_actor_id=? AND o.status='accepted'
+                 AND COALESCE(o.payment_status,'') IN ('pending','submitted','recheck','disputed')
+               ORDER BY CASE WHEN o.payment_status IN ('submitted','recheck','disputed') THEN 0 ELSE 1 END,o.id DESC""",
+            (biz["id"],),
+        ).fetchall()
+        external_payment = [dict(r) for r in erows]
     conn.close()
-    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open}
+    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open,
+            "external_payment": external_payment}
 
 
 @router.post("/kassa")
@@ -7347,6 +7359,8 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
+    if is_provider and new_status in ("accepted", "rejected", "tayyor", "cancelled"):
+        need_any_perm(conn, x_telegram_init_data, "buyurtma", "dining_external", "kitchen")
     if new_status in ("accepted", "rejected", "done", "tayyor") and not is_provider:
         conn.close()
         raise HTTPException(403, "Bu buyurtma holatini faqat qabul qiluvchi kabinet o'zgartira oladi.")
@@ -7595,6 +7609,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
     """Provayder biznes buyurtma to'lovini tasdiqlaydi yoki rad etadi. Suhbatga xabar yoziladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "payment_confirm", "payment_review", "kassa")
     _ensure_order_pay_column(conn)
     r = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not r:
