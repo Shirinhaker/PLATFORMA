@@ -974,6 +974,15 @@ def _migrate(conn):
     _smcols = [r["name"] for r in conn.execute("PRAGMA table_info(stock_moves)").fetchall()]
     if "cost" not in _smcols:
         conn.execute("ALTER TABLE stock_moves ADD COLUMN cost INTEGER DEFAULT 0")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS production_batches("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,ready_item_id INTEGER NOT NULL,"
+        "qty REAL NOT NULL,note TEXT DEFAULT '',user_id INTEGER,created_at INTEGER NOT NULL)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS production_inputs("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,qty REAL NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_production_batches_biz ON production_batches(business_id,created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_production_inputs_batch ON production_inputs(batch_id,id)")
 
     # --- v1408: KASSA — savdo daftari ---
     conn.execute(
