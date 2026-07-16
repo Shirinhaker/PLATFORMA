@@ -3058,6 +3058,8 @@ def _stock_move_deletable(r):
         return False
     if (r["note"] or "").startswith("Kassa") or (r["note"] or "").startswith("Chek"):
         return False
+    if (r["note"] or "").startswith("Ishlab chiqarish"):
+        return False
     return True
 
 
@@ -3113,6 +3115,24 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
         cost = 0
     if cost < 0:
         cost = 0
+    production_inputs = []
+    if delta > 0 and (biz["yon"] or "").strip() == "Umumiy ovqatlanish" and (_row_val(it, "stock_type", "ready_food") or "ready_food") == "ready_food":
+        raw = body.get("ingredients") or []
+        seen = set()
+        for x in raw[:100]:
+            try:
+                rid = int(x.get("item_id")); rq = _stock_delta(x.get("qty"))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if rid in seen or rq <= 0: continue
+            rit = conn.execute("SELECT * FROM items WHERE id=? AND business_id=? AND track_stock=1", (rid, biz["id"])).fetchone()
+            if not rit or (_row_val(rit, "stock_type", "") or "") != "raw_material":
+                conn.close(); raise HTTPException(400, "Sarflangan xomashyo noto'g'ri tanlangan.")
+            if (_row_val(rit, "unit", "dona") or "dona") not in FRACTIONAL_UNITS and not float(rq).is_integer():
+                rq = float(int(math.floor(rq + 0.5)))
+            seen.add(rid); production_inputs.append((rit, rq))
+        if not production_inputs:
+            conn.close(); raise HTTPException(400, "Tayyor taom kirimi uchun sarflangan mahsulotlarni kiriting.")
     now = int(time.time())
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
     if delta > 0 and cost > 0:
@@ -3123,6 +3143,17 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
         "VALUES(?,?,?,?,?,?,NULL,?,?)",
         (biz["id"], item_id, delta, reason, note, cost, user["id"], now),
     )
+    if production_inputs:
+        batch = conn.execute(
+            "INSERT INTO production_batches(business_id,ready_item_id,qty,note,user_id,created_at) VALUES(?,?,?,?,?,?)",
+            (biz["id"], item_id, delta, note, user["id"], now)).lastrowid
+        for rit, rq in production_inputs:
+            conn.execute("INSERT INTO production_inputs(batch_id,item_id,qty) VALUES(?,?,?)", (batch, rit["id"], rq))
+            conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (rq, rit["id"]))
+            conn.execute(
+                "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,cost,order_id,user_id,created_at) VALUES(?,?,?,?,?,?,NULL,?,?)",
+                (biz["id"], rit["id"], -rq, "chiqim", "Ishlab chiqarish #%d: %s" % (batch, it["name"]), 0, user["id"], now))
+        conn.execute("UPDATE stock_moves SET note=? WHERE id=?", ("Ishlab chiqarish #%d" % batch + (" — " + note if note else ""), cur_m.lastrowid))
     # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
     if delta > 0 and cost > 0:
         _spent = int(round(cost * float(delta)))
