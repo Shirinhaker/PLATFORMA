@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1549 -->
+<title>Platforma</title><!-- BUILD: v1550 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4570,6 +4570,10 @@
   }
   function loadBizOrders(category){
     category=category||((current==="cab-service-orders")?"service":"product");
+    if(category==="product" && !window.__businessDirectionLoaded){
+      api("GET","/api/me").then(function(d){window.__businessDirection=((d.business||{}).yon||"");window.__businessDirectionLoaded=true;loadBizOrders(category);}).catch(function(){window.__businessDirectionLoaded=true;loadBizOrders(category);});
+      return;
+    }
     if(category==="product" && window.__businessDirection==="Umumiy ovqatlanish"){
       renderDiningOrderSourceTabs();
       if(DINING_ORDER_SOURCE==="internal"){ loadInternalOrders(); return; }
@@ -7672,7 +7676,7 @@
   }
   function loadKassa(){
     el("kassaList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
-    api("GET","/api/kassa"+(kassaDay?("?day="+kassaDay):"")).then(renderKassa)
+    api("GET","/api/kassa?"+(kassaDay?("day="+kassaDay+"&"):"")+"_="+Date.now()).then(renderKassa)
       .catch(function(e){ el("kassaList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function renderKassa(data){
@@ -8612,7 +8616,7 @@
   function diningOrderTotal(){var total=0;DORDER_ROWS.forEach(function(it){total+=(DORDER_CART[it.id]||0)*(parsePriceAmount(it.price)||0);});el("dorderTotal").textContent=moneyText(total)+" so'm";return total;}
   if(el("dorderItems"))el("dorderItems").addEventListener("click",function(e){var plus=e.target.closest("[data-do-plus]"),minus=e.target.closest("[data-do-minus]"),id=parseInt((plus||minus)?(plus?plus.dataset.doPlus:minus.dataset.doMinus):0,10);if(!id)return;DORDER_CART[id]=Math.max(0,(DORDER_CART[id]||0)+(plus?1:-1));renderDiningOrder();});
   if(el("dorderSearch"))el("dorderSearch").addEventListener("input",function(){DORDER_QUERY=this.value||"";renderDiningOrder();});
-  if(el("dorderSave"))el("dorderSave").addEventListener("click",function(){if(!DORDER_PLACE)return;var items=Object.keys(DORDER_CART).filter(function(id){return DORDER_CART[id]>0;}).map(function(id){return {item_id:parseInt(id,10),qty:DORDER_CART[id]};});if(!items.length){showMsg("Kamida bitta mahsulot tanlang.");return;}var btn=this;btn.disabled=true;api("POST","/api/dining/places/"+DORDER_PLACE.id+"/order",{items:items,customer_name:el("dorderCustomer").value.trim(),note:el("dorderNote").value.trim()}).then(function(){showMsg("Zakaz saqlandi ✅");nav("cab-dining");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
+  if(el("dorderSave"))el("dorderSave").addEventListener("click",function(){if(!DORDER_PLACE)return;var items=Object.keys(DORDER_CART).filter(function(id){return DORDER_CART[id]>0;}).map(function(id){return {item_id:parseInt(id,10),qty:DORDER_CART[id]};});if(!items.length){showMsg("Kamida bitta mahsulot tanlang.");return;}var btn=this;btn.disabled=true;api("POST","/api/dining/places/"+DORDER_PLACE.id+"/order",{items:items,customer_name:el("dorderCustomer").value.trim(),note:el("dorderNote").value.trim()}).then(function(saved){return api("GET","/api/dining/orders?_="+Date.now()).then(function(rows){if(!(rows||[]).some(function(x){return Number(x.id)===Number(saved.id);})){throw new Error("Buyurtma ro‘yxatda tasdiqlanmadi.");}return saved;});}).then(function(){showMsg("Zakaz saqlandi, ichki buyurtma va kassaga yuborildi ✅");nav("cab-dining");loadDiningPlaces();}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
   if(el("diningAdd"))el("diningAdd").addEventListener("click",openDiningChoose);
 
   function onScreenOpen(screen){
@@ -8708,6 +8712,7 @@
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
       window.__businessDirection=b.yon||"";
+      window.__businessDirectionLoaded=true;
       var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
       if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
       titles["cab-items"]=diningMenuName;
@@ -10098,6 +10103,7 @@
   function renderStaffHome(d){
     var perms = d.perms || [];
     window.__businessDirection=d.business_direction||"";
+    window.__businessDirectionLoaded=true;
     STAFF_SECTIONS.items.title=d.business_direction==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
     var cards = perms.map(function(k){
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
