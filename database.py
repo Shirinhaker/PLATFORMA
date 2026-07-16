@@ -983,6 +983,12 @@ def _migrate(conn):
         "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,qty REAL NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_batches_biz ON production_batches(business_id,created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_inputs_batch ON production_inputs(batch_id,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS item_recipes("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,ready_item_id INTEGER NOT NULL,"
+        "ingredient_item_id INTEGER NOT NULL,qty_per_unit REAL NOT NULL,updated_at INTEGER NOT NULL,"
+        "UNIQUE(business_id,ready_item_id,ingredient_item_id))")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_item_recipes_ready ON item_recipes(business_id,ready_item_id,id)")
 
     # --- v1408: KASSA — savdo daftari ---
     conn.execute(
