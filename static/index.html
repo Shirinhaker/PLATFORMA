@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1553 -->
+<title>Platforma</title><!-- BUILD: v1554 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6332,7 +6332,7 @@
   }
   function renderOmbor(groups, rows){
     var dining=window.__businessDirection==="Umumiy ovqatlanish";
-    if(dining)rows=(rows||[]).filter(function(r){return (r.stock_type||"ready_food")===OMBOR_STOCK_TYPE;});
+    if(dining){rows=(rows||[]).filter(function(r){return (r.stock_type||"ready_food")===OMBOR_STOCK_TYPE;});groups=(groups||[]).filter(function(g){return (g.storage_type||"ready_food")===OMBOR_STOCK_TYPE;});}
     var tabs=el("diningStockTabs");if(tabs)tabs.querySelectorAll("[data-stock-type]").forEach(function(b){b.classList.toggle("on",b.dataset.stockType===OMBOR_STOCK_TYPE);});
     var used = {};
     (groups||[]).forEach(function(g){ used[String(g.id)] = true; });
@@ -9128,7 +9128,7 @@
       } else {
         var kOn = el("groupFormKind").querySelector("[data-gkind].on");
         var kind = kOn ? kOn.getAttribute("data-gkind") : "product";
-        api("POST","/api/item-groups",{name:name, kind:kind}).then(function(){
+        api("POST","/api/item-groups",{name:name, kind:kind, storage_type:(itemFormReturnTo==="cab-ombor"?OMBOR_STOCK_TYPE:"ready_food")}).then(function(){
           closeGroupForm(); loadItems(); if(itemFormReturnTo==="cab-ombor") loadOmbor(); showMsg("Guruh qo'shildi.");
         }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
       }
