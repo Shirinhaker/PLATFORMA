@@ -742,6 +742,12 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN customer_seen_at INTEGER DEFAULT 0")
     if "order_category" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN order_category TEXT DEFAULT ''")
+    if "pay_type" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN pay_type TEXT DEFAULT ''")
+    if "debtor_id" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN debtor_id INTEGER")
+    if "qarz_tx_id" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN qarz_tx_id INTEGER")
     # v1483: to'lov bo'yicha muammoli buyurtmalar alohida yuritiladi.
     for _c, _t in (
         ("problem_open", "INTEGER DEFAULT 0"),
@@ -1408,6 +1414,9 @@ def _migrate(conn):
         ("problem_reason", "ALTER TABLE dining_bookings ADD COLUMN problem_reason TEXT DEFAULT ''"),
         ("problem_note", "ALTER TABLE dining_bookings ADD COLUMN problem_note TEXT DEFAULT ''"),
         ("problem_opened_at", "ALTER TABLE dining_bookings ADD COLUMN problem_opened_at INTEGER DEFAULT 0"),
+        ("pay_type", "ALTER TABLE dining_bookings ADD COLUMN pay_type TEXT DEFAULT ''"),
+        ("debtor_id", "ALTER TABLE dining_bookings ADD COLUMN debtor_id INTEGER"),
+        ("qarz_tx_id", "ALTER TABLE dining_bookings ADD COLUMN qarz_tx_id INTEGER"),
         ("kitchen_status", "ALTER TABLE dining_bookings ADD COLUMN kitchen_status TEXT DEFAULT 'new'"),
         ("payment_status", "ALTER TABLE dining_bookings ADD COLUMN payment_status TEXT DEFAULT 'open'"),
     ):
