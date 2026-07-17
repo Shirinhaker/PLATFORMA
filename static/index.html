@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1563 -->
+<title>Platforma</title><!-- BUILD: v1564 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6330,6 +6330,7 @@
       '<div style="font-weight:800;margin-top:2px;color:'+stockColor(r.stock_qty)+'">'+fmtQty(r.stock_qty)+' '+esc(r.unit||"dona")+'</div>'+
       ((r.min_qty>0 && (r.stock_qty||0)<=r.min_qty) ? '<div style="display:inline-block;margin-top:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;color:#b45309;background:rgba(230,161,0,.15)">⚠️ Kam qoldi</div>' : '')+
       (r.cost_price ? '<div class="idesc">Tannarx: '+moneyText(r.cost_price)+'</div>' : '<div class="idesc">Tannarx yo\'q</div>')+
+      (r.fifo_next_cost?'<div class="idesc">FIFO navbatdagi: '+moneyText(r.fifo_next_cost)+' · qoldiq qiymati '+moneyText(r.fifo_value||0)+'</div>':'')+
       (((r.stock_type||"ready_food")==="ready_food"&&sale)?'<div class="idesc">Sotuv: '+moneyText(sale)+(profit!==null?' · foyda '+moneyText(profit):'')+'</div>':'')+
       '<div style="display:flex;gap:4px;margin-top:6px">'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-cost="'+(r.cost_price||0)+'" data-st-type="'+(window.__businessDirection==="Umumiy ovqatlanish"?esc(r.stock_type||"ready_food"):"general")+'">+</button>'+
