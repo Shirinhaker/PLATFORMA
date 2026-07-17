@@ -3192,14 +3192,14 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     need_perm(conn, x_telegram_init_data, "ombor")
     _ensure_item_min_qty(conn)
     rows = conn.execute(
-        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
+        "SELECT i.id, i.name, i.price, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
         "g.name AS group_name FROM items i "
         "LEFT JOIN item_groups g ON g.id = i.group_id "
         "WHERE i.business_id=? AND i.track_stock=1 "
         "ORDER BY i.name COLLATE NOCASE",
         (biz["id"],),
     ).fetchall()
-    result = [{"id": r["id"], "name": r["name"], "unit": r["unit"] or "dona",
+    result = [{"id": r["id"], "name": r["name"], "price": r["price"] or "", "unit": r["unit"] or "dona",
                "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
                "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
@@ -3216,11 +3216,35 @@ async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(de
     if not ready:
         conn.close(); raise HTTPException(404, "Tayyor taom topilmadi.")
     rows = conn.execute(
-        """SELECT r.ingredient_item_id AS item_id,r.qty_per_unit,i.name,i.unit
+        """SELECT r.ingredient_item_id AS item_id,r.qty_per_unit,i.name,i.unit,COALESCE(i.cost_price,0) AS cost_price
            FROM item_recipes r JOIN items i ON i.id=r.ingredient_item_id
            WHERE r.business_id=? AND r.ready_item_id=? ORDER BY i.name COLLATE NOCASE""",
         (biz["id"], ready_item_id)).fetchall()
-    conn.close(); return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r); d["cost_per_ready_unit"] = int(round(float(r["qty_per_unit"] or 0) * int(r["cost_price"] or 0))); out.append(d)
+    conn.close(); return out
+
+
+@router.get("/stock/production")
+async def stock_production_history(limit: int = 50, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "ombor", "production", "statistics")
+    limit = max(1, min(200, int(limit or 50)))
+    rows = conn.execute(
+        """SELECT p.*,i.name AS ready_name,i.unit AS ready_unit,u.name AS who
+           FROM production_batches p JOIN items i ON i.id=p.ready_item_id
+           LEFT JOIN users u ON u.id=p.user_id WHERE p.business_id=?
+           ORDER BY p.id DESC LIMIT ?""", (biz["id"], limit)).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["inputs"] = [dict(x) for x in conn.execute(
+            """SELECT pi.item_id,pi.qty,pi.unit_cost,pi.total_cost,i.name,i.unit
+               FROM production_inputs pi JOIN items i ON i.id=pi.item_id
+               WHERE pi.batch_id=? ORDER BY pi.id""", (r["id"],)).fetchall()]
+        out.append(d)
+    conn.close(); return out
 
 
 @router.post("/stock/move")
@@ -3270,6 +3294,13 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
             seen.add(rid); production_inputs.append((rit, rq))
         if not production_inputs:
             conn.close(); raise HTTPException(400, "Tayyor taom kirimi uchun sarflangan mahsulotlarni kiriting.")
+        missing_cost = [rit["name"] for rit, rq in production_inputs if int(_row_val(rit, "cost_price", 0) or 0) <= 0]
+        if missing_cost:
+            conn.close(); raise HTTPException(400, "Avval xomashyo tannarxini kiriting: " + ", ".join(missing_cost[:5]))
+        production_total_cost = sum(int(round(float(rq) * int(_row_val(rit, "cost_price", 0) or 0))) for rit, rq in production_inputs)
+        cost = int(round(production_total_cost / float(delta))) if delta > 0 else 0
+    else:
+        production_total_cost = 0
     now = int(time.time())
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
     if delta > 0 and cost > 0:
@@ -3282,10 +3313,12 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     )
     if production_inputs:
         batch = conn.execute(
-            "INSERT INTO production_batches(business_id,ready_item_id,qty,note,user_id,created_at) VALUES(?,?,?,?,?,?)",
-            (biz["id"], item_id, delta, note, user["id"], now)).lastrowid
+            "INSERT INTO production_batches(business_id,ready_item_id,qty,total_cost,unit_cost,note,user_id,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (biz["id"], item_id, delta, production_total_cost, cost, note, user["id"], now)).lastrowid
         for rit, rq in production_inputs:
-            conn.execute("INSERT INTO production_inputs(batch_id,item_id,qty) VALUES(?,?,?)", (batch, rit["id"], rq))
+            input_unit_cost = int(_row_val(rit, "cost_price", 0) or 0); input_total_cost = int(round(float(rq) * input_unit_cost))
+            conn.execute("INSERT INTO production_inputs(batch_id,item_id,qty,unit_cost,total_cost) VALUES(?,?,?,?,?)",
+                         (batch, rit["id"], rq, input_unit_cost, input_total_cost))
             conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (rq, rit["id"]))
             conn.execute(
                 "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,cost,order_id,user_id,created_at) VALUES(?,?,?,?,?,?,NULL,?,?)",
@@ -3297,7 +3330,7 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
                 "INSERT INTO item_recipes(business_id,ready_item_id,ingredient_item_id,qty_per_unit,updated_at) VALUES(?,?,?,?,?)",
                 [(biz["id"], item_id, rit["id"], round(float(rq)/float(delta), 6), now) for rit, rq in production_inputs])
     # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
-    if delta > 0 and cost > 0:
+    if delta > 0 and cost > 0 and not production_inputs:
         _spent = int(round(cost * float(delta)))
         if _spent > 0:
             _iname = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
@@ -3307,7 +3340,8 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     conn.commit()
     new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
     conn.close()
-    return {"ok": True, "stock_qty": new_q or 0}
+    return {"ok": True, "stock_qty": new_q or 0, "unit_cost": cost,
+            "total_cost": production_total_cost if production_inputs else int(round(cost * float(delta)))}
 
 
 @router.delete("/stock/moves/{move_id}")
