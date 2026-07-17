@@ -1839,6 +1839,8 @@ async def dining_order_kitchen(order_id: int, request: Request, x_telegram_init_
         conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
     if row["status"] != "active":
         conn.close(); raise HTTPException(409, "Yakunlangan buyurtma o'zgartirilmaydi.")
+    if bool(_row_val(row, "problem_open", 0) or 0):
+        conn.close(); raise HTTPException(409, "Muammoli zakazni avval kassada hal qiling.")
     conn.execute("UPDATE dining_bookings SET kitchen_status=?,updated_at=? WHERE id=?", (status, int(time.time()), order_id))
     conn.commit(); conn.close(); return {"ok": True, "kitchen_status": status}
 
@@ -1897,6 +1899,8 @@ async def dining_order_confirm_payment(order_id: int, request: Request, x_telegr
         conn.close(); raise HTTPException(400, "To'lov turini tanlang.")
     if order["payment_status"] == "confirmed":
         conn.close(); return {"ok": True, "already_confirmed": True}
+    if bool(_row_val(order, "problem_open", 0) or 0):
+        conn.close(); raise HTTPException(409, "Muammoli zakaz to'lovi tasdiqlanmaydi. Avval muammoni hal qiling.")
     items = conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=? ORDER BY id", (order_id,)).fetchall()
     now = int(time.time()); chek = _next_chek_no(conn, biz["id"])
     for it in items:
@@ -1947,11 +1951,42 @@ async def dining_order_finalize(order_id: int, x_telegram_init_data: str = Heade
         conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
     if order["status"] == "done":
         conn.close(); return {"ok": True, "already_done": True}
+    if bool(_row_val(order, "problem_open", 0) or 0):
+        conn.close(); raise HTTPException(409, "Muammoli zakazni yakunlab bo'lmaydi. Avval muammoni hal qiling.")
     if order["payment_status"] != "confirmed":
         conn.close(); raise HTTPException(409, "Avval to'lovni tasdiqlang.")
     if order["kitchen_status"] != "done":
         conn.close(); raise HTTPException(409, "Oshpaz buyurtmani hali tayyor qilmagan.")
     conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE id=?", (int(time.time()), order_id))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
+@router.post("/dining/orders/{order_id}/problem")
+async def dining_order_problem(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_problems")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if order["status"] != "active" or order["payment_status"] == "confirmed":
+        conn.close(); raise HTTPException(409, "Yopilgan yoki to'lovi tasdiqlangan hisob muammoliga o'tkazilmaydi.")
+    body = await request.json(); reason = (body.get("reason") or "Boshqa").strip()[:80]
+    note = (body.get("note") or "").strip()[:300]; now = int(time.time())
+    conn.execute("UPDATE dining_bookings SET problem_open=1,problem_reason=?,problem_note=?,problem_opened_at=?,updated_at=? WHERE id=?",
+                 (reason, note, now, now, order_id))
+    conn.commit(); conn.close(); return {"ok": True}
+
+
+@router.post("/dining/orders/{order_id}/problem/resolve")
+async def dining_order_problem_resolve(order_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_problems")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if not bool(_row_val(order, "problem_open", 0) or 0):
+        conn.close(); return {"ok": True, "already_resolved": True}
+    conn.execute("UPDATE dining_bookings SET problem_open=0,updated_at=? WHERE id=?", (int(time.time()), order_id))
     conn.commit(); conn.close(); return {"ok": True}
 
 
@@ -4764,13 +4799,16 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
             totals["order"] += t
     dining_open = []
     dining_finalize = []
+    dining_problem = []
     external_payment = []
-    if (biz["yon"] or "").strip() == "Umumiy ovqatlanish":
+    external_problem = []
+    is_dining = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
+    if is_dining:
         drows = conn.execute(
             """SELECT d.id,d.place_id,d.waiter_name,d.total,d.payment_status,d.kitchen_status,d.created_at,
                       p.name AS place_name,p.kind AS place_kind
                FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
-               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status<>'confirmed'
+               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status<>'confirmed' AND COALESCE(d.problem_open,0)=0
                ORDER BY d.id DESC""", (biz["id"],)
         ).fetchall()
         for r in drows:
@@ -4785,19 +4823,35 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
                WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status='confirmed'
                ORDER BY d.id DESC""", (biz["id"],)).fetchall()
         dining_finalize = [dict(r) for r in frows]
+        prows = conn.execute(
+            """SELECT d.id,d.total,d.kitchen_status,d.payment_status,d.created_at,d.waiter_name,
+                      d.problem_reason,d.problem_note,p.name AS place_name,p.kind AS place_kind
+               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
+               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND COALESCE(d.problem_open,0)=1
+               ORDER BY d.problem_opened_at DESC,d.id DESC""", (biz["id"],)).fetchall()
+        dining_problem = [dict(r) for r in prows]
         erows = conn.execute(
             """SELECT o.id,o.title,o.payment_status,o.status,o.created_at,u.name AS customer_name,
                       COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
                FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
                WHERE o.provider_kind='business' AND o.provider_actor_id=? AND o.status='accepted'
-                 AND COALESCE(o.payment_status,'') IN ('pending','submitted','recheck','disputed')
-               ORDER BY CASE WHEN o.payment_status IN ('submitted','recheck','disputed') THEN 0 ELSE 1 END,o.id DESC""",
+                 AND COALESCE(o.payment_status,'') IN ('pending','submitted','recheck')
+               ORDER BY CASE WHEN o.payment_status IN ('submitted','recheck') THEN 0 ELSE 1 END,o.id DESC""",
             (biz["id"],),
         ).fetchall()
         external_payment = [dict(r) for r in erows]
+        xprows = conn.execute(
+            """SELECT o.id,o.title,o.payment_status,o.problem_reason,o.problem_note,o.created_at,u.name AS customer_name,
+                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
+               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
+               WHERE o.provider_kind='business' AND o.provider_actor_id=? AND COALESCE(o.problem_open,0)=1
+               ORDER BY o.problem_opened_at DESC,o.id DESC""", (biz["id"],)).fetchall()
+        external_problem = [dict(r) for r in xprows]
     conn.close()
-    return {"day": dstr, "sales": out, "totals": totals, "dining_open": dining_open, "dining_finalize": dining_finalize,
-            "external_payment": external_payment}
+    return {"day": dstr, "sales": out, "totals": totals, "dining_mode": is_dining,
+            "dining_open": dining_open, "dining_finalize": dining_finalize,
+            "external_payment": external_payment, "dining_problem": dining_problem,
+            "external_problem": external_problem}
 
 
 @router.post("/kassa")
