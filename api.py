@@ -1441,7 +1441,13 @@ def _item_kind_and_group(conn, biz_id, body):
     Guruhsiz bo'lsa, frontend yuborgan kind ishlaydi.
     """
     g = _item_group_for_business(conn, biz_id, (body or {}).get("group_id"))
-    if g:
+    education = conn.execute("SELECT id FROM businesses WHERE id=? AND yon=?", (biz_id, "Ta'lim faoliyati")).fetchone()
+    if education:
+        kind = "service"
+        if g and g["kind"] != "service":
+            conn.execute("UPDATE item_groups SET kind='service' WHERE id=? AND business_id=?", (g["id"], biz_id))
+        return kind, (g["id"] if g else None)
+    elif g:
         return g["kind"], g["id"]
     kind = (body or {}).get("kind") if (body or {}).get("kind") in ("product", "service") else "product"
     return kind, None
@@ -1475,7 +1481,7 @@ async def add_item_group(request: Request, x_telegram_init_data: str = Header(de
     if not name:
         conn.close()
         raise HTTPException(400, "Guruh nomi kiritilishi shart.")
-    kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
+    kind = "service" if (biz["yon"] or "").strip() == "Ta'lim faoliyati" else (b.get("kind") if b.get("kind") in ("product", "service") else "product")
     cur = conn.execute(
         "INSERT INTO item_groups(business_id, name, kind, storage_type, created_at) VALUES(?,?,?,?,?)",
         (biz["id"], name, kind, "raw_material" if b.get("storage_type") == "raw_material" else "ready_food", int(time.time())),
@@ -2361,7 +2367,7 @@ async def education_enrollment_add(request:Request,x_telegram_init_data:str=Head
     try: course_id=int(body.get("course_item_id") or 0)
     except (TypeError,ValueError): course_id=0
     course=conn.execute("""SELECT i.*,b.yon FROM items i JOIN businesses b ON b.id=i.business_id
-      WHERE i.id=? AND i.kind='service' AND b.status='active'""",(course_id,)).fetchone()
+      WHERE i.id=? AND b.status='active'""",(course_id,)).fetchone()
     if not course or (course["yon"] or "").strip()!="Ta'lim faoliyati": conn.close();raise HTTPException(404,"Kurs topilmadi.")
     if _row_val(course,"enrollment_status","open")!="open": conn.close();raise HTTPException(400,"Bu kursga qabul yopilgan.")
     old=conn.execute("SELECT id FROM education_enrollments WHERE business_id=? AND course_item_id=? AND user_id=? AND status IN ('new','accepted')",(course["business_id"],course_id,user["id"])).fetchone()
