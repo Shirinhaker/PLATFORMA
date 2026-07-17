@@ -511,6 +511,9 @@ def _migrate(conn):
     ):
         if _name not in _icols_edu:
             conn.execute(_sql)
+    # Ta'lim yo'nalishida mahsulot bo'lmaydi: eski yozuv va guruhlarni xizmat/kursga o'tkazamiz.
+    conn.execute("UPDATE items SET kind='service' WHERE business_id IN (SELECT id FROM businesses WHERE yon='Ta''lim faoliyati')")
+    conn.execute("UPDATE item_groups SET kind='service' WHERE business_id IN (SELECT id FROM businesses WHERE yon='Ta''lim faoliyati')")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_items_group ON items(group_id)")
 
