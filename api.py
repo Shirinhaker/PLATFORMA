@@ -150,6 +150,12 @@ def need_any_perm(conn, init_data, *allowed):
         raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
 
 
+def _can_view_costs(conn, init_data):
+    """Tannarx va ombor qiymati egasi yoki moliyaviy ruxsatli xodimga ko'rinadi."""
+    perms = _staff_perms_of(conn, init_data)
+    return perms is None or "expenses" in perms or "statistics" in perms
+
+
 def follower_count(conn, kind, target_id):
     """Oddiy foydalanuvchi va biznes kabinet obunalarining jami."""
     user_count = conn.execute(
@@ -1422,7 +1428,7 @@ async def item_groups(menu_only: bool = False, x_telegram_init_data: str = Heade
     """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
+    need_any_perm(conn, x_telegram_init_data, "items", "ombor", "production")
     dining_menu = menu_only and (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     rows = conn.execute(
         "SELECT * FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
@@ -3263,7 +3269,8 @@ def _stock_move_deletable(r):
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ombor")
+    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
+    show_costs = _can_view_costs(conn, x_telegram_init_data)
     _ensure_item_min_qty(conn)
     rows = conn.execute(
         "SELECT i.id, i.name, i.price, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
@@ -3275,9 +3282,10 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
         "ORDER BY i.name COLLATE NOCASE",
         (biz["id"],),
     ).fetchall()
-    result = [{"id": r["id"], "name": r["name"], "price": r["price"] or "", "unit": r["unit"] or "dona",
-               "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
-               "fifo_next_cost": r["fifo_next_cost"] or 0, "fifo_value": int(round(r["fifo_value"] or 0)),
+    result = [{"id": r["id"], "name": r["name"], "price": (r["price"] or "") if show_costs else "", "unit": r["unit"] or "dona",
+               "stock_qty": r["stock_qty"] or 0, "cost_price": (r["cost_price"] or 0) if show_costs else 0,
+               "fifo_next_cost": (r["fifo_next_cost"] or 0) if show_costs else 0,
+               "fifo_value": int(round(r["fifo_value"] or 0)) if show_costs else 0,
                "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
                "group_name": r["group_name"] or "", "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
@@ -3288,7 +3296,8 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
 @router.get("/stock/recipe/{ready_item_id}")
 async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db(); user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ombor")
+    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
+    show_costs = _can_view_costs(conn, x_telegram_init_data)
     ready = conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND stock_type='ready_food'", (ready_item_id, biz["id"])).fetchone()
     if not ready:
         conn.close(); raise HTTPException(404, "Tayyor taom topilmadi.")
@@ -3299,7 +3308,10 @@ async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(de
         (biz["id"], ready_item_id)).fetchall()
     out = []
     for r in rows:
-        d = dict(r); d["cost_per_ready_unit"] = int(round(float(r["qty_per_unit"] or 0) * int(r["cost_price"] or 0))); out.append(d)
+        d = dict(r)
+        d["cost_per_ready_unit"] = int(round(float(r["qty_per_unit"] or 0) * int(r["cost_price"] or 0))) if show_costs else 0
+        if not show_costs: d["cost_price"] = 0
+        out.append(d)
     conn.close(); return out
 
 
@@ -3307,6 +3319,7 @@ async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(de
 async def stock_production_history(limit: int = 50, x_telegram_init_data: str = Header(default="")):
     conn = db(); user, biz = require_business(conn, x_telegram_init_data)
     need_any_perm(conn, x_telegram_init_data, "ombor", "production", "statistics")
+    show_costs = _can_view_costs(conn, x_telegram_init_data)
     limit = max(1, min(200, int(limit or 50)))
     rows = conn.execute(
         """SELECT p.*,i.name AS ready_name,i.unit AS ready_unit,u.name AS who
@@ -3320,6 +3333,9 @@ async def stock_production_history(limit: int = 50, x_telegram_init_data: str = 
             """SELECT pi.item_id,pi.qty,pi.unit_cost,pi.total_cost,i.name,i.unit
                FROM production_inputs pi JOIN items i ON i.id=pi.item_id
                WHERE pi.batch_id=? ORDER BY pi.id""", (r["id"],)).fetchall()]
+        if not show_costs:
+            d["total_cost"] = 0; d["unit_cost"] = 0
+            for x in d["inputs"]: x["unit_cost"] = 0; x["total_cost"] = 0
         out.append(d)
     conn.close(); return out
 
@@ -3328,12 +3344,14 @@ async def stock_production_history(limit: int = 50, x_telegram_init_data: str = 
 async def stock_move(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ombor")
+    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
     item_id = int(body.get("item_id") or 0)
     it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
     if not it:
         conn.close()
         raise HTTPException(404, "Mahsulot topilmadi.")
+    perms = _staff_perms_of(conn, x_telegram_init_data)
+    production_only = perms is not None and "production" in perms and "ombor" not in perms
     delta = _stock_delta(body.get("delta"))
     unit = _row_val(it, "unit", "dona") or "dona"
     if unit not in FRACTIONAL_UNITS and not float(delta).is_integer():
@@ -3343,6 +3361,8 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     if delta == 0:
         conn.close()
         raise HTTPException(400, "Miqdor kiritilmadi.")
+    if production_only and not (delta > 0 and (_row_val(it, "stock_type", "") or "") == "ready_food"):
+        conn.close(); raise HTTPException(403, "Oshpaz faqat tayyor taom kirimini amalga oshira oladi.")
     reason = (body.get("reason") or "").strip()
     if reason not in _STOCK_REASON_TEXT:
         reason = "kirim" if delta > 0 else "chiqim"
@@ -3429,9 +3449,10 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
                          user["id"], source="stock", stock_move_id=cur_m.lastrowid)
     conn.commit()
     new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
+    show_costs = _can_view_costs(conn, x_telegram_init_data)
     conn.close()
-    return {"ok": True, "stock_qty": new_q or 0, "unit_cost": cost,
-            "total_cost": production_total_cost if production_inputs else int(round(cost * float(delta)))}
+    return {"ok": True, "stock_qty": new_q or 0, "unit_cost": cost if show_costs else 0,
+            "total_cost": (production_total_cost if production_inputs else int(round(cost * float(delta)))) if show_costs else 0}
 
 
 @router.delete("/stock/moves/{move_id}")
@@ -3468,6 +3489,10 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
 async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
+    show_costs = _can_view_costs(conn, x_telegram_init_data)
+    perms = _staff_perms_of(conn, x_telegram_init_data)
+    can_edit = perms is None or "ombor" in perms
     it = conn.execute("SELECT unit FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
     if not it:
         conn.close()
@@ -3483,8 +3508,8 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     result = [{"id": r["id"], "delta": r["delta"], "reason": r["reason"],
                "reason_text": _STOCK_REASON_TEXT.get(r["reason"], r["reason"] or ""),
                "note": r["note"] or "", "who": r["who"] or "",
-               "cost": _row_val(r, "cost", 0) or 0,
-               "can_delete": _stock_move_deletable(r),
+               "cost": (_row_val(r, "cost", 0) or 0) if show_costs else 0,
+               "can_delete": can_edit and _stock_move_deletable(r),
                "order_id": r["order_id"], "created_at": r["created_at"], "unit": unit}
               for r in rows]
     conn.close()
@@ -7683,6 +7708,10 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
            ORDER BY created_at DESC, id DESC LIMIT 200""",
         (kind, actor_id),
     ).fetchall()
+    perms = _staff_perms_of(conn, x_telegram_init_data)
+    if perms is not None and "kitchen" in perms and not any(p in perms for p in ("kassa", "payment_review", "payment_confirm")):
+        # Oshpaz yangi/to'lov kutilayotgan tashqi buyurtmani emas, faqat tayyorlash bosqichini ko'radi.
+        rows = [r for r in rows if (r["status"] or "") not in ("new", "accepted")]
     out = [_order_to_dict(conn, r, "provider") for r in rows]
     conn.close()
     return out
@@ -7799,7 +7828,13 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
-    if is_provider and new_status in ("accepted", "rejected", "tayyor", "cancelled"):
+    provider_biz = conn.execute("SELECT yon FROM businesses WHERE id=?", (row["provider_actor_id"],)).fetchone() if row["provider_kind"] == "business" else None
+    dining_external = bool(provider_biz and (provider_biz["yon"] or "").strip() == "Umumiy ovqatlanish")
+    if is_provider and dining_external and new_status in ("accepted", "rejected", "cancelled"):
+        need_any_perm(conn, x_telegram_init_data, "kassa", "payment_review", "payment_confirm")
+    elif is_provider and dining_external and new_status == "tayyor":
+        need_perm(conn, x_telegram_init_data, "kitchen")
+    elif is_provider and not dining_external and new_status in ("accepted", "rejected", "tayyor", "cancelled"):
         need_any_perm(conn, x_telegram_init_data, "buyurtma", "dining_external", "kitchen")
     if new_status in ("accepted", "rejected", "done", "tayyor") and not is_provider:
         conn.close()
