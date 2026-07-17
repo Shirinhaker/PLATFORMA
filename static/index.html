@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1559 -->
+<title>Platforma</title><!-- BUILD: v1560 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5102,7 +5102,7 @@
       updateNotifyBadges(d.unread||0);
       var items=d.items||[];
       if(!items.length){box.innerHTML='<div class="empty" style="padding:18px 12px"><h3>Hozircha xabar yo\'q</h3><p>Buyurtma yangiliklari shu yerda chiqadi.</p></div>';return;}
-      box.innerHTML=items.map(function(n){return '<div class="menu-card" data-notification="'+n.id+'" data-noid="'+(n.order_id||0)+'" style="'+(!n.is_read?'border-color:var(--primary);':'')+'"><div class="menu-ic">'+(n.is_read?'🔔':'🟢')+'</div><div class="menu-main"><h4>'+esc(n.title)+'</h4><p>'+esc(n.body||'')+'</p><small style="color:var(--soft)">'+notifyTime(n.created_at)+'</small></div><span class="chev">›</span></div>';}).join("");
+      box.innerHTML=items.map(function(n){return '<div class="menu-card" data-notification="'+n.id+'" data-noid="'+(n.order_id||0)+'" data-dining-id="'+(n.dining_order_id||0)+'" data-action-type="'+esc(n.action_type||'')+'" style="'+(!n.is_read?'border-color:var(--primary);':'')+'"><div class="menu-ic">'+(n.is_read?'🔔':'🟢')+'</div><div class="menu-main"><h4>'+esc(n.title)+'</h4><p>'+esc(n.body||'')+'</p><small style="color:var(--soft)">'+notifyTime(n.created_at)+'</small></div><span class="chev">›</span></div>';}).join("");
     }).catch(function(e){box.innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
   }
   function updateNotifyBadges(count){
@@ -5138,7 +5138,9 @@
     }).catch(function(){});
   }
   function openActionNotification(n){
-    if(!n||!n.order_id)return;
+    if(!n)return;
+    if(n.dining_order_id){ACTION_NOTIFY_DISMISSED[n.id]=1;hideActionNotify();setActiveMode("business");api("PUT","/api/notifications/"+n.id+"/read",withActor({},"business")).catch(function(){});if(n.action_type==="dining_cash"||n.action_type==="dining_problem")nav("cab-kassa");else{DINING_ORDER_SOURCE="internal";nav("cab-orders");}return;}
+    if(!n.order_id)return;
     ACTION_NOTIFY_DISMISSED[n.id]=1;
     hideActionNotify();
     var business=n.actor_kind==="business",mode=business?"inbox":"mine";
@@ -5159,9 +5161,9 @@
   }
   el("orderNotifyList") && el("orderNotifyList").addEventListener("click",function(e){
     var n=e.target.closest("[data-notification]");if(!n)return;
-    var id=parseInt(n.getAttribute("data-notification"),10),oid=parseInt(n.getAttribute("data-noid"),10);
+    var id=parseInt(n.getAttribute("data-notification"),10),oid=parseInt(n.getAttribute("data-noid"),10),did=parseInt(n.getAttribute("data-dining-id"),10),act=n.getAttribute("data-action-type")||"";
     api("PUT","/api/notifications/"+id+"/read",withActor({},actorType())).then(function(){
-      if(oid){var mode=actorType()==="business"?"inbox":"mine"; if(mode==="inbox")loadBizOrders();else loadMyOrders(); setTimeout(function(){openOrderDetail(oid,mode);},250);}else loadOrderNotifications();
+      if(did){setActiveMode("business");if(act==="dining_cash"||act==="dining_problem")nav("cab-kassa");else{DINING_ORDER_SOURCE="internal";nav("cab-orders");}}else if(oid){var mode=actorType()==="business"?"inbox":"mine"; if(mode==="inbox")loadBizOrders();else loadMyOrders(); setTimeout(function(){openOrderDetail(oid,mode);},250);}else loadOrderNotifications();
     }).catch(function(err){showMsg(err.message);});
   });
   el("notifyReadAll") && el("notifyReadAll").addEventListener("click",function(){
