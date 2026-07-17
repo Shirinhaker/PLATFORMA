@@ -1799,6 +1799,12 @@ async def dining_order_add(place_id: int, request: Request, x_telegram_init_data
     order_id=cur.lastrowid
     conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
                      [(order_id,*x) for x in prepared])
+    place = conn.execute("SELECT name FROM dining_places WHERE id=?", (place_id,)).fetchone()
+    place_name = place["name"] if place else "Stol"
+    _business_notification(conn, biz, "dining:%d:new:kitchen" % order_id, "Yangi ichki zakaz",
+                           "%s · %s so'm" % (place_name, total), "dining_kitchen", order_id, target_perm="kitchen")
+    _business_notification(conn, biz, "dining:%d:new:cash" % order_id, "Yangi ochiq hisob",
+                           "%s · %s so'm" % (place_name, total), "dining_cash", order_id, target_perm="kassa")
     conn.commit();conn.close()
     return {"id":order_id,"total":total,"ok":True}
 
@@ -1842,6 +1848,12 @@ async def dining_order_kitchen(order_id: int, request: Request, x_telegram_init_
     if bool(_row_val(row, "problem_open", 0) or 0):
         conn.close(); raise HTTPException(409, "Muammoli zakazni avval kassada hal qiling.")
     conn.execute("UPDATE dining_bookings SET kitchen_status=?,updated_at=? WHERE id=?", (status, int(time.time()), order_id))
+    if status == "done":
+        _business_notification(conn, biz, "dining:%d:ready:waiter" % order_id, "Taom tayyor bo'ldi",
+                               "%s uchun zakazni olib ketishingiz mumkin." % (_row_val(row, "waiter_name", "Ofitsiant") or "Ofitsiant"),
+                               "dining_waiter", order_id, target_staff_id=_row_val(row, "waiter_staff_id", None))
+        conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_kitchen' AND resolved_at=0",
+                     (int(time.time()), int(time.time()), order_id))
     conn.commit(); conn.close(); return {"ok": True, "kitchen_status": status}
 
 
@@ -1909,6 +1921,11 @@ async def dining_order_confirm_payment(order_id: int, request: Request, x_telegr
             (biz["id"], "dining", order_id, it["item_id"], it["name"], it["qty"], it["unit"], it["price"], it["total"], pay,
              "Ichki buyurtma #%d" % order_id, user["id"], now, chek))
     conn.execute("UPDATE dining_bookings SET payment_status='confirmed',updated_at=? WHERE id=?", (now, order_id))
+    _business_notification(conn, biz, "dining:%d:paid:kitchen" % order_id, "Ichki zakaz to'lovi tasdiqlandi",
+                           "Zakaz #%d to'lovi kassir tomonidan tasdiqlandi." % order_id,
+                           "dining_kitchen", order_id, target_perm="kitchen")
+    conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_cash' AND resolved_at=0",
+                 (now, now, order_id))
     conn.commit(); conn.close(); return {"ok": True, "pay_type": pay, "chek_no": chek}
 
 
@@ -1974,6 +1991,8 @@ async def dining_order_problem(order_id: int, request: Request, x_telegram_init_
     note = (body.get("note") or "").strip()[:300]; now = int(time.time())
     conn.execute("UPDATE dining_bookings SET problem_open=1,problem_reason=?,problem_note=?,problem_opened_at=?,updated_at=? WHERE id=?",
                  (reason, note, now, now, order_id))
+    _business_notification(conn, biz, "dining:%d:problem" % order_id, "Ichki hisobda muammo",
+                           reason + ((" · " + note) if note else ""), "dining_problem", order_id, target_perm="kassa")
     conn.commit(); conn.close(); return {"ok": True}
 
 
@@ -1987,6 +2006,8 @@ async def dining_order_problem_resolve(order_id: int, x_telegram_init_data: str 
     if not bool(_row_val(order, "problem_open", 0) or 0):
         conn.close(); return {"ok": True, "already_resolved": True}
     conn.execute("UPDATE dining_bookings SET problem_open=0,updated_at=? WHERE id=?", (int(time.time()), order_id))
+    conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_problem' AND resolved_at=0",
+                 (int(time.time()), int(time.time()), order_id))
     conn.commit(); conn.close(); return {"ok": True}
 
 
@@ -6968,16 +6989,17 @@ def _order_seen_value(r, view):
     return int(_row_val(r, "customer_seen_at", 0) or 0)
 
 
-def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type=""):
+def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type="", dining_order_id=None, target_staff_id=None, target_perm=""):
     """Faqat amal/tasdiq talab qiladigan hodisani bir marta yozadi."""
     if not user_id or not actor_id or not event_key or not action_type:
         return
     conn.execute(
         """INSERT OR IGNORE INTO notifications
-           (user_id,actor_kind,actor_id,event_key,title,body,order_id,ride_id,requires_action,action_type,is_read,created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,0,?)""",
+           (user_id,actor_kind,actor_id,event_key,title,body,order_id,dining_order_id,target_staff_id,target_perm,ride_id,requires_action,action_type,is_read,created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
         (int(user_id), actor_kind, int(actor_id), str(event_key), title, body,
-         order_id, ride_id, 1 if action_type else 0, action_type, int(time.time())),
+         order_id, dining_order_id, target_staff_id, target_perm or "", ride_id,
+         1 if action_type else 0, action_type, int(time.time())),
     )
     notification = conn.execute(
         "SELECT id FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND event_key=?",
@@ -7011,6 +7033,26 @@ def _resolve_order_action(conn, order_id, action_type):
     conn.execute("""UPDATE notifications SET resolved_at=?,is_read=1,read_at=?
         WHERE order_id=? AND action_type=? AND resolved_at=0""",
         (int(time.time()), int(time.time()), order_id, action_type))
+
+
+def _notification_visible(row, staff, perms):
+    """Rahbar hammasini, xodim esa faqat o'zi yoki ruxsatiga yo'naltirilgan xabarni ko'radi."""
+    if not staff:
+        return True
+    target_staff = int(_row_val(row, "target_staff_id", 0) or 0)
+    target_perm = (_row_val(row, "target_perm", "") or "").strip()
+    if target_staff:
+        return target_staff == int(staff["id"])
+    if target_perm:
+        return target_perm in (perms or [])
+    return "notifications" in (perms or [])
+
+
+def _business_notification(conn, biz, event_key, title, body, action_type, dining_order_id,
+                           target_staff_id=None, target_perm=""):
+    _add_notification(conn, biz["user_id"], "business", biz["id"], event_key, title, body,
+                      action_type=action_type, dining_order_id=dining_order_id,
+                      target_staff_id=target_staff_id, target_perm=target_perm)
 
 
 @router.post("/push/devices")
@@ -7081,10 +7123,10 @@ async def list_notifications(actor_type: str = "user", x_telegram_init_data: str
     rows = conn.execute(
         """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1
            ORDER BY created_at DESC,id DESC LIMIT 200""", (me["id"], kind, actor_id)).fetchall()
-    unread = conn.execute(
-        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1 AND resolved_at=0 AND is_read=0",
-        (me["id"], kind, actor_id)).fetchone()[0]
-    out = [dict(r) for r in rows]; conn.close()
+    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
+    visible = [r for r in rows if _notification_visible(r, staff, perms)]
+    unread = sum(1 for r in visible if not int(r["resolved_at"] or 0) and not int(r["is_read"] or 0))
+    out = [dict(r) for r in visible]; conn.close()
     return {"items": out, "unread": unread}
 
 
@@ -7099,7 +7141,8 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
            ORDER BY created_at ASC,id ASC LIMIT 20""",
         (me["id"], kind, actor_id)
     ).fetchall()
-    out = [dict(r) for r in rows]; conn.close()
+    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
+    out = [dict(r) for r in rows if _notification_visible(r, staff, perms)]; conn.close()
     return {"items": out, "count": len(out)}
 
 
@@ -7107,6 +7150,11 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
 async def read_notification(notification_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
     actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
+    found = conn.execute("SELECT * FROM notifications WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?",
+                         (notification_id, me["id"], kind, actor_id)).fetchone()
+    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
+    if not found or not _notification_visible(found, staff, perms):
+        conn.close(); raise HTTPException(404, "Bildirishnoma topilmadi.")
     cur = conn.execute("""UPDATE notifications SET is_read=1,read_at=?,
         resolved_at=CASE WHEN action_type='view_ready' THEN ? ELSE resolved_at END
         WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?""",
@@ -7120,8 +7168,17 @@ async def read_notification(notification_id: int, request: Request, x_telegram_i
 async def read_all_notifications(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
     actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
-    conn.execute("""UPDATE notifications SET is_read=1,read_at=?
-        WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0""", (now, me["id"], kind, actor_id))
+    staff = _staff_session(conn, x_telegram_init_data)
+    if staff:
+        perms = _perms_parse(_row_val(staff, "perms", "") or "")
+        rows = conn.execute("SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0",
+                            (me["id"], kind, actor_id)).fetchall()
+        ids = [int(r["id"]) for r in rows if _notification_visible(r, staff, perms)]
+        if ids:
+            conn.execute("UPDATE notifications SET is_read=1,read_at=? WHERE id IN (%s)" % ",".join("?" for _ in ids), (now, *ids))
+    else:
+        conn.execute("""UPDATE notifications SET is_read=1,read_at=?
+            WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0""", (now, me["id"], kind, actor_id))
     conn.commit(); conn.close(); return {"ok": True}
 
 
@@ -7790,6 +7847,11 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         )
         _notify_order_side(conn, r, "customer", "payment_confirmed", "To'lov tasdiqlandi",
                            "Buyurtma tayyorlanmoqda.")
+        _add_notification(conn, biz["user_id"], "business", biz["id"],
+                          "order:%d:payment_confirmed:kitchen" % order_id,
+                          "Tashqi buyurtma to'lovi tasdiqlandi",
+                          "Buyurtma #%d ni tayyorlashni boshlang." % order_id,
+                          order_id=order_id, action_type="start_preparing", target_perm="kitchen")
         _resolve_order_action(conn, order_id, "confirm_payment")
     else:
         conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
