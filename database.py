@@ -499,6 +499,18 @@ def _migrate(conn):
     if "group_id" not in icols:
         # Eski mahsulotlar avtomatik Guruhsiz bo'lib qolishi uchun NULL ustun qo'shamiz.
         conn.execute("ALTER TABLE items ADD COLUMN group_id INTEGER")
+    _icols_edu = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
+    for _name, _sql in (
+        ("course_mode", "ALTER TABLE items ADD COLUMN course_mode TEXT DEFAULT ''"),
+        ("course_duration", "ALTER TABLE items ADD COLUMN course_duration TEXT DEFAULT ''"),
+        ("lesson_duration", "ALTER TABLE items ADD COLUMN lesson_duration INTEGER DEFAULT 0"),
+        ("age_from", "ALTER TABLE items ADD COLUMN age_from INTEGER DEFAULT 0"),
+        ("age_to", "ALTER TABLE items ADD COLUMN age_to INTEGER DEFAULT 0"),
+        ("course_level", "ALTER TABLE items ADD COLUMN course_level TEXT DEFAULT ''"),
+        ("enrollment_status", "ALTER TABLE items ADD COLUMN enrollment_status TEXT DEFAULT 'open'"),
+    ):
+        if _name not in _icols_edu:
+            conn.execute(_sql)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_items_group ON items(group_id)")
 
