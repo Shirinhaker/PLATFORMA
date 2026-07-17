@@ -27,6 +27,7 @@ import threading
 from fastapi import APIRouter, Request, Header, HTTPException
 
 from database import db
+from education_statistics import education_statistics_data
 
 router = APIRouter(prefix="/api")
 
@@ -2411,6 +2412,22 @@ async def education_enrollment_reject(enrollment_id:int,x_telegram_init_data:str
     cur=conn.execute("UPDATE education_enrollments SET status='rejected',updated_at=? WHERE id=? AND business_id=? AND status='new'",(int(time.time()),enrollment_id,biz["id"]));conn.commit();conn.close()
     if not cur.rowcount: raise HTTPException(404,"Yangi ariza topilmadi.")
     return {"ok":True}
+
+
+@router.get("/education/statistics")
+async def education_statistics(period: str = "month", date: str = "", x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "expenses", "statistics")
+    if not date:
+        date = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
+    try:
+        result = education_statistics_data(conn, biz["id"], period, date)
+    except ValueError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc))
+    conn.close()
+    return result
 
 
 @router.get("/education/teacher-payroll")
