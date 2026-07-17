@@ -1795,9 +1795,21 @@ def _education_group_payload(conn, biz_id, body, old=None):
         raise HTTPException(400, "Darslar soni yoki paket narxi noto'g'ri.")
     if billing_type == "attendance" and (package_lessons <= 0 or package_price <= 0):
         raise HTTPException(400, "Qatnashuv bo'yicha hisoblash uchun darslar soni va paket narxini kiriting.")
+    teacher_id = value("teacher_id", _row_val(old, "teacher_id", None) if old else None)
+    if teacher_id in (None, "", 0, "0"):
+        teacher_id = None
+    else:
+        try:
+            teacher_id = int(teacher_id)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "O'qituvchi noto'g'ri tanlangan.")
+        teacher = conn.execute("SELECT full_name FROM education_teachers WHERE id=? AND business_id=? AND status='active'", (teacher_id, biz_id)).fetchone()
+        if not teacher:
+            raise HTTPException(400, "Tanlangan o'qituvchi topilmadi.")
+        body["teacher_name"] = teacher["full_name"]
     return {
         "name": name, "course_item_id": course_id,
-        "teacher_name": str(value("teacher_name", old["teacher_name"] if old else "") or "").strip()[:100],
+        "teacher_name": str(value("teacher_name", old["teacher_name"] if old else "") or "").strip()[:100], "teacher_id": teacher_id,
         "room_name": str(value("room_name", old["room_name"] if old else "") or "").strip()[:80],
         "capacity": capacity, "weekdays": days,
         "lesson_from": str(value("lesson_from", old["lesson_from"] if old else "") or "")[:5],
@@ -1832,10 +1844,10 @@ async def education_group_add(request: Request, x_telegram_init_data: str = Head
     data = _education_group_payload(conn, biz["id"], await request.json())
     now = int(time.time())
     cur = conn.execute(
-        """INSERT INTO education_groups(business_id,name,course_item_id,teacher_name,room_name,capacity,
+        """INSERT INTO education_groups(business_id,name,course_item_id,teacher_name,teacher_id,room_name,capacity,
            weekdays,lesson_from,lesson_to,start_date,end_date,billing_type,package_lessons,package_price,status,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
-        (biz["id"], data["name"], data["course_item_id"], data["teacher_name"], data["room_name"],
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
+        (biz["id"], data["name"], data["course_item_id"], data["teacher_name"], data["teacher_id"], data["room_name"],
          data["capacity"], data["weekdays"], data["lesson_from"], data["lesson_to"],
          data["start_date"], data["end_date"], data["billing_type"], data["package_lessons"], data["package_price"], now, now),
     )
@@ -1856,10 +1868,10 @@ async def education_group_edit(group_id: int, request: Request, x_telegram_init_
         raise HTTPException(404, "Guruh topilmadi.")
     data = _education_group_payload(conn, biz["id"], await request.json(), old)
     conn.execute(
-        """UPDATE education_groups SET name=?,course_item_id=?,teacher_name=?,room_name=?,capacity=?,
+        """UPDATE education_groups SET name=?,course_item_id=?,teacher_name=?,teacher_id=?,room_name=?,capacity=?,
            weekdays=?,lesson_from=?,lesson_to=?,start_date=?,end_date=?,billing_type=?,package_lessons=?,package_price=?,updated_at=?
            WHERE id=? AND business_id=?""",
-        (data["name"], data["course_item_id"], data["teacher_name"], data["room_name"], data["capacity"],
+        (data["name"], data["course_item_id"], data["teacher_name"], data["teacher_id"], data["room_name"], data["capacity"],
          data["weekdays"], data["lesson_from"], data["lesson_to"], data["start_date"], data["end_date"],
          data["billing_type"], data["package_lessons"], data["package_price"], int(time.time()), group_id, biz["id"]),
     )
@@ -2180,6 +2192,68 @@ async def education_payment_delete(payment_id: int, x_telegram_init_data: str = 
     conn.execute("DELETE FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"]))
     conn.commit(); conn.close()
     return {"ok": True}
+
+
+def _education_teacher_payload(body, old=None):
+    def value(key, default=""):
+        return body.get(key, default) if key in body else default
+    name = str(value("full_name", old["full_name"] if old else "") or "").strip()[:120]
+    if not name:
+        raise HTTPException(400, "O'qituvchi ism-familiyasini kiriting.")
+    salary_type = str(value("salary_type", old["salary_type"] if old else "monthly") or "monthly")
+    if salary_type not in ("monthly", "per_lesson"):
+        salary_type = "monthly"
+    try:
+        salary_amount = max(0, int(str(value("salary_amount", old["salary_amount"] if old else 0) or 0).replace(" ", "")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Ish haqi summasi noto'g'ri.")
+    return {"full_name": name, "phone": str(value("phone", old["phone"] if old else "") or "").strip()[:30],
+            "specialty": str(value("specialty", old["specialty"] if old else "") or "").strip()[:120],
+            "hired_date": str(value("hired_date", old["hired_date"] if old else "") or "")[:10],
+            "salary_type": salary_type, "salary_amount": salary_amount,
+            "note": str(value("note", old["note"] if old else "") or "").strip()[:500]}
+
+
+@router.get("/education/teachers")
+async def education_teachers(x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        """SELECT t.*,(SELECT COUNT(*) FROM education_groups g WHERE g.business_id=t.business_id AND g.teacher_id=t.id AND g.status='active') AS group_count
+           FROM education_teachers t WHERE t.business_id=? AND t.status='active' ORDER BY t.full_name COLLATE NOCASE,t.id""",
+        (biz["id"],),
+    ).fetchall(); conn.close(); return [dict(r) for r in rows]
+
+
+@router.post("/education/teachers")
+async def education_teacher_add(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
+    d = _education_teacher_payload(await request.json()); now = int(time.time())
+    cur = conn.execute("""INSERT INTO education_teachers(business_id,full_name,phone,specialty,hired_date,salary_type,salary_amount,note,status,created_at,updated_at)
+                          VALUES(?,?,?,?,?,?,?,?,'active',?,?)""",
+                       (biz["id"],d["full_name"],d["phone"],d["specialty"],d["hired_date"],d["salary_type"],d["salary_amount"],d["note"],now,now))
+    conn.commit(); teacher_id=cur.lastrowid; conn.close(); return {"ok":True,"id":teacher_id}
+
+
+@router.put("/education/teachers/{teacher_id}")
+async def education_teacher_edit(teacher_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
+    old=conn.execute("SELECT * FROM education_teachers WHERE id=? AND business_id=? AND status='active'",(teacher_id,biz["id"])).fetchone()
+    if not old: conn.close(); raise HTTPException(404,"O'qituvchi topilmadi.")
+    d=_education_teacher_payload(await request.json(),old)
+    conn.execute("""UPDATE education_teachers SET full_name=?,phone=?,specialty=?,hired_date=?,salary_type=?,salary_amount=?,note=?,updated_at=? WHERE id=? AND business_id=?""",
+                 (d["full_name"],d["phone"],d["specialty"],d["hired_date"],d["salary_type"],d["salary_amount"],d["note"],int(time.time()),teacher_id,biz["id"]))
+    conn.execute("UPDATE education_groups SET teacher_name=? WHERE business_id=? AND teacher_id=?",(d["full_name"],biz["id"],teacher_id))
+    conn.commit(); conn.close(); return {"ok":True}
+
+
+@router.delete("/education/teachers/{teacher_id}")
+async def education_teacher_delete(teacher_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
+    old=conn.execute("SELECT id FROM education_teachers WHERE id=? AND business_id=?",(teacher_id,biz["id"])).fetchone()
+    if not old: conn.close(); raise HTTPException(404,"O'qituvchi topilmadi.")
+    conn.execute("UPDATE education_teachers SET status='inactive',updated_at=? WHERE id=? AND business_id=?",(int(time.time()),teacher_id,biz["id"]))
+    conn.execute("UPDATE education_groups SET teacher_id=NULL WHERE business_id=? AND teacher_id=?",(biz["id"],teacher_id))
+    conn.commit(); conn.close(); return {"ok":True}
 
 
 @router.post("/dining/places/{place_id}/booking")
