@@ -1924,10 +1924,23 @@ async def dining_order_confirm_payment(order_id: int, request: Request, x_telegr
         except HTTPException:
             conn.rollback(); conn.close(); raise
     for it in items:
+        fifo_cost = 0
+        tracked = conn.execute("SELECT track_stock FROM items WHERE id=? AND business_id=?", (it["item_id"], biz["id"])).fetchone() if it["item_id"] else None
+        if tracked and int(tracked["track_stock"] or 0):
+            try:
+                fifo_cost = _fifo_consume(conn, biz["id"], it["item_id"], float(it["qty"] or 0), "dining", order_id, now)
+            except HTTPException:
+                conn.rollback(); conn.close(); raise
+            conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (float(it["qty"] or 0), it["item_id"]))
+            conn.execute(
+                "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,user_id,created_at) VALUES(?,?,?,?,?,?,?)",
+                (biz["id"], it["item_id"], -float(it["qty"] or 0), "sotuv",
+                 "Ichki buyurtma #%d" % order_id, user["id"], now),
+            )
         conn.execute(
-            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,debtor_id,qarz_tx_id,note,user_id,created_at,chek_no) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,debtor_id,qarz_tx_id,note,user_id,created_at,chek_no,cost_total) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (biz["id"], "dining", order_id, it["item_id"], it["name"], it["qty"], it["unit"], it["price"], it["total"], pay,
-             debtor_id, qtx_id, "Ichki buyurtma #%d" % order_id, user["id"], now, chek))
+             debtor_id, qtx_id, "Ichki buyurtma #%d" % order_id, user["id"], now, chek, fifo_cost))
     conn.execute("UPDATE dining_bookings SET payment_status='confirmed',pay_type=?,debtor_id=?,qarz_tx_id=?,updated_at=? WHERE id=?",
                  (pay, debtor_id, qtx_id, now, order_id))
     _business_notification(conn, biz, "dining:%d:paid:kitchen" % order_id, "Ichki zakaz to'lovi tasdiqlandi",
@@ -4615,16 +4628,20 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
     start, end, label, buckets = _period_bounds(period, anchor)
     n = len(buckets)
 
-    # --- Savdolar (qarzpay = qarz to'lovi, tushumga kirmaydi) ---
+    # --- Savdolar: hisoblangan savdo, haqiqiy pul kirimi va FIFO tannarxi alohida ---
     sales = conn.execute(
-        "SELECT source, pay_type, total, item_id, item_name, qty, price, created_at "
-        "FROM sales WHERE business_id=? AND created_at>=? AND created_at<?",
+        "SELECT s.source,s.order_id,s.pay_type,s.total,s.item_id,s.item_name,s.qty,s.price,s.created_at,"
+        "CASE WHEN COALESCE(s.cost_total,0)>0 THEN s.cost_total ELSE ROUND(COALESCE(s.qty,0)*COALESCE(i.cost_price,0)) END cost_total,s.user_id "
+        "FROM sales s LEFT JOIN items i ON i.id=s.item_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?",
         (bid, start, end),
     ).fetchall()
-    revenue = 0
+    revenue = 0; cash_in = 0; cogs = 0
     qarzpay = 0
     pay = {"naqd": 0, "karta": 0, "qarz": 0, "order": 0}
     bkt_rev = [0] * n
+    bkt_cogs = [0] * n
+    source_split = {"internal": {"count": 0, "total": 0}, "external": {"count": 0, "total": 0}, "manual": {"count": 0, "total": 0}}
+    seen_orders = set()
     prod = {}
     for sl in sales:
         t = int(sl["total"] or 0)
@@ -4632,42 +4649,55 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         ca = sl["created_at"] or 0
         if src == "qarzpay":
             qarzpay += t
+            cash_in += t
             continue
         revenue += t
+        line_cost = int(sl["cost_total"] or 0); cogs += line_cost
         pt = sl["pay_type"] or ""
         pay[pt if pt in ("naqd", "karta", "qarz") else "order"] += t
+        if pt in ("naqd", "karta"): cash_in += t
+        sk = "internal" if src == "dining" else ("external" if src == "order" else "manual")
+        source_split[sk]["total"] += t
+        order_key = (src, _row_val(sl, "order_id", 0) or 0)
+        if src in ("dining", "order"):
+            if order_key not in seen_orders: source_split[sk]["count"] += 1; seen_orders.add(order_key)
+        else: source_split[sk]["count"] += 1
         for i in range(n):
             if buckets[i]["start"] <= ca < buckets[i]["end"]:
                 bkt_rev[i] += t
+                bkt_cogs[i] += line_cost
                 break
         key = sl["item_name"] or "?"
         pr = prod.get(key)
         if not pr:
-            pr = {"name": key, "item_id": sl["item_id"], "qty": 0.0, "total": 0, "unit": ""}
+            pr = {"name": key, "item_id": sl["item_id"], "qty": 0.0, "total": 0, "cost_total": 0, "unit": ""}
             prod[key] = pr
         pr["qty"] += float(sl["qty"] or 0)
         pr["total"] += t
+        pr["cost_total"] += line_cost
 
     # --- Xarajatlar ---
     exp_rows = conn.execute(
         "SELECT amount, category, created_at FROM expenses WHERE business_id=? AND created_at>=? AND created_at<?",
         (bid, start, end),
     ).fetchall()
-    expenses = 0
+    expenses = 0; inventory_purchases = 0
     exp_by_cat = {}
     bkt_exp = [0] * n
     for e in exp_rows:
         amt = int(e["amount"] or 0)
-        expenses += amt
         cat = e["category"] or "Boshqa"
+        if cat == "Tovar xaridi": inventory_purchases += amt
+        else: expenses += amt
         exp_by_cat[cat] = exp_by_cat.get(cat, 0) + amt
         ca = e["created_at"] or 0
         for i in range(n):
             if buckets[i]["start"] <= ca < buckets[i]["end"]:
-                bkt_exp[i] += amt
+                if cat != "Tovar xaridi": bkt_exp[i] += amt
                 break
 
-    profit = revenue - expenses
+    gross_profit = revenue - cogs
+    profit = gross_profit - expenses
 
     # --- Tovar birliklari + tannarx (foyda uchun) ---
     ids = [pr["item_id"] for pr in prod.values() if pr["item_id"]]
@@ -4683,10 +4713,12 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         u = units.get(pr["item_id"], "")
         cost = costs.get(pr["item_id"], 0)
         margin = None
-        if cost and pr["qty"]:
+        if pr["cost_total"]:
+            margin = int(pr["total"] - pr["cost_total"])
+        elif cost and pr["qty"]:
             margin = int(round(pr["total"] - cost * pr["qty"]))
         top.append({"name": pr["name"], "qty": round(pr["qty"], 3), "unit": u,
-                    "total": pr["total"], "margin": margin})
+                    "total": pr["total"], "cost_total": pr["cost_total"], "margin": margin})
     top.sort(key=lambda x: x["total"], reverse=True)
     top = top[:12]
 
@@ -4696,8 +4728,18 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
                "SELECT name, unit, stock_qty FROM items WHERE business_id=? AND track_stock=1 "
                "ORDER BY stock_qty ASC LIMIT 8", (bid,)).fetchall()]
 
-    trend = [{"label": buckets[i]["label"], "rev": bkt_rev[i], "exp": bkt_exp[i],
-              "profit": bkt_rev[i] - bkt_exp[i]} for i in range(n)]
+    trend = [{"label": buckets[i]["label"], "rev": bkt_rev[i], "exp": bkt_exp[i], "cogs": bkt_cogs[i],
+              "profit": bkt_rev[i] - bkt_cogs[i] - bkt_exp[i]} for i in range(n)]
+
+    cashier_rows = conn.execute(
+        """SELECT COALESCE(u.name,'Rahbar') name,COUNT(DISTINCT COALESCE(s.chek_no,s.id)) checks,SUM(s.total) total
+           FROM sales s LEFT JOIN users u ON u.id=s.user_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?
+             AND s.source<>'qarzpay' GROUP BY s.user_id ORDER BY total DESC LIMIT 12""", (bid,start,end)).fetchall()
+    waiter_rows = conn.execute(
+        """SELECT COALESCE(d.waiter_name,'Rahbar') name,COUNT(DISTINCT d.id) orders,SUM(s.total) total
+           FROM dining_bookings d JOIN sales s ON s.source='dining' AND s.order_id=d.id
+           WHERE d.business_id=? AND s.created_at>=? AND s.created_at<? GROUP BY d.waiter_staff_id,d.waiter_name
+           ORDER BY total DESC LIMIT 12""", (bid,start,end)).fetchall() if (biz["yon"] or "").strip()=="Umumiy ovqatlanish" else []
 
     can_next = end <= _ts_day(_tashkent_today())
 
@@ -4706,9 +4748,11 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         "period": (period or "oy").lower() if (period or "oy").lower() in _PERIODS else "oy",
         "anchor": anchor or "",
         "label": label,
-        "revenue": revenue, "expenses": expenses, "profit": profit, "qarzpay": qarzpay,
+        "revenue": revenue, "cash_in": cash_in, "cogs": cogs, "gross_profit": gross_profit,
+        "expenses": expenses, "inventory_purchases": inventory_purchases, "profit": profit, "qarzpay": qarzpay,
         "pay": pay, "exp_by_cat": exp_by_cat,
-        "trend": trend, "top_products": top, "low_stock": low,
+        "trend": trend, "top_products": top, "low_stock": low, "source_split": source_split,
+        "cashiers": [dict(r) for r in cashier_rows], "waiters": [dict(r) for r in waiter_rows],
         "sales_count": len([1 for sl in sales if (sl["source"] or "") != "qarzpay"]),
         "can_next": can_next,
     }
@@ -4917,12 +4961,15 @@ def _kassa_add_for_order(conn, order, actor_user_id):
         total = int(oi["line_total"] or 0)
         qty = round(float(oi["qty"] or 1), 3)
         price = int(round(total / qty)) if (total and qty) else _price_to_int(oi["price_text"] or "")
+        fifo_cost = int(conn.execute(
+            "SELECT COALESCE(SUM(total_cost),0) FROM stock_batch_consumptions WHERE source_type='order' AND source_id=? AND item_id=?",
+            (order["id"], oi["item_id"])).fetchone()[0] or 0) if oi["item_id"] else 0
         conn.execute(
-            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at,cost_total) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (int(order["provider_actor_id"] or 0), "order", order["id"], oi["item_id"],
              oi["item_name"] or "", qty, _row_val(oi, "unit", "") or "", price, total,
-             pay_type, debtor_id, qtx_id, "Buyurtma #%d" % order["id"], actor_user_id, now),
+             pay_type, debtor_id, qtx_id, "Buyurtma #%d" % order["id"], actor_user_id, now, fifo_cost),
         )
 
 
