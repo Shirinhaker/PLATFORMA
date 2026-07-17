@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1564 -->
+<title>Platforma</title><!-- BUILD: v1565 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7532,9 +7532,13 @@
     var html = "";
     // Moliyaviy kartalar
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
-      '<div class="item" style="display:block;padding:12px"><div class="idesc">Tushum</div><div style="font-weight:800;font-size:18px;color:#188038;margin-top:2px">'+moneyText(d.revenue)+'</div></div>'+
-      '<div class="item" style="display:block;padding:12px"><div class="idesc">Xarajat</div><div style="font-weight:800;font-size:18px;color:#e53935;margin-top:2px">'+moneyText(d.expenses)+'</div></div>'+
-      '<div class="item" style="display:block;padding:12px;grid-column:1 / span 2"><div class="idesc">Sof foyda (tushum − xarajat)</div><div style="font-weight:800;font-size:22px;color:'+profitColor+';margin-top:2px">'+moneyText(d.profit)+' so\'m</div>'+(d.qarzpay?'<div class="idesc" style="margin-top:3px">+ Qarz to\'lovi qabul qilindi: '+moneyText(d.qarzpay)+' (tushumga kirmaydi)</div>':'')+'</div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Haqiqiy pul tushumi</div><div style="font-weight:800;font-size:18px;color:#188038;margin-top:2px">'+moneyText(d.cash_in||0)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Jami savdo</div><div style="font-weight:800;font-size:18px;margin-top:2px">'+moneyText(d.revenue)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">FIFO sotuv tannarxi</div><div style="font-weight:800;font-size:18px;color:#b45309;margin-top:2px">'+moneyText(d.cogs||0)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Yalpi foyda</div><div style="font-weight:800;font-size:18px;margin-top:2px">'+moneyText(d.gross_profit||0)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Operatsion xarajat</div><div style="font-weight:800;font-size:18px;color:#e53935;margin-top:2px">'+moneyText(d.expenses)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px"><div class="idesc">Xomashyo xaridi</div><div style="font-weight:800;font-size:18px;color:#1a73e8;margin-top:2px">'+moneyText(d.inventory_purchases||0)+'</div></div>'+
+      '<div class="item" style="display:block;padding:12px;grid-column:1 / span 2"><div class="idesc">Sof foyda (savdo − FIFO tannarx − operatsion xarajat)</div><div style="font-weight:800;font-size:22px;color:'+profitColor+';margin-top:2px">'+moneyText(d.profit)+' so\'m</div>'+(d.qarzpay?'<div class="idesc" style="margin-top:3px">Qarzdan qaytgan pul: '+moneyText(d.qarzpay)+' — haqiqiy tushumga qo‘shildi</div>':'')+'</div>'+
     '</div>';
     // Trend grafik + metrika almashtirish
     html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px">'+
@@ -7548,6 +7552,7 @@
     // To'lov turlari
     html += '<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:4px">To\'lov turlari</div>'+
       payRow("Naqd", d.pay.naqd, "#188038")+payRow("Karta", d.pay.karta, "#1a73e8")+payRow("Qarz (sotildi)", d.pay.qarz, "#e6a100")+payRow("Buyurtma", d.pay.order, "#8e44ad")+'</div>';
+    if(d.source_split){var ss=d.source_split;html+='<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:6px">🍽️ Savdo manbalari</div>'+payRow('Ichki buyurtma · '+(ss.internal.count||0)+' ta',ss.internal.total||0,'#16A34A')+payRow('Tashqi buyurtma · '+(ss.external.count||0)+' ta',ss.external.total||0,'#2563EB')+payRow('Kassa savdosi · '+(ss.manual.count||0)+' ta',ss.manual.total||0,'#8B5CF6')+'</div>';}
     // Tovarlar
     if((d.top_products||[]).length){
       var maxT = Math.max.apply(null, d.top_products.map(function(p){ return p.total||1; }));
@@ -7569,6 +7574,8 @@
           return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span>'+esc(l.name)+'</span><b style="color:'+col+'">'+fmtQty(q)+' '+esc(l.unit||"dona")+'</b></div>';
         }).join("")+'</div>';
     }
+    if((d.waiters||[]).length){html+='<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:6px">🧑‍🍳 Ofitsiantlar</div>'+d.waiters.map(function(x){return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>'+esc(x.name)+' · '+x.orders+' ta</span><b>'+moneyText(x.total||0)+'</b></div>';}).join('')+'</div>';}
+    if((d.cashiers||[]).length){html+='<div class="item" style="display:block;padding:12px;margin-bottom:10px"><div style="font-weight:700;margin-bottom:6px">🧾 Kassirlar</div>'+d.cashiers.map(function(x){return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>'+esc(x.name)+' · '+x.checks+' ta chek</span><b>'+moneyText(x.total||0)+'</b></div>';}).join('')+'</div>';}
     el("statBody").innerHTML = html;
   }
   document.addEventListener("click", function(e){
