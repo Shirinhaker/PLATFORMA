@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1566 -->
+<title>Platforma</title><!-- BUILD: v1567 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3905,7 +3905,7 @@
       (o.desired_time ? '<div class="idesc">🕒 '+esc(o.desired_time)+'</div>' : '');
     var actions = '';
     if(mode==="inbox"){
-      if(o.status==="new") actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
+      if(o.status==="new" && canAcceptExternalOrder()) actions = '<div style="display:flex;gap:8px;margin-top:10px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       else if(o.status==="accepted"){
         var problemBtn = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
         actions = '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+problemBtn+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
@@ -3937,7 +3937,7 @@
   function orderActionButtons(o, mode){
     if(!o) return "";
     if(mode==="inbox"){
-      if(o.status==="new") return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
+      if(o.status==="new" && canAcceptExternalOrder()) return '<div style="display:flex;gap:8px;margin-top:12px"><button class="mini-btn" data-ostatus="accepted" data-oid="'+o.id+'">Qabul qilish</button><button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="rejected" data-oid="'+o.id+'">Rad etish</button></div>';
       if(o.status==="accepted"){
         var pb = (["submitted","recheck","disputed"].indexOf(o.payment_status)>=0) ? '<button class="mini-btn" style="border-color:#D97706;color:#D97706" data-oproblem="'+o.id+'">⚠️ To\'lov muammosi</button>' : '';
         return '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+pb+'<button class="mini-btn" style="border-color:#DC2626;background:transparent;color:#DC2626" data-ostatus="cancelled" data-oid="'+o.id+'">Bekor qilish</button></div>';
@@ -4086,6 +4086,7 @@
     if(!STAFF_INFO)return true;
     var p=STAFF_INFO.perms||[];return p.indexOf("kassa")>=0||p.indexOf("payment_review")>=0||p.indexOf("payment_confirm")>=0;
   }
+  function canAcceptExternalOrder(){return window.__businessDirection!=="Umumiy ovqatlanish"||canConfirmOrderPayment();}
   function orderPaymentHtml(o, mode){
     var hasPay = (o.pay_card && o.pay_card.trim()) || (o.pay_qr && o.pay_qr.trim());
     if(!hasPay) return "";   // biznesda to'lov ma'lumoti yo'q -> ko'rsatilmaydi
@@ -6312,6 +6313,8 @@
 
   /* ---------- OMBOR (qoldiq + kirim-chiqim, guruhli ko'rinish) ---------- */
   var OMBOR_STOCK_TYPE="ready_food", OMBOR_LAST_GROUPS=[], OMBOR_LAST_ROWS=[];
+  function canViewStockCosts(){if(!STAFF_INFO)return true;var p=STAFF_INFO.perms||[];return p.indexOf("expenses")>=0||p.indexOf("statistics")>=0;}
+  function canManageStockCatalog(){if(!STAFF_INFO)return true;var p=STAFF_INFO.perms||[];return p.indexOf("items")>=0||p.indexOf("ombor")>=0;}
   function stockColor(q){ q = parseFloat(q)||0; if(q < 0) return "#e53935"; if(q === 0) return "#e6a100"; return "inherit"; }
   function loadOmbor(){
     var box = el("omborList");
@@ -6323,18 +6326,18 @@
     }).catch(function(e){ box.innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function _ombCard(r){
-    var sale=parsePriceAmount(r.price)||0,profit=(sale&&r.cost_price)?Math.round(sale-r.cost_price):null;
+    var showCosts=canViewStockCosts(),sale=parsePriceAmount(r.price)||0,profit=(sale&&r.cost_price)?Math.round(sale-r.cost_price):null;
     return '<div class="item-card2" style="width:150px;min-height:auto;padding:10px">'+
       (r.photo_file ? '<div style="height:64px;border-radius:8px;overflow:hidden;margin-bottom:6px"><img src="'+esc(r.photo_file)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>' : '')+
       '<div class="iname" style="font-size:13px">'+esc(r.name)+'</div>'+
       '<div style="font-weight:800;margin-top:2px;color:'+stockColor(r.stock_qty)+'">'+fmtQty(r.stock_qty)+' '+esc(r.unit||"dona")+'</div>'+
       ((r.min_qty>0 && (r.stock_qty||0)<=r.min_qty) ? '<div style="display:inline-block;margin-top:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:800;color:#b45309;background:rgba(230,161,0,.15)">⚠️ Kam qoldi</div>' : '')+
-      (r.cost_price ? '<div class="idesc">Tannarx: '+moneyText(r.cost_price)+'</div>' : '<div class="idesc">Tannarx yo\'q</div>')+
-      (r.fifo_next_cost?'<div class="idesc">FIFO navbatdagi: '+moneyText(r.fifo_next_cost)+' · qoldiq qiymati '+moneyText(r.fifo_value||0)+'</div>':'')+
-      (((r.stock_type||"ready_food")==="ready_food"&&sale)?'<div class="idesc">Sotuv: '+moneyText(sale)+(profit!==null?' · foyda '+moneyText(profit):'')+'</div>':'')+
+      (showCosts?(r.cost_price ? '<div class="idesc">Tannarx: '+moneyText(r.cost_price)+'</div>' : '<div class="idesc">Tannarx yo\'q</div>'):'')+
+      (showCosts&&r.fifo_next_cost?'<div class="idesc">FIFO navbatdagi: '+moneyText(r.fifo_next_cost)+' · qoldiq qiymati '+moneyText(r.fifo_value||0)+'</div>':'')+
+      (showCosts&&((r.stock_type||"ready_food")==="ready_food"&&sale)?'<div class="idesc">Sotuv: '+moneyText(sale)+(profit!==null?' · foyda '+moneyText(profit):'')+'</div>':'')+
       '<div style="display:flex;gap:4px;margin-top:6px">'+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-in="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-cost="'+(r.cost_price||0)+'" data-st-type="'+(window.__businessDirection==="Umumiy ovqatlanish"?esc(r.stock_type||"ready_food"):"general")+'">+</button>'+
-        '<button class="mini-btn" style="flex:1;height:32px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-stock="'+(r.stock_qty||0)+'">−</button>'+
+        (canManageStockCatalog()?'<button class="mini-btn" style="flex:1;height:32px" data-st-out="'+r.id+'" data-st-name="'+esc(r.name)+'" data-st-unit="'+esc(r.unit||"dona")+'" data-st-stock="'+(r.stock_qty||0)+'">−</button>':'')+
         '<button class="mini-btn" style="flex:1;height:32px" data-st-hist="'+r.id+'" data-st-name="'+esc(r.name)+'">🕒</button>'+
       '</div>'+
     '</div>';
@@ -6349,10 +6352,10 @@
     function block(gid, title, arr){
       return '<div class="item-group-block"><div class="item-group-head"><div class="item-group-title"><h3>'+esc(title)+'</h3><p>'+arr.length+' ta</p></div></div>'+
         '<div class="item-hrow">'+arr.map(_ombCard).join("")+
-        '<button class="item-add-card" data-omb-add-item="'+esc(gid)+'"><span class="plus">+</span><span>Tovar</span></button>'+
+        (canManageStockCatalog()?'<button class="item-add-card" data-omb-add-item="'+esc(gid)+'"><span class="plus">+</span><span>Tovar</span></button>':'')+
         '</div></div>';
     }
-    var html = '<button class="item-group-add-btn" data-omb-add-group="1">+ Guruh qo\'shish</button>';
+    var html = canManageStockCatalog()?'<button class="item-group-add-btn" data-omb-add-group="1">+ Guruh qo\'shish</button>':'';
     (groups||[]).forEach(function(g){
       html += block(String(g.id), g.name, rows.filter(function(r){ return String(r.group_id||"")===String(g.id); }));
     });
@@ -6388,17 +6391,15 @@
       sheet = document.createElement("div"); sheet.id = "kirimSheet"; sheet.className = "app-confirm";
       document.body.appendChild(back); document.body.appendChild(sheet);
     }
-    var frac = unitAllowsFraction(unit);
+    var frac = unitAllowsFraction(unit),showCosts=canViewStockCosts();
     var rawItems=(OMBOR_LAST_ROWS||[]).filter(function(r){return (r.stock_type||"ready_food")==="raw_material";}),recipeMap={};
-    var productionHtml=stockType==="ready_food"?'<div style="text-align:left;margin:12px 2px 5px;font-size:13px;font-weight:800">Sarflangan mahsulotlar</div><div class="idesc" id="kirRecipeStatus" style="text-align:left;margin-bottom:7px">Retsept tekshirilmoqda...</div>'+(rawItems.length?'<div style="max-height:190px;overflow:auto">'+rawItems.map(function(r){return '<div class="dorder-row"><div><b>'+esc(r.name)+'</b><div class="idesc">Qoldiq: '+fmtQty(r.stock_qty||0)+' '+esc(r.unit||"dona")+' · tannarx '+(r.cost_price?moneyText(r.cost_price)+' so‘m':'kiritilmagan')+'</div></div><input class="input" data-prod-raw="'+r.id+'" data-raw-cost="'+(r.cost_price||0)+'" inputmode="decimal" placeholder="0 '+esc(r.unit||"dona")+'" style="width:105px;height:38px"></div>';}).join('')+'</div><div class="idesc" id="kirAutoCost" style="text-align:left;margin-top:8px;color:#047857">Tannarx sarflangan xomashyodan avtomatik hisoblanadi.</div><label style="display:flex;align-items:center;gap:8px;text-align:left;margin-top:9px;font-size:13px"><input type="checkbox" id="kirSaveRecipe"> Ushbu sarfni 1 '+esc(unit)+' uchun retsept sifatida saqlash</label>':'<div class="idesc" style="color:#b45309;text-align:left">Avval “Mahsulotlar” bo‘limiga xomashyo qo‘shing.</div>'):'';
+    var productionHtml=stockType==="ready_food"?'<div style="text-align:left;margin:12px 2px 5px;font-size:13px;font-weight:800">Sarflangan mahsulotlar</div><div class="idesc" id="kirRecipeStatus" style="text-align:left;margin-bottom:7px">Retsept tekshirilmoqda...</div>'+(rawItems.length?'<div style="max-height:190px;overflow:auto">'+rawItems.map(function(r){return '<div class="dorder-row"><div><b>'+esc(r.name)+'</b><div class="idesc">Qoldiq: '+fmtQty(r.stock_qty||0)+' '+esc(r.unit||"dona")+(showCosts?' · tannarx '+(r.cost_price?moneyText(r.cost_price)+' so‘m':'kiritilmagan'):'')+'</div></div><input class="input" data-prod-raw="'+r.id+'" data-raw-cost="'+(r.cost_price||0)+'" inputmode="decimal" placeholder="0 '+esc(r.unit||"dona")+'" style="width:105px;height:38px"></div>';}).join('')+'</div>'+(showCosts?'<div class="idesc" id="kirAutoCost" style="text-align:left;margin-top:8px;color:#047857">Tannarx sarflangan xomashyodan avtomatik hisoblanadi.</div>':'')+'<label style="display:flex;align-items:center;gap:8px;text-align:left;margin-top:9px;font-size:13px"><input type="checkbox" id="kirSaveRecipe"> Ushbu sarfni 1 '+esc(unit)+' uchun retsept sifatida saqlash</label>':'<div class="idesc" style="color:#b45309;text-align:left">Avval “Mahsulotlar” bo‘limiga xomashyo qo‘shing.</div>'):'';
+    var costFields=showCosts?'<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Tannarx (1 '+esc(unit)+' uchun, so\'m)</div><input class="input" id="kirCost" type="text" inputmode="numeric" value="'+(cost0>0?cost0:"")+'"><div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Umumiy summa (so\'m)</div><input class="input" id="kirTot" type="text" inputmode="numeric">':'<input id="kirCost" type="hidden" value="0"><input id="kirTot" type="hidden" value="0">';
     sheet.innerHTML =
       '<div class="acf-title" style="margin-bottom:2px">Kirim: '+esc(name)+'</div>'+
       '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Miqdor ('+esc(unit)+')'+(frac?'':' — butun son')+'</div>'+
       '<input class="input" id="kirQty" type="text" inputmode="'+(frac?"decimal":"numeric")+'">'+
-      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Tannarx (1 '+esc(unit)+' uchun, so\'m)</div>'+
-      '<input class="input" id="kirCost" type="text" inputmode="numeric" value="'+(cost0>0?cost0:"")+'">'+
-      '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Umumiy summa (so\'m)</div>'+
-      '<input class="input" id="kirTot" type="text" inputmode="numeric">'+
+      costFields+
       '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">Izoh (ixtiyoriy)</div>'+
       '<input class="input" id="kirNote" type="text" placeholder="masalan: yangi partiya">'+
       productionHtml+
@@ -6428,7 +6429,7 @@
       var ingredients=[];sheet.querySelectorAll('[data-prod-raw]').forEach(function(inp){var v=parseFloat(String(inp.value||"").replace(",","."));if(v>0)ingredients.push({item_id:parseInt(inp.dataset.prodRaw,10),qty:v});});
       if(stockType==="ready_food"&&!ingredients.length){showMsg("Sarflangan mahsulotlarni kiriting.");return;}
       api("POST","/api/stock/move",{ item_id: parseInt(id,10), delta: q, cost: rc(), note: (sheet.querySelector("#kirNote").value||"").trim(), ingredients:ingredients, save_recipe:!!(sheet.querySelector("#kirSaveRecipe")&&sheet.querySelector("#kirSaveRecipe").checked) })
-        .then(function(r){ close(); showMsg(stockType==="ready_food"?("Kirim yozildi · 1 "+unit+" tannarxi "+moneyText(r.unit_cost||0)+" so‘m ✅"):"Kirim yozildi ✅"); loadOmbor(); })
+        .then(function(r){ close(); showMsg(stockType==="ready_food"?(showCosts?("Kirim yozildi · 1 "+unit+" tannarxi "+moneyText(r.unit_cost||0)+" so‘m ✅"):"Tayyor taom kirimi yozildi ✅"):"Kirim yozildi ✅"); loadOmbor(); })
         .catch(function(e){ showMsg(e.message); });
     };
     back.classList.add("on"); sheet.classList.add("on");
@@ -6522,7 +6523,7 @@
       sheet.querySelector("#stHistClose").onclick = function(){ back.classList.remove("on"); sheet.classList.remove("on"); };
     }).catch(function(e){ sheet.innerHTML = '<div class="acf-title">Xatolik</div><div class="idesc">'+esc(e.message)+'</div>'; });
   }
-  function openProductionHistory(){var back=document.createElement("div"),sheet=document.createElement("div");back.className="app-modal-back on";sheet.className="app-confirm on";sheet.style.maxHeight="78vh";sheet.style.overflowY="auto";sheet.innerHTML='<div class="acf-title">🥘 Ishlab chiqarish tarixi</div><div class="idesc">Yuklanmoqda...</div>';document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;api('GET','/api/stock/production').then(function(rows){var html=(rows||[]).map(function(p){var d=new Date((p.created_at||0)*1000),ds=d.toLocaleDateString('uz-UZ')+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});return '<div class="item" style="display:block;text-align:left;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(p.ready_name)+'</b><div class="idesc">'+ds+(p.who?' · '+esc(p.who):'')+'</div></div><b>'+fmtQty(p.qty)+' '+esc(p.ready_unit||'dona')+'</b></div><div class="idesc" style="margin-top:6px">Umumiy tannarx: <b>'+moneyText(p.total_cost||0)+'</b> · 1 birlik: <b>'+moneyText(p.unit_cost||0)+'</b></div>'+(p.inputs||[]).map(function(x){return '<div class="idesc">• '+esc(x.name)+' — '+fmtQty(x.qty)+' '+esc(x.unit||'')+' × '+moneyText(x.unit_cost||0)+' = '+moneyText(x.total_cost||0)+'</div>';}).join('')+(p.note?'<div class="idesc">Izoh: '+esc(p.note)+'</div>':'')+'</div>';}).join('');sheet.innerHTML='<div class="acf-title">🥘 Ishlab chiqarish tarixi</div>'+(html||'<div class="empty" style="padding:20px"><h3>Tarix yo‘q</h3></div>')+'<div class="acf-btns"><button class="acf-ok">Yopish</button></div>';sheet.querySelector('.acf-ok').onclick=close;}).catch(function(e){sheet.innerHTML='<div class="acf-title">Xatolik</div><div class="idesc">'+esc(e.message)+'</div><div class="acf-btns"><button class="acf-ok">Yopish</button></div>';sheet.querySelector('.acf-ok').onclick=close;});}
+  function openProductionHistory(){var back=document.createElement("div"),sheet=document.createElement("div"),showCosts=canViewStockCosts();back.className="app-modal-back on";sheet.className="app-confirm on";sheet.style.maxHeight="78vh";sheet.style.overflowY="auto";sheet.innerHTML='<div class="acf-title">🥘 Ishlab chiqarish tarixi</div><div class="idesc">Yuklanmoqda...</div>';document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;api('GET','/api/stock/production').then(function(rows){var html=(rows||[]).map(function(p){var d=new Date((p.created_at||0)*1000),ds=d.toLocaleDateString('uz-UZ')+' '+d.toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'});return '<div class="item" style="display:block;text-align:left;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(p.ready_name)+'</b><div class="idesc">'+ds+(p.who?' · '+esc(p.who):'')+'</div></div><b>'+fmtQty(p.qty)+' '+esc(p.ready_unit||'dona')+'</b></div>'+(showCosts?'<div class="idesc" style="margin-top:6px">Umumiy tannarx: <b>'+moneyText(p.total_cost||0)+'</b> · 1 birlik: <b>'+moneyText(p.unit_cost||0)+'</b></div>':'')+(p.inputs||[]).map(function(x){return '<div class="idesc">• '+esc(x.name)+' — '+fmtQty(x.qty)+' '+esc(x.unit||'')+(showCosts?' × '+moneyText(x.unit_cost||0)+' = '+moneyText(x.total_cost||0):'')+'</div>';}).join('')+(p.note?'<div class="idesc">Izoh: '+esc(p.note)+'</div>':'')+'</div>';}).join('');sheet.innerHTML='<div class="acf-title">🥘 Ishlab chiqarish tarixi</div>'+(html||'<div class="empty" style="padding:20px"><h3>Tarix yo‘q</h3></div>')+'<div class="acf-btns"><button class="acf-ok">Yopish</button></div>';sheet.querySelector('.acf-ok').onclick=close;}).catch(function(e){sheet.innerHTML='<div class="acf-title">Xatolik</div><div class="idesc">'+esc(e.message)+'</div><div class="acf-btns"><button class="acf-ok">Yopish</button></div>';sheet.querySelector('.acf-ok').onclick=close;});}
   if(el("diningProductionHistory"))el("diningProductionHistory").addEventListener("click",openProductionHistory);
   document.addEventListener("click", function(e){
     var a = e.target.closest("[data-st-in]");
@@ -6619,7 +6620,7 @@
   ];
   var STAFF_PERM_TEMPLATES={
     waiter:["dining_places","dining_internal","chats","notifications"],
-    cook:["dining_internal","dining_external","kitchen","notifications"],
+    cook:["dining_internal","dining_external","kitchen","ready_food","production","notifications"],
     cashier:["buyurtma","service_orders","kassa","open_accounts","payment_review","payment_confirm","payment_problems","debts"],
     storekeeper:["ombor","ready_food","raw_stock","recipes","production","expenses"],
     manager:[]
@@ -10139,7 +10140,8 @@
     documents:{title:"Hujjatlar",ic:"📄",desc:"Firma hujjatlari",nav:"cab-docs"},
     reports:{title:"Hisobotlar",ic:"📑",desc:"Biznes hisobotlari",nav:"cab-report"},
     dining_places:{title:"Stollar va xonalar",ic:"🍽️",desc:"Zal rejasi",nav:"cab-dining"},
-    kitchen:{title:"Oshpaz buyurtmalari",ic:"👨‍🍳",desc:"Ichki va tashqi zakazlar",nav:"cab-orders"}
+    kitchen:{title:"Oshpaz buyurtmalari",ic:"👨‍🍳",desc:"Ichki va tashqi zakazlar",nav:"cab-orders"},
+    production:{title:"Taom tayyorlash / kirim",ic:"🥘",desc:"Retsept va tayyor taom miqdori",nav:"cab-ombor"}
   };
   function showStaffLogin(){
     if(el("slErr")) el("slErr").style.display="none";
