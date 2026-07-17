@@ -5045,6 +5045,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
     dining_finalize = []
     dining_problem = []
     external_payment = []
+    external_open = []
     external_problem = []
     is_dining = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     if is_dining:
@@ -5084,6 +5085,23 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
             (biz["id"],),
         ).fetchall()
         external_payment = [dict(r) for r in erows]
+        xorows = conn.execute(
+            """SELECT o.id,o.title,o.payment_status,o.status,o.order_type,o.desired_time,o.address,o.created_at,
+                      u.name AS customer_name,
+                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
+               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
+               WHERE o.provider_kind='business' AND o.provider_actor_id=?
+                 AND o.status IN ('new','accepted','preparing','tayyor','handoff_waiting_seller','in_delivery','delivered_waiting_customer','pickup_waiting_customer')
+                 AND COALESCE(o.problem_open,0)=0
+               ORDER BY CASE o.status WHEN 'new' THEN 0 WHEN 'accepted' THEN 1 WHEN 'tayyor' THEN 2 ELSE 3 END,o.id DESC""",
+            (biz["id"],),
+        ).fetchall()
+        for r in xorows:
+            x = dict(r)
+            x["items"] = [dict(oi) for oi in conn.execute(
+                "SELECT item_id,item_name AS name,qty,unit,price_text,line_total FROM order_items WHERE order_id=? ORDER BY id",
+                (r["id"],)).fetchall()]
+            external_open.append(x)
         xprows = conn.execute(
             """SELECT o.id,o.title,o.payment_status,o.problem_reason,o.problem_note,o.created_at,u.name AS customer_name,
                       COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
@@ -5094,7 +5112,7 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
     conn.close()
     return {"day": dstr, "sales": out, "totals": totals, "dining_mode": is_dining,
             "dining_open": dining_open, "dining_finalize": dining_finalize,
-            "external_payment": external_payment, "dining_problem": dining_problem,
+            "external_payment": external_payment, "external_open": external_open, "dining_problem": dining_problem,
             "external_problem": external_problem}
 
 
@@ -7861,6 +7879,11 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             _notify_order_side(conn, row, "customer", "ready", "Buyurtma tayyor bo'ldi",
                                ("Do'kondan olib ketishingiz mumkin." if (row["order_type"] or "") == "pickup"
                                 else "Dostavka jarayoni boshlandi."), action_type="view_ready")
+            if dining_external:
+                _add_notification(conn, int(row["provider_user_id"] or 0), "business", int(row["provider_actor_id"] or 0),
+                                  "order:%d:ready:cash" % order_id, "Tashqi buyurtma tayyor bo'ldi",
+                                  "Buyurtma #%d oshpaz tomonidan tayyorlandi." % order_id,
+                                  order_id=order_id, action_type="external_ready", target_perm="kassa")
         elif new_status in ("rejected", "cancelled"):
             _notify_order_side(conn, row, "customer", new_status, "Buyurtma bekor qilindi", row["title"] or "Buyurtma")
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
