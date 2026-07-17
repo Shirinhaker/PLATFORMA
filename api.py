@@ -1418,13 +1418,14 @@ def _item_kind_and_group(conn, biz_id, body):
 
 
 @router.get("/item-groups")
-async def item_groups(x_telegram_init_data: str = Header(default="")):
+async def item_groups(menu_only: bool = False, x_telegram_init_data: str = Header(default="")):
     """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     need_perm(conn, x_telegram_init_data, "items")
+    dining_menu = menu_only and (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     rows = conn.execute(
-        "SELECT * FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
+        "SELECT * FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
         (biz["id"],),
     ).fetchall()
     conn.close()
@@ -1501,17 +1502,18 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
 
 
 @router.get("/items")
-async def my_items(x_telegram_init_data: str = Header(default="")):
+async def my_items(menu_only: bool = False, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
     need_any_perm(conn, x_telegram_init_data, "items", "dining_internal", "kitchen", "kassa", "open_accounts")
     _ensure_item_min_qty(conn)
+    dining_menu = menu_only and (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     rows = conn.execute(
         """SELECT i.*, g.name AS group_name, g.kind AS group_kind
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=?
-           ORDER BY i.created_at DESC""",
+           WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") +
+        " ORDER BY i.created_at DESC",
         (biz["id"],),
     ).fetchall()
     conn.close()
@@ -1781,7 +1783,7 @@ async def dining_order_add(place_id: int, request: Request, x_telegram_init_data
         conn.close(); raise HTTPException(400, "Zakaz uchun mahsulot tanlanmadi.")
     marks = ",".join("?" for _ in wanted)
     rows = conn.execute(
-        "SELECT id,name,price,unit FROM items WHERE business_id=? AND id IN ("+marks+")",
+        "SELECT id,name,price,unit FROM items WHERE business_id=? AND COALESCE(stock_type,'ready_food')='ready_food' AND id IN ("+marks+")",
         (biz["id"], *wanted.keys()),
     ).fetchall()
     if not rows:
@@ -1868,7 +1870,7 @@ def _dining_prepare_items(conn, biz_id, incoming):
     if not wanted:
         raise HTTPException(400, "Qo'shiladigan taom tanlanmadi.")
     marks = ",".join("?" for _ in wanted)
-    rows = conn.execute("SELECT id,name,price,unit FROM items WHERE business_id=? AND id IN ("+marks+")",
+    rows = conn.execute("SELECT id,name,price,unit FROM items WHERE business_id=? AND COALESCE(stock_type,'ready_food')='ready_food' AND id IN ("+marks+")",
                         (biz_id, *wanted.keys())).fetchall()
     prepared = []
     for r in rows:
@@ -5947,7 +5949,7 @@ def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: s
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
-                    "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
+                    "WHERE items_fts MATCH ? AND b.status='active' AND (COALESCE(b.yon,'')<>'Umumiy ovqatlanish' OR COALESCE(i.stock_type,'ready_food')='ready_food') " + product_filter + " "
                     "ORDER BY " + product_quality + ", " + product_bucket + ", _rank, " + product_rating + " DESC, " + product_distance + " LIMIT ? OFFSET ?",
                     [_match] + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
@@ -5963,7 +5965,7 @@ def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: s
                           b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng,
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
-                   WHERE b.status='active' AND """ + product_where + product_filter + """
+                   WHERE b.status='active' AND (COALESCE(b.yon,'')<>'Umumiy ovqatlanish' OR COALESCE(i.stock_type,'ready_food')='ready_food') AND """ + product_where + product_filter + """
                    ORDER BY """ + product_quality + ", " + product_bucket + ", " + product_rating + " DESC, " + product_distance + ", i.created_at DESC LIMIT ? OFFSET ?",
                 product_params + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
@@ -6310,16 +6312,17 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     if not biz:
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
+    dining_menu = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     items = conn.execute(
         """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file,
                   g.name AS group_name, g.kind AS group_kind
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=? ORDER BY i.created_at DESC""",
+           WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY i.created_at DESC",
         (business_id,),
     ).fetchall()
     item_groups = conn.execute(
-        "SELECT id, name, kind FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
+        "SELECT id, name, kind FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
         (business_id,),
     ).fetchall()
     # Biznes sahifasida HAMMA e'lonlari ko'rinadi (shu jumladan 'own' — faqat mehmonlarga)
