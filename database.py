@@ -1522,3 +1522,17 @@ def _migrate(conn):
     _egcols2 = [r["name"] for r in conn.execute("PRAGMA table_info(education_groups)").fetchall()]
     if "teacher_id" not in _egcols2:
         conn.execute("ALTER TABLE education_groups ADD COLUMN teacher_id INTEGER")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_exams("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,group_id INTEGER NOT NULL,"
+        "title TEXT NOT NULL,exam_date TEXT NOT NULL,max_score REAL NOT NULL DEFAULT 100,note TEXT DEFAULT '',"
+        "status TEXT NOT NULL DEFAULT 'active',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_exams_biz ON education_exams(business_id,status,exam_date,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_exam_results("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,exam_id INTEGER NOT NULL,student_id INTEGER NOT NULL,"
+        "score REAL NOT NULL DEFAULT 0,note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,"
+        "UNIQUE(business_id,exam_id,student_id))"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_exam_results ON education_exam_results(business_id,exam_id,student_id)")
