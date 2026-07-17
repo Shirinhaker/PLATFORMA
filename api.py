@@ -1896,7 +1896,20 @@ async def dining_order_add_items(order_id: int, request: Request, x_telegram_ini
     conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
                      [(order_id, *x) for x in prepared])
     added = sum(x[5] for x in prepared); now = int(time.time())
-    conn.execute("UPDATE dining_bookings SET total=COALESCE(total,0)+?,updated_at=? WHERE id=?", (added, now, order_id))
+    # Tayyor deb belgilangan hisobga yangi taom qo'shilsa oshxona jarayoni qayta ochiladi.
+    conn.execute("UPDATE dining_bookings SET total=COALESCE(total,0)+?,kitchen_status='preparing',updated_at=? WHERE id=?",
+                 (added, now, order_id))
+    place = conn.execute("SELECT name FROM dining_places WHERE id=? AND business_id=?",
+                         (order["place_id"], biz["id"])).fetchone()
+    place_name = (place["name"] if place else "Stol") or "Stol"
+    _business_notification(conn, biz, "dining:%d:items:%d:kitchen" % (order_id, now),
+                           "Ichki zakazga yangi taom qo'shildi",
+                           "%s · +%s so'm" % (place_name, added), "dining_kitchen", order_id,
+                           target_perm="kitchen")
+    _business_notification(conn, biz, "dining:%d:items:%d:cash" % (order_id, now),
+                           "Ichki zakaz hisobi yangilandi",
+                           "%s · +%s so'm" % (place_name, added), "dining_cash", order_id,
+                           target_perm="kassa")
     conn.commit(); conn.close(); return {"ok": True, "added_total": added}
 
 
