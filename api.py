@@ -3108,6 +3108,52 @@ def _stock_delta(v):
     return d
 
 
+def _fifo_add_batch(conn, biz_id, item_id, qty, unit_cost, source_move_id, now):
+    qty = round(float(qty or 0), 3)
+    if qty <= 0: return None
+    cur = conn.execute(
+        "INSERT INTO stock_batches(business_id,item_id,qty_in,qty_remaining,unit_cost,source_move_id,created_at) VALUES(?,?,?,?,?,?,?)",
+        (biz_id, item_id, qty, qty, max(0, int(unit_cost or 0)), source_move_id, now))
+    conn.execute("UPDATE items SET fifo_initialized=1 WHERE id=?", (item_id,))
+    return cur.lastrowid
+
+
+def _fifo_consume(conn, biz_id, item_id, qty, source_type, source_id, now, require_cost=False):
+    qty = round(float(qty or 0), 3)
+    batches = conn.execute(
+        "SELECT * FROM stock_batches WHERE business_id=? AND item_id=? AND qty_remaining>0.000001 ORDER BY created_at,id",
+        (biz_id, item_id)).fetchall()
+    available = round(sum(float(b["qty_remaining"] or 0) for b in batches), 3)
+    if available + 0.000001 < qty:
+        raise HTTPException(409, "FIFO partiyalarida qoldiq yetarli emas.")
+    check_left = qty
+    for b in batches:
+        if check_left <= 0.000001: break
+        take = min(check_left, float(b["qty_remaining"] or 0))
+        if require_cost and take > 0 and int(b["unit_cost"] or 0) <= 0:
+            raise HTTPException(409, "Eng eski FIFO partiyasida tannarx kiritilmagan.")
+        check_left -= take
+    left = qty; total = 0
+    for b in batches:
+        if left <= 0.000001: break
+        take = round(min(left, float(b["qty_remaining"] or 0)), 3)
+        line = int(round(take * int(b["unit_cost"] or 0))); total += line
+        conn.execute("UPDATE stock_batches SET qty_remaining=ROUND(qty_remaining-?,3) WHERE id=?", (take, b["id"]))
+        conn.execute(
+            "INSERT INTO stock_batch_consumptions(batch_id,item_id,qty,unit_cost,total_cost,source_type,source_id,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (b["id"], item_id, take, int(b["unit_cost"] or 0), line, source_type, source_id, now))
+        left = round(left - take, 3)
+    return total
+
+
+def _fifo_restore(conn, source_type, source_id):
+    rows = conn.execute("SELECT * FROM stock_batch_consumptions WHERE source_type=? AND source_id=? ORDER BY id DESC",
+                        (source_type, source_id)).fetchall()
+    for r in rows:
+        conn.execute("UPDATE stock_batches SET qty_remaining=ROUND(qty_remaining+?,3) WHERE id=?", (r["qty"], r["batch_id"]))
+    conn.execute("DELETE FROM stock_batch_consumptions WHERE source_type=? AND source_id=?", (source_type, source_id))
+
+
 def _stock_deduct_for_order(conn, order, actor_user_id):
     """Buyurtma "Bajarildi" bo'lganda ombordan avtomatik chiqim.
     Faqat bir marta ishlaydi (shu buyurtma uchun harakat bo'lsa — qaytadan ayirmaydi).
@@ -3136,6 +3182,7 @@ def _stock_deduct_for_order(conn, order, actor_user_id):
         q = round(float(oi["qty"] or 1), 3)
         if q <= 0:
             continue
+        _fifo_consume(conn, it["business_id"], it["id"], q, "order", order["id"], now)
         conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (q, it["id"]))
         conn.execute(
             "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -3158,6 +3205,7 @@ def _stock_restore_for_order(conn, order, actor_user_id):
         ).fetchone()[0]
         if not already:
             now = int(time.time())
+            _fifo_restore(conn, "order", order["id"])
             for m in sold:
                 q = round(abs(float(m["delta"] or 0)), 3)
                 if q <= 0:
@@ -3193,6 +3241,8 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     _ensure_item_min_qty(conn)
     rows = conn.execute(
         "SELECT i.id, i.name, i.price, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
+        "COALESCE((SELECT sb.unit_cost FROM stock_batches sb WHERE sb.item_id=i.id AND sb.qty_remaining>0.000001 ORDER BY sb.created_at,sb.id LIMIT 1),0) AS fifo_next_cost, "
+        "COALESCE((SELECT SUM(sb.qty_remaining*sb.unit_cost) FROM stock_batches sb WHERE sb.item_id=i.id AND sb.qty_remaining>0.000001),0) AS fifo_value, "
         "g.name AS group_name FROM items i "
         "LEFT JOIN item_groups g ON g.id = i.group_id "
         "WHERE i.business_id=? AND i.track_stock=1 "
@@ -3201,6 +3251,7 @@ async def stock_list(x_telegram_init_data: str = Header(default="")):
     ).fetchall()
     result = [{"id": r["id"], "name": r["name"], "price": r["price"] or "", "unit": r["unit"] or "dona",
                "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
+               "fifo_next_cost": r["fifo_next_cost"] or 0, "fifo_value": int(round(r["fifo_value"] or 0)),
                "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
                "group_name": r["group_name"] or "", "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
@@ -3294,13 +3345,7 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
             seen.add(rid); production_inputs.append((rit, rq))
         if not production_inputs:
             conn.close(); raise HTTPException(400, "Tayyor taom kirimi uchun sarflangan mahsulotlarni kiriting.")
-        missing_cost = [rit["name"] for rit, rq in production_inputs if int(_row_val(rit, "cost_price", 0) or 0) <= 0]
-        if missing_cost:
-            conn.close(); raise HTTPException(400, "Avval xomashyo tannarxini kiriting: " + ", ".join(missing_cost[:5]))
-        production_total_cost = sum(int(round(float(rq) * int(_row_val(rit, "cost_price", 0) or 0))) for rit, rq in production_inputs)
-        cost = int(round(production_total_cost / float(delta))) if delta > 0 else 0
-    else:
-        production_total_cost = 0
+    production_total_cost = 0
     now = int(time.time())
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
     if delta > 0 and cost > 0:
@@ -3314,21 +3359,40 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     if production_inputs:
         batch = conn.execute(
             "INSERT INTO production_batches(business_id,ready_item_id,qty,total_cost,unit_cost,note,user_id,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (biz["id"], item_id, delta, production_total_cost, cost, note, user["id"], now)).lastrowid
+            (biz["id"], item_id, delta, 0, 0, note, user["id"], now)).lastrowid
         for rit, rq in production_inputs:
-            input_unit_cost = int(_row_val(rit, "cost_price", 0) or 0); input_total_cost = int(round(float(rq) * input_unit_cost))
+            try:
+                input_total_cost = _fifo_consume(conn, biz["id"], rit["id"], rq, "production", batch, now, require_cost=True)
+            except HTTPException:
+                conn.rollback(); conn.close(); raise
+            input_unit_cost = int(round(input_total_cost / float(rq))) if rq else 0
+            production_total_cost += input_total_cost
             conn.execute("INSERT INTO production_inputs(batch_id,item_id,qty,unit_cost,total_cost) VALUES(?,?,?,?,?)",
                          (batch, rit["id"], rq, input_unit_cost, input_total_cost))
             conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (rq, rit["id"]))
             conn.execute(
                 "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,cost,order_id,user_id,created_at) VALUES(?,?,?,?,?,?,NULL,?,?)",
                 (biz["id"], rit["id"], -rq, "chiqim", "Ishlab chiqarish #%d: %s" % (batch, it["name"]), 0, user["id"], now))
+        cost = int(round(production_total_cost / float(delta))) if delta else 0
+        conn.execute("UPDATE production_batches SET total_cost=?,unit_cost=? WHERE id=?", (production_total_cost, cost, batch))
+        conn.execute("UPDATE items SET cost_price=? WHERE id=?", (cost, item_id))
+        conn.execute("UPDATE stock_moves SET cost=? WHERE id=?", (cost, cur_m.lastrowid))
+        _fifo_add_batch(conn, biz["id"], item_id, delta, cost, cur_m.lastrowid, now)
         conn.execute("UPDATE stock_moves SET note=? WHERE id=?", ("Ishlab chiqarish #%d" % batch + (" — " + note if note else ""), cur_m.lastrowid))
         if body.get("save_recipe"):
             conn.execute("DELETE FROM item_recipes WHERE business_id=? AND ready_item_id=?", (biz["id"], item_id))
             conn.executemany(
                 "INSERT INTO item_recipes(business_id,ready_item_id,ingredient_item_id,qty_per_unit,updated_at) VALUES(?,?,?,?,?)",
                 [(biz["id"], item_id, rit["id"], round(float(rq)/float(delta), 6), now) for rit, rq in production_inputs])
+    elif delta > 0:
+        _fifo_add_batch(conn, biz["id"], item_id, delta, cost, cur_m.lastrowid, now)
+    elif delta < 0:
+        try:
+            fifo_total = _fifo_consume(conn, biz["id"], item_id, abs(delta), "stock_move", cur_m.lastrowid, now)
+        except HTTPException:
+            conn.rollback(); conn.close(); raise
+        cost = int(round(fifo_total / abs(float(delta)))) if delta else 0
+        conn.execute("UPDATE stock_moves SET cost=? WHERE id=?", (cost, cur_m.lastrowid))
     # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
     if delta > 0 and cost > 0 and not production_inputs:
         _spent = int(round(cost * float(delta)))
@@ -3357,6 +3421,14 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
     if not _stock_move_deletable(r):
         conn.close()
         raise HTTPException(400, "Bu harakat buyurtma yoki kassa bilan bog'liq — o'chirib bo'lmaydi.")
+    if float(r["delta"] or 0) > 0:
+        batch = conn.execute("SELECT * FROM stock_batches WHERE source_move_id=?", (move_id,)).fetchone()
+        if batch and float(batch["qty_remaining"] or 0) + 0.000001 < float(batch["qty_in"] or 0):
+            conn.close(); raise HTTPException(409, "Bu FIFO partiyasidan mahsulot ishlatilgan — kirimni o'chirib bo'lmaydi.")
+        if batch:
+            conn.execute("DELETE FROM stock_batches WHERE id=?", (batch["id"],))
+    else:
+        _fifo_restore(conn, "stock_move", move_id)
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?",
                  (float(r["delta"] or 0), r["item_id"]))
     conn.execute("DELETE FROM expenses WHERE source='stock' AND stock_move_id=?", (move_id,))
@@ -5003,6 +5075,11 @@ async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
     sale_id = cur.lastrowid
     # Ombor yoqilgan bo'lsa — savdo qoldiqdan ayiradi
     if it is not None and (_row_val(it, "track_stock", 0) or 0):
+        try:
+            fifo_cost = _fifo_consume(conn, biz["id"], item_id, float(qty), "sale", sale_id, now)
+        except HTTPException:
+            conn.rollback(); conn.close(); raise
+        conn.execute("UPDATE sales SET cost_total=? WHERE id=?", (fifo_cost, sale_id))
         conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(qty), item_id))
         conn.execute(
             "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -5107,6 +5184,11 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
         sale_id = cur.lastrowid
         it = pr["it"]
         if it is not None and (_row_val(it, "track_stock", 0) or 0):
+            try:
+                fifo_cost = _fifo_consume(conn, biz["id"], pr["item_id"], float(pr["qty"]), "sale", sale_id, now)
+            except HTTPException:
+                conn.rollback(); conn.close(); raise
+            conn.execute("UPDATE sales SET cost_total=? WHERE id=?", (fifo_cost, sale_id))
             conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(pr["qty"]), pr["item_id"]))
             conn.execute(
                 "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -5176,6 +5258,7 @@ async def kassa_delete_chek(chek_no: int, x_telegram_init_data: str = Header(def
         raise HTTPException(404, "Chek topilmadi.")
     now = int(time.time())
     for r in rows:
+        _fifo_restore(conn, "sale", r["id"])
         if r["item_id"]:
             it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
             if it and (it["track_stock"] or 0):
@@ -5208,6 +5291,7 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
         conn.close()
         raise HTTPException(400, "Buyurtma orqali kelgan savdo bu yerdan o'chirilmaydi.")
     now = int(time.time())
+    _fifo_restore(conn, "sale", sale_id)
     # Ombor qaytariladi (agar hisob yoqilgan bo'lsa)
     if r["item_id"]:
         it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
