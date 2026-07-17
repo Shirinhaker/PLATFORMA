@@ -1511,3 +1511,14 @@ def _migrate(conn):
         "note TEXT DEFAULT '', sale_id INTEGER, created_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_payments_student ON education_payments(business_id,student_id,payment_month,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_teachers("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, full_name TEXT NOT NULL, "
+        "phone TEXT DEFAULT '', specialty TEXT DEFAULT '', hired_date TEXT DEFAULT '', "
+        "salary_type TEXT NOT NULL DEFAULT 'monthly', salary_amount INTEGER NOT NULL DEFAULT 0, "
+        "note TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_teachers_biz ON education_teachers(business_id,status,id)")
+    _egcols2 = [r["name"] for r in conn.execute("PRAGMA table_info(education_groups)").fetchall()]
+    if "teacher_id" not in _egcols2:
+        conn.execute("ALTER TABLE education_groups ADD COLUMN teacher_id INTEGER")
