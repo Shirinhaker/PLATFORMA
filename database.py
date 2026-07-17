@@ -1484,3 +1484,12 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_students_biz ON education_students(business_id,status,group_id,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_attendance("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER NOT NULL, "
+        "student_id INTEGER NOT NULL, lesson_date TEXT NOT NULL, "
+        "attendance_status TEXT NOT NULL DEFAULT 'present', note TEXT DEFAULT '', "
+        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, "
+        "UNIQUE(business_id,group_id,student_id,lesson_date))"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_attendance_day ON education_attendance(business_id,lesson_date,group_id)")
