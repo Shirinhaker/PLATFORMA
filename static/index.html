@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1560 -->
+<title>Platforma</title><!-- BUILD: v1561 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4625,7 +4625,7 @@
     api("GET","/api/dining/orders").then(function(rows){DINING_INTERNAL_ORDERS=rows||[];renderInternalOrders();}).catch(function(e){el("bizInternalOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>';});
   }
   function openDiningAddItems(orderId){
-    api("GET","/api/items").then(function(rows){
+    api("GET","/api/items?menu_only=1").then(function(rows){
       var back=document.createElement("div"),sheet=document.createElement("div"),cart={};back.className="app-modal-back on";sheet.className="app-confirm on";
       sheet.innerHTML='<div class="acf-title">Taom qo‘shish</div><div style="max-height:48vh;overflow:auto;margin:10px 0">'+(rows||[]).map(function(it){return '<div class="dorder-row"><div><b>'+esc(it.name)+'</b><div class="idesc">'+moneyText(parsePriceAmount(it.price)||0)+' so‘m</div></div><div class="dorder-step"><button data-dia-minus="'+it.id+'">−</button><b data-dia-qty="'+it.id+'">0</b><button data-dia-plus="'+it.id+'">+</button></div></div>';}).join('')+'</div><div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Qo‘shish</button></div>';
       document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;sheet.querySelector('.acf-cancel').onclick=close;
@@ -7940,7 +7940,7 @@
     if(el("ksDate")){ var _t=new Date(); el("ksDate").value = _t.getFullYear()+"-"+("0"+(_t.getMonth()+1)).slice(-2)+"-"+("0"+_t.getDate()).slice(-2); }
     nav("cab-kassa-form");
     if(el("ksSearch")) el("ksSearch").value = "";
-    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+    Promise.all([api("GET","/api/item-groups?menu_only=1"), api("GET","/api/items?menu_only=1")]).then(function(res){
       window.__ksGroups = res[0]||[];
       window.__ksItems = res[1]||[];
       ksApplyCatalog();
@@ -7975,7 +7975,7 @@
     openItemForm(null, null, "cab-kassa-form");
   });
   function ksReloadCatalog(){
-    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+    Promise.all([api("GET","/api/item-groups?menu_only=1"), api("GET","/api/items?menu_only=1")]).then(function(res){
       window.__ksGroups = res[0]||[]; window.__ksItems = res[1]||[]; ksApplyCatalog();
     }).catch(function(){});
   }
@@ -8643,7 +8643,7 @@
   function openDiningOrder(p){DORDER_PLACE=p;DORDER_ORDER_ID=p.active_kind==="order"?Number(p.active_id||0):0;DORDER_CART={};nav("cab-dining-order");}
   function loadDiningOrder(){
     if(!DORDER_PLACE){nav("cab-dining");return;}DORDER_QUERY="";el("dorderSearch").value="";el("dorderPlaceName").textContent=DORDER_PLACE.name+(DORDER_ORDER_ID?" — zakazga qo‘shish":" — yangi zakaz");el("dorderItems").innerHTML='<div class="idesc">Mahsulotlar yuklanmoqda...</div>';el("dorderCustomer").value="";el("dorderNote").value="";el("dorderCustomer").style.display=DORDER_ORDER_ID?"none":"";el("dorderNote").placeholder=DORDER_ORDER_ID?"Qo‘shimcha izoh — ixtiyoriy":"Izoh — ixtiyoriy";el("dorderSave").textContent=DORDER_ORDER_ID?"Zakazga qo‘shish":"Zakazni saqlash";
-    api("GET","/api/items").then(function(rows){DORDER_ROWS=rows||[];renderDiningOrder();}).catch(function(e){el("dorderItems").innerHTML='<div class="idesc">'+esc(e.message)+'</div>';});
+    api("GET","/api/items?menu_only=1").then(function(rows){DORDER_ROWS=rows||[];renderDiningOrder();}).catch(function(e){el("dorderItems").innerHTML='<div class="idesc">'+esc(e.message)+'</div>';});
   }
   function renderDiningOrder(){
     var box=el("dorderItems");if(!DORDER_ROWS.length){box.innerHTML='<div class="empty"><h3>Mahsulot yo\'q</h3><p>Avval Mahsulot va xizmatlar bo\'limida mahsulot qo\'shing.</p></div>';diningOrderTotal();return;}
@@ -9268,7 +9268,7 @@
     itemFilter = "all"; itemSearch = "";
     var si = el("itemSearchInput"); if(si) si.value = "";
     var fr = el("itemFilterRow"); if(fr) fr.querySelectorAll("[data-item-filter]").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-item-filter") === "all"); });
-    Promise.all([api("GET","/api/item-groups"), api("GET","/api/items")]).then(function(res){
+    Promise.all([api("GET","/api/item-groups?menu_only=1"), api("GET","/api/items?menu_only=1")]).then(function(res){
       itemGroupsCache = res[0] || [];
       itemListCache = res[1] || [];
       renderItems();
