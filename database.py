@@ -1560,3 +1560,10 @@ def _migrate(conn):
         "status TEXT NOT NULL DEFAULT 'new',group_id INTEGER,student_id INTEGER,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_enrollments_biz ON education_enrollments(business_id,status,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_teacher_payments("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,teacher_id INTEGER NOT NULL,"
+        "payment_month TEXT NOT NULL,amount INTEGER NOT NULL,pay_type TEXT NOT NULL DEFAULT 'naqd',"
+        "note TEXT DEFAULT '',expense_id INTEGER,created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_teacher_payments ON education_teacher_payments(business_id,teacher_id,payment_month,id)")
