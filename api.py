@@ -2355,6 +2355,58 @@ async def education_exam_results_save(exam_id:int,request:Request,x_telegram_ini
     conn.commit();conn.close();return {"ok":True,"saved":saved}
 
 
+@router.post("/education/enrollments")
+async def education_enrollment_add(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json()
+    try: course_id=int(body.get("course_item_id") or 0)
+    except (TypeError,ValueError): course_id=0
+    course=conn.execute("""SELECT i.*,b.yon FROM items i JOIN businesses b ON b.id=i.business_id
+      WHERE i.id=? AND i.kind='service' AND b.status='active'""",(course_id,)).fetchone()
+    if not course or (course["yon"] or "").strip()!="Ta'lim faoliyati": conn.close();raise HTTPException(404,"Kurs topilmadi.")
+    if _row_val(course,"enrollment_status","open")!="open": conn.close();raise HTTPException(400,"Bu kursga qabul yopilgan.")
+    old=conn.execute("SELECT id FROM education_enrollments WHERE business_id=? AND course_item_id=? AND user_id=? AND status IN ('new','accepted')",(course["business_id"],course_id,user["id"])).fetchone()
+    if old: conn.close();raise HTTPException(400,"Siz bu kursga avval yozilgansiz.")
+    phone=str(body.get("phone") or user["phone"] or "").strip()[:30]
+    if not phone: conn.close();raise HTTPException(400,"Telefon raqamini kiriting.")
+    now=int(time.time());cur=conn.execute("""INSERT INTO education_enrollments(business_id,course_item_id,user_id,customer_name,phone,note,status,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,'new',?,?)""",(course["business_id"],course_id,user["id"],user["name"] or "O'quvchi",phone,str(body.get("note") or "").strip()[:300],now,now));conn.commit();eid=cur.lastrowid;conn.close();return {"ok":True,"id":eid}
+
+
+@router.get("/education/enrollments")
+async def education_enrollments(x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items")
+    rows=conn.execute("""SELECT e.*,i.name AS course_name,g.name AS group_name FROM education_enrollments e
+      LEFT JOIN items i ON i.id=e.course_item_id LEFT JOIN education_groups g ON g.id=e.group_id
+      WHERE e.business_id=? ORDER BY CASE e.status WHEN 'new' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END,e.id DESC LIMIT 500""",(biz["id"],)).fetchall();conn.close();return [dict(r) for r in rows]
+
+
+@router.post("/education/enrollments/{enrollment_id}/accept")
+async def education_enrollment_accept(enrollment_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();owner,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");body=await request.json()
+    try: group_id=int(body.get("group_id") or 0)
+    except (TypeError,ValueError): group_id=0
+    enr=conn.execute("SELECT * FROM education_enrollments WHERE id=? AND business_id=? AND status='new'",(enrollment_id,biz["id"])).fetchone()
+    if not enr: conn.close();raise HTTPException(404,"Yangi ariza topilmadi.")
+    group=conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=? AND status='active'",(group_id,biz["id"])).fetchone()
+    if not group: conn.close();raise HTTPException(400,"Guruhni tanlang.")
+    if group["course_item_id"] and int(group["course_item_id"])!=int(enr["course_item_id"]): conn.close();raise HTTPException(400,"Tanlangan guruh boshqa kursga tegishli.")
+    existing=conn.execute("SELECT id FROM education_students WHERE business_id=? AND user_id=? AND status='active'",(biz["id"],enr["user_id"])).fetchone();now=int(time.time())
+    if existing:
+        sid=existing["id"];conn.execute("UPDATE education_students SET group_id=?,phone=?,updated_at=? WHERE id=?",(group_id,enr["phone"],now,sid))
+    else:
+        cur=conn.execute("""INSERT INTO education_students(business_id,group_id,user_id,full_name,phone,joined_date,note,monthly_fee,status,created_at,updated_at)
+          VALUES(?,?,?,?,?,?,?,?, 'active',?,?)""",(biz["id"],group_id,enr["user_id"],enr["customer_name"],enr["phone"],time.strftime('%Y-%m-%d',time.gmtime(now+5*3600)),("Kurs arizasi: "+(enr["note"] or ""))[:500],0,now,now));sid=cur.lastrowid
+    conn.execute("UPDATE education_enrollments SET status='accepted',group_id=?,student_id=?,updated_at=? WHERE id=?",(group_id,sid,now,enrollment_id));conn.commit();conn.close();return {"ok":True,"student_id":sid}
+
+
+@router.post("/education/enrollments/{enrollment_id}/reject")
+async def education_enrollment_reject(enrollment_id:int,x_telegram_init_data:str=Header(default="")):
+    conn=db();owner,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items")
+    cur=conn.execute("UPDATE education_enrollments SET status='rejected',updated_at=? WHERE id=? AND business_id=? AND status='new'",(int(time.time()),enrollment_id,biz["id"]));conn.commit();conn.close()
+    if not cur.rowcount: raise HTTPException(404,"Yangi ariza topilmadi.")
+    return {"ok":True}
+
+
 @router.post("/dining/places/{place_id}/booking")
 async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
