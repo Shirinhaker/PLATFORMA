@@ -992,10 +992,21 @@ def _migrate(conn):
     conn.execute(
         "CREATE TABLE IF NOT EXISTS production_batches("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,ready_item_id INTEGER NOT NULL,"
-        "qty REAL NOT NULL,note TEXT DEFAULT '',user_id INTEGER,created_at INTEGER NOT NULL)")
+        "qty REAL NOT NULL,total_cost INTEGER DEFAULT 0,unit_cost INTEGER DEFAULT 0,note TEXT DEFAULT '',user_id INTEGER,created_at INTEGER NOT NULL)")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS production_inputs("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,qty REAL NOT NULL)")
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,qty REAL NOT NULL,"
+        "unit_cost INTEGER DEFAULT 0,total_cost INTEGER DEFAULT 0)")
+    _pbcols = [r["name"] for r in conn.execute("PRAGMA table_info(production_batches)").fetchall()]
+    if "total_cost" not in _pbcols:
+        conn.execute("ALTER TABLE production_batches ADD COLUMN total_cost INTEGER DEFAULT 0")
+    if "unit_cost" not in _pbcols:
+        conn.execute("ALTER TABLE production_batches ADD COLUMN unit_cost INTEGER DEFAULT 0")
+    _picols = [r["name"] for r in conn.execute("PRAGMA table_info(production_inputs)").fetchall()]
+    if "unit_cost" not in _picols:
+        conn.execute("ALTER TABLE production_inputs ADD COLUMN unit_cost INTEGER DEFAULT 0")
+    if "total_cost" not in _picols:
+        conn.execute("ALTER TABLE production_inputs ADD COLUMN total_cost INTEGER DEFAULT 0")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_batches_biz ON production_batches(business_id,created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_inputs_batch ON production_inputs(batch_id,id)")
     conn.execute(
