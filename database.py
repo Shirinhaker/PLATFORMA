@@ -1007,6 +1007,28 @@ def _migrate(conn):
         conn.execute("ALTER TABLE production_inputs ADD COLUMN unit_cost INTEGER DEFAULT 0")
     if "total_cost" not in _picols:
         conn.execute("ALTER TABLE production_inputs ADD COLUMN total_cost INTEGER DEFAULT 0")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS stock_batches("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,"
+        "qty_in REAL NOT NULL,qty_remaining REAL NOT NULL,unit_cost INTEGER NOT NULL DEFAULT 0,"
+        "source_move_id INTEGER,created_at INTEGER NOT NULL)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS stock_batch_consumptions("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,"
+        "qty REAL NOT NULL,unit_cost INTEGER NOT NULL DEFAULT 0,total_cost INTEGER NOT NULL DEFAULT 0,"
+        "source_type TEXT DEFAULT '',source_id INTEGER,created_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_batches_fifo ON stock_batches(business_id,item_id,created_at,id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_consumption_source ON stock_batch_consumptions(source_type,source_id,id)")
+    if "fifo_initialized" not in _icols3:
+        conn.execute("ALTER TABLE items ADD COLUMN fifo_initialized INTEGER DEFAULT 0")
+    import time as _time
+    _fifo_now = int(_time.time())
+    for _fi in conn.execute("SELECT id,business_id,stock_qty,cost_price FROM items WHERE COALESCE(fifo_initialized,0)=0").fetchall():
+        _fq = float(_fi["stock_qty"] or 0)
+        if _fq > 0:
+            conn.execute("INSERT INTO stock_batches(business_id,item_id,qty_in,qty_remaining,unit_cost,source_move_id,created_at) VALUES(?,?,?,?,?,NULL,?)",
+                         (_fi["business_id"], _fi["id"], _fq, _fq, int(_fi["cost_price"] or 0), _fifo_now))
+        conn.execute("UPDATE items SET fifo_initialized=1 WHERE id=?", (_fi["id"],))
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_batches_biz ON production_batches(business_id,created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_production_inputs_batch ON production_inputs(batch_id,id)")
     conn.execute(
@@ -1041,6 +1063,8 @@ def _migrate(conn):
     _scols = [r["name"] for r in conn.execute("PRAGMA table_info(sales)").fetchall()]
     if "chek_no" not in _scols:
         conn.execute("ALTER TABLE sales ADD COLUMN chek_no INTEGER")
+    if "cost_total" not in _scols:
+        conn.execute("ALTER TABLE sales ADD COLUMN cost_total INTEGER DEFAULT 0")
 
     # --- v1414: XARAJATLAR ---
     conn.execute(
