@@ -1745,6 +1745,131 @@ def _dining_place(conn, biz_id, place_id):
     return row
 
 
+# ====================================================================
+# TA'LIM FAOLIYATI — KURSLAR VA GURUHLAR
+# ====================================================================
+def _require_education_business(conn, init_data):
+    user, biz = require_business(conn, init_data)
+    if (biz["yon"] or "").strip() != "Ta'lim faoliyati":
+        conn.close()
+        raise HTTPException(403, "Bu bo'lim faqat Ta'lim faoliyati yo'nalishi uchun.")
+    return user, biz
+
+
+def _education_group_payload(conn, biz_id, body, old=None):
+    def value(key, default=""):
+        return body.get(key, default) if key in body else default
+    name = str(value("name", old["name"] if old else "") or "").strip()[:80]
+    if not name:
+        raise HTTPException(400, "Guruh nomini kiriting.")
+    course_id = value("course_item_id", old["course_item_id"] if old else None)
+    if course_id in (None, "", 0, "0"):
+        course_id = None
+    else:
+        try:
+            course_id = int(course_id)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Kurs noto'g'ri tanlangan.")
+        course = conn.execute(
+            "SELECT id FROM items WHERE id=? AND business_id=? AND kind='service'",
+            (course_id, biz_id),
+        ).fetchone()
+        if not course:
+            raise HTTPException(400, "Tanlangan kurs topilmadi.")
+    try:
+        capacity = max(0, min(10000, int(value("capacity", old["capacity"] if old else 0) or 0)))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "O'quvchilar sig'imi noto'g'ri.")
+    allowed_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+    days = value("weekdays", old["weekdays"] if old else "")
+    if isinstance(days, list):
+        days = ",".join(d for d in days if d in allowed_days)
+    days = ",".join(d for d in str(days or "").split(",") if d in allowed_days)
+    return {
+        "name": name, "course_item_id": course_id,
+        "teacher_name": str(value("teacher_name", old["teacher_name"] if old else "") or "").strip()[:100],
+        "room_name": str(value("room_name", old["room_name"] if old else "") or "").strip()[:80],
+        "capacity": capacity, "weekdays": days,
+        "lesson_from": str(value("lesson_from", old["lesson_from"] if old else "") or "")[:5],
+        "lesson_to": str(value("lesson_to", old["lesson_to"] if old else "") or "")[:5],
+        "start_date": str(value("start_date", old["start_date"] if old else "") or "")[:10],
+        "end_date": str(value("end_date", old["end_date"] if old else "") or "")[:10],
+    }
+
+
+@router.get("/education/groups")
+async def education_groups(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        """SELECT g.*,i.name AS course_name FROM education_groups g
+           LEFT JOIN items i ON i.id=g.course_item_id AND i.business_id=g.business_id
+           WHERE g.business_id=? AND g.status='active' ORDER BY g.id DESC""",
+        (biz["id"],),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@router.post("/education/groups")
+async def education_group_add(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
+    data = _education_group_payload(conn, biz["id"], await request.json())
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO education_groups(business_id,name,course_item_id,teacher_name,room_name,capacity,
+           weekdays,lesson_from,lesson_to,start_date,end_date,status,created_at,updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
+        (biz["id"], data["name"], data["course_item_id"], data["teacher_name"], data["room_name"],
+         data["capacity"], data["weekdays"], data["lesson_from"], data["lesson_to"],
+         data["start_date"], data["end_date"], now, now),
+    )
+    conn.commit()
+    group_id = cur.lastrowid
+    conn.close()
+    return {"ok": True, "id": group_id}
+
+
+@router.put("/education/groups/{group_id}")
+async def education_group_edit(group_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
+    old = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
+    if not old:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    data = _education_group_payload(conn, biz["id"], await request.json(), old)
+    conn.execute(
+        """UPDATE education_groups SET name=?,course_item_id=?,teacher_name=?,room_name=?,capacity=?,
+           weekdays=?,lesson_from=?,lesson_to=?,start_date=?,end_date=?,updated_at=?
+           WHERE id=? AND business_id=?""",
+        (data["name"], data["course_item_id"], data["teacher_name"], data["room_name"], data["capacity"],
+         data["weekdays"], data["lesson_from"], data["lesson_to"], data["start_date"], data["end_date"],
+         int(time.time()), group_id, biz["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/education/groups/{group_id}")
+async def education_group_delete(group_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
+    row = conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=?", (group_id, biz["id"])).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    conn.execute("UPDATE education_groups SET status='deleted',updated_at=? WHERE id=? AND business_id=?", (int(time.time()), group_id, biz["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @router.post("/dining/places/{place_id}/booking")
 async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
