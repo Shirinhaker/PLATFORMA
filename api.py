@@ -2256,6 +2256,75 @@ async def education_teacher_delete(teacher_id: int, x_telegram_init_data: str = 
     conn.commit(); conn.close(); return {"ok":True}
 
 
+@router.get("/education/exams")
+async def education_exams(x_telegram_init_data: str = Header(default="")):
+    conn=db(); user,biz=_require_education_business(conn,x_telegram_init_data)
+    rows=conn.execute("""SELECT e.*,g.name AS group_name,
+      (SELECT COUNT(*) FROM education_exam_results r WHERE r.business_id=e.business_id AND r.exam_id=e.id) AS result_count,
+      (SELECT AVG(r.score) FROM education_exam_results r WHERE r.business_id=e.business_id AND r.exam_id=e.id) AS avg_score
+      FROM education_exams e LEFT JOIN education_groups g ON g.id=e.group_id AND g.business_id=e.business_id
+      WHERE e.business_id=? AND e.status='active' ORDER BY e.exam_date DESC,e.id DESC""",(biz["id"],)).fetchall()
+    conn.close();return [dict(r) for r in rows]
+
+
+def _education_exam_payload(conn,biz_id,body,old=None):
+    def value(key,default=""): return body.get(key,default) if key in body else default
+    title=str(value("title",old["title"] if old else "") or "").strip()[:120]
+    if not title: raise HTTPException(400,"Imtihon nomini kiriting.")
+    try: group_id=int(value("group_id",old["group_id"] if old else 0) or 0);max_score=float(value("max_score",old["max_score"] if old else 100) or 0)
+    except (TypeError,ValueError): raise HTTPException(400,"Guruh yoki maksimal ball noto'g'ri.")
+    if not conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=? AND status='active'",(group_id,biz_id)).fetchone(): raise HTTPException(400,"Guruh topilmadi.")
+    if max_score<=0 or max_score>1000000: raise HTTPException(400,"Maksimal ball 0 dan katta bo'lsin.")
+    exam_date=str(value("exam_date",old["exam_date"] if old else "") or "")[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$",exam_date): raise HTTPException(400,"Imtihon sanasini tanlang.")
+    return {"title":title,"group_id":group_id,"max_score":max_score,"exam_date":exam_date,"note":str(value("note",old["note"] if old else "") or "").strip()[:500]}
+
+
+@router.post("/education/exams")
+async def education_exam_add(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");d=_education_exam_payload(conn,biz["id"],await request.json());now=int(time.time())
+    cur=conn.execute("INSERT INTO education_exams(business_id,group_id,title,exam_date,max_score,note,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'active',?,?)",(biz["id"],d["group_id"],d["title"],d["exam_date"],d["max_score"],d["note"],now,now));conn.commit();eid=cur.lastrowid;conn.close();return {"ok":True,"id":eid}
+
+
+@router.put("/education/exams/{exam_id}")
+async def education_exam_edit(exam_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");old=conn.execute("SELECT * FROM education_exams WHERE id=? AND business_id=? AND status='active'",(exam_id,biz["id"])).fetchone()
+    if not old: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
+    d=_education_exam_payload(conn,biz["id"],await request.json(),old);conn.execute("UPDATE education_exams SET group_id=?,title=?,exam_date=?,max_score=?,note=?,updated_at=? WHERE id=? AND business_id=?",(d["group_id"],d["title"],d["exam_date"],d["max_score"],d["note"],int(time.time()),exam_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
+
+
+@router.delete("/education/exams/{exam_id}")
+async def education_exam_delete(exam_id:int,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");old=conn.execute("SELECT id FROM education_exams WHERE id=? AND business_id=?",(exam_id,biz["id"])).fetchone()
+    if not old: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
+    conn.execute("UPDATE education_exams SET status='deleted',updated_at=? WHERE id=? AND business_id=?",(int(time.time()),exam_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
+
+
+@router.get("/education/exams/{exam_id}/results")
+async def education_exam_results(exam_id:int,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);exam=conn.execute("SELECT e.*,g.name AS group_name FROM education_exams e LEFT JOIN education_groups g ON g.id=e.group_id WHERE e.id=? AND e.business_id=? AND e.status='active'",(exam_id,biz["id"])).fetchone()
+    if not exam: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
+    rows=conn.execute("""SELECT s.id AS student_id,s.full_name,r.score,r.note AS result_note
+      FROM education_students s LEFT JOIN education_exam_results r ON r.business_id=s.business_id AND r.exam_id=? AND r.student_id=s.id
+      WHERE s.business_id=? AND s.group_id=? AND s.status='active' ORDER BY s.full_name COLLATE NOCASE""",(exam_id,biz["id"],exam["group_id"])).fetchall();conn.close();return {"exam":dict(exam),"students":[dict(r) for r in rows]}
+
+
+@router.put("/education/exams/{exam_id}/results")
+async def education_exam_results_save(exam_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");exam=conn.execute("SELECT * FROM education_exams WHERE id=? AND business_id=? AND status='active'",(exam_id,biz["id"])).fetchone()
+    if not exam: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
+    body=await request.json();entries=body.get("entries") or [];now=int(time.time());saved=0
+    for e in entries:
+        try: sid=int(e.get("student_id") or 0);score=float(e.get("score"))
+        except (TypeError,ValueError,AttributeError): continue
+        if score<0 or score>float(exam["max_score"]): continue
+        if not conn.execute("SELECT id FROM education_students WHERE id=? AND business_id=? AND group_id=? AND status='active'",(sid,biz["id"],exam["group_id"])).fetchone(): continue
+        note=str(e.get("note") or "").strip()[:300]
+        conn.execute("""INSERT INTO education_exam_results(business_id,exam_id,student_id,score,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
+          ON CONFLICT(business_id,exam_id,student_id) DO UPDATE SET score=excluded.score,note=excluded.note,updated_at=excluded.updated_at""",(biz["id"],exam_id,sid,score,note,now,now));saved+=1
+    conn.commit();conn.close();return {"ok":True,"saved":saved}
+
+
 @router.post("/dining/places/{place_id}/booking")
 async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
