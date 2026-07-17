@@ -1785,6 +1785,16 @@ def _education_group_payload(conn, biz_id, body, old=None):
     if isinstance(days, list):
         days = ",".join(d for d in days if d in allowed_days)
     days = ",".join(d for d in str(days or "").split(",") if d in allowed_days)
+    billing_type = str(value("billing_type", _row_val(old, "billing_type", "monthly") if old else "monthly") or "monthly").strip()
+    if billing_type not in ("monthly", "attendance"):
+        billing_type = "monthly"
+    try:
+        package_lessons = max(0, min(1000, int(value("package_lessons", _row_val(old, "package_lessons", 0) if old else 0) or 0)))
+        package_price = max(0, int(str(value("package_price", _row_val(old, "package_price", 0) if old else 0) or 0).replace(" ", "")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Darslar soni yoki paket narxi noto'g'ri.")
+    if billing_type == "attendance" and (package_lessons <= 0 or package_price <= 0):
+        raise HTTPException(400, "Qatnashuv bo'yicha hisoblash uchun darslar soni va paket narxini kiriting.")
     return {
         "name": name, "course_item_id": course_id,
         "teacher_name": str(value("teacher_name", old["teacher_name"] if old else "") or "").strip()[:100],
@@ -1794,6 +1804,7 @@ def _education_group_payload(conn, biz_id, body, old=None):
         "lesson_to": str(value("lesson_to", old["lesson_to"] if old else "") or "")[:5],
         "start_date": str(value("start_date", old["start_date"] if old else "") or "")[:10],
         "end_date": str(value("end_date", old["end_date"] if old else "") or "")[:10],
+        "billing_type": billing_type, "package_lessons": package_lessons, "package_price": package_price,
     }
 
 
@@ -1822,11 +1833,11 @@ async def education_group_add(request: Request, x_telegram_init_data: str = Head
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO education_groups(business_id,name,course_item_id,teacher_name,room_name,capacity,
-           weekdays,lesson_from,lesson_to,start_date,end_date,status,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
+           weekdays,lesson_from,lesson_to,start_date,end_date,billing_type,package_lessons,package_price,status,created_at,updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
         (biz["id"], data["name"], data["course_item_id"], data["teacher_name"], data["room_name"],
          data["capacity"], data["weekdays"], data["lesson_from"], data["lesson_to"],
-         data["start_date"], data["end_date"], now, now),
+         data["start_date"], data["end_date"], data["billing_type"], data["package_lessons"], data["package_price"], now, now),
     )
     conn.commit()
     group_id = cur.lastrowid
@@ -1846,11 +1857,11 @@ async def education_group_edit(group_id: int, request: Request, x_telegram_init_
     data = _education_group_payload(conn, biz["id"], await request.json(), old)
     conn.execute(
         """UPDATE education_groups SET name=?,course_item_id=?,teacher_name=?,room_name=?,capacity=?,
-           weekdays=?,lesson_from=?,lesson_to=?,start_date=?,end_date=?,updated_at=?
+           weekdays=?,lesson_from=?,lesson_to=?,start_date=?,end_date=?,billing_type=?,package_lessons=?,package_price=?,updated_at=?
            WHERE id=? AND business_id=?""",
         (data["name"], data["course_item_id"], data["teacher_name"], data["room_name"], data["capacity"],
          data["weekdays"], data["lesson_from"], data["lesson_to"], data["start_date"], data["end_date"],
-         int(time.time()), group_id, biz["id"]),
+         data["billing_type"], data["package_lessons"], data["package_price"], int(time.time()), group_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -1892,6 +1903,10 @@ def _education_student_payload(conn, biz_id, body, old=None):
         ).fetchone()
         if not group:
             raise HTTPException(400, "Tanlangan guruh topilmadi.")
+    try:
+        monthly_fee = max(0, int(str(value("monthly_fee", _row_val(old, "monthly_fee", 0) if old else 0) or 0).replace(" ", "")))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Oylik to'lov summasi noto'g'ri.")
     return {
         "full_name": full_name, "group_id": group_id,
         "phone": str(value("phone", old["phone"] if old else "") or "").strip()[:30],
@@ -1900,6 +1915,7 @@ def _education_student_payload(conn, biz_id, body, old=None):
         "birth_date": str(value("birth_date", old["birth_date"] if old else "") or "")[:10],
         "joined_date": str(value("joined_date", old["joined_date"] if old else "") or "")[:10],
         "note": str(value("note", old["note"] if old else "") or "").strip()[:500],
+        "monthly_fee": monthly_fee,
     }
 
 
@@ -1933,9 +1949,9 @@ async def education_student_add(request: Request, x_telegram_init_data: str = He
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO education_students(business_id,group_id,full_name,phone,parent_name,parent_phone,
-           birth_date,joined_date,note,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)""",
+           birth_date,joined_date,note,monthly_fee,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
         (biz["id"], data["group_id"], data["full_name"], data["phone"], data["parent_name"],
-         data["parent_phone"], data["birth_date"], data["joined_date"], data["note"], now, now),
+         data["parent_phone"], data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], now, now),
     )
     conn.commit()
     student_id = cur.lastrowid
@@ -1955,9 +1971,9 @@ async def education_student_edit(student_id: int, request: Request, x_telegram_i
     data = _education_student_payload(conn, biz["id"], await request.json(), old)
     conn.execute(
         """UPDATE education_students SET group_id=?,full_name=?,phone=?,parent_name=?,parent_phone=?,
-           birth_date=?,joined_date=?,note=?,updated_at=? WHERE id=? AND business_id=?""",
+           birth_date=?,joined_date=?,note=?,monthly_fee=?,updated_at=? WHERE id=? AND business_id=?""",
         (data["group_id"], data["full_name"], data["phone"], data["parent_name"], data["parent_phone"],
-         data["birth_date"], data["joined_date"], data["note"], int(time.time()), student_id, biz["id"]),
+         data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], int(time.time()), student_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -2052,6 +2068,118 @@ async def education_attendance_save(request: Request, x_telegram_init_data: str 
     conn.commit()
     conn.close()
     return {"ok": True, "saved": saved}
+
+
+@router.get("/education/payments")
+async def education_payments(payment_month: str, group_id: int = 0, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    payment_month = str(payment_month or "")[:7]
+    if not re.match(r"^\d{4}-\d{2}$", payment_month):
+        conn.close()
+        raise HTTPException(400, "To'lov oyini tanlang.")
+    params = [payment_month, biz["id"]]
+    extra = ""
+    if group_id > 0:
+        extra = " AND s.group_id=?"
+        params.append(group_id)
+    rows = conn.execute(
+        """SELECT s.id AS student_id,s.full_name,s.phone,s.monthly_fee,g.name AS group_name,
+                  COALESCE(g.billing_type,'monthly') AS billing_type,COALESCE(g.package_lessons,0) AS package_lessons,
+                  COALESCE(g.package_price,0) AS package_price,
+                  (SELECT COUNT(*) FROM education_attendance a WHERE a.business_id=s.business_id AND a.student_id=s.id
+                    AND a.group_id=s.group_id AND a.lesson_date LIKE ? AND a.attendance_status IN ('present','late','absent')) AS chargeable_lessons,
+                  COALESCE((SELECT SUM(p.amount) FROM education_payments p
+                    WHERE p.business_id=s.business_id AND p.student_id=s.id AND p.payment_month=?),0) AS paid
+           FROM education_students s LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
+           WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE,s.id",
+        [payment_month + "-%"] + params,
+    ).fetchall()
+    history = conn.execute(
+        """SELECT p.*,s.full_name FROM education_payments p JOIN education_students s ON s.id=p.student_id
+           WHERE p.business_id=? AND p.payment_month=? ORDER BY p.id DESC LIMIT 300""",
+        (biz["id"], payment_month),
+    ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        if d["billing_type"] == "attendance" and int(d["package_lessons"] or 0) > 0:
+            lessons = min(int(d["chargeable_lessons"] or 0), int(d["package_lessons"] or 0))
+            expected = int(round((int(d["package_price"] or 0) / int(d["package_lessons"])) * lessons))
+            d["per_lesson_price"] = int(round(int(d["package_price"] or 0) / int(d["package_lessons"])))
+        else:
+            expected = int(d["monthly_fee"] or 0)
+            d["per_lesson_price"] = 0
+        d["expected"] = expected
+        d["debt"] = max(0, expected - int(d["paid"] or 0)); out.append(d)
+    conn.close()
+    return {"payment_month": payment_month, "students": out, "history": [dict(r) for r in history]}
+
+
+@router.post("/education/payments")
+async def education_payment_add(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
+    body = await request.json()
+    try:
+        student_id = int(body.get("student_id") or 0)
+        amount = int(str(body.get("amount") or 0).replace(" ", ""))
+    except (TypeError, ValueError):
+        student_id = 0; amount = 0
+    month = str(body.get("payment_month") or "")[:7]
+    pay_type = str(body.get("pay_type") or "naqd").strip()
+    if pay_type not in ("naqd", "karta"):
+        pay_type = "naqd"
+    if not re.match(r"^\d{4}-\d{2}$", month):
+        conn.close(); raise HTTPException(400, "To'lov oyini tanlang.")
+    student = conn.execute("SELECT * FROM education_students WHERE id=? AND business_id=? AND status='active'", (student_id, biz["id"])).fetchone()
+    if not student:
+        conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
+    if amount <= 0:
+        conn.close(); raise HTTPException(400, "To'lov summasini kiriting.")
+    fee = int(_row_val(student, "monthly_fee", 0) or 0)
+    if student["group_id"]:
+        grp = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (student["group_id"], biz["id"])).fetchone()
+        if grp and _row_val(grp, "billing_type", "monthly") == "attendance" and int(_row_val(grp, "package_lessons", 0) or 0) > 0:
+            chargeable = int(conn.execute(
+                "SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND group_id=? AND student_id=? AND lesson_date LIKE ? AND attendance_status IN ('present','late','absent')",
+                (biz["id"], student["group_id"], student_id, month + "-%"),
+            ).fetchone()[0] or 0)
+            fee = int(round((int(_row_val(grp, "package_price", 0) or 0) / int(grp["package_lessons"])) * min(chargeable, int(grp["package_lessons"]))))
+    paid = int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=?", (biz["id"], student_id, month)).fetchone()[0] or 0)
+    if fee > 0 and amount > max(0, fee - paid):
+        conn.close(); raise HTTPException(400, "Kiritilgan summa qolgan qarzdorlikdan ko'p.")
+    note = str(body.get("note") or "").strip()[:200]
+    now = int(time.time())
+    cur = conn.execute("INSERT INTO education_payments(business_id,student_id,payment_month,amount,pay_type,note,created_at) VALUES(?,?,?,?,?,?,?)", (biz["id"], student_id, month, amount, pay_type, note, now))
+    payment_id = cur.lastrowid
+    chek = _next_chek_no(conn, biz["id"])
+    sale = conn.execute(
+        """INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,note,user_id,created_at,chek_no)
+           VALUES(?,?,?,?,?,1,'oy',?,?,?,?,?,?,?)""",
+        (biz["id"], "education", payment_id, None, (student["full_name"] + " — " + month)[:160], amount, amount, pay_type,
+         ("Ta'lim to'lovi" + ((": " + note) if note else ""))[:200], user["id"], now, chek),
+    )
+    sale_id = sale.lastrowid
+    conn.execute("UPDATE education_payments SET sale_id=? WHERE id=?", (sale_id, payment_id))
+    conn.commit(); conn.close()
+    return {"ok": True, "id": payment_id, "chek_no": chek}
+
+
+@router.delete("/education/payments/{payment_id}")
+async def education_payment_delete(payment_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
+    row = conn.execute("SELECT * FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"])).fetchone()
+    if not row:
+        conn.close(); raise HTTPException(404, "To'lov topilmadi.")
+    if row["sale_id"]:
+        conn.execute("DELETE FROM sales WHERE id=? AND business_id=? AND source='education'", (row["sale_id"], biz["id"]))
+    conn.execute("DELETE FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"]))
+    conn.commit(); conn.close()
+    return {"ok": True}
 
 
 @router.post("/dining/places/{place_id}/booking")
