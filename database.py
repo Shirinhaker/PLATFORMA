@@ -1507,6 +1507,8 @@ def _migrate(conn):
     _escols = [r["name"] for r in conn.execute("PRAGMA table_info(education_students)").fetchall()]
     if "monthly_fee" not in _escols:
         conn.execute("ALTER TABLE education_students ADD COLUMN monthly_fee INTEGER NOT NULL DEFAULT 0")
+    if "user_id" not in _escols:
+        conn.execute("ALTER TABLE education_students ADD COLUMN user_id INTEGER")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS education_attendance("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER NOT NULL, "
@@ -1548,3 +1550,10 @@ def _migrate(conn):
         "UNIQUE(business_id,exam_id,student_id))"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_exam_results ON education_exam_results(business_id,exam_id,student_id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_enrollments("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,course_item_id INTEGER NOT NULL,"
+        "user_id INTEGER NOT NULL,customer_name TEXT NOT NULL,phone TEXT DEFAULT '',note TEXT DEFAULT '',"
+        "status TEXT NOT NULL DEFAULT 'new',group_id INTEGER,student_id INTEGER,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_enrollments_biz ON education_enrollments(business_id,status,id)")
