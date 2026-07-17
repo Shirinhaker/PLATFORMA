@@ -342,6 +342,9 @@ def init_db():
             title           TEXT NOT NULL,
             body            TEXT DEFAULT '',
             order_id        INTEGER,
+            dining_order_id INTEGER,
+            target_staff_id INTEGER,
+            target_perm     TEXT DEFAULT '',
             ride_id         INTEGER,
             requires_action INTEGER DEFAULT 0,
             action_type     TEXT DEFAULT '',
@@ -459,6 +462,12 @@ def _migrate(conn):
         conn.execute("ALTER TABLE notifications ADD COLUMN action_type TEXT DEFAULT ''")
     if "resolved_at" not in ncols:
         conn.execute("ALTER TABLE notifications ADD COLUMN resolved_at INTEGER DEFAULT 0")
+    if "dining_order_id" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN dining_order_id INTEGER")
+    if "target_staff_id" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN target_staff_id INTEGER")
+    if "target_perm" not in ncols:
+        conn.execute("ALTER TABLE notifications ADD COLUMN target_perm TEXT DEFAULT ''")
     conn.execute("""CREATE TABLE IF NOT EXISTS push_devices(
         id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,token TEXT NOT NULL UNIQUE,
         platform TEXT NOT NULL DEFAULT 'android',device_name TEXT DEFAULT '',app_version TEXT DEFAULT '',
