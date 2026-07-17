@@ -2413,6 +2413,52 @@ async def education_enrollment_reject(enrollment_id:int,x_telegram_init_data:str
     return {"ok":True}
 
 
+@router.get("/education/teacher-payroll")
+async def education_teacher_payroll(payment_month:str,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_any_perm(conn,x_telegram_init_data,"expenses","statistics")
+    month=str(payment_month or "")[:7]
+    if not re.match(r"^\d{4}-\d{2}$",month): conn.close();raise HTTPException(400,"Maosh oyini tanlang.")
+    rows=conn.execute("""SELECT t.*,
+      (SELECT COUNT(DISTINCT CAST(a.group_id AS TEXT)||':'||a.lesson_date) FROM education_attendance a JOIN education_groups g ON g.id=a.group_id
+       WHERE a.business_id=t.business_id AND g.teacher_id=t.id AND a.lesson_date LIKE ?) AS lesson_count,
+      COALESCE((SELECT SUM(p.amount) FROM education_teacher_payments p WHERE p.business_id=t.business_id AND p.teacher_id=t.id AND p.payment_month=?),0) AS paid
+      FROM education_teachers t WHERE t.business_id=? AND t.status='active' ORDER BY t.full_name COLLATE NOCASE""",(month+"-%",month,biz["id"])).fetchall()
+    out=[]
+    for r in rows:
+        d=dict(r);expected=int(d["salary_amount"] or 0) if d["salary_type"]=="monthly" else int(d["lesson_count"] or 0)*int(d["salary_amount"] or 0);d["expected"]=expected;d["debt"]=max(0,expected-int(d["paid"] or 0));out.append(d)
+    hist=conn.execute("""SELECT p.*,t.full_name FROM education_teacher_payments p JOIN education_teachers t ON t.id=p.teacher_id
+      WHERE p.business_id=? AND p.payment_month=? ORDER BY p.id DESC LIMIT 300""",(biz["id"],month)).fetchall();conn.close();return {"payment_month":month,"teachers":out,"history":[dict(r) for r in hist]}
+
+
+@router.post("/education/teacher-payroll")
+async def education_teacher_payroll_add(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"expenses");body=await request.json()
+    try: tid=int(body.get("teacher_id") or 0);amount=int(str(body.get("amount") or 0).replace(" ",""))
+    except (TypeError,ValueError): tid=0;amount=0
+    month=str(body.get("payment_month") or "")[:7];pay=str(body.get("pay_type") or "naqd")
+    if pay not in ("naqd","karta"): pay="naqd"
+    if not re.match(r"^\d{4}-\d{2}$",month): conn.close();raise HTTPException(400,"Maosh oyini tanlang.")
+    t=conn.execute("SELECT * FROM education_teachers WHERE id=? AND business_id=? AND status='active'",(tid,biz["id"])).fetchone()
+    if not t: conn.close();raise HTTPException(404,"O'qituvchi topilmadi.")
+    lessons=int(conn.execute("""SELECT COUNT(DISTINCT CAST(a.group_id AS TEXT)||':'||a.lesson_date) FROM education_attendance a JOIN education_groups g ON g.id=a.group_id
+      WHERE a.business_id=? AND g.teacher_id=? AND a.lesson_date LIKE ?""",(biz["id"],tid,month+"-%")).fetchone()[0] or 0)
+    expected=int(t["salary_amount"] or 0) if t["salary_type"]=="monthly" else lessons*int(t["salary_amount"] or 0)
+    paid=int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_teacher_payments WHERE business_id=? AND teacher_id=? AND payment_month=?",(biz["id"],tid,month)).fetchone()[0] or 0)
+    if amount<=0: conn.close();raise HTTPException(400,"To'lov summasini kiriting.")
+    if amount>max(0,expected-paid): conn.close();raise HTTPException(400,"Summa qolgan maoshdan ko'p.")
+    note=str(body.get("note") or "").strip()[:200];now=int(time.time())
+    eid=_expense_add(conn,biz["id"],"Maosh",amount,(t["full_name"]+" — "+month+(": "+note if note else ""))[:200],user["id"],source="education_salary")
+    cur=conn.execute("INSERT INTO education_teacher_payments(business_id,teacher_id,payment_month,amount,pay_type,note,expense_id,created_at) VALUES(?,?,?,?,?,?,?,?)",(biz["id"],tid,month,amount,pay,note,eid,now));conn.commit();pid=cur.lastrowid;conn.close();return {"ok":True,"id":pid}
+
+
+@router.delete("/education/teacher-payroll/{payment_id}")
+async def education_teacher_payroll_delete(payment_id:int,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"expenses");p=conn.execute("SELECT * FROM education_teacher_payments WHERE id=? AND business_id=?",(payment_id,biz["id"])).fetchone()
+    if not p: conn.close();raise HTTPException(404,"Maosh to'lovi topilmadi.")
+    if p["expense_id"]: conn.execute("DELETE FROM expenses WHERE id=? AND business_id=? AND source='education_salary'",(p["expense_id"],biz["id"]))
+    conn.execute("DELETE FROM education_teacher_payments WHERE id=? AND business_id=?",(payment_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
+
+
 @router.post("/dining/places/{place_id}/booking")
 async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
