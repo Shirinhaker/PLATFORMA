@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1581 -->
+<title>Platforma</title><!-- BUILD: v1582 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1072,14 +1072,15 @@
             <button type="button" class="item-photo-add" id="itPhotoAdd"><span class="ic">📷</span><span id="itPhotoAddText">Rasm qo'shish</span></button>
             <div class="item-photo-preview" id="itPhotoPreview" style="display:none"><img id="itPhotoImg" alt=""><button type="button" class="item-photo-remove" id="itPhotoRemove" aria-label="Rasmni olib tashlash">×</button></div>
           </div>
-          <div class="field"><label>Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
-          <div class="field"><label>Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
-          <div class="field"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
-          <div class="field"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
+          <div class="field"><label id="itNameLabel">Nomi</label><input class="input" id="itName" placeholder="Masalan: Non"></div>
+          <div class="field"><label id="itPriceLabel">Narxi</label><input class="input" id="itPrice" placeholder="Masalan: 2 000 so'm"></div>
+          <div id="educationCourseFields" style="display:none"><div class="field"><label>Ta'lim shakli</label><select class="input" id="itCourseMode"><option value="offline">Offline</option><option value="online">Onlayn</option><option value="hybrid">Aralash</option></select></div><div class="field"><label>Kurs davomiyligi</label><input class="input" id="itCourseDuration" placeholder="Masalan: 3 oy yoki 24 dars"></div><div class="field"><label>Bitta dars davomiyligi</label><select class="input" id="itLessonDuration"><option value="45">45 daqiqa</option><option value="60">60 daqiqa</option><option value="90">90 daqiqa</option><option value="120">120 daqiqa</option><option value="180">180 daqiqa</option></select></div><div class="field"><label>O'quvchilar yoshi</label><div class="business-hours-row"><input class="input" type="number" min="0" max="120" id="itAgeFrom" placeholder="Dan"><span class="business-hours-sep">—</span><input class="input" type="number" min="0" max="120" id="itAgeTo" placeholder="Gacha"></div><div class="idesc">Yosh chegarasi bo'lmasa bo'sh qoldiring.</div></div><div class="field"><label>Kurs darajasi</label><select class="input" id="itCourseLevel"><option value="all">Barcha darajalar</option><option value="beginner">Boshlang'ich</option><option value="intermediate">O'rta</option><option value="advanced">Yuqori</option></select></div><div class="field"><label>Qabul holati</label><select class="input" id="itEnrollmentStatus"><option value="open">Qabul ochiq</option><option value="closed">Qabul yopiq</option></select></div></div>
+          <div class="field" id="itUnitWrap"><label>O'lchov birligi</label><select class="input" id="itUnit"><option value="dona">dona</option><option value="kg">kg</option><option value="g">g</option><option value="litr">litr</option><option value="ml">ml</option><option value="metr">metr</option><option value="sm">sm</option><option value="m²">m²</option><option value="to'plam">to'plam</option><option value="quti">quti</option><option value="juft">juft</option><option value="porsiya">porsiya</option><option value="soat">soat</option><option value="kun">kun</option><option value="marta">marta</option></select></div>
+          <div class="field" id="itTrackWrap"><label>Omborda hisoblash</label><select class="input" id="itTrack"><option value="0">Yo'q</option><option value="1">Ha — qoldiq yuritiladi</option></select></div>
           <div class="field" id="itStockTypeWrap" style="display:none"><label>Ombor bo‘limi</label><select class="input" id="itStockType"><option value="ready_food">Tayyor taomlar</option><option value="raw_material">Mahsulotlar (xomashyo)</option></select></div>
           <div class="field" id="itStockWrap" style="display:none"><label>Boshlang'ich qoldiq (ombordagi hozirgi soni)</label><input class="input" id="itStockQty" inputmode="decimal" placeholder="0"></div>
           <div class="field" id="itMinWrap" style="display:none"><label>Kam qoldi chegarasi (shu songa tushsa ⚠️ belgisi chiqadi)</label><input class="input" id="itMinQty" inputmode="decimal" placeholder="masalan: 5"></div>
-          <div class="field"><label>Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
+          <div class="field"><label id="itNoteLabel">Izoh — ixtiyoriy</label><input class="input" id="itNote" placeholder="Izoh"></div>
           <div class="field"><label>Guruh</label><select class="input" id="itGroup"></select><div class="item-auto-kind" id="itAutoKindInfo" style="display:none"></div></div>
           <div class="field" id="itKindWrap"><label>Turi</label>
             <div style="display:flex;gap:9px" id="itKindRow">
@@ -3394,12 +3395,14 @@
     if(it) cont.innerHTML = itemCtrlHtml(it, { id:parseInt(bid,10), name:curBiz.name });
   }
   function bizItemCardHtml(it, b){
+    var edu=b.yon==="Ta'lim faoliyati",courseMeta=edu?'<div class="note">'+esc(it.course_mode==="online"?"Onlayn":it.course_mode==="hybrid"?"Aralash":"Offline")+(it.course_duration?' · '+esc(it.course_duration):'')+(it.lesson_duration?' · '+it.lesson_duration+' daqiqa':'')+'</div>'+((it.age_from||it.age_to)?'<div class="note">Yosh: '+(it.age_from||0)+'–'+(it.age_to||"+")+'</div>':'')+'<div class="kind">'+(it.enrollment_status==="closed"?'Qabul yopiq':'Qabul ochiq')+'</div>':'';
     return '<div class="item-card2 biz-prod-card" data-public-item="'+it.id+'">'+
       '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+
+      courseMeta+
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
-      '<div class="biz-item-ctrl" data-ci="'+it.id+'" data-cb="'+b.id+'">'+itemCtrlHtml(it, b)+'</div>'+
+      (edu&&it.enrollment_status==="closed"?'':'<div class="biz-item-ctrl" data-ci="'+it.id+'" data-cb="'+b.id+'">'+itemCtrlHtml(it, b)+'</div>')+
     '</div>';
   }
   function bizGroupBlockHtml(group, items, b){
@@ -9353,6 +9356,7 @@
   var itemSearch = "";      // qidiruv matni
 
   function itemKindText(kind){ return kind === "service" ? "Xizmat" : "Mahsulot"; }
+  function isEducationDirection(){return window.__businessDirection==="Ta'lim faoliyati";}
   // Birlik ko'rsatish: 'dona' bo'lsa ko'rsatmaymiz (ortiqcha shovqin bo'lmasin)
   function unitSuffix(u){ return (u && u !== "dona") ? " / " + u : ""; }
   function fmtQty(q){ var n = Math.round((parseFloat(q)||0)*1000)/1000; return String(n); }
@@ -9509,9 +9513,9 @@
     sheet.innerHTML =
       '<button class="order-close" id="groupFormClose" aria-label="Yopish">×</button>'+
       '<div class="order-grip"></div>'+
-      '<div class="lead" style="font-size:21px;margin-top:0">'+(isEdit ? "Guruh nomini o'zgartirish" : "Yangi guruh")+'</div>'+
-      '<div class="field" style="margin-top:12px"><label>Guruh nomi</label><input class="input" id="groupFormName" placeholder="Masalan: Ho\'l mevalar"></div>'+
-      (isEdit ? '' :
+      '<div class="lead" style="font-size:21px;margin-top:0">'+(isEdit ? "Guruh nomini o'zgartirish" : (isEducationDirection()?"Yangi kurs guruhi":"Yangi guruh"))+'</div>'+
+      '<div class="field" style="margin-top:12px"><label>Guruh nomi</label><input class="input" id="groupFormName" placeholder="'+(isEducationDirection()?"Masalan: Til kurslari":"Masalan: Ho'l mevalar")+'"></div>'+
+      (isEdit || isEducationDirection() ? '' :
         '<div class="field"><label>Tur</label><div style="display:flex;gap:9px" id="groupFormKind">'+
           '<button class="sort-chip on" data-gkind="product">Mahsulot</button>'+
           '<button class="sort-chip" data-gkind="service">Xizmat</button>'+
@@ -9536,8 +9540,8 @@
           closeGroupForm(); loadItems(); showMsg("Guruh nomi o'zgartirildi.");
         }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
       } else {
-        var kOn = el("groupFormKind").querySelector("[data-gkind].on");
-        var kind = kOn ? kOn.getAttribute("data-gkind") : "product";
+        var kOn = el("groupFormKind")&&el("groupFormKind").querySelector("[data-gkind].on");
+        var kind = isEducationDirection()?"service":(kOn ? kOn.getAttribute("data-gkind") : "product");
         api("POST","/api/item-groups",{name:name, kind:kind, storage_type:(itemFormReturnTo==="cab-ombor"?OMBOR_STOCK_TYPE:"ready_food")}).then(function(){
           closeGroupForm(); loadItems(); if(itemFormReturnTo==="cab-ombor") loadOmbor(); showMsg("Guruh qo'shildi.");
         }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
@@ -9579,7 +9583,7 @@
       (it.photo_file ? '<div class="item-card2-img"><img src="'+esc(it.photo_file)+'" alt="" loading="lazy"></div>' : '')+
       '<div class="name">'+esc(it.name)+'</div>'+ 
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+ 
-      (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>')+
+      (isEducationDirection()&&it.kind==="service"?'<div class="note">'+esc(it.course_mode==="online"?"Onlayn":it.course_mode==="hybrid"?"Aralash":"Offline")+(it.course_duration?' · '+esc(it.course_duration):'')+(it.lesson_duration?' · '+it.lesson_duration+' daqiqa':'')+'</div>':(it.note ? '<div class="note">'+esc(it.note)+'</div>' : '<div class="note">Izoh yo\'q</div>'))+
       '<span class="kind">'+itemKindText(it.kind)+'</span>'+
       (it.track_stock ? '<span class="idesc" style="margin-left:6px">Qoldiq: <b style="color:'+stockColor(it.stock_qty)+'">'+fmtQty(it.stock_qty||0)+' '+esc(it.unit||"dona")+'</b></span>' : '')+ 
       itemActionMenuHtml(it.id)+
@@ -9587,7 +9591,7 @@
   }
 
   function addItemCardHtml(groupId){
-    return '<button class="item-add-card" data-add-to-group="'+esc(itemGroupValue(groupId))+'"><span class="plus">+</span><span>Tovar</span></button>';
+    return '<button class="item-add-card" data-add-to-group="'+esc(itemGroupValue(groupId))+'"><span class="plus">+</span><span>'+(isEducationDirection()?"Kurs":"Tovar")+'</span></button>';
   }
 
   function groupBlockHtml(group, items, showAdd){
@@ -9716,13 +9720,19 @@
     el("itMinQty").value = (data && data.min_qty>0) ? String(data.min_qty) : "";
     el("itMinWrap").style.display = (el("itTrack").value==="1") ? "block" : "none";
     el("itNote").value = data ? (data.note || "") : "";
-    setItemKind(data ? data.kind : "product");
+    var edu=isEducationDirection();
+    el("educationCourseFields").style.display=edu?"":"none";el("itUnitWrap").style.display=edu?"none":"";el("itTrackWrap").style.display=edu?"none":"";
+    el("itNameLabel").textContent=edu?"Kurs yoki xizmat nomi":"Nomi";el("itPriceLabel").textContent=edu?"Kurs narxi":"Narxi";el("itNoteLabel").textContent=edu?"Kurs tavsifi":"Izoh — ixtiyoriy";
+    el("itName").placeholder=edu?"Masalan: Ingliz tili A1":"Masalan: Non";el("itNote").placeholder=edu?"Kurs haqida batafsil ma'lumot":"Izoh";
+    el("itCourseMode").value=data?(data.course_mode||"offline"):"offline";el("itCourseDuration").value=data?(data.course_duration||""):"";el("itLessonDuration").value=String(data?(data.lesson_duration||60):60);el("itAgeFrom").value=data?(data.age_from||""):"";el("itAgeTo").value=data?(data.age_to||""):"";el("itCourseLevel").value=data?(data.course_level||"all"):"all";el("itEnrollmentStatus").value=data?(data.enrollment_status||"open"):"open";
+    if(edu){el("itTrack").value="0";el("itStockWrap").style.display="none";el("itMinWrap").style.display="none";el("itStockTypeWrap").style.display="none";}
+    setItemKind(edu?"service":(data ? data.kind : "product"));
     refreshItemGroupSelect(data ? data.group_id : presetGroupId);
     el("itDeleteBtn").style.display = data ? "flex" : "none";
     itemPhotoUrl = data ? (data.photo_file || "") : "";
     renderItemPhoto();
     nav("cab-item-form");
-    el("tbTitle").textContent = data ? "Tovarni tahrirlash" : "Yangi tovar";
+    el("tbTitle").textContent = edu?(data?"Kursni tahrirlash":"Yangi kurs"):(data ? "Tovarni tahrirlash" : "Yangi tovar");
   }
 
   function addItemGroup(){
@@ -9767,9 +9777,10 @@
     var name=(el("itName").value||"").trim();
     if(!name){ showMsg("Nomi kiritilishi shart."); return; }
     var on = el("itKindRow").querySelector("[data-kind].on");
-    var kind = on ? on.getAttribute("data-kind") : "product";
+    var kind = isEducationDirection()?"service":(on ? on.getAttribute("data-kind") : "product");
     var gid = itemGroupValue(el("itGroup").value);
-    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:parseInt(el("itTrack").value||"0",10), stock_type:el("itStockType").value||"ready_food", note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl,
+    var body = {name:name, price:(el("itPrice").value||"").trim(), unit:(el("itUnit").value||"dona"), track_stock:isEducationDirection()?0:parseInt(el("itTrack").value||"0",10), stock_type:el("itStockType").value||"ready_food", note:(el("itNote").value||"").trim(), kind:kind, group_id: gid ? parseInt(gid,10) : null, photo_file: itemPhotoUrl,
+      course_mode:el("itCourseMode").value,course_duration:el("itCourseDuration").value,lesson_duration:parseInt(el("itLessonDuration").value||"0",10),age_from:parseInt(el("itAgeFrom").value||"0",10),age_to:parseInt(el("itAgeTo").value||"0",10),course_level:el("itCourseLevel").value,enrollment_status:el("itEnrollmentStatus").value,
       min_qty: (parseInt(el("itTrack").value||"0",10)===1 ? (parseFloat(String(el("itMinQty").value||"").replace(",", "."))||0) : 0)};
     var wasEdit = !!editItemId;
     var initQty = (!editItemId && parseInt(el("itTrack").value||"0",10)===1)
@@ -9779,7 +9790,7 @@
     function done(){
       if(ret==="cab-kassa-form"){ nav("cab-kassa-form"); if(typeof ksReloadCatalog==="function") ksReloadCatalog(); }
       else { nav(ret); }
-      showMsg(wasEdit ? "Saqlandi." : "Tovar qo'shildi.");
+      showMsg(wasEdit ? "Saqlandi." : (isEducationDirection()?"Kurs qo'shildi.":"Tovar qo'shildi."));
       btn.disabled=false;
     }
     function fail(e){ showMsg(e.message); btn.disabled=false; }
