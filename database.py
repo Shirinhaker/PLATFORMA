@@ -1475,6 +1475,14 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_groups_biz ON education_groups(business_id,status,id)")
+    _egcols = [r["name"] for r in conn.execute("PRAGMA table_info(education_groups)").fetchall()]
+    for _name, _sql in (
+        ("billing_type", "ALTER TABLE education_groups ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'monthly'"),
+        ("package_lessons", "ALTER TABLE education_groups ADD COLUMN package_lessons INTEGER NOT NULL DEFAULT 0"),
+        ("package_price", "ALTER TABLE education_groups ADD COLUMN package_price INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if _name not in _egcols:
+            conn.execute(_sql)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS education_students("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER, "
@@ -1484,6 +1492,9 @@ def _migrate(conn):
         "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_students_biz ON education_students(business_id,status,group_id,id)")
+    _escols = [r["name"] for r in conn.execute("PRAGMA table_info(education_students)").fetchall()]
+    if "monthly_fee" not in _escols:
+        conn.execute("ALTER TABLE education_students ADD COLUMN monthly_fee INTEGER NOT NULL DEFAULT 0")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS education_attendance("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER NOT NULL, "
@@ -1493,3 +1504,10 @@ def _migrate(conn):
         "UNIQUE(business_id,group_id,student_id,lesson_date))"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_attendance_day ON education_attendance(business_id,lesson_date,group_id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_payments("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, student_id INTEGER NOT NULL, "
+        "payment_month TEXT NOT NULL, amount INTEGER NOT NULL, pay_type TEXT NOT NULL DEFAULT 'naqd', "
+        "note TEXT DEFAULT '', sale_id INTEGER, created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_payments_student ON education_payments(business_id,student_id,payment_month,id)")
