@@ -1463,3 +1463,15 @@ def _migrate(conn):
         "id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id INTEGER NOT NULL, item_id INTEGER, "
         "name TEXT NOT NULL, qty REAL NOT NULL DEFAULT 1, unit TEXT DEFAULT '', price INTEGER DEFAULT 0, total INTEGER DEFAULT 0)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_booking_items ON dining_booking_items(booking_id,id)")
+
+    # --- v1573: Ta'lim faoliyati — kurs guruhlari ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_groups("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
+        "name TEXT NOT NULL, course_item_id INTEGER, teacher_name TEXT DEFAULT '', "
+        "room_name TEXT DEFAULT '', capacity INTEGER NOT NULL DEFAULT 0, "
+        "weekdays TEXT DEFAULT '', lesson_from TEXT DEFAULT '', lesson_to TEXT DEFAULT '', "
+        "start_date TEXT DEFAULT '', end_date TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active', "
+        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_groups_biz ON education_groups(business_id,status,id)")
