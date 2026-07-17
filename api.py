@@ -1979,6 +1979,81 @@ async def education_student_delete(student_id: int, x_telegram_init_data: str = 
     return {"ok": True}
 
 
+@router.get("/education/attendance")
+async def education_attendance(group_id: int, lesson_date: str, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    lesson_date = str(lesson_date or "")[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", lesson_date):
+        conn.close()
+        raise HTTPException(400, "Davomat sanasini tanlang.")
+    group = conn.execute("SELECT id,name FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
+    if not group:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    rows = conn.execute(
+        """SELECT s.id AS student_id,s.full_name,s.phone,
+                  COALESCE(a.attendance_status,'') AS attendance_status,COALESCE(a.note,'') AS attendance_note
+           FROM education_students s
+           LEFT JOIN education_attendance a ON a.business_id=s.business_id AND a.group_id=s.group_id
+             AND a.student_id=s.id AND a.lesson_date=?
+           WHERE s.business_id=? AND s.group_id=? AND s.status='active'
+           ORDER BY s.full_name COLLATE NOCASE,s.id""",
+        (lesson_date, biz["id"], group_id),
+    ).fetchall()
+    conn.close()
+    return {"group": dict(group), "lesson_date": lesson_date, "students": [dict(r) for r in rows]}
+
+
+@router.put("/education/attendance")
+async def education_attendance_save(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
+    body = await request.json()
+    try:
+        group_id = int(body.get("group_id") or 0)
+    except (TypeError, ValueError):
+        group_id = 0
+    lesson_date = str(body.get("lesson_date") or "")[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", lesson_date):
+        conn.close()
+        raise HTTPException(400, "Davomat sanasini tanlang.")
+    group = conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
+    if not group:
+        conn.close()
+        raise HTTPException(404, "Guruh topilmadi.")
+    allowed = {"present", "late", "excused", "absent"}
+    entries = body.get("entries") or []
+    if not isinstance(entries, list):
+        conn.close()
+        raise HTTPException(400, "Davomat ro'yxati noto'g'ri.")
+    now = int(time.time())
+    saved = 0
+    for entry in entries:
+        try:
+            student_id = int(entry.get("student_id") or 0)
+        except (TypeError, ValueError, AttributeError):
+            continue
+        status = str(entry.get("status") or "") if isinstance(entry, dict) else ""
+        if status not in allowed:
+            continue
+        student = conn.execute("SELECT id FROM education_students WHERE id=? AND business_id=? AND group_id=? AND status='active'", (student_id, biz["id"], group_id)).fetchone()
+        if not student:
+            continue
+        note = str(entry.get("note") or "").strip()[:300]
+        conn.execute(
+            """INSERT INTO education_attendance(business_id,group_id,student_id,lesson_date,attendance_status,note,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(business_id,group_id,student_id,lesson_date)
+               DO UPDATE SET attendance_status=excluded.attendance_status,note=excluded.note,updated_at=excluded.updated_at""",
+            (biz["id"], group_id, student_id, lesson_date, status, note, now, now),
+        )
+        saved += 1
+    conn.commit()
+    conn.close()
+    return {"ok": True, "saved": saved}
+
+
 @router.post("/dining/places/{place_id}/booking")
 async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
