@@ -1388,6 +1388,7 @@ def _migrate(conn):
         "phone TEXT DEFAULT '', booking_date TEXT DEFAULT '', booking_time TEXT DEFAULT '', "
         "guests INTEGER DEFAULT 0, note TEXT DEFAULT '', total INTEGER DEFAULT 0, "
         "waiter_staff_id INTEGER, waiter_name TEXT DEFAULT '', problem_open INTEGER DEFAULT 0, "
+        "problem_reason TEXT DEFAULT '', problem_note TEXT DEFAULT '', problem_opened_at INTEGER DEFAULT 0, "
         "kitchen_status TEXT DEFAULT 'new', payment_status TEXT DEFAULT 'open', "
         "status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
     _dbc = [r["name"] for r in conn.execute("PRAGMA table_info(dining_bookings)").fetchall()]
@@ -1395,6 +1396,9 @@ def _migrate(conn):
         ("waiter_staff_id", "ALTER TABLE dining_bookings ADD COLUMN waiter_staff_id INTEGER"),
         ("waiter_name", "ALTER TABLE dining_bookings ADD COLUMN waiter_name TEXT DEFAULT ''"),
         ("problem_open", "ALTER TABLE dining_bookings ADD COLUMN problem_open INTEGER DEFAULT 0"),
+        ("problem_reason", "ALTER TABLE dining_bookings ADD COLUMN problem_reason TEXT DEFAULT ''"),
+        ("problem_note", "ALTER TABLE dining_bookings ADD COLUMN problem_note TEXT DEFAULT ''"),
+        ("problem_opened_at", "ALTER TABLE dining_bookings ADD COLUMN problem_opened_at INTEGER DEFAULT 0"),
         ("kitchen_status", "ALTER TABLE dining_bookings ADD COLUMN kitchen_status TEXT DEFAULT 'new'"),
         ("payment_status", "ALTER TABLE dining_bookings ADD COLUMN payment_status TEXT DEFAULT 'open'"),
     ):
