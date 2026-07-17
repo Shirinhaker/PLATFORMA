@@ -36,7 +36,7 @@ from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1568"
+APP_BUILD = "v1569"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
