@@ -1411,6 +1411,30 @@ def _item_group_for_business(conn, biz_id, group_id):
     return g
 
 
+def _education_item_fields(biz, body):
+    if (biz["yon"] or "").strip() != "Ta'lim faoliyati":
+        return ("", "", 0, 0, 0, "", "open")
+    mode = str(body.get("course_mode") or "offline").strip()
+    if mode not in ("offline", "online", "hybrid"):
+        mode = "offline"
+    level = str(body.get("course_level") or "all").strip()
+    if level not in ("beginner", "intermediate", "advanced", "all"):
+        level = "all"
+    enrollment = str(body.get("enrollment_status") or "open").strip()
+    if enrollment not in ("open", "closed"):
+        enrollment = "open"
+    try:
+        lesson_duration = max(0, min(1440, int(body.get("lesson_duration") or 0)))
+        age_from = max(0, min(120, int(body.get("age_from") or 0)))
+        age_to = max(0, min(120, int(body.get("age_to") or 0)))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Dars davomiyligi yoki yosh chegarasi noto'g'ri.")
+    if age_from and age_to and age_from > age_to:
+        raise HTTPException(400, "Boshlang'ich yosh yakuniy yoshdan katta bo'lmasin.")
+    return (mode, str(body.get("course_duration") or "").strip()[:80], lesson_duration,
+            age_from, age_to, level, enrollment)
+
+
 def _item_kind_and_group(conn, biz_id, body):
     """
     v1379 qoidasi: agar haqiqiy guruh tanlansa, tovar turini guruh hal qiladi.
@@ -1528,7 +1552,11 @@ async def my_items(menu_only: bool = False, x_telegram_init_data: str = Header(d
              "min_qty": _row_val(r, "min_qty", 0) or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
-             "photo_file": r["photo_file"], "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
+             "photo_file": r["photo_file"], "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food",
+             "course_mode": _row_val(r,"course_mode","") or "", "course_duration": _row_val(r,"course_duration","") or "",
+             "lesson_duration": _row_val(r,"lesson_duration",0) or 0, "age_from": _row_val(r,"age_from",0) or 0,
+             "age_to": _row_val(r,"age_to",0) or 0, "course_level": _row_val(r,"course_level","") or "",
+             "enrollment_status": _row_val(r,"enrollment_status","open") or "open"} for r in rows]
 
 
 @router.post("/items")
@@ -1544,12 +1572,13 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
+    edu = _education_item_fields(biz, b)
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, stock_type, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, stock_type,course_mode,course_duration,lesson_duration,age_from,age_to,course_level,enrollment_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
          (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b),
-         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", int(time.time())),
+         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -1576,12 +1605,13 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
+    edu = _education_item_fields(biz, b)
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=?, stock_type=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=?, stock_type=?,course_mode=?,course_duration=?,lesson_duration=?,age_from=?,age_to=?,course_level=?,enrollment_status=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
          (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b),
-         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", item_id, biz["id"]),
+         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -7231,7 +7261,11 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
                    "unit": i["unit"] or "dona",
                    "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
                    "group_name": i["group_name"], "group_kind": i["group_kind"],
-                   "photo_file": i["photo_file"]} for i in items],
+                   "photo_file": i["photo_file"],
+                   "course_mode": _row_val(i,"course_mode","") or "", "course_duration": _row_val(i,"course_duration","") or "",
+                   "lesson_duration": _row_val(i,"lesson_duration",0) or 0, "age_from": _row_val(i,"age_from",0) or 0,
+                   "age_to": _row_val(i,"age_to",0) or 0, "course_level": _row_val(i,"course_level","") or "",
+                   "enrollment_status": _row_val(i,"enrollment_status","open") or "open"} for i in items],
         "listings": [listing_to_dict(conn, r) for r in listings],
     }
     conn.close()
