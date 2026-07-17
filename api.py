@@ -2019,6 +2019,39 @@ async def dining_order_finalize(order_id: int, x_telegram_init_data: str = Heade
     conn.commit(); conn.close(); return {"ok": True}
 
 
+@router.post("/dining/orders/{order_id}/cancel")
+async def dining_order_cancel(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    """To'lovi tasdiqlanmagan ichki zakazni faqat kassir bekor qiladi."""
+    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
+    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
+                         (order_id, biz["id"])).fetchone()
+    if not order:
+        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
+    if order["payment_status"] == "confirmed":
+        conn.close(); raise HTTPException(409, "To'lovi tasdiqlangan ichki buyurtmani bekor qilib bo'lmaydi.")
+    if order["status"] != "active":
+        conn.close(); raise HTTPException(409, "Bu ichki buyurtma allaqachon yopilgan.")
+    body = await request.json(); reason = (body.get("reason") or "").strip()[:300]
+    if not reason:
+        conn.close(); raise HTTPException(400, "Bekor qilish sababini kiriting.")
+    now = int(time.time())
+    conn.execute(
+        "UPDATE dining_bookings SET status='cancelled',problem_open=0,problem_reason='Bekor qilindi',problem_note=?,updated_at=? WHERE id=?",
+        (reason, now, order_id),
+    )
+    conn.execute(
+        "UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND resolved_at=0",
+        (now, now, order_id),
+    )
+    place = conn.execute("SELECT name FROM dining_places WHERE id=?", (order["place_id"],)).fetchone()
+    _business_notification(conn, biz, "dining:%d:cancelled:kitchen" % order_id,
+                           "Ichki zakaz bekor qilindi",
+                           "%s · %s" % ((place["name"] if place else "Stol"), reason),
+                           "dining_cancelled", order_id, target_perm="kitchen")
+    conn.commit(); conn.close(); return {"ok": True, "status": "cancelled"}
+
+
 @router.post("/dining/orders/{order_id}/problem")
 async def dining_order_problem(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
