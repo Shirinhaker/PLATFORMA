@@ -1909,20 +1909,27 @@ async def dining_order_confirm_payment(order_id: int, request: Request, x_telegr
     if not order:
         conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
     body = await request.json(); pay = (body.get("pay_type") or "").strip()
-    if pay not in ("naqd", "karta"):
+    if pay not in ("naqd", "karta", "qarz"):
         conn.close(); raise HTTPException(400, "To'lov turini tanlang.")
     if order["payment_status"] == "confirmed":
         conn.close(); return {"ok": True, "already_confirmed": True}
     if bool(_row_val(order, "problem_open", 0) or 0):
         conn.close(); raise HTTPException(409, "Muammoli zakaz to'lovi tasdiqlanmaydi. Avval muammoni hal qiling.")
     items = conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=? ORDER BY id", (order_id,)).fetchall()
-    now = int(time.time()); chek = _next_chek_no(conn, biz["id"])
+    now = int(time.time()); chek = _next_chek_no(conn, biz["id"]); debtor_id = None; qtx_id = None
+    if pay == "qarz":
+        try:
+            debtor_id, qtx_id, debtor_name = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), order["total"],
+                                                          "Ichki buyurtma #%d" % order_id, now)
+        except HTTPException:
+            conn.rollback(); conn.close(); raise
     for it in items:
         conn.execute(
-            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,note,user_id,created_at,chek_no) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,debtor_id,qarz_tx_id,note,user_id,created_at,chek_no) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (biz["id"], "dining", order_id, it["item_id"], it["name"], it["qty"], it["unit"], it["price"], it["total"], pay,
-             "Ichki buyurtma #%d" % order_id, user["id"], now, chek))
-    conn.execute("UPDATE dining_bookings SET payment_status='confirmed',updated_at=? WHERE id=?", (now, order_id))
+             debtor_id, qtx_id, "Ichki buyurtma #%d" % order_id, user["id"], now, chek))
+    conn.execute("UPDATE dining_bookings SET payment_status='confirmed',pay_type=?,debtor_id=?,qarz_tx_id=?,updated_at=? WHERE id=?",
+                 (pay, debtor_id, qtx_id, now, order_id))
     _business_notification(conn, biz, "dining:%d:paid:kitchen" % order_id, "Ichki zakaz to'lovi tasdiqlandi",
                            "Zakaz #%d to'lovi kassir tomonidan tasdiqlandi." % order_id,
                            "dining_kitchen", order_id, target_perm="kitchen")
@@ -3062,6 +3069,25 @@ def qarz_balance(conn, debtor_id):
         "FROM qarz_tx WHERE debtor_id=?", (debtor_id,),
     ).fetchone()
     return row["b"] or 0
+
+
+def _new_debt_tx(conn, biz_id, debtor_id, amount, note, now=None):
+    """Qarzdor biznesniki ekanini tekshiradi va bitta bog'langan qarz yozuvini yaratadi."""
+    try:
+        debtor_id = int(debtor_id or 0); amount = int(amount or 0)
+    except Exception:
+        debtor_id = 0; amount = 0
+    debtor = conn.execute("SELECT id,name FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz_id)).fetchone()
+    if not debtor:
+        raise HTTPException(400, "Qarz uchun qarzdorni tanlang.")
+    if amount <= 0:
+        raise HTTPException(400, "Qarz summasi noto'g'ri.")
+    now = int(now or time.time())
+    import datetime as _dt
+    day = _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
+    cur = conn.execute("INSERT INTO qarz_tx(debtor_id,type,amount,date,note,created_at) VALUES(?, 'debt', ?,?,?,?)",
+                       (debtor_id, amount, day, (note or "Kassadan qarz")[:200], now))
+    return debtor_id, cur.lastrowid, debtor["name"] or "Qarzdor"
 
 
 # ================== OMBOR (qoldiq + kirim-chiqim tarixi) ==================
@@ -4762,7 +4788,7 @@ def _sale_dict(r):
             "qty": r["qty"] or 1, "unit": r["unit"] or "", "price": r["price"] or 0,
             "total": r["total"] or 0, "pay_type": pt,
             "pay_text": pay_text,
-            "debtor_id": r["debtor_id"], "note": r["note"] or "",
+            "debtor_id": r["debtor_id"], "debtor_name": _row_val(r, "debtor_name", "") or "", "note": r["note"] or "",
             "created_at": r["created_at"]}
 
 
@@ -4779,17 +4805,18 @@ def _kassa_add_for_order(conn, order, actor_user_id):
     if conn.execute("SELECT COUNT(*) FROM sales WHERE source='order' AND order_id=?", (order["id"],)).fetchone()[0]:
         return
     rows = conn.execute("SELECT * FROM order_items WHERE order_id=?", (order["id"],)).fetchall()
-    now = int(time.time())
+    now = int(time.time()); pay_type = _row_val(order, "pay_type", "") or ""
+    debtor_id = _row_val(order, "debtor_id", None); qtx_id = _row_val(order, "qarz_tx_id", None)
     for oi in rows:
         total = int(oi["line_total"] or 0)
         qty = round(float(oi["qty"] or 1), 3)
         price = int(round(total / qty)) if (total and qty) else _price_to_int(oi["price_text"] or "")
         conn.execute(
-            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, note, user_id, created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (int(order["provider_actor_id"] or 0), "order", order["id"], oi["item_id"],
              oi["item_name"] or "", qty, _row_val(oi, "unit", "") or "", price, total,
-             "", "Buyurtma #%d" % order["id"], actor_user_id, now),
+             pay_type, debtor_id, qtx_id, "Buyurtma #%d" % order["id"], actor_user_id, now),
         )
 
 
@@ -4800,12 +4827,12 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
     need_perm(conn, x_telegram_init_data, "kassa")
     start, end, dstr = _day_bounds(day)
     rows = conn.execute(
-        "SELECT s.*, u.name AS who FROM sales s LEFT JOIN users u ON u.id=s.user_id "
+        "SELECT s.*, u.name AS who, d.name AS debtor_name FROM sales s LEFT JOIN users u ON u.id=s.user_id LEFT JOIN debtors d ON d.id=s.debtor_id "
         "WHERE s.business_id=? AND s.created_at>=? AND s.created_at<? "
         "ORDER BY s.created_at DESC, s.id DESC LIMIT 200",
         (biz["id"], start, end),
     ).fetchall()
-    totals = {"all": 0, "naqd": 0, "karta": 0, "qarz": 0, "qarzpay": 0, "order": 0}
+    totals = {"all": 0, "cash_in": 0, "naqd": 0, "karta": 0, "qarz": 0, "qarzpay": 0, "order": 0}
     out = []
     for r in rows:
         d = _sale_dict(r)
@@ -4816,8 +4843,11 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         pt = r["pay_type"] or ""
         if (r["source"] or "") == "qarzpay":
             totals["qarzpay"] += t
+            totals["cash_in"] += t
         elif pt in ("naqd", "karta", "qarz"):
             totals[pt] += t
+            if pt in ("naqd", "karta"):
+                totals["cash_in"] += t
         else:
             totals["order"] += t
     dining_open = []
@@ -5060,6 +5090,7 @@ async def set_order_sale_pay(sale_id: int, body: dict, x_telegram_init_data: str
     """K3: Buyurtmadan kelgan savdoga to'lov turini belgilash (butun buyurtma uchun)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "kassa")
     r = conn.execute("SELECT * FROM sales WHERE id=? AND business_id=?", (sale_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -5068,12 +5099,28 @@ async def set_order_sale_pay(sale_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(400, "Bu faqat buyurtma savdosi uchun.")
     pt = (body.get("pay_type") or "").strip()
-    if pt not in ("naqd", "karta"):
+    if pt not in ("naqd", "karta", "qarz"):
         conn.close()
         raise HTTPException(400, "To'lov turi noto'g'ri.")
+    order_rows = conn.execute("SELECT * FROM sales WHERE business_id=? AND source='order' AND order_id=?", (biz["id"], r["order_id"])).fetchall()
+    old_qtx = {int(x["qarz_tx_id"]) for x in order_rows if x["qarz_tx_id"]}
+    debtor_id = None; qtx_id = None
+    if pt == "qarz":
+        total = sum(int(x["total"] or 0) for x in order_rows)
+        if old_qtx and all(int(x["debtor_id"] or 0) == int(body.get("debtor_id") or 0) for x in order_rows):
+            debtor_id = int(body.get("debtor_id") or 0); qtx_id = next(iter(old_qtx))
+        else:
+            try:
+                debtor_id, qtx_id, _ = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), total,
+                                                     "Tashqi buyurtma #%d" % r["order_id"])
+            except HTTPException:
+                conn.rollback(); conn.close(); raise
+    for txid in old_qtx:
+        if txid != qtx_id:
+            conn.execute("DELETE FROM qarz_tx WHERE id=?", (txid,))
     conn.execute(
-        "UPDATE sales SET pay_type=? WHERE business_id=? AND source='order' AND order_id=?",
-        (pt, biz["id"], r["order_id"]),
+        "UPDATE sales SET pay_type=?,debtor_id=?,qarz_tx_id=? WHERE business_id=? AND source='order' AND order_id=?",
+        (pt, debtor_id, qtx_id, biz["id"], r["order_id"]),
     )
     conn.commit()
     conn.close()
@@ -5152,7 +5199,7 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
 async def qarz_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "debts")
+    need_any_perm(conn, x_telegram_init_data, "debts", "kassa")
     rows = conn.execute(
         "SELECT * FROM debtors WHERE business_id=? ORDER BY created_at DESC", (biz["id"],)
     ).fetchall()
@@ -5166,7 +5213,7 @@ async def qarz_list(x_telegram_init_data: str = Header(default="")):
 async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "debts")
+    need_any_perm(conn, x_telegram_init_data, "debts", "kassa")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -7834,7 +7881,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(403, "Bu buyurtma sizniki emas.")
     status = (body.get("status") or "").strip()
-    if status not in ("confirmed", "rejected", "pending"):
+    if status not in ("confirmed", "rejected", "pending", "debt"):
         conn.close()
         raise HTTPException(400, "Holat noto'g'ri.")
     current_payment = _row_val(r, "payment_status", "") or ""
@@ -7842,9 +7889,30 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(409, "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini yubormagan.")
     now = int(time.time())
-    if status == "confirmed":
+    if status == "debt":
+        if r["status"] != "accepted":
+            conn.close(); raise HTTPException(409, "Faqat qabul qilingan buyurtma qarzga yoziladi.")
+        if _row_val(r, "qarz_tx_id", None):
+            conn.close(); return {"ok": True, "payment_status": "confirmed", "already_debt": True}
+        total = int(conn.execute("SELECT COALESCE(SUM(line_total),0) FROM order_items WHERE order_id=?", (order_id,)).fetchone()[0] or 0)
+        try:
+            debtor_id, qtx_id, debtor_name = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), total,
+                                                          "Tashqi buyurtma #%d" % order_id, now)
+        except HTTPException:
+            conn.rollback(); conn.close(); raise
         conn.execute(
-            """UPDATE orders SET payment_status=?,status='preparing',problem_open=0,problem_resolved_at=?,updated_at=?,
+            """UPDATE orders SET payment_status='confirmed',pay_type='qarz',debtor_id=?,qarz_tx_id=?,status='preparing',
+               problem_open=0,problem_resolved_at=?,updated_at=?,customer_seen_at=0,last_event='payment' WHERE id=?""",
+            (debtor_id, qtx_id, now, now, order_id))
+        _notify_order_side(conn, r, "customer", "debt_confirmed", "Buyurtma qarzga rasmiylashtirildi",
+                           "%s nomiga %s so'm qarz yozildi." % (debtor_name, total))
+        _add_notification(conn, biz["user_id"], "business", biz["id"], "order:%d:debt:kitchen" % order_id,
+                          "Tashqi buyurtma qarzga tasdiqlandi", "Buyurtma #%d ni tayyorlashni boshlang." % order_id,
+                          order_id=order_id, action_type="start_preparing", target_perm="kitchen")
+        _resolve_order_action(conn, order_id, "confirm_payment")
+    elif status == "confirmed":
+        conn.execute(
+            """UPDATE orders SET payment_status=?,pay_type='karta',status='preparing',problem_open=0,problem_resolved_at=?,updated_at=?,
                customer_seen_at=0,last_event='payment' WHERE id=?""",
             (status, now, now, order_id),
         )
@@ -7859,7 +7927,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
     else:
         conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
     # Suhbatga tizim xabari
-    msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!",
+    msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!", "debt": "📒 Buyurtma qarzga rasmiylashtirildi.",
            "rejected": "❌ To'lov tasdiqlanmadi. Iltimos, to'lovni tekshiring yoki qayta yuboring.",
            "pending": "⏳ To'lov kutilmoqda."}.get(status, "")
     if msg:
@@ -7871,7 +7939,8 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         )
     conn.commit()
     conn.close()
-    return {"ok": True, "payment_status": status, "status": ("preparing" if status == "confirmed" else r["status"])}
+    return {"ok": True, "payment_status": ("confirmed" if status == "debt" else status),
+            "status": ("preparing" if status in ("confirmed", "debt") else r["status"])}
 
 
 @router.post("/orders/{order_id}/handoff")
