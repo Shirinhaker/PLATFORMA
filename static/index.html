@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1593 -->
+<title>Platforma</title><!-- BUILD: v1594 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6670,7 +6670,7 @@
       if(s.billing_type!=='attendance'&&!s.monthly_fee)details+='<div class="idesc" style="margin-top:8px;color:#b45309">Oylik summa o\'quvchi kartasida belgilanmagan.</div>';
       return '<div class="panel-card" style="padding:0;overflow:hidden"><button type="button" data-edu-payment-toggle="'+s.student_id+'" aria-expanded="'+open+'" style="width:100%;min-height:52px;padding:13px 14px;border:0;background:transparent;color:inherit;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer"><b style="flex:1">'+esc(s.full_name)+'</b><span class="chev" style="transform:rotate('+(open?'90':'0')+'deg)">›</span></button>'+(open?'<div class="edu-payment-details" style="padding:0 14px 14px;border-top:1px solid var(--line)">'+details+'</div>':'')+'</div>';
     }).join(""):'<div class="empty"><h3>O\'quvchilar yo\'q</h3><p>Tanlangan guruhda faol o\'quvchi topilmadi.</p></div>';
-    el("eduPaymentHistory").innerHTML=hist.length?hist.map(function(p){return '<div class="set-row" style="height:auto;min-height:58px"><div style="flex:1"><b>'+esc(p.full_name)+'</b><div class="idesc">'+moneyText(p.amount)+' · '+(p.pay_type==='karta'?'Karta':'Naqd')+(p.note?' · '+esc(p.note):'')+'</div></div><button class="mini-btn" data-edu-pay-del="'+p.id+'" style="color:#dc2626">O\'chirish</button></div>';}).join(""):'<div class="idesc">Bu oy uchun to\'lovlar yo\'q.</div>';
+    el("eduPaymentHistory").innerHTML=hist.length?hist.map(function(p){var voided=!!p.voided_at;return '<div class="set-row" style="height:auto;min-height:58px;'+(voided?'opacity:.65':'')+'"><div style="flex:1"><b>'+esc(p.full_name)+'</b><div class="idesc">'+moneyText(p.amount)+' · '+(p.pay_type==='karta'?'Karta':'Naqd')+(p.note?' · '+esc(p.note):'')+(voided?'<br><span style="color:#dc2626">Bekor qilingan: '+esc(p.void_reason||"Sabab ko'rsatilmagan")+'</span>':'')+'</div></div>'+(!voided&&!STAFF_INFO?'<button class="mini-btn" data-edu-pay-void="'+p.id+'" style="color:#dc2626">To\'lovni bekor qilish</button>':'')+'</div>';}).join(""):'<div class="idesc">Bu oy uchun to\'lovlar yo\'q.</div>';
   }
   function loadEducationPayments(){
     if(!el("eduPaymentMonth").value)el("eduPaymentMonth").value=localIsoDate().slice(0,7);
@@ -6682,7 +6682,7 @@
   el("eduPaymentMonth")&&el("eduPaymentMonth").addEventListener("change",loadEducationPayments);
   el("eduPaymentGroup")&&el("eduPaymentGroup").addEventListener("change",loadEducationPayments);
   el("eduPaymentStudents")&&el("eduPaymentStudents").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay]");if(b){var id=parseInt(b.dataset.eduPay,10),s=(EDU_PAYMENT_DATA.students||[]).filter(function(x){return x.student_id===id;})[0];if(s){EDU_PAYMENT_VIEW="payments";EDU_PAYMENT_FORM_BACK="cab-education-payment-control";BACKMAP["cab-education-payment-form"]=EDU_PAYMENT_FORM_BACK;openEducationPaymentForm(s);}return;}var t=e.target.closest("[data-edu-payment-toggle]");if(!t)return;var tid=parseInt(t.dataset.eduPaymentToggle,10);EDU_PAYMENT_EXPANDED_ID=EDU_PAYMENT_EXPANDED_ID===tid?0:tid;renderEducationPayments();});
-  el("eduPaymentHistory")&&el("eduPaymentHistory").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay-del]");if(!b)return;var id=parseInt(b.dataset.eduPayDel,10);askConfirm({text:"Bu to'lov kassadan ham o'chiriladi. Davom etasizmi?",okText:"O'chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/education/payments/"+id).then(function(){loadEducationPayments();showMsg("To'lov o'chirildi.");}).catch(function(er){showMsg(er.message);});});});
+  el("eduPaymentHistory")&&el("eduPaymentHistory").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay-void]");if(!b)return;var id=parseInt(b.dataset.eduPayVoid,10);askInput({title:"To'lovni bekor qilish",okText:"Bekor qilish",fields:[{key:"reason",label:"Bekor qilish sababi",placeholder:"Masalan: summa xato kiritilgan",required:true}]}).then(function(v){if(!v)return;api("POST","/api/education/payments/"+id+"/void",{reason:v.reason}).then(function(){loadEducationPayments();showMsg("To'lov bekor qilindi va tarixda saqlandi.");}).catch(function(er){showMsg(er.message);});});});
 
   var EDU_PAYMENT_CONTROL={students:[],summary:{}},EDU_PAYMENT_CONTROL_FILTER="attention",EDU_PAYMENT_CONTROL_EXPANDED_ID=0;
   function renderEducationPaymentControl(){
