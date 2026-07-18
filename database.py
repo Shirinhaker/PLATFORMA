@@ -1592,6 +1592,11 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_teacher_payments ON education_teacher_payments(business_id,teacher_id,payment_month,id)")
     # --- Tibbiyot: xizmat-shifokor va yagona onlayn/oflayn navbat ---
     conn.execute("CREATE TABLE IF NOT EXISTS medical_doctor_services(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,item_id INTEGER NOT NULL,active INTEGER NOT NULL DEFAULT 1,UNIQUE(business_id,staff_id,item_id))")
+    _mdscols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_doctor_services)").fetchall()]
+    if "duration_minutes" not in _mdscols:
+        conn.execute("ALTER TABLE medical_doctor_services ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 20")
+    conn.execute("CREATE TABLE IF NOT EXISTS medical_doctors(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,specialty TEXT DEFAULT '',experience_years INTEGER NOT NULL DEFAULT 0,qualification TEXT DEFAULT '',work_days TEXT DEFAULT '1,2,3,4,5,6',work_start TEXT DEFAULT '08:00',work_end TEXT DEFAULT '17:00',avg_minutes INTEGER NOT NULL DEFAULT 20,room TEXT DEFAULT '',bio TEXT DEFAULT '',status TEXT NOT NULL DEFAULT 'active',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,staff_id))")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_doctors ON medical_doctors(business_id,status,staff_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_doctor_services ON medical_doctor_services(business_id,item_id,staff_id)")
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,user_id INTEGER,patient_name TEXT NOT NULL,phone TEXT DEFAULT '',queue_date TEXT NOT NULL,queue_no INTEGER NOT NULL,queue_code TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'online',status TEXT NOT NULL DEFAULT 'waiting',note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,item_id,staff_id,queue_date,queue_no))")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_day ON medical_queue(business_id,queue_date,staff_id,item_id,queue_no)")
