@@ -1989,6 +1989,106 @@ async def education_students(group_id: int = 0, x_telegram_init_data: str = Head
     return [dict(r) for r in rows]
 
 
+def _education_student_month_expected(conn, biz_id, student, month):
+    fee = int(_row_val(student, "monthly_fee", 0) or 0)
+    group_id = _row_val(student, "group_id", None)
+    if group_id:
+        group = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (group_id, biz_id)).fetchone()
+        if group and _row_val(group, "billing_type", "monthly") == "attendance" and int(_row_val(group, "package_lessons", 0) or 0) > 0:
+            lessons = int(conn.execute(
+                """SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND group_id=? AND student_id=?
+                   AND lesson_date LIKE ? AND attendance_status IN ('present','late','absent')""",
+                (biz_id, group_id, student["id"], month + "-%"),
+            ).fetchone()[0] or 0)
+            fee = int(round((int(_row_val(group, "package_price", 0) or 0) / int(group["package_lessons"])) * min(lessons, int(group["package_lessons"]))))
+    return fee
+
+
+@router.get("/education/students/{student_id}/card")
+async def education_student_card(student_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_education_business(conn, x_telegram_init_data)
+    student = conn.execute(
+        """SELECT s.*,g.name AS group_name,i.name AS course_name FROM education_students s
+           LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
+           LEFT JOIN items i ON i.id=g.course_item_id AND i.business_id=s.business_id
+           WHERE s.id=? AND s.business_id=?""", (student_id, biz["id"]),
+    ).fetchone()
+    if not student:
+        conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
+    attendance = conn.execute(
+        """SELECT attendance_status,COUNT(*) count FROM education_attendance
+           WHERE business_id=? AND student_id=? GROUP BY attendance_status""", (biz["id"], student_id),
+    ).fetchall()
+    counts = {"present": 0, "late": 0, "excused": 0, "absent": 0}
+    for row in attendance:
+        counts[row["attendance_status"]] = int(row["count"] or 0)
+    total_attendance = sum(counts.values())
+    attended = counts["present"] + counts["late"]
+    month = time.strftime("%Y-%m", time.gmtime(time.time() + 5 * 3600))
+    expected = _education_student_month_expected(conn, biz["id"], student, month)
+    paid = int(conn.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=?",
+        (biz["id"], student_id, month),
+    ).fetchone()[0] or 0)
+    payments = conn.execute(
+        """SELECT id,payment_month,amount,pay_type,note,created_at FROM education_payments
+           WHERE business_id=? AND student_id=? ORDER BY payment_month DESC,id DESC LIMIT 300""", (biz["id"], student_id),
+    ).fetchall()
+    history = conn.execute(
+        """SELECT h.*,g.name AS group_name FROM education_student_group_history h
+           LEFT JOIN education_groups g ON g.id=h.group_id AND g.business_id=h.business_id
+           WHERE h.business_id=? AND h.student_id=? ORDER BY h.started_date DESC,h.id DESC""", (biz["id"], student_id),
+    ).fetchall()
+    result = {
+        "student": dict(student),
+        "attendance": {"total": total_attendance, "attended": attended, "percent": int(round(attended * 100 / total_attendance)) if total_attendance else 0, "counts": counts},
+        "payment": {"month": month, "expected": expected, "paid": paid, "debt": max(0, expected - paid), "total_paid": sum(int(r["amount"] or 0) for r in payments)},
+        "payments": [dict(r) for r in payments], "group_history": [dict(r) for r in history],
+    }
+    conn.close(); return result
+
+
+@router.post("/education/students/{student_id}/transfer")
+async def education_student_transfer(student_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
+    body = await request.json()
+    try: group_id = int(body.get("group_id") or 0)
+    except (TypeError, ValueError): group_id = 0
+    transfer_date = str(body.get("transfer_date") or "")[:10]
+    try: time.strptime(transfer_date, "%Y-%m-%d")
+    except ValueError: conn.close(); raise HTTPException(400, "O'tkazish sanasini tanlang.")
+    student = conn.execute("SELECT * FROM education_students WHERE id=? AND business_id=? AND status='active'", (student_id, biz["id"])).fetchone()
+    if not student: conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
+    group = conn.execute("SELECT id,name FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
+    if not group: conn.close(); raise HTTPException(404, "Yangi guruh topilmadi.")
+    if int(student["group_id"] or 0) == group_id: conn.close(); raise HTTPException(400, "O'quvchi hozir ham shu guruhda.")
+    last = conn.execute(
+        """SELECT * FROM education_student_group_history WHERE business_id=? AND student_id=? AND COALESCE(ended_date,'')=''
+           ORDER BY id DESC LIMIT 1""", (biz["id"], student_id),
+    ).fetchone()
+    if last and transfer_date < str(last["started_date"] or ""):
+        conn.close(); raise HTTPException(400, "O'tkazish sanasi joriy guruh boshlangan sanadan oldin bo'lmaydi.")
+    now = int(time.time())
+    if last:
+        previous_end = conn.execute("SELECT date(?,'-1 day')", (transfer_date,)).fetchone()[0]
+        conn.execute("UPDATE education_student_group_history SET ended_date=? WHERE id=? AND business_id=?", (previous_end, last["id"], biz["id"]))
+    elif student["group_id"]:
+        started = str(_row_val(student, "joined_date", "") or transfer_date)
+        previous_end = conn.execute("SELECT date(?,'-1 day')", (transfer_date,)).fetchone()[0]
+        conn.execute(
+            "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
+            (biz["id"], student_id, student["group_id"], started, previous_end, "Boshlang'ich guruh", now),
+        )
+    note = str(body.get("note") or "").strip()[:300]
+    conn.execute(
+        "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
+        (biz["id"], student_id, group_id, transfer_date, "", ("Guruhga o'tkazildi" + ((": " + note) if note else ""))[:300], now),
+    )
+    conn.execute("UPDATE education_students SET group_id=?,updated_at=? WHERE id=? AND business_id=?", (group_id, now, student_id, biz["id"]))
+    conn.commit(); conn.close(); return {"ok": True, "group_id": group_id, "group_name": group["name"]}
+
+
 @router.post("/education/students")
 async def education_student_add(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -2004,6 +2104,12 @@ async def education_student_add(request: Request, x_telegram_init_data: str = He
     )
     conn.commit()
     student_id = cur.lastrowid
+    if data["group_id"]:
+        conn.execute(
+            "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
+            (biz["id"], student_id, data["group_id"], data["joined_date"] or time.strftime("%Y-%m-%d", time.gmtime(now + 5 * 3600)), "", "Boshlang'ich guruh", now),
+        )
+        conn.commit()
     conn.close()
     return {"ok": True, "id": student_id}
 
@@ -2018,6 +2124,9 @@ async def education_student_edit(student_id: int, request: Request, x_telegram_i
         conn.close()
         raise HTTPException(404, "O'quvchi topilmadi.")
     data = _education_student_payload(conn, biz["id"], await request.json(), old)
+    if int(data["group_id"] or 0) != int(old["group_id"] or 0):
+        conn.close()
+        raise HTTPException(400, "Guruhni o'quvchi kartasidagi o'tkazish tugmasi orqali almashtiring.")
     conn.execute(
         """UPDATE education_students SET group_id=?,full_name=?,phone=?,parent_name=?,parent_phone=?,
            birth_date=?,joined_date=?,note=?,monthly_fee=?,updated_at=? WHERE id=? AND business_id=?""",
