@@ -2031,7 +2031,7 @@ async def education_student_card(student_id: int, x_telegram_init_data: str = He
     today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
     billing = _education_student_billing_status(conn, biz["id"], student, today)
     payments = conn.execute(
-        """SELECT id,payment_month,amount,pay_type,note,created_at FROM education_payments
+        """SELECT id,payment_month,amount,pay_type,note,created_at,voided_at,voided_by,void_reason FROM education_payments
            WHERE business_id=? AND student_id=? ORDER BY payment_month DESC,id DESC LIMIT 300""", (biz["id"], student_id),
     ).fetchall()
     history = conn.execute(
@@ -2256,7 +2256,7 @@ def _education_student_billing_status(conn, biz_id, student, today_text):
         expected = completed * package_price
         paid_total = int(conn.execute(
             """SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=?
-               AND date(created_at,'unixepoch','+5 hours')>=?""", (biz_id, student["id"], start.isoformat()),
+               AND date(created_at,'unixepoch','+5 hours')>=? AND COALESCE(voided_at,0)=0""", (biz_id, student["id"], start.isoformat()),
         ).fetchone()[0] or 0)
         debt = max(0, expected - paid_total)
         payable_now = min(debt, package_price - (paid_total % package_price)) if debt and package_price else debt
@@ -2278,7 +2278,7 @@ def _education_student_billing_status(conn, biz_id, student, today_text):
         expected = len(due_dates) * fee
         first_key = due_dates[0].strftime("%Y-%m") if due_dates else _education_add_month(start).strftime("%Y-%m")
         paid_total = int(conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month>=?",
+            "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month>=? AND COALESCE(voided_at,0)=0",
             (biz_id, student["id"], first_key),
         ).fetchone()[0] or 0)
         debt = max(0, expected - paid_total)
@@ -2339,7 +2339,7 @@ async def education_payments(payment_month: str, group_id: int = 0, x_telegram_i
                   (SELECT COUNT(*) FROM education_attendance a WHERE a.business_id=s.business_id AND a.student_id=s.id
                     AND a.group_id=s.group_id AND a.lesson_date LIKE ? AND a.attendance_status IN ('present','late','absent')) AS chargeable_lessons,
                   COALESCE((SELECT SUM(p.amount) FROM education_payments p
-                    WHERE p.business_id=s.business_id AND p.student_id=s.id AND p.payment_month=?),0) AS paid
+                    WHERE p.business_id=s.business_id AND p.student_id=s.id AND p.payment_month=? AND COALESCE(p.voided_at,0)=0),0) AS paid
            FROM education_students s LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
            WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE,s.id",
         [payment_month + "-%"] + params,
@@ -2394,7 +2394,7 @@ async def education_payment_add(request: Request, x_telegram_init_data: str = He
         if grp and _row_val(grp, "billing_type", "monthly") == "attendance" and int(_row_val(grp, "package_lessons", 0) or 0) > 0:
             control = _education_student_billing_status(conn, biz["id"], student, time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600)))
             remaining_override = int(control["debt"] or 0)
-    paid = int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=?", (biz["id"], student_id, month)).fetchone()[0] or 0)
+    paid = int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=? AND COALESCE(voided_at,0)=0", (biz["id"], student_id, month)).fetchone()[0] or 0)
     if remaining_override is None and fee <= 0:
         conn.close(); raise HTTPException(400, "O'quvchining oylik to'lov summasi belgilanmagan.")
     if remaining_override is not None and amount > remaining_override:
@@ -2420,19 +2420,25 @@ async def education_payment_add(request: Request, x_telegram_init_data: str = He
     return {"ok": True, "id": payment_id, "chek_no": chek}
 
 
-@router.delete("/education/payments/{payment_id}")
-async def education_payment_delete(payment_id: int, x_telegram_init_data: str = Header(default="")):
+@router.post("/education/payments/{payment_id}/void")
+async def education_payment_void(payment_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kassa")
+    deny_staff(conn, x_telegram_init_data, "O'quvchi to'lovini bekor qilish")
+    body = await request.json(); reason = str(body.get("reason") or "").strip()[:200]
+    if not reason:
+        conn.close(); raise HTTPException(400, "Bekor qilish sababini kiriting.")
     row = conn.execute("SELECT * FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"])).fetchone()
     if not row:
         conn.close(); raise HTTPException(404, "To'lov topilmadi.")
+    if int(_row_val(row, "voided_at", 0) or 0):
+        conn.close(); raise HTTPException(400, "Bu to'lov avval bekor qilingan.")
+    now = int(time.time())
     if row["sale_id"]:
-        conn.execute("DELETE FROM sales WHERE id=? AND business_id=? AND source='education'", (row["sale_id"], biz["id"]))
-    conn.execute("DELETE FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"]))
+        conn.execute("UPDATE sales SET total=0,price=0,note=? WHERE id=? AND business_id=? AND source='education'", (("Ta'lim to'lovi bekor qilindi: " + reason)[:200], row["sale_id"], biz["id"]))
+    conn.execute("UPDATE education_payments SET voided_at=?,voided_by=?,void_reason=? WHERE id=? AND business_id=?", (now, user["id"], reason, payment_id, biz["id"]))
     conn.commit(); conn.close()
-    return {"ok": True}
+    return {"ok": True, "voided": True}
 
 
 def _education_teacher_payload(body, old=None):
