@@ -7679,13 +7679,17 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
     dining_menu = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
+    today = time.strftime('%Y-%m-%d', time.gmtime(time.time()+5*3600))
     items = conn.execute(
         """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file,
-                  g.name AS group_name, g.kind AS group_kind
+                  g.name AS group_name, g.kind AS group_kind,
+                  (SELECT COUNT(*) FROM medical_queue q
+                   WHERE q.business_id=i.business_id AND q.item_id=i.id AND q.queue_date=?
+                   AND q.status IN ('waiting','called','in_service')) AS today_queue_count
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
            WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY i.created_at DESC",
-        (business_id,),
+        (today, business_id),
     ).fetchall()
     item_groups = conn.execute(
         "SELECT id, name, kind FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
@@ -7717,6 +7721,7 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
                    "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
                    "group_name": i["group_name"], "group_kind": i["group_kind"],
                    "photo_file": i["photo_file"],
+                   "today_queue_count": int(_row_val(i,"today_queue_count",0) or 0),
                    "course_mode": _row_val(i,"course_mode","") or "", "course_duration": _row_val(i,"course_duration","") or "",
                    "lesson_duration": _row_val(i,"lesson_duration",0) or 0, "age_from": _row_val(i,"age_from",0) or 0,
                    "age_to": _row_val(i,"age_to",0) or 0, "course_level": _row_val(i,"course_level","") or "",
