@@ -1547,6 +1547,10 @@ def _migrate(conn):
         "note TEXT DEFAULT '', sale_id INTEGER, created_at INTEGER NOT NULL)"
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_education_payments_student ON education_payments(business_id,student_id,payment_month,id)")
+    _epcols = [r["name"] for r in conn.execute("PRAGMA table_info(education_payments)").fetchall()]
+    for _name, _definition in (("voided_at", "INTEGER NOT NULL DEFAULT 0"), ("voided_by", "INTEGER"), ("void_reason", "TEXT DEFAULT ''")):
+        if _name not in _epcols:
+            conn.execute("ALTER TABLE education_payments ADD COLUMN %s %s" % (_name, _definition))
     conn.execute(
         "CREATE TABLE IF NOT EXISTS education_teachers("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, full_name TEXT NOT NULL, "
