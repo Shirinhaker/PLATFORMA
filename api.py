@@ -1559,6 +1559,7 @@ async def my_items(menu_only: bool = False, x_telegram_init_data: str = Header(d
              "min_qty": _row_val(r, "min_qty", 0) or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
+             "queue_enabled": int(_row_val(r, "queue_enabled", 0) or 0),
              "photo_file": r["photo_file"], "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food",
              "course_mode": _row_val(r,"course_mode","") or "", "course_duration": _row_val(r,"course_duration","") or "",
              "lesson_duration": _row_val(r,"lesson_duration",0) or 0, "age_from": _row_val(r,"age_from",0) or 0,
@@ -1580,11 +1581,12 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
+    queue_enabled = _queue_item_enabled(biz, kind, b)
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, stock_type,course_mode,course_duration,lesson_duration,age_from,age_to,course_level,enrollment_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, queue_enabled, photo_file, min_qty, stock_type,course_mode,course_duration,lesson_duration,age_from,age_to,course_level,enrollment_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b),
+         (b.get("note") or "").strip(), kind, queue_enabled, photo, _parse_min_qty(b),
          "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, int(time.time())),
     )
     conn.commit()
@@ -1613,11 +1615,12 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
+    queue_enabled = _queue_item_enabled(biz, kind, b)
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=?, stock_type=?,course_mode=?,course_duration=?,lesson_duration=?,age_from=?,age_to=?,course_level=?,enrollment_status=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, queue_enabled=?, photo_file=?, min_qty=?, stock_type=?,course_mode=?,course_duration=?,lesson_duration=?,age_from=?,age_to=?,course_level=?,enrollment_status=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b),
+         (b.get("note") or "").strip(), kind, group_id, queue_enabled, photo, _parse_min_qty(b),
          "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, item_id, biz["id"]),
     )
     conn.commit()
@@ -4583,7 +4586,51 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     return result
 
 
-# ================== TIBBIYOT: YAGONA NAVBAT ==================
+# ================== XIZMAT YO'NALISHLARI: YAGONA NAVBAT ==================
+_QUEUE_DIRECTION_NAMES = (
+    "Transport va logistika",
+    "Xizmat ko'rsatish",
+    "Maishiy xizmatlar",
+    "Qurilish",
+    "Tibbiy xizmatlar",
+    "Ko'chmas mulk",
+    "Axborot texnologiyalari",
+    "Konsalting va professional",
+    "Madaniyat, sport, ko'ngilochar",
+    "Turizm va mehmonxona",
+    "Reklama va marketing",
+    "Poligrafiya va nashriyot",
+    "Moliyaviy faoliyat",
+    "Import-eksport",
+)
+
+
+def _queue_direction_supported(direction):
+    return str(direction or "").strip() in _QUEUE_DIRECTION_NAMES
+
+
+def _queue_item_enabled(business, kind, body):
+    if kind != "service" or not _queue_direction_supported(business["yon"]):
+        return 0
+    return 1 if (body or {}).get("queue_enabled") in (1, True, "1", "true", "on") else 0
+
+
+def _queue_labels(direction):
+    if str(direction or "").strip() == "Tibbiy xizmatlar":
+        return {"provider": "Shifokor", "customer": "Bemor", "called_by": "shifokor"}
+    return {"provider": "Xizmat ko'rsatuvchi", "customer": "Mijoz", "called_by": "xizmat ko'rsatuvchi"}
+
+
+def _require_queue_business(conn, business_id):
+    business = conn.execute(
+        "SELECT * FROM businesses WHERE id=? AND status='active'", (business_id,)
+    ).fetchone()
+    if not business or not _queue_direction_supported(business["yon"]):
+        raise HTTPException(403, "Bu yo'nalishda navbat tizimi ishlamaydi.")
+    return business
+
+
+# Ichki jadval va API nomlari tibbiy navbat bilan orqaga moslik uchun saqlanadi.
 def _medical_code(name):
     letters=''.join(ch for ch in str(name or '').upper() if ch.isalnum())[:3]
     return letters or 'NAV'
@@ -4593,49 +4640,63 @@ def _medical_doctor_payload(body):
 
 @router.get("/medical/doctors")
 async def medical_doctors(x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);rows=[dict(r) for r in conn.execute("SELECT d.*,s.name,s.phone,s.profession FROM medical_doctors d JOIN staff s ON s.id=d.staff_id WHERE d.business_id=? ORDER BY d.status,s.name",(biz['id'],)).fetchall()]
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);rows=[dict(r) for r in conn.execute("SELECT d.*,s.name,s.phone,s.profession FROM medical_doctors d JOIN staff s ON s.id=d.staff_id WHERE d.business_id=? ORDER BY d.status,s.name",(biz['id'],)).fetchall()]
     for d in rows:d['item_ids']=[r[0] for r in conn.execute("SELECT item_id FROM medical_doctor_services WHERE business_id=? AND staff_id=? AND active=1",(biz['id'],d['staff_id'])).fetchall()]
     conn.close();return rows
 
 def _medical_doctor_save_links(conn,biz_id,staff_id,item_ids,minutes):
     conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz_id,staff_id))
-    for iid in item_ids:conn.execute("INSERT INTO medical_doctor_services(business_id,staff_id,item_id,active,duration_minutes) VALUES(?,?,?,?,?)",(biz_id,staff_id,iid,1,minutes))
+    for iid in item_ids:
+        item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(iid,biz_id)).fetchone()
+        if not item:raise HTTPException(400,"Navbat yoqilgan xizmatni tanlang.")
+        conn.execute("INSERT INTO medical_doctor_services(business_id,staff_id,item_id,active,duration_minutes) VALUES(?,?,?,?,?)",(biz_id,staff_id,iid,1,minutes))
 
 @router.post("/medical/doctors")
 async def medical_doctor_add(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokor qo'shish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini biriktirish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
     if not staff:conn.close();raise HTTPException(400,"Faol xodimni tanlang.")
     now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
 
 @router.put("/medical/doctors/{doctor_id}")
 async def medical_doctor_update(doctor_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokorni tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
-    if not old:conn.close();raise HTTPException(404,"Shifokor topilmadi.")
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
+    if not old:conn.close();raise HTTPException(404,"Xizmat ko'rsatuvchi topilmadi.")
     conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
 
 @router.get("/medical/setup")
 async def medical_setup(x_telegram_init_data: str = Header(default="")):
-    conn=db(); user,biz=require_business(conn,x_telegram_init_data)
-    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND kind='service' ORDER BY name",(biz['id'],)).fetchall()]
+    conn=db(); user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id'])
+    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND kind='service' AND queue_enabled=1 ORDER BY name",(biz['id'],)).fetchall()]
     staff=[dict(r) for r in conn.execute("SELECT id,name,profession FROM staff WHERE business_id=? AND status='active' ORDER BY name",(biz['id'],)).fetchall()]
     links=[dict(r) for r in conn.execute("SELECT * FROM medical_doctor_services WHERE business_id=? AND active=1",(biz['id'],)).fetchall()];conn.close()
     return {'items':items,'staff':staff,'links':links}
 
 @router.put("/medical/setup")
 async def medical_setup_save(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db(); user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokor xizmatlarini sozlash");body=await request.json();sid=int(body.get('staff_id') or 0);ids=[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]
+    conn=db(); user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchi xizmatlarini sozlash");body=await request.json();sid=int(body.get('staff_id') or 0);ids=[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]
     conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz['id'],sid))
-    for iid in ids: conn.execute("INSERT OR IGNORE INTO medical_doctor_services(business_id,staff_id,item_id,active) VALUES(?,?,?,1)",(biz['id'],sid,iid))
+    for iid in ids:
+        item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(iid,biz['id'])).fetchone()
+        if not item:conn.close();raise HTTPException(400,"Navbat yoqilgan xizmatni tanlang.")
+        conn.execute("INSERT OR IGNORE INTO medical_doctor_services(business_id,staff_id,item_id,active) VALUES(?,?,?,1)",(biz['id'],sid,iid))
     conn.commit();conn.close();return {'ok':True}
 
 @router.get("/medical/queue/options")
 async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',x_telegram_init_data:str=Header(default="")):
-    conn=db();date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
+    conn=db();_require_queue_business(conn,business_id);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
+    item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,business_id)).fetchone()
+    if not item:conn.close();raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
     rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
 
 def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note=''):
-    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=?",(item_id,biz_id)).fetchone();link=conn.execute("SELECT 1 FROM medical_doctor_services WHERE business_id=? AND item_id=? AND staff_id=? AND active=1",(biz_id,item_id,staff_id)).fetchone()
-    if not item or not link: raise HTTPException(400,"Xizmat yoki shifokor noto'g'ri.")
+    _require_queue_business(conn,biz_id)
+    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,biz_id)).fetchone()
+    if not item:raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
+    link=conn.execute("""SELECT 1 FROM medical_doctor_services m
+                         JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
+                         JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
+                         WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(biz_id,item_id,staff_id)).fetchone()
+    if not link:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
     no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
     cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
 
@@ -4658,7 +4719,7 @@ async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(d
 
 @router.get("/medical/queue/mine")
 async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
-    """Joriy oddiy foydalanuvchining barcha tibbiy navbatlarini qaytaradi."""
+    """Joriy oddiy foydalanuvchining barcha xizmat navbatlarini qaytaradi."""
     conn=db();user=require_user(conn,x_telegram_init_data)
     rows=conn.execute("""SELECT q.*,i.name service_name,s.name doctor_name,b.name business_name,
         CASE WHEN q.status IN ('waiting','called','in_service') THEN
@@ -4666,6 +4727,7 @@ async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
            AND a.item_id=q.item_id AND a.staff_id=q.staff_id AND a.queue_date=q.queue_date
            AND a.queue_no<q.queue_no AND a.status IN ('waiting','called','in_service'))
         ELSE 0 END AS ahead_count
+        ,b.yon AS business_direction
         FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id
         JOIN businesses b ON b.id=q.business_id WHERE q.user_id=?
         ORDER BY q.queue_date DESC,q.created_at DESC,q.id DESC LIMIT 200""",(user['id'],)).fetchall()
@@ -4673,7 +4735,7 @@ async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
 
 @router.get("/medical/queue")
 async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10];rows=conn.execute("SELECT q.*,i.name service_name,s.name doctor_name FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id WHERE q.business_id=? AND q.queue_date=? ORDER BY q.staff_id,q.item_id,q.queue_no",(biz['id'],date)).fetchall();conn.close();return [dict(r) for r in rows]
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10];rows=conn.execute("SELECT q.*,i.name service_name,s.name doctor_name FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id WHERE q.business_id=? AND q.queue_date=? ORDER BY q.staff_id,q.item_id,q.queue_no",(biz['id'],date)).fetchall();conn.close();return [dict(r) for r in rows]
 
 @router.post("/medical/queue/offline")
 async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(default="")):
@@ -4681,21 +4743,21 @@ async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(
 
 @router.post("/medical/queue/{queue_id}/status")
 async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();status=str(body.get('status') or '');allowed=('waiting','called','in_service','done','no_show','cancelled','skipped')
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);body=await request.json();status=str(body.get('status') or '');allowed=('waiting','called','in_service','done','no_show','cancelled','skipped')
     if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
     row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone()
     if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
     now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
     if status=='called':
-        _medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat shifokor tomonidan chaqirildi.','medical_queue_called')
+        labels=_queue_labels(biz['yon']);_medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat '+labels['called_by']+' tomonidan chaqirildi.','medical_queue_called')
     elif status=='cancelled':
         _medical_notify_user(conn,row,'cancelled','Navbat bekor qilindi',str(row['queue_code'])+' navbat muassasa tomonidan bekor qilindi.','medical_queue_cancelled')
     conn.commit();conn.close();return {'ok':True}
 
 @router.post("/medical/queue/{queue_id}/swap")
 async def medical_queue_swap(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);other=int((await request.json()).get('other_queue_id') or 0);a=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();b=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(other,biz['id'])).fetchone()
-    if not a or not b or a['id']==b['id'] or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): conn.close();raise HTTPException(400,"Faqat bir xil xizmat va shifokorning ikkita navbati almashtiriladi.")
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);other=int((await request.json()).get('other_queue_id') or 0);a=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();b=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(other,biz['id'])).fetchone()
+    if not a or not b or a['id']==b['id'] or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): labels=_queue_labels(biz['yon']);conn.close();raise HTTPException(400,"Faqat bir xil xizmat va "+labels['provider'].lower()+"ning ikkita navbati almashtiriladi.")
     now=int(time.time());prefix=_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0]);a_new_code=prefix+'-'+str(b['queue_no']).zfill(3);b_new_code=prefix+'-'+str(a['queue_no']).zfill(3)
     conn.execute("UPDATE medical_queue SET queue_no=-1,updated_at=? WHERE id=?",(now,a['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(a['queue_no'],b_new_code,now,b['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(b['queue_no'],a_new_code,now,a['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'swap',str(a['queue_no']),str(b['queue_no']),user['id'],now))
     a_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(a['id'],)).fetchone();b_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(b['id'],)).fetchone()
@@ -7681,8 +7743,12 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     dining_menu = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     today = time.strftime('%Y-%m-%d', time.gmtime(time.time()+5*3600))
     items = conn.execute(
-        """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file,
+        """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file, i.queue_enabled,
                   g.name AS group_name, g.kind AS group_kind,
+                  (SELECT COUNT(*) FROM medical_doctor_services m
+                   JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
+                   JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
+                   WHERE m.business_id=i.business_id AND m.item_id=i.id AND m.active=1) AS queue_provider_count,
                   (SELECT COUNT(*) FROM medical_queue q
                    WHERE q.business_id=i.business_id AND q.item_id=i.id AND q.queue_date=?
                    AND q.status IN ('waiting','called','in_service')) AS today_queue_count
@@ -7703,6 +7769,7 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
+        "queue_supported": _queue_direction_supported(biz["yon"]),
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "logo_file": _row_val(biz, "logo_file", "") or "",
         "logo_x": float(_row_val(biz, "logo_x", 50) or 50), "logo_y": float(_row_val(biz, "logo_y", 50) or 50),
@@ -7721,6 +7788,8 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
                    "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
                    "group_name": i["group_name"], "group_kind": i["group_kind"],
                    "photo_file": i["photo_file"],
+                   "queue_enabled": int(_row_val(i,"queue_enabled",0) or 0),
+                   "queue_provider_count": int(_row_val(i,"queue_provider_count",0) or 0),
                    "today_queue_count": int(_row_val(i,"today_queue_count",0) or 0),
                    "course_mode": _row_val(i,"course_mode","") or "", "course_duration": _row_val(i,"course_duration","") or "",
                    "lesson_duration": _row_val(i,"lesson_duration",0) or 0, "age_from": _row_val(i,"age_from",0) or 0,
