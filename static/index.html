@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1599 -->
+<title>Platforma</title><!-- BUILD: v1600 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9254,7 +9254,31 @@
   el("medicalQueueDate")&&el("medicalQueueDate").addEventListener("change",loadMedicalQueue);
   el("medicalQueueList")&&el("medicalQueueList").addEventListener("click",function(e){var b=e.target.closest("[data-med-status]");if(!b)return;function saveStatus(){api("POST","/api/medical/queue/"+b.dataset.medStatus+"/status",{status:b.dataset.status}).then(loadMedicalQueue).catch(function(er){showMsg(er.message);});}if(b.dataset.status==="cancelled"){askConfirm({text:"Bu navbat bekor qilinsinmi? Foydalanuvchiga xabar yuboriladi.",okText:"Bekor qilish",danger:true}).then(function(ok){if(ok)saveStatus();});}else saveStatus();});
   el("medicalSetupBtn")&&el("medicalSetupBtn").addEventListener("click",function(){nav("cab-medical-doctors");});
-  el("medicalOfflineAdd")&&el("medicalOfflineAdd").addEventListener("click",function(){api("GET","/api/medical/setup").then(function(d){var labels=queueUiLabels(window.__businessDirection),linked={};(d.links||[]).forEach(function(x){linked[String(x.staff_id)]=true;});var providers=(d.staff||[]).filter(function(x){return linked[String(x.id)];}),staff=providers.map(function(x){return x.id+'-'+x.name;}).join(', '),items=(d.items||[]).map(function(x){return x.id+'-'+x.name;}).join(', ');if(!items||!staff)throw new Error("Avval navbat yoqilgan xizmatga "+labels.provider.toLowerCase()+" biriktiring.");return askInput({title:"Oflayn navbat",fields:[{key:"patient_name",label:labels.customer+" ism-familiyasi",required:true},{key:"phone",label:"Telefon"},{key:"item_id",label:"Xizmat ID: "+items,required:true,numeric:true},{key:"staff_id",label:labels.provider+" ID: "+staff,required:true,numeric:true}]});}).then(function(v){if(!v)return;v.queue_date=el("medicalQueueDate").value||localIsoDate();api("POST","/api/medical/queue/offline",v).then(function(r){showMsg("Navbat: "+r.queue_code);loadMedicalQueue();});}).catch(function(e){showMsg(e.message);});});
+  el("medicalOfflineAdd")&&el("medicalOfflineAdd").addEventListener("click",function(){
+    api("GET","/api/medical/setup").then(function(d){
+      var labels=queueUiLabels(window.__businessDirection),staffById={},providersByItem={},providerCount=0;
+      (d.staff||[]).forEach(function(staff){staffById[String(staff.id)]=staff;});
+      (d.links||[]).forEach(function(link){
+        var staff=staffById[String(link.staff_id)],key=String(link.item_id);
+        if(!staff)return;
+        if(!providersByItem[key])providersByItem[key]=[];
+        providersByItem[key].push({value:String(staff.id),label:staff.name+(staff.profession?' — '+staff.profession:'')});
+        providerCount++;
+      });
+      var serviceOptions=(d.items||[]).map(function(item){return {value:String(item.id),label:item.name};});
+      if(!serviceOptions.length||!providerCount)throw new Error("Avval navbat yoqilgan xizmatga "+labels.provider.toLowerCase()+" biriktiring.");
+      return askInput({title:"Oflayn navbat",fields:[
+        {key:"patient_name",label:labels.customer+" ism-familiyasi",required:true},
+        {key:"phone",label:"Telefon"},
+        {key:"item_id",label:"Xizmat",placeholder:"Xizmatni tanlang",options:serviceOptions,required:true},
+        {key:"staff_id",label:labels.provider,placeholder:labels.provider+"ni tanlang",optionsBy:{key:"item_id",map:providersByItem},required:true}
+      ]});
+    }).then(function(v){
+      if(!v)return;
+      v.item_id=parseInt(v.item_id,10);v.staff_id=parseInt(v.staff_id,10);v.queue_date=el("medicalQueueDate").value||localIsoDate();
+      api("POST","/api/medical/queue/offline",v).then(function(r){showMsg("Navbat: "+r.queue_code);loadMedicalQueue();});
+    }).catch(function(e){showMsg(e.message);});
+  });
   function incrementMedicalServiceQueueCount(itemId){
     var id=parseInt(itemId,10);if(!id)return;
     var next=null,item=curBiz&&curBiz.items?curBiz.items[String(id)]:null;
@@ -9265,7 +9289,23 @@
       node.textContent="👥 Bugungi navbat: "+count+" ta";
     });
   }
-  function openMedicalBooking(businessId,itemId,serviceName,direction){if(!loggedIn){showLogin("Navbat olish");return;}var provider=queueProviderLabel(direction);askInput({title:serviceName+" — navbat",fields:[{key:"queue_date",label:"Sana (YYYY-MM-DD)",value:localIsoDate(),required:true}]}).then(function(v){if(!v)return;api("GET","/api/medical/queue/options?business_id="+businessId+"&item_id="+itemId+"&queue_date="+v.queue_date).then(function(ds){if(!ds.length)throw new Error(provider+" hali biriktirilmagan.");var list=ds.map(function(x){return x.id+' — '+x.name+' (navbat '+x.queue_count+' ta)';}).join(', ');return askInput({title:provider+"ni tanlang",fields:[{key:"staff_id",label:list,required:true,numeric:true}]}).then(function(s){if(!s)return;return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:parseInt(s.staff_id,10),queue_date:v.queue_date});});}).then(function(r){if(r){showMsg("Navbatingiz: "+r.queue_code);if(v.queue_date===localIsoDate())incrementMedicalServiceQueueCount(itemId);refreshNotifyBadge();pollActionNotifications();}}).catch(function(e){showMsg(e.message);});});}
+  function openMedicalBooking(businessId,itemId,serviceName,direction){
+    if(!loggedIn){showLogin("Navbat olish");return;}
+    var provider=queueProviderLabel(direction);
+    askInput({title:serviceName+" — navbat",fields:[{key:"queue_date",label:"Sana (YYYY-MM-DD)",value:localIsoDate(),required:true}]}).then(function(v){
+      if(!v)return;
+      api("GET","/api/medical/queue/options?business_id="+businessId+"&item_id="+itemId+"&queue_date="+v.queue_date).then(function(ds){
+        if(!ds.length)throw new Error(provider+" hali biriktirilmagan.");
+        var providerOptions=ds.map(function(x){return {value:String(x.id),label:x.name+(x.specialty?' — '+x.specialty:'')+' (navbat '+x.queue_count+' ta)'};});
+        return askInput({title:provider+"ni tanlang",fields:[{key:"staff_id",label:provider,placeholder:provider+"ni tanlang",options:providerOptions,required:true}]}).then(function(s){
+          if(!s)return;
+          return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:parseInt(s.staff_id,10),queue_date:v.queue_date});
+        });
+      }).then(function(r){
+        if(r){showMsg("Navbatingiz: "+r.queue_code);if(v.queue_date===localIsoDate())incrementMedicalServiceQueueCount(itemId);refreshNotifyBadge();pollActionNotifications();}
+      }).catch(function(e){showMsg(e.message);});
+    });
+  }
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-book]");if(!b)return;var direction=b.dataset.medicalDirection||"",providers=Math.max(0,parseInt(b.dataset.medicalProviderCount||0,10)||0);if(!providers){showMsg(direction==="Tibbiy xizmatlar"?"Shifokor hali biriktirilmagan.":"Xizmat ko'rsatuvchi hali biriktirilmagan.");return;}openMedicalBooking(parseInt(b.dataset.medicalBusiness,10),parseInt(b.dataset.medicalBook,10),b.dataset.medicalService||"Xizmat",direction);});
 
   function onScreenOpen(screen){
@@ -9687,7 +9727,7 @@
   }
 
   // Ilova ichidagi kiritish oynasi — prompt o'rniga (doimiy qoida: tashqi oynalar taqiqlangan).
-  // opts: { title, okText, cancelText, fields: [{key, label, placeholder, value, numeric, required}] }
+  // opts: { title, okText, cancelText, fields: [{key, label, placeholder, value, numeric, required, options, optionsBy}] }
   // Natija: Promise -> {key: qiymat, ...} yoki bekor qilinsa null.
   function askInput(opts){
     opts = opts || {};
@@ -9705,9 +9745,22 @@
         document.body.appendChild(back);
         document.body.appendChild(sheet);
       }
+      function selectOptionsHtml(options, selected, placeholder){
+        var html='<option value="">'+esc(placeholder||"Tanlang")+'</option>';
+        (options||[]).forEach(function(option){
+          var value=String(option.value==null?"":option.value);
+          html+='<option value="'+esc(value)+'"'+(value===String(selected||"")?' selected':'')+'>'+esc(option.label||value)+'</option>';
+        });
+        return html;
+      }
       var fhtml = fields.map(function(f, i){
-        return '<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">'+esc(f.label||"")+'</div>'+
-               '<input class="input" data-ai="'+i+'" type="text"'+(f.numeric?' inputmode="numeric"':'')+
+        var label='<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--muted,#6b7280)">'+esc(f.label||"")+'</div>';
+        if(Array.isArray(f.options)||f.optionsBy){
+          return label+'<select class="input" data-ai="'+i+'" data-ai-key="'+esc(f.key||"")+'">'+
+                 selectOptionsHtml(Array.isArray(f.options)?f.options:[],f.value,f.placeholder)+
+                 '</select>';
+        }
+        return label+'<input class="input" data-ai="'+i+'" type="text"'+(f.numeric?' inputmode="numeric"':'')+
                ' placeholder="'+esc(f.placeholder||"")+'" value="'+esc(f.value||"")+'">';
       }).join("");
       sheet.innerHTML =
@@ -9717,6 +9770,27 @@
           '<button class="acf-cancel">'+esc(opts.cancelText||"Bekor qilish")+'</button>'+
           '<button class="acf-ok">'+esc(opts.okText||"Saqlash")+'</button>'+
         '</div>';
+      function refreshDependentOptions(){
+        fields.forEach(function(f, i){
+          if(!f.optionsBy)return;
+          var parentIndex=-1;
+          fields.some(function(parent, index){if(parent.key===f.optionsBy.key){parentIndex=index;return true;}return false;});
+          var parent=parentIndex>=0?sheet.querySelector('[data-ai="'+parentIndex+'"]'):null;
+          var select=sheet.querySelector('[data-ai="'+i+'"]');
+          if(!select)return;
+          var options=(f.optionsBy.map||{})[String(parent?parent.value:"")]||[];
+          var current=select.value||String(f.value||"");
+          select.innerHTML=selectOptionsHtml(options,current,f.placeholder);
+        });
+      }
+      fields.forEach(function(f){
+        if(!f.optionsBy)return;
+        var parentIndex=-1;
+        fields.some(function(parent, index){if(parent.key===f.optionsBy.key){parentIndex=index;return true;}return false;});
+        var parent=parentIndex>=0?sheet.querySelector('[data-ai="'+parentIndex+'"]'):null;
+        if(parent)parent.addEventListener("change", refreshDependentOptions);
+      });
+      refreshDependentOptions();
       function close(val){
         back.classList.remove("on");
         sheet.classList.remove("on");
@@ -9724,14 +9798,14 @@
       }
       sheet.querySelector(".acf-cancel").onclick = function(){ close(null); };
       sheet.querySelector(".acf-ok").onclick = function(){
-        var out = {}, missing = null;
+        var out = {}, missing = null, missingAction = "kiritilishi";
         fields.forEach(function(f, i){
           var v = (sheet.querySelector('[data-ai="'+i+'"]').value || "").trim();
           if(f.numeric) v = v.replace(/\D/g, "");
-          if(f.required && !v && !missing) missing = f.label || "Maydon";
+          if(f.required && !v && !missing){missing=f.label||"Maydon";missingAction=(Array.isArray(f.options)||f.optionsBy)?"tanlanishi":"kiritilishi";}
           out[f.key] = v;
         });
-        if(missing){ showMsg(missing + " kiritilishi shart."); return; }
+        if(missing){ showMsg(missing + " " + missingAction + " shart."); return; }
         close(out);
       };
       back.onclick = function(){ close(null); };
