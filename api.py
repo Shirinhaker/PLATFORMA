@@ -4653,6 +4653,10 @@ _STAFF_PERM_KEYS = (
     "dining_places", "dining_internal", "dining_external", "kitchen", "ready_food",
     "raw_stock", "recipes", "production", "open_accounts", "payment_review",
     "payment_confirm", "payment_problems",
+    # Ta'lim faoliyati uchun yo'nalishli ruxsatlar
+    "education_courses", "education_groups", "education_students", "education_schedule",
+    "education_attendance", "education_payments", "education_teachers",
+    "education_enrollments", "education_payroll", "education_statistics",
 )
 
 
