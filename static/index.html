@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1586 -->
+<title>Platforma</title><!-- BUILD: v1587 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1015,6 +1015,14 @@
           <button class="btn btn-primary btn-block" id="eduStudentSave">Saqlash</button>
           <button class="btn btn-outline btn-block" id="eduStudentDelete" style="display:none;margin-top:8px;color:#d32f2f">Faol ro'yxatdan chiqarish</button>
         </div>
+      </section>
+
+      <section class="screen" data-screen="cab-education-student-card">
+        <div class="form-wrap"><div id="eduStudentCardBody"><div class="idesc">O'quvchi kartasi yuklanmoqda...</div></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-outline" id="eduStudentCardEdit">Tahrirlash</button><button class="btn btn-primary" id="eduStudentCardTransfer">Guruhga o'tkazish</button></div></div>
+      </section>
+
+      <section class="screen" data-screen="cab-education-student-transfer">
+        <div class="form-wrap"><div class="panel-card"><b id="eduStudentTransferName">O'quvchi</b><div class="idesc" id="eduStudentTransferCurrent">Joriy guruh</div></div><div class="field"><label>Yangi guruh</label><select class="input" id="eduStudentTransferGroup"><option value="">Guruhni tanlang</option></select></div><div class="field"><label>O'tkazish sanasi</label><input class="input" type="date" id="eduStudentTransferDate"></div><div class="field"><label>Izoh</label><input class="input" id="eduStudentTransferNote" placeholder="Ixtiyoriy"></div><div class="elon-hint">Eski davomat va to'lovlar saqlanadi. Faqat joriy guruh yangilanadi.</div><button class="btn btn-primary btn-block" id="eduStudentTransferSave">Guruhga o'tkazish</button></div>
       </section>
 
       <section class="screen" data-screen="cab-education-schedule">
@@ -3354,6 +3362,8 @@
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-my-docs":"Mening hujjatlarim", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
+  titles["cab-education-student-card"]="O'quvchi kartasi";
+  titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
@@ -3363,6 +3373,8 @@
     "cab-admin":"cabinet", "cab-my-docs":"cab-admin", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "ucab-spec-offer-form":"ucab-spec", "ucab-spec-reviews":"ucab-spec", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
     "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa", "cab-dining":"cabinet", "cab-dining-order":"cab-dining", "cab-education-groups":"cabinet", "cab-education-group-form":"cab-education-groups", "cab-education-students":"cabinet", "cab-education-student-form":"cab-education-students", "cab-education-schedule":"cabinet", "cab-education-attendance":"cabinet", "cab-education-payments":"cabinet", "cab-education-payment-form":"cab-education-payments", "cab-education-teachers":"cabinet", "cab-education-teacher-form":"cab-education-teachers", "cab-education-exams":"cabinet", "cab-education-exam-form":"cab-education-exams", "cab-education-exam-results":"cab-education-exams", "cab-education-enrollments":"cabinet", "cab-education-payroll":"cabinet", "cab-education-payroll-form":"cab-education-payroll", "cab-education-statistics":"cabinet",
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
+  BACKMAP["cab-education-student-card"]="cab-education-students";
+  BACKMAP["cab-education-student-transfer"]="cab-education-student-card";
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -6539,13 +6551,13 @@
     el("eduStudentPhone").value=student.phone||"";el("eduStudentParent").value=student.parent_name||"";el("eduStudentParentPhone").value=student.parent_phone||"";
     el("eduStudentBirth").value=student.birth_date||"";el("eduStudentJoined").value=student.joined_date||localIsoDate();el("eduStudentMonthlyFee").value=student.monthly_fee?moneyText(student.monthly_fee).replace(" so'm",""):"";el("eduStudentNote").value=student.note||"";
     el("eduStudentDelete").style.display=student.id?"":"none";titles["cab-education-student-form"]=student.id?"O'quvchini tahrirlash":"Yangi o'quvchi";
-    function ready(){el("eduStudentGroup").innerHTML=educationGroupOptions(student.group_id,"Guruhni tanlang");nav("cab-education-student-form");}
+    function ready(){el("eduStudentGroup").innerHTML=educationGroupOptions(student.group_id,"Guruhni tanlang");el("eduStudentGroup").disabled=!!student.id;nav("cab-education-student-form");}
     if(EDU_GROUPS.length)ready();else api("GET","/api/education/groups").then(function(g){EDU_GROUPS=g||[];ready();}).catch(function(e){showMsg(e.message);});
   }
   el("eduStudentAdd")&&el("eduStudentAdd").addEventListener("click",function(){openEducationStudentForm(null);});
   el("eduStudentSearch")&&el("eduStudentSearch").addEventListener("input",renderEducationStudents);
   el("eduStudentGroupFilter")&&el("eduStudentGroupFilter").addEventListener("change",renderEducationStudents);
-  el("eduStudentsList")&&el("eduStudentsList").addEventListener("click",function(e){var b=e.target.closest("[data-edu-student]");if(!b)return;var id=parseInt(b.dataset.eduStudent,10),s=EDU_STUDENTS.filter(function(x){return x.id===id;})[0];if(s)openEducationStudentForm(s);});
+  el("eduStudentsList")&&el("eduStudentsList").addEventListener("click",function(e){var b=e.target.closest("[data-edu-student]");if(!b)return;EDU_STUDENT_CARD_ID=parseInt(b.dataset.eduStudent,10);nav("cab-education-student-card");});
   el("eduStudentSave")&&el("eduStudentSave").addEventListener("click",function(){
     var id=parseInt(el("eduStudentId").value||"0",10),body={full_name:el("eduStudentName").value,group_id:el("eduStudentGroup").value||null,phone:el("eduStudentPhone").value,parent_name:el("eduStudentParent").value,parent_phone:el("eduStudentParentPhone").value,birth_date:el("eduStudentBirth").value,joined_date:el("eduStudentJoined").value,monthly_fee:parsePriceAmount(el("eduStudentMonthlyFee").value),note:el("eduStudentNote").value};
     if(!body.full_name.trim()){showMsg("O'quvchi ism-familiyasini kiriting.");return;}var btn=this;btn.disabled=true;
@@ -6554,6 +6566,20 @@
   el("eduStudentDelete")&&el("eduStudentDelete").addEventListener("click",function(){
     var id=parseInt(el("eduStudentId").value||"0",10);if(!id)return;askConfirm({text:"O'quvchi faol ro'yxatdan chiqarilsinmi?",okText:"Ro'yxatdan chiqarish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/education/students/"+id).then(function(){nav("cab-education-students");showMsg("O'quvchi faol ro'yxatdan chiqarildi.");}).catch(function(e){showMsg(e.message);});});
   });
+
+  var EDU_STUDENT_CARD_ID=0,EDU_STUDENT_CARD_DATA=null;
+  function renderEducationStudentCard(data){
+    EDU_STUDENT_CARD_DATA=data;var s=data.student||{},a=data.attendance||{},p=data.payment||{},hist=data.group_history||[],payments=data.payments||[];
+    el("eduStudentCardBody").innerHTML='<div class="panel-card"><div style="display:flex;gap:12px;align-items:center"><div style="width:52px;height:52px;border-radius:16px;background:var(--primary-tint);display:grid;place-items:center;font-size:26px">🎓</div><div style="min-width:0"><b style="font-size:17px">'+esc(s.full_name||"O'quvchi")+'</b><div class="idesc">'+esc(s.group_name||"Guruhga biriktirilmagan")+(s.course_name?' · '+esc(s.course_name):'')+'</div></div></div><div class="idesc" style="margin-top:10px">📞 '+esc(s.phone||"—")+(s.parent_name||s.parent_phone?'<br>👪 '+esc(s.parent_name||"Ota-ona")+' · '+esc(s.parent_phone||"—"):'')+'</div></div>'+
+      '<div class="sec-head" style="margin-top:16px"><h2>Joriy oy to\'lovi</h2></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">'+eduStatsMetric("Hisoblandi",eduStatsMoney(p.expected))+eduStatsMetric("To'landi",eduStatsMoney(p.paid),"#16a34a")+eduStatsMetric("Qarz",eduStatsMoney(p.debt),p.debt?"#dc2626":"#16a34a")+'</div>'+
+      '<div class="sec-head" style="margin-top:16px"><h2>Davomat</h2></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px">'+eduStatsMetric("Umumiy",(a.total||0)+" dars")+eduStatsMetric("Qatnashdi",(a.attended||0)+" · "+(a.percent||0)+"%")+eduStatsMetric("Kechikdi",((a.counts||{}).late||0)+" marta")+eduStatsMetric("Kelmagan",(((a.counts||{}).absent||0)+((a.counts||{}).excused||0))+" marta")+'</div>'+
+      '<div class="sec-head" style="margin-top:17px"><h2>Guruhlar tarixi</h2></div>'+(hist.length?hist.map(function(h){return '<div class="panel-card"><b>'+esc(h.group_name||"Guruh")+'</b><div class="idesc">'+esc(h.started_date||"—")+' — '+esc(h.ended_date||"Hozirgacha")+(h.note?' · '+esc(h.note):'')+'</div></div>';}).join(""):'<div class="idesc">Guruh tarixi yo\'q.</div>')+
+      '<div class="sec-head" style="margin-top:17px"><h2>To\'lovlar tarixi</h2></div>'+(payments.length?payments.map(function(x){return '<div class="set-row" style="height:auto;min-height:56px"><div><b>'+eduStatsMoney(x.amount)+'</b><div class="idesc">'+esc(x.payment_month)+' · '+(x.pay_type==='karta'?'Karta':'Naqd')+(x.note?' · '+esc(x.note):'')+'</div></div></div>';}).join(""):'<div class="idesc">To\'lovlar yo\'q.</div>');
+  }
+  function loadEducationStudentCard(){if(!EDU_STUDENT_CARD_ID){nav("cab-education-students");return;}el("eduStudentCardBody").innerHTML='<div class="idesc">O\'quvchi kartasi yuklanmoqda...</div>';api("GET","/api/education/students/"+EDU_STUDENT_CARD_ID+"/card").then(renderEducationStudentCard).catch(function(e){el("eduStudentCardBody").innerHTML='<div class="elon-hint">'+esc(e.message)+'</div>';});}
+  el("eduStudentCardEdit")&&el("eduStudentCardEdit").addEventListener("click",function(){if(EDU_STUDENT_CARD_DATA)openEducationStudentForm(EDU_STUDENT_CARD_DATA.student);});
+  el("eduStudentCardTransfer")&&el("eduStudentCardTransfer").addEventListener("click",function(){if(!EDU_STUDENT_CARD_DATA)return;var s=EDU_STUDENT_CARD_DATA.student||{};el("eduStudentTransferName").textContent=s.full_name||"O'quvchi";el("eduStudentTransferCurrent").textContent="Joriy guruh: "+(s.group_name||"biriktirilmagan");el("eduStudentTransferDate").value=localIsoDate();el("eduStudentTransferNote").value="";api("GET","/api/education/groups").then(function(rows){EDU_GROUPS=rows||[];el("eduStudentTransferGroup").innerHTML=educationGroupOptions("","Yangi guruhni tanlang");Array.from(el("eduStudentTransferGroup").options).forEach(function(o){if(String(o.value)===String(s.group_id||""))o.disabled=true;});nav("cab-education-student-transfer");}).catch(function(e){showMsg(e.message);});});
+  el("eduStudentTransferSave")&&el("eduStudentTransferSave").addEventListener("click",function(){var body={group_id:el("eduStudentTransferGroup").value,transfer_date:el("eduStudentTransferDate").value,note:el("eduStudentTransferNote").value};if(!body.group_id||!body.transfer_date){showMsg("Yangi guruh va o'tkazish sanasini tanlang.");return;}var btn=this;btn.disabled=true;api("POST","/api/education/students/"+EDU_STUDENT_CARD_ID+"/transfer",body).then(function(){nav("cab-education-student-card");showMsg("O'quvchi yangi guruhga o'tkazildi.");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
 
   var EDU_SCHEDULE_DAYS=[{k:"mon",n:"Dushanba"},{k:"tue",n:"Seshanba"},{k:"wed",n:"Chorshanba"},{k:"thu",n:"Payshanba"},{k:"fri",n:"Juma"},{k:"sat",n:"Shanba"},{k:"sun",n:"Yakshanba"}];
   function renderEducationSchedule(){
@@ -9121,6 +9147,7 @@
     else if(screen==="cab-items") loadItems();
     else if(screen==="cab-education-groups") loadEducationGroups();
     else if(screen==="cab-education-students") loadEducationStudents();
+    else if(screen==="cab-education-student-card") loadEducationStudentCard();
     else if(screen==="cab-education-schedule") loadEducationSchedule();
     else if(screen==="cab-education-attendance") loadEducationAttendanceScreen();
     else if(screen==="cab-education-payments") loadEducationPayments();
