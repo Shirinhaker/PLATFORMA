@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1597 -->
+<title>Platforma</title><!-- BUILD: v1598 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3206,7 +3206,8 @@
       items.map(function(it){
         var pr = it.price ? (moneyText ? (isNaN(parseInt(String(it.price).replace(/[^0-9]/g,""),10))?esc(it.price):moneyText(parseInt(String(it.price).replace(/[^0-9]/g,""),10))+" so'm") : esc(it.price)) : "";
         var ph = it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" style="width:46px;height:46px;border-radius:8px;object-fit:cover;flex:0 0 auto">' : '';
-        return '<div class="item" style="display:flex;gap:10px;align-items:center">'+ph+'<div style="flex:1;min-width:0"><div class="iname">'+esc(it.name||"")+'</div>'+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div>'+(pr?'<div class="iprice" style="flex:0 0 auto">'+pr+'</div>':'')+'</div>';
+        var queueMeta=(b.yon==="Tibbiy xizmatlar"&&it.kind==="service")?'<div class="idesc" data-medical-queue-count="'+Math.max(0,parseInt(it.today_queue_count||0,10)||0)+'" style="color:var(--primary);font-weight:800;margin-top:3px">👥 Bugungi navbat: '+Math.max(0,parseInt(it.today_queue_count||0,10)||0)+' ta</div>':'';
+        return '<div class="item" data-public-item="'+it.id+'" style="display:flex;gap:10px;align-items:center">'+ph+'<div style="flex:1;min-width:0"><div class="iname">'+esc(it.name||"")+'</div>'+queueMeta+(it.note?'<div class="idesc">'+esc(it.note)+'</div>':'')+'</div>'+(pr?'<div class="iprice" style="flex:0 0 auto">'+pr+'</div>':'')+'</div>';
       }).join("")
     ) : "";
     var listings = (b.listings||[]);
@@ -3444,12 +3445,13 @@
     if(it) cont.innerHTML = itemCtrlHtml(it, { id:parseInt(bid,10), name:curBiz.name });
   }
   function bizItemCardHtml(it, b){
-    var edu=b.yon==="Ta'lim faoliyati",medical=b.yon==="Tibbiy xizmatlar",courseMeta=edu?'<div class="note">'+esc(it.course_mode==="online"?"Onlayn":it.course_mode==="hybrid"?"Aralash":"Offline")+(it.course_duration?' · '+esc(it.course_duration):'')+(it.lesson_duration?' · '+it.lesson_duration+' daqiqa':'')+'</div>'+((it.age_from||it.age_to)?'<div class="note">Yosh: '+(it.age_from||0)+'–'+(it.age_to||"+")+'</div>':'')+'<div class="kind">'+(it.enrollment_status==="closed"?'Qabul yopiq':'Qabul ochiq')+'</div>':'';
+    var edu=b.yon==="Ta'lim faoliyati",medical=b.yon==="Tibbiy xizmatlar",courseMeta=edu?'<div class="note">'+esc(it.course_mode==="online"?"Onlayn":it.course_mode==="hybrid"?"Aralash":"Offline")+(it.course_duration?' · '+esc(it.course_duration):'')+(it.lesson_duration?' · '+it.lesson_duration+' daqiqa':'')+'</div>'+((it.age_from||it.age_to)?'<div class="note">Yosh: '+(it.age_from||0)+'–'+(it.age_to||"+")+'</div>':'')+'<div class="kind">'+(it.enrollment_status==="closed"?'Qabul yopiq':'Qabul ochiq')+'</div>':'',queueMeta=(medical&&it.kind==="service")?'<div class="kind" data-medical-queue-count="'+Math.max(0,parseInt(it.today_queue_count||0,10)||0)+'">👥 Bugungi navbat: '+Math.max(0,parseInt(it.today_queue_count||0,10)||0)+' ta</div>':'';
     return '<div class="item-card2 biz-prod-card" data-public-item="'+it.id+'">'+
       '<div class="item-card2-img">'+(it.photo_file ? '<img src="'+esc(it.photo_file)+'" alt="" loading="lazy">' : '<span class="noimg">📦</span>')+'</div>'+
       '<div class="name">'+esc(it.name)+'</div>'+
       '<div class="price">'+esc(it.price ? (it.price + unitSuffix(it.unit)) : "Narx kelishiladi")+'</div>'+
       courseMeta+
+      queueMeta+
       (it.note ? '<div class="note">'+esc(it.note)+'</div>' : '')+
       (edu?(it.enrollment_status==="closed"?'':'<button class="biz-add-btn" data-edu-enroll="'+it.id+'" data-edu-course="'+esc(it.name)+'">Kursga yozilish</button>'):medical?'<button class="biz-add-btn" data-medical-book="'+it.id+'" data-medical-business="'+b.id+'" data-medical-service="'+esc(it.name)+'">Navbat olish</button>':'<div class="biz-item-ctrl" data-ci="'+it.id+'" data-cb="'+b.id+'">'+itemCtrlHtml(it, b)+'</div>')+
     '</div>';
@@ -9245,7 +9247,17 @@
   el("medicalQueueList")&&el("medicalQueueList").addEventListener("click",function(e){var b=e.target.closest("[data-med-status]");if(!b)return;function saveStatus(){api("POST","/api/medical/queue/"+b.dataset.medStatus+"/status",{status:b.dataset.status}).then(loadMedicalQueue).catch(function(er){showMsg(er.message);});}if(b.dataset.status==="cancelled"){askConfirm({text:"Bu navbat bekor qilinsinmi? Foydalanuvchiga xabar yuboriladi.",okText:"Bekor qilish",danger:true}).then(function(ok){if(ok)saveStatus();});}else saveStatus();});
   el("medicalSetupBtn")&&el("medicalSetupBtn").addEventListener("click",function(){nav("cab-medical-doctors");});
   el("medicalOfflineAdd")&&el("medicalOfflineAdd").addEventListener("click",function(){api("GET","/api/medical/setup").then(function(d){var staff=d.staff.map(function(x){return x.id+'-'+x.name;}).join(', '),items=d.items.map(function(x){return x.id+'-'+x.name;}).join(', ');return askInput({title:"Oflayn navbat",fields:[{key:"patient_name",label:"Bemor ism-familiyasi",required:true},{key:"phone",label:"Telefon"},{key:"item_id",label:"Xizmat ID: "+items,required:true,numeric:true},{key:"staff_id",label:"Shifokor ID: "+staff,required:true,numeric:true}]});}).then(function(v){if(!v)return;v.queue_date=el("medicalQueueDate").value||localIsoDate();api("POST","/api/medical/queue/offline",v).then(function(r){showMsg("Navbat: "+r.queue_code);loadMedicalQueue();});}).catch(function(e){showMsg(e.message);});});
-  function openMedicalBooking(businessId,itemId,serviceName){if(!loggedIn){showLogin("Navbat olish");return;}askInput({title:serviceName+" — navbat",fields:[{key:"queue_date",label:"Sana (YYYY-MM-DD)",value:localIsoDate(),required:true}]}).then(function(v){if(!v)return;api("GET","/api/medical/queue/options?business_id="+businessId+"&item_id="+itemId+"&queue_date="+v.queue_date).then(function(ds){if(!ds.length)throw new Error("Bu xizmatga shifokor biriktirilmagan.");var list=ds.map(function(x){return x.id+' — '+x.name+' (navbat '+x.queue_count+' ta)';}).join(', ');return askInput({title:"Shifokorni tanlang",fields:[{key:"staff_id",label:list,required:true,numeric:true}]}).then(function(s){if(!s)return;return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:parseInt(s.staff_id,10),queue_date:v.queue_date});});}).then(function(r){if(r){showMsg("Navbatingiz: "+r.queue_code);refreshNotifyBadge();pollActionNotifications();}}).catch(function(e){showMsg(e.message);});});}
+  function incrementMedicalServiceQueueCount(itemId){
+    var id=parseInt(itemId,10);if(!id)return;
+    var next=null,item=curBiz&&curBiz.items?curBiz.items[String(id)]:null;
+    if(item){next=Math.max(0,parseInt(item.today_queue_count||0,10)||0)+1;item.today_queue_count=next;}
+    document.querySelectorAll('[data-public-item="'+id+'"] [data-medical-queue-count]').forEach(function(node){
+      var count=next===null?Math.max(0,parseInt(node.getAttribute("data-medical-queue-count")||0,10)||0)+1:next;
+      node.setAttribute("data-medical-queue-count",String(count));
+      node.textContent="👥 Bugungi navbat: "+count+" ta";
+    });
+  }
+  function openMedicalBooking(businessId,itemId,serviceName){if(!loggedIn){showLogin("Navbat olish");return;}askInput({title:serviceName+" — navbat",fields:[{key:"queue_date",label:"Sana (YYYY-MM-DD)",value:localIsoDate(),required:true}]}).then(function(v){if(!v)return;api("GET","/api/medical/queue/options?business_id="+businessId+"&item_id="+itemId+"&queue_date="+v.queue_date).then(function(ds){if(!ds.length)throw new Error("Bu xizmatga shifokor biriktirilmagan.");var list=ds.map(function(x){return x.id+' — '+x.name+' (navbat '+x.queue_count+' ta)';}).join(', ');return askInput({title:"Shifokorni tanlang",fields:[{key:"staff_id",label:list,required:true,numeric:true}]}).then(function(s){if(!s)return;return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:parseInt(s.staff_id,10),queue_date:v.queue_date});});}).then(function(r){if(r){showMsg("Navbatingiz: "+r.queue_code);if(v.queue_date===localIsoDate())incrementMedicalServiceQueueCount(itemId);refreshNotifyBadge();pollActionNotifications();}}).catch(function(e){showMsg(e.message);});});}
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-book]");if(b)openMedicalBooking(parseInt(b.dataset.medicalBusiness,10),parseInt(b.dataset.medicalBook,10),b.dataset.medicalService||"Xizmat");});
 
   function onScreenOpen(screen){
