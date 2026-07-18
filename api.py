@@ -4588,10 +4588,35 @@ def _medical_code(name):
     letters=''.join(ch for ch in str(name or '').upper() if ch.isalnum())[:3]
     return letters or 'NAV'
 
+def _medical_doctor_payload(body):
+    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
+
+@router.get("/medical/doctors")
+async def medical_doctors(x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);rows=[dict(r) for r in conn.execute("SELECT d.*,s.name,s.phone,s.profession FROM medical_doctors d JOIN staff s ON s.id=d.staff_id WHERE d.business_id=? ORDER BY d.status,s.name",(biz['id'],)).fetchall()]
+    for d in rows:d['item_ids']=[r[0] for r in conn.execute("SELECT item_id FROM medical_doctor_services WHERE business_id=? AND staff_id=? AND active=1",(biz['id'],d['staff_id'])).fetchall()]
+    conn.close();return rows
+
+def _medical_doctor_save_links(conn,biz_id,staff_id,item_ids,minutes):
+    conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz_id,staff_id))
+    for iid in item_ids:conn.execute("INSERT INTO medical_doctor_services(business_id,staff_id,item_id,active,duration_minutes) VALUES(?,?,?,?,?)",(biz_id,staff_id,iid,1,minutes))
+
+@router.post("/medical/doctors")
+async def medical_doctor_add(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokor qo'shish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
+    if not staff:conn.close();raise HTTPException(400,"Faol xodimni tanlang.")
+    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
+
+@router.put("/medical/doctors/{doctor_id}")
+async def medical_doctor_update(doctor_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokorni tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
+    if not old:conn.close();raise HTTPException(404,"Shifokor topilmadi.")
+    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
+
 @router.get("/medical/setup")
 async def medical_setup(x_telegram_init_data: str = Header(default="")):
     conn=db(); user,biz=require_business(conn,x_telegram_init_data)
-    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND active=1 ORDER BY name",(biz['id'],)).fetchall()]
+    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND kind='service' ORDER BY name",(biz['id'],)).fetchall()]
     staff=[dict(r) for r in conn.execute("SELECT id,name,profession FROM staff WHERE business_id=? AND status='active' ORDER BY name",(biz['id'],)).fetchall()]
     links=[dict(r) for r in conn.execute("SELECT * FROM medical_doctor_services WHERE business_id=? AND active=1",(biz['id'],)).fetchall()];conn.close()
     return {'items':items,'staff':staff,'links':links}
@@ -4606,10 +4631,10 @@ async def medical_setup_save(request:Request,x_telegram_init_data:str=Header(def
 @router.get("/medical/queue/options")
 async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',x_telegram_init_data:str=Header(default="")):
     conn=db();date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
-    rows=conn.execute("SELECT s.id,s.name,s.profession,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
+    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
 
 def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note=''):
-    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND active=1",(item_id,biz_id)).fetchone();link=conn.execute("SELECT 1 FROM medical_doctor_services WHERE business_id=? AND item_id=? AND staff_id=? AND active=1",(biz_id,item_id,staff_id)).fetchone()
+    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=?",(item_id,biz_id)).fetchone();link=conn.execute("SELECT 1 FROM medical_doctor_services WHERE business_id=? AND item_id=? AND staff_id=? AND active=1",(biz_id,item_id,staff_id)).fetchone()
     if not item or not link: raise HTTPException(400,"Xizmat yoki shifokor noto'g'ri.")
     no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
     cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
