@@ -1954,8 +1954,9 @@ def _education_student_payload(conn, biz_id, body, old=None):
             raise HTTPException(400, "Tanlangan guruh topilmadi.")
     try:
         monthly_fee = max(0, int(str(value("monthly_fee", _row_val(old, "monthly_fee", 0) if old else 0) or 0).replace(" ", "")))
+        lesson_package_override = max(0, min(1000, int(value("lesson_package_override", _row_val(old, "lesson_package_override", 0) if old else 0) or 0)))
     except (TypeError, ValueError):
-        raise HTTPException(400, "Oylik to'lov summasi noto'g'ri.")
+        raise HTTPException(400, "To'lov summasi yoki darslar soni noto'g'ri.")
     return {
         "full_name": full_name, "group_id": group_id,
         "phone": str(value("phone", old["phone"] if old else "") or "").strip()[:30],
@@ -1965,6 +1966,8 @@ def _education_student_payload(conn, biz_id, body, old=None):
         "joined_date": str(value("joined_date", old["joined_date"] if old else "") or "")[:10],
         "note": str(value("note", old["note"] if old else "") or "").strip()[:500],
         "monthly_fee": monthly_fee,
+        "payment_start_date": str(value("payment_start_date", _row_val(old, "payment_start_date", "") if old else "") or "")[:10],
+        "lesson_package_override": lesson_package_override,
     }
 
 
@@ -2025,12 +2028,8 @@ async def education_student_card(student_id: int, x_telegram_init_data: str = He
         counts[row["attendance_status"]] = int(row["count"] or 0)
     total_attendance = sum(counts.values())
     attended = counts["present"] + counts["late"]
-    month = time.strftime("%Y-%m", time.gmtime(time.time() + 5 * 3600))
-    expected = _education_student_month_expected(conn, biz["id"], student, month)
-    paid = int(conn.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=?",
-        (biz["id"], student_id, month),
-    ).fetchone()[0] or 0)
+    today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
+    billing = _education_student_billing_status(conn, biz["id"], student, today)
     payments = conn.execute(
         """SELECT id,payment_month,amount,pay_type,note,created_at FROM education_payments
            WHERE business_id=? AND student_id=? ORDER BY payment_month DESC,id DESC LIMIT 300""", (biz["id"], student_id),
@@ -2043,7 +2042,7 @@ async def education_student_card(student_id: int, x_telegram_init_data: str = He
     result = {
         "student": dict(student),
         "attendance": {"total": total_attendance, "attended": attended, "percent": int(round(attended * 100 / total_attendance)) if total_attendance else 0, "counts": counts},
-        "payment": {"month": month, "expected": expected, "paid": paid, "debt": max(0, expected - paid), "total_paid": sum(int(r["amount"] or 0) for r in payments)},
+        "payment": dict(billing, total_paid=sum(int(r["amount"] or 0) for r in payments)),
         "payments": [dict(r) for r in payments], "group_history": [dict(r) for r in history],
     }
     conn.close(); return result
@@ -2098,9 +2097,9 @@ async def education_student_add(request: Request, x_telegram_init_data: str = He
     now = int(time.time())
     cur = conn.execute(
         """INSERT INTO education_students(business_id,group_id,full_name,phone,parent_name,parent_phone,
-           birth_date,joined_date,note,monthly_fee,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
+           birth_date,joined_date,note,monthly_fee,payment_start_date,lesson_package_override,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
         (biz["id"], data["group_id"], data["full_name"], data["phone"], data["parent_name"],
-         data["parent_phone"], data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], now, now),
+         data["parent_phone"], data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], data["payment_start_date"], data["lesson_package_override"], now, now),
     )
     conn.commit()
     student_id = cur.lastrowid
@@ -2129,9 +2128,9 @@ async def education_student_edit(student_id: int, request: Request, x_telegram_i
         raise HTTPException(400, "Guruhni o'quvchi kartasidagi o'tkazish tugmasi orqali almashtiring.")
     conn.execute(
         """UPDATE education_students SET group_id=?,full_name=?,phone=?,parent_name=?,parent_phone=?,
-           birth_date=?,joined_date=?,note=?,monthly_fee=?,updated_at=? WHERE id=? AND business_id=?""",
+           birth_date=?,joined_date=?,note=?,monthly_fee=?,payment_start_date=?,lesson_package_override=?,updated_at=? WHERE id=? AND business_id=?""",
         (data["group_id"], data["full_name"], data["phone"], data["parent_name"], data["parent_phone"],
-         data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], int(time.time()), student_id, biz["id"]),
+         data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], data["payment_start_date"], data["lesson_package_override"], int(time.time()), student_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -2228,6 +2227,98 @@ async def education_attendance_save(request: Request, x_telegram_init_data: str 
     return {"ok": True, "saved": saved}
 
 
+def _education_add_month(value, months=1):
+    import datetime as _dt
+    total = value.year * 12 + value.month - 1 + months
+    year, month0 = divmod(total, 12)
+    day = min(value.day, calendar.monthrange(year, month0 + 1)[1])
+    return _dt.date(year, month0 + 1, day)
+
+
+def _education_student_billing_status(conn, biz_id, student, today_text):
+    import datetime as _dt
+    try: today = _dt.date.fromisoformat(today_text)
+    except ValueError: raise HTTPException(400, "Sana noto'g'ri.")
+    start_text = str(_row_val(student, "payment_start_date", "") or _row_val(student, "joined_date", "") or today_text)[:10]
+    try: start = _dt.date.fromisoformat(start_text)
+    except ValueError: start = today
+    group = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (_row_val(student, "group_id", 0), biz_id)).fetchone() if _row_val(student, "group_id", 0) else None
+    billing_type = str(_row_val(group, "billing_type", "monthly") if group else "monthly")
+    paid_total = 0; expected = 0; next_due = ""; lessons_done = 0; lessons_remaining = 0; package_lessons = 0; payable_now = 0
+    if billing_type == "attendance" and group:
+        package_lessons = int(_row_val(student, "lesson_package_override", 0) or _row_val(group, "package_lessons", 0) or 0)
+        package_price = int(_row_val(group, "package_price", 0) or 0)
+        lessons_done = int(conn.execute(
+            """SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND student_id=? AND lesson_date>=?
+               AND attendance_status IN ('present','late','absent')""", (biz_id, student["id"], start.isoformat()),
+        ).fetchone()[0] or 0)
+        completed = lessons_done // package_lessons if package_lessons else 0
+        expected = completed * package_price
+        paid_total = int(conn.execute(
+            """SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=?
+               AND date(created_at,'unixepoch','+5 hours')>=?""", (biz_id, student["id"], start.isoformat()),
+        ).fetchone()[0] or 0)
+        debt = max(0, expected - paid_total)
+        payable_now = min(debt, package_price - (paid_total % package_price)) if debt and package_price else debt
+        paid_packages = min(completed, paid_total // package_price) if package_price else 0
+        if debt and package_lessons:
+            offset = paid_packages * package_lessons + package_lessons - 1
+            row = conn.execute(
+                """SELECT lesson_date FROM education_attendance WHERE business_id=? AND student_id=? AND lesson_date>=?
+                   AND attendance_status IN ('present','late','absent') ORDER BY lesson_date,id LIMIT 1 OFFSET ?""",
+                (biz_id, student["id"], start.isoformat(), offset),
+            ).fetchone()
+            next_due = str(row[0]) if row else today_text
+        lessons_remaining = package_lessons - (lessons_done % package_lessons) if package_lessons else 0
+    else:
+        fee = int(_row_val(student, "monthly_fee", 0) or 0)
+        due_dates = []; due = _education_add_month(start)
+        while due <= today:
+            due_dates.append(due); due = _education_add_month(due)
+        expected = len(due_dates) * fee
+        first_key = due_dates[0].strftime("%Y-%m") if due_dates else _education_add_month(start).strftime("%Y-%m")
+        paid_total = int(conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month>=?",
+            (biz_id, student["id"], first_key),
+        ).fetchone()[0] or 0)
+        debt = max(0, expected - paid_total)
+        payable_now = min(debt, fee - (paid_total % fee)) if debt and fee else debt
+        if debt and fee and due_dates:
+            paid_cycles = min(len(due_dates) - 1, paid_total // fee)
+            next_due = due_dates[paid_cycles].isoformat()
+        else:
+            next_due = due.isoformat()
+    debt = max(0, expected - paid_total)
+    delta = (_dt.date.fromisoformat(next_due) - today).days if next_due else 9999
+    if debt and delta < 0: status = "overdue"
+    elif debt and delta == 0: status = "due_today"
+    elif (billing_type == "attendance" and not debt and package_lessons and lessons_remaining <= 2) or (not debt and 0 <= delta <= 3): status = "upcoming"
+    elif debt: status = "due_today"
+    else: status = "paid"
+    return {"billing_type": billing_type, "status": status, "start_date": start.isoformat(), "next_due": next_due,
+            "expected": expected, "paid": paid_total, "debt": debt, "package_lessons": package_lessons,
+            "lessons_done": lessons_done, "lessons_remaining": lessons_remaining,
+            "payable_now": payable_now, "payment_month": (next_due or today_text)[:7]}
+
+
+@router.get("/education/payment-control")
+async def education_payment_control(group_id: int = 0, x_telegram_init_data: str = Header(default="")):
+    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_any_perm(conn, x_telegram_init_data, "kassa", "statistics")
+    today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
+    params = [biz["id"]]; extra = ""
+    if group_id > 0: extra = " AND s.group_id=?"; params.append(group_id)
+    rows = conn.execute(
+        """SELECT s.*,g.name AS group_name,COALESCE(g.billing_type,'monthly') AS billing_type
+           FROM education_students s LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
+           WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE", params,
+    ).fetchall()
+    out=[]; summary={"overdue":0,"due_today":0,"upcoming":0,"paid":0,"total_debt":0}
+    for row in rows:
+        item=dict(row); item.update(_education_student_billing_status(conn,biz["id"],row,today));out.append(item)
+        summary[item["status"]]=summary.get(item["status"],0)+1; summary["total_debt"]+=int(item["debt"] or 0)
+    conn.close(); return {"today":today,"summary":summary,"students":out}
+
+
 @router.get("/education/payments")
 async def education_payments(payment_month: str, group_id: int = 0, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -2297,17 +2388,21 @@ async def education_payment_add(request: Request, x_telegram_init_data: str = He
     if amount <= 0:
         conn.close(); raise HTTPException(400, "To'lov summasini kiriting.")
     fee = int(_row_val(student, "monthly_fee", 0) or 0)
+    remaining_override = None
     if student["group_id"]:
         grp = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (student["group_id"], biz["id"])).fetchone()
         if grp and _row_val(grp, "billing_type", "monthly") == "attendance" and int(_row_val(grp, "package_lessons", 0) or 0) > 0:
-            chargeable = int(conn.execute(
-                "SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND group_id=? AND student_id=? AND lesson_date LIKE ? AND attendance_status IN ('present','late','absent')",
-                (biz["id"], student["group_id"], student_id, month + "-%"),
-            ).fetchone()[0] or 0)
-            fee = int(round((int(_row_val(grp, "package_price", 0) or 0) / int(grp["package_lessons"])) * min(chargeable, int(grp["package_lessons"]))))
+            control = _education_student_billing_status(conn, biz["id"], student, time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600)))
+            remaining_override = int(control["debt"] or 0)
     paid = int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=?", (biz["id"], student_id, month)).fetchone()[0] or 0)
-    if fee > 0 and amount > max(0, fee - paid):
+    if remaining_override is None and fee <= 0:
+        conn.close(); raise HTTPException(400, "O'quvchining oylik to'lov summasi belgilanmagan.")
+    if remaining_override is not None and amount > remaining_override:
         conn.close(); raise HTTPException(400, "Kiritilgan summa qolgan qarzdorlikdan ko'p.")
+    if remaining_override is None and fee > 0 and amount > max(0, fee - paid):
+        conn.close(); raise HTTPException(400, "Kiritilgan summa qolgan qarzdorlikdan ko'p.")
+    if remaining_override is not None and remaining_override <= 0:
+        conn.close(); raise HTTPException(400, "Hozircha to'lanadigan tugallangan dars paketi yo'q.")
     note = str(body.get("note") or "").strip()[:200]
     now = int(time.time())
     cur = conn.execute("INSERT INTO education_payments(business_id,student_id,payment_month,amount,pay_type,note,created_at) VALUES(?,?,?,?,?,?,?)", (biz["id"], student_id, month, amount, pay_type, note, now))
