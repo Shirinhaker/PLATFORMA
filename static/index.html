@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1587 -->
+<title>Platforma</title><!-- BUILD: v1588 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -826,6 +826,7 @@
         <div class="menu-card" id="educationScheduleMenu" data-nav="cab-education-schedule" style="display:none"><div class="menu-ic">🗓️</div><div class="menu-main"><h4>Dars jadvali</h4><p>Haftalik guruh va o'qituvchilar jadvali</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationAttendanceMenu" data-nav="cab-education-attendance" style="display:none"><div class="menu-ic">✅</div><div class="menu-main"><h4>Davomat</h4><p>O'quvchilarning darsga qatnashuvi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationPaymentsMenu" data-nav="cab-education-payments" style="display:none"><div class="menu-ic">💳</div><div class="menu-main"><h4>O'quvchi to'lovlari</h4><p>Oylik to'lov va qarzdorliklar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="educationPaymentControlMenu" data-nav="cab-education-payment-control" style="display:none"><div class="menu-ic">⏰</div><div class="menu-main"><h4>To'lov nazorati</h4><p>Muddati kelgan va yaqin to'lovlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationTeachersMenu" data-nav="cab-education-teachers" style="display:none"><div class="menu-ic">🧑‍🏫</div><div class="menu-main"><h4>O'qituvchilar</h4><p>O'qituvchi, fan va ish haqi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationPayrollMenu" data-nav="cab-education-payroll" style="display:none"><div class="menu-ic">💰</div><div class="menu-main"><h4>O'qituvchi maoshi</h4><p>Hisoblangan va to'langan maoshlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStatisticsMenu" data-nav="cab-education-statistics" style="display:none"><div class="menu-ic">📊</div><div class="menu-main"><h4>Ta'lim statistikasi</h4><p>Davomat, to'lovlar, maosh va natija</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1011,6 +1012,8 @@
           <div class="field"><label>Tug'ilgan sana</label><input class="input" type="date" id="eduStudentBirth"></div>
           <div class="field"><label>O'qishga qabul qilingan sana</label><input class="input" type="date" id="eduStudentJoined"></div>
           <div class="field"><label>Oylik to'lov summasi</label><input class="input" id="eduStudentMonthlyFee" inputmode="numeric" placeholder="Masalan: 500 000"><div class="idesc">To'lovlar bo'limida qarzdorlik shu summa asosida hisoblanadi.</div></div>
+          <div class="field"><label>To'lov boshlanish sanasi</label><input class="input" type="date" id="eduStudentPaymentStart"><div class="idesc">Oylik tarifda keyingi muddat shu sanadan bir oy keyin keladi.</div></div>
+          <div class="field"><label>Shaxsiy dars paketi</label><input class="input" type="number" min="0" max="1000" id="eduStudentLessonPackage" placeholder="0 — guruhdagi qiymat"><div class="idesc">Bo'sh yoki 0 bo'lsa, guruhda belgilangan darslar soni ishlatiladi.</div></div>
           <div class="field"><label>Izoh</label><textarea class="textarea" id="eduStudentNote" placeholder="Ixtiyoriy izoh"></textarea></div>
           <button class="btn btn-primary btn-block" id="eduStudentSave">Saqlash</button>
           <button class="btn btn-outline btn-block" id="eduStudentDelete" style="display:none;margin-top:8px;color:#d32f2f">Faol ro'yxatdan chiqarish</button>
@@ -1064,6 +1067,10 @@
           <div class="field"><label>Izoh</label><input class="input" id="eduPaymentNote" placeholder="Ixtiyoriy"></div>
           <button class="btn btn-primary btn-block" id="eduPaymentSave">To'lovni qabul qilish</button>
         </div>
+      </section>
+
+      <section class="screen" data-screen="cab-education-payment-control">
+        <div class="form-wrap"><div class="panel-card"><b>To'lov nazorati</b><div class="idesc">Oylik sanasi yoki tugallangan dars paketiga qarab avtomatik nazorat.</div></div><div class="ad-tabs" id="eduPaymentControlTabs"><button class="ad-tab on" data-payment-control-filter="attention">E'tibor kerak</button><button class="ad-tab" data-payment-control-filter="overdue">Muddati o'tgan</button><button class="ad-tab" data-payment-control-filter="due_today">Bugun</button><button class="ad-tab" data-payment-control-filter="upcoming">Yaqin</button><button class="ad-tab" data-payment-control-filter="all">Barchasi</button></div><div class="item-search" style="margin:10px 0 8px"><span class="ic">🔍</span><input id="eduPaymentControlSearch" type="search" placeholder="Ism yoki telefon..."></div><select class="input" id="eduPaymentControlGroup" style="margin-bottom:10px"><option value="">Barcha guruhlar</option></select><div id="eduPaymentControlSummary" class="panel-card"></div><div id="eduPaymentControlList"></div></div>
       </section>
 
       <section class="screen" data-screen="cab-education-teachers">
@@ -3364,6 +3371,7 @@
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   titles["cab-education-student-card"]="O'quvchi kartasi";
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
+  titles["cab-education-payment-control"]="To'lov nazorati";
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
@@ -3375,6 +3383,7 @@
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
   BACKMAP["cab-education-student-card"]="cab-education-students";
   BACKMAP["cab-education-student-transfer"]="cab-education-student-card";
+  BACKMAP["cab-education-payment-control"]="cabinet";
   var personBack = "home";
   var loggedIn = false;
   function showLogin(reason){
@@ -6549,7 +6558,7 @@
   function openEducationStudentForm(student){
     student=student||{};el("eduStudentId").value=student.id||"";el("eduStudentName").value=student.full_name||"";
     el("eduStudentPhone").value=student.phone||"";el("eduStudentParent").value=student.parent_name||"";el("eduStudentParentPhone").value=student.parent_phone||"";
-    el("eduStudentBirth").value=student.birth_date||"";el("eduStudentJoined").value=student.joined_date||localIsoDate();el("eduStudentMonthlyFee").value=student.monthly_fee?moneyText(student.monthly_fee).replace(" so'm",""):"";el("eduStudentNote").value=student.note||"";
+    el("eduStudentBirth").value=student.birth_date||"";el("eduStudentJoined").value=student.joined_date||localIsoDate();el("eduStudentMonthlyFee").value=student.monthly_fee?moneyText(student.monthly_fee).replace(" so'm",""):"";el("eduStudentPaymentStart").value=student.payment_start_date||student.joined_date||localIsoDate();el("eduStudentLessonPackage").value=student.lesson_package_override||"";el("eduStudentNote").value=student.note||"";
     el("eduStudentDelete").style.display=student.id?"":"none";titles["cab-education-student-form"]=student.id?"O'quvchini tahrirlash":"Yangi o'quvchi";
     function ready(){el("eduStudentGroup").innerHTML=educationGroupOptions(student.group_id,"Guruhni tanlang");el("eduStudentGroup").disabled=!!student.id;nav("cab-education-student-form");}
     if(EDU_GROUPS.length)ready();else api("GET","/api/education/groups").then(function(g){EDU_GROUPS=g||[];ready();}).catch(function(e){showMsg(e.message);});
@@ -6559,7 +6568,7 @@
   el("eduStudentGroupFilter")&&el("eduStudentGroupFilter").addEventListener("change",renderEducationStudents);
   el("eduStudentsList")&&el("eduStudentsList").addEventListener("click",function(e){var b=e.target.closest("[data-edu-student]");if(!b)return;EDU_STUDENT_CARD_ID=parseInt(b.dataset.eduStudent,10);nav("cab-education-student-card");});
   el("eduStudentSave")&&el("eduStudentSave").addEventListener("click",function(){
-    var id=parseInt(el("eduStudentId").value||"0",10),body={full_name:el("eduStudentName").value,group_id:el("eduStudentGroup").value||null,phone:el("eduStudentPhone").value,parent_name:el("eduStudentParent").value,parent_phone:el("eduStudentParentPhone").value,birth_date:el("eduStudentBirth").value,joined_date:el("eduStudentJoined").value,monthly_fee:parsePriceAmount(el("eduStudentMonthlyFee").value),note:el("eduStudentNote").value};
+    var id=parseInt(el("eduStudentId").value||"0",10),body={full_name:el("eduStudentName").value,group_id:el("eduStudentGroup").value||null,phone:el("eduStudentPhone").value,parent_name:el("eduStudentParent").value,parent_phone:el("eduStudentParentPhone").value,birth_date:el("eduStudentBirth").value,joined_date:el("eduStudentJoined").value,monthly_fee:parsePriceAmount(el("eduStudentMonthlyFee").value),payment_start_date:el("eduStudentPaymentStart").value,lesson_package_override:parseInt(el("eduStudentLessonPackage").value||"0",10),note:el("eduStudentNote").value};
     if(!body.full_name.trim()){showMsg("O'quvchi ism-familiyasini kiriting.");return;}var btn=this;btn.disabled=true;
     api(id?"PUT":"POST",id?("/api/education/students/"+id):"/api/education/students",body).then(function(){nav("cab-education-students");showMsg(id?"O'quvchi ma'lumotlari yangilandi.":"O'quvchi qo'shildi.");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});
   });
@@ -6647,7 +6656,7 @@
     api("PUT","/api/education/attendance",body).then(function(r){showMsg((r.saved||0)+" nafar o'quvchi davomati saqlandi.");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});
   });
 
-  var EDU_PAYMENT_DATA={students:[],history:[]},EDU_PAYMENT_CURRENT=null;
+  var EDU_PAYMENT_DATA={students:[],history:[]},EDU_PAYMENT_CURRENT=null,EDU_PAYMENT_FORM_BACK="cab-education-payments";
   function renderEducationPayments(){
     var rows=EDU_PAYMENT_DATA.students||[],hist=EDU_PAYMENT_DATA.history||[],expected=0,paid=0,debt=0;
     rows.forEach(function(s){expected+=parseInt(s.expected||0,10);paid+=parseInt(s.paid||0,10);debt+=parseInt(s.debt||0,10);});
@@ -6668,9 +6677,21 @@
   }
   el("eduPaymentMonth")&&el("eduPaymentMonth").addEventListener("change",loadEducationPayments);
   el("eduPaymentGroup")&&el("eduPaymentGroup").addEventListener("change",loadEducationPayments);
-  el("eduPaymentStudents")&&el("eduPaymentStudents").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay]");if(!b)return;var id=parseInt(b.dataset.eduPay,10),s=(EDU_PAYMENT_DATA.students||[]).filter(function(x){return x.student_id===id;})[0];if(s)openEducationPaymentForm(s);});
-  el("eduPaymentSave")&&el("eduPaymentSave").addEventListener("click",function(){var amount=parsePriceAmount(el("eduPaymentAmount").value);if(amount<=0){showMsg("To'lov summasini kiriting.");return;}var body={student_id:parseInt(el("eduPaymentStudentId").value,10),payment_month:el("eduPaymentFormMonth").value,amount:amount,pay_type:el("eduPaymentType").value,note:el("eduPaymentNote").value},btn=this;btn.disabled=true;api("POST","/api/education/payments",body).then(function(r){nav("cab-education-payments");showMsg("To'lov qabul qilindi. Chek №"+(r.chek_no||"—"));}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
+  el("eduPaymentStudents")&&el("eduPaymentStudents").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay]");if(!b)return;var id=parseInt(b.dataset.eduPay,10),s=(EDU_PAYMENT_DATA.students||[]).filter(function(x){return x.student_id===id;})[0];if(s){EDU_PAYMENT_FORM_BACK="cab-education-payments";BACKMAP["cab-education-payment-form"]=EDU_PAYMENT_FORM_BACK;openEducationPaymentForm(s);}});
+  el("eduPaymentSave")&&el("eduPaymentSave").addEventListener("click",function(){var amount=parsePriceAmount(el("eduPaymentAmount").value);if(amount<=0){showMsg("To'lov summasini kiriting.");return;}var body={student_id:parseInt(el("eduPaymentStudentId").value,10),payment_month:el("eduPaymentFormMonth").value,amount:amount,pay_type:el("eduPaymentType").value,note:el("eduPaymentNote").value},btn=this;btn.disabled=true;api("POST","/api/education/payments",body).then(function(r){nav(EDU_PAYMENT_FORM_BACK);showMsg("To'lov qabul qilindi. Chek №"+(r.chek_no||"—"));}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
   el("eduPaymentHistory")&&el("eduPaymentHistory").addEventListener("click",function(e){var b=e.target.closest("[data-edu-pay-del]");if(!b)return;var id=parseInt(b.dataset.eduPayDel,10);askConfirm({text:"Bu to'lov kassadan ham o'chiriladi. Davom etasizmi?",okText:"O'chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/education/payments/"+id).then(function(){loadEducationPayments();showMsg("To'lov o'chirildi.");}).catch(function(er){showMsg(er.message);});});});
+
+  var EDU_PAYMENT_CONTROL={students:[],summary:{}},EDU_PAYMENT_CONTROL_FILTER="attention";
+  function renderEducationPaymentControl(){
+    var q=(el("eduPaymentControlSearch").value||"").trim().toLowerCase(),rows=EDU_PAYMENT_CONTROL.students||[],labels={overdue:"Muddati o'tgan",due_today:"Bugun to'lanadi",upcoming:"Yaqinlashmoqda",paid:"To'langan"},colors={overdue:"#dc2626",due_today:"#e6a100",upcoming:"#2563eb",paid:"#16a34a"};
+    rows=rows.filter(function(s){if(EDU_PAYMENT_CONTROL_FILTER==="attention"&&["overdue","due_today","upcoming"].indexOf(s.status)<0)return false;if(EDU_PAYMENT_CONTROL_FILTER!=="attention"&&EDU_PAYMENT_CONTROL_FILTER!=="all"&&s.status!==EDU_PAYMENT_CONTROL_FILTER)return false;return !q||[s.full_name,s.phone,s.parent_phone,s.group_name].join(" ").toLowerCase().indexOf(q)>=0;});
+    var sm=EDU_PAYMENT_CONTROL.summary||{};el("eduPaymentControlSummary").innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center"><div><div class="idesc">Muddati o\'tgan</div><b style="color:#dc2626">'+(sm.overdue||0)+'</b></div><div><div class="idesc">Bugun</div><b style="color:#e6a100">'+(sm.due_today||0)+'</b></div><div><div class="idesc">Jami qarz</div><b>'+eduStatsMoney(sm.total_debt||0)+'</b></div></div>';
+    el("eduPaymentControlList").innerHTML=rows.length?rows.map(function(s){var lesson=s.billing_type==='attendance';return '<div class="panel-card"><div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>'+esc(s.full_name)+'</b><div class="idesc">'+esc(s.group_name||"Guruhsiz")+' · '+(lesson?'Dars paketi':'Oylik')+'</div></div><span class="sort-chip" style="color:'+colors[s.status]+'">'+labels[s.status]+'</span></div><div class="idesc" style="margin-top:8px">'+(lesson?((s.lessons_done||0)+' dars hisoblandi · '+(s.lessons_remaining||0)+' dars qoldi'):('Keyingi muddat: '+esc(s.next_due||"—")))+'</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:'+(s.debt?'#dc2626':'#16a34a')+'">Qarz: '+eduStatsMoney(s.debt||0)+'</b>'+(s.debt?'<button class="mini-btn" data-control-pay="'+s.id+'" style="height:38px">To\'lov olish</button>':'')+'</div></div>';}).join(""):'<div class="empty" style="padding:34px 18px"><h3>O\'quvchi topilmadi</h3><p>Tanlangan holatda to\'lov mavjud emas.</p></div>';
+  }
+  function loadEducationPaymentControl(){var gid=el("eduPaymentControlGroup").value||0;el("eduPaymentControlList").innerHTML='<div class="idesc">Yuklanmoqda...</div>';Promise.all([api("GET","/api/education/groups"),api("GET","/api/education/payment-control?group_id="+encodeURIComponent(gid))]).then(function(res){EDU_GROUPS=res[0]||[];var old=el("eduPaymentControlGroup").value;el("eduPaymentControlGroup").innerHTML=educationGroupOptions(old,"Barcha guruhlar");el("eduPaymentControlGroup").value=old;EDU_PAYMENT_CONTROL=res[1]||{students:[],summary:{}};renderEducationPaymentControl();}).catch(function(e){el("eduPaymentControlList").innerHTML='<div class="elon-hint">'+esc(e.message)+'</div>';});}
+  el("eduPaymentControlTabs")&&el("eduPaymentControlTabs").addEventListener("click",function(e){var b=e.target.closest("[data-payment-control-filter]");if(!b)return;EDU_PAYMENT_CONTROL_FILTER=b.dataset.paymentControlFilter;this.querySelectorAll("[data-payment-control-filter]").forEach(function(x){x.classList.toggle("on",x===b);});renderEducationPaymentControl();});
+  el("eduPaymentControlSearch")&&el("eduPaymentControlSearch").addEventListener("input",renderEducationPaymentControl);el("eduPaymentControlGroup")&&el("eduPaymentControlGroup").addEventListener("change",loadEducationPaymentControl);
+  el("eduPaymentControlList")&&el("eduPaymentControlList").addEventListener("click",function(e){var b=e.target.closest("[data-control-pay]");if(!b)return;var id=parseInt(b.dataset.controlPay,10),s=(EDU_PAYMENT_CONTROL.students||[]).filter(function(x){return x.id===id;})[0];if(!s)return;EDU_PAYMENT_FORM_BACK="cab-education-payment-control";BACKMAP["cab-education-payment-form"]=EDU_PAYMENT_FORM_BACK;var due=s.payable_now||s.debt;openEducationPaymentForm({student_id:s.id,full_name:s.full_name,expected:due,paid:0,debt:due,payment_month:s.payment_month});});
 
   var EDU_TEACHERS=[];
   function renderEducationTeachers(){
@@ -9151,6 +9172,7 @@
     else if(screen==="cab-education-schedule") loadEducationSchedule();
     else if(screen==="cab-education-attendance") loadEducationAttendanceScreen();
     else if(screen==="cab-education-payments") loadEducationPayments();
+    else if(screen==="cab-education-payment-control") loadEducationPaymentControl();
     else if(screen==="cab-education-teachers") loadEducationTeachers();
     else if(screen==="cab-education-enrollments") loadEducationEnrollments();
     else if(screen==="cab-education-payroll") loadEducationPayroll();
@@ -9246,6 +9268,7 @@
       if(el("educationScheduleMenu")) el("educationScheduleMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(el("educationAttendanceMenu")) el("educationAttendanceMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(el("educationPaymentsMenu")) el("educationPaymentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationPaymentControlMenu")) el("educationPaymentControlMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(el("educationTeachersMenu")) el("educationTeachersMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(el("educationEnrollmentsMenu")) el("educationEnrollmentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(el("educationPayrollMenu")) el("educationPayrollMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
