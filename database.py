@@ -1513,6 +1513,21 @@ def _migrate(conn):
     if "user_id" not in _escols:
         conn.execute("ALTER TABLE education_students ADD COLUMN user_id INTEGER")
     conn.execute(
+        "CREATE TABLE IF NOT EXISTS education_student_group_history("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,student_id INTEGER NOT NULL,"
+        "group_id INTEGER NOT NULL,started_date TEXT NOT NULL,ended_date TEXT DEFAULT '',"
+        "note TEXT DEFAULT '',created_at INTEGER NOT NULL)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_student_group_history ON education_student_group_history(business_id,student_id,started_date,id)")
+    conn.execute(
+        """INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at)
+           SELECT s.business_id,s.id,s.group_id,
+                  CASE WHEN length(COALESCE(s.joined_date,''))=10 THEN s.joined_date ELSE date('now','+5 hours') END,
+                  '','Boshlang''ich guruh',CAST(strftime('%s','now') AS INTEGER)
+           FROM education_students s WHERE s.group_id IS NOT NULL
+             AND NOT EXISTS(SELECT 1 FROM education_student_group_history h WHERE h.business_id=s.business_id AND h.student_id=s.id)"""
+    )
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS education_attendance("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER NOT NULL, "
         "student_id INTEGER NOT NULL, lesson_date TEXT NOT NULL, "
