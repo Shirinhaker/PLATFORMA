@@ -4583,6 +4583,66 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     return result
 
 
+# ================== TIBBIYOT: YAGONA NAVBAT ==================
+def _medical_code(name):
+    letters=''.join(ch for ch in str(name or '').upper() if ch.isalnum())[:3]
+    return letters or 'NAV'
+
+@router.get("/medical/setup")
+async def medical_setup(x_telegram_init_data: str = Header(default="")):
+    conn=db(); user,biz=require_business(conn,x_telegram_init_data)
+    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND active=1 ORDER BY name",(biz['id'],)).fetchall()]
+    staff=[dict(r) for r in conn.execute("SELECT id,name,profession FROM staff WHERE business_id=? AND status='active' ORDER BY name",(biz['id'],)).fetchall()]
+    links=[dict(r) for r in conn.execute("SELECT * FROM medical_doctor_services WHERE business_id=? AND active=1",(biz['id'],)).fetchall()];conn.close()
+    return {'items':items,'staff':staff,'links':links}
+
+@router.put("/medical/setup")
+async def medical_setup_save(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db(); user,biz=require_business(conn,x_telegram_init_data);deny_staff(conn,x_telegram_init_data,"Shifokor xizmatlarini sozlash");body=await request.json();sid=int(body.get('staff_id') or 0);ids=[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]
+    conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz['id'],sid))
+    for iid in ids: conn.execute("INSERT OR IGNORE INTO medical_doctor_services(business_id,staff_id,item_id,active) VALUES(?,?,?,1)",(biz['id'],sid,iid))
+    conn.commit();conn.close();return {'ok':True}
+
+@router.get("/medical/queue/options")
+async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',x_telegram_init_data:str=Header(default="")):
+    conn=db();date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
+    rows=conn.execute("SELECT s.id,s.name,s.profession,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
+
+def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note=''):
+    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND active=1",(item_id,biz_id)).fetchone();link=conn.execute("SELECT 1 FROM medical_doctor_services WHERE business_id=? AND item_id=? AND staff_id=? AND active=1",(biz_id,item_id,staff_id)).fetchone()
+    if not item or not link: raise HTTPException(400,"Xizmat yoki shifokor noto'g'ri.")
+    no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
+    cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
+
+@router.post("/medical/queue/public")
+async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
+    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+
+@router.get("/medical/queue")
+async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10];rows=conn.execute("SELECT q.*,i.name service_name,s.name doctor_name FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id WHERE q.business_id=? AND q.queue_date=? ORDER BY q.staff_id,q.item_id,q.queue_no",(biz['id'],date)).fetchall();conn.close();return [dict(r) for r in rows]
+
+@router.post("/medical/queue/offline")
+async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+
+@router.post("/medical/queue/{queue_id}/status")
+async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();status=str(body.get('status') or '');allowed=('waiting','called','in_service','done','no_show','cancelled','skipped')
+    if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
+    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'] if row else '',status,user['id'],now))
+    if status=='called' and row and row['user_id']:
+        _add_notification(conn,int(row['user_id']),'business',biz['id'],'medical_queue_called','Navbatingiz keldi',str(row['queue_code'])+' navbat shifokor tomonidan chaqirildi.')
+    conn.commit();conn.close();return {'ok':True}
+
+@router.post("/medical/queue/{queue_id}/swap")
+async def medical_queue_swap(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);other=int((await request.json()).get('other_queue_id') or 0);a=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();b=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(other,biz['id'])).fetchone()
+    if not a or not b or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): conn.close();raise HTTPException(400,"Faqat bir xil xizmat va shifokor navbati almashtiriladi.")
+    now=int(time.time());conn.execute("UPDATE medical_queue SET queue_no=-1,updated_at=? WHERE id=?",(now,a['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=? WHERE id=?",(a['queue_no'],_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0])+'-'+str(a['queue_no']).zfill(3),b['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=? WHERE id=?",(b['queue_no'],_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0])+'-'+str(b['queue_no']).zfill(3),a['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'swap',str(a['queue_no']),str(b['queue_no']),user['id'],now));conn.commit();conn.close();return {'ok':True}
+
 # ================== XODIMLAR (kadr) ==================
 _DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
                         "Yuk tashuvchi", "Haydovchi", "Farrosh", "Qorovul", "Boshqa"]
