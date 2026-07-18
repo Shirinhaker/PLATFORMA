@@ -4639,11 +4639,37 @@ def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_
     no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
     cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
 
+def _medical_notify_user(conn,row,event,title,body,action_type):
+    """Onlayn navbat hodisasini aynan oddiy foydalanuvchi profiliga yuboradi."""
+    if not row or not row['user_id']:
+        return
+    _add_notification(conn,int(row['user_id']),'user',int(row['user_id']),
+                      'medical_queue:%s:%s' % (row['id'],event),title,body,
+                      action_type=action_type,medical_queue_id=int(row['id']))
+
 @router.post("/medical/queue/public")
 async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
     if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
-    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''))
+    row=conn.execute("SELECT * FROM medical_queue WHERE id=?",(qid,)).fetchone()
+    _medical_notify_user(conn,row,'booked','Navbat olindi',code+' navbat '+date+' sanasiga saqlandi.','medical_queue_booked')
+    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+
+@router.get("/medical/queue/mine")
+async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
+    """Joriy oddiy foydalanuvchining barcha tibbiy navbatlarini qaytaradi."""
+    conn=db();user=require_user(conn,x_telegram_init_data)
+    rows=conn.execute("""SELECT q.*,i.name service_name,s.name doctor_name,b.name business_name,
+        CASE WHEN q.status IN ('waiting','called','in_service') THEN
+          (SELECT COUNT(*) FROM medical_queue a WHERE a.business_id=q.business_id
+           AND a.item_id=q.item_id AND a.staff_id=q.staff_id AND a.queue_date=q.queue_date
+           AND a.queue_no<q.queue_no AND a.status IN ('waiting','called','in_service'))
+        ELSE 0 END AS ahead_count
+        FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id
+        JOIN businesses b ON b.id=q.business_id WHERE q.user_id=?
+        ORDER BY q.queue_date DESC,q.created_at DESC,q.id DESC LIMIT 200""",(user['id'],)).fetchall()
+    out=[dict(r) for r in rows];conn.close();return out
 
 @router.get("/medical/queue")
 async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
@@ -4657,16 +4683,25 @@ async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(
 async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();status=str(body.get('status') or '');allowed=('waiting','called','in_service','done','no_show','cancelled','skipped')
     if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
-    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'] if row else '',status,user['id'],now))
-    if status=='called' and row and row['user_id']:
-        _add_notification(conn,int(row['user_id']),'business',biz['id'],'medical_queue_called','Navbatingiz keldi',str(row['queue_code'])+' navbat shifokor tomonidan chaqirildi.')
+    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone()
+    if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
+    now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
+    if status=='called':
+        _medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat shifokor tomonidan chaqirildi.','medical_queue_called')
+    elif status=='cancelled':
+        _medical_notify_user(conn,row,'cancelled','Navbat bekor qilindi',str(row['queue_code'])+' navbat muassasa tomonidan bekor qilindi.','medical_queue_cancelled')
     conn.commit();conn.close();return {'ok':True}
 
 @router.post("/medical/queue/{queue_id}/swap")
 async def medical_queue_swap(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);other=int((await request.json()).get('other_queue_id') or 0);a=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();b=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(other,biz['id'])).fetchone()
-    if not a or not b or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): conn.close();raise HTTPException(400,"Faqat bir xil xizmat va shifokor navbati almashtiriladi.")
-    now=int(time.time());conn.execute("UPDATE medical_queue SET queue_no=-1,updated_at=? WHERE id=?",(now,a['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=? WHERE id=?",(a['queue_no'],_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0])+'-'+str(a['queue_no']).zfill(3),b['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=? WHERE id=?",(b['queue_no'],_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0])+'-'+str(b['queue_no']).zfill(3),a['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'swap',str(a['queue_no']),str(b['queue_no']),user['id'],now));conn.commit();conn.close();return {'ok':True}
+    if not a or not b or a['id']==b['id'] or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): conn.close();raise HTTPException(400,"Faqat bir xil xizmat va shifokorning ikkita navbati almashtiriladi.")
+    now=int(time.time());prefix=_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0]);a_new_code=prefix+'-'+str(b['queue_no']).zfill(3);b_new_code=prefix+'-'+str(a['queue_no']).zfill(3)
+    conn.execute("UPDATE medical_queue SET queue_no=-1,updated_at=? WHERE id=?",(now,a['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(a['queue_no'],b_new_code,now,b['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(b['queue_no'],a_new_code,now,a['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'swap',str(a['queue_no']),str(b['queue_no']),user['id'],now))
+    a_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(a['id'],)).fetchone();b_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(b['id'],)).fetchone()
+    _medical_notify_user(conn,a_new,'changed:%s:%s' % (a_new['queue_no'],now),'Navbat raqami o‘zgardi','Yangi navbat raqamingiz: '+str(a_new['queue_code'])+'.','medical_queue_changed')
+    _medical_notify_user(conn,b_new,'changed:%s:%s' % (b_new['queue_no'],now),'Navbat raqami o‘zgardi','Yangi navbat raqamingiz: '+str(b_new['queue_code'])+'.','medical_queue_changed')
+    conn.commit();conn.close();return {'ok':True}
 
 # ================== XODIMLAR (kadr) ==================
 _DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
@@ -8327,16 +8362,16 @@ def _order_seen_value(r, view):
     return int(_row_val(r, "customer_seen_at", 0) or 0)
 
 
-def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type="", dining_order_id=None, target_staff_id=None, target_perm=""):
+def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type="", dining_order_id=None, target_staff_id=None, target_perm="", medical_queue_id=None):
     """Faqat amal/tasdiq talab qiladigan hodisani bir marta yozadi."""
     if not user_id or not actor_id or not event_key or not action_type:
         return
     conn.execute(
         """INSERT OR IGNORE INTO notifications
-           (user_id,actor_kind,actor_id,event_key,title,body,order_id,dining_order_id,target_staff_id,target_perm,ride_id,requires_action,action_type,is_read,created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
+           (user_id,actor_kind,actor_id,event_key,title,body,order_id,dining_order_id,medical_queue_id,target_staff_id,target_perm,ride_id,requires_action,action_type,is_read,created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
         (int(user_id), actor_kind, int(actor_id), str(event_key), title, body,
-         order_id, dining_order_id, target_staff_id, target_perm or "", ride_id,
+         order_id, dining_order_id, medical_queue_id, target_staff_id, target_perm or "", ride_id,
          1 if action_type else 0, action_type, int(time.time())),
     )
     notification = conn.execute(
