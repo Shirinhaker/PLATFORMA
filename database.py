@@ -126,6 +126,7 @@ def init_db():
             price         TEXT DEFAULT '',
             note          TEXT DEFAULT '',
             kind          TEXT DEFAULT 'product',           -- 'product' | 'service'
+            queue_enabled INTEGER NOT NULL DEFAULT 0,       -- xizmatda onlayn/oflayn navbat ishlaydimi
             photo_file    TEXT DEFAULT '',
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
@@ -503,6 +504,8 @@ def _migrate(conn):
     if "group_id" not in icols:
         # Eski mahsulotlar avtomatik Guruhsiz bo'lib qolishi uchun NULL ustun qo'shamiz.
         conn.execute("ALTER TABLE items ADD COLUMN group_id INTEGER")
+    if "queue_enabled" not in icols:
+        conn.execute("ALTER TABLE items ADD COLUMN queue_enabled INTEGER NOT NULL DEFAULT 0")
     _icols_edu = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     for _name, _sql in (
         ("course_mode", "ALTER TABLE items ADD COLUMN course_mode TEXT DEFAULT ''"),
@@ -1607,3 +1610,8 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_service_day ON medical_queue(business_id,item_id,queue_date,status)")
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue_history(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,queue_id INTEGER NOT NULL,action TEXT NOT NULL,old_value TEXT DEFAULT '',new_value TEXT DEFAULT '',actor_user_id INTEGER,actor_staff_id INTEGER,note TEXT DEFAULT '',created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_history ON medical_queue_history(business_id,queue_id,id)")
+    # Avvaldan shifokor biriktirilgan tibbiy xizmatlarning ishlashi uzilmasin.
+    conn.execute("""UPDATE items SET queue_enabled=1
+                    WHERE kind='service'
+                      AND business_id IN (SELECT id FROM businesses WHERE yon='Tibbiy xizmatlar')
+                      AND id IN (SELECT item_id FROM medical_doctor_services WHERE active=1)""")
