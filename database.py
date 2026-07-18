@@ -1512,6 +1512,10 @@ def _migrate(conn):
         conn.execute("ALTER TABLE education_students ADD COLUMN monthly_fee INTEGER NOT NULL DEFAULT 0")
     if "user_id" not in _escols:
         conn.execute("ALTER TABLE education_students ADD COLUMN user_id INTEGER")
+    if "payment_start_date" not in _escols:
+        conn.execute("ALTER TABLE education_students ADD COLUMN payment_start_date TEXT DEFAULT ''")
+    if "lesson_package_override" not in _escols:
+        conn.execute("ALTER TABLE education_students ADD COLUMN lesson_package_override INTEGER NOT NULL DEFAULT 0")
     conn.execute(
         "CREATE TABLE IF NOT EXISTS education_student_group_history("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,student_id INTEGER NOT NULL,"
