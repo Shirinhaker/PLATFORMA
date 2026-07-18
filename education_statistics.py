@@ -133,10 +133,12 @@ def education_statistics_data(conn, business_id: int, period: str, selected_date
         if student["group_id"] in group_map:
             group_map[student["group_id"]]["calculated"] += expected
 
+    payment_columns = {row[1] for row in conn.execute("PRAGMA table_info(education_payments)").fetchall()}
+    active_payment_sql = " AND COALESCE(p.voided_at,0)=0" if "voided_at" in payment_columns else ""
     payment_rows = conn.execute(
         """SELECT p.amount,s.group_id FROM education_payments p
            JOIN education_students s ON s.id=p.student_id AND s.business_id=p.business_id
-           WHERE p.business_id=? AND date(p.created_at,'unixepoch','+5 hours') BETWEEN ? AND ?""",
+           WHERE p.business_id=?""" + active_payment_sql + " AND date(p.created_at,'unixepoch','+5 hours') BETWEEN ? AND ?",
         (business_id, start, end),
     ).fetchall()
     student_paid = sum(int(row["amount"] or 0) for row in payment_rows)
