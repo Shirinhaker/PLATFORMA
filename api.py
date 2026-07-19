@@ -6860,7 +6860,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
-        return "0", []
+        return "NULL", []   # ORDER BY da yakka '0' ustun raqami deb o'qiladi — NULL xavfsiz
     secondary_columns = secondary_columns or []
     pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
     sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
@@ -7316,11 +7316,19 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi.
+
+        DIQQAT: koordinata bo'lmaganda '0' QAYTARMANG. ORDER BY ichida yakka '0'
+        (yoki har qanday butun son) SQLite tomonidan USTUN RAQAMI deb o'qiladi
+        ('0-ustun bo'yicha tartibla'), 17 ustunli so'rovda esa 0-ustun yo'q ->
+        '2nd ORDER BY term out of range' xatosi va butun qidiruv 500 qaytaradi.
+        'NULL' ifodasi ustun raqami emas — tartibga hech qanday ta'sir qilmaydi va
+        xavfsiz. (v1536 da xuddi shu maqsadda katta konstanta ishlatilgan.)
+        """
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            return "0", "0"
+            return "NULL", "NULL"
         lon_scale = 111.0 * math.cos(math.radians(la))
         raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
                "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
