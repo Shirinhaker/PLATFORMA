@@ -7094,9 +7094,30 @@ def check_search_health():
 
     v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
     bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
+    3) Qidiruv SQL'i ishlatadigan ustunlar bazada bormi. api.py yangilanib database.py
+       eski qolsa (qisman deploy), migratsiya ustun qo'shmaydi — FTS ham, LIKE zaxira
+       ham "no such column" bilan yiqiladi va HAR BIR qidiruv 500 qaytaradi (v1600 da
+       items.stock_type bilan aynan shu bo'lgan). Shu holatni startupda aniq aytamiz.
+
     Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
     """
     problems = []
+    required_cols = (("items", "stock_type"),)
+    conn0 = db()
+    try:
+        for tbl, col in required_cols:
+            try:
+                cols = [r[1] for r in conn0.execute("PRAGMA table_info(" + tbl + ")")]
+            except Exception as exc:
+                problems.append(tbl + " jadvali o'qilmadi: " + type(exc).__name__)
+                continue
+            if cols and col not in cols:
+                problems.append(
+                    tbl + "." + col + " ustuni YO'Q — qidiruv 500 qaytaradi. Sabab: "
+                    "database.py eski (qisman deploy). To'liq v1600 fayllarini yuklab, "
+                    "serverni qayta ishga tushiring (migratsiya ustunni o'zi qo'shadi).")
+    finally:
+        conn0.close()
     missing = _check_service_directions()
     if missing:
         problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
