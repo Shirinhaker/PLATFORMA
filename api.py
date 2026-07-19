@@ -7209,10 +7209,33 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
+def _search_error_guard(fn, *args, **kwargs):
+    """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
+    qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
+    shunchaki 'Xatolik (500)' beradi va sababni hech kim ko'rmaydi."""
+    try:
+        return fn(*args, **kwargs)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        print("QIDIRUV XATOSI:", type(exc).__name__, "-", exc)
+        traceback.print_exc()
+        raise HTTPException(500, "Qidiruv xatosi: " + type(exc).__name__ + ": " + str(exc)[:200])
+
+
 @router.get("/search")
 def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
+    return _search_error_guard(
+        _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
+        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
+
+
+def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+                 page: int = 1, page_size: int = 20,
+                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -7635,6 +7658,13 @@ def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: s
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                    x_telegram_init_data: str = Header(default="")):
+    return _search_error_guard(
+        _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
+        x_telegram_init_data=x_telegram_init_data)
+
+
+def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
+                 x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
     `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
