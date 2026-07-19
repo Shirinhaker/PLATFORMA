@@ -6860,7 +6860,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
-        return "NULL", []   # ORDER BY da yakka '0' ustun raqami deb o'qiladi — NULL xavfsiz
+        return "0", []
     secondary_columns = secondary_columns or []
     pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
     sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
@@ -7094,30 +7094,9 @@ def check_search_health():
 
     v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
     bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
-    3) Qidiruv SQL'i ishlatadigan ustunlar bazada bormi. api.py yangilanib database.py
-       eski qolsa (qisman deploy), migratsiya ustun qo'shmaydi — FTS ham, LIKE zaxira
-       ham "no such column" bilan yiqiladi va HAR BIR qidiruv 500 qaytaradi (v1600 da
-       items.stock_type bilan aynan shu bo'lgan). Shu holatni startupda aniq aytamiz.
-
     Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
     """
     problems = []
-    required_cols = (("items", "stock_type"),)
-    conn0 = db()
-    try:
-        for tbl, col in required_cols:
-            try:
-                cols = [r[1] for r in conn0.execute("PRAGMA table_info(" + tbl + ")")]
-            except Exception as exc:
-                problems.append(tbl + " jadvali o'qilmadi: " + type(exc).__name__)
-                continue
-            if cols and col not in cols:
-                problems.append(
-                    tbl + "." + col + " ustuni YO'Q — qidiruv 500 qaytaradi. Sabab: "
-                    "database.py eski (qisman deploy). To'liq v1600 fayllarini yuklab, "
-                    "serverni qayta ishga tushiring (migratsiya ustunni o'zi qo'shadi).")
-    finally:
-        conn0.close()
     missing = _check_service_directions()
     if missing:
         problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
@@ -7209,33 +7188,10 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
-def _search_error_guard(fn, *args, **kwargs):
-    """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
-    qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
-    shunchaki 'Xatolik (500)' beradi va sababni hech kim ko'rmaydi."""
-    try:
-        return fn(*args, **kwargs)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        import traceback
-        print("QIDIRUV XATOSI:", type(exc).__name__, "-", exc)
-        traceback.print_exc()
-        raise HTTPException(500, "Qidiruv xatosi: " + type(exc).__name__ + ": " + str(exc)[:200])
-
-
 @router.get("/search")
 def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
-        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
-
-
-def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
-                 page: int = 1, page_size: int = 20,
-                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -7316,19 +7272,14 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi.
-
-        DIQQAT: koordinata bo'lmaganda '0' QAYTARMANG. ORDER BY ichida yakka '0'
-        (yoki har qanday butun son) SQLite tomonidan USTUN RAQAMI deb o'qiladi
-        ('0-ustun bo'yicha tartibla'), 17 ustunli so'rovda esa 0-ustun yo'q ->
-        '2nd ORDER BY term out of range' xatosi va butun qidiruv 500 qaytaradi.
-        'NULL' ifodasi ustun raqami emas — tartibga hech qanday ta'sir qilmaydi va
-        xavfsiz. (v1536 da xuddi shu maqsadda katta konstanta ishlatilgan.)
-        """
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            return "NULL", "NULL"
+            # SQLite ORDER BY 0 ni konstanta emas, ustun raqami deb talqin qiladi
+            # va "term out of range" bilan /search ni 500 ga yiqitadi. REAL literal
+            # esa koordinatasiz holatda xavfsiz, barcha qator uchun teng konstanta.
+            return "0.0", "0.0"
         lon_scale = 111.0 * math.cos(math.radians(la))
         raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
                "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
@@ -7666,13 +7617,6 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                    x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
-        x_telegram_init_data=x_telegram_init_data)
-
-
-def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
-                 x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
     `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
