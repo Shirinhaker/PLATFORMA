@@ -54,6 +54,11 @@ from stories import (
     transcode_video,
     validate_story_upload,
 )
+from subscriptions import (
+    SubscriptionValidationError,
+    activate_demo_subscription,
+    subscription_payload,
+)
 
 router = APIRouter(prefix="/api")
 public_router = APIRouter()
@@ -1809,6 +1814,43 @@ def _ensure_pay_columns(conn):
                      "ON businesses(lower(username)) WHERE COALESCE(username,'')<>''")
     except Exception:
         pass
+
+
+@router.get("/business/subscription")
+async def get_business_subscription(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    try:
+        deny_staff(conn, x_telegram_init_data, "Obunalarim")
+        _user, biz = require_business(conn, x_telegram_init_data)
+        return subscription_payload(conn, biz["id"])
+    finally:
+        conn.close()
+
+
+@router.post("/business/subscription/demo-activate")
+async def demo_activate_business_subscription(
+    request: Request, x_telegram_init_data: str = Header(default="")
+):
+    conn = db()
+    try:
+        deny_staff(conn, x_telegram_init_data, "Obunalarim")
+        _user, biz = require_business(conn, x_telegram_init_data)
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(400, "Tarif ma'lumotlari noto'g'ri yuborildi.") from None
+        try:
+            payload = activate_demo_subscription(
+                conn,
+                biz["id"],
+                body.get("plan_code") if isinstance(body, dict) else None,
+                body.get("duration_months") if isinstance(body, dict) else None,
+            )
+        except SubscriptionValidationError as exc:
+            raise HTTPException(400, str(exc)) from None
+        return {"ok": True, **payload}
+    finally:
+        conn.close()
 
 
 @router.put("/business")
