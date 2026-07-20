@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1610 -->
+<title>Ko‘prik</title><!-- BUILD: v1611 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,6 +48,14 @@
   @media(min-width:1080px){ .phone{max-width:840px;} .order-sheet,.order-detail-sheet{max-width:840px;} }
   /* Kabinet menyusi: keng ekranda 2 ustun */
   @media(min-width:720px){ .menu-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;} .menu-grid2 .menu-card{margin:0;} }
+
+  /* v1611 — Kabinet 2 guruh: Onlaynlashtirish / Tizimlashtirish */
+  .cab-group{margin:16px 0 4px;}
+  .cab-head + .cab-group{margin-top:8px;}
+  .cab-group-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px;}
+  .cab-group-ic{width:34px;height:34px;border-radius:11px;background:var(--primary-tint);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto;}
+  .cab-group-main h3{font-size:15.5px;font-weight:800;line-height:1.2;}
+  .cab-group-main p{font-size:12px;color:var(--soft);margin-top:1px;line-height:1.35;}
 
   /* v1472 — Reklama boshqaruvi */
   .ad{min-height:150px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(120deg,var(--primary),#0b6f6a);}
@@ -945,10 +953,30 @@
             <div class="cab-status" id="cabAddr" style="color:var(--soft);font-size:13px;margin-top:2px"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>0</b> obuna</span></div></div>
         </div>
-        <div class="menu-grid2">
+        <div class="cab-group" id="cabGroupOnline">
+          <div class="cab-group-head"><span class="cab-group-ic">🌐</span><div class="cab-group-main"><h3>Onlaynlashtirish</h3><p>Mijozlar ko'radigan va onlayn savdo bo'limlari</p></div></div>
+          <div class="menu-grid2" id="cabGridOnline">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4 id="cabItemsMenuTitle">Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="diningPlacesMenu" data-nav="cab-dining" style="display:none"><div class="menu-ic">🍽️</div><div class="menu-main"><h4>Stollar va xonalar</h4><p>Zal rejasini joylashtirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="educationEnrollmentsMenu" data-nav="cab-education-enrollments" style="display:none"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kursga yozilishlar</h4><p>Yangi arizalarni guruhga qabul qilish</p></div><span class="order-badge" id="eduEnrollmentBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabOrdersMenu" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabServiceOrdersMenu" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi biznes istoriyalari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+          </div>
+        </div>
+        <div class="cab-group" id="cabGroupTizim">
+          <div class="cab-group-head"><span class="cab-group-ic">🗂</span><div class="cab-group-main"><h3>Tizimlashtirish</h3><p>Ichki tartib: hisob-kitob, ombor va boshqaruv</p></div></div>
+          <div class="menu-grid2" id="cabGridTizim">
+        <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabDebtMenu" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabWarehouseMenu" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabGeneralStatsMenu" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationGroupsMenu" data-nav="cab-education-groups" style="display:none"><div class="menu-ic">👥</div><div class="menu-main"><h4>Guruhlar</h4><p>Kurs guruhlari va dars jadvali</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStudentsMenu" data-nav="cab-education-students" style="display:none"><div class="menu-ic">🎓</div><div class="menu-main"><h4>O'quvchilar</h4><p>Ro'yxat va guruhlarga biriktirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationScheduleMenu" data-nav="cab-education-schedule" style="display:none"><div class="menu-ic">🗓️</div><div class="menu-main"><h4>Dars jadvali</h4><p>Haftalik guruh va o'qituvchilar jadvali</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -957,23 +985,11 @@
         <div class="menu-card" id="educationTeachersMenu" data-nav="cab-education-teachers" style="display:none"><div class="menu-ic">🧑‍🏫</div><div class="menu-main"><h4>O'qituvchilar</h4><p>O'qituvchi, fan va ish haqi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationPayrollMenu" data-nav="cab-education-payroll" style="display:none"><div class="menu-ic">💰</div><div class="menu-main"><h4>O'qituvchi maoshi</h4><p>Hisoblangan va to'langan maoshlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStatisticsMenu" data-nav="cab-education-statistics" style="display:none"><div class="menu-ic">📊</div><div class="menu-main"><h4>Ta'lim statistikasi</h4><p>Davomat, to'lovlar, maosh va natija</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="educationEnrollmentsMenu" data-nav="cab-education-enrollments" style="display:none"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kursga yozilishlar</h4><p>Yangi arizalarni guruhga qabul qilish</p></div><span class="order-badge" id="eduEnrollmentBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi biznes istoriyalari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabOrdersMenu" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabServiceOrdersMenu" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabDebtMenu" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabWarehouseMenu" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabGeneralStatsMenu" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ai-chat" data-privileged-only><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="cabReportMenu" data-nav="cab-report" data-privileged-only><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+          </div>
         </div>
         <button class="btn btn-outline btn-block" style="margin-top:10px" id="toUserBtn">👤 Oddiy kabinetga qaytish</button>
       </section>
@@ -4627,8 +4643,8 @@
     var newServiceInbox = (ORDERS_INBOX||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
     var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
     var updatesServiceMine = (ORDERS_MINE||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
-    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Mahsulot buyurtmalari");
-    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", "Xizmat va navbatlar");
+    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", window.__cabOrderHintDefault||"Mahsulot buyurtmalari");
+    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", window.__cabServiceOrderHintDefault||"Xizmat va navbatlar");
     setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Mahsulot buyurtmalarim");
     setBadge("ucabServiceOrderBadge", updatesServiceMine, "ucabServiceOrderHint", "🔔 {n} ta xizmat yangilanishi", "Xizmat va qabullarim");
   }
@@ -10011,12 +10027,79 @@
       }).join("");
     }).catch(function(e){ el("savedList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  function applyEducationMenuVisibility(isEducation){
-    ["cabOrdersMenu","cabServiceOrdersMenu","cabDebtMenu","cabWarehouseMenu","cabGeneralStatsMenu","cabReportMenu"].forEach(function(id){var node=el(id);if(node&&isEducation)node.remove();});
-  }
   function queueUiLabels(direction){var medical=direction==="Tibbiy xizmatlar";return {medical:medical,provider:medical?"Shifokor":"Xizmat ko‘rsatuvchi",providers:medical?"Shifokorlar":"Xizmat ko‘rsatuvchilar",customer:medical?"Bemor":"Mijoz"};}
   function applyQueueLabels(direction){var q=queueUiLabels(direction);if(el("medicalDoctorAdd"))el("medicalDoctorAdd").textContent="+ "+q.provider+" biriktirish";if(el("medicalDoctorStaffLabel"))el("medicalDoctorStaffLabel").textContent="Ma'muriyatdagi "+q.provider.toLowerCase();if(el("medicalDoctorBioLabel"))el("medicalDoctorBioLabel").textContent=q.provider+" haqida";if(el("medicalDoctorServicesLabel"))el("medicalDoctorServicesLabel").textContent=q.medical?"Qabul qiladigan xizmatlari":"Ko‘rsatadigan xizmatlari";if(el("medicalQueueDescription"))el("medicalQueueDescription").textContent="Onlayn va oflayn "+q.customer.toLowerCase()+"lar bitta ketma-ketlikda.";if(el("medicalSetupBtn"))el("medicalSetupBtn").textContent=q.providers;}
-  function ensureQueueMenu(direction){var enabled=isQueueDirection(direction),q=queueUiLabels(direction),queue=el("medicalQueueMenu"),providers=el("medicalDoctorsMenu"),anchor=el("educationGroupsMenu");if(enabled&&anchor&&!providers){anchor.insertAdjacentHTML("beforebegin",'<div class="menu-card" id="medicalDoctorsMenu" data-nav="cab-medical-doctors"><div class="menu-ic">🧑‍💼</div><div class="menu-main"><h4></h4><p></p></div><span class="chev">›</span></div>');providers=el("medicalDoctorsMenu");}if(enabled&&anchor&&!queue){anchor.insertAdjacentHTML("beforebegin",'<div class="menu-card" id="medicalQueueMenu" data-nav="cab-medical-queue"><div class="menu-ic">🏥</div><div class="menu-main"><h4>Navbat boshqaruvi</h4><p>Onlayn va oflayn yagona navbat</p></div><span class="chev">›</span></div>');queue=el("medicalQueueMenu");}if(providers){providers.style.display=enabled?"":"none";var h=providers.querySelector("h4"),p=providers.querySelector("p");if(h)h.textContent=q.providers;if(p)p.textContent=q.provider+" kartasi, xizmat va ish jadvali";}if(queue)queue.style.display=enabled?"":"none";if(enabled)applyQueueLabels(direction);}
+  function ensureQueueMenu(direction){var enabled=isQueueDirection(direction),q=queueUiLabels(direction),queue=el("medicalQueueMenu"),providers=el("medicalDoctorsMenu"),anchor=el("diningPlacesMenu");if(enabled&&anchor&&!providers){anchor.insertAdjacentHTML("afterend",'<div class="menu-card" id="medicalDoctorsMenu" data-nav="cab-medical-doctors"><div class="menu-ic">🧑‍💼</div><div class="menu-main"><h4></h4><p></p></div><span class="chev">›</span></div>');providers=el("medicalDoctorsMenu");}if(enabled&&providers&&!queue){providers.insertAdjacentHTML("afterend",'<div class="menu-card" id="medicalQueueMenu" data-nav="cab-medical-queue"><div class="menu-ic">🏥</div><div class="menu-main"><h4>Navbat boshqaruvi</h4><p>Onlayn va oflayn yagona navbat</p></div><span class="chev">›</span></div>');queue=el("medicalQueueMenu");}if(providers){providers.style.display=enabled?"":"none";var h=providers.querySelector("h4"),p=providers.querySelector("p");if(h)h.textContent=q.providers;if(p)p.textContent=q.provider+" kartasi, xizmat va ish jadvali";}if(queue)queue.style.display=enabled?"":"none";if(enabled)applyQueueLabels(direction);}
+
+  /* ---------- Kabinet: 2 guruh (Onlaynlashtirish / Tizimlashtirish), 20 yo'nalishga moslashadi ---------- */
+  var CAB_DEFAULT_LABELS = {
+    "cab-items":{t:"Mahsulot va xizmatlar", p:"Qo'shish, tahrirlash, o'chirish"},
+    "cab-orders":{t:"Buyurtmalar", p:"Mahsulot buyurtmalari"},
+    "cab-service-orders":{t:"Xizmat buyurtmalari", p:"Xizmat va navbatlar"},
+    "cab-ombor":{t:"Ombor", p:"Qoldiq va kirim-chiqim"},
+    "cab-qarz":{t:"Qarz daftari", p:"Mijozlar qarzlarini yuritish"}
+  };
+  /* Har bir yo'nalish uchun: labels — bo'lim nomi/tavsifi, hide — shu yo'nalishga kerak bo'lmagan bo'limlar */
+  var CAB_PLANS = {
+    "Savdo":{labels:{"cab-items":{t:"Mahsulotlar",p:"Tovar, narx va rasm qo'shish"},"cab-orders":{p:"Onlayn mahsulot buyurtmalari"},"cab-ombor":{p:"Tovar qoldig'i va kirim-chiqim"}}},
+    "Transport va logistika":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va tariflar",p:"Yo'nalish, tarif va narxlar"},"cab-service-orders":{p:"Zakaz va yo'l buyurtmalari"},"cab-qarz":{p:"Mijoz va hamkor qarzlari"}}},
+    "Xizmat ko'rsatish":{labels:{"cab-items":{t:"Xizmatlarim",p:"Xizmat turlari va narxlar"},"cab-service-orders":{p:"Chaqiruv va navbatlar"},"cab-ombor":{p:"Ehtiyot qism va materiallar"}}},
+    "Maishiy xizmatlar":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Salon xizmatlari ro'yxati"},"cab-service-orders":{p:"Yozilish va navbatlar"},"cab-ombor":{p:"Kosmetika va materiallar qoldig'i"}}},
+    "Umumiy ovqatlanish":{labels:{"cab-items":{t:"Menyu va xizmatlarimiz",p:"Taomlar, narx va rasm"},"cab-orders":{p:"Onlayn zakazlar"},"cab-ombor":{p:"Masalliqlar qoldig'i va kirim-chiqim"}}},
+    "Qurilish":{labels:{"cab-items":{t:"Xizmatlar va ishlar",p:"Ish turlari va taxminiy narxlar"},"cab-service-orders":{p:"Obyekt va chaqiruvlar"},"cab-ombor":{p:"Qurilish materiallari qoldig'i"}}},
+    "Tibbiy xizmatlar":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Qabul, tahlil va muolajalar"},"cab-service-orders":{p:"Qabulga yozilishlar"},"cab-ombor":{p:"Dori va materiallar qoldig'i"}}},
+    "Ta'lim faoliyati":{hide:["cab-orders","cab-service-orders","cab-qarz","cab-ombor","cab-stats","cab-report"],labels:{"cab-items":{t:"Kurslar va xizmatlar",p:"Kurslar, narx va davomiylik"}}},
+    "Ko'chmas mulk":{hide:["cab-ombor"],labels:{"cab-items":{t:"Obyektlar bazasi",p:"Sotuv va ijara obyektlari"},"cab-service-orders":{p:"Ko'rik va murojaatlar"}}},
+    "Qishloq xo'jaligi":{labels:{"cab-items":{t:"Mahsulotlarim",p:"Hosil, narx va o'lchov birligi"},"cab-ombor":{p:"Hosil va em-xashak qoldig'i"}}},
+    "Axborot texnologiyalari":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va paketlar",p:"Loyiha, xizmat va narxlar"},"cab-service-orders":{p:"Loyiha buyurtmalari"}}},
+    "Konsalting va professional":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Maslahat va hujjat xizmatlari"},"cab-service-orders":{p:"Qabul va murojaatlar"}}},
+    "Madaniyat, sport, ko'ngilochar":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Mashg'ulot, ijara va tadbirlar"},"cab-service-orders":{p:"Bron va yozilishlar"}}},
+    "Turizm va mehmonxona":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xonalar va turpaketlar",p:"Xona, tur va narxlar"},"cab-service-orders":{p:"Bron buyurtmalari"}}},
+    "Ishlab chiqarish":{labels:{"cab-items":{t:"Mahsulotlar katalogi",p:"Tayyor mahsulot va narxlar"},"cab-orders":{p:"Ulgurji buyurtmalar"},"cab-ombor":{p:"Xomashyo va tayyor mahsulot"}}},
+    "Hunarmandchilik":{labels:{"cab-items":{t:"Buyumlarim",p:"Qo'l mehnati buyumlari va narxlar"},"cab-orders":{p:"Buyurtma va zakazlar"},"cab-ombor":{p:"Material va tayyor buyumlar"}}},
+    "Reklama va marketing":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va paketlar",p:"SMM, target va kontent narxlari"},"cab-service-orders":{p:"Loyiha buyurtmalari"}}},
+    "Poligrafiya va nashriyot":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Chop etish turlari va narxlar"},"cab-orders":{p:"Chop buyurtmalari"},"cab-ombor":{p:"Qog'oz va material qoldig'i"}}},
+    "Moliyaviy faoliyat":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va tariflar",p:"Sug'urta, qarz va boshqa tariflar"},"cab-service-orders":{p:"Murojaat va arizalar"}}},
+    "Import-eksport":{labels:{"cab-items":{t:"Tovarlar va xizmatlar",p:"Tovar pozitsiyalari va xizmatlar"},"cab-orders":{p:"Partiya buyurtmalari"},"cab-ombor":{p:"Yuk va tovar qoldig'i"}}}
+  };
+  var CAB_EDU_MENU_IDS=["educationGroupsMenu","educationStudentsMenu","educationScheduleMenu","educationAttendanceMenu","educationPaymentsMenu","educationPaymentControlMenu","educationTeachersMenu","educationPayrollMenu","educationStatisticsMenu","educationEnrollmentsMenu"];
+  function cabMenuCard(nav){return document.querySelector('#cabGroupOnline .menu-card[data-nav="'+nav+'"], #cabGroupTizim .menu-card[data-nav="'+nav+'"]');}
+  function setCabCardLabel(nav, lab){
+    var card=cabMenuCard(nav); if(!card||!lab) return;
+    var h=card.querySelector("h4"), p=card.querySelector("p");
+    if(lab.t){ if(h)h.textContent=lab.t; titles[nav]=lab.t; }
+    if(lab.p && p) p.textContent=lab.p;
+  }
+  function applyCabinetLayout(direction){
+    var plan=CAB_PLANS[direction]||{}, edu=direction==="Ta'lim faoliyati", dining=direction==="Umumiy ovqatlanish";
+    /* 1) standart holatga qaytarish (yo'nalish o'zgarganda eski sozlash qolib ketmasin) */
+    Object.keys(CAB_DEFAULT_LABELS).forEach(function(nav){ setCabCardLabel(nav, CAB_DEFAULT_LABELS[nav]); });
+    ["cab-orders","cab-service-orders","cab-qarz","cab-ombor","cab-kassa","cab-xarajat","cab-stats","cab-report"].forEach(function(nav){var c=cabMenuCard(nav); if(c)c.style.display="";});
+    window.__cabOrderHintDefault=CAB_DEFAULT_LABELS["cab-orders"].p;
+    window.__cabServiceOrderHintDefault=CAB_DEFAULT_LABELS["cab-service-orders"].p;
+    /* 2) yo'nalishga xos maxsus bo'limlar */
+    if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = dining?"":"none";
+    CAB_EDU_MENU_IDS.forEach(function(id){var n=el(id); if(n)n.style.display=edu?"":"none";});
+    ensureQueueMenu(direction);
+    /* 3) reja bo'yicha nom va tavsiflar */
+    var labels=plan.labels||{};
+    Object.keys(labels).forEach(function(nav){ setCabCardLabel(nav, labels[nav]); });
+    if(labels["cab-orders"]&&labels["cab-orders"].p) window.__cabOrderHintDefault=labels["cab-orders"].p;
+    if(labels["cab-service-orders"]&&labels["cab-service-orders"].p) window.__cabServiceOrderHintDefault=labels["cab-service-orders"].p;
+    /* 4) reja bo'yicha yashirish */
+    (plan.hide||[]).forEach(function(nav){var c=cabMenuCard(nav); if(c)c.style.display="none";});
+    /* 5) guruhda birorta ko'rinadigan kartochka qolmasa — sarlavhani ham yashiramiz */
+    ["cabGroupOnline","cabGroupTizim"].forEach(function(gid){
+      var g=el(gid); if(!g) return;
+      var priv=document.body.classList.contains("is-privileged");
+      var any=Array.prototype.some.call(g.querySelectorAll(".menu-card"),function(c){
+        if(c.style.display==="none") return false;
+        if(c.hasAttribute("data-privileged-only") && !priv) return false;
+        return true;
+      });
+      g.style.display=any?"":"none";
+    });
+  }
   function loadCabinetCounts(){
     refreshOrderBadges();
     loadBusinessReviews(true);
@@ -10031,23 +10114,8 @@
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
       window.__businessDirection=b.yon||"";
-      ensureQueueMenu(b.yon);
       window.__businessDirectionLoaded=true;
-      applyEducationMenuVisibility(b.yon==="Ta'lim faoliyati");
-      var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":(b.yon==="Ta'lim faoliyati"?"Kurslar va xizmatlar":"Mahsulot va xizmatlar");
-      if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
-      titles["cab-items"]=diningMenuName;
-      if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = b.yon==="Umumiy ovqatlanish" ? "" : "none";
-      if(el("educationGroupsMenu")) el("educationGroupsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationStudentsMenu")) el("educationStudentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationScheduleMenu")) el("educationScheduleMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationAttendanceMenu")) el("educationAttendanceMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationPaymentsMenu")) el("educationPaymentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationPaymentControlMenu")) el("educationPaymentControlMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationTeachersMenu")) el("educationTeachersMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationEnrollmentsMenu")) el("educationEnrollmentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationPayrollMenu")) el("educationPayrollMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
-      if(el("educationStatisticsMenu")) el("educationStatisticsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      applyCabinetLayout(b.yon);
       if(b.yon==="Ta'lim faoliyati")api("GET","/api/education/enrollments").then(function(rows){var n=(rows||[]).filter(function(x){return x.status==="new";}).length,bg=el("eduEnrollmentBadge");if(bg){bg.textContent=n;bg.hidden=!n;}}).catch(function(){});
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
