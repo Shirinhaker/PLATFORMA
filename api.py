@@ -4638,7 +4638,7 @@ def _medical_code(name):
     return letters or 'NAV'
 
 def _medical_doctor_payload(body):
-    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
+    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','mode':'slot' if body.get('mode')=='slot' else 'live','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
 
 @router.get("/medical/doctors")
 async def medical_doctors(x_telegram_init_data:str=Header(default="")):
@@ -4657,13 +4657,13 @@ def _medical_doctor_save_links(conn,biz_id,staff_id,item_ids,minutes):
 async def medical_doctor_add(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini biriktirish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
     if not staff:conn.close();raise HTTPException(400,"Faol xodimni tanlang.")
-    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
+    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,mode,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],p['mode'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
 
 @router.put("/medical/doctors/{doctor_id}")
 async def medical_doctor_update(doctor_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
     if not old:conn.close();raise HTTPException(404,"Xizmat ko'rsatuvchi topilmadi.")
-    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
+    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,mode=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],p['mode'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
 
 @router.get("/medical/setup")
 async def medical_setup(x_telegram_init_data: str = Header(default="")):
@@ -4688,13 +4688,30 @@ async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',
     conn=db();_require_queue_business(conn,business_id);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
     item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,business_id)).fetchone()
     if not item:conn.close();raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
+    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COALESCE(d.mode,'live') AS mode,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
 
-def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note='',enforce_schedule=False):
+def _slot_minutes(t):
+    try:
+        h,m=str(t).split(':');return int(h)*60+int(m)
+    except Exception:
+        return None
+
+def _gen_slots(work_start,work_end,step):
+    a=_slot_minutes(work_start);b=_slot_minutes(work_end);step=max(5,int(step or 20))
+    if a is None or b is None or a>=b:return []
+    out=[];t=a
+    while t+step<=b:
+        out.append('%02d:%02d'%(t//60,t%60));t+=step
+    return out
+
+def _now_minutes_uz():
+    g=time.gmtime(time.time()+5*3600);return g.tm_hour*60+g.tm_min
+
+def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note='',enforce_schedule=False,slot_time=''):
     _require_queue_business(conn,biz_id)
     item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,biz_id)).fetchone()
     if not item:raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    doctor=conn.execute("""SELECT d.work_days FROM medical_doctor_services m
+    doctor=conn.execute("""SELECT d.work_days,d.work_start,d.work_end,d.avg_minutes,COALESCE(d.mode,'live') AS mode FROM medical_doctor_services m
                          JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
                          JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
                          WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(biz_id,item_id,staff_id)).fetchone()
@@ -4708,15 +4725,29 @@ def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_
             raise HTTPException(400,"Sana noto'g'ri.")
         work_days=[x.strip() for x in str(doctor['work_days'] or '').split(',') if x.strip()]
         if work_days and wd not in work_days:raise HTTPException(400,"Bu kunda xizmat ko'rsatuvchi ishlamaydi.")
+    now=int(time.time());prefix=_medical_code(item['name']);mode=doctor['mode'];slot_time=str(slot_time or '').strip()
+    if mode=='slot':
+        if not re.match(r'^\d{2}:\d{2}$',slot_time):raise HTTPException(400,"Qabul vaqtini tanlang.")
+        if slot_time not in _gen_slots(doctor['work_start'],doctor['work_end'],doctor['avg_minutes']):raise HTTPException(400,"Bu vaqt qabul jadvalida yo'q.")
+        mins=_slot_minutes(slot_time)
+        if date==today and mins<=_now_minutes_uz():raise HTTPException(400,"Bu vaqt allaqachon o'tib ketgan.")
+        if user_id:
+            dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND slot_time=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id,slot_time)).fetchone()
+            if dup:raise HTTPException(400,"Bu vaqtga allaqachon yozilgansiz.")
+        code=prefix+'-'+slot_time.replace(':','')
+        try:
+            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,slot_time,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,mins,code,source,note[:200],slot_time,now,now))
+            return cur.lastrowid,code,mins
+        except sqlite3.IntegrityError:
+            raise HTTPException(409,"Bu vaqt band qilindi. Boshqa vaqt tanlang.")
     if user_id:
         dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id)).fetchone()
         if dup:raise HTTPException(400,"Bu xizmatga ushbu kunga allaqachon navbatingiz bor.")
-    now=int(time.time());prefix=_medical_code(item['name'])
     for _attempt in range(6):
-        no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0])
+        no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND slot_time=''",(biz_id,item_id,staff_id,date)).fetchone()[0])
         code=prefix+'-'+str(no).zfill(3)
         try:
-            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now))
+            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,slot_time,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,'',?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now))
             return cur.lastrowid,code,no
         except sqlite3.IntegrityError:
             continue
@@ -4730,14 +4761,39 @@ def _medical_notify_user(conn,row,event,title,body,action_type):
                       'medical_queue:%s:%s' % (row['id'],event),title,body,
                       action_type=action_type,medical_queue_id=int(row['id']))
 
+@router.get("/medical/queue/slots")
+async def medical_queue_slots(business_id:int,item_id:int,staff_id:int,queue_date:str='',x_telegram_init_data:str=Header(default="")):
+    conn=db();_require_queue_business(conn,business_id);today=time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600));date=str(queue_date or today)[:10]
+    doc=conn.execute("""SELECT d.work_start,d.work_end,d.avg_minutes,d.work_days,COALESCE(d.mode,'live') AS mode FROM medical_doctor_services m
+                        JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
+                        JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
+                        WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(business_id,item_id,staff_id)).fetchone()
+    if not doc:conn.close();raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
+    if doc['mode']!='slot':conn.close();return {'mode':'live','slots':[]}
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$',date):conn.close();raise HTTPException(400,"Sana noto'g'ri.")
+    try:
+        wd=time.strftime('%w',time.strptime(date,'%Y-%m-%d'));wd='7' if wd=='0' else wd
+    except Exception:
+        conn.close();raise HTTPException(400,"Sana noto'g'ri.")
+    work_days=[x.strip() for x in str(doc['work_days'] or '').split(',') if x.strip()]
+    if work_days and wd not in work_days:conn.close();return {'mode':'slot','slots':[]}
+    taken=set(r[0] for r in conn.execute("SELECT slot_time FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND slot_time<>'' AND status IN ('waiting','called','in_service','done')",(business_id,item_id,staff_id,date)).fetchall())
+    nowmin=_now_minutes_uz();out=[]
+    for s in _gen_slots(doc['work_start'],doc['work_end'],doc['avg_minutes']):
+        if s in taken:continue
+        if date==today and _slot_minutes(s)<=nowmin:continue
+        out.append(s)
+    conn.close();return {'mode':'slot','slots':out}
+
 @router.post("/medical/queue/public")
 async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
     if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
-    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''),enforce_schedule=True)
+    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''),enforce_schedule=True,slot_time=str(body.get('slot_time') or ''))
     row=conn.execute("SELECT * FROM medical_queue WHERE id=?",(qid,)).fetchone()
-    _medical_notify_user(conn,row,'booked','Navbat olindi',code+' navbat '+date+' sanasiga saqlandi.','medical_queue_booked')
-    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+    booked_msg=code+' navbat '+date+' sanasiga'+((' soat '+str(row['slot_time'])+' ga') if row['slot_time'] else '')+' saqlandi.'
+    _medical_notify_user(conn,row,'booked','Navbat olindi',booked_msg,'medical_queue_booked')
+    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no,'slot_time':(row['slot_time'] or '')}
 
 @router.get("/medical/queue/mine")
 async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
@@ -4776,7 +4832,7 @@ async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(d
 
 @router.post("/medical/queue/offline")
 async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''),slot_time=str(body.get('slot_time') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
 
 @router.post("/medical/queue/{queue_id}/status")
 async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
