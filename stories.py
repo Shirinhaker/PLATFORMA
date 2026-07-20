@@ -239,12 +239,47 @@ def can_manage_story(conn, story_id, owner_type, owner_id):
     return bool(row)
 
 
-def soft_delete_story(conn, story_id, now=None):
+def managed_story(conn, story_id, owner_type, owner_id):
+    return conn.execute(
+        "SELECT * FROM stories WHERE id=? AND owner_type=? AND owner_id=? "
+        "AND status='active' AND deleted_at=0",
+        (story_id, owner_type, owner_id),
+    ).fetchone()
+
+
+def list_managed_stories(
+    conn,
+    owner_type,
+    owner_id,
+    state="all",
+    now=None,
+):
     now = int(time.time() if now is None else now)
-    conn.execute(
-        "UPDATE stories SET status='deleted',deleted_at=? WHERE id=?",
-        (now, story_id),
-    )
+    state = (state or "all").strip().lower()
+    if state not in ("active", "archived", "all"):
+        raise StoryValidationError("Holat active, archived yoki all bo‘lishi kerak.")
+    lifecycle_filter = ""
+    values = [now, owner_type, owner_id]
+    if state == "active":
+        lifecycle_filter = " AND s.expires_at>?"
+        values.append(now)
+    elif state == "archived":
+        lifecycle_filter = " AND s.expires_at<=?"
+        values.append(now)
+    return conn.execute(
+        "SELECT s.*,COUNT(sv.viewer_user_id) AS view_count,"
+        "CASE WHEN s.expires_at>? THEN 'active' ELSE 'archived' END "
+        "AS lifecycle_state FROM stories s "
+        "LEFT JOIN story_views sv ON sv.story_id=s.id "
+        "WHERE s.owner_type=? AND s.owner_id=? AND s.status='active' "
+        "AND s.deleted_at=0" + lifecycle_filter +
+        " GROUP BY s.id ORDER BY s.created_at DESC,s.id DESC",
+        values,
+    ).fetchall()
+
+
+def hard_delete_story(conn, story_id):
+    conn.execute("DELETE FROM stories WHERE id=?", (story_id,))
     conn.commit()
 
 
