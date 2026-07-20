@@ -1608,6 +1608,14 @@ def _migrate(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,user_id INTEGER,patient_name TEXT NOT NULL,phone TEXT DEFAULT '',queue_date TEXT NOT NULL,queue_no INTEGER NOT NULL,queue_code TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'online',status TEXT NOT NULL DEFAULT 'waiting',note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,item_id,staff_id,queue_date,queue_no))")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_day ON medical_queue(business_id,queue_date,staff_id,item_id,queue_no)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_service_day ON medical_queue(business_id,item_id,queue_date,status)")
+    # Vaqtli qabul (slot) rejimi: xodimда rejim, navbatда qabul vaqti. Default 'live' — eski xatti-harakat o'zgarmaydi.
+    _mdcols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_doctors)").fetchall()]
+    if "mode" not in _mdcols:
+        conn.execute("ALTER TABLE medical_doctors ADD COLUMN mode TEXT NOT NULL DEFAULT 'live'")
+    _mqcols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_queue)").fetchall()]
+    if "slot_time" not in _mqcols:
+        conn.execute("ALTER TABLE medical_queue ADD COLUMN slot_time TEXT NOT NULL DEFAULT ''")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_medical_queue_slot ON medical_queue(business_id,item_id,staff_id,queue_date,slot_time) WHERE slot_time<>''")
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue_history(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,queue_id INTEGER NOT NULL,action TEXT NOT NULL,old_value TEXT DEFAULT '',new_value TEXT DEFAULT '',actor_user_id INTEGER,actor_staff_id INTEGER,note TEXT DEFAULT '',created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_history ON medical_queue_history(business_id,queue_id,id)")
     # Avvaldan shifokor biriktirilgan tibbiy xizmatlarning ishlashi uzilmasin.
