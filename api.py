@@ -24,14 +24,37 @@ import secrets
 import hashlib
 import threading
 
-from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 
 import sqlite3
 
 from database import db
 from education_statistics import education_statistics_data
+from stories import (
+    MAX_VIDEO_BYTES,
+    StoryValidationError,
+    activate_story,
+    active_story,
+    can_manage_story,
+    create_story_record,
+    delete_story_files,
+    fail_story,
+    list_owner_stories,
+    list_story_feed,
+    list_story_viewers,
+    probe_video_seconds,
+    record_story_view,
+    report_story,
+    sniff_media_type,
+    soft_delete_story,
+    story_storage_dir,
+    transcode_video,
+    validate_story_upload,
+)
 
 router = APIRouter(prefix="/api")
+public_router = APIRouter()
 
 _SEARCH_RATE_LOCK = threading.Lock()
 _SEARCH_RATE = {}
@@ -256,6 +279,381 @@ def listing_to_dict(conn, r, with_media=True):
     owner = conn.execute("SELECT name FROM users WHERE id=?", (r["user_id"],)).fetchone()
     d["owner_name"] = owner["name"] if owner else ""
     return d
+
+
+# ====================================================================
+# ISTORIYALAR — barcha profil turlari uchun 24 soatlik rasm/video
+# ====================================================================
+def _story_actor(conn, init_data, actor_type="user"):
+    at = (actor_type or "user").strip().lower()
+    if at not in ("user", "business"):
+        raise HTTPException(400, "Kabinet turi noto‘g‘ri.")
+    if at == "business":
+        user, biz = require_business(conn, init_data)
+        need_perm(conn, init_data, "ads")
+        return {
+            "owner_type": "business",
+            "owner_id": int(biz["id"]),
+            "created_by_user_id": int(user["id"]),
+            "user": user,
+            "business": biz,
+        }
+    if _staff_session(conn, init_data):
+        raise HTTPException(403, "Xodim shaxsiy profil nomidan istoriya joylay olmaydi.")
+    user = require_user(conn, init_data)
+    return {
+        "owner_type": "user",
+        "owner_id": int(user["id"]),
+        "created_by_user_id": int(user["id"]),
+        "user": user,
+        "business": None,
+    }
+
+
+def _story_payload(row, viewed=False):
+    sid = int(row["id"])
+    return {
+        "id": sid,
+        "owner_type": row["owner_type"],
+        "owner_id": int(row["owner_id"]),
+        "media_type": row["media_type"],
+        "media_url": "/story-media/" + str(sid),
+        "thumbnail_url": (
+            "/story-thumbnail/" + str(sid)
+            if row["thumbnail_filename"]
+            else "/story-media/" + str(sid)
+        ),
+        "caption": row["caption"] or "",
+        "duration_seconds": float(row["duration_seconds"] or 0),
+        "created_at": int(row["created_at"]),
+        "expires_at": int(row["expires_at"]),
+        "viewed": bool(viewed),
+    }
+
+
+async def _stream_story_upload(upload, folder):
+    """UploadFile ni 100 MB qattiq chegarada vaqtinchalik faylga yozadi."""
+    token = secrets.token_hex(18)
+    temp_path = os.path.join(folder, ".upload_" + token)
+    total = 0
+    header = bytearray()
+    try:
+        with open(temp_path, "wb") as target:
+            while True:
+                chunk = await upload.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_VIDEO_BYTES:
+                    raise StoryValidationError("Video hajmi 100 MB dan oshmasin.")
+                if len(header) < 32:
+                    header.extend(chunk[: 32 - len(header)])
+                target.write(chunk)
+            target.flush()
+            os.fsync(target.fileno())
+    except Exception:
+        try:
+            if os.path.isfile(temp_path):
+                os.remove(temp_path)
+        except OSError:
+            pass
+        raise
+    if total <= 0:
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
+        raise StoryValidationError("Istoriya fayli topilmadi.")
+    return temp_path, total, bytes(header)
+
+
+def _story_actual_mime(claimed, header):
+    actual = sniff_media_type(header)
+    claimed = (claimed or "").split(";", 1)[0].strip().lower()
+    if not actual:
+        raise StoryValidationError("Fayl media formati aniqlanmadi.")
+    if claimed.startswith("image/") and not actual.startswith("image/"):
+        raise StoryValidationError("Tanlangan fayl rasm formatiga mos emas.")
+    if claimed.startswith("video/") and not actual.startswith("video/"):
+        raise StoryValidationError("Tanlangan fayl video formatiga mos emas.")
+    return actual
+
+
+@router.get("/stories/feed")
+async def stories_feed(
+    actor_type: str = "user",
+    lat: float = None,
+    lng: float = None,
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        try:
+            actor = _story_actor(conn, x_telegram_init_data, actor_type)
+            viewer_id = int(actor["created_by_user_id"])
+            owner_type = actor["owner_type"]
+            owner_id = int(actor["owner_id"])
+            source = actor["business"] or actor["user"]
+            if lat is None:
+                lat = _row_val(source, "lat", None)
+            if lng is None:
+                lng = _row_val(source, "lng", None)
+        except HTTPException as exc:
+            if exc.status_code not in (401, 403):
+                raise
+            viewer_id = 0
+            owner_type = "user"
+            owner_id = 0
+        return list_story_feed(
+            conn,
+            viewer_user_id=viewer_id,
+            actor_type=owner_type,
+            actor_id=owner_id,
+            lat=lat,
+            lng=lng,
+        )
+    finally:
+        conn.close()
+
+
+@router.get("/stories/owner/{owner_type}/{owner_id}")
+async def stories_for_owner(
+    owner_type: str,
+    owner_id: int,
+    x_telegram_init_data: str = Header(default=""),
+):
+    if owner_type not in ("user", "business"):
+        raise HTTPException(400, "Profil turi noto‘g‘ri.")
+    conn = db()
+    try:
+        user = optional_user(conn, x_telegram_init_data)
+        viewer_id = int(user["id"]) if user else 0
+        rows = list_owner_stories(
+            conn, owner_type, owner_id, viewer_user_id=viewer_id
+        )
+        return [
+            _story_payload(row, viewed=bool(_row_val(row, "viewed", 0)))
+            for row in rows
+        ]
+    finally:
+        conn.close()
+
+
+@router.post("/stories")
+async def story_create(
+    file: UploadFile = File(...),
+    caption: str = Form(default=""),
+    actor_type: str = Form(default="user"),
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    story_id = None
+    temp_path = ""
+    final_media = ""
+    final_thumb = ""
+    from main import UPLOAD_DIR
+
+    folder = story_storage_dir(UPLOAD_DIR)
+    try:
+        actor = _story_actor(conn, x_telegram_init_data, actor_type)
+        temp_path, size_bytes, header = await _stream_story_upload(file, folder)
+        actual_mime = _story_actual_mime(file.content_type, header)
+        token = secrets.token_hex(20)
+        if actual_mime.startswith("image/"):
+            extension = {
+                "image/jpeg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+            }[actual_mime]
+            media = validate_story_upload(
+                actual_mime, size_bytes, 0, caption
+            )
+            final_media = token + extension
+            story_id = create_story_record(
+                conn, actor, media, final_media, ""
+            )
+            os.replace(temp_path, os.path.join(folder, final_media))
+            temp_path = ""
+            activate_story(conn, story_id)
+        else:
+            seconds = probe_video_seconds(temp_path)
+            media = validate_story_upload(
+                actual_mime, size_bytes, seconds, caption
+            )
+            media["mime_type"] = "video/mp4"
+            final_media = token + ".mp4"
+            final_thumb = token + ".jpg"
+            story_id = create_story_record(
+                conn, actor, media, final_media, final_thumb
+            )
+            transcode_video(
+                temp_path,
+                os.path.join(folder, final_media),
+                os.path.join(folder, final_thumb),
+            )
+            os.remove(temp_path)
+            temp_path = ""
+            activate_story(conn, story_id)
+        row = active_story(conn, story_id)
+        return {"ok": True, "story": _story_payload(row)}
+    except StoryValidationError as exc:
+        if story_id:
+            fail_story(conn, story_id)
+        delete_story_files(folder, final_media, final_thumb)
+        raise HTTPException(400, str(exc))
+    except HTTPException:
+        if story_id:
+            fail_story(conn, story_id)
+        delete_story_files(folder, final_media, final_thumb)
+        raise
+    except Exception:
+        if story_id:
+            fail_story(conn, story_id)
+        delete_story_files(folder, final_media, final_thumb)
+        raise HTTPException(500, "Istoriya joylanmadi. Qayta urinib ko‘ring.")
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+        if temp_path:
+            try:
+                if os.path.isfile(temp_path):
+                    os.remove(temp_path)
+            except OSError:
+                pass
+        conn.close()
+
+
+@router.post("/stories/{story_id}/view")
+async def story_view(
+    story_id: int,
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        user = require_user(conn, x_telegram_init_data)
+        row = active_story(conn, story_id)
+        if not row:
+            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
+        if int(row["created_by_user_id"]) == int(user["id"]):
+            return {"ok": True, "counted": False}
+        record_story_view(conn, story_id, int(user["id"]))
+        return {"ok": True, "counted": True}
+    except StoryValidationError as exc:
+        raise HTTPException(404, str(exc))
+    finally:
+        conn.close()
+
+
+@router.get("/stories/{story_id}/viewers")
+async def story_viewers(
+    story_id: int,
+    actor_type: str = "user",
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        actor = _story_actor(conn, x_telegram_init_data, actor_type)
+        if not can_manage_story(
+            conn, story_id, actor["owner_type"], actor["owner_id"]
+        ):
+            raise HTTPException(403, "Ko‘rganlar ro‘yxati faqat istoriya egasiga ochiq.")
+        return list_story_viewers(conn, story_id)
+    finally:
+        conn.close()
+
+
+@router.delete("/stories/{story_id}")
+async def story_delete(
+    story_id: int,
+    actor_type: str = "user",
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    from main import UPLOAD_DIR
+
+    folder = story_storage_dir(UPLOAD_DIR)
+    try:
+        actor = _story_actor(conn, x_telegram_init_data, actor_type)
+        if not can_manage_story(
+            conn, story_id, actor["owner_type"], actor["owner_id"]
+        ):
+            raise HTTPException(403, "Faqat o‘zingizning istoriyangizni o‘chira olasiz.")
+        row = conn.execute("SELECT * FROM stories WHERE id=?", (story_id,)).fetchone()
+        soft_delete_story(conn, story_id)
+        if row:
+            delete_story_files(
+                folder, row["media_filename"], row["thumbnail_filename"]
+            )
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@router.post("/stories/{story_id}/reports")
+async def story_report(
+    story_id: int,
+    body: dict,
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        user = require_user(conn, x_telegram_init_data)
+        row = active_story(conn, story_id)
+        if not row:
+            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
+        if int(row["created_by_user_id"]) == int(user["id"]):
+            raise HTTPException(400, "O‘z istoriyangiz ustidan shikoyat yubora olmaysiz.")
+        report_story(
+            conn, story_id, int(user["id"]), (body or {}).get("reason") or ""
+        )
+        return {"ok": True}
+    except StoryValidationError as exc:
+        raise HTTPException(400, str(exc))
+    finally:
+        conn.close()
+
+
+def _story_file_response(story_id, thumbnail=False):
+    conn = db()
+    try:
+        row = active_story(conn, story_id)
+        if not row:
+            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
+        filename = (
+            row["thumbnail_filename"]
+            if thumbnail and row["thumbnail_filename"]
+            else row["media_filename"]
+        )
+        if not filename or os.path.basename(filename) != filename:
+            raise HTTPException(404, "Media topilmadi.")
+        from main import UPLOAD_DIR
+
+        path = os.path.join(story_storage_dir(UPLOAD_DIR), filename)
+        if not os.path.isfile(path):
+            raise HTTPException(404, "Media topilmadi.")
+        if thumbnail and row["thumbnail_filename"]:
+            media_type = "image/jpeg"
+        else:
+            media_type = row["mime_type"]
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={"Cache-Control": "private, max-age=300"},
+        )
+    finally:
+        conn.close()
+
+
+@public_router.get("/story-media/{story_id}")
+async def story_media(story_id: int):
+    return _story_file_response(story_id, thumbnail=False)
+
+
+@public_router.get("/story-thumbnail/{story_id}")
+async def story_thumbnail(story_id: int):
+    return _story_file_response(story_id, thumbnail=True)
 
 
 # ====================================================================
