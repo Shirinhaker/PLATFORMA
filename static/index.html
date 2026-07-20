@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1600 -->
+<title>Platforma</title><!-- BUILD: v1603 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3205,6 +3205,7 @@
     if(el("tbTitle")) el("tbTitle").textContent = b.name || "Do'kon";
     var meta = [b.yon, b.tur].filter(Boolean).join(" · ");
     var items = (b.items||[]);
+    var queueBanner=(!!b.queue_supported && (Number(b.queue_total)>0 || items.some(function(it){return Number(it.queue_enabled)===1;}))) ? '<div class="idesc" data-biz-queue-total style="margin-top:10px;color:var(--primary);font-weight:800">👥 Bugungi jami navbat: '+(Number(b.queue_total)||0)+' ta</div>' : '';
     var itemsHtml = items.length ? (
       '<div class="sec-head"><h2>Mahsulotlar</h2><span class="link">'+items.length+' ta</span></div>'+
       items.map(function(it){
@@ -3232,6 +3233,7 @@
         (b.followers?'<div class="idesc" style="margin-top:2px">'+b.followers+' obunachi</div>':'')+
         (b.descr?'<div class="biz-desc" style="margin-top:8px">'+esc(b.descr)+'</div>':'')+
       '</div>'+
+      queueBanner+
       itemsHtml+
       listHtml+
       (items.length||listings.length ? '' : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha ma\'lumot yo\'q</div>')+
@@ -4754,7 +4756,7 @@
       var medical=q.business_direction==="Tibbiy xizmatlar",provider=queueProviderLabel(q.business_direction);
       return '<div class="panel-card'+(focus?' medical-queue-focus':'')+'" data-medical-queue-card="'+q.id+'" data-medical-queue-id="'+q.id+'">'+
         '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span class="order-no-pill">NAVBAT '+esc(q.queue_code)+'</span><div class="iname" style="margin-top:9px">'+esc(q.service_name||"Xizmat")+'</div><div class="idesc">🏢 '+esc(q.business_name||"Biznes")+'</div><div class="idesc">'+(medical?'🩺':'🧑‍💼')+' '+esc(q.doctor_name||provider)+'</div></div><span class="tx-amt '+(active?'st-ok':'')+'">'+esc(medicalQueueStatusText(q.status))+'</span></div>'+ 
-        '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)"><div class="idesc">📅 Sana: <b>'+esc(q.queue_date||"—")+'</b></div>'+(active?'<div class="idesc">👥 Oldingizda: <b>'+esc(q.ahead_count||0)+' ta navbat</b></div>':'')+(q.note?'<div class="idesc">Izoh: '+esc(q.note)+'</div>':'')+'</div></div>';
+        '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)"><div class="idesc">📅 Sana: <b>'+esc(q.queue_date||"—")+'</b></div>'+(active?'<div class="idesc">👥 Oldingizda: <b>'+esc(q.ahead_count||0)+' ta navbat</b></div>'+(Number(q.wait_minutes)>0?'<div class="idesc">⏳ Taxminiy kutish: <b>~'+Number(q.wait_minutes)+' daqiqa</b></div>':''):'')+(q.note?'<div class="idesc">Izoh: '+esc(q.note)+'</div>':'')+(active?'<button class="mini-btn" style="margin-top:9px" data-medical-cancel-mine="'+q.id+'">Navbatni bekor qilish</button>':'')+'</div></div>';
     }).join(''):'<div class="idesc" style="padding:6px 2px 14px">Hozircha xizmat navbati olinmagan.</div>';
     if(MEDICAL_QUEUE_FOCUS_ID){
       var card=box.querySelector('[data-medical-queue-card="'+MEDICAL_QUEUE_FOCUS_ID+'"]');
@@ -9307,6 +9309,7 @@
     });
   }
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-book]");if(!b)return;var direction=b.dataset.medicalDirection||"",providers=Math.max(0,parseInt(b.dataset.medicalProviderCount||0,10)||0);if(!providers){showMsg(direction==="Tibbiy xizmatlar"?"Shifokor hali biriktirilmagan.":"Xizmat ko'rsatuvchi hali biriktirilmagan.");return;}openMedicalBooking(parseInt(b.dataset.medicalBusiness,10),parseInt(b.dataset.medicalBook,10),b.dataset.medicalService||"Xizmat",direction);});
+  document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-cancel-mine]");if(!b)return;var id=parseInt(b.dataset.medicalCancelMine,10);if(!id)return;askConfirm({text:"Navbatingizni bekor qilasizmi?",okText:"Ha, bekor qilaman",danger:true}).then(function(ok){if(!ok)return;b.disabled=true;api("POST","/api/medical/queue/"+id+"/cancel-mine").then(function(){showMsg("Navbat bekor qilindi.");loadMyOrders("service");}).catch(function(err){b.disabled=false;showMsg(err.message);});});});
 
   function onScreenOpen(screen){
     if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
