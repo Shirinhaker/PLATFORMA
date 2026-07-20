@@ -26,6 +26,8 @@ import threading
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
+import sqlite3
+
 from database import db
 from education_statistics import education_statistics_data
 
@@ -4688,17 +4690,37 @@ async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',
     if not item:conn.close();raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
     rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
 
-def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note=''):
+def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note='',enforce_schedule=False):
     _require_queue_business(conn,biz_id)
     item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,biz_id)).fetchone()
     if not item:raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    link=conn.execute("""SELECT 1 FROM medical_doctor_services m
+    doctor=conn.execute("""SELECT d.work_days FROM medical_doctor_services m
                          JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
                          JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
                          WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(biz_id,item_id,staff_id)).fetchone()
-    if not link:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
-    no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
-    cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
+    if not doctor:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
+    today=time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600))
+    if date<today:raise HTTPException(400,"O'tgan sanaga navbat olib bo'lmaydi.")
+    if enforce_schedule:
+        try:
+            wd=time.strftime('%w',time.strptime(date,'%Y-%m-%d'));wd='7' if wd=='0' else wd
+        except Exception:
+            raise HTTPException(400,"Sana noto'g'ri.")
+        work_days=[x.strip() for x in str(doctor['work_days'] or '').split(',') if x.strip()]
+        if work_days and wd not in work_days:raise HTTPException(400,"Bu kunda xizmat ko'rsatuvchi ishlamaydi.")
+    if user_id:
+        dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id)).fetchone()
+        if dup:raise HTTPException(400,"Bu xizmatga ushbu kunga allaqachon navbatingiz bor.")
+    now=int(time.time());prefix=_medical_code(item['name'])
+    for _attempt in range(6):
+        no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0])
+        code=prefix+'-'+str(no).zfill(3)
+        try:
+            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now))
+            return cur.lastrowid,code,no
+        except sqlite3.IntegrityError:
+            continue
+    raise HTTPException(409,"Navbat raqamini berishda vaqtincha xatolik. Qayta urinib ko'ring.")
 
 def _medical_notify_user(conn,row,event,title,body,action_type):
     """Onlayn navbat hodisasini aynan oddiy foydalanuvchi profiliga yuboradi."""
@@ -4712,7 +4734,7 @@ def _medical_notify_user(conn,row,event,title,body,action_type):
 async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
     if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
-    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''))
+    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''),enforce_schedule=True)
     row=conn.execute("SELECT * FROM medical_queue WHERE id=?",(qid,)).fetchone()
     _medical_notify_user(conn,row,'booked','Navbat olindi',code+' navbat '+date+' sanasiga saqlandi.','medical_queue_booked')
     conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
@@ -4728,10 +4750,25 @@ async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
            AND a.queue_no<q.queue_no AND a.status IN ('waiting','called','in_service'))
         ELSE 0 END AS ahead_count
         ,b.yon AS business_direction
+        ,(SELECT d.avg_minutes FROM medical_doctors d WHERE d.business_id=q.business_id AND d.staff_id=q.staff_id) AS avg_minutes
         FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id
         JOIN businesses b ON b.id=q.business_id WHERE q.user_id=?
         ORDER BY q.queue_date DESC,q.created_at DESC,q.id DESC LIMIT 200""",(user['id'],)).fetchall()
-    out=[dict(r) for r in rows];conn.close();return out
+    out=[dict(r) for r in rows]
+    for r in out:
+        am=int(r.get('avg_minutes') or 0)
+        r['wait_minutes']=(int(r.get('ahead_count') or 0)*am) if (am>0 and r.get('status') in ('waiting','called','in_service')) else 0
+    conn.close();return out
+
+@router.post("/medical/queue/{queue_id}/cancel-mine")
+async def medical_queue_cancel_mine(queue_id:int,x_telegram_init_data:str=Header(default="")):
+    """Oddiy foydalanuvchi faqat o'zining kutilayotgan/chaqirilgan navbatini bekor qiladi."""
+    conn=db();user=require_user(conn,x_telegram_init_data)
+    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND user_id=?",(queue_id,user['id'])).fetchone()
+    if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
+    if row['status'] not in ('waiting','called'): conn.close();raise HTTPException(400,"Bu navbatni endi bekor qilib bo'lmaydi.")
+    now=int(time.time());conn.execute("UPDATE medical_queue SET status='cancelled',updated_at=? WHERE id=?",(now,queue_id));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(row['business_id'],queue_id,'status',row['status'],'cancelled',user['id'],now))
+    conn.commit();conn.close();return {'ok':True}
 
 @router.get("/medical/queue")
 async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
@@ -4747,6 +4784,8 @@ async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data
     if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
     row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone()
     if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
+    if row['status'] in ('done','cancelled','no_show') and status in ('waiting','called','in_service'):
+        conn.close();raise HTTPException(400,"Yakunlangan navbatni qayta faollashtirib bo'lmaydi.")
     now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
     if status=='called':
         labels=_queue_labels(biz['yon']);_medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat '+labels['called_by']+' tomonidan chaqirildi.','medical_queue_called')
@@ -6860,7 +6899,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
-        return "0", []
+        return "NULL", []   # ORDER BY da yakka '0' ustun raqami deb o'qiladi — NULL xavfsiz
     secondary_columns = secondary_columns or []
     pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
     sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
@@ -7094,9 +7133,30 @@ def check_search_health():
 
     v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
     bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
+    3) Qidiruv SQL'i ishlatadigan ustunlar bazada bormi. api.py yangilanib database.py
+       eski qolsa (qisman deploy), migratsiya ustun qo'shmaydi — FTS ham, LIKE zaxira
+       ham "no such column" bilan yiqiladi va HAR BIR qidiruv 500 qaytaradi (v1600 da
+       items.stock_type bilan aynan shu bo'lgan). Shu holatni startupda aniq aytamiz.
+
     Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
     """
     problems = []
+    required_cols = (("items", "stock_type"),)
+    conn0 = db()
+    try:
+        for tbl, col in required_cols:
+            try:
+                cols = [r[1] for r in conn0.execute("PRAGMA table_info(" + tbl + ")")]
+            except Exception as exc:
+                problems.append(tbl + " jadvali o'qilmadi: " + type(exc).__name__)
+                continue
+            if cols and col not in cols:
+                problems.append(
+                    tbl + "." + col + " ustuni YO'Q — qidiruv 500 qaytaradi. Sabab: "
+                    "database.py eski (qisman deploy). To'liq v1600 fayllarini yuklab, "
+                    "serverni qayta ishga tushiring (migratsiya ustunni o'zi qo'shadi).")
+    finally:
+        conn0.close()
     missing = _check_service_directions()
     if missing:
         problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
@@ -7188,10 +7248,33 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
+def _search_error_guard(fn, *args, **kwargs):
+    """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
+    qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
+    shunchaki 'Xatolik (500)' beradi va sababni hech kim ko'rmaydi."""
+    try:
+        return fn(*args, **kwargs)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        print("QIDIRUV XATOSI:", type(exc).__name__, "-", exc)
+        traceback.print_exc()
+        raise HTTPException(500, "Qidiruv xatosi: " + type(exc).__name__ + ": " + str(exc)[:200])
+
+
 @router.get("/search")
 def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
+    return _search_error_guard(
+        _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
+        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
+
+
+def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+                 page: int = 1, page_size: int = 20,
+                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -7272,14 +7355,19 @@ def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: s
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi.
+
+        DIQQAT: koordinata bo'lmaganda '0' QAYTARMANG. ORDER BY ichida yakka '0'
+        (yoki har qanday butun son) SQLite tomonidan USTUN RAQAMI deb o'qiladi
+        ('0-ustun bo'yicha tartibla'), 17 ustunli so'rovda esa 0-ustun yo'q ->
+        '2nd ORDER BY term out of range' xatosi va butun qidiruv 500 qaytaradi.
+        'NULL' ifodasi ustun raqami emas — tartibga hech qanday ta'sir qilmaydi va
+        xavfsiz. (v1536 da xuddi shu maqsadda katta konstanta ishlatilgan.)
+        """
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            # SQLite ORDER BY 0 ni konstanta emas, ustun raqami deb talqin qiladi
-            # va "term out of range" bilan /search ni 500 ga yiqitadi. REAL literal
-            # esa koordinatasiz holatda xavfsiz, barcha qator uchun teng konstanta.
-            return "0.0", "0.0"
+            return "NULL", "NULL"
         lon_scale = 111.0 * math.cos(math.radians(la))
         raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
                "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
@@ -7617,6 +7705,13 @@ def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: s
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                    x_telegram_init_data: str = Header(default="")):
+    return _search_error_guard(
+        _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
+        x_telegram_init_data=x_telegram_init_data)
+
+
+def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
+                 x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
     `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
@@ -7770,9 +7865,12 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
         (business_id,),
     ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
+    queue_total = (sum(int(_row_val(i, "today_queue_count", 0) or 0) for i in items)
+                   if _queue_direction_supported(biz["yon"]) else 0)
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
         "queue_supported": _queue_direction_supported(biz["yon"]),
+        "queue_total": queue_total,
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "logo_file": _row_val(biz, "logo_file", "") or "",
         "logo_x": float(_row_val(biz, "logo_x", 50) or 50), "logo_y": float(_row_val(biz, "logo_y", 50) or 50),
