@@ -4789,6 +4789,9 @@ async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data
     now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
     if status=='called':
         labels=_queue_labels(biz['yon']);_medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat '+labels['called_by']+' tomonidan chaqirildi.','medical_queue_called')
+        nxt=conn.execute("SELECT * FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND status='waiting' AND queue_no>? ORDER BY queue_no ASC LIMIT 1",(biz['id'],row['item_id'],row['staff_id'],row['queue_date'],row['queue_no'])).fetchone()
+        if nxt and nxt['user_id']:
+            _medical_notify_user(conn,nxt,'soon:'+str(row['queue_no']),'Navbatingiz yaqinlashdi','Tayyorlaning — '+str(nxt['queue_code'])+' navbatgacha 1 kishi qoldi.','medical_queue_soon')
     elif status=='cancelled':
         _medical_notify_user(conn,row,'cancelled','Navbat bekor qilindi',str(row['queue_code'])+' navbat muassasa tomonidan bekor qilindi.','medical_queue_cancelled')
     conn.commit();conn.close();return {'ok':True}
