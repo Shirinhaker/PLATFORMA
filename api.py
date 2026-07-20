@@ -40,14 +40,16 @@ from stories import (
     create_story_record,
     delete_story_files,
     fail_story,
+    hard_delete_story,
+    list_managed_stories,
     list_owner_stories,
     list_story_feed,
     list_story_viewers,
+    managed_story,
     probe_video_seconds,
     record_story_view,
     report_story,
     sniff_media_type,
-    soft_delete_story,
     story_storage_dir,
     transcode_video,
     validate_story_upload,
@@ -331,6 +333,27 @@ def _story_payload(row, viewed=False):
     }
 
 
+def _managed_story_payload(row, actor_type):
+    sid = int(row["id"])
+    media_base = (
+        "/api/stories/" + str(sid) + "/owner-media?actor_type=" + actor_type
+    )
+    return {
+        "id": sid,
+        "owner_type": row["owner_type"],
+        "owner_id": int(row["owner_id"]),
+        "media_type": row["media_type"],
+        "media_url": media_base,
+        "thumbnail_url": media_base + "&thumbnail=1",
+        "caption": row["caption"] or "",
+        "duration_seconds": float(row["duration_seconds"] or 0),
+        "created_at": int(row["created_at"]),
+        "expires_at": int(row["expires_at"]),
+        "state": row["lifecycle_state"],
+        "view_count": int(row["view_count"] or 0),
+    }
+
+
 async def _stream_story_upload(upload, folder):
     """UploadFile ni 100 MB qattiq chegarada vaqtinchalik faylga yozadi."""
     token = secrets.token_hex(18)
@@ -412,6 +435,31 @@ async def stories_feed(
             lat=lat,
             lng=lng,
         )
+    finally:
+        conn.close()
+
+
+@router.get("/stories/mine")
+async def stories_mine(
+    actor_type: str = "user",
+    state: str = "all",
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        actor = _story_actor(conn, x_telegram_init_data, actor_type)
+        rows = list_managed_stories(
+            conn,
+            actor["owner_type"],
+            actor["owner_id"],
+            state=state,
+        )
+        return [
+            _managed_story_payload(row, actor["owner_type"])
+            for row in rows
+        ]
+    except StoryValidationError as exc:
+        raise HTTPException(400, str(exc))
     finally:
         conn.close()
 
@@ -576,16 +624,21 @@ async def story_delete(
     folder = story_storage_dir(UPLOAD_DIR)
     try:
         actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        if not can_manage_story(
-            conn, story_id, actor["owner_type"], actor["owner_id"]
-        ):
-            raise HTTPException(403, "Faqat o‘zingizning istoriyangizni o‘chira olasiz.")
-        row = conn.execute("SELECT * FROM stories WHERE id=?", (story_id,)).fetchone()
-        soft_delete_story(conn, story_id)
-        if row:
-            delete_story_files(
-                folder, row["media_filename"], row["thumbnail_filename"]
+        row = managed_story(
+            conn,
+            story_id,
+            actor["owner_type"],
+            actor["owner_id"],
+        )
+        if not row:
+            raise HTTPException(
+                403,
+                "Faqat o‘zingizning istoriyangizni o‘chira olasiz.",
             )
+        media_filename = row["media_filename"]
+        thumbnail_filename = row["thumbnail_filename"]
+        hard_delete_story(conn, story_id)
+        delete_story_files(folder, media_filename, thumbnail_filename)
         return {"ok": True}
     finally:
         conn.close()
@@ -615,33 +668,63 @@ async def story_report(
         conn.close()
 
 
+def _story_row_file_response(row, thumbnail=False):
+    filename = (
+        row["thumbnail_filename"]
+        if thumbnail and row["thumbnail_filename"]
+        else row["media_filename"]
+    )
+    if not filename or os.path.basename(filename) != filename:
+        raise HTTPException(404, "Media topilmadi.")
+    from main import UPLOAD_DIR
+
+    path = os.path.join(story_storage_dir(UPLOAD_DIR), filename)
+    if not os.path.isfile(path):
+        raise HTTPException(404, "Media topilmadi.")
+    media_type = (
+        "image/jpeg"
+        if thumbnail and row["thumbnail_filename"]
+        else row["mime_type"]
+    )
+    return FileResponse(
+        path,
+        media_type=media_type,
+        headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
 def _story_file_response(story_id, thumbnail=False):
     conn = db()
     try:
         row = active_story(conn, story_id)
         if not row:
             raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
-        filename = (
-            row["thumbnail_filename"]
-            if thumbnail and row["thumbnail_filename"]
-            else row["media_filename"]
-        )
-        if not filename or os.path.basename(filename) != filename:
-            raise HTTPException(404, "Media topilmadi.")
-        from main import UPLOAD_DIR
+        return _story_row_file_response(row, thumbnail=thumbnail)
+    finally:
+        conn.close()
 
-        path = os.path.join(story_storage_dir(UPLOAD_DIR), filename)
-        if not os.path.isfile(path):
-            raise HTTPException(404, "Media topilmadi.")
-        if thumbnail and row["thumbnail_filename"]:
-            media_type = "image/jpeg"
-        else:
-            media_type = row["mime_type"]
-        return FileResponse(
-            path,
-            media_type=media_type,
-            headers={"Cache-Control": "private, max-age=300"},
+
+@router.get("/stories/{story_id}/owner-media")
+async def story_owner_media(
+    story_id: int,
+    actor_type: str = "user",
+    thumbnail: int = 0,
+    x_telegram_init_data: str = Header(default=""),
+):
+    conn = db()
+    try:
+        if thumbnail not in (0, 1):
+            raise HTTPException(400, "thumbnail 0 yoki 1 bo‘lishi kerak.")
+        actor = _story_actor(conn, x_telegram_init_data, actor_type)
+        row = managed_story(
+            conn,
+            story_id,
+            actor["owner_type"],
+            actor["owner_id"],
         )
+        if not row:
+            raise HTTPException(403, "Bu istoriya sizga tegishli emas.")
+        return _story_row_file_response(row, thumbnail=bool(thumbnail))
     finally:
         conn.close()
 
