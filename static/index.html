@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1607 -->
+<title>Ko‘prik</title><!-- BUILD: v1609 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -602,11 +602,16 @@
   .story-preview{height:min(54vh,520px);border-radius:19px;overflow:hidden;background:#071514;display:none;align-items:center;justify-content:center;}
   .story-preview.on{display:flex;}
   .story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain;display:block;background:#071514;}
+  .story-preview [hidden]{display:none!important;}
   .story-compose-fields{display:none;margin-top:12px;}
   .story-compose-fields.on{display:block;}
   .story-progress-wrap{height:7px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0;display:none;}
   .story-progress-wrap.on{display:block;}
   .story-upload-progress{width:0;height:100%;background:var(--primary);transition:width .15s;}
+  .story-upload-status{display:none;margin:10px 2px 4px;color:var(--soft);font-size:13px;font-weight:700;line-height:1.4;}
+  .story-upload-status.on{display:block;}
+  .story-upload-error{display:none;margin:10px 0;padding:11px 12px;border:1px solid #F2B8B5;border-radius:13px;background:#FFF1F0;color:#A61B1B;font-size:13px;font-weight:700;line-height:1.45;}
+  .story-upload-error.on{display:block;}
   .story-viewer{position:fixed;inset:0;z-index:7000;background:#061211;display:none;color:#fff;align-items:center;justify-content:center;}
   .story-viewer.on{display:flex;}
   .story-stage{position:relative;width:min(100vw,520px);height:100dvh;max-height:920px;background:#071514;overflow:hidden;}
@@ -636,6 +641,7 @@
   .story-viewers-card{width:100%;max-width:520px;max-height:72vh;overflow:auto;border-radius:22px 22px 0 0;background:var(--bg);color:var(--ink);padding:18px 16px calc(18px + env(safe-area-inset-bottom));}
   .story-viewer-person{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);}
   .story-viewer-person:last-child{border-bottom:0;}
+  @media(max-width:759px){.story-layer{align-items:stretch;background:var(--bg);backdrop-filter:none}.story-sheet{height:100dvh;max-height:none;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}.story-preview{height:min(46dvh,440px)}}
   @media(min-width:760px){.story-card{flex-basis:92px;width:92px}.story-thumb{width:92px;height:92px;border-radius:20px}.story-name{font-size:12px}.story-layer{align-items:center}.story-sheet{border-radius:24px;max-height:88vh}.story-stage{height:min(92vh,900px);border-radius:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}}
 </style>
 </head>
@@ -691,7 +697,9 @@
         <div class="story-compose-fields" id="storyComposeFields">
           <div class="field"><label>Qisqa matn — ixtiyoriy</label><textarea class="textarea" id="storyCaption" maxlength="200" placeholder="Istoriya haqida qisqa yozing"></textarea><div class="idesc" id="storyCaptionCount">0 / 200</div></div>
           <button class="btn btn-soft btn-block" id="storyChooseAgain" type="button">Boshqa fayl tanlash</button>
+          <div class="story-upload-status" id="storyUploadStatus" aria-live="polite"></div>
           <div class="story-progress-wrap" id="storyUploadProgressWrap"><div class="story-upload-progress" id="storyUploadProgress"></div></div>
+          <div class="story-upload-error" id="storyUploadError" role="alert"></div>
           <button class="btn btn-primary btn-block" id="storyUploadBtn" type="button">Joylash</button>
         </div>
       </div>
@@ -2148,6 +2156,8 @@
     if(el("storySourceChoices")) el("storySourceChoices").style.display="grid";
     if(el("storyUploadProgressWrap")) el("storyUploadProgressWrap").classList.remove("on");
     if(el("storyUploadProgress")) el("storyUploadProgress").style.width="0%";
+    if(el("storyUploadStatus")){el("storyUploadStatus").classList.remove("on");el("storyUploadStatus").textContent="";}
+    if(el("storyUploadError")){el("storyUploadError").classList.remove("on");el("storyUploadError").textContent="";}
     if(el("storyUploadBtn")){el("storyUploadBtn").disabled=false;el("storyUploadBtn").textContent="Joylash";}
   }
   function openStoryComposer(){
@@ -2199,18 +2209,21 @@
   }
   function uploadStory(){
     if(!STORY_SELECTED_FILE){showMsg("Avval rasm yoki video tanlang.");return;}
-    var button=el("storyUploadBtn"),wrap=el("storyUploadProgressWrap"),bar=el("storyUploadProgress");
-    button.disabled=true;button.textContent="Joylanmoqda...";wrap.classList.add("on");bar.style.width="0%";
+    var button=el("storyUploadBtn"),wrap=el("storyUploadProgressWrap"),bar=el("storyUploadProgress"),status=el("storyUploadStatus"),error=el("storyUploadError");
+    var isVideo=(STORY_SELECTED_FILE.type||"").toLowerCase().indexOf("video/")===0;
+    button.disabled=true;button.textContent="Yuborilmoqda...";wrap.classList.add("on");bar.style.width="0%";
+    status.textContent="Fayl yuborilmoqda — 0%";status.classList.add("on");error.textContent="";error.classList.remove("on");
     var form=new FormData();form.append("file",STORY_SELECTED_FILE,STORY_SELECTED_FILE.name||"story");form.append("caption",(el("storyCaption").value||"").trim());form.append("actor_type",STAFF_INFO?"business":actorType());
     var xhr=new XMLHttpRequest();xhr.open("POST","/api/stories",true);
     var headers=apiHeaders();Object.keys(headers).forEach(function(key){xhr.setRequestHeader(key,headers[key]);});
-    xhr.upload.onprogress=function(event){if(event.lengthComputable)bar.style.width=Math.min(98,Math.round(event.loaded/event.total*100))+"%";};
+    xhr.upload.onprogress=function(event){if(event.lengthComputable){var percent=Math.min(99,Math.round(event.loaded/event.total*100));bar.style.width=percent+"%";status.textContent="Fayl yuborilmoqda — "+percent+"%";}};
+    xhr.upload.onload=function(){bar.style.width="100%";status.textContent=isVideo?"Video serverda tayyorlanmoqda...":"Istoriya saqlanmoqda...";button.textContent=isVideo?"Video tayyorlanmoqda...":"Saqlanmoqda...";};
     xhr.onload=function(){
       var data={};try{data=JSON.parse(xhr.responseText||"{}");}catch(e){}
       if(xhr.status>=200&&xhr.status<300){bar.style.width="100%";showMsg("Istoriya joylandi ✅");closeStoryComposer();loadStories();}
-      else{button.disabled=false;button.textContent="Qayta urinish";showMsg((data&&data.detail)||"Istoriya joylanmadi.");}
+      else{var message=(data&&data.detail)||(xhr.status===413?"Video hajmi server chegarasidan oshdi.":"Istoriya joylanmadi. Qayta urinib ko‘ring.");button.disabled=false;button.textContent="Qayta urinish";status.classList.remove("on");error.textContent=message;error.classList.add("on");showMsg(message);}
     };
-    xhr.onerror=function(){button.disabled=false;button.textContent="Qayta urinish";showMsg("Internet aloqasini tekshiring.");};
+    xhr.onerror=function(){var message="Internet aloqasini tekshiring.";button.disabled=false;button.textContent="Qayta urinish";status.classList.remove("on");error.textContent=message;error.classList.add("on");showMsg(message);};
     xhr.send(form);
   }
   function storyTimeAgo(seconds){
