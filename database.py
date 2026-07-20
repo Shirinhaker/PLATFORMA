@@ -446,8 +446,10 @@ def init_db():
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
     from stories import ensure_story_tables
+    from subscriptions import init_subscription_schema
 
     ensure_story_tables(conn)
+    init_subscription_schema(conn)
     conn.execute("""CREATE TABLE IF NOT EXISTS profile_images(
         owner_kind TEXT NOT NULL, owner_id INTEGER NOT NULL, mime_type TEXT NOT NULL,
         content BLOB NOT NULL, updated_at INTEGER NOT NULL,
