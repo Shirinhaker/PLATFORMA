@@ -575,6 +575,68 @@
   .acf-btns button{flex:1;height:46px;border-radius:13px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;}
   .acf-ok{border-color:var(--primary);background:var(--primary);color:#fff;}
   .acf-ok.danger{border-color:#DC2626;background:#DC2626;color:#fff;}
+  /* v1608 — 24 soatlik istoriyalar */
+  .story-strip{margin:0 -2px 14px;overflow:hidden;}
+  .story-rail{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 8px;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;}
+  .story-rail::-webkit-scrollbar{display:none;}
+  .story-card{flex:0 0 80px;width:80px;border:0;background:transparent;color:var(--ink);padding:0;cursor:pointer;scroll-snap-align:start;font:inherit;text-align:center;}
+  .story-thumb{position:relative;width:80px;height:80px;display:grid;place-items:center;overflow:hidden;border-radius:18px;border:2px solid var(--line);background:var(--card);box-shadow:var(--shadow);transition:transform .14s,border-color .14s;}
+  .story-card:active .story-thumb{transform:scale(.96);}
+  .story-card.unseen .story-thumb{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-tint);}
+  .story-card.seen .story-thumb{border-color:var(--line);opacity:.86;}
+  .story-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .story-fallback{font-family:var(--font-d);font-size:23px;font-weight:900;color:var(--primary);}
+  .story-name{display:block;margin-top:6px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .story-add .story-thumb{border-style:dashed;border-color:var(--primary);background:var(--primary-tint);}
+  .story-plus{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:var(--primary);color:#fff;font-size:25px;font-weight:500;line-height:1;}
+  .has-story{box-shadow:0 0 0 3px var(--primary),0 0 0 5px var(--primary-tint)!important;}
+  .story-layer{position:fixed;inset:0;z-index:6800;background:rgba(3,20,19,.64);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
+  .story-layer.on{display:flex;}
+  .story-sheet{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:var(--shadow-lg);}
+  .story-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+  .story-sheet-title{font-family:var(--font-d);font-size:19px;font-weight:900;}
+  .story-text-btn{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:8px 11px;font:inherit;font-weight:700;cursor:pointer;}
+  .story-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .story-source-btn{min-height:88px;border:1.5px solid var(--line);border-radius:17px;background:var(--card);color:var(--ink);padding:13px;font:inherit;font-weight:800;cursor:pointer;box-shadow:var(--shadow);}
+  .story-source-btn small{display:block;margin-top:5px;color:var(--soft);font-weight:600;line-height:1.35;}
+  .story-preview{height:min(54vh,520px);border-radius:19px;overflow:hidden;background:#071514;display:none;align-items:center;justify-content:center;}
+  .story-preview.on{display:flex;}
+  .story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain;display:block;background:#071514;}
+  .story-compose-fields{display:none;margin-top:12px;}
+  .story-compose-fields.on{display:block;}
+  .story-progress-wrap{height:7px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0;display:none;}
+  .story-progress-wrap.on{display:block;}
+  .story-upload-progress{width:0;height:100%;background:var(--primary);transition:width .15s;}
+  .story-viewer{position:fixed;inset:0;z-index:7000;background:#061211;display:none;color:#fff;align-items:center;justify-content:center;}
+  .story-viewer.on{display:flex;}
+  .story-stage{position:relative;width:min(100vw,520px);height:100dvh;max-height:920px;background:#071514;overflow:hidden;}
+  .story-viewer-media{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .story-viewer-media img,.story-viewer-media video{width:100%;height:100%;object-fit:contain;background:#071514;}
+  .story-viewer-top{position:absolute;z-index:4;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 12px 16px;background:linear-gradient(180deg,rgba(0,0,0,.76),transparent);pointer-events:none;}
+  .story-progress{display:flex;gap:4px;margin-bottom:10px;}
+  .story-progress-seg{height:3px;flex:1;border-radius:99px;background:rgba(255,255,255,.35);overflow:hidden;}
+  .story-progress-seg span{display:block;width:0;height:100%;background:#fff;}
+  .story-progress-seg.done span{width:100%;}
+  .story-progress-seg.current span{width:var(--story-progress,0%);}
+  .story-owner-row{display:flex;align-items:center;gap:10px;pointer-events:auto;}
+  .story-owner-avatar{width:36px;height:36px;border-radius:11px;overflow:hidden;background:rgba(255,255,255,.14);display:grid;place-items:center;font-weight:900;}
+  .story-owner-avatar img{width:100%;height:100%;object-fit:cover;}
+  .story-owner-main{min-width:0;flex:1;}
+  .story-owner-name{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .story-owner-time{font-size:11.5px;color:rgba(255,255,255,.76);margin-top:2px;}
+  .story-viewer-close{border:0;border-radius:10px;background:rgba(0,0,0,.38);color:#fff;padding:8px 10px;font:inherit;font-weight:800;cursor:pointer;}
+  .story-tap{position:absolute;z-index:2;top:90px;bottom:90px;width:34%;border:0;background:transparent;cursor:pointer;}
+  .story-tap.prev{left:0;}.story-tap.next{right:0;}
+  .story-viewer-bottom{position:absolute;z-index:4;left:0;right:0;bottom:0;padding:44px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(0,0,0,.78),transparent);pointer-events:none;}
+  .story-viewer-caption{font-size:14px;line-height:1.45;margin-bottom:12px;white-space:pre-wrap;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .story-viewer-actions{display:flex;gap:8px;pointer-events:auto;}
+  .story-viewer-actions button{border:1px solid rgba(255,255,255,.34);border-radius:12px;background:rgba(0,0,0,.36);color:#fff;padding:9px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
+  .story-viewers-sheet{position:fixed;inset:0;z-index:7100;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;}
+  .story-viewers-sheet.on{display:flex;}
+  .story-viewers-card{width:100%;max-width:520px;max-height:72vh;overflow:auto;border-radius:22px 22px 0 0;background:var(--bg);color:var(--ink);padding:18px 16px calc(18px + env(safe-area-inset-bottom));}
+  .story-viewer-person{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);}
+  .story-viewer-person:last-child{border-bottom:0;}
+  @media(min-width:760px){.story-card{flex-basis:92px;width:92px}.story-thumb{width:92px;height:92px;border-radius:20px}.story-name{font-size:12px}.story-layer{align-items:center}.story-sheet{border-radius:24px;max-height:88vh}.story-stage{height:min(92vh,900px);border-radius:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}}
 </style>
 </head>
 <body>
@@ -617,6 +679,39 @@
       <div class="action-notify-body" id="actionNotifyBody"></div>
     </div>
 
+    <div class="story-layer" id="storyComposer" aria-hidden="true">
+      <div class="story-sheet" role="dialog" aria-modal="true" aria-labelledby="storyComposerTitle">
+        <div class="story-sheet-head"><div class="story-sheet-title" id="storyComposerTitle">Istoriya joylash</div><button class="story-text-btn" id="storyComposerClose" type="button">Yopish</button></div>
+        <input id="storyFileInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" hidden>
+        <div class="story-source-grid" id="storySourceChoices">
+          <button class="story-source-btn" id="storyCameraBtn" type="button">Kamera orqali<small>Hozir rasm yoki video oling</small></button>
+          <button class="story-source-btn" id="storyGalleryBtn" type="button">Galereyadan<small>Telefondagi rasm yoki videoni tanlang</small></button>
+        </div>
+        <div class="story-preview" id="storyPreview"><img id="storyPreviewImage" alt="Istoriya rasmi" hidden><video id="storyPreviewVideo" controls playsinline hidden></video></div>
+        <div class="story-compose-fields" id="storyComposeFields">
+          <div class="field"><label>Qisqa matn — ixtiyoriy</label><textarea class="textarea" id="storyCaption" maxlength="200" placeholder="Istoriya haqida qisqa yozing"></textarea><div class="idesc" id="storyCaptionCount">0 / 200</div></div>
+          <button class="btn btn-soft btn-block" id="storyChooseAgain" type="button">Boshqa fayl tanlash</button>
+          <div class="story-progress-wrap" id="storyUploadProgressWrap"><div class="story-upload-progress" id="storyUploadProgress"></div></div>
+          <button class="btn btn-primary btn-block" id="storyUploadBtn" type="button">Joylash</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="story-viewer" id="storyViewer" aria-hidden="true">
+      <div class="story-stage" role="dialog" aria-modal="true" aria-label="Istoriya">
+        <div class="story-viewer-media" id="storyViewerMedia"></div>
+        <button class="story-tap prev" id="storyTapPrev" type="button" aria-label="Oldingi istoriya"></button>
+        <button class="story-tap next" id="storyTapNext" type="button" aria-label="Keyingi istoriya"></button>
+        <div class="story-viewer-top">
+          <div class="story-progress" id="storyProgress"></div>
+          <div class="story-owner-row"><div class="story-owner-avatar" id="storyOwnerAvatar"></div><div class="story-owner-main"><div class="story-owner-name" id="storyOwnerName"></div><div class="story-owner-time" id="storyOwnerTime"></div></div><button class="story-viewer-close" id="storyViewerClose" type="button">Yopish</button></div>
+        </div>
+        <div class="story-viewer-bottom"><div class="story-viewer-caption" id="storyViewerCaption"></div><div class="story-viewer-actions" id="storyViewerActions"></div></div>
+      </div>
+    </div>
+
+    <div class="story-viewers-sheet" id="storyViewersSheet" aria-hidden="true"><div class="story-viewers-card"><div class="story-sheet-head"><div class="story-sheet-title">Ko‘rganlar</div><button class="story-text-btn" id="storyViewersClose" type="button">Yopish</button></div><div id="storyViewersList"></div></div></div>
+
     <div id="bizCartBar" style="display:none;flex:none;padding:8px 14px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
       <button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">
         <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🛒 Savatcha: <b id="bizCartBarCount">0</b> ta<span id="bizCartBarTotalWrap" style="display:none"> · <b id="bizCartBarTotal"></b></span></span>
@@ -628,6 +723,11 @@
 
       <!-- HOME -->
       <section class="screen active" data-screen="home">
+        <section class="story-strip" id="storyStrip" aria-label="Istoriyalar">
+          <div class="story-rail" id="storyRail">
+            <button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>
+          </div>
+        </section>
         <div class="ad" id="adBox">
           <img class="ad-photo" id="adPhoto" alt="Reklama">
           <div class="ad-overlay"></div>
@@ -1966,11 +2066,242 @@
   function setActiveMode(mode){
     activeMode=mode==="business"?"business":"user";
     try{localStorage.setItem("koprik_active_mode",activeMode);}catch(e){}
+    if(typeof loadStories==="function") setTimeout(loadStories,0);
     return activeMode;
   }
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
   function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
   function withActor(body, type){ body = body || {}; body.actor_type = type || actorType(); return body; }
+
+  /* ============================================================
+     ISTORIYALAR — bosh sahifa, joylash va ko'rish
+     ============================================================ */
+  var STORY_GROUPS=[];
+  var STORY_GROUP_INDEX=-1;
+  var STORY_ITEM_INDEX=0;
+  var STORY_SELECTED_FILE=null;
+  var STORY_OBJECT_URL="";
+  var STORY_TIMER=null;
+  var STORY_PROGRESS_TIMER=null;
+  var STORY_STARTED_AT=0;
+  var STORY_DURATION_MS=5000;
+  var STORY_VIDEO_LIMIT_MS=60*1000;
+  var STORY_IMAGE_LIMIT=10*1024*1024;
+  var STORY_VIDEO_LIMIT=100*1024*1024;
+  window.__ownStoryGroupIndex=-1;
+
+  function storyInitial(name){
+    var value=(name||"K").trim();
+    return esc((value.charAt(0)||"K").toUpperCase());
+  }
+  function storyAvatarHtml(group){
+    if(group && group.avatar_url) return '<img src="'+esc(group.avatar_url)+'" alt="" loading="lazy">';
+    return '<span class="story-fallback">'+storyInitial(group&&group.name)+'</span>';
+  }
+  function storyCanPost(){
+    if(STAFF_INFO) return !!((STAFF_INFO.perms||[]).indexOf("ads")>=0);
+    if(!ME || !ME.registered) return false;
+    if(actorType()==="business") return !!ME.business_id;
+    return true;
+  }
+  function updateStoryProfileRings(){
+    var own=window.__ownStoryGroupIndex>=0?STORY_GROUPS[window.__ownStoryGroupIndex]:null;
+    ["ucabAvatar","upAvatarView"].forEach(function(id){var node=el(id);if(node)node.classList.toggle("has-story",!!own&&own.owner_type==="user");});
+    ["cabLogo","bpAvatarView"].forEach(function(id){var node=el(id);if(node)node.classList.toggle("has-story",!!own&&own.owner_type==="business");});
+  }
+  function renderStoryRail(){
+    var rail=el("storyRail"); if(!rail) return;
+    var add='<button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>';
+    var cards=STORY_GROUPS.map(function(group,index){
+      return '<button class="story-card '+(group.has_unseen?'unseen':'seen')+'" type="button" data-story-group="'+index+'" aria-label="'+esc(group.name||"Istoriya")+' istoriyasini ko‘rish">'+
+        '<span class="story-thumb">'+storyAvatarHtml(group)+'</span><span class="story-name">'+esc(group.is_own?'Sizning istoriya':(group.name||"Profil"))+'</span></button>';
+    }).join("");
+    rail.innerHTML=add+cards;
+    window.__ownStoryGroupIndex=STORY_GROUPS.findIndex(function(group){return !!group.is_own;});
+    updateStoryProfileRings();
+  }
+  function loadStories(){
+    var rail=el("storyRail"); if(!rail) return Promise.resolve([]);
+    var url="/api/stories/feed?actor_type="+encodeURIComponent(STAFF_INFO?"business":actorType());
+    return api("GET",url).then(function(groups){
+      STORY_GROUPS=Array.isArray(groups)?groups:[];
+      renderStoryRail();
+      return STORY_GROUPS;
+    }).catch(function(){
+      STORY_GROUPS=[];
+      renderStoryRail();
+      return [];
+    });
+  }
+  function clearStoryObjectUrl(){
+    if(STORY_OBJECT_URL){try{URL.revokeObjectURL(STORY_OBJECT_URL);}catch(e){} STORY_OBJECT_URL="";}
+  }
+  function resetStoryComposer(){
+    clearStoryObjectUrl(); STORY_SELECTED_FILE=null;
+    if(el("storyFileInput")){el("storyFileInput").value="";el("storyFileInput").removeAttribute("capture");}
+    if(el("storyCaption")) el("storyCaption").value="";
+    if(el("storyCaptionCount")) el("storyCaptionCount").textContent="0 / 200";
+    if(el("storyPreview")) el("storyPreview").classList.remove("on");
+    if(el("storyPreviewImage")){el("storyPreviewImage").hidden=true;el("storyPreviewImage").removeAttribute("src");}
+    if(el("storyPreviewVideo")){try{el("storyPreviewVideo").pause();}catch(e){}el("storyPreviewVideo").hidden=true;el("storyPreviewVideo").removeAttribute("src");}
+    if(el("storyComposeFields")) el("storyComposeFields").classList.remove("on");
+    if(el("storySourceChoices")) el("storySourceChoices").style.display="grid";
+    if(el("storyUploadProgressWrap")) el("storyUploadProgressWrap").classList.remove("on");
+    if(el("storyUploadProgress")) el("storyUploadProgress").style.width="0%";
+    if(el("storyUploadBtn")){el("storyUploadBtn").disabled=false;el("storyUploadBtn").textContent="Joylash";}
+  }
+  function openStoryComposer(){
+    if(!storyCanPost()){
+      if(STAFF_INFO){showMsg("Istoriya joylash uchun xodimga reklama ruxsati kerak.");return;}
+      showLogin("istoriya joylash"); return;
+    }
+    resetStoryComposer();
+    el("storyComposer").classList.add("on");
+    el("storyComposer").setAttribute("aria-hidden","false");
+  }
+  function closeStoryComposer(){
+    var layer=el("storyComposer"); if(!layer)return;
+    layer.classList.remove("on");layer.setAttribute("aria-hidden","true");resetStoryComposer();
+  }
+  function storyVideoDuration(file){
+    return new Promise(function(resolve,reject){
+      var video=document.createElement("video"),url=URL.createObjectURL(file),done=false;
+      function finish(err,value){if(done)return;done=true;URL.revokeObjectURL(url);video.removeAttribute("src");err?reject(err):resolve(value);}
+      video.preload="metadata";
+      video.onloadedmetadata=function(){finish(null,Number(video.duration||0)*1000);};
+      video.onerror=function(){finish(new Error("Video ochilmadi."));};
+      video.src=url;
+      setTimeout(function(){finish(new Error("Video davomiyligi aniqlanmadi."));},8000);
+    });
+  }
+  function prepareStoryFile(file){
+    if(!file) return Promise.resolve(false);
+    var type=(file.type||"").toLowerCase(),isImage=type.indexOf("image/")===0,isVideo=type.indexOf("video/")===0;
+    if(!isImage&&!isVideo){showMsg("Rasm yoki video tanlang.");return Promise.resolve(false);}
+    if(isImage&&file.size>STORY_IMAGE_LIMIT){showMsg("Rasm hajmi 10 MB dan oshmasin.");return Promise.resolve(false);}
+    if(isVideo&&file.size>STORY_VIDEO_LIMIT){showMsg("Video hajmi 100 MB dan oshmasin.");return Promise.resolve(false);}
+    var durationCheck=isVideo?storyVideoDuration(file):Promise.resolve(0);
+    return durationCheck.then(function(duration){
+      if(isVideo&&(!duration||duration>STORY_VIDEO_LIMIT_MS+250)){showMsg("Video 1 daqiqadan oshmasin.");return false;}
+      clearStoryObjectUrl(); STORY_SELECTED_FILE=file; STORY_OBJECT_URL=URL.createObjectURL(file);
+      el("storySourceChoices").style.display="none";el("storyPreview").classList.add("on");el("storyComposeFields").classList.add("on");
+      var image=el("storyPreviewImage"),video=el("storyPreviewVideo");
+      if(isImage){image.src=STORY_OBJECT_URL;image.hidden=false;video.hidden=true;video.removeAttribute("src");}
+      else{video.src=STORY_OBJECT_URL;video.hidden=false;image.hidden=true;image.removeAttribute("src");}
+      return true;
+    }).catch(function(err){showMsg(err.message||"Video ochilmadi.");return false;});
+  }
+  function chooseStoryFile(camera){
+    var input=el("storyFileInput");if(!input)return;
+    input.value="";
+    if(camera) input.setAttribute("capture","environment"); else input.removeAttribute("capture");
+    input.click();
+  }
+  function uploadStory(){
+    if(!STORY_SELECTED_FILE){showMsg("Avval rasm yoki video tanlang.");return;}
+    var button=el("storyUploadBtn"),wrap=el("storyUploadProgressWrap"),bar=el("storyUploadProgress");
+    button.disabled=true;button.textContent="Joylanmoqda...";wrap.classList.add("on");bar.style.width="0%";
+    var form=new FormData();form.append("file",STORY_SELECTED_FILE,STORY_SELECTED_FILE.name||"story");form.append("caption",(el("storyCaption").value||"").trim());form.append("actor_type",STAFF_INFO?"business":actorType());
+    var xhr=new XMLHttpRequest();xhr.open("POST","/api/stories",true);
+    var headers=apiHeaders();Object.keys(headers).forEach(function(key){xhr.setRequestHeader(key,headers[key]);});
+    xhr.upload.onprogress=function(event){if(event.lengthComputable)bar.style.width=Math.min(98,Math.round(event.loaded/event.total*100))+"%";};
+    xhr.onload=function(){
+      var data={};try{data=JSON.parse(xhr.responseText||"{}");}catch(e){}
+      if(xhr.status>=200&&xhr.status<300){bar.style.width="100%";showMsg("Istoriya joylandi ✅");closeStoryComposer();loadStories();}
+      else{button.disabled=false;button.textContent="Qayta urinish";showMsg((data&&data.detail)||"Istoriya joylanmadi.");}
+    };
+    xhr.onerror=function(){button.disabled=false;button.textContent="Qayta urinish";showMsg("Internet aloqasini tekshiring.");};
+    xhr.send(form);
+  }
+  function storyTimeAgo(seconds){
+    var age=Math.max(0,Math.floor(Date.now()/1000-Number(seconds||0)));
+    if(age<60)return "hozir";if(age<3600)return Math.floor(age/60)+" daqiqa oldin";return Math.floor(age/3600)+" soat oldin";
+  }
+  function clearStoryTimers(){clearTimeout(STORY_TIMER);clearInterval(STORY_PROGRESS_TIMER);STORY_TIMER=null;STORY_PROGRESS_TIMER=null;}
+  function currentStoryGroup(){return STORY_GROUPS[STORY_GROUP_INDEX]||null;}
+  function currentStory(){var group=currentStoryGroup();return group&&(group.stories||[])[STORY_ITEM_INDEX]||null;}
+  function markStoryViewed(story){
+    if(!story||story.viewed||!ME||!ME.registered)return;
+    story.viewed=true;
+    api("POST","/api/stories/"+story.id+"/view").catch(function(){});
+    var group=currentStoryGroup();if(group){group.has_unseen=(group.stories||[]).some(function(item){return !item.viewed;});renderStoryRail();}
+  }
+  function startStoryProgress(duration){
+    clearStoryTimers();STORY_DURATION_MS=Math.max(1000,Math.min(STORY_VIDEO_LIMIT_MS,Number(duration)||5000));STORY_STARTED_AT=Date.now();
+    function paint(){var progress=Math.min(100,(Date.now()-STORY_STARTED_AT)/STORY_DURATION_MS*100);var seg=el("storyProgress")&&el("storyProgress").querySelector(".current");if(seg)seg.style.setProperty("--story-progress",progress+"%");}
+    STORY_PROGRESS_TIMER=setInterval(paint,80);STORY_TIMER=setTimeout(function(){advanceStory(1);},STORY_DURATION_MS);
+  }
+  function storyActionsHtml(group,story){
+    if(group.is_own)return '<button type="button" data-story-viewers="'+story.id+'">Ko‘rganlar</button><button type="button" data-story-delete="'+story.id+'">O‘chirish</button>';
+    return '<button type="button" data-story-report="'+story.id+'">Shikoyat</button>';
+  }
+  function renderStoryViewer(){
+    var group=currentStoryGroup(),story=currentStory();if(!group||!story){closeStoryViewer();return;}
+    var progress=(group.stories||[]).map(function(_,index){return '<span class="story-progress-seg '+(index<STORY_ITEM_INDEX?'done':(index===STORY_ITEM_INDEX?'current':''))+'"><span></span></span>';}).join("");
+    el("storyProgress").innerHTML=progress;el("storyOwnerAvatar").innerHTML=storyAvatarHtml(group);el("storyOwnerName").textContent=group.name||"Profil";el("storyOwnerTime").textContent=storyTimeAgo(story.created_at);el("storyViewerCaption").textContent=story.caption||"";el("storyViewerActions").innerHTML=storyActionsHtml(group,story);
+    var media=el("storyViewerMedia");media.innerHTML="";
+    if(story.media_type==="video"){
+      var video=document.createElement("video");video.src=story.media_url;video.autoplay=true;video.playsInline=true;video.controls=false;video.muted=false;media.appendChild(video);
+      video.onloadedmetadata=function(){var ms=Math.min(STORY_VIDEO_LIMIT_MS,Math.max(1000,(Number(video.duration)||Number(story.duration_seconds)||5)*1000));startStoryProgress(ms);};
+      video.onended=function(){advanceStory(1);};video.play().catch(function(){video.muted=true;video.play().catch(function(){});});
+      setTimeout(function(){if(!STORY_TIMER)startStoryProgress((Number(story.duration_seconds)||5)*1000);},1200);
+    }else{
+      var image=document.createElement("img");image.src=story.media_url;image.alt="Istoriya";media.appendChild(image);startStoryProgress(5000);
+    }
+    setTimeout(function(){if(currentStory()&&currentStory().id===story.id)markStoryViewed(story);},700);
+  }
+  function openStoryViewer(groupIndex,itemIndex){
+    if(groupIndex<0||groupIndex>=STORY_GROUPS.length)return;
+    STORY_GROUP_INDEX=groupIndex;STORY_ITEM_INDEX=Math.max(0,Number(itemIndex)||0);
+    var group=currentStoryGroup();if(!group)return;
+    var firstUnseen=(group.stories||[]).findIndex(function(item){return !item.viewed;});if(itemIndex==null&&firstUnseen>=0)STORY_ITEM_INDEX=firstUnseen;
+    el("storyViewer").classList.add("on");el("storyViewer").setAttribute("aria-hidden","false");renderStoryViewer();
+  }
+  function closeStoryViewer(){
+    clearStoryTimers();var viewer=el("storyViewer");if(!viewer)return;
+    var video=viewer.querySelector("video");if(video)try{video.pause();}catch(e){}
+    viewer.classList.remove("on");viewer.setAttribute("aria-hidden","true");el("storyViewerMedia").innerHTML="";
+  }
+  function advanceStory(direction){
+    var group=currentStoryGroup();if(!group)return closeStoryViewer();
+    var next=STORY_ITEM_INDEX+direction;
+    if(next>=0&&next<(group.stories||[]).length){STORY_ITEM_INDEX=next;renderStoryViewer();return;}
+    var nextGroup=STORY_GROUP_INDEX+direction;
+    if(nextGroup>=0&&nextGroup<STORY_GROUPS.length){STORY_GROUP_INDEX=nextGroup;STORY_ITEM_INDEX=direction>0?0:Math.max(0,(STORY_GROUPS[nextGroup].stories||[]).length-1);renderStoryViewer();return;}
+    closeStoryViewer();
+  }
+  function closeStoryViewers(){var sheet=el("storyViewersSheet");if(sheet){sheet.classList.remove("on");sheet.setAttribute("aria-hidden","true");}}
+  function showStoryViewers(storyId){
+    api("GET","/api/stories/"+storyId+"/viewers?actor_type="+encodeURIComponent(STAFF_INFO?"business":actorType())).then(function(items){
+      el("storyViewersList").innerHTML=items.length?items.map(function(item){return '<div class="story-viewer-person"><span class="story-owner-avatar">'+storyInitial(item.name)+'</span><div><b>'+esc(item.name||"Foydalanuvchi")+'</b><div class="idesc">'+storyTimeAgo(item.viewed_at)+'</div></div></div>';}).join(""):'<div class="empty" style="padding:24px 10px"><h3>Hali ko‘rishmagan</h3><p>Ko‘rganlar shu yerda chiqadi.</p></div>';
+      el("storyViewersSheet").classList.add("on");el("storyViewersSheet").setAttribute("aria-hidden","false");
+    }).catch(function(err){showMsg(err.message);});
+  }
+  function deleteStory(storyId){askConfirm({title:"Istoriyani o‘chirish",text:"Bu istoriya darhol o‘chiriladi.",okText:"O‘chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/stories/"+storyId+"?actor_type="+encodeURIComponent(STAFF_INFO?"business":actorType())).then(function(){showMsg("Istoriya o‘chirildi.");closeStoryViewer();loadStories();}).catch(function(err){showMsg(err.message);});});}
+  function reportStory(storyId){
+    if(!ME||!ME.registered){showLogin("shikoyat yuborish");return;}
+    askInput({title:"Istoriya ustidan shikoyat",okText:"Yuborish",fields:[{key:"reason",label:"Sababi",placeholder:"Kamida 10 ta belgi",required:true}]}).then(function(data){if(!data)return;var reason=(data.reason||"").trim();if(reason.length<10){showMsg("Sababni kamida 10 ta belgi bilan yozing.");return;}api("POST","/api/stories/"+storyId+"/reports",{reason:reason}).then(function(){showMsg("Shikoyat yuborildi.");}).catch(function(err){showMsg(err.message);});});
+  }
+  document.addEventListener("click",function(event){
+    var add=event.target.closest("#storyAddCard");if(add){openStoryComposer();return;}
+    var card=event.target.closest("[data-story-group]");if(card){openStoryViewer(Number(card.getAttribute("data-story-group")));return;}
+    var viewers=event.target.closest("[data-story-viewers]");if(viewers){showStoryViewers(Number(viewers.getAttribute("data-story-viewers")));return;}
+    var del=event.target.closest("[data-story-delete]");if(del){deleteStory(Number(del.getAttribute("data-story-delete")));return;}
+    var report=event.target.closest("[data-story-report]");if(report){reportStory(Number(report.getAttribute("data-story-report")));}
+  });
+  el("storyComposerClose")&&el("storyComposerClose").addEventListener("click",closeStoryComposer);
+  el("storyComposer")&&el("storyComposer").addEventListener("click",function(e){if(e.target===this)closeStoryComposer();});
+  el("storyCameraBtn")&&el("storyCameraBtn").addEventListener("click",function(){chooseStoryFile(true);});
+  el("storyGalleryBtn")&&el("storyGalleryBtn").addEventListener("click",function(){chooseStoryFile(false);});
+  el("storyChooseAgain")&&el("storyChooseAgain").addEventListener("click",function(){chooseStoryFile(false);});
+  el("storyFileInput")&&el("storyFileInput").addEventListener("change",function(){prepareStoryFile(this.files&&this.files[0]);});
+  el("storyCaption")&&el("storyCaption").addEventListener("input",function(){el("storyCaptionCount").textContent=this.value.length+" / 200";});
+  el("storyUploadBtn")&&el("storyUploadBtn").addEventListener("click",uploadStory);
+  el("storyViewerClose")&&el("storyViewerClose").addEventListener("click",closeStoryViewer);
+  el("storyTapPrev")&&el("storyTapPrev").addEventListener("click",function(){advanceStory(-1);});
+  el("storyTapNext")&&el("storyTapNext").addEventListener("click",function(){advanceStory(1);});
+  el("storyViewersClose")&&el("storyViewersClose").addEventListener("click",closeStoryViewers);
+  el("storyViewersSheet")&&el("storyViewersSheet").addEventListener("click",function(e){if(e.target===this)closeStoryViewers();});
 
 
   var YON = [
@@ -3428,6 +3759,7 @@
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
     if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
+    if(home && typeof loadStories === "function") setTimeout(loadStories,40);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
@@ -9512,10 +9844,12 @@
     if(el("upAvatarInput")) el("upAvatarInput").click();
   });
   el("upAvatarView") && el("upAvatarView").addEventListener("click", function(){
-    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
+    if(window.__ownStoryGroupIndex>=0) openStoryViewer(window.__ownStoryGroupIndex);
+    else if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("ucabAvatar") && el("ucabAvatar").addEventListener("click", function(){
-    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
+    if(window.__ownStoryGroupIndex>=0) openStoryViewer(window.__ownStoryGroupIndex);
+    else if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("upAvatarInput") && el("upAvatarInput").addEventListener("change", function(){
     var inp=this, file=inp.files && inp.files[0];
@@ -9578,7 +9912,8 @@
   });
   el("bpName") && el("bpName").addEventListener("input",function(){if(el("bpCardName"))el("bpCardName").textContent=this.value.trim()||"Biznes";});
   el("bpLogoBtn") && el("bpLogoBtn").addEventListener("click",function(){if(el("bpLogoInput"))el("bpLogoInput").click();});
-  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
+  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(window.__ownStoryGroupIndex>=0)openStoryViewer(window.__ownStoryGroupIndex);else if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
+  el("cabLogo") && el("cabLogo").addEventListener("click",function(){if(window.__ownStoryGroupIndex>=0)openStoryViewer(window.__ownStoryGroupIndex);else if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
   el("imageViewerClose") && el("imageViewerClose").addEventListener("click",closeImageViewer);
   el("imageViewer") && el("imageViewer").addEventListener("click",function(e){if(e.target===this)closeImageViewer();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeImageViewer();});
@@ -10966,6 +11301,7 @@
     nav("home");
     loadElonCounts();
     loadHomeAds();
+    loadStories();
     // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
@@ -10986,6 +11322,7 @@
         }
         loadHomeMap();
         loadHomeAds();
+        loadStories();
         refreshOrderBadges();
         refreshNotifyBadge();
         startActionNotifyPolling();
