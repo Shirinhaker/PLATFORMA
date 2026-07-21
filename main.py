@@ -11,8 +11,9 @@ Bu bosqichda (B bo'lim, poydevor):
   * Bot webhook: /start -> ilovani ochish tugmasi
 
 Environment variables:
-  BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET
+  APP_ENV, BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET, MOBILE_OTP_SECRET
   UPLOAD_DIR=/data/uploads  -> Railway Volume uchun doimiy rasm papkasi
+  BACKUP_DIR=/data/backups -> SQLite zaxira nusxalari
   TEST_MODE=1  -> sinov transporti; OTP HTTP javobida yoki test endpointida berilmaydi
 """
 
@@ -30,6 +31,7 @@ import httpx
 from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
@@ -40,9 +42,24 @@ from access_config import (
     project_access_is_restricted,
 )
 from location_keys import canonical_district_key, safe_district_display
+from runtime_config import env_flag, is_production, safe_runtime_summary, validate_runtime_config
+from backup_database import create_database_backup
+from domain_config import (
+    DomainPolicyMiddleware,
+    configured_allowed_hosts,
+    primary_domain,
+    validate_domain_config,
+)
+from integrations import (
+    IntegrationDeliveryError,
+    IntegrationNotConfigured,
+    get_provider,
+    integration_status,
+)
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1620"
+APP_BUILD = "v1624"
+APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
@@ -84,6 +101,35 @@ def resolve_upload_dir():
 
 
 UPLOAD_DIR = resolve_upload_dir()
+
+
+def resolve_backup_dir():
+    env_dir = (os.environ.get("BACKUP_DIR") or "").strip()
+    if env_dir:
+        return env_dir
+    persistent_root = (os.environ.get("PERSISTENT_ROOT") or "").strip()
+    if persistent_root:
+        return os.path.join(persistent_root, "backups")
+    if os.path.isdir("/data"):
+        return "/data/backups"
+    return "backups"
+
+
+def _backup_retention():
+    try:
+        return max(1, min(365, int(os.environ.get("BACKUP_RETENTION", "14"))))
+    except (TypeError, ValueError):
+        return 14
+
+
+BACKUP_DIR = resolve_backup_dir()
+BACKUP_RETENTION = _backup_retention()
+DATABASE_BACKUP_ON_START = env_flag(
+    "DATABASE_BACKUP_ON_START", default=is_production()
+)
+PRIMARY_DOMAIN = primary_domain()
+ALLOWED_HOSTS = configured_allowed_hosts()
+CANONICAL_WWW_REDIRECT = env_flag("CANONICAL_WWW_REDIRECT", default=True)
 
 CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 MOBILE_CODE_TTL = 5 * 60
@@ -204,6 +250,24 @@ def mobile_code_hash(phone, code):
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+async def deliver_mobile_code(phone, code, purpose):
+    """Tanlangan SMS adapteri orqali kod yuboradi; testda tashqariga chiqmaydi."""
+    if TEST_MODE:
+        return
+    try:
+        provider = get_provider("sms")
+        await provider.send_verification_code(
+            phone=phone,
+            code=code,
+            purpose=purpose,
+            expires_in=MOBILE_CODE_TTL,
+        )
+    except IntegrationNotConfigured:
+        raise HTTPException(503, "SMS xizmati hali ulanmagan.")
+    except IntegrationDeliveryError:
+        raise HTTPException(502, "SMS xizmati kodni yubora olmadi. Keyinroq urinib ko‘ring.")
+
+
 def find_user_by_phone(conn, phone):
     """Bazadagi turli yozilishdagi telefonlarni yagona formatda solishtiradi."""
     matches = []
@@ -263,6 +327,11 @@ async def setup_bot():
 @asynccontextmanager
 async def lifespan(app):
     init_db()
+    if DATABASE_BACKUP_ON_START:
+        created_backup = create_database_backup(
+            DB_PATH, BACKUP_DIR, retention=BACKUP_RETENTION
+        )
+        print("DATABASE_BACKUP:", os.path.basename(created_backup))
     from api import warm_search_cache
     warm_search_cache()
     await setup_bot()
@@ -282,6 +351,17 @@ async def lifespan(app):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=ALLOWED_HOSTS,
+    www_redirect=False,
+)
+app.add_middleware(
+    DomainPolicyMiddleware,
+    domain=PRIMARY_DOMAIN,
+    production=is_production(),
+    redirect_www=CANONICAL_WWW_REDIRECT,
+)
 
 
 def _project_temporarily_closed_response():
@@ -359,10 +439,12 @@ async def build_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Platforma-Build"] = APP_BUILD
     path = request.url.path
-    if path in ("/", "/index.html") or path.startswith("/api/ai") or path.startswith("/api/advertisements"):
+    if path in ("/", "/index.html", "/healthz", "/readyz") or path.startswith("/api/ai") or path.startswith("/api/advertisements"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+    elif path in ("/app.css", "/app.js", "/regions.js", "/qrcode.min.js") or path.startswith("/demo_ads/"):
+        response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
     if project_access_is_restricted() and path.startswith(
         ("/media/", "/profile-media/", "/uploads/")
     ):
@@ -474,7 +556,36 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": False, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": True, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True}
+    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": False, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": True, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True}
+
+
+@app.get("/healthz", include_in_schema=False)
+async def healthcheck():
+    """Deploy platformasi uchun shaxsiy ma’lumotsiz liveness javobi."""
+    return {"ok": True, "build": APP_BUILD}
+
+
+@app.get("/readyz", include_in_schema=False)
+async def readiness_check():
+    """Baza va media papkasi ishlashga tayyorligini tekshiradi."""
+    database_ready = False
+    try:
+        conn = db()
+        conn.execute("SELECT 1").fetchone()
+        conn.close()
+        database_ready = True
+    except Exception:
+        database_ready = False
+    uploads_ready = os.path.isdir(UPLOAD_DIR) and os.access(UPLOAD_DIR, os.W_OK)
+    payload = {
+        "ok": database_ready and uploads_ready,
+        "build": APP_BUILD,
+        "database": database_ready,
+        "uploads": uploads_ready,
+    }
+    if not payload["ok"]:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
 
 
 @app.get("/api/map-config")
@@ -510,6 +621,12 @@ async def db_info(x_telegram_init_data: str = Header(default="")):
         return {
             "ok": True,
             "build": APP_BUILD,
+            "runtime": safe_runtime_summary(
+                db_path=DB_PATH,
+                upload_dir=UPLOAD_DIR,
+                backup_enabled=DATABASE_BACKUP_ON_START,
+            ),
+            "integrations": integration_status(),
             "foydalanuvchilar_soni": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
             "bizneslar_soni": conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0],
             "elonlar_soni": conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0],
@@ -669,10 +786,10 @@ async def mobile_register_request_code(request: Request):
         wait = 60 - (now - int(recent["created_at"] or 0))
         conn.close()
         raise HTTPException(429, "Yangi kod olish uchun " + str(wait) + " soniya kuting.")
-    if not TEST_MODE:
-        conn.close()
-        raise HTTPException(503, "SMS provayder hali ulanmagan. Hozircha TEST_MODE=1 da sinash mumkin.")
     code = gen_code()
+    conn.close()
+    await deliver_mobile_code(phone, code, "register")
+    conn = db()
     cur = conn.execute(
         """INSERT INTO mobile_pending_registrations
            (phone,name,role,yon,address,code_hash,attempts,max_attempts,created_at,expires_at,verified_at)
@@ -784,11 +901,10 @@ async def mobile_request_code(request: Request):
         wait = 60 - (now - int(recent["created_at"] or 0))
         conn.close()
         raise HTTPException(429, "Yangi kod olish uchun " + str(wait) + " soniya kuting.")
-    if not TEST_MODE:
-        conn.close()
-        # Haqiqiy SMS provayderi keyingi bosqichda shu yerga ulanadi.
-        raise HTTPException(503, "SMS provayder hali ulanmagan. Hozircha TEST_MODE=1 da sinash mumkin.")
     code = gen_code()
+    conn.close()
+    await deliver_mobile_code(phone, code, "login")
+    conn = db()
     cur = conn.execute(
         """INSERT INTO mobile_verification_codes
            (user_id,phone,code_hash,purpose,attempts,max_attempts,created_at,expires_at,verified_at)
@@ -1333,6 +1449,12 @@ async def media_proxy(file_id: str):
 
 
 # ---------- Yuklangan fayllar ----------
+validate_runtime_config(
+    db_path=DB_PATH,
+    upload_dir=UPLOAD_DIR,
+    backup_dir=BACKUP_DIR,
+)
+validate_domain_config()
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 print("UPLOAD_DIR:", os.path.abspath(UPLOAD_DIR))
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
