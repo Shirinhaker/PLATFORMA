@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1619 -->
+<title>Ko‘prik</title><!-- BUILD: v1620 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,6 +206,7 @@
   .ad .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85;}
   .ad h3{font-family:var(--font-d);font-size:18px;font-weight:800;margin:5px 0 3px;letter-spacing:-.01em;}
   .ad p{font-size:13px;opacity:.9;max-width:80%;}
+  .ad-cta{display:inline-flex;width:max-content;margin-top:12px;border-radius:9px;background:var(--amber);color:#342300;padding:9px 18px;font-size:12px;font-weight:800;}
   .ad .tag{position:absolute;top:14px;right:14px;background:var(--amber);color:#3a2603;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:8px;}
   .ad .blob{position:absolute;right:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1);}
   .dots-row{display:flex;gap:6px;justify-content:center;margin-top:11px;}
@@ -779,34 +780,49 @@
     .web-only{display:flex;}
     .web-brand{margin-right:32px;}
     .web-nav{margin-right:auto;}
-    .tb-home>.search{max-width:330px;height:46px;border-radius:14px;}
+    .tb-home>.search{display:none;}
     .tb-home>.icon-btn{width:auto;min-width:46px;height:46px;padding:0 13px;border-radius:14px;display:flex;gap:8px;}
     .tb-home>.icon-btn .web-header-label{display:inline;font-size:13px;font-weight:750;}
     .tb-home>#cabBtn{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);padding:0 17px;}
     .tb-home>#locBtn{max-width:190px;}
+    #webLocationLabel{max-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .tb-sub{width:min(100%,1440px);height:100%;margin:0 auto;}
     .screens{padding-bottom:42px;}
     .screen{width:min(100%,1440px);margin:0 auto;padding:22px 34px 0;}
     .screen[data-screen="home"]{padding-top:18px;}
     .story-strip{margin-bottom:18px;}
     .story-rail{gap:12px;}
-    .ad{min-height:176px;border-radius:22px;}
-    .ad.has-image .ad-photo{height:190px;}
-    .home-discovery{display:grid;grid-template-columns:minmax(360px,.78fr) minmax(600px,1.22fr);gap:20px;align-items:stretch;margin-top:22px;}
-    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;border:1px solid var(--line);border-radius:24px;padding:32px;background:var(--card);box-shadow:var(--shadow);}
+    .ad{min-height:184px;border-radius:22px;}
+    .ad.has-image .ad-photo{height:184px;}
+    .ad.has-image .ad-overlay{background:linear-gradient(90deg,rgba(2,27,27,.92) 0%,rgba(2,27,27,.68) 38%,rgba(2,27,27,.08) 72%);}
+    .ad.has-image .ad-copy{top:0;right:auto;bottom:0;width:54%;padding:24px 26px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;}
+    .ad .tag{left:26px;right:auto;top:16px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.42);}
+    .ad.has-image .ad-copy .eyebrow{display:none;}
+    .ad.has-image .ad-copy h3{font-size:22px;margin-top:12px;}
+    .ad.has-image .ad-copy p{max-width:100%;}
+    .home-discovery{display:grid;grid-template-columns:minmax(390px,.82fr) minmax(600px,1.18fr);gap:20px;align-items:stretch;min-height:430px;margin-top:0;}
+    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;min-height:430px;overflow:visible;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
     .desktop-hero-kicker{display:inline-flex;width:max-content;max-width:100%;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:var(--primary-tint);color:var(--primary);font-size:12px;font-weight:800;}
-    .desktop-hero-copy h1{margin-top:16px;font:800 clamp(28px,3vw,45px)/1.12 var(--font-d);letter-spacing:-.045em;}
+    .desktop-hero-copy h1{margin-top:16px;font:800 clamp(28px,2.7vw,43px)/1.12 var(--font-d);letter-spacing:-.045em;}
     .desktop-hero-copy>p{margin-top:13px;color:var(--soft);font-size:15px;line-height:1.65;max-width:560px;}
-    .desktop-hero-search{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;margin-top:22px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg);padding:7px 8px 7px 17px;color:var(--soft);font:600 14px var(--font-b);cursor:pointer;text-align:left;}
+    .desktop-hero-search{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;width:100%;min-height:58px;margin-top:20px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg);padding:7px 8px 7px 17px;color:var(--soft);font:600 14px var(--font-b);cursor:pointer;text-align:left;}
+    .desktop-hero-query{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .desktop-hero-location{border-left:1px solid var(--line);padding:10px 12px;color:var(--ink);font-weight:750;white-space:nowrap;}
     .desktop-hero-search strong{flex:0 0 auto;border-radius:12px;padding:12px 18px;background:var(--primary);color:var(--primary-ink);}
     .desktop-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
     .desktop-hero-tags button{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:9px 12px;font:700 12px var(--font-b);cursor:pointer;}
-    .home-map-pane{display:flex;flex-direction:column;min-width:0;}
+    .home-map-pane{display:flex;flex-direction:column;min-width:0;min-height:430px;}
     .home-map-pane .pin-eyebrow{margin-top:0;}
     .home-map-pane .map-wrap{flex:1;border-radius:24px;}
     #leafletMap{height:100%!important;min-height:430px;}
-    .district-offers{margin-top:18px;}
-    .district-offers-viewport{padding:0 18px;}
+    .district-offers{margin:22px 0 0;}
+    .district-offers-viewport{padding:0;}
+    .district-offers-track{animation-duration:150s;}
+    .district-offer-card{width:410px;flex-basis:410px;height:150px;display:grid;grid-template-columns:180px minmax(0,1fr);}
+    .district-offer-media{height:150px;font-size:34px;}
+    .district-offer-body{padding:16px 14px;align-self:center;}
+    .district-offer-title{font-size:15px;}
+    #seedDistrictOffers{width:auto;margin:10px 0 0 auto;padding:0 18px;}
   }
   @media(min-width:1320px){
     .web-header-label{display:inline!important;}
@@ -836,7 +852,7 @@
         </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
-          <span class="web-header-label">Manzil</span>
+          <span class="web-header-label" id="webLocationLabel">Manzil</span>
         </button>
         <div class="search" id="searchBox">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -926,7 +942,7 @@
             <span class="desktop-hero-kicker">⌕ Qidiruv markazida</span>
             <h1>Kerakli mahsulot va xizmatni yaqiningizdan toping</h1>
             <p>Mahsulot, xizmat, biznes, mutaxassis yoki e’lonlarni bitta platformada toping.</p>
-            <button class="desktop-hero-search" id="desktopHeroSearch" type="button"><span>Nima qidiryapsiz?</span><strong>Qidirish</strong></button>
+            <button class="desktop-hero-search" id="desktopHeroSearch" type="button"><span class="desktop-hero-query">⌕ &nbsp; Nima qidiryapsiz?</span><span class="desktop-hero-location">⌖ &nbsp; Yaqin atrofda</span><strong>Qidirish</strong></button>
             <div class="desktop-hero-tags">
               <button type="button" data-web-search-type="product">🛍 Mahsulot</button>
               <button type="button" data-web-search-type="service">🧰 Xizmat</button>
@@ -948,9 +964,6 @@
           </div>
         </div>
 
-        <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
-        <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
-
         <div class="ad" id="adBox" style="margin-top:20px">
           <img class="ad-photo" id="adPhoto" alt="Reklama">
           <div class="ad-overlay"></div>
@@ -959,10 +972,14 @@
             <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
             <h3 id="adTitle">Bu yerda reklamangiz</h3>
             <p id="adText">Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
+            <span class="ad-cta">Ko‘rish</span>
           </div>
           <div class="blob"></div>
         </div>
         <div class="dots-row" id="adDots"><span class="on"></span></div>
+
+        <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
+        <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
 
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
@@ -7234,6 +7251,11 @@
     } else if(region){
       LOC = region;
     }
+    if(el("webLocationLabel")){
+      var webPlace=[region,district].filter(function(value){return !!String(value||"").trim();}).join(", ");
+      el("webLocationLabel").textContent=webPlace||"Manzil";
+      el("webLocationLabel").title=webPlace||"Manzil";
+    }
     // Bosh sahifada oddiy foydalanuvchining manzili pin/metka bo'lib chiqmaydi.
     // Xaritani faqat tanlangan viloyat/tuman markaziga olib boramiz.
     var p = findLocPoint(region, district);
@@ -11525,10 +11547,10 @@
   /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
   var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [], HOME_AD_SWITCHING = false;
   var DEMO_HOME_ADS = [
-    {id:-1,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
+    {id:-1,title:"Orzu Mebel",caption:"Uyingiz uchun eng yaxshi tanlovlar",image_file:"/demo_ads/demo_sofa.svg",crop_x:62,crop_y:50,crop_zoom:1,is_demo:true},
     {id:-2,title:"Samarqand Coffee",caption:"Issiq qahva va yangi desertlar",image_file:"/demo_ads/demo_cafe.svg",crop_x:72,crop_y:52,crop_zoom:1.12,is_demo:true},
     {id:-3,title:"Smart Texnika",caption:"Telefon va aksessuarlarga foydali taklif",image_file:"/demo_ads/demo_tech.svg",crop_x:77,crop_y:48,crop_zoom:1.05,is_demo:true},
-    {id:-4,title:"Orzu Mebel",caption:"Uyingiz uchun zamonaviy yechimlar",image_file:"/demo_ads/demo_home.svg",crop_x:78,crop_y:50,crop_zoom:1.10,is_demo:true},
+    {id:-4,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
     {id:-5,title:"Nafis Beauty",caption:"Go'zalligingiz uchun yangi xizmatlar",image_file:"/demo_ads/demo_beauty.svg",crop_x:76,crop_y:50,crop_zoom:1.10,is_demo:true}
   ];
   function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
