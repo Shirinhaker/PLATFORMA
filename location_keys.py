@@ -7,7 +7,8 @@ returned by geocoding.  This module produces the separate, comparison-safe
 
 import re
 import unicodedata
-from pathlib import Path
+
+from district_catalog import DISTRICT_NAMES
 
 
 APOSTROPHES = ("'", "’", "‘", "ʻ", "ʼ", "`", "´")
@@ -17,9 +18,6 @@ _DISTRICT_SUFFIX = re.compile(
 )
 _ADMIN_CENTER_ALIAS = re.compile(r"\s*\([^()]*\)\s*$")
 _ADMIN_CENTER_VALUE = re.compile(r"\(([^()]*)\)\s*$")
-_DISTRICT_CATALOG_LINE = re.compile(
-    r'^\s{4}\{\s*name:\s*"([^"]+)"', re.MULTILINE
-)
 _PLACEHOLDERS = {
     "joylashuvim",
     "joylashuv",
@@ -59,16 +57,10 @@ def _normalized_candidate(value):
     return text
 
 
-def _load_district_aliases():
-    """Build an allowlist from the same district catalog used by the client."""
-    try:
-        source = (Path(__file__).resolve().parent / "static" / "regions.js").read_text(
-            encoding="utf-8"
-        )
-    except (OSError, UnicodeError):
-        return {}
+def _build_district_aliases():
+    """Build the allowlist from the backend-owned structured catalog."""
     aliases = {}
-    for display in _DISTRICT_CATALOG_LINE.findall(source):
+    for display in DISTRICT_NAMES:
         key = _normalized_candidate(display)
         if not key:
             continue
@@ -81,7 +73,7 @@ def _load_district_aliases():
     return aliases
 
 
-_DISTRICT_ALIASES = _load_district_aliases()
+_DISTRICT_ALIASES = _build_district_aliases()
 
 
 def canonical_district_key(value):
