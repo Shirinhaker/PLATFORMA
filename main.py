@@ -33,11 +33,16 @@ from fastapi.responses import JSONResponse
 
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
-from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
+from access_config import (
+    PRIVILEGED_TG_IDS,
+    is_privileged_tg_id,
+    project_access_allowed_tg_id,
+    project_access_is_restricted,
+)
 from location_keys import canonical_district_key, safe_district_display
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1613"
+APP_BUILD = "v1615"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
@@ -277,6 +282,16 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
+def _project_temporarily_closed_response():
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": "Loyiha vaqtincha yopiq. Qayta ochilganda xabar beriladi.",
+            "code": "project_temporarily_closed",
+        },
+    )
+
+
 @app.middleware("http")
 async def build_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
@@ -304,6 +319,33 @@ async def whitelist_middleware(request: Request, call_next):
 
     # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
+        # Vaqtinchalik yopiq rejim barcha API yo'llaridan oldin tekshiriladi.
+        # Faqat access_config.py dagi Telegram IDlar va ularga bog'langan mobil
+        # sessiyalar o'tadi. Staff tokeni bu global blokni chetlab o'tmaydi.
+        if project_access_is_restricted():
+            init_data = request.headers.get("x-telegram-init-data", "")
+            auth = (request.headers.get("authorization") or "").strip()
+            if auth.lower().startswith("bearer "):
+                mobile_token = auth[7:].strip()
+                conn = db()
+                mobile_user = mobile_user_from_token(conn, mobile_token)
+                conn.close()
+                if not mobile_user or not project_access_allowed_tg_id(mobile_user["tg_id"]):
+                    return _project_temporarily_closed_response()
+                headers = [
+                    (k, v)
+                    for k, v in request.scope.get("headers", [])
+                    if k.lower() != b"x-telegram-init-data"
+                ]
+                headers.append((b"x-telegram-init-data", ("mobile:" + mobile_token).encode()))
+                request.scope["headers"] = headers
+                return await call_next(request)
+
+            tg = verify_init_data(init_data)
+            if not tg or not project_access_allowed_tg_id(tg.get("id")):
+                return _project_temporarily_closed_response()
+            return await call_next(request)
+
         is_public_district_offers = path == "/api/home/district-offers"
         # XODIM (staff) kirishi Telegram whitelistdan ozod:
         #  1) /api/staff-auth* (login / me / logout)
@@ -355,7 +397,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True}
+    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": False, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": True}
 
 
 @app.get("/api/map-config")
