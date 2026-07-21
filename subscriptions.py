@@ -10,24 +10,18 @@ PAID_DURATIONS = (1, 3, 12)
 PLAN_FEATURES = {
     "free": {
         "unlimited_items": True,
-        "unlimited_stories": True,
         "home_nearby_eligible": False,
         "map_marker_eligible": False,
-        "regional_stories_eligible": False,
     },
     "plus": {
         "unlimited_items": True,
-        "unlimited_stories": True,
         "home_nearby_eligible": True,
         "map_marker_eligible": False,
-        "regional_stories_eligible": False,
     },
     "pro": {
         "unlimited_items": True,
-        "unlimited_stories": True,
         "home_nearby_eligible": True,
         "map_marker_eligible": True,
-        "regional_stories_eligible": True,
     },
 }
 
@@ -39,7 +33,6 @@ PLAN_CATALOG = (
         "benefits": (
             "Biznes profilidan foydalanish",
             "Mahsulot va xizmatlarni cheksiz joylash",
-            "Istoriyalarni cheksiz joylash",
         ),
     },
     {
@@ -58,7 +51,6 @@ PLAN_CATALOG = (
         "benefits": (
             "Plus tarifdagi barcha imkoniyatlar",
             "Biznes metkasini xaritada ko'rsatish huquqi",
-            "Istoriyani hududiy ro'yxatga chiqarish huquqi",
         ),
     },
 )
