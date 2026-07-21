@@ -3829,10 +3829,10 @@ def _ad_dict(row):
 def _demo_advertisements():
     """Haqiqiy reklama navbati to'lmaganda ko'rinishni sinash uchun demo bannerlar."""
     rows = [
-        ("Mahalla Market", "Bugungi mahsulotlarga maxsus chegirma", "/demo_ads/demo_market.svg", 38, 50, 1.08),
+        ("Orzu Mebel", "Uyingiz uchun eng yaxshi tanlovlar", "/demo_ads/demo_sofa.svg", 62, 50, 1.0),
         ("Samarqand Coffee", "Issiq qahva va yangi desertlar", "/demo_ads/demo_cafe.svg", 72, 52, 1.12),
         ("Smart Texnika", "Telefon va aksessuarlarga foydali taklif", "/demo_ads/demo_tech.svg", 77, 48, 1.05),
-        ("Orzu Mebel", "Uyingiz uchun zamonaviy yechimlar", "/demo_ads/demo_home.svg", 78, 50, 1.10),
+        ("Mahalla Market", "Bugungi mahsulotlarga maxsus chegirma", "/demo_ads/demo_market.svg", 38, 50, 1.08),
         ("Nafis Beauty", "Go'zalligingiz uchun yangi xizmatlar", "/demo_ads/demo_beauty.svg", 76, 50, 1.10),
     ]
     return [{
