@@ -34,9 +34,10 @@ from fastapi.responses import JSONResponse
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
 from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
+from location_keys import canonical_district_key, safe_district_display
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1612"
+APP_BUILD = "v1613"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
@@ -303,6 +304,7 @@ async def whitelist_middleware(request: Request, call_next):
 
     # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
+        is_public_district_offers = path == "/api/home/district-offers"
         # XODIM (staff) kirishi Telegram whitelistdan ozod:
         #  1) /api/staff-auth* (login / me / logout)
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
@@ -332,6 +334,8 @@ async def whitelist_middleware(request: Request, call_next):
             return await call_next(request)
         tg = verify_init_data(init_data)
         if not tg:
+            if is_public_district_offers:
+                return await call_next(request)
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
@@ -351,7 +355,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True}
+    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True}
 
 
 @app.get("/api/map-config")
@@ -842,12 +846,13 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
         password = gen_pass()
 
     now = int(time.time())
+    district = safe_district_display(body.get("district"))
     cur = conn.execute(
-        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, district_key, mahalla, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
         (tg["id"], username, login, hash_password(password) if password else "", role, name,
          phone, (body.get("region") or "").strip(),
-         (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
+         district, canonical_district_key(district), (body.get("mahalla") or "").strip(), now),
     )
     user_id = cur.lastrowid
     biz_login = None; biz_pass = None
