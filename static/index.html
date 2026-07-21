@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1612 -->
+<title>Ko‘prik</title><!-- BUILD: v1613 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -229,6 +229,27 @@
   .pin .tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;margin-top:-2px;}
   [data-theme="dark"] .pin .tail{border-top-color:#0e1413;}
   .pin .plabel{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);text-align:center;line-height:1.5;}
+
+  /* v1613 — tuman bo'yicha uzluksiz takliflar */
+  .district-offers{margin:14px -18px 0;overflow:hidden;min-width:0}
+  .district-offers-viewport{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;padding:0 18px;max-width:100%}
+  .district-offers-viewport::-webkit-scrollbar{display:none}
+  .district-offers-track{display:flex;width:max-content;gap:10px;will-change:transform;animation:districtOffersFlow 34s linear infinite}
+  .district-offers-track.is-static{animation:none;will-change:auto}
+  .district-offers.is-paused .district-offers-track,
+  .district-offers:focus-within .district-offers-track{animation-play-state:paused}
+  .district-offer-card{width:178px;flex:0 0 178px;min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden;color:var(--ink);box-shadow:var(--shadow);cursor:pointer;text-align:left;font:inherit;padding:0}
+  .district-offer-media{height:112px;background:var(--primary-tint);overflow:hidden;display:grid;place-items:center;font-size:32px}
+  .district-offer-media img{width:100%;height:100%;object-fit:cover}
+  .district-offer-body{display:block;padding:10px;min-width:0}
+  .district-offer-title,.district-offer-business{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .district-offer-title{font-weight:800;font-size:13.5px}
+  .district-offer-business{margin-top:4px;color:var(--soft);font-size:11.5px}
+  .district-offer-kind{display:inline-flex;align-items:center;margin-top:7px;border-radius:999px;background:var(--primary-tint);color:var(--primary);padding:3px 7px;font-size:10px;font-weight:800;line-height:1.2}
+  .district-offer-price{margin-top:7px;color:var(--primary);font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .district-select-btn{display:block;margin:0 18px;width:calc(100% - 36px);min-height:46px;border:1.5px solid var(--primary);border-radius:14px;background:var(--primary-tint);color:var(--primary);font:800 14px var(--font-b);cursor:pointer}
+  @keyframes districtOffersFlow{from{transform:translateX(0)}to{transform:translateX(calc(-50% - 5px))}}
+  @media(prefers-reduced-motion:reduce){.district-offers-track{animation:none!important}}
 
   /* business cards */
   .biz-card{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px;box-shadow:var(--shadow);cursor:pointer;margin-bottom:11px;}
@@ -850,6 +871,8 @@
           <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
           <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
         </div>
+
+        <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
 
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
@@ -4146,9 +4169,118 @@
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
     if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
     if(home && typeof loadStories === "function") setTimeout(loadStories,40);
+    if(home && typeof loadDistrictOffers === "function") loadDistrictOffers(false);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
+
+  /* ---------- TUMANDAGI UZLUKSIZ TAKLIFLAR ---------- */
+  var DISTRICT_OFFERS_CACHE=null;
+  var DISTRICT_OFFERS_LOADING=null;
+  var DISTRICT_OFFERS_GENERATION=0;
+  var DISTRICT_OFFER_MEDIA_PATHS=/^\/(?:media|uploads)\/(?:[A-Za-z0-9][A-Za-z0-9._-]*)(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
+  var DISTRICT_OFFER_PROFILE_MEDIA=/^\/profile-media\/(?:business|user)\/[1-9][0-9]*(?:\?v=[0-9]+)?$/;
+  var DISTRICT_OFFER_MEDIA_ID=/^[A-Za-z0-9_-]{1,512}$/;
+
+  function clearDistrictOffersCache(){
+    var mount=el("districtOffersMount");
+    if(mount){ mount.innerHTML=""; mount.hidden=true; mount.classList.remove("is-paused"); }
+    DISTRICT_OFFERS_CACHE=null;
+    DISTRICT_OFFERS_LOADING=null;
+    DISTRICT_OFFERS_GENERATION++;
+  }
+  function safeDistrictOfferMediaUrl(value){
+    var media=String(value||"").trim();
+    if(!media || /^(?:\/\/|https?:|javascript:)/i.test(media)) return "";
+    if(media.charAt(0)==="/") return (DISTRICT_OFFER_MEDIA_PATHS.test(media)||DISTRICT_OFFER_PROFILE_MEDIA.test(media))?media:"";
+    return DISTRICT_OFFER_MEDIA_ID.test(media)?"/media/"+media:"";
+  }
+  function districtOfferCardHtml(item, duplicate){
+    var kind=item.kind||"";
+    var photo=item.image||item.business_logo||"";
+    var fallback=kind==="listing"?"📣":kind==="service"?"🧰":"🛍️";
+    var mediaUrl=safeDistrictOfferMediaUrl(photo);
+    var media=mediaUrl?'<img src="'+esc(mediaUrl)+'" alt="" loading="lazy">':fallback;
+    var kindLabel=kind==="listing"?"E’lon":kind==="service"?"Xizmat":"Mahsulot";
+    var price=item.price?'<div class="district-offer-price">'+esc(item.price)+(item.unit?' / '+esc(item.unit):'')+'</div>':"";
+    return '<button type="button" class="district-offer-card" data-district-business="'+esc(item.business_id)+'" data-district-content="'+esc(item.content_id)+'" data-district-kind="'+esc(kind)+'"'+(duplicate?' tabindex="-1" aria-hidden="true"':'')+'>'+ 
+      '<span class="district-offer-media">'+media+'</span>'+ 
+      '<span class="district-offer-body"><span class="district-offer-title">'+esc(item.title||"Taklif")+'</span><span class="district-offer-business">'+esc(item.business_name||"")+'</span><span class="district-offer-kind" data-district-kind-badge>'+kindLabel+'</span>'+price+'</span>'+ 
+    '</button>';
+  }
+  function bindDistrictOffersMount(mount){
+    if(mount.getAttribute("data-district-bound")==="1") return;
+    mount.setAttribute("data-district-bound","1");
+    function pause(){ mount.classList.add("is-paused"); }
+    function resume(){ mount.classList.remove("is-paused"); }
+    mount.addEventListener("pointerenter",pause);
+    mount.addEventListener("pointerleave",resume);
+    mount.addEventListener("touchstart",pause,{passive:true});
+    mount.addEventListener("touchend",resume,{passive:true});
+    mount.addEventListener("touchcancel",resume,{passive:true});
+    mount.addEventListener("focusin",pause);
+    mount.addEventListener("focusout",function(e){
+      if(!e.relatedTarget || !mount.contains(e.relatedTarget)) resume();
+    });
+    mount.addEventListener("click",function(e){
+      var select=e.target.closest("[data-district-select]");
+      if(select){ nav("loc"); return; }
+      var card=e.target.closest("[data-district-content]");
+      if(!card) return;
+      var businessId=parseInt(card.getAttribute("data-district-business"),10);
+      var contentId=parseInt(card.getAttribute("data-district-content"),10);
+      var kind=card.getAttribute("data-district-kind");
+      if(kind==="listing") openElonSrv(contentId);
+      else if(kind==="product" || kind==="service") openBizSrv(businessId,contentId);
+    });
+  }
+  function renderDistrictOffers(payload){
+    var mount=el("districtOffersMount");
+    if(!mount) return;
+    bindDistrictOffersMount(mount);
+    mount.classList.remove("is-paused");
+    if(payload && payload.needs_district){
+      mount.innerHTML='<button type="button" class="district-select-btn" data-district-select>Tumanni tanlang</button>';
+      mount.hidden=false;
+      return;
+    }
+    var items=payload && Array.isArray(payload.items)?payload.items:[];
+    if(!items.length){
+      mount.innerHTML="";
+      mount.hidden=true;
+      return;
+    }
+    var cards=items.map(function(item){return districtOfferCardHtml(item,false);}).join("");
+    if(items.length>1) cards+=items.map(function(item){return districtOfferCardHtml(item,true);}).join("");
+    mount.innerHTML='<div class="district-offers-viewport"><div class="district-offers-track'+(items.length===1?' is-static':'')+'">'+cards+'</div></div>';
+    mount.hidden=false;
+  }
+  function loadDistrictOffers(force){
+    var mount=el("districtOffersMount");
+    if(DISTRICT_OFFERS_LOADING) return DISTRICT_OFFERS_LOADING;
+    var currentSlot=Math.floor(Date.now()/(30*60*1000));
+    if(!force && DISTRICT_OFFERS_CACHE && Number(DISTRICT_OFFERS_CACHE.slot)===currentSlot){
+      renderDistrictOffers(DISTRICT_OFFERS_CACHE);
+      return Promise.resolve(DISTRICT_OFFERS_CACHE);
+    }
+    var generation=DISTRICT_OFFERS_GENERATION;
+    var request=api("GET","/api/home/district-offers").then(function(payload){
+      if(generation!==DISTRICT_OFFERS_GENERATION) return payload;
+      DISTRICT_OFFERS_CACHE=payload;
+      renderDistrictOffers(payload);
+      return payload;
+    }).catch(function(){
+      if(generation===DISTRICT_OFFERS_GENERATION){
+        DISTRICT_OFFERS_CACHE=null;
+        if(mount){ mount.innerHTML=""; mount.hidden=true; }
+      }
+      return null;
+    }).finally(function(){
+      if(DISTRICT_OFFERS_LOADING===request) DISTRICT_OFFERS_LOADING=null;
+    });
+    DISTRICT_OFFERS_LOADING=request;
+    return request;
+  }
 
   /* ---------- SERVERGA ULANGAN SAHIFALAR ---------- */
   var curFollow = null;  // {kind, id} — obuna tugmasi uchun
@@ -6797,19 +6929,26 @@
         g = g || {};
         var viloyat = g.region || "";
         var tuman = g.district || "";
-        var place = g.address || tuman || "Joylashuvim";
-        applyHomeLocation(viloyat, tuman || place, "", lat, lng, 15);
+        // Manzil matni (ko'cha/uy) tuman emas: faqat geokoderning ma'muriy
+        // tuman maydoni profilda saqlanadi.
+        applyHomeLocation(viloyat, tuman, "", lat, lng, 15);
         if(loggedIn){
-          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:(tuman||place), mahalla:"", lat:lat, lng:lng, location_exact:1 });
+          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:tuman, mahalla:"", lat:lat, lng:lng, location_exact:1 });
         }
       }).then(function(){
+        clearDistrictOffersCache();
+        loadDistrictOffers(true);
         done(); nav("home");
       }).catch(function(){
         // Geocode ishlamasa ham koordinata saqlanadi; xarita pin chiqarmasdan shu joyga yaqinlashadi.
         if(loggedIn){
-          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng, location_exact:1 })
+          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"", mahalla:"", lat:lat, lng:lng, location_exact:1 })
+            .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); })
+            .catch(function(){})
             .finally(function(){ done(); nav("home"); });
         } else {
+          clearDistrictOffersCache();
+          loadDistrictOffers(true);
           done(); nav("home");
         }
       });
@@ -6967,9 +7106,11 @@
     // serverga ham matn + koordinatani saqlaymiz (qayta kirganda xarita shu tuman/viloyatga qaytishi uchun)
     if(loggedIn){
       api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:saveLat, lng:saveLng, location_exact:USER_LOC_EXACT?1:0 })
-        .then(function(){ nav("home"); })
+        .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); nav("home"); })
         .catch(function(e){ showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
     } else {
+      clearDistrictOffersCache();
+      loadDistrictOffers(true);
       nav("home");
     }
   });
@@ -7075,6 +7216,8 @@
     loggedIn = true;
     setActiveMode((role==="business") ? "business" : "user");
     el("loginReason").style.display="none";
+    clearDistrictOffersCache();
+    loadDistrictOffers(true);
     // serverdan to'liq profilni yangilaymiz
     api("GET","/api/me").then(function(d){
       if(d && d.registered){
@@ -7166,6 +7309,8 @@
         try{ localStorage.removeItem("koprik_mobile_token");localStorage.removeItem("koprik_active_mode"); }catch(e2){}
       }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
+      clearDistrictOffersCache();
+      loadDistrictOffers(true);
       nav("home");
       return;
     }
