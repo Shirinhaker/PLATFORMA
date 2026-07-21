@@ -61,6 +61,7 @@ from subscriptions import (
     activate_demo_subscription,
     subscription_payload,
 )
+from access_config import is_privileged_tg_id, project_access_is_restricted
 
 router = APIRouter(prefix="/api")
 public_router = APIRouter()
@@ -257,6 +258,78 @@ async def home_district_offers(
     try:
         me = optional_user(conn, x_telegram_init_data)
         return district_offers_payload(conn, me["id"] if me else None)
+    finally:
+        conn.close()
+
+
+@router.post("/home/district-offers/demo-seed")
+async def seed_demo_district_offers(
+    x_telegram_init_data: str = Header(default=""),
+):
+    """Yopiq sinov davrida joriy tumanga 20 xil demo taklif yaratadi."""
+    conn = db()
+    try:
+        user = require_user(conn, x_telegram_init_data)
+        deny_staff(conn, x_telegram_init_data, "Demo takliflar")
+        if not project_access_is_restricted() or not is_privileged_tg_id(user["tg_id"]):
+            raise HTTPException(403, "Demo ma'lumot yaratishga ruxsat yo'q.")
+        district_key = (_row_val(user, "district_key", "") or "").strip()
+        district_name = (_row_val(user, "district", "") or "").strip()
+        if not district_key or not district_name:
+            raise HTTPException(400, "Avval profilingizda tumanni tanlang.")
+
+        safe_key = re.sub(r"[^a-z0-9]+", "_", district_key.lower()).strip("_")[:30]
+        product_names = (
+            "Yangi non", "Sut mahsulotlari", "Telefon aksessuari", "Uy jihozi",
+            "Bolalar kiyimi", "Avto ehtiyot qism", "Dori-darmon to'plami",
+            "Maktab anjomlari", "Qurilish materiali", "Gul va sovg'a",
+        )
+        listing_names = (
+            "Usta xizmati", "Uy ijarasi", "Ish o'rni", "Avtomobil savdosi",
+            "Yetkazib berish", "Kompyuter ta'miri", "Tikuvchilik xizmati",
+            "O'quv kursi", "Mebel buyurtmasi", "Tadbir uchun xizmat",
+        )
+        created = 0
+        for index in range(20):
+            number = index + 1
+            login = "demo_v1616_%s_%02d" % (safe_key or "district", number)
+            existing = conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone()
+            if existing:
+                continue
+            title = product_names[index] if index < 10 else listing_names[index - 10]
+            conn.execute(
+                "INSERT INTO users(login,pass_hash,role,name,district,district_key,created_at) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (login, "!demo-login-disabled!", "business", title + " egasi", district_name, district_key, int(time.time())),
+            )
+            owner_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute(
+                "INSERT INTO businesses(user_id,name,yon,tur,address,status,created_at) "
+                "VALUES(?,?,?,?,?,'active',?)",
+                (owner_id, title, "Savdo" if index < 10 else "Xizmatlar", "Demo", district_name, int(time.time())),
+            )
+            business_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            if index < 10:
+                conn.execute(
+                    "INSERT INTO items(business_id,name,price,note,kind,created_at) VALUES(?,?,?,?,?,?)",
+                    (business_id, title, "%d 000 so'm" % (15 + index * 7), "Sinov mahsuloti", "product", int(time.time())),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO listings(user_id,business_id,cat,title,price,descr,address,visibility,status,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (owner_id, business_id, "Xizmatlar", title, "%d 000 so'm" % (50 + (index - 10) * 25), "Sinov e'loni", district_name, "all", "active", int(time.time())),
+                )
+            conn.commit()
+            activate_demo_subscription(
+                conn, business_id, "plus" if index % 2 == 0 else "pro", 1
+            )
+            created += 1
+        count = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE login LIKE ?",
+            ("demo_v1616_%s_%%" % (safe_key or "district"),),
+        ).fetchone()[0]
+        return {"ok": True, "demo_businesses": int(count), "created": created}
     finally:
         conn.close()
 
@@ -797,9 +870,20 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     new_name = keep("name", user["name"])
     new_phone = keep("phone", user["phone"])
     new_region = keep("region", user["region"])
-    requested_district = keep("district", user["district"])
-    new_district = safe_district_display(requested_district)
-    new_district_key = canonical_district_key(new_district)
+    if "district" not in b:
+        new_district = user["district"]
+        new_district_key = _row_val(user, "district_key", "") or canonical_district_key(new_district)
+    elif isinstance(b["district"], str) and not b["district"].strip():
+        # Tumanni faqat foydalanuvchi aniq bo'sh qiymat yuborganda tozalaymiz.
+        new_district = ""
+        new_district_key = ""
+    else:
+        requested_district = b.get("district")
+        new_district = safe_district_display(requested_district)
+        if not new_district:
+            conn.close()
+            raise HTTPException(400, "Tuman ro'yxatdan tanlanishi kerak.")
+        new_district_key = canonical_district_key(new_district)
     new_mahalla = keep("mahalla", user["mahalla"])
     # lat/lng: yuborilgan bo'lsa yangilanadi, yuborilmasa eskisi qoladi.
     # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
@@ -4444,7 +4528,7 @@ async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Hea
 # ====================================================================
 # XARITA (bosh ekran): faol Pro bizneslar + obunalar
 # ====================================================================
-def _map_business_dict(row, source, following=False):
+def _map_business_dict(row, following=False):
     """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
     return {
         "id": row["id"],
@@ -4458,7 +4542,6 @@ def _map_business_dict(row, source, following=False):
         "logo_zoom": float(_row_val(row, "logo_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
-        "source": source,
         "following": following,
     }
 
@@ -4478,7 +4561,6 @@ def _map_specialist_dict(row):
         "avatar_zoom": float(_row_val(row, "avatar_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
-        "source": "obuna",
     }
 
 
@@ -4517,7 +4599,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
 
     business_map = {}
     for b in pro_rows:
-        business_map[b["id"]] = _map_business_dict(b, "pro", following=False)
+        business_map[b["id"]] = _map_business_dict(b, following=False)
 
     # 2) Joriy kabinet obuna bo'lgan bizneslar
     actor_ctx = resolve_actor(conn, user, "business" if (actor or "").strip().lower() == "business" else "user")
@@ -4548,10 +4630,9 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
 
     for b in followed_rows:
         if b["id"] in business_map:
-            business_map[b["id"]]["source"] = "pro+obuna"
             business_map[b["id"]]["following"] = True
         else:
-            business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
+            business_map[b["id"]] = _map_business_dict(b, following=True)
 
     # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
     if actor_ctx["type"] == "business":
