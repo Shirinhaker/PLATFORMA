@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1615 -->
+<title>Ko‘prik</title><!-- BUILD: v1616 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -886,6 +886,7 @@
         </div>
 
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
+        <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
 
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
@@ -2223,9 +2224,15 @@
   function authHeader(){ return STAFF_TOKEN ? ("staff:" + STAFF_TOKEN) : INIT_DATA; }
 
   function apiHeaders(){
-    var h = { "X-Telegram-Init-Data": authHeader() };
-    if(STAFF_TOKEN) h["X-Staff-Token"] = STAFF_TOKEN;
-    if(MOBILE_TOKEN && !STAFF_TOKEN) h["Authorization"] = "Bearer " + MOBILE_TOKEN;
+    var h = {};
+    if(STAFF_TOKEN){
+      h["X-Telegram-Init-Data"] = "staff:" + STAFF_TOKEN;
+      h["X-Staff-Token"] = STAFF_TOKEN;
+    } else if(MOBILE_TOKEN){
+      h["Authorization"] = "Bearer " + MOBILE_TOKEN;
+    } else if(INIT_DATA){
+      h["X-Telegram-Init-Data"] = INIT_DATA;
+    }
     return h;
   }
 
@@ -4084,7 +4091,7 @@
     }
     var btn = el("rgSubmit"); btn.disabled = true; btn.textContent = "Yuborilmoqda...";
     api("POST", "/api/mobile-auth/register/request-code", body).then(function(r){
-      renderRegisterCode(phone, r.request_id, r.test_code || "");
+      renderRegisterCode(phone, r.request_id);
     }).catch(function(e){
       showMsg(e.message);
     }).finally(function(){
@@ -4092,11 +4099,10 @@
     });
   }
 
-  function renderRegisterCode(phone, requestId, testCode){
+  function renderRegisterCode(phone, requestId){
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">Telefonni tasdiqlash</div>'+
       '<div class="lead-sub"><b>'+esc(phone)+'</b> raqamiga yuborilgan 6 xonali kodni kiriting.</div>'+
-      (testCode?'<div class="ad-info" style="margin-bottom:12px">Sinov kodi: <b style="font-size:18px">'+esc(testCode)+'</b></div>':'')+
       '<div class="field"><label>Tasdiqlash kodi</label><input class="input" id="rgCode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"></div>'+
       '<button class="btn btn-primary btn-block" id="rgVerify">Tasdiqlash va kirish</button>'+
       '<button class="btn btn-outline btn-block" id="rgCodeBack" style="margin-top:10px">Telefonni o\'zgartirish</button></div>';
@@ -4205,6 +4211,8 @@
   var DISTRICT_OFFERS_CACHE=null;
   var DISTRICT_OFFERS_LOADING=null;
   var DISTRICT_OFFERS_GENERATION=0;
+  var DISTRICT_OFFER_SLOT_MS=30*60*1000;
+  var DISTRICT_OFFERS_REFRESH_TIMER=null;
   var DISTRICT_OFFER_MEDIA_PATHS=/^\/(?:media|uploads)\/(?:[A-Za-z0-9][A-Za-z0-9._-]*)(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
   var DISTRICT_OFFER_PROFILE_MEDIA=/^\/profile-media\/(?:business|user)\/[1-9][0-9]*(?:\?v=[0-9]+)?$/;
   var DISTRICT_OFFER_MEDIA_ID=/^[A-Za-z0-9_-]{1,512}$/;
@@ -4216,6 +4224,17 @@
     DISTRICT_OFFERS_LOADING=null;
     DISTRICT_OFFERS_GENERATION++;
   }
+  function scheduleDistrictOffersRefresh(){
+    if(DISTRICT_OFFERS_REFRESH_TIMER) clearTimeout(DISTRICT_OFFERS_REFRESH_TIMER);
+    var delay=DISTRICT_OFFER_SLOT_MS-(Date.now()%DISTRICT_OFFER_SLOT_MS)+1000;
+    DISTRICT_OFFERS_REFRESH_TIMER=setTimeout(function(){
+      DISTRICT_OFFERS_REFRESH_TIMER=null;
+      loadDistrictOffers(true);
+    },delay);
+  }
+  document.addEventListener("visibilitychange",function(){
+    if(!document.hidden){ loadDistrictOffers(true); scheduleDistrictOffersRefresh(); }
+  });
   function safeDistrictOfferMediaUrl(value){
     var media=String(value||"").trim();
     if(!media || /^(?:\/\/|https?:|javascript:)/i.test(media)) return "";
@@ -4285,9 +4304,10 @@
   function loadDistrictOffers(force){
     var mount=el("districtOffersMount");
     if(DISTRICT_OFFERS_LOADING) return DISTRICT_OFFERS_LOADING;
-    var currentSlot=Math.floor(Date.now()/(30*60*1000));
+    var currentSlot=Math.floor(Date.now()/DISTRICT_OFFER_SLOT_MS);
     if(!force && DISTRICT_OFFERS_CACHE && Number(DISTRICT_OFFERS_CACHE.slot)===currentSlot){
       renderDistrictOffers(DISTRICT_OFFERS_CACHE);
+      scheduleDistrictOffersRefresh();
       return Promise.resolve(DISTRICT_OFFERS_CACHE);
     }
     var generation=DISTRICT_OFFERS_GENERATION;
@@ -4295,6 +4315,7 @@
       if(generation!==DISTRICT_OFFERS_GENERATION) return payload;
       DISTRICT_OFFERS_CACHE=payload;
       renderDistrictOffers(payload);
+      scheduleDistrictOffersRefresh();
       return payload;
     }).catch(function(){
       if(generation===DISTRICT_OFFERS_GENERATION){
@@ -4308,6 +4329,17 @@
     DISTRICT_OFFERS_LOADING=request;
     return request;
   }
+  if(el("seedDistrictOffers")) el("seedDistrictOffers").addEventListener("click",function(){
+    var btn=this; btn.disabled=true; btn.textContent="Demo takliflar yaratilmoqda...";
+    api("POST","/api/home/district-offers/demo-seed").then(function(r){
+      clearDistrictOffersCache();
+      return loadDistrictOffers(true).then(function(){
+        showMsg((r.demo_businesses||20)+" ta demo taklif tayyor.");
+      });
+    }).catch(function(e){ showMsg(e.message); }).finally(function(){
+      btn.disabled=false; btn.textContent="20 ta demo taklif qo‘shish";
+    });
+  });
 
   /* ---------- SERVERGA ULANGAN SAHIFALAR ---------- */
   var curFollow = null;  // {kind, id} — obuna tugmasi uchun
@@ -7291,8 +7323,7 @@
       loginRequestId=r.request_id; loginRequestPhone=phone;
       el("loginCodePhone").textContent=phone;
       el("loginCode").value="";
-      if(r.test_code){ el("loginTestCode").style.display="block"; el("loginTestCode").innerHTML='Sinov kodi: <b style="font-size:18px">'+esc(r.test_code)+'</b>'; }
-      else { el("loginTestCode").style.display="none"; el("loginTestCode").textContent=""; }
+      el("loginTestCode").style.display="none"; el("loginTestCode").textContent="";
       el("loginStep1").hidden=true; el("loginStep2").hidden=false;
       startLoginResendTimer();
       setTimeout(function(){ try{ el("loginCode").focus(); }catch(e){} },100);
