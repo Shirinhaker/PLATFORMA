@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1618 -->
+<title>Ko‘prik</title><!-- BUILD: v1619 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -770,19 +770,6 @@
   .web-nav button.on{color:var(--primary);}
   .web-nav button.on:after{background:var(--primary);}
   .web-header-label{display:none;}
-  .public-ads-intro{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;padding:24px;background:linear-gradient(135deg,#073f3b,#0e8c84);color:#fff;box-shadow:var(--shadow);}
-  .public-ads-intro h2{font:800 24px/1.2 var(--font-d);}
-  .public-ads-intro p{max-width:620px;margin-top:7px;color:rgba(255,255,255,.82);font-size:14px;line-height:1.55;}
-  .public-ads-intro .btn{width:auto;margin-top:16px;padding:0 22px;background:var(--amber);color:#342300;}
-  .public-ads-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px;padding-bottom:28px;}
-  .public-ad-card{position:relative;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--card);box-shadow:var(--shadow);cursor:pointer;text-align:left;color:var(--ink);}
-  .public-ad-card-media{height:190px;overflow:hidden;background:var(--line);}
-  .public-ad-card-media img{width:100%;height:100%;display:block;object-fit:cover;}
-  .public-ad-card-copy{padding:14px 15px 16px;}
-  .public-ad-card-copy span{display:block;color:var(--primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;}
-  .public-ad-card-copy h3{margin-top:5px;font:800 17px/1.3 var(--font-d);}
-  .public-ad-card-copy p{margin-top:4px;color:var(--soft);font-size:13px;line-height:1.45;}
-  @media(min-width:760px){.public-ads-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
   @media(min-width:1080px){
     body{background:var(--bg);}
     .phone{max-width:none;width:100%;height:100vh;height:100dvh;margin:0;border-radius:0;box-shadow:none;}
@@ -820,14 +807,9 @@
     #leafletMap{height:100%!important;min-height:430px;}
     .district-offers{margin-top:18px;}
     .district-offers-viewport{padding:0 18px;}
-    .public-ads-intro{padding:30px 32px;}
-    .public-ads-intro h2{font-size:30px;}
-    .public-ads-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
-    .public-ad-card-media{height:210px;}
   }
   @media(min-width:1320px){
     .web-header-label{display:inline!important;}
-    .public-ads-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
   }
 </style>
 </head>
@@ -851,7 +833,6 @@
         <nav class="web-nav web-only" aria-label="Asosiy menyu">
           <button class="on" id="webHomeBtn" type="button">Bosh sahifa</button>
           <button id="webListingsBtn" type="button">E’lonlar</button>
-          <button id="webAdsBtn" type="button">Reklama</button>
         </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
@@ -939,19 +920,6 @@
             <button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>
           </div>
         </section>
-        <div class="ad" id="adBox">
-          <img class="ad-photo" id="adPhoto" alt="Reklama">
-          <div class="ad-overlay"></div>
-          <span class="tag">Reklama</span>
-          <div class="ad-copy">
-            <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
-            <h3 id="adTitle">Bu yerda reklamangiz</h3>
-            <p id="adText">Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
-          </div>
-          <div class="blob"></div>
-        </div>
-        <div class="dots-row" id="adDots"><span class="on"></span></div>
-
         <div id="callPanel" hidden></div>
         <div class="home-discovery">
           <div class="desktop-hero-copy">
@@ -983,25 +951,32 @@
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
         <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
 
+        <div class="ad" id="adBox" style="margin-top:20px">
+          <img class="ad-photo" id="adPhoto" alt="Reklama">
+          <div class="ad-overlay"></div>
+          <span class="tag">Reklama</span>
+          <div class="ad-copy">
+            <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
+            <h3 id="adTitle">Bu yerda reklamangiz</h3>
+            <p id="adText">Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
+          </div>
+          <div class="blob"></div>
+        </div>
+        <div class="dots-row" id="adDots"><span class="on"></span></div>
+
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
           <div class="menu-card" id="resBar" style="margin-top:14px"><div class="menu-ic">📋</div><div class="menu-main"><h4 id="resCount">Natijalar</h4><p>Profillarni ko'rish uchun bosing</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
           <div id="resList" hidden></div>
         </div>
-        <div class="sec-head" id="elonHead"><h2>E'lonlar</h2></div>
-        <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e'lonlar xaritada paydo bo'ladi.</p>
-        <div class="elon-row" id="elonRow"></div>
-        <div id="elonList"></div>
       </section>
 
-      <!-- REKLAMALAR — yuqori web menyusidan ochiladi -->
-      <section class="screen" data-screen="ads">
-        <div class="public-ads-intro">
-          <h2>Reklamalar</h2>
-          <p>Hududingizga mos faol biznes takliflari. Reklamani bosing — biznes yoki foydalanuvchi sahifasi ochiladi.</p>
-          <button class="btn" id="publicAdCreateBtn" type="button">+ Reklama joylashtirish</button>
-        </div>
-        <div class="public-ads-grid" id="publicAdsGrid"></div>
+      <!-- E’LONLAR — yuqori web menyusidan alohida ochiladi -->
+      <section class="screen" data-screen="listings">
+        <div class="sec-head" id="elonHead" style="margin-top:4px"><h2>E’lonlar</h2></div>
+        <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e’lonlar shu oynada chiqadi.</p>
+        <div class="elon-row" id="elonRow"></div>
+        <div id="elonList"></div>
       </section>
 
       <!-- QIDIRUV (katalog ichida) -->
@@ -3121,9 +3096,9 @@
                  ic:t.ic, c:t.c, lat:e2.lat, lng:e2.lng, desc:e2.descr||"",
                  media:e2.media||[], is_saved:!!e2.is_saved, user_id:e2.user_id, owner_name:e2.owner_name||"" };
       });
-      renderPins(key);              // toifa metkalari avtomatik xaritada
+      if(current!=="listings")renderPins(key); // alohida e'lon oynasida yashirin xaritani chizmaymiz
       renderElonList(key);
-      fitElonBounds(key);           // xarita barcha metkalarni qamrab oladigan hududga moslashadi
+      if(current!=="listings")fitElonBounds(key);
       screensEl.scrollTo({top:0, behavior:"smooth"});
     }).catch(function(e){ el("elonList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
@@ -3179,10 +3154,10 @@
   function toggleElon(id){
     // akkordeon: ochiq bo'lsa yopamiz, yopiq bo'lsa ochamiz
     selElon = (selElon===id) ? null : id;
-    renderPins(mapMode);          // ochilgan e'lon metkasi ajralib ko'rinadi
+    if(current!=="listings")renderPins(mapMode); // bosh xaritadagi holat uchun
     renderElonList(mapMode);
     // ochilgan e'lon metkasiga xaritani avtomatik suramiz
-    if(selElon!=null && LMAP){
+    if(current!=="listings" && selElon!=null && LMAP){
       var e = ELONS.filter(function(x){ return x.id===selElon; })[0];
       if(e && e.lat!=null && e.lng!=null){
         try{ LMAP.setView([e.lat, e.lng], 15, { animate:true }); }catch(err){}
@@ -3274,8 +3249,6 @@
     renderMapChip();
     fitResultBounds(pins);
     el("clearSearch").hidden = false;
-    el("elonHead").style.display="none"; el("elonHint").style.display="none";
-    el("elonRow").style.display="none"; el("elonList").style.display="none";
     el("resWrap").hidden = false;
     el("resCount").textContent = "Natijalar \u2014 " + count + " ta";
     el("resList").innerHTML = list_html;
@@ -3287,8 +3260,6 @@
     el("searchInput").value = "";
     el("catSearch").value = "";
     el("clearSearch").hidden = true;
-    el("elonHead").style.display=""; el("elonHint").style.display="";
-    el("elonRow").style.display=""; el("elonList").style.display="";
     el("resWrap").hidden = true;
     el("resList").innerHTML = "";
     mapMode = "biz";
@@ -3307,7 +3278,7 @@
   var pickMode="to", TO_PIN=null;               // qaysi maydon tahrirlanmoqda ("from"/"to") + qizil manzil belgisi
   var _skipMove=false, _fromGeoTimer=null;      // dasturiy siljishni o'tkazib yuborish + boshlanish geokod taymeri
   function homePartsHide(h){
-    ["adBox","adDots","pinEyebrow","elonHead","elonHint","elonRow","elonList"].forEach(function(id){
+    ["adBox","adDots","pinEyebrow"].forEach(function(id){
       var x=el(id); if(x) x.style.display = h ? "none" : "";
     });
   }
@@ -4246,7 +4217,7 @@
 
   /* ---------- navigation ---------- */
   var current = "home";
-  var titles = { catalog:"Qidiruv", ads:"Reklamalar", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
+  var titles = { catalog:"Qidiruv", listings:"E’lonlar", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-stories":"Istoriyalarim", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
@@ -4259,7 +4230,7 @@
   titles["cab-education-student-card"]="O'quvchi kartasi";
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   titles["cab-education-payment-control"]="To'lov nazorati";
-  var BACKMAP = { catalog:"home", ads:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
+  var BACKMAP = { catalog:"home", listings:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
@@ -4297,12 +4268,11 @@
     for(var i=0;i<secs.length;i++) secs[i].classList.toggle("active", secs[i].getAttribute("data-screen")===screen);
     screensEl.scrollTop = 0;
     var home = screen==="home";
-    var desktopPublic = screen==="ads" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
+    var desktopPublic = screen==="listings" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
     el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
     el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
     if(el("webHomeBtn")) el("webHomeBtn").classList.toggle("on",home);
-    if(el("webListingsBtn")) el("webListingsBtn").classList.remove("on");
-    if(el("webAdsBtn")) el("webAdsBtn").classList.toggle("on",screen==="ads");
+    if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
@@ -6568,9 +6538,7 @@
 
   function openWebHome(){ nav("home"); }
   function openWebListings(){
-    nav("home");
-    if(el("webListingsBtn")){el("webHomeBtn").classList.remove("on");el("webListingsBtn").classList.add("on");}
-    setTimeout(function(){ if(el("elonHead")) el("elonHead").scrollIntoView({behavior:"smooth",block:"start"}); },80);
+    nav("listings");
   }
   function openWebSearchType(type){
     nav("catalog");
@@ -6581,7 +6549,6 @@
   el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
   el("webHomeBtn") && el("webHomeBtn").addEventListener("click",openWebHome);
   el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
-  el("webAdsBtn") && el("webAdsBtn").addEventListener("click",function(){nav("ads");});
   el("desktopHeroSearch") && el("desktopHeroSearch").addEventListener("click",function(){openWebSearchType("all");});
   document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
@@ -10475,7 +10442,7 @@
   });
 
   function onScreenOpen(screen){
-    if(screen==="ads") renderAdvertisementsScreen();
+    if(screen==="listings"){renderElonRow();loadElonCounts();}
     else if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
     else if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
@@ -11631,30 +11598,6 @@
     if(!HOME_ADS.length)applyHomeAds(DEMO_HOME_ADS.slice(),false);
     return api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);return HOME_ADS;}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);return HOME_ADS;});
   }
-  function publicAdCardHtml(ad,index){
-    return '<button type="button" class="public-ad-card" data-public-ad-index="'+index+'">'+
-      '<span class="public-ad-card-media"><img src="'+esc(ad.image_file||"")+'" alt="'+esc(ad.title||"Reklama")+'" loading="lazy" style="object-position:'+(ad.crop_x==null?50:ad.crop_x)+'% '+(ad.crop_y==null?50:ad.crop_y)+'%;transform:scale('+(ad.crop_zoom||1)+');transform-origin:'+(ad.crop_x==null?50:ad.crop_x)+'% '+(ad.crop_y==null?50:ad.crop_y)+'%"></span>'+
-      '<span class="public-ad-card-copy"><span>Reklama</span><h3>'+esc(ad.title||"Reklama")+'</h3><p>'+esc(ad.caption||"Batafsil ko‘rish uchun bosing.")+'</p></span></button>';
-  }
-  function renderAdvertisementsScreen(){
-    var grid=el("publicAdsGrid");if(!grid)return Promise.resolve();
-    if(!HOME_ADS.length){grid.innerHTML='<div class="subscription-state"><h3>Reklamalar yuklanmoqda</h3><p>Bir oz kuting...</p></div>';return loadHomeAds(false).then(renderAdvertisementsScreen);}
-    grid.innerHTML=HOME_ADS.map(publicAdCardHtml).join("");
-    return Promise.resolve(HOME_ADS);
-  }
-  function openPublicAdvertisement(index){
-    var ad=HOME_ADS[Number(index)];if(!ad)return;
-    if(ad.is_demo){showMsg("Bu namoyish uchun joylangan demo reklama.");return;}
-    api("POST","/api/advertisements/"+ad.id+"/click").catch(function(){});
-    if(ad.business_id)openBiz(ad.business_id);else if(ad.user_id)openPersonSrv(ad.user_id);
-  }
-  function openAdvertisingManager(){
-    if(!loggedIn||!ME.registered){showLogin("Reklama joylashtirish");return;}
-    var business=!!ME.has_business&&activeMode==="business";
-    var actor=business?"business":"user";
-    switchAdsTab(actor,"ads");
-    nav(business?"cab-elon":"ucab-elon");
-  }
   document.addEventListener("visibilitychange",function(){
     if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
     else if(HOME_ADS.length){renderHomeAd();startHomeAds();}
@@ -11667,8 +11610,6 @@
     api("POST","/api/advertisements/"+a.id+"/click").catch(function(){});
     if(a.business_id) openBiz(a.business_id); else if(a.user_id) openPersonSrv(a.user_id);
   });
-  el("publicAdsGrid") && el("publicAdsGrid").addEventListener("click",function(e){var card=e.target.closest("[data-public-ad-index]");if(card)openPublicAdvertisement(card.getAttribute("data-public-ad-index"));});
-  el("publicAdCreateBtn") && el("publicAdCreateBtn").addEventListener("click",openAdvertisingManager);
 
   var AD_FORM = {
     ba:{actor:"business", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1},
