@@ -19,7 +19,10 @@ Jadval tuzilishi kelishilgan dizaynga mos:
 import os
 import sqlite3
 
+from location_keys import canonical_district_key
+
 DB_PATH = os.environ.get("DB_PATH", "platforma.db")
+DISTRICT_KEY_BACKFILL_MARKER = "users_district_key_backfill_v1"
 
 
 def db():
@@ -49,6 +52,7 @@ def init_db():
             phone         TEXT DEFAULT '',
             region        TEXT DEFAULT '',                  -- viloyat/shahar
             district      TEXT DEFAULT '',                  -- tuman
+            district_key  TEXT DEFAULT '',                  -- tuman uchun kanonik qidiruv kaliti
             mahalla       TEXT DEFAULT '',
             lat           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             lng           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
@@ -443,6 +447,35 @@ def init_db():
     conn.close()
 
 
+def ensure_user_district_keys(conn):
+    """Add, backfill once, and index the canonical key without altering labels."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    column_added = "district_key" not in columns
+    if column_added:
+        conn.execute("ALTER TABLE users ADD COLUMN district_key TEXT DEFAULT ''")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS app_meta("
+        "key TEXT PRIMARY KEY,value TEXT NOT NULL)"
+    )
+    backfill_marker = conn.execute(
+        "SELECT value FROM app_meta WHERE key=?",
+        (DISTRICT_KEY_BACKFILL_MARKER,),
+    ).fetchone()
+    if column_added or backfill_marker is None:
+        rows = conn.execute("SELECT id,district FROM users").fetchall()
+        for row in rows:
+            conn.execute(
+                "UPDATE users SET district_key=? WHERE id=?",
+                (canonical_district_key(row[1]), row[0]),
+            )
+        conn.execute(
+            "INSERT INTO app_meta(key,value) VALUES(?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (DISTRICT_KEY_BACKFILL_MARKER, "1"),
+        )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_district_key ON users(district_key)")
+
+
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
     from stories import ensure_story_tables
@@ -599,6 +632,21 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN avatar_y REAL NOT NULL DEFAULT 50")
     if "avatar_zoom" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN avatar_zoom REAL NOT NULL DEFAULT 1")
+    ensure_user_district_keys(conn)
+    # v1613: district-offer hot path counts by kind/public visibility and
+    # fetches one deterministic row by id without materializing full catalogs.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_items_business_kind_id "
+        "ON items(business_id,kind,id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_listings_business_public_id "
+        "ON listings(business_id,status,visibility,id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_listing_media_offer_photo "
+        "ON listing_media(listing_id,mtype,pos,id)"
+    )
     # v1479: kelajakdagi Android/iOS ilovasi uchun Telegramdan mustaqil sessiyalar.
     # Bazada tokenning o'zi emas, SHA-256 xeshi saqlanadi.
     conn.execute(
