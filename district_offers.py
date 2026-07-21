@@ -9,7 +9,7 @@ from subscriptions import home_nearby_eligible_plan_codes
 
 
 SLOT_SECONDS = 30 * 60
-MAX_DISTRICT_OFFERS = 6
+MAX_DISTRICT_OFFERS = 20
 
 _OPAQUE_MEDIA_REFERENCE = re.compile(r"[A-Za-z0-9_-]{1,512}\Z")
 _UPLOAD_MEDIA_REFERENCE = re.compile(
