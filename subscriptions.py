@@ -103,6 +103,15 @@ def subscription_entitlements(plan_code):
     return dict(PLAN_FEATURES[code])
 
 
+def home_nearby_eligible_plan_codes():
+    """Read-only policy source for batch home-nearby candidate queries."""
+    return tuple(
+        code
+        for code, features in PLAN_FEATURES.items()
+        if features.get("home_nearby_eligible") is True
+    )
+
+
 def _add_calendar_months(timestamp, months):
     current = datetime.fromtimestamp(int(timestamp), tz=timezone.utc)
     month_index = current.month - 1 + int(months)
@@ -136,21 +145,62 @@ def _virtual_free():
     }
 
 
+def _active_subscription_row(conn, business_id, now):
+    return conn.execute(
+        "SELECT * FROM business_subscriptions "
+        "WHERE business_id=? AND status='active' "
+        "AND (plan_code='free' OR expires_at=0 OR expires_at>?) "
+        "ORDER BY id DESC LIMIT 1",
+        (int(business_id), now),
+    ).fetchone()
+
+
+def _has_expired_active_paid_subscription(conn, business_id, now):
+    return conn.execute(
+        "SELECT 1 FROM business_subscriptions "
+        "WHERE business_id=? AND status='active' AND plan_code IN ('plus','pro') "
+        "AND expires_at>0 AND expires_at<=? LIMIT 1",
+        (int(business_id), now),
+    ).fetchone() is not None
+
+
+def _expire_active_paid_subscriptions(conn, business_id, now):
+    """Commit expired-history cleanup without turning normal reads into writes."""
+    if conn.in_transaction:
+        conn.execute("SAVEPOINT subscription_expiry_cleanup")
+        try:
+            conn.execute(
+                "UPDATE business_subscriptions SET status='expired' "
+                "WHERE business_id=? AND status='active' AND plan_code IN ('plus','pro') "
+                "AND expires_at>0 AND expires_at<=?",
+                (int(business_id), now),
+            )
+            conn.execute("RELEASE SAVEPOINT subscription_expiry_cleanup")
+        except Exception:
+            conn.execute("ROLLBACK TO SAVEPOINT subscription_expiry_cleanup")
+            conn.execute("RELEASE SAVEPOINT subscription_expiry_cleanup")
+            raise
+        return
+
+    conn.execute("BEGIN")
+    try:
+        conn.execute(
+            "UPDATE business_subscriptions SET status='expired' "
+            "WHERE business_id=? AND status='active' AND plan_code IN ('plus','pro') "
+            "AND expires_at>0 AND expires_at<=?",
+            (int(business_id), now),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def current_business_subscription(conn, business_id, now=None):
     now = int(time.time() if now is None else now)
-    changed = conn.execute(
-        "UPDATE business_subscriptions SET status='expired' "
-        "WHERE business_id=? AND status='active' AND plan_code IN ('plus','pro') "
-        "AND expires_at>0 AND expires_at<=?",
-        (int(business_id), now),
-    ).rowcount
-    if changed:
-        conn.commit()
-    row = conn.execute(
-        "SELECT * FROM business_subscriptions "
-        "WHERE business_id=? AND status='active' ORDER BY id DESC LIMIT 1",
-        (int(business_id),),
-    ).fetchone()
+    if _has_expired_active_paid_subscription(conn, business_id, now):
+        _expire_active_paid_subscriptions(conn, business_id, now)
+    row = _active_subscription_row(conn, business_id, now)
     return _subscription_dict(row) or _virtual_free()
 
 
@@ -164,12 +214,9 @@ def _validate_activation(plan_code, duration_months):
     code = str(plan_code or "").strip().lower()
     if code not in PLAN_FEATURES:
         raise SubscriptionValidationError("Tarif noto'g'ri tanlangan.")
-    if isinstance(duration_months, bool):
+    if isinstance(duration_months, bool) or not isinstance(duration_months, int):
         raise SubscriptionValidationError("Obuna muddati noto'g'ri.")
-    try:
-        duration = int(duration_months)
-    except (TypeError, ValueError):
-        raise SubscriptionValidationError("Obuna muddati noto'g'ri.") from None
+    duration = duration_months
     if code == "free" and duration != 0:
         raise SubscriptionValidationError("Bepul tarif muddatsiz tanlanadi.")
     if code != "free" and duration not in PAID_DURATIONS:
@@ -181,37 +228,50 @@ def activate_demo_subscription(conn, business_id, plan_code, duration_months, no
     code, duration = _validate_activation(plan_code, duration_months)
     business_id = int(business_id)
     now = int(time.time() if now is None else now)
-    current = current_business_subscription(conn, business_id, now=now)
+    if conn.in_transaction:
+        raise RuntimeError("Subscription activation requires a connection outside a transaction.")
 
-    if current["plan_code"] == code and not current["is_virtual"]:
-        if code == "free":
-            return subscription_payload(conn, business_id, now=now)
-        base = max(int(current["expires_at"]), now)
+    conn.execute("BEGIN IMMEDIATE")
+    try:
         conn.execute(
-            "UPDATE business_subscriptions SET duration_months=?,expires_at=? WHERE id=?",
-            (
-                int(current["duration_months"]) + duration,
-                _add_calendar_months(base, duration),
-                int(current["id"]),
-            ),
+            "UPDATE business_subscriptions SET status='expired' "
+            "WHERE business_id=? AND status='active' AND plan_code IN ('plus','pro') "
+            "AND expires_at>0 AND expires_at<=?",
+            (business_id, now),
         )
-        conn.commit()
-        return subscription_payload(conn, business_id, now=now)
+        current = _subscription_dict(_active_subscription_row(conn, business_id, now))
+        current = current or _virtual_free()
 
-    conn.execute(
-        "UPDATE business_subscriptions SET status='superseded' "
-        "WHERE business_id=? AND status='active'",
-        (business_id,),
-    )
-    expires_at = 0 if code == "free" else _add_calendar_months(now, duration)
-    conn.execute(
-        "INSERT INTO business_subscriptions("
-        "business_id,plan_code,duration_months,starts_at,expires_at,status,is_demo,created_at"
-        ") VALUES(?,?,?,?,?,'active',1,?)",
-        (business_id, code, duration, now, expires_at, now),
-    )
-    conn.commit()
-    return subscription_payload(conn, business_id, now=now)
+        if current["plan_code"] == code and not current["is_virtual"]:
+            if code != "free":
+                base = max(int(current["expires_at"]), now)
+                conn.execute(
+                    "UPDATE business_subscriptions SET duration_months=?,expires_at=? WHERE id=?",
+                    (
+                        int(current["duration_months"]) + duration,
+                        _add_calendar_months(base, duration),
+                        int(current["id"]),
+                    ),
+                )
+        else:
+            conn.execute(
+                "UPDATE business_subscriptions SET status='superseded' "
+                "WHERE business_id=? AND status='active'",
+                (business_id,),
+            )
+            expires_at = 0 if code == "free" else _add_calendar_months(now, duration)
+            conn.execute(
+                "INSERT INTO business_subscriptions("
+                "business_id,plan_code,duration_months,starts_at,expires_at,status,is_demo,created_at"
+                ") VALUES(?,?,?,?,?,'active',1,?)",
+                (business_id, code, duration, now, expires_at, now),
+            )
+        payload = subscription_payload(conn, business_id, now=now)
+        conn.commit()
+        return payload
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def subscription_payload(conn, business_id, now=None):
