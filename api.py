@@ -4442,7 +4442,7 @@ async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Hea
 
 
 # ====================================================================
-# XARITA (bosh ekran): platforma ko'rsatadiganlar + obunalar
+# XARITA (bosh ekran): faol Pro bizneslar + obunalar
 # ====================================================================
 def _map_business_dict(row, source, following=False):
     """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
@@ -4472,7 +4472,6 @@ def _map_specialist_dict(row):
         "narx": row["narx"],
         "is_gov": bool(row["is_gov"]),
         "available": bool(row["available"]),
-        "district": row["district"],
         "avatar_file": _row_val(row, "avatar_file", "") or "",
         "avatar_x": float(_row_val(row, "avatar_x", 50) or 50),
         "avatar_y": float(_row_val(row, "avatar_y", 50) or 50),
@@ -4489,26 +4488,36 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
     Bosh sahifa xaritasi uchun obyektlar.
 
     Bu endpoint HAMMA biznesni qaytarmaydi. Faqat:
-      1) platforma tomonidan bosh xaritada ko'rsatishga belgilangan bizneslar;
+      1) faol Pro obunasi va joylashuvi bor bizneslar;
       2) joriy foydalanuvchi obuna bo'lgan, joylashuvi bor bizneslar;
       3) joriy foydalanuvchi obuna bo'lgan, ko'rinadigan va joylashuvi bor mutaxasislar.
+
+    Pro va obuna metkalari frontendda bir xil odatiy metka bilan chiziladi.
     """
     conn = db()
     user = require_user(conn, x_telegram_init_data)
 
-    # 1) Platforma tomonidan ko'rsatiladigan bizneslar
-    platform_rows = conn.execute(
+    # 1) Muddati tugamagan faol Pro bizneslar. Eski map_visible belgisi endi
+    # ommaviy xaritaga chiqish huquqini bermaydi.
+    pro_rows = conn.execute(
         """SELECT * FROM businesses
-           WHERE status='active'
-             AND lat IS NOT NULL AND lng IS NOT NULL
-             AND COALESCE(map_visible, 0)=1
-           ORDER BY created_at DESC
-           LIMIT 200"""
+           WHERE businesses.status='active'
+             AND businesses.lat IS NOT NULL AND businesses.lng IS NOT NULL
+             AND EXISTS(
+               SELECT 1 FROM business_subscriptions subscription
+               WHERE subscription.business_id=businesses.id
+                 AND subscription.status='active'
+                 AND subscription.plan_code='pro'
+                 AND subscription.expires_at>?
+             )
+           ORDER BY businesses.created_at DESC
+           LIMIT 200""",
+        (int(time.time()),),
     ).fetchall()
 
     business_map = {}
-    for b in platform_rows:
-        business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
+    for b in pro_rows:
+        business_map[b["id"]] = _map_business_dict(b, "pro", following=False)
 
     # 2) Joriy kabinet obuna bo'lgan bizneslar
     actor_ctx = resolve_actor(conn, user, "business" if (actor or "").strip().lower() == "business" else "user")
@@ -4539,7 +4548,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
 
     for b in followed_rows:
         if b["id"] in business_map:
-            business_map[b["id"]]["source"] = "platforma+obuna"
+            business_map[b["id"]]["source"] = "pro+obuna"
             business_map[b["id"]]["following"] = True
         else:
             business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
@@ -4547,7 +4556,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
     # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
     if actor_ctx["type"] == "business":
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
+            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM business_follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
@@ -4561,7 +4570,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
         ).fetchall()
     else:
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
+            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
