@@ -24,12 +24,14 @@ import secrets
 import hashlib
 import threading
 
-from fastapi import APIRouter, Request, Header, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, Header, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 
 import sqlite3
 
 from database import db
+from district_offers import district_offers_payload, validate_media_reference
+from location_keys import canonical_district_key, safe_district_display
 from education_statistics import education_statistics_data
 from stories import (
     MAX_VIDEO_BYTES,
@@ -242,6 +244,21 @@ def optional_user(conn, init_data):
     except HTTPException:
         return None
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
+
+
+@router.get("/home/district-offers")
+async def home_district_offers(
+    response: Response,
+    x_telegram_init_data: str = Header(default=""),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Vary"] = "Authorization, X-Telegram-Init-Data, X-Staff-Token"
+    conn = db()
+    try:
+        me = optional_user(conn, x_telegram_init_data)
+        return district_offers_payload(conn, me["id"] if me else None)
+    finally:
+        conn.close()
 
 
 def resolve_actor(conn, user, actor_type="user"):
@@ -780,7 +797,9 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     new_name = keep("name", user["name"])
     new_phone = keep("phone", user["phone"])
     new_region = keep("region", user["region"])
-    new_district = keep("district", user["district"])
+    requested_district = keep("district", user["district"])
+    new_district = safe_district_display(requested_district)
+    new_district_key = canonical_district_key(new_district)
     new_mahalla = keep("mahalla", user["mahalla"])
     # lat/lng: yuborilgan bo'lsa yangilanadi, yuborilmasa eskisi qoladi.
     # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
@@ -803,8 +822,8 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
                 raise HTTPException(400, "Bu username band. Boshqasini tanlang.")
         new_pubu = cand
     conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=?, location_exact=?, pub_username=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, new_exact, new_pubu, user["id"]),
+        "UPDATE users SET name=?, phone=?, region=?, district=?, district_key=?, mahalla=?, lat=?, lng=?, location_exact=?, pub_username=? WHERE id=?",
+        (new_name or user["name"], new_phone, new_region, new_district, new_district_key, new_mahalla, new_lat, new_lng, new_exact, new_pubu, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -1912,9 +1931,13 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
         from main import reverse_geocode
         geo = await reverse_geocode(new_lat, new_lng)
         gr = (geo.get("region") or "").strip()
-        gd = (geo.get("district") or "").strip()
+        gd = safe_district_display(geo.get("district"))
+        gd_key = canonical_district_key(gd)
         if gr or gd:
-            conn.execute("UPDATE users SET region=?, district=?, lat=?, lng=? WHERE id=?", (gr, gd, new_lat, new_lng, user["id"]))
+            conn.execute(
+                "UPDATE users SET region=?, district=?, district_key=?, lat=?, lng=? WHERE id=?",
+                (gr, gd, gd_key, new_lat, new_lng, user["id"]),
+            )
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -2103,7 +2126,11 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    photo = (b.get("photo_file") or "").strip()
+    try:
+        photo = validate_media_reference(b.get("photo_file"))
+    except ValueError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc)) from None
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
     queue_enabled = _queue_item_enabled(biz, kind, b)
@@ -2137,7 +2164,11 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    photo = (b.get("photo_file") or "").strip()
+    try:
+        photo = validate_media_reference(b.get("photo_file"))
+    except ValueError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc)) from None
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
     queue_enabled = _queue_item_enabled(biz, kind, b)
@@ -4021,6 +4052,28 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
         if b.get("visibility") == "own":
             visibility = "own"  # faqat biznes sahifasi mehmonlariga
 
+    raw_media = b.get("media") or []
+    if not isinstance(raw_media, list):
+        conn.close()
+        raise HTTPException(400, "Media ro'yxati noto'g'ri yuborildi.")
+    media_rows = []
+    try:
+        for position, media in enumerate(raw_media[:10]):
+            if not isinstance(media, dict):
+                raise ValueError("Media ma'lumoti noto'g'ri yuborildi.")
+            file_id = validate_media_reference(media.get("file_id"))
+            if file_id:
+                media_rows.append(
+                    (
+                        file_id,
+                        "video" if media.get("type") == "video" else "photo",
+                        position,
+                    )
+                )
+    except ValueError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc)) from None
+
     cur = conn.execute(
         """INSERT INTO listings(user_id, business_id, cat, title, price, descr, address,
                                 lat, lng, visibility, created_at)
@@ -4030,13 +4083,11 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
          b.get("lat"), b.get("lng"), visibility, int(time.time())),
     )
     listing_id = cur.lastrowid
-    for i, m in enumerate((b.get("media") or [])[:10]):
-        fid = (m.get("file_id") or "").strip()
-        if fid:
-            conn.execute(
-                "INSERT INTO listing_media(listing_id, tg_file_id, mtype, pos) VALUES(?,?,?,?)",
-                (listing_id, fid, "video" if m.get("type") == "video" else "photo", i),
-            )
+    for file_id, media_type, position in media_rows:
+        conn.execute(
+            "INSERT INTO listing_media(listing_id, tg_file_id, mtype, pos) VALUES(?,?,?,?)",
+            (listing_id, file_id, media_type, position),
+        )
     conn.commit()
 
     # Bildirishnoma: shu e'longa mos filtri bor foydalanuvchilarga xabar
