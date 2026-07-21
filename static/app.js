@@ -2003,11 +2003,13 @@
     for(var i=0;i<secs.length;i++) secs[i].classList.toggle("active", secs[i].getAttribute("data-screen")===screen);
     screensEl.scrollTop = 0;
     var home = screen==="home";
-    var desktopPublic = screen==="listings" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
-    el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
-    el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
+    var publicRoot = home || screen==="listings";
+    el("tbHome").style.display = publicRoot ? "flex" : "none";
+    el("tbSub").style.display = publicRoot ? "none" : "flex";
     if(el("webHomeBtn")) el("webHomeBtn").classList.toggle("on",home);
     if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
+    if(el("mobileHomeBtn")) el("mobileHomeBtn").classList.toggle("on",home);
+    if(el("mobileListingsBtn")) el("mobileListingsBtn").classList.toggle("on",screen==="listings");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
@@ -4280,6 +4282,8 @@
   el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
   el("webHomeBtn") && el("webHomeBtn").addEventListener("click",openWebHome);
   el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
+  el("mobileHomeBtn") && el("mobileHomeBtn").addEventListener("click",openWebHome);
+  el("mobileListingsBtn") && el("mobileListingsBtn").addEventListener("click",openWebListings);
   el("desktopHeroSearch") && el("desktopHeroSearch").addEventListener("click",function(){openWebSearchType("all");});
   document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
