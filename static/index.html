@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1617 -->
+<title>Ko‘prik</title><!-- BUILD: v1618 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -760,6 +760,75 @@
   @media(max-width:759px){.my-stories-grid{grid-template-columns:minmax(0,1fr)}.my-story-card{grid-template-columns:96px minmax(0,1fr)}.my-story-thumb{width:96px;height:126px}}
   @media(max-width:759px){.story-layer{align-items:stretch;background:var(--bg);backdrop-filter:none}.story-sheet{height:100dvh;max-height:none;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}.story-preview{height:min(46dvh,440px)}}
   @media(min-width:760px){.story-card{flex-basis:92px;width:92px}.story-thumb{width:92px;height:92px;border-radius:20px}.story-name{font-size:12px}.story-layer{align-items:center}.story-sheet{border-radius:24px;max-height:88vh}.story-stage{height:min(92vh,900px);border-radius:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}}
+
+  /* v1618 — dastlabki Ko‘prik web dizayniga mos desktop bosh sahifa */
+  .web-only,.desktop-hero-copy{display:none;}
+  .web-brand{border:0;background:none;color:var(--primary);font:800 28px/1 var(--font-d);letter-spacing:-.045em;cursor:pointer;white-space:nowrap;}
+  .web-nav{align-self:stretch;align-items:center;gap:6px;}
+  .web-nav button{position:relative;height:48px;padding:0 14px;border:0;background:transparent;color:var(--ink);font:700 14px var(--font-b);cursor:pointer;white-space:nowrap;}
+  .web-nav button:after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:transparent;}
+  .web-nav button.on{color:var(--primary);}
+  .web-nav button.on:after{background:var(--primary);}
+  .web-header-label{display:none;}
+  .public-ads-intro{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:24px;padding:24px;background:linear-gradient(135deg,#073f3b,#0e8c84);color:#fff;box-shadow:var(--shadow);}
+  .public-ads-intro h2{font:800 24px/1.2 var(--font-d);}
+  .public-ads-intro p{max-width:620px;margin-top:7px;color:rgba(255,255,255,.82);font-size:14px;line-height:1.55;}
+  .public-ads-intro .btn{width:auto;margin-top:16px;padding:0 22px;background:var(--amber);color:#342300;}
+  .public-ads-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px;padding-bottom:28px;}
+  .public-ad-card{position:relative;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--card);box-shadow:var(--shadow);cursor:pointer;text-align:left;color:var(--ink);}
+  .public-ad-card-media{height:190px;overflow:hidden;background:var(--line);}
+  .public-ad-card-media img{width:100%;height:100%;display:block;object-fit:cover;}
+  .public-ad-card-copy{padding:14px 15px 16px;}
+  .public-ad-card-copy span{display:block;color:var(--primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;}
+  .public-ad-card-copy h3{margin-top:5px;font:800 17px/1.3 var(--font-d);}
+  .public-ad-card-copy p{margin-top:4px;color:var(--soft);font-size:13px;line-height:1.45;}
+  @media(min-width:760px){.public-ads-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(min-width:1080px){
+    body{background:var(--bg);}
+    .phone{max-width:none;width:100%;height:100vh;height:100dvh;margin:0;border-radius:0;box-shadow:none;}
+    .statusbar{display:none;}
+    .topbar{height:82px;padding:0 34px;border-bottom:1px solid var(--line);background:var(--card);box-shadow:0 2px 12px rgba(16,40,33,.035);}
+    .tb-home{width:min(100%,1440px);height:100%;margin:0 auto;gap:12px;}
+    .web-only{display:flex;}
+    .web-brand{margin-right:32px;}
+    .web-nav{margin-right:auto;}
+    .tb-home>.search{max-width:330px;height:46px;border-radius:14px;}
+    .tb-home>.icon-btn{width:auto;min-width:46px;height:46px;padding:0 13px;border-radius:14px;display:flex;gap:8px;}
+    .tb-home>.icon-btn .web-header-label{display:inline;font-size:13px;font-weight:750;}
+    .tb-home>#cabBtn{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);padding:0 17px;}
+    .tb-home>#locBtn{max-width:190px;}
+    .tb-sub{width:min(100%,1440px);height:100%;margin:0 auto;}
+    .screens{padding-bottom:42px;}
+    .screen{width:min(100%,1440px);margin:0 auto;padding:22px 34px 0;}
+    .screen[data-screen="home"]{padding-top:18px;}
+    .story-strip{margin-bottom:18px;}
+    .story-rail{gap:12px;}
+    .ad{min-height:176px;border-radius:22px;}
+    .ad.has-image .ad-photo{height:190px;}
+    .home-discovery{display:grid;grid-template-columns:minmax(360px,.78fr) minmax(600px,1.22fr);gap:20px;align-items:stretch;margin-top:22px;}
+    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:center;min-width:0;border:1px solid var(--line);border-radius:24px;padding:32px;background:var(--card);box-shadow:var(--shadow);}
+    .desktop-hero-kicker{display:inline-flex;width:max-content;max-width:100%;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:var(--primary-tint);color:var(--primary);font-size:12px;font-weight:800;}
+    .desktop-hero-copy h1{margin-top:16px;font:800 clamp(28px,3vw,45px)/1.12 var(--font-d);letter-spacing:-.045em;}
+    .desktop-hero-copy>p{margin-top:13px;color:var(--soft);font-size:15px;line-height:1.65;max-width:560px;}
+    .desktop-hero-search{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;margin-top:22px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg);padding:7px 8px 7px 17px;color:var(--soft);font:600 14px var(--font-b);cursor:pointer;text-align:left;}
+    .desktop-hero-search strong{flex:0 0 auto;border-radius:12px;padding:12px 18px;background:var(--primary);color:var(--primary-ink);}
+    .desktop-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+    .desktop-hero-tags button{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:9px 12px;font:700 12px var(--font-b);cursor:pointer;}
+    .home-map-pane{display:flex;flex-direction:column;min-width:0;}
+    .home-map-pane .pin-eyebrow{margin-top:0;}
+    .home-map-pane .map-wrap{flex:1;border-radius:24px;}
+    #leafletMap{height:100%!important;min-height:430px;}
+    .district-offers{margin-top:18px;}
+    .district-offers-viewport{padding:0 18px;}
+    .public-ads-intro{padding:30px 32px;}
+    .public-ads-intro h2{font-size:30px;}
+    .public-ads-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+    .public-ad-card-media{height:210px;}
+  }
+  @media(min-width:1320px){
+    .web-header-label{display:inline!important;}
+    .public-ads-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+  }
 </style>
 </head>
 <body>
@@ -778,8 +847,15 @@
 
     <header class="topbar">
       <div class="tb-home" id="tbHome">
+        <button class="web-brand web-only" id="webBrandBtn" type="button" aria-label="Ko‘prik bosh sahifasi">Ko‘prik</button>
+        <nav class="web-nav web-only" aria-label="Asosiy menyu">
+          <button class="on" id="webHomeBtn" type="button">Bosh sahifa</button>
+          <button id="webListingsBtn" type="button">E’lonlar</button>
+          <button id="webAdsBtn" type="button">Reklama</button>
+        </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+          <span class="web-header-label">Manzil</span>
         </button>
         <div class="search" id="searchBox">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -789,10 +865,13 @@
         <button class="icon-btn" id="cartBtn" aria-label="Savat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6"/></svg>
           <span class="badge" id="cartBadge" hidden>0</span>
+          <span class="web-header-label">Savat</span>
         </button>
-        <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖</button>
+        <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖<span class="web-header-label">Taxi</span></button>
+        <button class="icon-btn web-only" id="desktopThemeBtn" aria-label="Rang rejimini almashtirish"></button>
         <button class="icon-btn" id="cabBtn" aria-label="Kabinet">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <span class="web-header-label">Kabinet</span>
         </button>
       </div>
       <div class="tb-sub" id="tbSub">
@@ -874,15 +953,31 @@
         <div class="dots-row" id="adDots"><span class="on"></span></div>
 
         <div id="callPanel" hidden></div>
-        <div class="pin-eyebrow" id="pinEyebrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
-          Yaqin atrofdagilar
-        </div>
-        <div class="map-wrap">
-          <div id="leafletMap" style="width:100%;height:230px;background:var(--map-land)"></div>
-          <div class="map-chip" id="mapChip"></div>
-          <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
-          <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
+        <div class="home-discovery">
+          <div class="desktop-hero-copy">
+            <span class="desktop-hero-kicker">⌕ Qidiruv markazida</span>
+            <h1>Kerakli mahsulot va xizmatni yaqiningizdan toping</h1>
+            <p>Mahsulot, xizmat, biznes, mutaxassis yoki e’lonlarni bitta platformada toping.</p>
+            <button class="desktop-hero-search" id="desktopHeroSearch" type="button"><span>Nima qidiryapsiz?</span><strong>Qidirish</strong></button>
+            <div class="desktop-hero-tags">
+              <button type="button" data-web-search-type="product">🛍 Mahsulot</button>
+              <button type="button" data-web-search-type="service">🧰 Xizmat</button>
+              <button type="button" data-web-search-type="business">🏪 Biznes</button>
+              <button type="button" data-web-search-type="specialist">👤 Mutaxassis</button>
+            </div>
+          </div>
+          <div class="home-map-pane">
+            <div class="pin-eyebrow" id="pinEyebrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+              Yaqin atrofdagilar
+            </div>
+            <div class="map-wrap">
+              <div id="leafletMap" style="width:100%;height:230px;background:var(--map-land)"></div>
+              <div class="map-chip" id="mapChip"></div>
+              <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
+              <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
+            </div>
+          </div>
         </div>
 
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
@@ -897,6 +992,16 @@
         <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e'lonlar xaritada paydo bo'ladi.</p>
         <div class="elon-row" id="elonRow"></div>
         <div id="elonList"></div>
+      </section>
+
+      <!-- REKLAMALAR — yuqori web menyusidan ochiladi -->
+      <section class="screen" data-screen="ads">
+        <div class="public-ads-intro">
+          <h2>Reklamalar</h2>
+          <p>Hududingizga mos faol biznes takliflari. Reklamani bosing — biznes yoki foydalanuvchi sahifasi ochiladi.</p>
+          <button class="btn" id="publicAdCreateBtn" type="button">+ Reklama joylashtirish</button>
+        </div>
+        <div class="public-ads-grid" id="publicAdsGrid"></div>
       </section>
 
       <!-- QIDIRUV (katalog ichida) -->
@@ -4141,7 +4246,7 @@
 
   /* ---------- navigation ---------- */
   var current = "home";
-  var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
+  var titles = { catalog:"Qidiruv", ads:"Reklamalar", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-stories":"Istoriyalarim", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
@@ -4154,7 +4259,7 @@
   titles["cab-education-student-card"]="O'quvchi kartasi";
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   titles["cab-education-payment-control"]="To'lov nazorati";
-  var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
+  var BACKMAP = { catalog:"home", ads:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
@@ -4192,8 +4297,12 @@
     for(var i=0;i<secs.length;i++) secs[i].classList.toggle("active", secs[i].getAttribute("data-screen")===screen);
     screensEl.scrollTop = 0;
     var home = screen==="home";
-    el("tbHome").style.display = home ? "flex" : "none";
-    el("tbSub").style.display = home ? "none" : "flex";
+    var desktopPublic = screen==="ads" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
+    el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
+    el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
+    if(el("webHomeBtn")) el("webHomeBtn").classList.toggle("on",home);
+    if(el("webListingsBtn")) el("webListingsBtn").classList.remove("on");
+    if(el("webAdsBtn")) el("webAdsBtn").classList.toggle("on",screen==="ads");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
@@ -6454,7 +6563,27 @@
 
   /* ---------- events ---------- */
   el("themeBtn").addEventListener("click", toggleTheme);
+  el("desktopThemeBtn") && el("desktopThemeBtn").addEventListener("click", toggleTheme);
   el("backBtn").addEventListener("click", function(){ nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home")); });
+
+  function openWebHome(){ nav("home"); }
+  function openWebListings(){
+    nav("home");
+    if(el("webListingsBtn")){el("webHomeBtn").classList.remove("on");el("webListingsBtn").classList.add("on");}
+    setTimeout(function(){ if(el("elonHead")) el("elonHead").scrollIntoView({behavior:"smooth",block:"start"}); },80);
+  }
+  function openWebSearchType(type){
+    nav("catalog");
+    var target=document.querySelector('#searchTypeRow [data-search-type="'+type+'"]');
+    if(target) target.click();
+    setTimeout(function(){try{el("catSearch").focus();}catch(e){}},100);
+  }
+  el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
+  el("webHomeBtn") && el("webHomeBtn").addEventListener("click",openWebHome);
+  el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
+  el("webAdsBtn") && el("webAdsBtn").addEventListener("click",function(){nav("ads");});
+  el("desktopHeroSearch") && el("desktopHeroSearch").addEventListener("click",function(){openWebSearchType("all");});
+  document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
   el("cartBtn").addEventListener("click", function(){
@@ -10346,7 +10475,8 @@
   });
 
   function onScreenOpen(screen){
-    if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
+    if(screen==="ads") renderAdvertisementsScreen();
+    else if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
     else if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="cab-subscriptions") loadBusinessSubscription();
@@ -11499,7 +11629,31 @@
   }
   function loadHomeAds(animate){
     if(!HOME_ADS.length)applyHomeAds(DEMO_HOME_ADS.slice(),false);
-    api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);});
+    return api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);return HOME_ADS;}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);return HOME_ADS;});
+  }
+  function publicAdCardHtml(ad,index){
+    return '<button type="button" class="public-ad-card" data-public-ad-index="'+index+'">'+
+      '<span class="public-ad-card-media"><img src="'+esc(ad.image_file||"")+'" alt="'+esc(ad.title||"Reklama")+'" loading="lazy" style="object-position:'+(ad.crop_x==null?50:ad.crop_x)+'% '+(ad.crop_y==null?50:ad.crop_y)+'%;transform:scale('+(ad.crop_zoom||1)+');transform-origin:'+(ad.crop_x==null?50:ad.crop_x)+'% '+(ad.crop_y==null?50:ad.crop_y)+'%"></span>'+
+      '<span class="public-ad-card-copy"><span>Reklama</span><h3>'+esc(ad.title||"Reklama")+'</h3><p>'+esc(ad.caption||"Batafsil ko‘rish uchun bosing.")+'</p></span></button>';
+  }
+  function renderAdvertisementsScreen(){
+    var grid=el("publicAdsGrid");if(!grid)return Promise.resolve();
+    if(!HOME_ADS.length){grid.innerHTML='<div class="subscription-state"><h3>Reklamalar yuklanmoqda</h3><p>Bir oz kuting...</p></div>';return loadHomeAds(false).then(renderAdvertisementsScreen);}
+    grid.innerHTML=HOME_ADS.map(publicAdCardHtml).join("");
+    return Promise.resolve(HOME_ADS);
+  }
+  function openPublicAdvertisement(index){
+    var ad=HOME_ADS[Number(index)];if(!ad)return;
+    if(ad.is_demo){showMsg("Bu namoyish uchun joylangan demo reklama.");return;}
+    api("POST","/api/advertisements/"+ad.id+"/click").catch(function(){});
+    if(ad.business_id)openBiz(ad.business_id);else if(ad.user_id)openPersonSrv(ad.user_id);
+  }
+  function openAdvertisingManager(){
+    if(!loggedIn||!ME.registered){showLogin("Reklama joylashtirish");return;}
+    var business=!!ME.has_business&&activeMode==="business";
+    var actor=business?"business":"user";
+    switchAdsTab(actor,"ads");
+    nav(business?"cab-elon":"ucab-elon");
   }
   document.addEventListener("visibilitychange",function(){
     if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
@@ -11513,6 +11667,8 @@
     api("POST","/api/advertisements/"+a.id+"/click").catch(function(){});
     if(a.business_id) openBiz(a.business_id); else if(a.user_id) openPersonSrv(a.user_id);
   });
+  el("publicAdsGrid") && el("publicAdsGrid").addEventListener("click",function(e){var card=e.target.closest("[data-public-ad-index]");if(card)openPublicAdvertisement(card.getAttribute("data-public-ad-index"));});
+  el("publicAdCreateBtn") && el("publicAdCreateBtn").addEventListener("click",openAdvertisingManager);
 
   var AD_FORM = {
     ba:{actor:"business", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1},
@@ -11921,7 +12077,7 @@
   /* ---------- theme ---------- */
   var sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M1.5 12h2.5M20 12h2.5M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>';
   var moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>';
-  function setIcon(){ el("themeBtn").innerHTML = document.documentElement.getAttribute("data-theme")==="dark" ? sun : moon; }
+  function setIcon(){ var icon=document.documentElement.getAttribute("data-theme")==="dark" ? sun : moon;el("themeBtn").innerHTML=icon;if(el("desktopThemeBtn"))el("desktopThemeBtn").innerHTML=icon; }
   function toggleTheme(){ var d=document.documentElement; d.setAttribute("data-theme", d.getAttribute("data-theme")==="dark"?"light":"dark"); setIcon(); }
 
   /* ---------- init ---------- */
