@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1536 -->
+<title>Platforma</title><!-- BUILD: v1539 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1854,8 +1854,9 @@
   var LOC = "Yunusobod tumani";
   var RES = {pins:[], html:"", count:0};
 
-  /* ---------- Leaflet xaritasi ---------- */
+  /* ---------- Bosh xarita: Leaflet + OpenStreetMap ---------- */
   var LMAP = null, LMARKERS = [];
+  var MAIN_MAPBOX = false;
   var CENTER = [41.3111, 69.2797];           // Toshkent markazi (boshlang'ich)
   var HOME_POINT = null;                     // bosh xarita markazi: foydalanuvchi tanlagan viloyat/tuman
   function xyToLatLng(x, y){
@@ -1866,10 +1867,12 @@
   }
   function ensureMap(){
     if(LMAP) return LMAP;
-    if(typeof L === "undefined" || !el("leafletMap")) return null;
-    LMAP = L.map("leafletMap", { zoomControl:true, attributionControl:false }).setView(CENTER, 14);
+    if(!el("leafletMap")) return null;
+    if(typeof L==="undefined") return null;
+    MAIN_MAPBOX=false;
+    LMAP=L.map("leafletMap",{zoomControl:true,attributionControl:true}).setView(CENTER,14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap"
+      maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(LMAP);
     LMAP.on("moveend", onOrderMapMove);   // zakaz formasida markaz manzilini kuzatadi
     setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 200);
@@ -1892,10 +1895,29 @@
   function addMarker(lat, lng, icon, onClick){
     if(!LMAP || !icon) return;
     if(lat==null || lng==null) return;
-    var m = L.marker([lat,lng], { icon:icon }).addTo(LMAP);
-    if(onClick) m.on("click", onClick);
+    var m;
+    if(MAIN_MAPBOX){
+      var node=document.createElement("div");
+      node.className="leaflet-pin";
+      node.innerHTML=(icon.options&&icon.options.html)||"";
+      if(onClick) node.addEventListener("click",function(ev){ev.stopPropagation();onClick();});
+      m=new mapboxgl.Marker({element:node,anchor:"bottom"}).setLngLat([Number(lng),Number(lat)]).addTo(LMAP);
+    }else{
+      m=L.marker([lat,lng],{icon:icon}).addTo(LMAP);
+      if(onClick) m.on("click",onClick);
+    }
     LMARKERS.push(m);
     return m;
+  }
+
+  function addLooseMainMarker(ll,icon){
+    if(!LMAP||!ll||!icon) return null;
+    if(MAIN_MAPBOX){
+      var node=document.createElement("div"); node.className="leaflet-pin";
+      node.innerHTML=(icon.options&&icon.options.html)||"";
+      return new mapboxgl.Marker({element:node,anchor:"bottom"}).setLngLat([Number(ll[1]),Number(ll[0])]).addTo(LMAP);
+    }
+    return L.marker(ll,{icon:icon}).addTo(LMAP);
   }
 
   function renderPins(mode){
@@ -2327,11 +2349,11 @@
     if(!LMAP || typeof L==="undefined") return;
     if(FROM_PIN){ try{ LMAP.removeLayer(FROM_PIN); }catch(e){} FROM_PIN=null; }
     if(pickMode!=="from" && FROM_LL){
-      FROM_PIN=L.marker(FROM_LL,{ icon:dotIcon("#16A34A","","",false) }).addTo(LMAP);
+      FROM_PIN=addLooseMainMarker(FROM_LL,dotIcon("#16A34A","","",false));
     }
     if(TO_PIN){ try{ LMAP.removeLayer(TO_PIN); }catch(e){} TO_PIN=null; }
     if(pickMode!=="to" && TO_LL && !ozim){
-      TO_PIN=L.marker(TO_LL,{ icon:dotIcon("#DC2626","","",false) }).addTo(LMAP);
+      TO_PIN=addLooseMainMarker(TO_LL,dotIcon("#DC2626","","",false));
     }
   }
   // Markazni biror nuqtaga dasturiy olib boramiz (onOrderMapMove ishlamasin)
@@ -2445,7 +2467,20 @@
       if(!j || !j.routes || !j.routes.length){ clearRoute(); return; }
       var route=j.routes[0];
       if(ROUTE_LINE){ try{ LMAP.removeLayer(ROUTE_LINE); }catch(e){} ROUTE_LINE=null; }
-      ROUTE_LINE=L.geoJSON(route.geometry, { style:{ color:"#2563EB", weight:5, opacity:0.85 } }).addTo(LMAP);
+      if(MAIN_MAPBOX){
+        var sourceId="platforma-order-route",layerId="platforma-order-route-line";
+        if(LMAP.getSource(sourceId)) LMAP.getSource(sourceId).setData(route.geometry);
+        else{
+          LMAP.addSource(sourceId,{type:"geojson",data:route.geometry});
+          LMAP.addLayer({id:layerId,type:"line",source:sourceId,paint:{"line-color":"#2563EB","line-width":5,"line-opacity":0.85}});
+        }
+        ROUTE_LINE={remove:function(){
+          try{if(LMAP.getLayer(layerId))LMAP.removeLayer(layerId);}catch(e){}
+          try{if(LMAP.getSource(sourceId))LMAP.removeSource(sourceId);}catch(e){}
+        }};
+      }else{
+        ROUTE_LINE=L.geoJSON(route.geometry,{style:{color:"#2563EB",weight:5,opacity:0.85}}).addTo(LMAP);
+      }
       ORDER_DIST_KM=route.distance/1000;
       ORDER_DUR_MIN=Math.round(route.duration/60);
       if(el("cPrice")) el("cPrice").innerHTML=priceText();
@@ -9841,7 +9876,7 @@
     nav("home");
     loadElonCounts();
     loadHomeAds();
-    // Xarita Leaflet'ga bog'liq — agar u hali yuklanmagan bo'lsa, ilova baribir ishlasin
+    // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
     if(MOBILE_TOKEN) api("GET", "/api/me").then(function(d){
@@ -9877,7 +9912,7 @@
   }
   function bootWhenReady(){
     boot();
-    // Agar Leaflet kech yuklansa, xaritani keyin bir marta tiklaymiz
+    // Xarita kutubxonalari kech yuklansa, xaritani keyin bir marta tiklaymiz.
     if(typeof L === "undefined"){
       var tries = 0;
       var iv = setInterval(function(){
