@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1627 -->
+<title>Ko‘prik</title><!-- BUILD: v1628 -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Ko‘prik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -846,6 +846,10 @@
   @media(min-width:1320px){
     .web-header-label{display:inline!important;}
   }
+  /* v1628: faqat telefon/planshetda ko'rinadigan elementlar */
+  @media(min-width:1080px){
+    .phone-only{display:none!important;}
+  }
 
 </style>
 </head>
@@ -1001,7 +1005,7 @@
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
         <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
 
-        <div id="homeElonMount"></div>
+        <button type="button" class="btn btn-primary btn-block phone-only" id="homeElonOpenBtn" style="margin-top:14px">📋 E’lonlarni ko‘rish</button>
 
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
@@ -6604,28 +6608,10 @@
   function openWebListings(){
     nav("listings");
   }
-  /* v1626 — telefonda (<1080px) E'lonlar bo'limi bosh sahifada turadi,
-     desktopda esa avvalgidek alohida "listings" oynasida qoladi. */
-  var elonPlacementMedia = window.matchMedia ? window.matchMedia("(min-width:1080px)") : null;
-  function placeElonSection(){
-    var section = el("elonSection");
-    var desktopHost = document.querySelector('section[data-screen="listings"]');
-    var mobileHost = el("homeElonMount");
-    if(!section || !desktopHost || !mobileHost) return;
-    var isDesktop = elonPlacementMedia ? elonPlacementMedia.matches : true;
-    if(isDesktop){
-      if(section.parentElement !== desktopHost) desktopHost.appendChild(section);
-    } else {
-      if(section.parentElement !== mobileHost) mobileHost.appendChild(section);
-      // telefonga o'tilganda bo'sh "listings" oynasida qolib ketmaslik uchun
-      if(current === "listings") nav("home");
-    }
-  }
-  placeElonSection();
-  if(elonPlacementMedia){
-    if(elonPlacementMedia.addEventListener) elonPlacementMedia.addEventListener("change", placeElonSection);
-    else if(elonPlacementMedia.addListener) elonPlacementMedia.addListener(placeElonSection);
-  }
+  /* v1628 — telefonda E'lonlar bosh sahifada turmaydi; bosh sahifadagi
+     "E'lonlarni ko'rish" tugmasi ularni alohida "listings" oynasida ochadi.
+     Desktopda avvalgidek yuqori web menyu ishlaydi. */
+  el("homeElonOpenBtn") && el("homeElonOpenBtn").addEventListener("click", openWebListings);
   function openWebSearchType(type){
     nav("catalog");
     var target=document.querySelector('#searchTypeRow [data-search-type="'+type+'"]');
