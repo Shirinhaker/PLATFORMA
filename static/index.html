@@ -702,6 +702,8 @@
   .story-card:active .story-thumb{transform:scale(.96);}
   .story-card.unseen .story-thumb{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-tint);}
   .story-card.seen .story-thumb{border-color:var(--line);opacity:.86;}
+  .story-card.no-story .story-thumb{border-color:var(--line);box-shadow:none;opacity:1;}
+  .story-card.no-story .story-name{color:var(--soft);font-weight:650;}
   .story-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
   .story-fallback{font-family:var(--font-d);font-size:23px;font-weight:900;color:var(--primary);}
   .story-name{display:block;margin-top:6px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -742,6 +744,8 @@
   .story-progress-seg.done span{width:100%;}
   .story-progress-seg.current span{width:var(--story-progress,0%);}
   .story-owner-row{display:flex;align-items:center;gap:10px;pointer-events:auto;}
+  .story-owner-profile{min-width:0;flex:1;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:inherit;padding:0;text-align:left;font:inherit;cursor:pointer;}
+  .story-owner-profile:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px;}
   .story-owner-avatar{width:36px;height:36px;border-radius:11px;overflow:hidden;background:rgba(255,255,255,.14);display:grid;place-items:center;font-weight:900;}
   .story-owner-avatar img{width:100%;height:100%;object-fit:cover;}
   .story-owner-main{min-width:0;flex:1;}
@@ -819,8 +823,8 @@
     .ad.has-image .ad-copy .eyebrow{display:none;}
     .ad.has-image .ad-copy h3{font-size:22px;margin-top:12px;}
     .ad.has-image .ad-copy p{max-width:100%;}
-    .home-discovery{display:grid;grid-template-columns:minmax(390px,.82fr) minmax(600px,1.18fr);gap:20px;align-items:stretch;min-height:430px;margin-top:0;}
-    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;min-height:430px;overflow:visible;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
+    .home-discovery{display:grid;grid-template-columns:minmax(390px,.82fr) minmax(600px,1.18fr);gap:20px;align-items:start;min-height:430px;margin-top:0;}
+    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;overflow:visible;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
     .desktop-hero-kicker{display:inline-flex;width:max-content;max-width:100%;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:var(--primary-tint);color:var(--primary);font-size:12px;font-weight:800;}
     .desktop-hero-copy h1{margin-top:16px;font:800 clamp(28px,2.7vw,43px)/1.12 var(--font-d);letter-spacing:-.045em;}
     .desktop-hero-copy>p{margin-top:13px;color:var(--soft);font-size:15px;line-height:1.65;max-width:560px;}
@@ -828,8 +832,6 @@
     .desktop-hero-query{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .desktop-hero-location{border-left:1px solid var(--line);padding:10px 12px;color:var(--ink);font-weight:750;white-space:nowrap;}
     .desktop-hero-search strong{flex:0 0 auto;border-radius:12px;padding:12px 18px;background:var(--primary);color:var(--primary-ink);}
-    .desktop-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-    .desktop-hero-tags button{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:9px 12px;font:700 12px var(--font-b);cursor:pointer;}
     .home-map-pane{display:flex;flex-direction:column;min-width:0;min-height:430px;}
     .home-map-pane .pin-eyebrow{margin-top:0;}
     .home-map-pane .map-wrap{flex:1;border-radius:24px;}
@@ -873,10 +875,18 @@
   .home-catalog-copy strong{font:800 14px var(--font-b);}
   .home-catalog-copy small{margin-top:2px;color:#7a8580;font-size:11px;}
   .home-catalog-chevron{font-size:20px;line-height:1;}
-  .desktop-hero-tags{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px;}
-  .desktop-hero-tags button{min-width:0;min-height:52px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);padding:9px 10px;font:700 13px var(--font-b);cursor:pointer;}
-  .home-location-note{margin-top:auto;padding-top:20px;color:var(--soft);font-size:12px;line-height:1.45;}
-  .home-location-note b{color:var(--primary);}
+  .home-search-results-backdrop{position:fixed;left:0;right:0;bottom:0;z-index:1190;background:rgba(2,18,17,.44);backdrop-filter:blur(2px);}
+  .home-search-results-overlay{position:fixed;bottom:0;z-index:1200;display:flex;flex-direction:column;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:22px 22px 0 0;background:var(--bg);box-shadow:0 -12px 44px rgba(2,18,17,.22);color:var(--ink);}
+  .home-search-results-overlay[hidden],.home-search-results-backdrop[hidden]{display:none!important;}
+  .home-search-results-head{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card);}
+  .home-search-results-copy{flex:1;min-width:0;}
+  .home-search-results-copy h2{font:800 17px/1.2 var(--font-d);}
+  .home-search-results-copy p{margin-top:3px;color:var(--soft);font-size:11.5px;}
+  .home-search-results-close{width:38px;height:38px;flex:0 0 auto;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:800 20px/1 var(--font-b);cursor:pointer;}
+  .home-search-results-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px 14px calc(22px + env(safe-area-inset-bottom));scrollbar-width:none;}
+  .home-search-results-body::-webkit-scrollbar{display:none;}
+  .home-search-results-body .biz-card,.home-search-results-body .elon-item{background:var(--card);}
+  .phone.home-results-open .screens{overflow:hidden;}
   .catalog-shell{padding-bottom:28px;}
   .catalog-title-row{display:flex;align-items:center;justify-content:space-between;margin:16px 4px 10px;}
   .catalog-title-row h2{font:800 18px var(--font-d);}
@@ -912,9 +922,9 @@
     .home-catalog-open{min-height:52px;margin-top:8px;border-radius:9px;padding:7px 11px;}
     .home-catalog-copy strong{font-size:12px;}
     .home-catalog-copy small{font-size:9px;}
-    .desktop-hero-tags{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;}
-    .desktop-hero-tags button{min-height:48px;color:#fff;border-color:rgba(255,255,255,.12);font-size:12px;}
-    .home-location-note{padding-top:14px;color:rgba(255,255,255,.64);font-size:10px;}
+    .home-search-results-overlay{border-radius:18px 18px 0 0;}
+    .home-search-results-head{padding:11px 12px;}
+    .home-search-results-body{padding:10px 10px calc(18px + env(safe-area-inset-bottom));}
     .home-map-pane{min-height:0;}
     .home-map-pane .pin-eyebrow{display:none;}
     .home-map-pane .map-wrap{border-radius:20px;}
@@ -932,7 +942,7 @@
   @media(min-width:1080px){
     .web-brand{margin-right:22px;}
     .home-discovery{grid-template-columns:minmax(520px,.95fr) minmax(600px,1.05fr);min-height:430px;}
-    .home-search-card{min-height:430px;}
+    .home-search-card{min-height:0;}
     [data-screen="catalog"],[data-screen="cat-types"]{width:min(100%,1180px);padding-top:28px;}
     [data-screen="catalog"] #yonList{grid-template-columns:1fr;}
   }
@@ -1021,7 +1031,7 @@
         <button class="story-tap next" id="storyTapNext" type="button" aria-label="Keyingi istoriya"></button>
         <div class="story-viewer-top">
           <div class="story-progress" id="storyProgress"></div>
-          <div class="story-owner-row"><div class="story-owner-avatar" id="storyOwnerAvatar"></div><div class="story-owner-main"><div class="story-owner-name" id="storyOwnerName"></div><div class="story-owner-time" id="storyOwnerTime"></div></div><button class="story-viewer-close" id="storyViewerClose" type="button">Yopish</button></div>
+          <div class="story-owner-row"><button class="story-owner-profile" id="storyOwnerProfileBtn" type="button" aria-label="Istoriya egasi profilini ochish"><span class="story-owner-avatar" id="storyOwnerAvatar"></span><span class="story-owner-main"><span class="story-owner-name" id="storyOwnerName"></span><span class="story-owner-time" id="storyOwnerTime"></span></span></button><button class="story-viewer-close" id="storyViewerClose" type="button">Yopish</button></div>
         </div>
         <div class="story-viewer-bottom"><div class="story-viewer-caption" id="storyViewerCaption"></div><div class="story-viewer-actions" id="storyViewerActions"></div></div>
       </div>
@@ -1062,13 +1072,6 @@
               <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
               <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
             </button>
-            <div class="desktop-hero-tags">
-              <button type="button" data-web-search-type="product">Mahsulot</button>
-              <button type="button" data-web-search-type="service">Xizmat</button>
-              <button type="button" data-web-search-type="business">Biznes</button>
-              <button type="button" data-web-search-type="specialist">Mutaxassis</button>
-            </div>
-            <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
           </div>
           <div class="home-map-pane">
             <div class="pin-eyebrow" id="pinEyebrow">
@@ -1083,6 +1086,18 @@
             </div>
           </div>
         </div>
+
+        <div class="home-search-results-backdrop" id="homeSearchResultsBackdrop" hidden></div>
+        <section class="home-search-results-overlay" id="homeSearchResultsOverlay" hidden aria-hidden="true" aria-labelledby="homeSearchResultsTitle">
+          <div class="home-search-results-head">
+            <div class="home-search-results-copy">
+              <h2 id="homeSearchResultsTitle">Qidiruv natijalari</h2>
+              <p id="homeSearchResultsCount" aria-live="polite">0 ta natija</p>
+            </div>
+            <button class="home-search-results-close" id="homeSearchResultsClose" type="button" aria-label="Qidiruv natijalarini yopish">×</button>
+          </div>
+          <div class="home-search-results-body" id="homeSearchResultsBody" tabindex="-1"></div>
+        </section>
 
         <div class="ad" id="adBox" style="margin-top:20px">
           <img class="ad-photo" id="adPhoto" alt="Reklama">
@@ -2763,7 +2778,10 @@
     var rail=el("storyRail"); if(!rail) return;
     var add='<button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>';
     var cards=STORY_GROUPS.map(function(group,index){
-      return '<button class="story-card '+(group.has_unseen?'unseen':'seen')+'" type="button" data-story-group="'+index+'" aria-label="'+esc(group.name||"Istoriya")+' istoriyasini ko‘rish">'+
+      var hasStory=!!(group.stories&&group.stories.length);
+      var state=hasStory?(group.has_unseen?"unseen":"seen"):"no-story";
+      var actionLabel=hasStory?" istoriyasini ko‘rish":" profilini ochish";
+      return '<button class="story-card '+state+'" type="button" data-story-owner="1" data-story-group="'+index+'" aria-label="'+esc(group.name||"Profil")+actionLabel+'">'+
         '<span class="story-thumb">'+storyAvatarHtml(group)+'</span><span class="story-name">'+esc(group.is_own?'Sizning istoriya':(group.name||"Profil"))+'</span></button>';
     }).join("");
     rail.innerHTML=add+cards;
@@ -2893,7 +2911,7 @@
   function renderStoryViewer(){
     var group=currentStoryGroup(),story=currentStory();if(!group||!story){closeStoryViewer();return;}
     var progress=(group.stories||[]).map(function(_,index){return '<span class="story-progress-seg '+(index<STORY_ITEM_INDEX?'done':(index===STORY_ITEM_INDEX?'current':''))+'"><span></span></span>';}).join("");
-    el("storyProgress").innerHTML=progress;el("storyOwnerAvatar").innerHTML=storyAvatarHtml(group);el("storyOwnerName").textContent=group.name||"Profil";el("storyOwnerTime").textContent=storyTimeAgo(story.created_at);el("storyViewerCaption").textContent=story.caption||"";el("storyViewerActions").innerHTML=storyActionsHtml(group,story);
+    el("storyProgress").innerHTML=progress;el("storyOwnerAvatar").innerHTML=storyAvatarHtml(group);el("storyOwnerName").textContent=group.name||"Profil";el("storyOwnerTime").textContent=storyTimeAgo(story.created_at);el("storyOwnerProfileBtn").setAttribute("aria-label",(group.name||"Profil")+" profilini ochish");el("storyViewerCaption").textContent=story.caption||"";el("storyViewerActions").innerHTML=storyActionsHtml(group,story);
     var media=el("storyViewerMedia");media.innerHTML="";
     if(story.media_type==="video"){
       var video=document.createElement("video");video.src=story.media_url;video.autoplay=true;video.playsInline=true;video.controls=false;video.muted=false;media.appendChild(video);
@@ -2909,6 +2927,7 @@
     if(groupIndex<0||groupIndex>=STORY_GROUPS.length)return;
     STORY_GROUP_INDEX=groupIndex;STORY_ITEM_INDEX=Math.max(0,Number(itemIndex)||0);
     var group=currentStoryGroup();if(!group)return;
+    if(!(group.stories||[]).length){openStoryOwnerProfile(group);return;}
     var firstUnseen=(group.stories||[]).findIndex(function(item){return !item.viewed;});if(itemIndex==null&&firstUnseen>=0)STORY_ITEM_INDEX=firstUnseen;
     el("storyViewer").classList.add("on");el("storyViewer").setAttribute("aria-hidden","false");renderStoryViewer();
   }
@@ -2918,11 +2937,18 @@
     viewer.classList.remove("on");viewer.setAttribute("aria-hidden","true");el("storyViewerMedia").innerHTML="";
     restoreManagedStoryViewerContext();
   }
+  function openStoryOwnerProfile(group){
+    if(!group)return;
+    var ownerType=group.owner_type,ownerId=Number(group.owner_id||0);if(!ownerId)return;
+    closeStoryViewer();
+    if(ownerType==="business")openBizSrv(ownerId);else openUser(ownerId);
+  }
   function advanceStory(direction){
     var group=currentStoryGroup();if(!group)return closeStoryViewer();
     var next=STORY_ITEM_INDEX+direction;
     if(next>=0&&next<(group.stories||[]).length){STORY_ITEM_INDEX=next;renderStoryViewer();return;}
     var nextGroup=STORY_GROUP_INDEX+direction;
+    while(nextGroup>=0&&nextGroup<STORY_GROUPS.length&&!(STORY_GROUPS[nextGroup].stories||[]).length)nextGroup+=direction;
     if(nextGroup>=0&&nextGroup<STORY_GROUPS.length){STORY_GROUP_INDEX=nextGroup;STORY_ITEM_INDEX=direction>0?0:Math.max(0,(STORY_GROUPS[nextGroup].stories||[]).length-1);renderStoryViewer();return;}
     closeStoryViewer();
   }
@@ -2940,7 +2966,7 @@
   }
   document.addEventListener("click",function(event){
     var add=event.target.closest("#storyAddCard");if(add){openStoryComposer();return;}
-    var card=event.target.closest("[data-story-group]");if(card){openStoryViewer(Number(card.getAttribute("data-story-group")));return;}
+    var card=event.target.closest("[data-story-group]");if(card){var group=STORY_GROUPS[Number(card.getAttribute("data-story-group"))];var hasStory=!!(group&&group.stories&&group.stories.length);if(!hasStory){openStoryOwnerProfile(group);return;}openStoryViewer(Number(card.getAttribute("data-story-group")));return;}
     var viewers=event.target.closest("[data-story-viewers]");if(viewers){showStoryViewers(Number(viewers.getAttribute("data-story-viewers")));return;}
     var del=event.target.closest("[data-story-delete]");if(del){deleteStory(Number(del.getAttribute("data-story-delete")));return;}
     var report=event.target.closest("[data-story-report]");if(report){reportStory(Number(report.getAttribute("data-story-report")));}
@@ -2986,6 +3012,7 @@
   el("storyFileInput")&&el("storyFileInput").addEventListener("change",function(){prepareStoryFile(this.files&&this.files[0]);});
   el("storyCaption")&&el("storyCaption").addEventListener("input",function(){el("storyCaptionCount").textContent=this.value.length+" / 200";});
   el("storyUploadBtn")&&el("storyUploadBtn").addEventListener("click",uploadStory);
+  el("storyOwnerProfileBtn")&&el("storyOwnerProfileBtn").addEventListener("click",function(){openStoryOwnerProfile(currentStoryGroup());});
   el("storyViewerClose")&&el("storyViewerClose").addEventListener("click",closeStoryViewer);
   el("storyTapPrev")&&el("storyTapPrev").addEventListener("click",function(){advanceStory(-1);});
   el("storyTapNext")&&el("storyTapNext").addEventListener("click",function(){advanceStory(1);});
@@ -3362,6 +3389,8 @@
   var SEARCH_QUERY = "";
   var SEARCH_REQUEST_SEQ = 0;
   var SEARCH_PENDING_KEY = "";
+  var SEARCH_DESTINATION = "legacy";
+  var HOME_RESULTS_OPEN = false;
   var SEARCH_TYPE_LABELS = {all:"Barchasi",product:"Mahsulot",service:"Xizmat",business:"Biznes",specialist:"Mutaxassis",user:"Foydalanuvchi"};
   var SEARCH_TYPE_PLACEHOLDERS = {all:"Nima qidiryapsiz?",product:"Mahsulot qidirish...",service:"Xizmat qidirish...",business:"Biznes qidirish...",specialist:"Mutaxassis qidirish...",user:"Foydalanuvchi qidirish..."};
   var curYon = null;
@@ -3421,6 +3450,39 @@
     el("resList").hidden = false;
     nav("home");
     screensEl.scrollTop = 0;
+  }
+  function positionHomeSearchResults(){
+    if(!HOME_RESULTS_OPEN)return;
+    var card=document.querySelector('[data-screen="home"] .home-search-card');
+    var screen=document.querySelector('[data-screen="home"]');
+    var overlay=el("homeSearchResultsOverlay"),backdrop=el("homeSearchResultsBackdrop");
+    if(!card||!screen||!overlay||!backdrop)return;
+    var cardRect=card.getBoundingClientRect(),screenRect=screen.getBoundingClientRect();
+    var top=Math.max(0,Math.min(window.innerHeight-120,Math.round(cardRect.bottom+8)));
+    var left=Math.max(0,Math.round(screenRect.left));
+    var right=Math.max(0,Math.round(window.innerWidth-screenRect.right));
+    overlay.style.top=top+"px";overlay.style.left=left+"px";overlay.style.right=right+"px";
+    backdrop.style.top=top+"px";
+  }
+  function openHomeSearchResults(listHtml,count,focusOverlay){
+    var overlay=el("homeSearchResultsOverlay"),backdrop=el("homeSearchResultsBackdrop");
+    if(!overlay||!backdrop)return;
+    HOME_RESULTS_OPEN=true;
+    el("homeSearchResultsBody").innerHTML=listHtml||"";
+    el("homeSearchResultsCount").textContent=Number(count||0)+" ta natija";
+    overlay.hidden=false;backdrop.hidden=false;overlay.setAttribute("aria-hidden","false");
+    var phone=document.querySelector(".phone");if(phone)phone.classList.add("home-results-open");
+    positionHomeSearchResults();
+    if(focusOverlay!==false)setTimeout(function(){try{el("homeSearchResultsBody").focus();}catch(e){}},0);
+  }
+  function closeHomeSearchResults(options){
+    var overlay=el("homeSearchResultsOverlay"),backdrop=el("homeSearchResultsBackdrop");
+    if(!overlay||!backdrop)return;
+    var wasOpen=HOME_RESULTS_OPEN;HOME_RESULTS_OPEN=false;
+    overlay.hidden=true;backdrop.hidden=true;overlay.setAttribute("aria-hidden","true");
+    var phone=document.querySelector(".phone");if(phone)phone.classList.remove("home-results-open");
+    if(options&&options.cancelRequest){SEARCH_REQUEST_SEQ++;SEARCH_PENDING_KEY="";}
+    if(wasOpen&&options&&options.returnFocus)setTimeout(function(){try{el("homeQueryInput").focus();}catch(e){}},0);
   }
   function exitResults(){
     el("searchInput").value = "";
@@ -3968,19 +4030,26 @@
       return true;
     });
   }
-  function runSearch(q, append){
+  function runSearch(q, append, destination){
     q=(q||"").trim();
-    if(!q){ exitResults(); nav("home"); return; }
+    destination=destination||"legacy";SEARCH_DESTINATION=destination;
+    if(!q){
+      if(destination==="home-overlay")closeHomeSearchResults({cancelRequest:true,returnFocus:true});
+      else{exitResults();nav("home");}
+      return;
+    }
     if(!append){ SEARCH_PAGE=1; SEARCH_DATA=null; SEARCH_QUERY=q; }
     var requestedPage = append ? SEARCH_PAGE+1 : 1;
-    var requestKey=[q,scope,searchResultType,actorType(),requestedPage].join("|");
+    var requestKey=[q,scope,searchResultType,actorType(),requestedPage,destination].join("|");
     if(SEARCH_PENDING_KEY===requestKey) return;
     SEARCH_PENDING_KEY=requestKey;
     var requestSeq=++SEARCH_REQUEST_SEQ;
     el("searchInput").value = q;
     el("catSearch").value = q;
     if(!append){
-      enterResults('<div class="empty" style="padding:30px 16px"><h3>Qidirilmoqda…</h3><p>Iltimos, biroz kuting.</p></div>', [], 0);
+      var loading='<div class="empty" style="padding:30px 16px"><h3>Qidirilmoqda…</h3><p>Iltimos, biroz kuting.</p></div>';
+      if(destination==="home-overlay")openHomeSearchResults(loading,0,true);
+      else enterResults(loading, [], 0);
     }
     api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&page="+requestedPage+"&page_size=20&"+actorQuery()).then(function(data){
       if(requestSeq!==SEARCH_REQUEST_SEQ) return;
@@ -4000,10 +4069,12 @@
       SEARCH_PAGE=SEARCH_DATA.page||requestedPage;
       SEARCH_QUERY=q;
       var r = buildResults(SEARCH_DATA, (SEARCH_TYPE_LABELS[searchResultType]||"Barchasi")+' · "'+q+'"', "");
-      enterResults(r.html, r.pins, r.total);
+      if(destination==="home-overlay")openHomeSearchResults(r.html,r.total,false);
+      else enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
       if(requestSeq!==SEARCH_REQUEST_SEQ) return;
       if(append && SEARCH_DATA) showMsg(e.message);
+      else if(destination==="home-overlay")openHomeSearchResults('<p class="elon-hint">'+esc(e.message)+'</p>',0,false);
       else enterResults('<p class="elon-hint">'+esc(e.message)+'</p>', [], 0);
     }).finally(function(){
       if(SEARCH_PENDING_KEY===requestKey) SEARCH_PENDING_KEY="";
@@ -4425,6 +4496,7 @@
       screen = "cabinet";
     }
     if(screen!=="chat" && typeof stopChatPoll==="function") stopChatPoll();
+    if(screen!=="home"&&HOME_RESULTS_OPEN)closeHomeSearchResults({cancelRequest:true});
     var previousScreen=current;
     if((previousScreen==="ucab-stories"||previousScreen==="cab-stories") && previousScreen!==screen){
       revokeMyStoryObjectUrls();
@@ -6710,14 +6782,18 @@
   el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
   el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
   el("homeCatalogOpen") && el("homeCatalogOpen").addEventListener("click",function(){openWebSearchType("all");});
-  el("homeQueryClear") && el("homeQueryClear").addEventListener("click",function(e){e.preventDefault();e.stopPropagation();el("homeQueryInput").value="";el("homeQueryInput").focus();});
+  el("homeQueryClear") && el("homeQueryClear").addEventListener("click",function(e){e.preventDefault();e.stopPropagation();el("homeQueryInput").value="";closeHomeSearchResults({cancelRequest:true});el("homeQueryInput").focus();});
   function submitHomeSearch(){
     var q=(el("homeQueryInput").value||"").trim();
     if(!q){openWebSearchType("all");return;}
-    runSearch(q);
+    runSearch(q,false,"home-overlay");
   }
   el("homeSearchSubmit") && el("homeSearchSubmit").addEventListener("click",submitHomeSearch);
   el("homeQueryInput") && el("homeQueryInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();submitHomeSearch();}});
+  el("homeSearchResultsClose") && el("homeSearchResultsClose").addEventListener("click",function(){closeHomeSearchResults({cancelRequest:true,returnFocus:true});});
+  el("homeSearchResultsBackdrop") && el("homeSearchResultsBackdrop").addEventListener("click",function(){closeHomeSearchResults({cancelRequest:true,returnFocus:true});});
+  window.addEventListener("resize",positionHomeSearchResults);
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&HOME_RESULTS_OPEN){e.preventDefault();closeHomeSearchResults({cancelRequest:true,returnFocus:true});}});
   document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
@@ -7627,7 +7703,7 @@
 
   document.addEventListener("click", function(e){
     var sm=e.target.closest("[data-search-more]");
-    if(sm){ sm.disabled=true; runSearch(SEARCH_QUERY||el("catSearch").value,true); return; }
+    if(sm){ sm.disabled=true; runSearch(SEARCH_QUERY||el("catSearch").value,true,SEARCH_DESTINATION); return; }
     var lo=e.target.closest("[data-logout]");
     if(lo){
       if(MOBILE_TOKEN){
