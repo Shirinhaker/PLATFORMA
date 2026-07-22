@@ -13,7 +13,7 @@ Bu bosqichda (B bo'lim, poydevor):
 Environment variables:
   BOT_TOKEN, BASE_URL, DB_PATH, WEBHOOK_SECRET
   UPLOAD_DIR=/data/uploads  -> Railway Volume uchun doimiy rasm papkasi
-  TEST_MODE=1  -> sinov transporti; OTP HTTP javobida yoki test endpointida berilmaydi
+  TEST_MODE=1  -> sinov rejimi (kod Telegramga emas, xotirada qoladi — faqat test uchun)
 """
 
 import os
@@ -33,16 +33,10 @@ from fastapi.responses import JSONResponse
 
 from database import db, init_db, DB_PATH
 from catalog_data import CATALOG, LISTING_CATS
-from access_config import (
-    PRIVILEGED_TG_IDS,
-    is_privileged_tg_id,
-    project_access_allowed_tg_id,
-    project_access_is_restricted,
-)
-from location_keys import canonical_district_key, safe_district_display
+from access_config import PRIVILEGED_TG_IDS, is_privileged_tg_id
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1620"
+APP_BUILD = "v1600"
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
@@ -58,9 +52,6 @@ INIT_DATA_MAX_AGE = _init_data_max_age()
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "platforma-webhook-secret")
 TEST_MODE = os.environ.get("TEST_MODE", "") == "1"
-PRIVILEGED_DIAGNOSTICS_ENABLED = os.environ.get(
-    "PRIVILEGED_DIAGNOSTICS_ENABLED", ""
-).strip().lower() in ("1", "true", "yes", "on")
 TG_API = "https://api.telegram.org/bot" + BOT_TOKEN
 
 
@@ -89,8 +80,9 @@ CODE_TTL = 10 * 60  # kod amal qilish vaqti: 10 daqiqa
 MOBILE_CODE_TTL = 5 * 60
 MOBILE_SESSION_TTL = 30 * 24 * 60 * 60
 MOBILE_OTP_SECRET = os.environ.get("MOBILE_OTP_SECRET", WEBHOOK_SECRET)
-PRIVILEGED_ACCESS_COOKIE = "koprik_privileged_access"
-PRIVILEGED_ACCESS_COOKIE_TTL = 60 * 60
+
+# Sinov rejimida oxirgi kodlar shu yerda turadi (faqat TEST_MODE=1 da)
+_test_codes = {}
 
 
 # ---------- Telegram initData tekshiruvi ----------
@@ -183,9 +175,6 @@ def check_password(password, stored):
 
 
 def gen_code():
-    fixed = os.environ.get("TEST_OTP_CODE", "").strip()
-    if TEST_MODE and len(fixed) == 6 and fixed.isdigit():
-        return fixed
     return "".join(secrets.choice("0123456789") for _ in range(6))
 
 
@@ -218,7 +207,10 @@ def find_user_by_phone(conn, phone):
 # ---------- Telegram bot ----------
 async def tg_call(method, payload):
     if TEST_MODE:
-        # Sinov rejimi: tashqariga so'rov ham, OTPni o'qiladigan joyga yozish ham yo'q.
+        # Sinov rejimi: tashqariga so'rov yubormaymiz
+        if method == "sendMessage" and "KOD:" in str(payload.get("text", "")):
+            code = payload["text"].split("KOD:")[1].strip().split()[0]
+            _test_codes[payload["chat_id"]] = code
         return {"ok": True}
     if not BOT_TOKEN:
         return None
@@ -284,76 +276,6 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
-def _project_temporarily_closed_response():
-    return JSONResponse(
-        status_code=403,
-        content={
-            "detail": "Loyiha vaqtincha yopiq. Qayta ochilganda xabar beriladi.",
-            "code": "project_temporarily_closed",
-        },
-    )
-
-
-def _ambiguous_authentication_response():
-    return JSONResponse(
-        status_code=400,
-        content={
-            "detail": "Bir so'rovda faqat bitta kirish usulidan foydalaning.",
-            "code": "ambiguous_authentication",
-        },
-    )
-
-
-def _privileged_access_cookie_value(tg_id, now=None):
-    expires_at = int(time.time() if now is None else now) + PRIVILEGED_ACCESS_COOKIE_TTL
-    payload = str(int(tg_id)) + ":" + str(expires_at)
-    signature = hmac.new(
-        WEBHOOK_SECRET.encode(), payload.encode(), hashlib.sha256
-    ).hexdigest()
-    return payload + ":" + signature
-
-
-def _privileged_access_cookie_tg_id(value, now=None):
-    try:
-        tg_text, expires_text, signature = str(value or "").split(":", 2)
-        tg_id = int(tg_text)
-        expires_at = int(expires_text)
-    except (TypeError, ValueError):
-        return None
-    if expires_at <= int(time.time() if now is None else now):
-        return None
-    payload = tg_text + ":" + expires_text
-    expected = hmac.new(
-        WEBHOOK_SECRET.encode(), payload.encode(), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(expected, signature):
-        return None
-    return tg_id if project_access_allowed_tg_id(tg_id) else None
-
-
-def _set_privileged_access_cookie(response, request, tg_id):
-    response.set_cookie(
-        PRIVILEGED_ACCESS_COOKIE,
-        _privileged_access_cookie_value(tg_id),
-        max_age=PRIVILEGED_ACCESS_COOKIE_TTL,
-        httponly=True,
-        secure=request.url.scheme == "https",
-        samesite="strict",
-        path="/",
-    )
-    return response
-
-
-def _inject_mobile_init_data(request, mobile_token):
-    headers = [
-        (key, value)
-        for key, value in request.scope.get("headers", [])
-        if key.lower() != b"x-telegram-init-data"
-    ]
-    headers.append((b"x-telegram-init-data", ("mobile:" + mobile_token).encode()))
-    request.scope["headers"] = headers
-
-
 @app.middleware("http")
 async def build_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
@@ -363,10 +285,6 @@ async def build_and_cache_headers(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
-    if project_access_is_restricted() and path.startswith(
-        ("/media/", "/profile-media/", "/uploads/")
-    ):
-        response.headers["Cache-Control"] = "private, no-store"
     return response
 
 
@@ -383,52 +301,8 @@ async def whitelist_middleware(request: Request, call_next):
     if path == "/webhook":
         return await call_next(request)
 
-    if project_access_is_restricted() and path.startswith(
-        ("/media/", "/profile-media/", "/uploads/")
-    ):
-        cookie_tg_id = _privileged_access_cookie_tg_id(
-            request.cookies.get(PRIVILEGED_ACCESS_COOKIE)
-        )
-        if cookie_tg_id is None:
-            return _project_temporarily_closed_response()
-        return await call_next(request)
-
+    # Faqat API so'rovlarini server tomonda himoya qilamiz.
     if path.startswith("/api/"):
-        init_data = request.headers.get("x-telegram-init-data", "").strip()
-        staff_token = request.headers.get("x-staff-token", "").strip()
-        auth = (request.headers.get("authorization") or "").strip()
-        has_bearer = auth.lower().startswith("bearer ")
-        has_staff = bool(staff_token or init_data.startswith("staff:"))
-        has_telegram = bool(init_data and not init_data.startswith(("staff:", "mobile:")))
-        if (has_bearer and (has_staff or has_telegram)) or (
-            staff_token and init_data and not init_data.startswith("staff:")
-        ):
-            return _ambiguous_authentication_response()
-
-        # Vaqtinchalik yopiq rejim barcha API yo'llaridan oldin tekshiriladi.
-        # Faqat access_config.py dagi Telegram IDlar va ularga bog'langan mobil
-        # sessiyalar o'tadi. Staff tokeni bu global blokni chetlab o'tmaydi.
-        if project_access_is_restricted():
-            if has_bearer:
-                mobile_token = auth[7:].strip()
-                conn = db()
-                mobile_user = mobile_user_from_token(conn, mobile_token)
-                conn.close()
-                if not mobile_user or not project_access_allowed_tg_id(mobile_user["tg_id"]):
-                    return _project_temporarily_closed_response()
-                _inject_mobile_init_data(request, mobile_token)
-                response = await call_next(request)
-                return _set_privileged_access_cookie(
-                    response, request, mobile_user["tg_id"]
-                )
-
-            tg = verify_init_data(init_data)
-            if not tg or not project_access_allowed_tg_id(tg.get("id")):
-                return _project_temporarily_closed_response()
-            response = await call_next(request)
-            return _set_privileged_access_cookie(response, request, tg["id"])
-
-        is_public_district_offers = path == "/api/home/district-offers"
         # XODIM (staff) kirishi Telegram whitelistdan ozod:
         #  1) /api/staff-auth* (login / me / logout)
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
@@ -438,10 +312,13 @@ async def whitelist_middleware(request: Request, call_next):
             "/api/mobile-auth/register/request-code", "/api/mobile-auth/register/verify-code",
         ):
             return await call_next(request)
-        if has_staff:
+        init_data = request.headers.get("x-telegram-init-data", "")
+        staff_token = request.headers.get("x-staff-token", "")
+        if staff_token or init_data.startswith("staff:"):
             return await call_next(request)
         # Mobil ilova Telegram initData o'rniga Bearer token yuboradi.
-        if has_bearer:
+        auth = (request.headers.get("authorization") or "").strip()
+        if auth.lower().startswith("bearer "):
             mobile_token = auth[7:].strip()
             conn = db()
             mobile_user = mobile_user_from_token(conn, mobile_token)
@@ -449,12 +326,12 @@ async def whitelist_middleware(request: Request, call_next):
             if not mobile_user:
                 return JSONResponse(status_code=401, content={"detail": "Mobil sessiya tugagan yoki noto'g'ri."})
             # Mavjud endpointlar o'zgarmasligi uchun ichki mobil sessiya belgisi uzatiladi.
-            _inject_mobile_init_data(request, mobile_token)
+            headers = [(k, v) for k, v in request.scope.get("headers", []) if k.lower() != b"x-telegram-init-data"]
+            headers.append((b"x-telegram-init-data", ("mobile:" + mobile_token).encode()))
+            request.scope["headers"] = headers
             return await call_next(request)
         tg = verify_init_data(init_data)
         if not tg:
-            if is_public_district_offers:
-                return await call_next(request)
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
@@ -463,9 +340,8 @@ async def whitelist_middleware(request: Request, call_next):
 
 
 # Kabinet va platforma API'lari (api.py)
-from api import router as api_router, public_router as public_api_router
+from api import router as api_router
 app.include_router(api_router)
-app.include_router(public_api_router)
 
 # AI yordamchi (biznes kabinet uchun) — alohida modul
 from ai_agent import router as ai_router
@@ -474,7 +350,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": False, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": True, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True}
+    return {"ok": True, "build": APP_BUILD, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True}
 
 
 @app.get("/api/map-config")
@@ -486,48 +362,36 @@ def map_config():
     }
 
 
-def _require_privileged_diagnostics(init_data):
-    if not PRIVILEGED_DIAGNOSTICS_ENABLED:
-        raise HTTPException(404, "Topilmadi.")
-    if (init_data or "").startswith("mobile:"):
-        conn = db()
-        user = mobile_user_from_token(conn, init_data[7:].strip())
-        conn.close()
-        tg_id = user["tg_id"] if user else None
-    else:
-        tg = verify_init_data(init_data)
-        tg_id = tg.get("id") if tg else None
-    if not is_privileged_tg_id(tg_id):
-        raise HTTPException(403, "Ruxsat yo'q.")
-
-
 @app.get("/api/_dbinfo")
-async def db_info(x_telegram_init_data: str = Header(default="")):
-    """Faqat maxsus egalar uchun shaxsiy ma'lumotsiz diagnostika."""
-    _require_privileged_diagnostics(x_telegram_init_data)
-    conn = db()
+async def db_info():
+    """Baza diagnostikasi: nechta foydalanuvchi bor, baza qayerda, fayl o'lchami."""
+    import os as _os
+    info = {"DB_PATH": DB_PATH}
     try:
-        return {
-            "ok": True,
-            "build": APP_BUILD,
-            "foydalanuvchilar_soni": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            "bizneslar_soni": conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0],
-            "elonlar_soni": conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0],
-        }
-    finally:
+        info["fayl_bormi"] = _os.path.isfile(DB_PATH)
+        info["fayl_olchami_bayt"] = _os.path.getsize(DB_PATH) if _os.path.isfile(DB_PATH) else 0
+        info["papka_bormi"] = _os.path.isdir(_os.path.dirname(DB_PATH)) if _os.path.dirname(DB_PATH) else True
+    except Exception as e:
+        info["fayl_xato"] = str(e)
+    try:
+        conn = db()
+        info["foydalanuvchilar_soni"] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        info["bizneslar_soni"] = conn.execute("SELECT COUNT(*) FROM businesses").fetchone()[0]
+        info["elonlar_soni"] = conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0]
+        # oxirgi 5 foydalanuvchi login va tg_id (parolsiz)
+        rows = conn.execute("SELECT login, tg_id, name FROM users ORDER BY id DESC LIMIT 5").fetchall()
+        info["oxirgi_foydalanuvchilar"] = [{"login": r["login"], "tg_id": r["tg_id"], "name": r["name"]} for r in rows]
         conn.close()
+    except Exception as e:
+        info["baza_xato"] = str(e)
+    return info
 
 
 @app.get("/api/_setup")
-async def manual_setup_requires_post():
-    return JSONResponse(status_code=405, content={"detail": "POST talab qilinadi."})
-
-
-@app.post("/api/_setup")
-async def manual_setup(x_telegram_init_data: str = Header(default="")):
-    """Maxsus egalar uchun webhookni aniq POST bilan qayta o'rnatish."""
-    _require_privileged_diagnostics(x_telegram_init_data)
-    result = {"ok": True, "build": APP_BUILD}
+async def manual_setup():
+    """Webhook'ni qo'lda qayta o'rnatish va Telegram javoblarini ko'rsatish (diagnostika)."""
+    result = {"BOT_TOKEN_bormi": bool(BOT_TOKEN), "BASE_URL": BASE_URL,
+              "WEBHOOK_SECRET_uzunligi": len(WEBHOOK_SECRET or ""), "TEST_MODE": TEST_MODE}
     try:
         result["deleteWebhook"] = await tg_call("deleteWebhook", {"drop_pending_updates": False})
     except Exception as e:
@@ -682,7 +546,7 @@ async def mobile_register_request_code(request: Request):
     request_id = cur.lastrowid
     conn.commit(); conn.close()
     return {"ok": True, "request_id": request_id, "expires_in": MOBILE_CODE_TTL,
-            "resend_after": 60}
+            "resend_after": 60, "test_code": code}
 
 
 @app.post("/api/mobile-auth/register/verify-code")
@@ -800,7 +664,7 @@ async def mobile_request_code(request: Request):
     conn.close()
 
     return {"ok": True, "request_id": request_id, "expires_in": MOBILE_CODE_TTL,
-            "resend_after": 60}
+            "resend_after": 60, "test_code": code}
 
 
 @app.post("/api/mobile-auth/verify-code")
@@ -977,13 +841,12 @@ async def register(request: Request, x_telegram_init_data: str = Header(default=
         password = gen_pass()
 
     now = int(time.time())
-    district = safe_district_display(body.get("district"))
     cur = conn.execute(
-        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, district_key, mahalla, created_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO users(tg_id, username, login, pass_hash, role, name, phone, region, district, mahalla, created_at) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (tg["id"], username, login, hash_password(password) if password else "", role, name,
          phone, (body.get("region") or "").strip(),
-         district, canonical_district_key(district), (body.get("mahalla") or "").strip(), now),
+         (body.get("district") or "").strip(), (body.get("mahalla") or "").strip(), now),
     )
     user_id = cur.lastrowid
     biz_login = None; biz_pass = None
@@ -1330,6 +1193,14 @@ async def media_proxy(file_id: str):
 
     return StreamingResponse(gen(), media_type=ctype,
                              headers={"Cache-Control": "public, max-age=86400"})
+
+
+# ---------- Sinov yordamchisi (faqat TEST_MODE) ----------
+@app.get("/api/_test/last_code/{tg_id}")
+async def test_last_code(tg_id: int):
+    if not TEST_MODE:
+        raise HTTPException(404, "not found")
+    return {"code": _test_codes.get(tg_id)}
 
 
 # ---------- Yuklangan fayllar ----------
