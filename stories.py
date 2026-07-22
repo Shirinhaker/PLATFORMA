@@ -362,6 +362,27 @@ def _is_followed(conn, actor_type, actor_id, owner_type, owner_id):
     return bool(row)
 
 
+def _followed_targets(conn, actor_type, actor_id):
+    if int(actor_id or 0) <= 0:
+        return set()
+    if actor_type == "business":
+        rows = conn.execute(
+            "SELECT target_kind,target_id FROM business_follows "
+            "WHERE business_id=?",
+            (actor_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT target_kind,target_id FROM follows WHERE follower_id=?",
+            (actor_id,),
+        ).fetchall()
+    return {
+        (row["target_kind"], int(row["target_id"]))
+        for row in rows
+        if row["target_kind"] in {"user", "business"}
+    }
+
+
 def _story_dict(row):
     story_id = int(row["id"])
     thumb = (
@@ -404,14 +425,20 @@ def list_story_feed(
         key = (row["owner_type"], int(row["owner_id"]))
         groups.setdefault(key, []).append(row)
 
+    followed_targets = _followed_targets(conn, actor_type, actor_id)
+    owner_keys = set(groups)
+    owner_keys.update(followed_targets)
+
     result = []
-    for (owner_type, owner_id), owner_rows in groups.items():
+    for owner_type, owner_id in owner_keys:
+        owner_rows = groups.get((owner_type, owner_id), [])
         profile = _owner_profile(conn, owner_type, owner_id)
         if not profile:
             continue
         is_own = owner_type == actor_type and owner_id == int(actor_id)
-        followed = _is_followed(conn, actor_type, actor_id, owner_type, owner_id)
+        followed = (owner_type, owner_id) in followed_targets
         stories = [_story_dict(row) for row in owner_rows]
+        has_story = bool(stories)
         unseen = any(not item["viewed"] for item in stories)
         distance = _distance_km(lat, lng, profile["lat"], profile["lng"])
         result.append(
@@ -422,17 +449,31 @@ def list_story_feed(
                 "avatar_url": profile["avatar_url"],
                 "is_own": is_own,
                 "is_followed": followed,
+                "has_story": has_story,
                 "has_unseen": unseen,
                 "distance_km": distance,
                 "stories": stories,
-                "latest_story_at": max(item["created_at"] for item in stories),
+                "latest_story_at": max(
+                    (item["created_at"] for item in stories), default=0
+                ),
             }
         )
+
+    def feed_bucket(item):
+        if item["is_own"]:
+            return 0
+        if item["is_followed"] and item["has_story"] and item["has_unseen"]:
+            return 1
+        if item["is_followed"] and item["has_story"]:
+            return 2
+        if item["is_followed"]:
+            return 3
+        return 4
+
     result.sort(
         key=lambda item: (
-            0 if item["is_own"] else 1,
+            feed_bucket(item),
             0 if item["has_unseen"] else 1,
-            0 if item["is_followed"] else 1,
             item["distance_km"] if item["distance_km"] is not None else 1_000_000,
             -item["latest_story_at"],
         )
