@@ -26,10 +26,7 @@ import threading
 
 from fastapi import APIRouter, Request, Header, HTTPException
 
-import sqlite3
-
 from database import db
-from education_statistics import education_statistics_data
 
 router = APIRouter(prefix="/api")
 
@@ -142,21 +139,6 @@ def need_perm(conn, init_data, perm):
         return  # egasi — to'liq huquq
     if perm not in perms:
         raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
-
-
-def need_any_perm(conn, init_data, *allowed):
-    """Xodimga sanalgan ruxsatlarning kamida bittasi kerak; egasi doim o'tadi."""
-    perms = _staff_perms_of(conn, init_data)
-    if perms is None:
-        return
-    if not any(p in perms for p in allowed):
-        raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
-
-
-def _can_view_costs(conn, init_data):
-    """Tannarx va ombor qiymati egasi yoki moliyaviy ruxsatli xodimga ko'rinadi."""
-    perms = _staff_perms_of(conn, init_data)
-    return perms is None or "expenses" in perms or "statistics" in perms
 
 
 def follower_count(conn, kind, target_id):
@@ -1414,63 +1396,29 @@ def _item_group_for_business(conn, biz_id, group_id):
     return g
 
 
-def _education_item_fields(biz, body):
-    if (biz["yon"] or "").strip() != "Ta'lim faoliyati":
-        return ("", "", 0, 0, 0, "", "open")
-    mode = str(body.get("course_mode") or "offline").strip()
-    if mode not in ("offline", "online", "hybrid"):
-        mode = "offline"
-    level = str(body.get("course_level") or "all").strip()
-    if level not in ("beginner", "intermediate", "advanced", "all"):
-        level = "all"
-    enrollment = str(body.get("enrollment_status") or "open").strip()
-    if enrollment not in ("open", "closed"):
-        enrollment = "open"
-    try:
-        lesson_duration = max(0, min(1440, int(body.get("lesson_duration") or 0)))
-        age_from = max(0, min(120, int(body.get("age_from") or 0)))
-        age_to = max(0, min(120, int(body.get("age_to") or 0)))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Dars davomiyligi yoki yosh chegarasi noto'g'ri.")
-    if age_from and age_to and age_from > age_to:
-        raise HTTPException(400, "Boshlang'ich yosh yakuniy yoshdan katta bo'lmasin.")
-    return (mode, str(body.get("course_duration") or "").strip()[:80], lesson_duration,
-            age_from, age_to, level, enrollment)
-
-
 def _item_kind_and_group(conn, biz_id, body):
     """
     v1379 qoidasi: agar haqiqiy guruh tanlansa, tovar turini guruh hal qiladi.
     Guruhsiz bo'lsa, frontend yuborgan kind ishlaydi.
     """
     g = _item_group_for_business(conn, biz_id, (body or {}).get("group_id"))
-    education = conn.execute("SELECT id FROM businesses WHERE id=? AND yon=?", (biz_id, "Ta'lim faoliyati")).fetchone()
-    if education:
-        kind = "service"
-        if g and g["kind"] != "service":
-            conn.execute("UPDATE item_groups SET kind='service' WHERE id=? AND business_id=?", (g["id"], biz_id))
-        return kind, (g["id"] if g else None)
-    elif g:
+    if g:
         return g["kind"], g["id"]
     kind = (body or {}).get("kind") if (body or {}).get("kind") in ("product", "service") else "product"
     return kind, None
 
 
 @router.get("/item-groups")
-async def item_groups(menu_only: bool = False, x_telegram_init_data: str = Header(default="")):
+async def item_groups(x_telegram_init_data: str = Header(default="")):
     """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "items", "ombor", "production")
-    dining_menu = menu_only and (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     rows = conn.execute(
-        "SELECT * FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
+        "SELECT * FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
         (biz["id"],),
     ).fetchall()
     conn.close()
-    return [{"id": r["id"], "name": r["name"], "kind": r["kind"],
-             "storage_type": _row_val(r, "storage_type", "ready_food") or "ready_food",
-             "created_at": r["created_at"]} for r in rows]
+    return [{"id": r["id"], "name": r["name"], "kind": r["kind"], "created_at": r["created_at"]} for r in rows]
 
 
 @router.post("/item-groups")
@@ -1478,22 +1426,20 @@ async def add_item_group(request: Request, x_telegram_init_data: str = Header(de
     """Yangi guruh qo'shadi. Guruh turi faqat yaratilganda belgilanadi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
         conn.close()
         raise HTTPException(400, "Guruh nomi kiritilishi shart.")
-    kind = "service" if (biz["yon"] or "").strip() == "Ta'lim faoliyati" else (b.get("kind") if b.get("kind") in ("product", "service") else "product")
+    kind = b.get("kind") if b.get("kind") in ("product", "service") else "product"
     cur = conn.execute(
-        "INSERT INTO item_groups(business_id, name, kind, storage_type, created_at) VALUES(?,?,?,?,?)",
-        (biz["id"], name, kind, "raw_material" if b.get("storage_type") == "raw_material" else "ready_food", int(time.time())),
+        "INSERT INTO item_groups(business_id, name, kind, created_at) VALUES(?,?,?,?)",
+        (biz["id"], name, kind, int(time.time())),
     )
     conn.commit()
     gid = cur.lastrowid
     conn.close()
-    return {"id": gid, "name": name, "kind": kind,
-            "storage_type": "raw_material" if b.get("storage_type") == "raw_material" else "ready_food"}
+    return {"id": gid, "name": name, "kind": kind}
 
 
 @router.put("/item-groups/{group_id}")
@@ -1501,7 +1447,6 @@ async def edit_item_group(group_id: int, request: Request, x_telegram_init_data:
     """Guruhning faqat nomini o'zgartiradi. kind o'zgartirilmaydi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT * FROM item_groups WHERE id=? AND business_id=?",
         (group_id, biz["id"]),
@@ -1525,7 +1470,6 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
     """Guruhni xavfsiz o'chiradi: avval ichidagi tovarlar Guruhsizga o'tadi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT id FROM item_groups WHERE id=? AND business_id=?",
         (group_id, biz["id"]),
@@ -1541,18 +1485,16 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
 
 
 @router.get("/items")
-async def my_items(menu_only: bool = False, x_telegram_init_data: str = Header(default="")):
+async def my_items(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "items", "dining_internal", "kitchen", "kassa", "open_accounts")
     _ensure_item_min_qty(conn)
-    dining_menu = menu_only and (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     rows = conn.execute(
         """SELECT i.*, g.name AS group_name, g.kind AS group_kind
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") +
-        " ORDER BY i.created_at DESC",
+           WHERE i.business_id=?
+           ORDER BY i.created_at DESC""",
         (biz["id"],),
     ).fetchall()
     conn.close()
@@ -1561,19 +1503,13 @@ async def my_items(menu_only: bool = False, x_telegram_init_data: str = Header(d
              "min_qty": _row_val(r, "min_qty", 0) or 0,
              "note": r["note"], "kind": r["kind"], "group_id": r["group_id"],
              "group_name": r["group_name"], "group_kind": r["group_kind"],
-             "queue_enabled": int(_row_val(r, "queue_enabled", 0) or 0),
-             "photo_file": r["photo_file"], "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food",
-             "course_mode": _row_val(r,"course_mode","") or "", "course_duration": _row_val(r,"course_duration","") or "",
-             "lesson_duration": _row_val(r,"lesson_duration",0) or 0, "age_from": _row_val(r,"age_from",0) or 0,
-             "age_to": _row_val(r,"age_to",0) or 0, "course_level": _row_val(r,"course_level","") or "",
-             "enrollment_status": _row_val(r,"enrollment_status","open") or "open"} for r in rows]
+             "photo_file": r["photo_file"]} for r in rows]
 
 
 @router.post("/items")
 async def add_item(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -1582,14 +1518,11 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
-    edu = _education_item_fields(biz, b)
-    queue_enabled = _queue_item_enabled(biz, kind, b)
     cur = conn.execute(
-        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, queue_enabled, photo_file, min_qty, stock_type,course_mode,course_duration,lesson_duration,age_from,age_to,course_level,enrollment_status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO items(business_id, group_id, name, price, unit, track_stock, note, kind, photo_file, min_qty, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (biz["id"], group_id, name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, queue_enabled, photo, _parse_min_qty(b),
-         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, int(time.time())),
+         (b.get("note") or "").strip(), kind, photo, _parse_min_qty(b), int(time.time())),
     )
     conn.commit()
     item_id = cur.lastrowid
@@ -1601,7 +1534,6 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
 async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT id FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])
     ).fetchone()
@@ -1616,14 +1548,11 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
     photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
-    edu = _education_item_fields(biz, b)
-    queue_enabled = _queue_item_enabled(biz, kind, b)
     conn.execute(
-        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, queue_enabled=?, photo_file=?, min_qty=?, stock_type=?,course_mode=?,course_duration=?,lesson_duration=?,age_from=?,age_to=?,course_level=?,enrollment_status=? WHERE id=? AND business_id=?",
+        "UPDATE items SET name=?, price=?, unit=?, track_stock=?, note=?, kind=?, group_id=?, photo_file=?, min_qty=? WHERE id=? AND business_id=?",
         (name, (b.get("price") or "").strip(), _clean_unit(b.get("unit")),
          1 if str(b.get("track_stock") or 0) in ("1", "true", "True") else 0,
-         (b.get("note") or "").strip(), kind, group_id, queue_enabled, photo, _parse_min_qty(b),
-         "raw_material" if b.get("stock_type") == "raw_material" else "ready_food", *edu, item_id, biz["id"]),
+         (b.get("note") or "").strip(), kind, group_id, photo, _parse_min_qty(b), item_id, biz["id"]),
     )
     conn.commit()
     conn.close()
@@ -1635,7 +1564,6 @@ async def upload_item_image(request: Request, x_telegram_init_data: str = Header
     """Tovar rasmini yuklash. Rasm UPLOAD_DIR/items papkasiga saqlanadi va /uploads/items/... URL qaytariladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     conn.close()
     ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
     allowed = {
@@ -1670,1378 +1598,10 @@ async def upload_item_image(request: Request, x_telegram_init_data: str = Header
 async def delete_item(item_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
     conn.execute("DELETE FROM items WHERE id=? AND business_id=?", (item_id, biz["id"]))
     conn.commit()
     conn.close()
     return {"ok": True}
-
-
-# ====================================================================
-# UMUMIY OVQATLANISH — STOLLAR VA XONALAR
-# ====================================================================
-def _require_dining_business(conn, init_data):
-    user, biz = require_business(conn, init_data)
-    if (biz["yon"] or "").strip() != "Umumiy ovqatlanish":
-        conn.close()
-        raise HTTPException(403, "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun.")
-    return user, biz
-
-
-@router.get("/dining/places")
-async def dining_places(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        """SELECT p.id,p.kind,p.name,p.seats,p.x,p.y,p.locked,
-                  d.id AS active_id,d.kind AS active_kind,d.customer_name,d.booking_date,d.booking_time,d.guests,d.total
-           FROM dining_places p
-           LEFT JOIN dining_bookings d ON d.id=(
-             SELECT id FROM dining_bookings
-             WHERE business_id=p.business_id AND place_id=p.id AND status='active'
-             ORDER BY id DESC LIMIT 1)
-           WHERE p.business_id=? ORDER BY p.id""",
-        (biz["id"],),
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-@router.post("/dining/places")
-async def dining_place_add(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    b = await request.json()
-    kind = (b.get("kind") or "").strip()
-    if kind not in ("table", "room"):
-        conn.close()
-        raise HTTPException(400, "Stol yoki xona turini tanlang.")
-    name = (b.get("name") or "").strip()[:60]
-    if not name:
-        name = "Stol" if kind == "table" else "Xona"
-    try:
-        seats = max(0, min(100, int(b.get("seats") or 0))) if kind == "table" else 0
-    except (TypeError, ValueError):
-        seats = 0
-    now = int(time.time())
-    # Yangi belgilar yuqorida, bir-biridan ozgina surilgan holda paydo bo'ladi.
-    count = conn.execute("SELECT COUNT(*) FROM dining_places WHERE business_id=?", (biz["id"],)).fetchone()[0]
-    x = 4 + (count % 5) * 18
-    cur = conn.execute(
-        "INSERT INTO dining_places(business_id,kind,name,seats,x,y,locked,created_at,updated_at) VALUES(?,?,?,?,?,?,1,?,?)",
-        (biz["id"], kind, name, seats, x, 4, now, now),
-    )
-    conn.commit()
-    place_id = cur.lastrowid
-    conn.close()
-    return {"id": place_id, "kind": kind, "name": name, "seats": seats, "x": x, "y": 4, "locked": 1}
-
-
-@router.put("/dining/places/{place_id}")
-async def dining_place_edit(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    row = conn.execute("SELECT * FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"])).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Stol yoki xona topilmadi.")
-    b = await request.json()
-    name = (b.get("name") if "name" in b else row["name"])
-    name = str(name or "").strip()[:60] or row["name"]
-    try:
-        seats = max(0, min(100, int(b.get("seats", row["seats"]) or 0))) if row["kind"] == "table" else 0
-        x = max(0.0, min(90.0, float(b.get("x", row["x"]))))
-        y = max(0.0, min(88.0, float(b.get("y", row["y"]))))
-    except (TypeError, ValueError):
-        conn.close()
-        raise HTTPException(400, "Joylashuv qiymati noto'g'ri.")
-    locked = 1 if str(b.get("locked", row["locked"])).lower() in ("1", "true") else 0
-    conn.execute(
-        "UPDATE dining_places SET name=?,seats=?,x=?,y=?,locked=?,updated_at=? WHERE id=? AND business_id=?",
-        (name, seats, x, y, locked, int(time.time()), place_id, biz["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.delete("/dining/places/{place_id}")
-async def dining_place_delete(place_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    booking_ids = [r[0] for r in conn.execute("SELECT id FROM dining_bookings WHERE business_id=? AND place_id=?", (biz["id"], place_id)).fetchall()]
-    if booking_ids:
-        marks = ",".join("?" for _ in booking_ids)
-        conn.execute("DELETE FROM dining_booking_items WHERE booking_id IN ("+marks+")", booking_ids)
-        conn.execute("DELETE FROM dining_bookings WHERE id IN ("+marks+")", booking_ids)
-    conn.execute("DELETE FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-def _dining_place(conn, biz_id, place_id):
-    row = conn.execute("SELECT * FROM dining_places WHERE id=? AND business_id=?", (place_id, biz_id)).fetchone()
-    if not row:
-        raise HTTPException(404, "Stol yoki xona topilmadi.")
-    return row
-
-
-# ====================================================================
-# TA'LIM FAOLIYATI — KURSLAR VA GURUHLAR
-# ====================================================================
-def _require_education_business(conn, init_data):
-    user, biz = require_business(conn, init_data)
-    if (biz["yon"] or "").strip() != "Ta'lim faoliyati":
-        conn.close()
-        raise HTTPException(403, "Bu bo'lim faqat Ta'lim faoliyati yo'nalishi uchun.")
-    return user, biz
-
-
-def _education_group_payload(conn, biz_id, body, old=None):
-    def value(key, default=""):
-        return body.get(key, default) if key in body else default
-    name = str(value("name", old["name"] if old else "") or "").strip()[:80]
-    if not name:
-        raise HTTPException(400, "Guruh nomini kiriting.")
-    course_id = value("course_item_id", old["course_item_id"] if old else None)
-    if course_id in (None, "", 0, "0"):
-        course_id = None
-    else:
-        try:
-            course_id = int(course_id)
-        except (TypeError, ValueError):
-            raise HTTPException(400, "Kurs noto'g'ri tanlangan.")
-        course = conn.execute(
-            "SELECT id FROM items WHERE id=? AND business_id=? AND kind='service'",
-            (course_id, biz_id),
-        ).fetchone()
-        if not course:
-            raise HTTPException(400, "Tanlangan kurs topilmadi.")
-    try:
-        capacity = max(0, min(10000, int(value("capacity", old["capacity"] if old else 0) or 0)))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "O'quvchilar sig'imi noto'g'ri.")
-    allowed_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
-    days = value("weekdays", old["weekdays"] if old else "")
-    if isinstance(days, list):
-        days = ",".join(d for d in days if d in allowed_days)
-    days = ",".join(d for d in str(days or "").split(",") if d in allowed_days)
-    billing_type = str(value("billing_type", _row_val(old, "billing_type", "monthly") if old else "monthly") or "monthly").strip()
-    if billing_type not in ("monthly", "attendance"):
-        billing_type = "monthly"
-    try:
-        package_lessons = max(0, min(1000, int(value("package_lessons", _row_val(old, "package_lessons", 0) if old else 0) or 0)))
-        package_price = max(0, int(str(value("package_price", _row_val(old, "package_price", 0) if old else 0) or 0).replace(" ", "")))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Darslar soni yoki paket narxi noto'g'ri.")
-    if billing_type == "attendance" and (package_lessons <= 0 or package_price <= 0):
-        raise HTTPException(400, "Qatnashuv bo'yicha hisoblash uchun darslar soni va paket narxini kiriting.")
-    teacher_id = value("teacher_id", _row_val(old, "teacher_id", None) if old else None)
-    if teacher_id in (None, "", 0, "0"):
-        teacher_id = None
-    else:
-        try:
-            teacher_id = int(teacher_id)
-        except (TypeError, ValueError):
-            raise HTTPException(400, "O'qituvchi noto'g'ri tanlangan.")
-        teacher = conn.execute("SELECT full_name FROM education_teachers WHERE id=? AND business_id=? AND status='active'", (teacher_id, biz_id)).fetchone()
-        if not teacher:
-            raise HTTPException(400, "Tanlangan o'qituvchi topilmadi.")
-        body["teacher_name"] = teacher["full_name"]
-    return {
-        "name": name, "course_item_id": course_id,
-        "teacher_name": str(value("teacher_name", old["teacher_name"] if old else "") or "").strip()[:100], "teacher_id": teacher_id,
-        "room_name": str(value("room_name", old["room_name"] if old else "") or "").strip()[:80],
-        "capacity": capacity, "weekdays": days,
-        "lesson_from": str(value("lesson_from", old["lesson_from"] if old else "") or "")[:5],
-        "lesson_to": str(value("lesson_to", old["lesson_to"] if old else "") or "")[:5],
-        "start_date": str(value("start_date", old["start_date"] if old else "") or "")[:10],
-        "end_date": str(value("end_date", old["end_date"] if old else "") or "")[:10],
-        "billing_type": billing_type, "package_lessons": package_lessons, "package_price": package_price,
-    }
-
-
-@router.get("/education/groups")
-async def education_groups(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        """SELECT g.*,i.name AS course_name,
-                  (SELECT COUNT(*) FROM education_students s WHERE s.business_id=g.business_id AND s.group_id=g.id AND s.status='active') AS student_count
-           FROM education_groups g
-           LEFT JOIN items i ON i.id=g.course_item_id AND i.business_id=g.business_id
-           WHERE g.business_id=? AND g.status='active' ORDER BY g.id DESC""",
-        (biz["id"],),
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-@router.post("/education/groups")
-async def education_group_add(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    data = _education_group_payload(conn, biz["id"], await request.json())
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO education_groups(business_id,name,course_item_id,teacher_name,teacher_id,room_name,capacity,
-           weekdays,lesson_from,lesson_to,start_date,end_date,billing_type,package_lessons,package_price,status,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
-        (biz["id"], data["name"], data["course_item_id"], data["teacher_name"], data["teacher_id"], data["room_name"],
-         data["capacity"], data["weekdays"], data["lesson_from"], data["lesson_to"],
-         data["start_date"], data["end_date"], data["billing_type"], data["package_lessons"], data["package_price"], now, now),
-    )
-    conn.commit()
-    group_id = cur.lastrowid
-    conn.close()
-    return {"ok": True, "id": group_id}
-
-
-@router.put("/education/groups/{group_id}")
-async def education_group_edit(group_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    old = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
-    if not old:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    data = _education_group_payload(conn, biz["id"], await request.json(), old)
-    conn.execute(
-        """UPDATE education_groups SET name=?,course_item_id=?,teacher_name=?,teacher_id=?,room_name=?,capacity=?,
-           weekdays=?,lesson_from=?,lesson_to=?,start_date=?,end_date=?,billing_type=?,package_lessons=?,package_price=?,updated_at=?
-           WHERE id=? AND business_id=?""",
-        (data["name"], data["course_item_id"], data["teacher_name"], data["teacher_id"], data["room_name"], data["capacity"],
-         data["weekdays"], data["lesson_from"], data["lesson_to"], data["start_date"], data["end_date"],
-         data["billing_type"], data["package_lessons"], data["package_price"], int(time.time()), group_id, biz["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.delete("/education/groups/{group_id}")
-async def education_group_delete(group_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    row = conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=?", (group_id, biz["id"])).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    conn.execute("UPDATE education_groups SET status='deleted',updated_at=? WHERE id=? AND business_id=?", (int(time.time()), group_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-def _education_student_payload(conn, biz_id, body, old=None):
-    def value(key, default=""):
-        return body.get(key, default) if key in body else default
-    full_name = str(value("full_name", old["full_name"] if old else "") or "").strip()[:120]
-    if not full_name:
-        raise HTTPException(400, "O'quvchi ism-familiyasini kiriting.")
-    group_id = value("group_id", old["group_id"] if old else None)
-    if group_id in (None, "", 0, "0"):
-        group_id = None
-    else:
-        try:
-            group_id = int(group_id)
-        except (TypeError, ValueError):
-            raise HTTPException(400, "Guruh noto'g'ri tanlangan.")
-        group = conn.execute(
-            "SELECT id FROM education_groups WHERE id=? AND business_id=? AND status='active'",
-            (group_id, biz_id),
-        ).fetchone()
-        if not group:
-            raise HTTPException(400, "Tanlangan guruh topilmadi.")
-    try:
-        monthly_fee = max(0, int(str(value("monthly_fee", _row_val(old, "monthly_fee", 0) if old else 0) or 0).replace(" ", "")))
-        lesson_package_override = max(0, min(1000, int(value("lesson_package_override", _row_val(old, "lesson_package_override", 0) if old else 0) or 0)))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "To'lov summasi yoki darslar soni noto'g'ri.")
-    return {
-        "full_name": full_name, "group_id": group_id,
-        "phone": str(value("phone", old["phone"] if old else "") or "").strip()[:30],
-        "parent_name": str(value("parent_name", old["parent_name"] if old else "") or "").strip()[:120],
-        "parent_phone": str(value("parent_phone", old["parent_phone"] if old else "") or "").strip()[:30],
-        "birth_date": str(value("birth_date", old["birth_date"] if old else "") or "")[:10],
-        "joined_date": str(value("joined_date", old["joined_date"] if old else "") or "")[:10],
-        "note": str(value("note", old["note"] if old else "") or "").strip()[:500],
-        "monthly_fee": monthly_fee,
-        "payment_start_date": str(value("payment_start_date", _row_val(old, "payment_start_date", "") if old else "") or "")[:10],
-        "lesson_package_override": lesson_package_override,
-    }
-
-
-@router.get("/education/students")
-async def education_students(group_id: int = 0, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    params = [biz["id"]]
-    extra = ""
-    if group_id > 0:
-        extra = " AND s.group_id=?"
-        params.append(group_id)
-    rows = conn.execute(
-        """SELECT s.*,g.name AS group_name,i.name AS course_name
-           FROM education_students s
-           LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
-           LEFT JOIN items i ON i.id=g.course_item_id AND i.business_id=s.business_id
-           WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE,s.id",
-        params,
-    ).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def _education_student_month_expected(conn, biz_id, student, month):
-    fee = int(_row_val(student, "monthly_fee", 0) or 0)
-    group_id = _row_val(student, "group_id", None)
-    if group_id:
-        group = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (group_id, biz_id)).fetchone()
-        if group and _row_val(group, "billing_type", "monthly") == "attendance" and int(_row_val(group, "package_lessons", 0) or 0) > 0:
-            lessons = int(conn.execute(
-                """SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND group_id=? AND student_id=?
-                   AND lesson_date LIKE ? AND attendance_status IN ('present','late','absent')""",
-                (biz_id, group_id, student["id"], month + "-%"),
-            ).fetchone()[0] or 0)
-            fee = int(round((int(_row_val(group, "package_price", 0) or 0) / int(group["package_lessons"])) * min(lessons, int(group["package_lessons"]))))
-    return fee
-
-
-@router.get("/education/students/{student_id}/card")
-async def education_student_card(student_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    student = conn.execute(
-        """SELECT s.*,g.name AS group_name,i.name AS course_name FROM education_students s
-           LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
-           LEFT JOIN items i ON i.id=g.course_item_id AND i.business_id=s.business_id
-           WHERE s.id=? AND s.business_id=?""", (student_id, biz["id"]),
-    ).fetchone()
-    if not student:
-        conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
-    attendance = conn.execute(
-        """SELECT attendance_status,COUNT(*) count FROM education_attendance
-           WHERE business_id=? AND student_id=? GROUP BY attendance_status""", (biz["id"], student_id),
-    ).fetchall()
-    counts = {"present": 0, "late": 0, "excused": 0, "absent": 0}
-    for row in attendance:
-        counts[row["attendance_status"]] = int(row["count"] or 0)
-    total_attendance = sum(counts.values())
-    attended = counts["present"] + counts["late"]
-    today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
-    billing = _education_student_billing_status(conn, biz["id"], student, today)
-    payments = conn.execute(
-        """SELECT id,payment_month,amount,pay_type,note,created_at,voided_at,voided_by,void_reason FROM education_payments
-           WHERE business_id=? AND student_id=? ORDER BY payment_month DESC,id DESC LIMIT 300""", (biz["id"], student_id),
-    ).fetchall()
-    history = conn.execute(
-        """SELECT h.*,g.name AS group_name FROM education_student_group_history h
-           LEFT JOIN education_groups g ON g.id=h.group_id AND g.business_id=h.business_id
-           WHERE h.business_id=? AND h.student_id=? ORDER BY h.started_date DESC,h.id DESC""", (biz["id"], student_id),
-    ).fetchall()
-    result = {
-        "student": dict(student),
-        "attendance": {"total": total_attendance, "attended": attended, "percent": int(round(attended * 100 / total_attendance)) if total_attendance else 0, "counts": counts},
-        "payment": dict(billing, total_paid=sum(int(r["amount"] or 0) for r in payments)),
-        "payments": [dict(r) for r in payments], "group_history": [dict(r) for r in history],
-    }
-    conn.close(); return result
-
-
-@router.post("/education/students/{student_id}/transfer")
-async def education_student_transfer(student_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
-    body = await request.json()
-    try: group_id = int(body.get("group_id") or 0)
-    except (TypeError, ValueError): group_id = 0
-    transfer_date = str(body.get("transfer_date") or "")[:10]
-    try: time.strptime(transfer_date, "%Y-%m-%d")
-    except ValueError: conn.close(); raise HTTPException(400, "O'tkazish sanasini tanlang.")
-    student = conn.execute("SELECT * FROM education_students WHERE id=? AND business_id=? AND status='active'", (student_id, biz["id"])).fetchone()
-    if not student: conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
-    group = conn.execute("SELECT id,name FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
-    if not group: conn.close(); raise HTTPException(404, "Yangi guruh topilmadi.")
-    if int(student["group_id"] or 0) == group_id: conn.close(); raise HTTPException(400, "O'quvchi hozir ham shu guruhda.")
-    last = conn.execute(
-        """SELECT * FROM education_student_group_history WHERE business_id=? AND student_id=? AND COALESCE(ended_date,'')=''
-           ORDER BY id DESC LIMIT 1""", (biz["id"], student_id),
-    ).fetchone()
-    if last and transfer_date < str(last["started_date"] or ""):
-        conn.close(); raise HTTPException(400, "O'tkazish sanasi joriy guruh boshlangan sanadan oldin bo'lmaydi.")
-    now = int(time.time())
-    if last:
-        previous_end = conn.execute("SELECT date(?,'-1 day')", (transfer_date,)).fetchone()[0]
-        conn.execute("UPDATE education_student_group_history SET ended_date=? WHERE id=? AND business_id=?", (previous_end, last["id"], biz["id"]))
-    elif student["group_id"]:
-        started = str(_row_val(student, "joined_date", "") or transfer_date)
-        previous_end = conn.execute("SELECT date(?,'-1 day')", (transfer_date,)).fetchone()[0]
-        conn.execute(
-            "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
-            (biz["id"], student_id, student["group_id"], started, previous_end, "Boshlang'ich guruh", now),
-        )
-    note = str(body.get("note") or "").strip()[:300]
-    conn.execute(
-        "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
-        (biz["id"], student_id, group_id, transfer_date, "", ("Guruhga o'tkazildi" + ((": " + note) if note else ""))[:300], now),
-    )
-    conn.execute("UPDATE education_students SET group_id=?,updated_at=? WHERE id=? AND business_id=?", (group_id, now, student_id, biz["id"]))
-    conn.commit(); conn.close(); return {"ok": True, "group_id": group_id, "group_name": group["name"]}
-
-
-@router.post("/education/students")
-async def education_student_add(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    data = _education_student_payload(conn, biz["id"], await request.json())
-    now = int(time.time())
-    cur = conn.execute(
-        """INSERT INTO education_students(business_id,group_id,full_name,phone,parent_name,parent_phone,
-           birth_date,joined_date,note,monthly_fee,payment_start_date,lesson_package_override,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
-        (biz["id"], data["group_id"], data["full_name"], data["phone"], data["parent_name"],
-         data["parent_phone"], data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], data["payment_start_date"], data["lesson_package_override"], now, now),
-    )
-    conn.commit()
-    student_id = cur.lastrowid
-    if data["group_id"]:
-        conn.execute(
-            "INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at) VALUES(?,?,?,?,?,?,?)",
-            (biz["id"], student_id, data["group_id"], data["joined_date"] or time.strftime("%Y-%m-%d", time.gmtime(now + 5 * 3600)), "", "Boshlang'ich guruh", now),
-        )
-        conn.commit()
-    conn.close()
-    return {"ok": True, "id": student_id}
-
-
-@router.put("/education/students/{student_id}")
-async def education_student_edit(student_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    old = conn.execute("SELECT * FROM education_students WHERE id=? AND business_id=? AND status='active'", (student_id, biz["id"])).fetchone()
-    if not old:
-        conn.close()
-        raise HTTPException(404, "O'quvchi topilmadi.")
-    data = _education_student_payload(conn, biz["id"], await request.json(), old)
-    if int(data["group_id"] or 0) != int(old["group_id"] or 0):
-        conn.close()
-        raise HTTPException(400, "Guruhni o'quvchi kartasidagi o'tkazish tugmasi orqali almashtiring.")
-    conn.execute(
-        """UPDATE education_students SET group_id=?,full_name=?,phone=?,parent_name=?,parent_phone=?,
-           birth_date=?,joined_date=?,note=?,monthly_fee=?,payment_start_date=?,lesson_package_override=?,updated_at=? WHERE id=? AND business_id=?""",
-        (data["group_id"], data["full_name"], data["phone"], data["parent_name"], data["parent_phone"],
-         data["birth_date"], data["joined_date"], data["note"], data["monthly_fee"], data["payment_start_date"], data["lesson_package_override"], int(time.time()), student_id, biz["id"]),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.delete("/education/students/{student_id}")
-async def education_student_delete(student_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    row = conn.execute("SELECT id FROM education_students WHERE id=? AND business_id=?", (student_id, biz["id"])).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "O'quvchi topilmadi.")
-    conn.execute("UPDATE education_students SET status='inactive',updated_at=? WHERE id=? AND business_id=?", (int(time.time()), student_id, biz["id"]))
-    conn.commit()
-    conn.close()
-    return {"ok": True}
-
-
-@router.get("/education/attendance")
-async def education_attendance(group_id: int, lesson_date: str, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    lesson_date = str(lesson_date or "")[:10]
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", lesson_date):
-        conn.close()
-        raise HTTPException(400, "Davomat sanasini tanlang.")
-    group = conn.execute("SELECT id,name FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
-    if not group:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    rows = conn.execute(
-        """SELECT s.id AS student_id,s.full_name,s.phone,
-                  COALESCE(a.attendance_status,'') AS attendance_status,COALESCE(a.note,'') AS attendance_note
-           FROM education_students s
-           LEFT JOIN education_attendance a ON a.business_id=s.business_id AND a.group_id=s.group_id
-             AND a.student_id=s.id AND a.lesson_date=?
-           WHERE s.business_id=? AND s.group_id=? AND s.status='active'
-           ORDER BY s.full_name COLLATE NOCASE,s.id""",
-        (lesson_date, biz["id"], group_id),
-    ).fetchall()
-    conn.close()
-    return {"group": dict(group), "lesson_date": lesson_date, "students": [dict(r) for r in rows]}
-
-
-@router.put("/education/attendance")
-async def education_attendance_save(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "items")
-    body = await request.json()
-    try:
-        group_id = int(body.get("group_id") or 0)
-    except (TypeError, ValueError):
-        group_id = 0
-    lesson_date = str(body.get("lesson_date") or "")[:10]
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", lesson_date):
-        conn.close()
-        raise HTTPException(400, "Davomat sanasini tanlang.")
-    group = conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=? AND status='active'", (group_id, biz["id"])).fetchone()
-    if not group:
-        conn.close()
-        raise HTTPException(404, "Guruh topilmadi.")
-    allowed = {"present", "late", "excused", "absent"}
-    entries = body.get("entries") or []
-    if not isinstance(entries, list):
-        conn.close()
-        raise HTTPException(400, "Davomat ro'yxati noto'g'ri.")
-    now = int(time.time())
-    saved = 0
-    for entry in entries:
-        try:
-            student_id = int(entry.get("student_id") or 0)
-        except (TypeError, ValueError, AttributeError):
-            continue
-        status = str(entry.get("status") or "") if isinstance(entry, dict) else ""
-        if status not in allowed:
-            continue
-        student = conn.execute("SELECT id FROM education_students WHERE id=? AND business_id=? AND group_id=? AND status='active'", (student_id, biz["id"], group_id)).fetchone()
-        if not student:
-            continue
-        note = str(entry.get("note") or "").strip()[:300]
-        conn.execute(
-            """INSERT INTO education_attendance(business_id,group_id,student_id,lesson_date,attendance_status,note,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(business_id,group_id,student_id,lesson_date)
-               DO UPDATE SET attendance_status=excluded.attendance_status,note=excluded.note,updated_at=excluded.updated_at""",
-            (biz["id"], group_id, student_id, lesson_date, status, note, now, now),
-        )
-        saved += 1
-    conn.commit()
-    conn.close()
-    return {"ok": True, "saved": saved}
-
-
-def _education_add_month(value, months=1):
-    import datetime as _dt
-    total = value.year * 12 + value.month - 1 + months
-    year, month0 = divmod(total, 12)
-    day = min(value.day, calendar.monthrange(year, month0 + 1)[1])
-    return _dt.date(year, month0 + 1, day)
-
-
-def _education_student_billing_status(conn, biz_id, student, today_text):
-    import datetime as _dt
-    try: today = _dt.date.fromisoformat(today_text)
-    except ValueError: raise HTTPException(400, "Sana noto'g'ri.")
-    start_text = str(_row_val(student, "payment_start_date", "") or _row_val(student, "joined_date", "") or today_text)[:10]
-    try: start = _dt.date.fromisoformat(start_text)
-    except ValueError: start = today
-    group = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (_row_val(student, "group_id", 0), biz_id)).fetchone() if _row_val(student, "group_id", 0) else None
-    billing_type = str(_row_val(group, "billing_type", "monthly") if group else "monthly")
-    paid_total = 0; expected = 0; next_due = ""; lessons_done = 0; lessons_remaining = 0; package_lessons = 0; payable_now = 0
-    if billing_type == "attendance" and group:
-        package_lessons = int(_row_val(student, "lesson_package_override", 0) or _row_val(group, "package_lessons", 0) or 0)
-        package_price = int(_row_val(group, "package_price", 0) or 0)
-        lessons_done = int(conn.execute(
-            """SELECT COUNT(*) FROM education_attendance WHERE business_id=? AND student_id=? AND lesson_date>=?
-               AND attendance_status IN ('present','late','absent')""", (biz_id, student["id"], start.isoformat()),
-        ).fetchone()[0] or 0)
-        completed = lessons_done // package_lessons if package_lessons else 0
-        expected = completed * package_price
-        paid_total = int(conn.execute(
-            """SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=?
-               AND date(created_at,'unixepoch','+5 hours')>=? AND COALESCE(voided_at,0)=0""", (biz_id, student["id"], start.isoformat()),
-        ).fetchone()[0] or 0)
-        debt = max(0, expected - paid_total)
-        payable_now = min(debt, package_price - (paid_total % package_price)) if debt and package_price else debt
-        paid_packages = min(completed, paid_total // package_price) if package_price else 0
-        if debt and package_lessons:
-            offset = paid_packages * package_lessons + package_lessons - 1
-            row = conn.execute(
-                """SELECT lesson_date FROM education_attendance WHERE business_id=? AND student_id=? AND lesson_date>=?
-                   AND attendance_status IN ('present','late','absent') ORDER BY lesson_date,id LIMIT 1 OFFSET ?""",
-                (biz_id, student["id"], start.isoformat(), offset),
-            ).fetchone()
-            next_due = str(row[0]) if row else today_text
-        lessons_remaining = package_lessons - (lessons_done % package_lessons) if package_lessons else 0
-    else:
-        fee = int(_row_val(student, "monthly_fee", 0) or 0)
-        due_dates = []; due = _education_add_month(start)
-        while due <= today:
-            due_dates.append(due); due = _education_add_month(due)
-        expected = len(due_dates) * fee
-        first_key = due_dates[0].strftime("%Y-%m") if due_dates else _education_add_month(start).strftime("%Y-%m")
-        paid_total = int(conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month>=? AND COALESCE(voided_at,0)=0",
-            (biz_id, student["id"], first_key),
-        ).fetchone()[0] or 0)
-        debt = max(0, expected - paid_total)
-        payable_now = min(debt, fee - (paid_total % fee)) if debt and fee else debt
-        if debt and fee and due_dates:
-            paid_cycles = min(len(due_dates) - 1, paid_total // fee)
-            next_due = due_dates[paid_cycles].isoformat()
-        else:
-            next_due = due.isoformat()
-    debt = max(0, expected - paid_total)
-    delta = (_dt.date.fromisoformat(next_due) - today).days if next_due else 9999
-    if debt and delta < 0: status = "overdue"
-    elif debt and delta == 0: status = "due_today"
-    elif (billing_type == "attendance" and not debt and package_lessons and lessons_remaining <= 2) or (not debt and 0 <= delta <= 3): status = "upcoming"
-    elif debt: status = "due_today"
-    else: status = "paid"
-    return {"billing_type": billing_type, "status": status, "start_date": start.isoformat(), "next_due": next_due,
-            "expected": expected, "paid": paid_total, "debt": debt, "package_lessons": package_lessons,
-            "lessons_done": lessons_done, "lessons_remaining": lessons_remaining,
-            "payable_now": payable_now, "payment_month": (next_due or today_text)[:7]}
-
-
-@router.get("/education/payment-control")
-async def education_payment_control(group_id: int = 0, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_any_perm(conn, x_telegram_init_data, "kassa", "statistics")
-    today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
-    params = [biz["id"]]; extra = ""
-    if group_id > 0: extra = " AND s.group_id=?"; params.append(group_id)
-    rows = conn.execute(
-        """SELECT s.*,g.name AS group_name,COALESCE(g.billing_type,'monthly') AS billing_type
-           FROM education_students s LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
-           WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE", params,
-    ).fetchall()
-    out=[]; summary={"overdue":0,"due_today":0,"upcoming":0,"paid":0,"total_debt":0}
-    for row in rows:
-        item=dict(row); item.update(_education_student_billing_status(conn,biz["id"],row,today));out.append(item)
-        summary[item["status"]]=summary.get(item["status"],0)+1; summary["total_debt"]+=int(item["debt"] or 0)
-    conn.close(); return {"today":today,"summary":summary,"students":out}
-
-
-@router.get("/education/payments")
-async def education_payments(payment_month: str, group_id: int = 0, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    payment_month = str(payment_month or "")[:7]
-    if not re.match(r"^\d{4}-\d{2}$", payment_month):
-        conn.close()
-        raise HTTPException(400, "To'lov oyini tanlang.")
-    params = [payment_month, biz["id"]]
-    extra = ""
-    if group_id > 0:
-        extra = " AND s.group_id=?"
-        params.append(group_id)
-    rows = conn.execute(
-        """SELECT s.id AS student_id,s.full_name,s.phone,s.monthly_fee,g.name AS group_name,
-                  COALESCE(g.billing_type,'monthly') AS billing_type,COALESCE(g.package_lessons,0) AS package_lessons,
-                  COALESCE(g.package_price,0) AS package_price,
-                  (SELECT COUNT(*) FROM education_attendance a WHERE a.business_id=s.business_id AND a.student_id=s.id
-                    AND a.group_id=s.group_id AND a.lesson_date LIKE ? AND a.attendance_status IN ('present','late','absent')) AS chargeable_lessons,
-                  COALESCE((SELECT SUM(p.amount) FROM education_payments p
-                    WHERE p.business_id=s.business_id AND p.student_id=s.id AND p.payment_month=? AND COALESCE(p.voided_at,0)=0),0) AS paid
-           FROM education_students s LEFT JOIN education_groups g ON g.id=s.group_id AND g.business_id=s.business_id
-           WHERE s.business_id=? AND s.status='active'""" + extra + " ORDER BY s.full_name COLLATE NOCASE,s.id",
-        [payment_month + "-%"] + params,
-    ).fetchall()
-    history = conn.execute(
-        """SELECT p.*,s.full_name FROM education_payments p JOIN education_students s ON s.id=p.student_id
-           WHERE p.business_id=? AND p.payment_month=? ORDER BY p.id DESC LIMIT 300""",
-        (biz["id"], payment_month),
-    ).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        if d["billing_type"] == "attendance" and int(d["package_lessons"] or 0) > 0:
-            lessons = min(int(d["chargeable_lessons"] or 0), int(d["package_lessons"] or 0))
-            expected = int(round((int(d["package_price"] or 0) / int(d["package_lessons"])) * lessons))
-            d["per_lesson_price"] = int(round(int(d["package_price"] or 0) / int(d["package_lessons"])))
-        else:
-            expected = int(d["monthly_fee"] or 0)
-            d["per_lesson_price"] = 0
-        d["expected"] = expected
-        d["debt"] = max(0, expected - int(d["paid"] or 0)); out.append(d)
-    conn.close()
-    return {"payment_month": payment_month, "students": out, "history": [dict(r) for r in history]}
-
-
-@router.post("/education/payments")
-async def education_payment_add(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kassa")
-    body = await request.json()
-    try:
-        student_id = int(body.get("student_id") or 0)
-        amount = int(str(body.get("amount") or 0).replace(" ", ""))
-    except (TypeError, ValueError):
-        student_id = 0; amount = 0
-    month = str(body.get("payment_month") or "")[:7]
-    pay_type = str(body.get("pay_type") or "naqd").strip()
-    if pay_type not in ("naqd", "karta"):
-        pay_type = "naqd"
-    if not re.match(r"^\d{4}-\d{2}$", month):
-        conn.close(); raise HTTPException(400, "To'lov oyini tanlang.")
-    student = conn.execute("SELECT * FROM education_students WHERE id=? AND business_id=? AND status='active'", (student_id, biz["id"])).fetchone()
-    if not student:
-        conn.close(); raise HTTPException(404, "O'quvchi topilmadi.")
-    if amount <= 0:
-        conn.close(); raise HTTPException(400, "To'lov summasini kiriting.")
-    fee = int(_row_val(student, "monthly_fee", 0) or 0)
-    remaining_override = None
-    if student["group_id"]:
-        grp = conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=?", (student["group_id"], biz["id"])).fetchone()
-        if grp and _row_val(grp, "billing_type", "monthly") == "attendance" and int(_row_val(grp, "package_lessons", 0) or 0) > 0:
-            control = _education_student_billing_status(conn, biz["id"], student, time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600)))
-            remaining_override = int(control["debt"] or 0)
-    paid = int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_payments WHERE business_id=? AND student_id=? AND payment_month=? AND COALESCE(voided_at,0)=0", (biz["id"], student_id, month)).fetchone()[0] or 0)
-    if remaining_override is None and fee <= 0:
-        conn.close(); raise HTTPException(400, "O'quvchining oylik to'lov summasi belgilanmagan.")
-    if remaining_override is not None and amount > remaining_override:
-        conn.close(); raise HTTPException(400, "Kiritilgan summa qolgan qarzdorlikdan ko'p.")
-    if remaining_override is None and fee > 0 and amount > max(0, fee - paid):
-        conn.close(); raise HTTPException(400, "Kiritilgan summa qolgan qarzdorlikdan ko'p.")
-    if remaining_override is not None and remaining_override <= 0:
-        conn.close(); raise HTTPException(400, "Hozircha to'lanadigan tugallangan dars paketi yo'q.")
-    note = str(body.get("note") or "").strip()[:200]
-    now = int(time.time())
-    cur = conn.execute("INSERT INTO education_payments(business_id,student_id,payment_month,amount,pay_type,note,created_at) VALUES(?,?,?,?,?,?,?)", (biz["id"], student_id, month, amount, pay_type, note, now))
-    payment_id = cur.lastrowid
-    chek = _next_chek_no(conn, biz["id"])
-    sale = conn.execute(
-        """INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,note,user_id,created_at,chek_no)
-           VALUES(?,?,?,?,?,1,'oy',?,?,?,?,?,?,?)""",
-        (biz["id"], "education", payment_id, None, (student["full_name"] + " — " + month)[:160], amount, amount, pay_type,
-         ("Ta'lim to'lovi" + ((": " + note) if note else ""))[:200], user["id"], now, chek),
-    )
-    sale_id = sale.lastrowid
-    conn.execute("UPDATE education_payments SET sale_id=? WHERE id=?", (sale_id, payment_id))
-    conn.commit(); conn.close()
-    return {"ok": True, "id": payment_id, "chek_no": chek}
-
-
-@router.post("/education/payments/{payment_id}/void")
-async def education_payment_void(payment_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "O'quvchi to'lovini bekor qilish")
-    body = await request.json(); reason = str(body.get("reason") or "").strip()[:200]
-    if not reason:
-        conn.close(); raise HTTPException(400, "Bekor qilish sababini kiriting.")
-    row = conn.execute("SELECT * FROM education_payments WHERE id=? AND business_id=?", (payment_id, biz["id"])).fetchone()
-    if not row:
-        conn.close(); raise HTTPException(404, "To'lov topilmadi.")
-    if int(_row_val(row, "voided_at", 0) or 0):
-        conn.close(); raise HTTPException(400, "Bu to'lov avval bekor qilingan.")
-    now = int(time.time())
-    if row["sale_id"]:
-        conn.execute("UPDATE sales SET total=0,price=0,note=? WHERE id=? AND business_id=? AND source='education'", (("Ta'lim to'lovi bekor qilindi: " + reason)[:200], row["sale_id"], biz["id"]))
-    conn.execute("UPDATE education_payments SET voided_at=?,voided_by=?,void_reason=? WHERE id=? AND business_id=?", (now, user["id"], reason, payment_id, biz["id"]))
-    conn.commit(); conn.close()
-    return {"ok": True, "voided": True}
-
-
-def _education_teacher_payload(body, old=None):
-    def value(key, default=""):
-        return body.get(key, default) if key in body else default
-    name = str(value("full_name", old["full_name"] if old else "") or "").strip()[:120]
-    if not name:
-        raise HTTPException(400, "O'qituvchi ism-familiyasini kiriting.")
-    salary_type = str(value("salary_type", old["salary_type"] if old else "monthly") or "monthly")
-    if salary_type not in ("monthly", "per_lesson"):
-        salary_type = "monthly"
-    try:
-        salary_amount = max(0, int(str(value("salary_amount", old["salary_amount"] if old else 0) or 0).replace(" ", "")))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Ish haqi summasi noto'g'ri.")
-    return {"full_name": name, "phone": str(value("phone", old["phone"] if old else "") or "").strip()[:30],
-            "specialty": str(value("specialty", old["specialty"] if old else "") or "").strip()[:120],
-            "hired_date": str(value("hired_date", old["hired_date"] if old else "") or "")[:10],
-            "salary_type": salary_type, "salary_amount": salary_amount,
-            "note": str(value("note", old["note"] if old else "") or "").strip()[:500]}
-
-
-@router.get("/education/teachers")
-async def education_teachers(x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data)
-    rows = conn.execute(
-        """SELECT t.*,(SELECT COUNT(*) FROM education_groups g WHERE g.business_id=t.business_id AND g.teacher_id=t.id AND g.status='active') AS group_count
-           FROM education_teachers t WHERE t.business_id=? AND t.status='active' ORDER BY t.full_name COLLATE NOCASE,t.id""",
-        (biz["id"],),
-    ).fetchall(); conn.close(); return [dict(r) for r in rows]
-
-
-@router.post("/education/teachers")
-async def education_teacher_add(request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
-    d = _education_teacher_payload(await request.json()); now = int(time.time())
-    cur = conn.execute("""INSERT INTO education_teachers(business_id,full_name,phone,specialty,hired_date,salary_type,salary_amount,note,status,created_at,updated_at)
-                          VALUES(?,?,?,?,?,?,?,?,'active',?,?)""",
-                       (biz["id"],d["full_name"],d["phone"],d["specialty"],d["hired_date"],d["salary_type"],d["salary_amount"],d["note"],now,now))
-    conn.commit(); teacher_id=cur.lastrowid; conn.close(); return {"ok":True,"id":teacher_id}
-
-
-@router.put("/education/teachers/{teacher_id}")
-async def education_teacher_edit(teacher_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
-    old=conn.execute("SELECT * FROM education_teachers WHERE id=? AND business_id=? AND status='active'",(teacher_id,biz["id"])).fetchone()
-    if not old: conn.close(); raise HTTPException(404,"O'qituvchi topilmadi.")
-    d=_education_teacher_payload(await request.json(),old)
-    conn.execute("""UPDATE education_teachers SET full_name=?,phone=?,specialty=?,hired_date=?,salary_type=?,salary_amount=?,note=?,updated_at=? WHERE id=? AND business_id=?""",
-                 (d["full_name"],d["phone"],d["specialty"],d["hired_date"],d["salary_type"],d["salary_amount"],d["note"],int(time.time()),teacher_id,biz["id"]))
-    conn.execute("UPDATE education_groups SET teacher_name=? WHERE business_id=? AND teacher_id=?",(d["full_name"],biz["id"],teacher_id))
-    conn.commit(); conn.close(); return {"ok":True}
-
-
-@router.delete("/education/teachers/{teacher_id}")
-async def education_teacher_delete(teacher_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_education_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "items")
-    old=conn.execute("SELECT id FROM education_teachers WHERE id=? AND business_id=?",(teacher_id,biz["id"])).fetchone()
-    if not old: conn.close(); raise HTTPException(404,"O'qituvchi topilmadi.")
-    conn.execute("UPDATE education_teachers SET status='inactive',updated_at=? WHERE id=? AND business_id=?",(int(time.time()),teacher_id,biz["id"]))
-    conn.execute("UPDATE education_groups SET teacher_id=NULL WHERE business_id=? AND teacher_id=?",(biz["id"],teacher_id))
-    conn.commit(); conn.close(); return {"ok":True}
-
-
-@router.get("/education/exams")
-async def education_exams(x_telegram_init_data: str = Header(default="")):
-    conn=db(); user,biz=_require_education_business(conn,x_telegram_init_data)
-    rows=conn.execute("""SELECT e.*,g.name AS group_name,
-      (SELECT COUNT(*) FROM education_exam_results r WHERE r.business_id=e.business_id AND r.exam_id=e.id) AS result_count,
-      (SELECT AVG(r.score) FROM education_exam_results r WHERE r.business_id=e.business_id AND r.exam_id=e.id) AS avg_score
-      FROM education_exams e LEFT JOIN education_groups g ON g.id=e.group_id AND g.business_id=e.business_id
-      WHERE e.business_id=? AND e.status='active' ORDER BY e.exam_date DESC,e.id DESC""",(biz["id"],)).fetchall()
-    conn.close();return [dict(r) for r in rows]
-
-
-def _education_exam_payload(conn,biz_id,body,old=None):
-    def value(key,default=""): return body.get(key,default) if key in body else default
-    title=str(value("title",old["title"] if old else "") or "").strip()[:120]
-    if not title: raise HTTPException(400,"Imtihon nomini kiriting.")
-    try: group_id=int(value("group_id",old["group_id"] if old else 0) or 0);max_score=float(value("max_score",old["max_score"] if old else 100) or 0)
-    except (TypeError,ValueError): raise HTTPException(400,"Guruh yoki maksimal ball noto'g'ri.")
-    if not conn.execute("SELECT id FROM education_groups WHERE id=? AND business_id=? AND status='active'",(group_id,biz_id)).fetchone(): raise HTTPException(400,"Guruh topilmadi.")
-    if max_score<=0 or max_score>1000000: raise HTTPException(400,"Maksimal ball 0 dan katta bo'lsin.")
-    exam_date=str(value("exam_date",old["exam_date"] if old else "") or "")[:10]
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$",exam_date): raise HTTPException(400,"Imtihon sanasini tanlang.")
-    return {"title":title,"group_id":group_id,"max_score":max_score,"exam_date":exam_date,"note":str(value("note",old["note"] if old else "") or "").strip()[:500]}
-
-
-@router.post("/education/exams")
-async def education_exam_add(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");d=_education_exam_payload(conn,biz["id"],await request.json());now=int(time.time())
-    cur=conn.execute("INSERT INTO education_exams(business_id,group_id,title,exam_date,max_score,note,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'active',?,?)",(biz["id"],d["group_id"],d["title"],d["exam_date"],d["max_score"],d["note"],now,now));conn.commit();eid=cur.lastrowid;conn.close();return {"ok":True,"id":eid}
-
-
-@router.put("/education/exams/{exam_id}")
-async def education_exam_edit(exam_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");old=conn.execute("SELECT * FROM education_exams WHERE id=? AND business_id=? AND status='active'",(exam_id,biz["id"])).fetchone()
-    if not old: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
-    d=_education_exam_payload(conn,biz["id"],await request.json(),old);conn.execute("UPDATE education_exams SET group_id=?,title=?,exam_date=?,max_score=?,note=?,updated_at=? WHERE id=? AND business_id=?",(d["group_id"],d["title"],d["exam_date"],d["max_score"],d["note"],int(time.time()),exam_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
-
-
-@router.delete("/education/exams/{exam_id}")
-async def education_exam_delete(exam_id:int,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");old=conn.execute("SELECT id FROM education_exams WHERE id=? AND business_id=?",(exam_id,biz["id"])).fetchone()
-    if not old: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
-    conn.execute("UPDATE education_exams SET status='deleted',updated_at=? WHERE id=? AND business_id=?",(int(time.time()),exam_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
-
-
-@router.get("/education/exams/{exam_id}/results")
-async def education_exam_results(exam_id:int,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);exam=conn.execute("SELECT e.*,g.name AS group_name FROM education_exams e LEFT JOIN education_groups g ON g.id=e.group_id WHERE e.id=? AND e.business_id=? AND e.status='active'",(exam_id,biz["id"])).fetchone()
-    if not exam: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
-    rows=conn.execute("""SELECT s.id AS student_id,s.full_name,r.score,r.note AS result_note
-      FROM education_students s LEFT JOIN education_exam_results r ON r.business_id=s.business_id AND r.exam_id=? AND r.student_id=s.id
-      WHERE s.business_id=? AND s.group_id=? AND s.status='active' ORDER BY s.full_name COLLATE NOCASE""",(exam_id,biz["id"],exam["group_id"])).fetchall();conn.close();return {"exam":dict(exam),"students":[dict(r) for r in rows]}
-
-
-@router.put("/education/exams/{exam_id}/results")
-async def education_exam_results_save(exam_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");exam=conn.execute("SELECT * FROM education_exams WHERE id=? AND business_id=? AND status='active'",(exam_id,biz["id"])).fetchone()
-    if not exam: conn.close();raise HTTPException(404,"Imtihon topilmadi.")
-    body=await request.json();entries=body.get("entries") or [];now=int(time.time());saved=0
-    for e in entries:
-        try: sid=int(e.get("student_id") or 0);score=float(e.get("score"))
-        except (TypeError,ValueError,AttributeError): continue
-        if score<0 or score>float(exam["max_score"]): continue
-        if not conn.execute("SELECT id FROM education_students WHERE id=? AND business_id=? AND group_id=? AND status='active'",(sid,biz["id"],exam["group_id"])).fetchone(): continue
-        note=str(e.get("note") or "").strip()[:300]
-        conn.execute("""INSERT INTO education_exam_results(business_id,exam_id,student_id,score,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
-          ON CONFLICT(business_id,exam_id,student_id) DO UPDATE SET score=excluded.score,note=excluded.note,updated_at=excluded.updated_at""",(biz["id"],exam_id,sid,score,note,now,now));saved+=1
-    conn.commit();conn.close();return {"ok":True,"saved":saved}
-
-
-@router.post("/education/enrollments")
-async def education_enrollment_add(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json()
-    try: course_id=int(body.get("course_item_id") or 0)
-    except (TypeError,ValueError): course_id=0
-    course=conn.execute("""SELECT i.*,b.yon FROM items i JOIN businesses b ON b.id=i.business_id
-      WHERE i.id=? AND b.status='active'""",(course_id,)).fetchone()
-    if not course or (course["yon"] or "").strip()!="Ta'lim faoliyati": conn.close();raise HTTPException(404,"Kurs topilmadi.")
-    if _row_val(course,"enrollment_status","open")!="open": conn.close();raise HTTPException(400,"Bu kursga qabul yopilgan.")
-    old=conn.execute("SELECT id FROM education_enrollments WHERE business_id=? AND course_item_id=? AND user_id=? AND status IN ('new','accepted')",(course["business_id"],course_id,user["id"])).fetchone()
-    if old: conn.close();raise HTTPException(400,"Siz bu kursga avval yozilgansiz.")
-    phone=str(body.get("phone") or user["phone"] or "").strip()[:30]
-    if not phone: conn.close();raise HTTPException(400,"Telefon raqamini kiriting.")
-    now=int(time.time());cur=conn.execute("""INSERT INTO education_enrollments(business_id,course_item_id,user_id,customer_name,phone,note,status,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,'new',?,?)""",(course["business_id"],course_id,user["id"],user["name"] or "O'quvchi",phone,str(body.get("note") or "").strip()[:300],now,now));conn.commit();eid=cur.lastrowid;conn.close();return {"ok":True,"id":eid}
-
-
-@router.get("/education/enrollments")
-async def education_enrollments(x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items")
-    rows=conn.execute("""SELECT e.*,i.name AS course_name,g.name AS group_name FROM education_enrollments e
-      LEFT JOIN items i ON i.id=e.course_item_id LEFT JOIN education_groups g ON g.id=e.group_id
-      WHERE e.business_id=? ORDER BY CASE e.status WHEN 'new' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END,e.id DESC LIMIT 500""",(biz["id"],)).fetchall();conn.close();return [dict(r) for r in rows]
-
-
-@router.post("/education/enrollments/{enrollment_id}/accept")
-async def education_enrollment_accept(enrollment_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();owner,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items");body=await request.json()
-    try: group_id=int(body.get("group_id") or 0)
-    except (TypeError,ValueError): group_id=0
-    enr=conn.execute("SELECT * FROM education_enrollments WHERE id=? AND business_id=? AND status='new'",(enrollment_id,biz["id"])).fetchone()
-    if not enr: conn.close();raise HTTPException(404,"Yangi ariza topilmadi.")
-    group=conn.execute("SELECT * FROM education_groups WHERE id=? AND business_id=? AND status='active'",(group_id,biz["id"])).fetchone()
-    if not group: conn.close();raise HTTPException(400,"Guruhni tanlang.")
-    if group["course_item_id"] and int(group["course_item_id"])!=int(enr["course_item_id"]): conn.close();raise HTTPException(400,"Tanlangan guruh boshqa kursga tegishli.")
-    existing=conn.execute("SELECT id FROM education_students WHERE business_id=? AND user_id=? AND status='active'",(biz["id"],enr["user_id"])).fetchone();now=int(time.time())
-    if existing:
-        sid=existing["id"];conn.execute("UPDATE education_students SET group_id=?,phone=?,updated_at=? WHERE id=?",(group_id,enr["phone"],now,sid))
-    else:
-        cur=conn.execute("""INSERT INTO education_students(business_id,group_id,user_id,full_name,phone,joined_date,note,monthly_fee,status,created_at,updated_at)
-          VALUES(?,?,?,?,?,?,?,?, 'active',?,?)""",(biz["id"],group_id,enr["user_id"],enr["customer_name"],enr["phone"],time.strftime('%Y-%m-%d',time.gmtime(now+5*3600)),("Kurs arizasi: "+(enr["note"] or ""))[:500],0,now,now));sid=cur.lastrowid
-    conn.execute("UPDATE education_enrollments SET status='accepted',group_id=?,student_id=?,updated_at=? WHERE id=?",(group_id,sid,now,enrollment_id));conn.commit();conn.close();return {"ok":True,"student_id":sid}
-
-
-@router.post("/education/enrollments/{enrollment_id}/reject")
-async def education_enrollment_reject(enrollment_id:int,x_telegram_init_data:str=Header(default="")):
-    conn=db();owner,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"items")
-    cur=conn.execute("UPDATE education_enrollments SET status='rejected',updated_at=? WHERE id=? AND business_id=? AND status='new'",(int(time.time()),enrollment_id,biz["id"]));conn.commit();conn.close()
-    if not cur.rowcount: raise HTTPException(404,"Yangi ariza topilmadi.")
-    return {"ok":True}
-
-
-@router.get("/education/statistics")
-async def education_statistics(period: str = "month", date: str = "", x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_education_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "expenses", "statistics")
-    if not date:
-        date = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 5 * 3600))
-    try:
-        result = education_statistics_data(conn, biz["id"], period, date)
-    except ValueError as exc:
-        conn.close()
-        raise HTTPException(400, str(exc))
-    conn.close()
-    return result
-
-
-@router.get("/education/teacher-payroll")
-async def education_teacher_payroll(payment_month:str,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_any_perm(conn,x_telegram_init_data,"expenses","statistics")
-    month=str(payment_month or "")[:7]
-    if not re.match(r"^\d{4}-\d{2}$",month): conn.close();raise HTTPException(400,"Maosh oyini tanlang.")
-    rows=conn.execute("""SELECT t.*,
-      (SELECT COUNT(DISTINCT CAST(a.group_id AS TEXT)||':'||a.lesson_date) FROM education_attendance a JOIN education_groups g ON g.id=a.group_id
-       WHERE a.business_id=t.business_id AND g.teacher_id=t.id AND a.lesson_date LIKE ?) AS lesson_count,
-      COALESCE((SELECT SUM(p.amount) FROM education_teacher_payments p WHERE p.business_id=t.business_id AND p.teacher_id=t.id AND p.payment_month=?),0) AS paid
-      FROM education_teachers t WHERE t.business_id=? AND t.status='active' ORDER BY t.full_name COLLATE NOCASE""",(month+"-%",month,biz["id"])).fetchall()
-    out=[]
-    for r in rows:
-        d=dict(r);expected=int(d["salary_amount"] or 0) if d["salary_type"]=="monthly" else int(d["lesson_count"] or 0)*int(d["salary_amount"] or 0);d["expected"]=expected;d["debt"]=max(0,expected-int(d["paid"] or 0));out.append(d)
-    hist=conn.execute("""SELECT p.*,t.full_name FROM education_teacher_payments p JOIN education_teachers t ON t.id=p.teacher_id
-      WHERE p.business_id=? AND p.payment_month=? ORDER BY p.id DESC LIMIT 300""",(biz["id"],month)).fetchall();conn.close();return {"payment_month":month,"teachers":out,"history":[dict(r) for r in hist]}
-
-
-@router.post("/education/teacher-payroll")
-async def education_teacher_payroll_add(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"expenses");body=await request.json()
-    try: tid=int(body.get("teacher_id") or 0);amount=int(str(body.get("amount") or 0).replace(" ",""))
-    except (TypeError,ValueError): tid=0;amount=0
-    month=str(body.get("payment_month") or "")[:7];pay=str(body.get("pay_type") or "naqd")
-    if pay not in ("naqd","karta"): pay="naqd"
-    if not re.match(r"^\d{4}-\d{2}$",month): conn.close();raise HTTPException(400,"Maosh oyini tanlang.")
-    t=conn.execute("SELECT * FROM education_teachers WHERE id=? AND business_id=? AND status='active'",(tid,biz["id"])).fetchone()
-    if not t: conn.close();raise HTTPException(404,"O'qituvchi topilmadi.")
-    lessons=int(conn.execute("""SELECT COUNT(DISTINCT CAST(a.group_id AS TEXT)||':'||a.lesson_date) FROM education_attendance a JOIN education_groups g ON g.id=a.group_id
-      WHERE a.business_id=? AND g.teacher_id=? AND a.lesson_date LIKE ?""",(biz["id"],tid,month+"-%")).fetchone()[0] or 0)
-    expected=int(t["salary_amount"] or 0) if t["salary_type"]=="monthly" else lessons*int(t["salary_amount"] or 0)
-    paid=int(conn.execute("SELECT COALESCE(SUM(amount),0) FROM education_teacher_payments WHERE business_id=? AND teacher_id=? AND payment_month=?",(biz["id"],tid,month)).fetchone()[0] or 0)
-    if amount<=0: conn.close();raise HTTPException(400,"To'lov summasini kiriting.")
-    if amount>max(0,expected-paid): conn.close();raise HTTPException(400,"Summa qolgan maoshdan ko'p.")
-    note=str(body.get("note") or "").strip()[:200];now=int(time.time())
-    eid=_expense_add(conn,biz["id"],"Maosh",amount,(t["full_name"]+" — "+month+(": "+note if note else ""))[:200],user["id"],source="education_salary")
-    cur=conn.execute("INSERT INTO education_teacher_payments(business_id,teacher_id,payment_month,amount,pay_type,note,expense_id,created_at) VALUES(?,?,?,?,?,?,?,?)",(biz["id"],tid,month,amount,pay,note,eid,now));conn.commit();pid=cur.lastrowid;conn.close();return {"ok":True,"id":pid}
-
-
-@router.delete("/education/teacher-payroll/{payment_id}")
-async def education_teacher_payroll_delete(payment_id:int,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=_require_education_business(conn,x_telegram_init_data);need_perm(conn,x_telegram_init_data,"expenses");p=conn.execute("SELECT * FROM education_teacher_payments WHERE id=? AND business_id=?",(payment_id,biz["id"])).fetchone()
-    if not p: conn.close();raise HTTPException(404,"Maosh to'lovi topilmadi.")
-    if p["expense_id"]: conn.execute("DELETE FROM expenses WHERE id=? AND business_id=? AND source='education_salary'",(p["expense_id"],biz["id"]))
-    conn.execute("DELETE FROM education_teacher_payments WHERE id=? AND business_id=?",(payment_id,biz["id"]));conn.commit();conn.close();return {"ok":True}
-
-
-@router.post("/dining/places/{place_id}/booking")
-async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    _dining_place(conn, biz["id"], place_id)
-    b = await request.json()
-    customer = (b.get("customer_name") or "").strip()[:80]
-    booking_date = (b.get("booking_date") or "").strip()[:10]
-    booking_time = (b.get("booking_time") or "").strip()[:5]
-    if not customer or not booking_date or not booking_time:
-        conn.close()
-        raise HTTPException(400, "Mijoz ismi, sana va vaqtni kiriting.")
-    try:
-        guests = max(1, min(100, int(b.get("guests") or 1)))
-    except (TypeError, ValueError):
-        guests = 1
-    now = int(time.time())
-    cur = conn.execute(
-        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,phone,booking_date,booking_time,guests,note,total,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,0,'active',?,?)",
-        (biz["id"], place_id, "booking", customer, (b.get("phone") or "").strip()[:30], booking_date,
-         booking_time, guests, (b.get("note") or "").strip()[:300], now, now),
-    )
-    conn.commit(); booking_id = cur.lastrowid; conn.close()
-    return {"id": booking_id, "ok": True}
-
-
-@router.post("/dining/places/{place_id}/order")
-async def dining_order_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    staff = _staff_session(conn, x_telegram_init_data)
-    _dining_place(conn, biz["id"], place_id)
-    b = await request.json(); incoming = b.get("items") or []
-    wanted = {}
-    for it in incoming[:100]:
-        try:
-            iid = int(it.get("item_id")); qty = max(0.01, min(999.0, float(it.get("qty") or 0)))
-            wanted[iid] = wanted.get(iid, 0) + qty
-        except (TypeError, ValueError, AttributeError):
-            continue
-    if not wanted:
-        conn.close(); raise HTTPException(400, "Zakaz uchun mahsulot tanlanmadi.")
-    marks = ",".join("?" for _ in wanted)
-    rows = conn.execute(
-        "SELECT id,name,price,unit FROM items WHERE business_id=? AND COALESCE(stock_type,'ready_food')='ready_food' AND id IN ("+marks+")",
-        (biz["id"], *wanted.keys()),
-    ).fetchall()
-    if not rows:
-        conn.close(); raise HTTPException(400, "Tanlangan mahsulotlar topilmadi.")
-    prepared=[]; total=0
-    for r in rows:
-        qty=wanted[r["id"]]; price=_price_to_int(r["price"]); line=int(round(price*qty)); total+=line
-        prepared.append((r["id"],r["name"],qty,r["unit"] or "dona",price,line))
-    now=int(time.time())
-    cur=conn.execute(
-        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,note,total,waiter_staff_id,waiter_name,problem_open,kitchen_status,payment_status,status,created_at,updated_at) VALUES(?,?, 'order',?,?,?,?,?,0,'preparing','open','active',?,?)",
-        (biz["id"],place_id,(b.get("customer_name") or "").strip()[:80],(b.get("note") or "").strip()[:300],total,
-         staff["id"] if staff else None, (staff["name"] if staff else (user["name"] or "Rahbar"))[:80], now, now),
-    )
-    order_id=cur.lastrowid
-    conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
-                     [(order_id,*x) for x in prepared])
-    place = conn.execute("SELECT name FROM dining_places WHERE id=?", (place_id,)).fetchone()
-    place_name = place["name"] if place else "Stol"
-    _business_notification(conn, biz, "dining:%d:new:kitchen" % order_id, "Yangi ichki zakaz",
-                           "%s · %s so'm" % (place_name, total), "dining_kitchen", order_id, target_perm="kitchen")
-    _business_notification(conn, biz, "dining:%d:new:cash" % order_id, "Yangi ochiq hisob",
-                           "%s · %s so'm" % (place_name, total), "dining_cash", order_id, target_perm="kassa")
-    conn.commit();conn.close()
-    return {"id":order_id,"total":total,"ok":True}
-
-
-@router.get("/dining/orders")
-async def dining_orders(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "dining_internal", "kitchen", "kassa", "open_accounts", "buyurtma")
-    rows = conn.execute(
-        """SELECT d.*,p.name AS place_name,p.kind AS place_kind
-           FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
-           WHERE d.business_id=? AND d.kind='order'
-           ORDER BY d.id DESC""", (biz["id"],)
-    ).fetchall()
-    result = []
-    for row in rows:
-        item_rows = conn.execute(
-            "SELECT item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id",
-            (row["id"],),
-        ).fetchall()
-        order = dict(row)
-        order["items"] = [dict(x) for x in item_rows]
-        result.append(order)
-    conn.close()
-    return result
-
-
-@router.put("/dining/orders/{order_id}/kitchen")
-async def dining_order_kitchen(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kitchen")
-    body = await request.json(); status = (body.get("status") or "").strip()
-    if status not in ("preparing", "done"):
-        conn.close(); raise HTTPException(400, "Oshxona holati noto'g'ri.")
-    row = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
-    if not row:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if row["status"] != "active":
-        conn.close(); raise HTTPException(409, "Yakunlangan buyurtma o'zgartirilmaydi.")
-    if bool(_row_val(row, "problem_open", 0) or 0):
-        conn.close(); raise HTTPException(409, "Muammoli zakazni avval kassada hal qiling.")
-    conn.execute("UPDATE dining_bookings SET kitchen_status=?,updated_at=? WHERE id=?", (status, int(time.time()), order_id))
-    if status == "done":
-        _business_notification(conn, biz, "dining:%d:ready:waiter" % order_id, "Taom tayyor bo'ldi",
-                               "%s uchun zakazni olib ketishingiz mumkin." % (_row_val(row, "waiter_name", "Ofitsiant") or "Ofitsiant"),
-                               "dining_waiter", order_id, target_staff_id=_row_val(row, "waiter_staff_id", None))
-        conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_kitchen' AND resolved_at=0",
-                     (int(time.time()), int(time.time()), order_id))
-    conn.commit(); conn.close(); return {"ok": True, "kitchen_status": status}
-
-
-def _dining_prepare_items(conn, biz_id, incoming):
-    wanted = {}
-    for it in (incoming or [])[:100]:
-        try:
-            iid = int(it.get("item_id")); qty = max(0.01, min(999.0, float(it.get("qty") or 0)))
-            wanted[iid] = wanted.get(iid, 0) + qty
-        except (TypeError, ValueError, AttributeError):
-            continue
-    if not wanted:
-        raise HTTPException(400, "Qo'shiladigan taom tanlanmadi.")
-    marks = ",".join("?" for _ in wanted)
-    rows = conn.execute("SELECT id,name,price,unit FROM items WHERE business_id=? AND COALESCE(stock_type,'ready_food')='ready_food' AND id IN ("+marks+")",
-                        (biz_id, *wanted.keys())).fetchall()
-    prepared = []
-    for r in rows:
-        qty = wanted[r["id"]]; price = _price_to_int(r["price"]); line = int(round(price * qty))
-        prepared.append((r["id"], r["name"], qty, r["unit"] or "dona", price, line))
-    if not prepared:
-        raise HTTPException(400, "Tanlangan taomlar topilmadi.")
-    return prepared
-
-
-@router.post("/dining/orders/{order_id}/items")
-async def dining_order_add_items(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Ofitsiant mavjud qatorni o'zgartirmaydi; faqat yangi qo'shimcha zakaz kiritadi."""
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "dining_internal", "kassa")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
-                         (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if order["status"] != "active" or order["payment_status"] == "confirmed":
-        conn.close(); raise HTTPException(400, "Yakunlangan hisobga taom qo'shib bo'lmaydi.")
-    body = await request.json(); prepared = _dining_prepare_items(conn, biz["id"], body.get("items"))
-    conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
-                     [(order_id, *x) for x in prepared])
-    added = sum(x[5] for x in prepared); now = int(time.time())
-    # Tayyor deb belgilangan hisobga yangi taom qo'shilsa oshxona jarayoni qayta ochiladi.
-    conn.execute("UPDATE dining_bookings SET total=COALESCE(total,0)+?,kitchen_status='preparing',updated_at=? WHERE id=?",
-                 (added, now, order_id))
-    place = conn.execute("SELECT name FROM dining_places WHERE id=? AND business_id=?",
-                         (order["place_id"], biz["id"])).fetchone()
-    place_name = (place["name"] if place else "Stol") or "Stol"
-    _business_notification(conn, biz, "dining:%d:items:%d:kitchen" % (order_id, now),
-                           "Ichki zakazga yangi taom qo'shildi",
-                           "%s · +%s so'm" % (place_name, added), "dining_kitchen", order_id,
-                           target_perm="kitchen")
-    _business_notification(conn, biz, "dining:%d:items:%d:cash" % (order_id, now),
-                           "Ichki zakaz hisobi yangilandi",
-                           "%s · +%s so'm" % (place_name, added), "dining_cash", order_id,
-                           target_perm="kassa")
-    conn.commit(); conn.close(); return {"ok": True, "added_total": added}
-
-
-@router.post("/dining/orders/{order_id}/payment")
-async def dining_order_confirm_payment(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "payment_confirm", "kassa")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
-                         (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    body = await request.json(); pay = (body.get("pay_type") or "").strip()
-    if pay not in ("naqd", "karta", "qarz"):
-        conn.close(); raise HTTPException(400, "To'lov turini tanlang.")
-    if order["payment_status"] == "confirmed":
-        conn.close(); return {"ok": True, "already_confirmed": True}
-    if bool(_row_val(order, "problem_open", 0) or 0):
-        conn.close(); raise HTTPException(409, "Muammoli zakaz to'lovi tasdiqlanmaydi. Avval muammoni hal qiling.")
-    items = conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=? ORDER BY id", (order_id,)).fetchall()
-    now = int(time.time()); chek = _next_chek_no(conn, biz["id"]); debtor_id = None; qtx_id = None
-    if pay == "qarz":
-        try:
-            debtor_id, qtx_id, debtor_name = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), order["total"],
-                                                          "Ichki buyurtma #%d" % order_id, now)
-        except HTTPException:
-            conn.rollback(); conn.close(); raise
-    for it in items:
-        fifo_cost = 0
-        tracked = conn.execute("SELECT track_stock FROM items WHERE id=? AND business_id=?", (it["item_id"], biz["id"])).fetchone() if it["item_id"] else None
-        if tracked and int(tracked["track_stock"] or 0):
-            try:
-                fifo_cost = _fifo_consume(conn, biz["id"], it["item_id"], float(it["qty"] or 0), "dining", order_id, now)
-            except HTTPException:
-                conn.rollback(); conn.close(); raise
-            conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (float(it["qty"] or 0), it["item_id"]))
-            conn.execute(
-                "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,user_id,created_at) VALUES(?,?,?,?,?,?,?)",
-                (biz["id"], it["item_id"], -float(it["qty"] or 0), "sotuv",
-                 "Ichki buyurtma #%d" % order_id, user["id"], now),
-            )
-        conn.execute(
-            "INSERT INTO sales(business_id,source,order_id,item_id,item_name,qty,unit,price,total,pay_type,debtor_id,qarz_tx_id,note,user_id,created_at,chek_no,cost_total) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (biz["id"], "dining", order_id, it["item_id"], it["name"], it["qty"], it["unit"], it["price"], it["total"], pay,
-             debtor_id, qtx_id, "Ichki buyurtma #%d" % order_id, user["id"], now, chek, fifo_cost))
-    conn.execute("UPDATE dining_bookings SET payment_status='confirmed',pay_type=?,debtor_id=?,qarz_tx_id=?,updated_at=? WHERE id=?",
-                 (pay, debtor_id, qtx_id, now, order_id))
-    _business_notification(conn, biz, "dining:%d:paid:kitchen" % order_id, "Ichki zakaz to'lovi tasdiqlandi",
-                           "Zakaz #%d to'lovi kassir tomonidan tasdiqlandi." % order_id,
-                           "dining_kitchen", order_id, target_perm="kitchen")
-    conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_cash' AND resolved_at=0",
-                 (now, now, order_id))
-    conn.commit(); conn.close(); return {"ok": True, "pay_type": pay, "chek_no": chek}
-
-
-@router.put("/dining/orders/{order_id}/cashier-items")
-async def dining_order_cashier_items(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """Kassir hisob yopilguncha qator miqdorini o'zgartirishi yoki qatorni o'chirishi mumkin."""
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kassa")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
-                         (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if order["status"] != "active" or order["payment_status"] == "confirmed":
-        conn.close(); raise HTTPException(400, "Yopilgan hisobni tahrirlab bo'lmaydi.")
-    body = await request.json(); changes = body.get("items") or []
-    owned = {r["id"]: r for r in conn.execute("SELECT * FROM dining_booking_items WHERE booking_id=?", (order_id,)).fetchall()}
-    for x in changes[:200]:
-        try: line_id = int(x.get("line_id")); qty = float(x.get("qty") or 0)
-        except (TypeError, ValueError, AttributeError): continue
-        row = owned.get(line_id)
-        if not row: continue
-        if qty <= 0:
-            conn.execute("DELETE FROM dining_booking_items WHERE id=? AND booking_id=?", (line_id, order_id))
-        else:
-            qty = min(999.0, qty); total = int(round(int(row["price"] or 0) * qty))
-            conn.execute("UPDATE dining_booking_items SET qty=?,total=? WHERE id=? AND booking_id=?", (qty, total, line_id, order_id))
-    total = conn.execute("SELECT COALESCE(SUM(total),0) FROM dining_booking_items WHERE booking_id=?", (order_id,)).fetchone()[0]
-    if total <= 0:
-        conn.rollback(); conn.close(); raise HTTPException(400, "Hisobda kamida bitta taom qolishi kerak.")
-    conn.execute("UPDATE dining_bookings SET total=?,updated_at=? WHERE id=?", (total, int(time.time()), order_id))
-    conn.commit(); conn.close(); return {"ok": True, "total": total}
-
-
-@router.post("/dining/orders/{order_id}/finalize")
-async def dining_order_finalize(order_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_confirm")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if order["status"] == "done":
-        conn.close(); return {"ok": True, "already_done": True}
-    if bool(_row_val(order, "problem_open", 0) or 0):
-        conn.close(); raise HTTPException(409, "Muammoli zakazni yakunlab bo'lmaydi. Avval muammoni hal qiling.")
-    if order["payment_status"] != "confirmed":
-        conn.close(); raise HTTPException(409, "Avval to'lovni tasdiqlang.")
-    if order["kitchen_status"] != "done":
-        conn.close(); raise HTTPException(409, "Oshpaz buyurtmani hali tayyor qilmagan.")
-    conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE id=?", (int(time.time()), order_id))
-    conn.commit(); conn.close(); return {"ok": True}
-
-
-@router.post("/dining/orders/{order_id}/cancel")
-async def dining_order_cancel(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    """To'lovi tasdiqlanmagan ichki zakazni faqat kassir bekor qiladi."""
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kassa")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'",
-                         (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if order["payment_status"] == "confirmed":
-        conn.close(); raise HTTPException(409, "To'lovi tasdiqlangan ichki buyurtmani bekor qilib bo'lmaydi.")
-    if order["status"] != "active":
-        conn.close(); raise HTTPException(409, "Bu ichki buyurtma allaqachon yopilgan.")
-    body = await request.json(); reason = (body.get("reason") or "").strip()[:300]
-    if not reason:
-        conn.close(); raise HTTPException(400, "Bekor qilish sababini kiriting.")
-    now = int(time.time())
-    conn.execute(
-        "UPDATE dining_bookings SET status='cancelled',problem_open=0,problem_reason='Bekor qilindi',problem_note=?,updated_at=? WHERE id=?",
-        (reason, now, order_id),
-    )
-    conn.execute(
-        "UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND resolved_at=0",
-        (now, now, order_id),
-    )
-    place = conn.execute("SELECT name FROM dining_places WHERE id=?", (order["place_id"],)).fetchone()
-    _business_notification(conn, biz, "dining:%d:cancelled:kitchen" % order_id,
-                           "Ichki zakaz bekor qilindi",
-                           "%s · %s" % ((place["name"] if place else "Stol"), reason),
-                           "dining_cancelled", order_id, target_perm="kitchen")
-    conn.commit(); conn.close(); return {"ok": True, "status": "cancelled"}
-
-
-@router.post("/dining/orders/{order_id}/problem")
-async def dining_order_problem(order_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_problems")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if order["status"] != "active" or order["payment_status"] == "confirmed":
-        conn.close(); raise HTTPException(409, "Yopilgan yoki to'lovi tasdiqlangan hisob muammoliga o'tkazilmaydi.")
-    body = await request.json(); reason = (body.get("reason") or "Boshqa").strip()[:80]
-    note = (body.get("note") or "").strip()[:300]; now = int(time.time())
-    conn.execute("UPDATE dining_bookings SET problem_open=1,problem_reason=?,problem_note=?,problem_opened_at=?,updated_at=? WHERE id=?",
-                 (reason, note, now, now, order_id))
-    _business_notification(conn, biz, "dining:%d:problem" % order_id, "Ichki hisobda muammo",
-                           reason + ((" · " + note) if note else ""), "dining_problem", order_id, target_perm="kassa")
-    conn.commit(); conn.close(); return {"ok": True}
-
-
-@router.post("/dining/orders/{order_id}/problem/resolve")
-async def dining_order_problem_resolve(order_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = _require_dining_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "kassa", "payment_problems")
-    order = conn.execute("SELECT * FROM dining_bookings WHERE id=? AND business_id=? AND kind='order'", (order_id, biz["id"])).fetchone()
-    if not order:
-        conn.close(); raise HTTPException(404, "Ichki buyurtma topilmadi.")
-    if not bool(_row_val(order, "problem_open", 0) or 0):
-        conn.close(); return {"ok": True, "already_resolved": True}
-    conn.execute("UPDATE dining_bookings SET problem_open=0,updated_at=? WHERE id=?", (int(time.time()), order_id))
-    conn.execute("UPDATE notifications SET resolved_at=?,is_read=1,read_at=? WHERE dining_order_id=? AND action_type='dining_problem' AND resolved_at=0",
-                 (int(time.time()), int(time.time()), order_id))
-    conn.commit(); conn.close(); return {"ok": True}
-
-
-@router.post("/dining/places/{place_id}/clear")
-async def dining_place_clear(place_id: int, x_telegram_init_data: str = Header(default="")):
-    conn=db();user,biz=_require_dining_business(conn,x_telegram_init_data);_dining_place(conn,biz["id"],place_id)
-    unfinished = conn.execute(
-        """SELECT id FROM dining_bookings WHERE business_id=? AND place_id=? AND kind='order' AND status='active'
-           AND (payment_status<>'confirmed' OR kitchen_status<>'done') LIMIT 1""", (biz["id"], place_id)).fetchone()
-    if unfinished:
-        conn.close(); raise HTTPException(409, "Stolni bo'shatish uchun taom tayyor va to'lov tasdiqlangan bo'lishi kerak.")
-    conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE business_id=? AND place_id=? AND status='active'",
-                 (int(time.time()),biz["id"],place_id))
-    conn.commit();conn.close();return {"ok":True}
 
 
 # ====================================================================
@@ -3239,7 +1799,7 @@ async def upload_advertisement_image(
 ):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ads")
+    deny_staff(conn, x_telegram_init_data, "Reklama")
     if (actor_type or "user").lower() == "business":
         resolve_actor(conn, user, "business")
     conn.close()
@@ -3265,7 +1825,7 @@ async def upload_advertisement_image(
 async def create_advertisement(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ads")
+    deny_staff(conn, x_telegram_init_data, "Reklama")
     b = await request.json()
     actor = actor_from_body(conn, user, b)
     title = str(b.get("title") or "").strip()
@@ -3329,7 +1889,6 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
 async def my_advertisements(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ads")
     actor = resolve_actor(conn, user, actor_type)
     if actor["type"] == "business":
         rows = conn.execute("SELECT * FROM advertisements WHERE business_id=? ORDER BY created_at DESC", (actor["business_id"],)).fetchall()
@@ -3344,7 +1903,7 @@ async def my_advertisements(actor_type: str = "user", x_telegram_init_data: str 
 async def cancel_advertisement(ad_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ads")
+    deny_staff(conn, x_telegram_init_data, "Reklama")
     actor = resolve_actor(conn, user, actor_type)
     now = int(time.time())
     if actor["type"] == "business":
@@ -3441,7 +2000,7 @@ async def upload_listing_media(request: Request, actor_type: str = "user",
     """E'lon rasmi yoki videosini qurilmadan bevosita serverga yuklaydi."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "ads")
+    deny_staff(conn, x_telegram_init_data, "E'lon mediasi")
     resolve_actor(conn, user, actor_type)
     conn.close()
 
@@ -4082,25 +2641,6 @@ def qarz_balance(conn, debtor_id):
     return row["b"] or 0
 
 
-def _new_debt_tx(conn, biz_id, debtor_id, amount, note, now=None):
-    """Qarzdor biznesniki ekanini tekshiradi va bitta bog'langan qarz yozuvini yaratadi."""
-    try:
-        debtor_id = int(debtor_id or 0); amount = int(amount or 0)
-    except Exception:
-        debtor_id = 0; amount = 0
-    debtor = conn.execute("SELECT id,name FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz_id)).fetchone()
-    if not debtor:
-        raise HTTPException(400, "Qarz uchun qarzdorni tanlang.")
-    if amount <= 0:
-        raise HTTPException(400, "Qarz summasi noto'g'ri.")
-    now = int(now or time.time())
-    import datetime as _dt
-    day = _dt.datetime.fromtimestamp(now + TASHKENT_TZ, _dt.timezone.utc).date().isoformat()
-    cur = conn.execute("INSERT INTO qarz_tx(debtor_id,type,amount,date,note,created_at) VALUES(?, 'debt', ?,?,?,?)",
-                       (debtor_id, amount, day, (note or "Kassadan qarz")[:200], now))
-    return debtor_id, cur.lastrowid, debtor["name"] or "Qarzdor"
-
-
 # ================== OMBOR (qoldiq + kirim-chiqim tarixi) ==================
 _STOCK_REASON_TEXT = {"kirim": "Kirim", "chiqim": "Chiqim", "sotuv": "Sotuv (buyurtma)", "tuzatish": "Tuzatish"}
 
@@ -4117,52 +2657,6 @@ def _stock_delta(v):
     if abs(d) > 100000:
         raise HTTPException(400, "Miqdor juda katta.")
     return d
-
-
-def _fifo_add_batch(conn, biz_id, item_id, qty, unit_cost, source_move_id, now):
-    qty = round(float(qty or 0), 3)
-    if qty <= 0: return None
-    cur = conn.execute(
-        "INSERT INTO stock_batches(business_id,item_id,qty_in,qty_remaining,unit_cost,source_move_id,created_at) VALUES(?,?,?,?,?,?,?)",
-        (biz_id, item_id, qty, qty, max(0, int(unit_cost or 0)), source_move_id, now))
-    conn.execute("UPDATE items SET fifo_initialized=1 WHERE id=?", (item_id,))
-    return cur.lastrowid
-
-
-def _fifo_consume(conn, biz_id, item_id, qty, source_type, source_id, now, require_cost=False):
-    qty = round(float(qty or 0), 3)
-    batches = conn.execute(
-        "SELECT * FROM stock_batches WHERE business_id=? AND item_id=? AND qty_remaining>0.000001 ORDER BY created_at,id",
-        (biz_id, item_id)).fetchall()
-    available = round(sum(float(b["qty_remaining"] or 0) for b in batches), 3)
-    if available + 0.000001 < qty:
-        raise HTTPException(409, "FIFO partiyalarida qoldiq yetarli emas.")
-    check_left = qty
-    for b in batches:
-        if check_left <= 0.000001: break
-        take = min(check_left, float(b["qty_remaining"] or 0))
-        if require_cost and take > 0 and int(b["unit_cost"] or 0) <= 0:
-            raise HTTPException(409, "Eng eski FIFO partiyasida tannarx kiritilmagan.")
-        check_left -= take
-    left = qty; total = 0
-    for b in batches:
-        if left <= 0.000001: break
-        take = round(min(left, float(b["qty_remaining"] or 0)), 3)
-        line = int(round(take * int(b["unit_cost"] or 0))); total += line
-        conn.execute("UPDATE stock_batches SET qty_remaining=ROUND(qty_remaining-?,3) WHERE id=?", (take, b["id"]))
-        conn.execute(
-            "INSERT INTO stock_batch_consumptions(batch_id,item_id,qty,unit_cost,total_cost,source_type,source_id,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (b["id"], item_id, take, int(b["unit_cost"] or 0), line, source_type, source_id, now))
-        left = round(left - take, 3)
-    return total
-
-
-def _fifo_restore(conn, source_type, source_id):
-    rows = conn.execute("SELECT * FROM stock_batch_consumptions WHERE source_type=? AND source_id=? ORDER BY id DESC",
-                        (source_type, source_id)).fetchall()
-    for r in rows:
-        conn.execute("UPDATE stock_batches SET qty_remaining=ROUND(qty_remaining+?,3) WHERE id=?", (r["qty"], r["batch_id"]))
-    conn.execute("DELETE FROM stock_batch_consumptions WHERE source_type=? AND source_id=?", (source_type, source_id))
 
 
 def _stock_deduct_for_order(conn, order, actor_user_id):
@@ -4193,7 +2687,6 @@ def _stock_deduct_for_order(conn, order, actor_user_id):
         q = round(float(oi["qty"] or 1), 3)
         if q <= 0:
             continue
-        _fifo_consume(conn, it["business_id"], it["id"], q, "order", order["id"], now)
         conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (q, it["id"]))
         conn.execute(
             "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -4216,7 +2709,6 @@ def _stock_restore_for_order(conn, order, actor_user_id):
         ).fetchone()[0]
         if not already:
             now = int(time.time())
-            _fifo_restore(conn, "order", order["id"])
             for m in sold:
                 q = round(abs(float(m["delta"] or 0)), 3)
                 if q <= 0:
@@ -4239,8 +2731,6 @@ def _stock_move_deletable(r):
         return False
     if (r["note"] or "").startswith("Kassa") or (r["note"] or "").startswith("Chek"):
         return False
-    if (r["note"] or "").startswith("Ishlab chiqarish"):
-        return False
     return True
 
 
@@ -4248,89 +2738,35 @@ def _stock_move_deletable(r):
 async def stock_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
-    show_costs = _can_view_costs(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ombor")
     _ensure_item_min_qty(conn)
     rows = conn.execute(
-        "SELECT i.id, i.name, i.price, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, i.stock_type, "
-        "COALESCE((SELECT sb.unit_cost FROM stock_batches sb WHERE sb.item_id=i.id AND sb.qty_remaining>0.000001 ORDER BY sb.created_at,sb.id LIMIT 1),0) AS fifo_next_cost, "
-        "COALESCE((SELECT SUM(sb.qty_remaining*sb.unit_cost) FROM stock_batches sb WHERE sb.item_id=i.id AND sb.qty_remaining>0.000001),0) AS fifo_value, "
+        "SELECT i.id, i.name, i.unit, i.stock_qty, i.cost_price, i.min_qty, i.photo_file, i.group_id, "
         "g.name AS group_name FROM items i "
         "LEFT JOIN item_groups g ON g.id = i.group_id "
         "WHERE i.business_id=? AND i.track_stock=1 "
         "ORDER BY i.name COLLATE NOCASE",
         (biz["id"],),
     ).fetchall()
-    result = [{"id": r["id"], "name": r["name"], "price": (r["price"] or "") if show_costs else "", "unit": r["unit"] or "dona",
-               "stock_qty": r["stock_qty"] or 0, "cost_price": (r["cost_price"] or 0) if show_costs else 0,
-               "fifo_next_cost": (r["fifo_next_cost"] or 0) if show_costs else 0,
-               "fifo_value": int(round(r["fifo_value"] or 0)) if show_costs else 0,
+    result = [{"id": r["id"], "name": r["name"], "unit": r["unit"] or "dona",
+               "stock_qty": r["stock_qty"] or 0, "cost_price": r["cost_price"] or 0,
                "min_qty": _row_val(r, "min_qty", 0) or 0,
                "photo_file": r["photo_file"] or "", "group_id": r["group_id"],
-               "group_name": r["group_name"] or "", "stock_type": _row_val(r, "stock_type", "ready_food") or "ready_food"} for r in rows]
+               "group_name": r["group_name"] or ""} for r in rows]
     conn.close()
     return result
-
-
-@router.get("/stock/recipe/{ready_item_id}")
-async def stock_recipe(ready_item_id: int, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
-    show_costs = _can_view_costs(conn, x_telegram_init_data)
-    ready = conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND stock_type='ready_food'", (ready_item_id, biz["id"])).fetchone()
-    if not ready:
-        conn.close(); raise HTTPException(404, "Tayyor taom topilmadi.")
-    rows = conn.execute(
-        """SELECT r.ingredient_item_id AS item_id,r.qty_per_unit,i.name,i.unit,COALESCE(i.cost_price,0) AS cost_price
-           FROM item_recipes r JOIN items i ON i.id=r.ingredient_item_id
-           WHERE r.business_id=? AND r.ready_item_id=? ORDER BY i.name COLLATE NOCASE""",
-        (biz["id"], ready_item_id)).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["cost_per_ready_unit"] = int(round(float(r["qty_per_unit"] or 0) * int(r["cost_price"] or 0))) if show_costs else 0
-        if not show_costs: d["cost_price"] = 0
-        out.append(d)
-    conn.close(); return out
-
-
-@router.get("/stock/production")
-async def stock_production_history(limit: int = 50, x_telegram_init_data: str = Header(default="")):
-    conn = db(); user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "ombor", "production", "statistics")
-    show_costs = _can_view_costs(conn, x_telegram_init_data)
-    limit = max(1, min(200, int(limit or 50)))
-    rows = conn.execute(
-        """SELECT p.*,i.name AS ready_name,i.unit AS ready_unit,u.name AS who
-           FROM production_batches p JOIN items i ON i.id=p.ready_item_id
-           LEFT JOIN users u ON u.id=p.user_id WHERE p.business_id=?
-           ORDER BY p.id DESC LIMIT ?""", (biz["id"], limit)).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["inputs"] = [dict(x) for x in conn.execute(
-            """SELECT pi.item_id,pi.qty,pi.unit_cost,pi.total_cost,i.name,i.unit
-               FROM production_inputs pi JOIN items i ON i.id=pi.item_id
-               WHERE pi.batch_id=? ORDER BY pi.id""", (r["id"],)).fetchall()]
-        if not show_costs:
-            d["total_cost"] = 0; d["unit_cost"] = 0
-            for x in d["inputs"]: x["unit_cost"] = 0; x["total_cost"] = 0
-        out.append(d)
-    conn.close(); return out
 
 
 @router.post("/stock/move")
 async def stock_move(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
+    need_perm(conn, x_telegram_init_data, "ombor")
     item_id = int(body.get("item_id") or 0)
     it = conn.execute("SELECT * FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
     if not it:
         conn.close()
         raise HTTPException(404, "Mahsulot topilmadi.")
-    perms = _staff_perms_of(conn, x_telegram_init_data)
-    production_only = perms is not None and "production" in perms and "ombor" not in perms
     delta = _stock_delta(body.get("delta"))
     unit = _row_val(it, "unit", "dona") or "dona"
     if unit not in FRACTIONAL_UNITS and not float(delta).is_integer():
@@ -4340,8 +2776,6 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
     if delta == 0:
         conn.close()
         raise HTTPException(400, "Miqdor kiritilmadi.")
-    if production_only and not (delta > 0 and (_row_val(it, "stock_type", "") or "") == "ready_food"):
-        conn.close(); raise HTTPException(403, "Oshpaz faqat tayyor taom kirimini amalga oshira oladi.")
     reason = (body.get("reason") or "").strip()
     if reason not in _STOCK_REASON_TEXT:
         reason = "kirim" if delta > 0 else "chiqim"
@@ -4352,25 +2786,6 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
         cost = 0
     if cost < 0:
         cost = 0
-    production_inputs = []
-    if delta > 0 and (biz["yon"] or "").strip() == "Umumiy ovqatlanish" and (_row_val(it, "stock_type", "ready_food") or "ready_food") == "ready_food":
-        raw = body.get("ingredients") or []
-        seen = set()
-        for x in raw[:100]:
-            try:
-                rid = int(x.get("item_id")); rq = _stock_delta(x.get("qty"))
-            except (TypeError, ValueError, AttributeError):
-                continue
-            if rid in seen or rq <= 0: continue
-            rit = conn.execute("SELECT * FROM items WHERE id=? AND business_id=? AND track_stock=1", (rid, biz["id"])).fetchone()
-            if not rit or (_row_val(rit, "stock_type", "") or "") != "raw_material":
-                conn.close(); raise HTTPException(400, "Sarflangan xomashyo noto'g'ri tanlangan.")
-            if (_row_val(rit, "unit", "dona") or "dona") not in FRACTIONAL_UNITS and not float(rq).is_integer():
-                rq = float(int(math.floor(rq + 0.5)))
-            seen.add(rid); production_inputs.append((rit, rq))
-        if not production_inputs:
-            conn.close(); raise HTTPException(400, "Tayyor taom kirimi uchun sarflangan mahsulotlarni kiriting.")
-    production_total_cost = 0
     now = int(time.time())
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)+?, 3) WHERE id=?", (delta, item_id))
     if delta > 0 and cost > 0:
@@ -4381,45 +2796,8 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
         "VALUES(?,?,?,?,?,?,NULL,?,?)",
         (biz["id"], item_id, delta, reason, note, cost, user["id"], now),
     )
-    if production_inputs:
-        batch = conn.execute(
-            "INSERT INTO production_batches(business_id,ready_item_id,qty,total_cost,unit_cost,note,user_id,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (biz["id"], item_id, delta, 0, 0, note, user["id"], now)).lastrowid
-        for rit, rq in production_inputs:
-            try:
-                input_total_cost = _fifo_consume(conn, biz["id"], rit["id"], rq, "production", batch, now, require_cost=True)
-            except HTTPException:
-                conn.rollback(); conn.close(); raise
-            input_unit_cost = int(round(input_total_cost / float(rq))) if rq else 0
-            production_total_cost += input_total_cost
-            conn.execute("INSERT INTO production_inputs(batch_id,item_id,qty,unit_cost,total_cost) VALUES(?,?,?,?,?)",
-                         (batch, rit["id"], rq, input_unit_cost, input_total_cost))
-            conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?,3) WHERE id=?", (rq, rit["id"]))
-            conn.execute(
-                "INSERT INTO stock_moves(business_id,item_id,delta,reason,note,cost,order_id,user_id,created_at) VALUES(?,?,?,?,?,?,NULL,?,?)",
-                (biz["id"], rit["id"], -rq, "chiqim", "Ishlab chiqarish #%d: %s" % (batch, it["name"]), 0, user["id"], now))
-        cost = int(round(production_total_cost / float(delta))) if delta else 0
-        conn.execute("UPDATE production_batches SET total_cost=?,unit_cost=? WHERE id=?", (production_total_cost, cost, batch))
-        conn.execute("UPDATE items SET cost_price=? WHERE id=?", (cost, item_id))
-        conn.execute("UPDATE stock_moves SET cost=? WHERE id=?", (cost, cur_m.lastrowid))
-        _fifo_add_batch(conn, biz["id"], item_id, delta, cost, cur_m.lastrowid, now)
-        conn.execute("UPDATE stock_moves SET note=? WHERE id=?", ("Ishlab chiqarish #%d" % batch + (" — " + note if note else ""), cur_m.lastrowid))
-        if body.get("save_recipe"):
-            conn.execute("DELETE FROM item_recipes WHERE business_id=? AND ready_item_id=?", (biz["id"], item_id))
-            conn.executemany(
-                "INSERT INTO item_recipes(business_id,ready_item_id,ingredient_item_id,qty_per_unit,updated_at) VALUES(?,?,?,?,?)",
-                [(biz["id"], item_id, rit["id"], round(float(rq)/float(delta), 6), now) for rit, rq in production_inputs])
-    elif delta > 0:
-        _fifo_add_batch(conn, biz["id"], item_id, delta, cost, cur_m.lastrowid, now)
-    elif delta < 0:
-        try:
-            fifo_total = _fifo_consume(conn, biz["id"], item_id, abs(delta), "stock_move", cur_m.lastrowid, now)
-        except HTTPException:
-            conn.rollback(); conn.close(); raise
-        cost = int(round(fifo_total / abs(float(delta)))) if delta else 0
-        conn.execute("UPDATE stock_moves SET cost=? WHERE id=?", (cost, cur_m.lastrowid))
     # v1414: kirim (tannarx bilan) -> "Tovar xaridi" xarajati avtomatik
-    if delta > 0 and cost > 0 and not production_inputs:
+    if delta > 0 and cost > 0:
         _spent = int(round(cost * float(delta)))
         if _spent > 0:
             _iname = conn.execute("SELECT name FROM items WHERE id=?", (item_id,)).fetchone()
@@ -4428,10 +2806,8 @@ async def stock_move(body: dict, x_telegram_init_data: str = Header(default=""))
                          user["id"], source="stock", stock_move_id=cur_m.lastrowid)
     conn.commit()
     new_q = conn.execute("SELECT stock_qty FROM items WHERE id=?", (item_id,)).fetchone()["stock_qty"]
-    show_costs = _can_view_costs(conn, x_telegram_init_data)
     conn.close()
-    return {"ok": True, "stock_qty": new_q or 0, "unit_cost": cost if show_costs else 0,
-            "total_cost": (production_total_cost if production_inputs else int(round(cost * float(delta)))) if show_costs else 0}
+    return {"ok": True, "stock_qty": new_q or 0}
 
 
 @router.delete("/stock/moves/{move_id}")
@@ -4447,14 +2823,6 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
     if not _stock_move_deletable(r):
         conn.close()
         raise HTTPException(400, "Bu harakat buyurtma yoki kassa bilan bog'liq — o'chirib bo'lmaydi.")
-    if float(r["delta"] or 0) > 0:
-        batch = conn.execute("SELECT * FROM stock_batches WHERE source_move_id=?", (move_id,)).fetchone()
-        if batch and float(batch["qty_remaining"] or 0) + 0.000001 < float(batch["qty_in"] or 0):
-            conn.close(); raise HTTPException(409, "Bu FIFO partiyasidan mahsulot ishlatilgan — kirimni o'chirib bo'lmaydi.")
-        if batch:
-            conn.execute("DELETE FROM stock_batches WHERE id=?", (batch["id"],))
-    else:
-        _fifo_restore(conn, "stock_move", move_id)
     conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?",
                  (float(r["delta"] or 0), r["item_id"]))
     conn.execute("DELETE FROM expenses WHERE source='stock' AND stock_move_id=?", (move_id,))
@@ -4468,10 +2836,6 @@ async def stock_move_delete(move_id: int, x_telegram_init_data: str = Header(def
 async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "ombor", "production")
-    show_costs = _can_view_costs(conn, x_telegram_init_data)
-    perms = _staff_perms_of(conn, x_telegram_init_data)
-    can_edit = perms is None or "ombor" in perms
     it = conn.execute("SELECT unit FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])).fetchone()
     if not it:
         conn.close()
@@ -4487,8 +2851,8 @@ async def stock_moves_list(item_id: int = 0, x_telegram_init_data: str = Header(
     result = [{"id": r["id"], "delta": r["delta"], "reason": r["reason"],
                "reason_text": _STOCK_REASON_TEXT.get(r["reason"], r["reason"] or ""),
                "note": r["note"] or "", "who": r["who"] or "",
-               "cost": (_row_val(r, "cost", 0) or 0) if show_costs else 0,
-               "can_delete": can_edit and _stock_move_deletable(r),
+               "cost": _row_val(r, "cost", 0) or 0,
+               "can_delete": _stock_move_deletable(r),
                "order_id": r["order_id"], "created_at": r["created_at"], "unit": unit}
               for r in rows]
     conn.close()
@@ -4588,222 +2952,6 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     return result
 
 
-# ================== XIZMAT YO'NALISHLARI: YAGONA NAVBAT ==================
-_QUEUE_DIRECTION_NAMES = (
-    "Transport va logistika",
-    "Xizmat ko'rsatish",
-    "Maishiy xizmatlar",
-    "Qurilish",
-    "Tibbiy xizmatlar",
-    "Ko'chmas mulk",
-    "Axborot texnologiyalari",
-    "Konsalting va professional",
-    "Madaniyat, sport, ko'ngilochar",
-    "Turizm va mehmonxona",
-    "Reklama va marketing",
-    "Poligrafiya va nashriyot",
-    "Moliyaviy faoliyat",
-    "Import-eksport",
-)
-
-
-def _queue_direction_supported(direction):
-    return str(direction or "").strip() in _QUEUE_DIRECTION_NAMES
-
-
-def _queue_item_enabled(business, kind, body):
-    if kind != "service" or not _queue_direction_supported(business["yon"]):
-        return 0
-    return 1 if (body or {}).get("queue_enabled") in (1, True, "1", "true", "on") else 0
-
-
-def _queue_labels(direction):
-    if str(direction or "").strip() == "Tibbiy xizmatlar":
-        return {"provider": "Shifokor", "customer": "Bemor", "called_by": "shifokor"}
-    return {"provider": "Xizmat ko'rsatuvchi", "customer": "Mijoz", "called_by": "xizmat ko'rsatuvchi"}
-
-
-def _require_queue_business(conn, business_id):
-    business = conn.execute(
-        "SELECT * FROM businesses WHERE id=? AND status='active'", (business_id,)
-    ).fetchone()
-    if not business or not _queue_direction_supported(business["yon"]):
-        raise HTTPException(403, "Bu yo'nalishda navbat tizimi ishlamaydi.")
-    return business
-
-
-# Ichki jadval va API nomlari tibbiy navbat bilan orqaga moslik uchun saqlanadi.
-def _medical_code(name):
-    letters=''.join(ch for ch in str(name or '').upper() if ch.isalnum())[:3]
-    return letters or 'NAV'
-
-def _medical_doctor_payload(body):
-    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
-
-@router.get("/medical/doctors")
-async def medical_doctors(x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);rows=[dict(r) for r in conn.execute("SELECT d.*,s.name,s.phone,s.profession FROM medical_doctors d JOIN staff s ON s.id=d.staff_id WHERE d.business_id=? ORDER BY d.status,s.name",(biz['id'],)).fetchall()]
-    for d in rows:d['item_ids']=[r[0] for r in conn.execute("SELECT item_id FROM medical_doctor_services WHERE business_id=? AND staff_id=? AND active=1",(biz['id'],d['staff_id'])).fetchall()]
-    conn.close();return rows
-
-def _medical_doctor_save_links(conn,biz_id,staff_id,item_ids,minutes):
-    conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz_id,staff_id))
-    for iid in item_ids:
-        item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(iid,biz_id)).fetchone()
-        if not item:raise HTTPException(400,"Navbat yoqilgan xizmatni tanlang.")
-        conn.execute("INSERT INTO medical_doctor_services(business_id,staff_id,item_id,active,duration_minutes) VALUES(?,?,?,?,?)",(biz_id,staff_id,iid,1,minutes))
-
-@router.post("/medical/doctors")
-async def medical_doctor_add(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini biriktirish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
-    if not staff:conn.close();raise HTTPException(400,"Faol xodimni tanlang.")
-    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
-
-@router.put("/medical/doctors/{doctor_id}")
-async def medical_doctor_update(doctor_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
-    if not old:conn.close();raise HTTPException(404,"Xizmat ko'rsatuvchi topilmadi.")
-    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
-
-@router.get("/medical/setup")
-async def medical_setup(x_telegram_init_data: str = Header(default="")):
-    conn=db(); user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id'])
-    items=[dict(r) for r in conn.execute("SELECT id,name,price FROM items WHERE business_id=? AND kind='service' AND queue_enabled=1 ORDER BY name",(biz['id'],)).fetchall()]
-    staff=[dict(r) for r in conn.execute("SELECT id,name,profession FROM staff WHERE business_id=? AND status='active' ORDER BY name",(biz['id'],)).fetchall()]
-    links=[dict(r) for r in conn.execute("SELECT * FROM medical_doctor_services WHERE business_id=? AND active=1",(biz['id'],)).fetchall()];conn.close()
-    return {'items':items,'staff':staff,'links':links}
-
-@router.put("/medical/setup")
-async def medical_setup_save(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db(); user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchi xizmatlarini sozlash");body=await request.json();sid=int(body.get('staff_id') or 0);ids=[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]
-    conn.execute("DELETE FROM medical_doctor_services WHERE business_id=? AND staff_id=?",(biz['id'],sid))
-    for iid in ids:
-        item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(iid,biz['id'])).fetchone()
-        if not item:conn.close();raise HTTPException(400,"Navbat yoqilgan xizmatni tanlang.")
-        conn.execute("INSERT OR IGNORE INTO medical_doctor_services(business_id,staff_id,item_id,active) VALUES(?,?,?,1)",(biz['id'],sid,iid))
-    conn.commit();conn.close();return {'ok':True}
-
-@router.get("/medical/queue/options")
-async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',x_telegram_init_data:str=Header(default="")):
-    conn=db();_require_queue_business(conn,business_id);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
-    item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,business_id)).fetchone()
-    if not item:conn.close();raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
-
-def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note='',enforce_schedule=False):
-    _require_queue_business(conn,biz_id)
-    item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,biz_id)).fetchone()
-    if not item:raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    doctor=conn.execute("""SELECT d.work_days FROM medical_doctor_services m
-                         JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
-                         JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
-                         WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(biz_id,item_id,staff_id)).fetchone()
-    if not doctor:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
-    today=time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600))
-    if date<today:raise HTTPException(400,"O'tgan sanaga navbat olib bo'lmaydi.")
-    if enforce_schedule:
-        try:
-            wd=time.strftime('%w',time.strptime(date,'%Y-%m-%d'));wd='7' if wd=='0' else wd
-        except Exception:
-            raise HTTPException(400,"Sana noto'g'ri.")
-        work_days=[x.strip() for x in str(doctor['work_days'] or '').split(',') if x.strip()]
-        if work_days and wd not in work_days:raise HTTPException(400,"Bu kunda xizmat ko'rsatuvchi ishlamaydi.")
-    if user_id:
-        dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id)).fetchone()
-        if dup:raise HTTPException(400,"Bu xizmatga ushbu kunga allaqachon navbatingiz bor.")
-    now=int(time.time());prefix=_medical_code(item['name'])
-    for _attempt in range(6):
-        no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0])
-        code=prefix+'-'+str(no).zfill(3)
-        try:
-            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now))
-            return cur.lastrowid,code,no
-        except sqlite3.IntegrityError:
-            continue
-    raise HTTPException(409,"Navbat raqamini berishda vaqtincha xatolik. Qayta urinib ko'ring.")
-
-def _medical_notify_user(conn,row,event,title,body,action_type):
-    """Onlayn navbat hodisasini aynan oddiy foydalanuvchi profiliga yuboradi."""
-    if not row or not row['user_id']:
-        return
-    _add_notification(conn,int(row['user_id']),'user',int(row['user_id']),
-                      'medical_queue:%s:%s' % (row['id'],event),title,body,
-                      action_type=action_type,medical_queue_id=int(row['id']))
-
-@router.post("/medical/queue/public")
-async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
-    if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
-    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''),enforce_schedule=True)
-    row=conn.execute("SELECT * FROM medical_queue WHERE id=?",(qid,)).fetchone()
-    _medical_notify_user(conn,row,'booked','Navbat olindi',code+' navbat '+date+' sanasiga saqlandi.','medical_queue_booked')
-    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
-
-@router.get("/medical/queue/mine")
-async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
-    """Joriy oddiy foydalanuvchining barcha xizmat navbatlarini qaytaradi."""
-    conn=db();user=require_user(conn,x_telegram_init_data)
-    rows=conn.execute("""SELECT q.*,i.name service_name,s.name doctor_name,b.name business_name,
-        CASE WHEN q.status IN ('waiting','called','in_service') THEN
-          (SELECT COUNT(*) FROM medical_queue a WHERE a.business_id=q.business_id
-           AND a.item_id=q.item_id AND a.staff_id=q.staff_id AND a.queue_date=q.queue_date
-           AND a.queue_no<q.queue_no AND a.status IN ('waiting','called','in_service'))
-        ELSE 0 END AS ahead_count
-        ,b.yon AS business_direction
-        ,(SELECT d.avg_minutes FROM medical_doctors d WHERE d.business_id=q.business_id AND d.staff_id=q.staff_id) AS avg_minutes
-        FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id
-        JOIN businesses b ON b.id=q.business_id WHERE q.user_id=?
-        ORDER BY q.queue_date DESC,q.created_at DESC,q.id DESC LIMIT 200""",(user['id'],)).fetchall()
-    out=[dict(r) for r in rows]
-    for r in out:
-        am=int(r.get('avg_minutes') or 0)
-        r['wait_minutes']=(int(r.get('ahead_count') or 0)*am) if (am>0 and r.get('status') in ('waiting','called','in_service')) else 0
-    conn.close();return out
-
-@router.post("/medical/queue/{queue_id}/cancel-mine")
-async def medical_queue_cancel_mine(queue_id:int,x_telegram_init_data:str=Header(default="")):
-    """Oddiy foydalanuvchi faqat o'zining kutilayotgan/chaqirilgan navbatini bekor qiladi."""
-    conn=db();user=require_user(conn,x_telegram_init_data)
-    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND user_id=?",(queue_id,user['id'])).fetchone()
-    if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
-    if row['status'] not in ('waiting','called'): conn.close();raise HTTPException(400,"Bu navbatni endi bekor qilib bo'lmaydi.")
-    now=int(time.time());conn.execute("UPDATE medical_queue SET status='cancelled',updated_at=? WHERE id=?",(now,queue_id));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(row['business_id'],queue_id,'status',row['status'],'cancelled',user['id'],now))
-    conn.commit();conn.close();return {'ok':True}
-
-@router.get("/medical/queue")
-async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10];rows=conn.execute("SELECT q.*,i.name service_name,s.name doctor_name FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id WHERE q.business_id=? AND q.queue_date=? ORDER BY q.staff_id,q.item_id,q.queue_no",(biz['id'],date)).fetchall();conn.close();return [dict(r) for r in rows]
-
-@router.post("/medical/queue/offline")
-async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
-
-@router.post("/medical/queue/{queue_id}/status")
-async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);body=await request.json();status=str(body.get('status') or '');allowed=('waiting','called','in_service','done','no_show','cancelled','skipped')
-    if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
-    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone()
-    if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
-    if row['status'] in ('done','cancelled','no_show') and status in ('waiting','called','in_service'):
-        conn.close();raise HTTPException(400,"Yakunlangan navbatni qayta faollashtirib bo'lmaydi.")
-    now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
-    if status=='called':
-        labels=_queue_labels(biz['yon']);_medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat '+labels['called_by']+' tomonidan chaqirildi.','medical_queue_called')
-    elif status=='cancelled':
-        _medical_notify_user(conn,row,'cancelled','Navbat bekor qilindi',str(row['queue_code'])+' navbat muassasa tomonidan bekor qilindi.','medical_queue_cancelled')
-    conn.commit();conn.close();return {'ok':True}
-
-@router.post("/medical/queue/{queue_id}/swap")
-async def medical_queue_swap(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);other=int((await request.json()).get('other_queue_id') or 0);a=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone();b=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(other,biz['id'])).fetchone()
-    if not a or not b or a['id']==b['id'] or (a['queue_date'],a['staff_id'],a['item_id'])!=(b['queue_date'],b['staff_id'],b['item_id']): labels=_queue_labels(biz['yon']);conn.close();raise HTTPException(400,"Faqat bir xil xizmat va "+labels['provider'].lower()+"ning ikkita navbati almashtiriladi.")
-    now=int(time.time());prefix=_medical_code(conn.execute('SELECT name FROM items WHERE id=?',(a['item_id'],)).fetchone()[0]);a_new_code=prefix+'-'+str(b['queue_no']).zfill(3);b_new_code=prefix+'-'+str(a['queue_no']).zfill(3)
-    conn.execute("UPDATE medical_queue SET queue_no=-1,updated_at=? WHERE id=?",(now,a['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(a['queue_no'],b_new_code,now,b['id']));conn.execute("UPDATE medical_queue SET queue_no=?,queue_code=?,updated_at=? WHERE id=?",(b['queue_no'],a_new_code,now,a['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'swap',str(a['queue_no']),str(b['queue_no']),user['id'],now))
-    a_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(a['id'],)).fetchone();b_new=conn.execute("SELECT * FROM medical_queue WHERE id=?",(b['id'],)).fetchone()
-    _medical_notify_user(conn,a_new,'changed:%s:%s' % (a_new['queue_no'],now),'Navbat raqami o‘zgardi','Yangi navbat raqamingiz: '+str(a_new['queue_code'])+'.','medical_queue_changed')
-    _medical_notify_user(conn,b_new,'changed:%s:%s' % (b_new['queue_no'],now),'Navbat raqami o‘zgardi','Yangi navbat raqamingiz: '+str(b_new['queue_code'])+'.','medical_queue_changed')
-    conn.commit();conn.close();return {'ok':True}
-
 # ================== XODIMLAR (kadr) ==================
 _DEFAULT_PROFESSIONS = ["Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
                         "Yuk tashuvchi", "Haydovchi", "Farrosh", "Qorovul", "Boshqa"]
@@ -4873,18 +3021,7 @@ def _professions(conn, biz_id):
     return out
 
 
-_STAFF_PERM_KEYS = (
-    "items", "buyurtma", "service_orders", "kassa", "ombor", "expenses", "debts",
-    "statistics", "chats", "notifications", "reviews", "ads", "documents", "reports",
-    # Umumiy ovqatlanish uchun yo'nalishli ruxsatlar
-    "dining_places", "dining_internal", "dining_external", "kitchen", "ready_food",
-    "raw_stock", "recipes", "production", "open_accounts", "payment_review",
-    "payment_confirm", "payment_problems",
-    # Ta'lim faoliyati uchun yo'nalishli ruxsatlar
-    "education_courses", "education_groups", "education_students", "education_schedule",
-    "education_attendance", "education_payments", "education_teachers",
-    "education_enrollments", "education_payroll", "education_statistics",
-)
+_STAFF_PERM_KEYS = ("kassa", "ombor", "buyurtma")
 
 
 def _perms_parse(raw):
@@ -5000,8 +3137,7 @@ async def staff_list(x_telegram_init_data: str = Header(default="")):
     conn.close()
     return {"active": active, "fired": fired,
             "active_count": len(active), "fired_count": len(fired),
-            "total_salary": total_salary, "firm_login": firm_login,
-            "business_direction": (biz["yon"] or "")}
+            "total_salary": total_salary, "firm_login": firm_login}
 
 
 @router.post("/staff")
@@ -5428,7 +3564,6 @@ def _doc_dict(r, contr_name=""):
 async def documents_list(direction: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     if direction in _DOC_DIRECTIONS:
         rows = conn.execute("SELECT * FROM documents WHERE business_id=? AND direction=? ORDER BY id DESC",
@@ -5450,7 +3585,6 @@ async def documents_list(direction: str = "", x_telegram_init_data: str = Header
 async def document_get(doc_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     r = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -5486,7 +3620,7 @@ def _doc_fields(b):
 async def document_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     f = _doc_fields(body)
     if not f[6]:
@@ -5507,7 +3641,7 @@ async def document_add(body: dict, x_telegram_init_data: str = Header(default=""
 async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -5527,7 +3661,7 @@ async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = H
 async def document_delete(doc_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -5544,7 +3678,7 @@ async def document_send(doc_id: int, body: dict, x_telegram_init_data: str = Hea
     """Chiquvchi hujjatni STIR bo'yicha boshqa firmaga yuboradi (nusxasi 'kiruvchi' bo'ladi)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "documents")
+    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
     _ensure_documents(conn)
     _ensure_pay_columns(conn)
     doc = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
@@ -5694,14 +3828,13 @@ async def staff_auth_login(body: dict):
     if not check_password(password, _row_val(st, "pass_hash", "") or ""):
         conn.close()
         raise HTTPException(401, "Login yoki parol noto'g'ri.")
-    biz = conn.execute("SELECT name,yon FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
+    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
     token = secrets.token_urlsafe(24)
     conn.execute("INSERT INTO staff_sessions(token, staff_id, business_id, created_at) VALUES(?,?,?,?)",
                  (token, st["id"], st["business_id"], int(time.time())))
     conn.commit()
     result = {"ok": True, "token": token, "name": st["name"] or "Xodim",
               "business_name": (biz["name"] if biz else ""),
-              "business_direction": (biz["yon"] if biz else ""),
               "perms": _perms_parse(_row_val(st, "perms", "") or "")}
     conn.close()
     return result
@@ -5726,9 +3859,8 @@ async def staff_auth_me(x_staff_token: str = Header(default="")):
         conn.commit()
         conn.close()
         raise HTTPException(401, "Kirish huquqi o'chirilgan.")
-    biz = conn.execute("SELECT name,yon FROM businesses WHERE id=?", (sess["business_id"],)).fetchone()
+    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (sess["business_id"],)).fetchone()
     result = {"name": st["name"] or "Xodim", "business_name": (biz["name"] if biz else ""),
-              "business_direction": (biz["yon"] if biz else ""),
               "perms": _perms_parse(_row_val(st, "perms", "") or "")}
     conn.close()
     return result
@@ -5860,25 +3992,21 @@ def _period_shift(period, anchor, direction):
 async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "statistics")
+    deny_staff(conn, x_telegram_init_data, "Statistika")
     bid = biz["id"]
     start, end, label, buckets = _period_bounds(period, anchor)
     n = len(buckets)
 
-    # --- Savdolar: hisoblangan savdo, haqiqiy pul kirimi va FIFO tannarxi alohida ---
+    # --- Savdolar (qarzpay = qarz to'lovi, tushumga kirmaydi) ---
     sales = conn.execute(
-        "SELECT s.source,s.order_id,s.pay_type,s.total,s.item_id,s.item_name,s.qty,s.price,s.created_at,"
-        "CASE WHEN COALESCE(s.cost_total,0)>0 THEN s.cost_total ELSE ROUND(COALESCE(s.qty,0)*COALESCE(i.cost_price,0)) END cost_total,s.user_id "
-        "FROM sales s LEFT JOIN items i ON i.id=s.item_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?",
+        "SELECT source, pay_type, total, item_id, item_name, qty, price, created_at "
+        "FROM sales WHERE business_id=? AND created_at>=? AND created_at<?",
         (bid, start, end),
     ).fetchall()
-    revenue = 0; cash_in = 0; cogs = 0
+    revenue = 0
     qarzpay = 0
     pay = {"naqd": 0, "karta": 0, "qarz": 0, "order": 0}
     bkt_rev = [0] * n
-    bkt_cogs = [0] * n
-    source_split = {"internal": {"count": 0, "total": 0}, "external": {"count": 0, "total": 0}, "manual": {"count": 0, "total": 0}}
-    seen_orders = set()
     prod = {}
     for sl in sales:
         t = int(sl["total"] or 0)
@@ -5886,55 +4014,42 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         ca = sl["created_at"] or 0
         if src == "qarzpay":
             qarzpay += t
-            cash_in += t
             continue
         revenue += t
-        line_cost = int(sl["cost_total"] or 0); cogs += line_cost
         pt = sl["pay_type"] or ""
         pay[pt if pt in ("naqd", "karta", "qarz") else "order"] += t
-        if pt in ("naqd", "karta"): cash_in += t
-        sk = "internal" if src == "dining" else ("external" if src == "order" else "manual")
-        source_split[sk]["total"] += t
-        order_key = (src, _row_val(sl, "order_id", 0) or 0)
-        if src in ("dining", "order"):
-            if order_key not in seen_orders: source_split[sk]["count"] += 1; seen_orders.add(order_key)
-        else: source_split[sk]["count"] += 1
         for i in range(n):
             if buckets[i]["start"] <= ca < buckets[i]["end"]:
                 bkt_rev[i] += t
-                bkt_cogs[i] += line_cost
                 break
         key = sl["item_name"] or "?"
         pr = prod.get(key)
         if not pr:
-            pr = {"name": key, "item_id": sl["item_id"], "qty": 0.0, "total": 0, "cost_total": 0, "unit": ""}
+            pr = {"name": key, "item_id": sl["item_id"], "qty": 0.0, "total": 0, "unit": ""}
             prod[key] = pr
         pr["qty"] += float(sl["qty"] or 0)
         pr["total"] += t
-        pr["cost_total"] += line_cost
 
     # --- Xarajatlar ---
     exp_rows = conn.execute(
         "SELECT amount, category, created_at FROM expenses WHERE business_id=? AND created_at>=? AND created_at<?",
         (bid, start, end),
     ).fetchall()
-    expenses = 0; inventory_purchases = 0
+    expenses = 0
     exp_by_cat = {}
     bkt_exp = [0] * n
     for e in exp_rows:
         amt = int(e["amount"] or 0)
+        expenses += amt
         cat = e["category"] or "Boshqa"
-        if cat == "Tovar xaridi": inventory_purchases += amt
-        else: expenses += amt
         exp_by_cat[cat] = exp_by_cat.get(cat, 0) + amt
         ca = e["created_at"] or 0
         for i in range(n):
             if buckets[i]["start"] <= ca < buckets[i]["end"]:
-                if cat != "Tovar xaridi": bkt_exp[i] += amt
+                bkt_exp[i] += amt
                 break
 
-    gross_profit = revenue - cogs
-    profit = gross_profit - expenses
+    profit = revenue - expenses
 
     # --- Tovar birliklari + tannarx (foyda uchun) ---
     ids = [pr["item_id"] for pr in prod.values() if pr["item_id"]]
@@ -5950,12 +4065,10 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         u = units.get(pr["item_id"], "")
         cost = costs.get(pr["item_id"], 0)
         margin = None
-        if pr["cost_total"]:
-            margin = int(pr["total"] - pr["cost_total"])
-        elif cost and pr["qty"]:
+        if cost and pr["qty"]:
             margin = int(round(pr["total"] - cost * pr["qty"]))
         top.append({"name": pr["name"], "qty": round(pr["qty"], 3), "unit": u,
-                    "total": pr["total"], "cost_total": pr["cost_total"], "margin": margin})
+                    "total": pr["total"], "margin": margin})
     top.sort(key=lambda x: x["total"], reverse=True)
     top = top[:12]
 
@@ -5965,18 +4078,8 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
                "SELECT name, unit, stock_qty FROM items WHERE business_id=? AND track_stock=1 "
                "ORDER BY stock_qty ASC LIMIT 8", (bid,)).fetchall()]
 
-    trend = [{"label": buckets[i]["label"], "rev": bkt_rev[i], "exp": bkt_exp[i], "cogs": bkt_cogs[i],
-              "profit": bkt_rev[i] - bkt_cogs[i] - bkt_exp[i]} for i in range(n)]
-
-    cashier_rows = conn.execute(
-        """SELECT COALESCE(u.name,'Rahbar') name,COUNT(DISTINCT COALESCE(s.chek_no,s.id)) checks,SUM(s.total) total
-           FROM sales s LEFT JOIN users u ON u.id=s.user_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?
-             AND s.source<>'qarzpay' GROUP BY s.user_id ORDER BY total DESC LIMIT 12""", (bid,start,end)).fetchall()
-    waiter_rows = conn.execute(
-        """SELECT COALESCE(d.waiter_name,'Rahbar') name,COUNT(DISTINCT d.id) orders,SUM(s.total) total
-           FROM dining_bookings d JOIN sales s ON s.source='dining' AND s.order_id=d.id
-           WHERE d.business_id=? AND s.created_at>=? AND s.created_at<? GROUP BY d.waiter_staff_id,d.waiter_name
-           ORDER BY total DESC LIMIT 12""", (bid,start,end)).fetchall() if (biz["yon"] or "").strip()=="Umumiy ovqatlanish" else []
+    trend = [{"label": buckets[i]["label"], "rev": bkt_rev[i], "exp": bkt_exp[i],
+              "profit": bkt_rev[i] - bkt_exp[i]} for i in range(n)]
 
     can_next = end <= _ts_day(_tashkent_today())
 
@@ -5985,11 +4088,9 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
         "period": (period or "oy").lower() if (period or "oy").lower() in _PERIODS else "oy",
         "anchor": anchor or "",
         "label": label,
-        "revenue": revenue, "cash_in": cash_in, "cogs": cogs, "gross_profit": gross_profit,
-        "expenses": expenses, "inventory_purchases": inventory_purchases, "profit": profit, "qarzpay": qarzpay,
+        "revenue": revenue, "expenses": expenses, "profit": profit, "qarzpay": qarzpay,
         "pay": pay, "exp_by_cat": exp_by_cat,
-        "trend": trend, "top_products": top, "low_stock": low, "source_split": source_split,
-        "cashiers": [dict(r) for r in cashier_rows], "waiters": [dict(r) for r in waiter_rows],
+        "trend": trend, "top_products": top, "low_stock": low,
         "sales_count": len([1 for sl in sales if (sl["source"] or "") != "qarzpay"]),
         "can_next": can_next,
     }
@@ -5999,7 +4100,6 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
 async def stats_nav(period: str = "oy", anchor: str = "", dir: int = -1, x_telegram_init_data: str = Header(default="")):
     conn = db()
     require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "statistics")
     conn.close()
     return {"anchor": _period_shift(period, anchor, dir)}
 
@@ -6034,7 +4134,6 @@ def _expense_add(conn, biz_id, category, amount, note, user_id, source="manual",
 async def expense_cats_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "expenses")
     cats = _expense_cats(conn, biz["id"])
     conn.close()
     return {"cats": cats, "default": _DEFAULT_EXP_CATS}
@@ -6044,7 +4143,6 @@ async def expense_cats_list(x_telegram_init_data: str = Header(default="")):
 async def expense_cats_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "expenses")
     name = (body.get("name") or "").strip()[:40]
     if not name:
         conn.close()
@@ -6063,7 +4161,6 @@ async def expense_cats_add(body: dict, x_telegram_init_data: str = Header(defaul
 async def expenses_list(day: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "expenses")
     start, end, dstr = _day_bounds(day)
     rows = conn.execute(
         "SELECT e.*, u.name AS who FROM expenses e LEFT JOIN users u ON u.id=e.user_id "
@@ -6090,7 +4187,6 @@ async def expenses_list(day: str = "", x_telegram_init_data: str = Header(defaul
 async def expenses_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "expenses")
     category = (body.get("category") or "Boshqa").strip()[:40] or "Boshqa"
     try:
         amount = int(str(body.get("amount") or "0").replace(" ", "") or 0)
@@ -6110,7 +4206,6 @@ async def expenses_add(body: dict, x_telegram_init_data: str = Header(default=""
 async def expenses_delete(expense_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "expenses")
     r = conn.execute("SELECT * FROM expenses WHERE id=? AND business_id=?", (expense_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -6175,7 +4270,7 @@ def _sale_dict(r):
             "qty": r["qty"] or 1, "unit": r["unit"] or "", "price": r["price"] or 0,
             "total": r["total"] or 0, "pay_type": pt,
             "pay_text": pay_text,
-            "debtor_id": r["debtor_id"], "debtor_name": _row_val(r, "debtor_name", "") or "", "note": r["note"] or "",
+            "debtor_id": r["debtor_id"], "note": r["note"] or "",
             "created_at": r["created_at"]}
 
 
@@ -6189,24 +4284,20 @@ def _kassa_add_for_order(conn, order, actor_user_id):
     """Buyurtma "Bajarildi" bo'lganda savdo daftariga avtomatik yozish (faqat bir marta)."""
     if (order["provider_kind"] or "") != "business":
         return
-    if conn.execute("SELECT COUNT(*) FROM sales WHERE source='order' AND order_id=?", (order["id"],)).fetchone()[0]:
+    if conn.execute("SELECT COUNT(*) FROM sales WHERE order_id=?", (order["id"],)).fetchone()[0]:
         return
     rows = conn.execute("SELECT * FROM order_items WHERE order_id=?", (order["id"],)).fetchall()
-    now = int(time.time()); pay_type = _row_val(order, "pay_type", "") or ""
-    debtor_id = _row_val(order, "debtor_id", None); qtx_id = _row_val(order, "qarz_tx_id", None)
+    now = int(time.time())
     for oi in rows:
         total = int(oi["line_total"] or 0)
         qty = round(float(oi["qty"] or 1), 3)
         price = int(round(total / qty)) if (total and qty) else _price_to_int(oi["price_text"] or "")
-        fifo_cost = int(conn.execute(
-            "SELECT COALESCE(SUM(total_cost),0) FROM stock_batch_consumptions WHERE source_type='order' AND source_id=? AND item_id=?",
-            (order["id"], oi["item_id"])).fetchone()[0] or 0) if oi["item_id"] else 0
         conn.execute(
-            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, debtor_id, qarz_tx_id, note, user_id, created_at,cost_total) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sales(business_id, source, order_id, item_id, item_name, qty, unit, price, total, pay_type, note, user_id, created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (int(order["provider_actor_id"] or 0), "order", order["id"], oi["item_id"],
              oi["item_name"] or "", qty, _row_val(oi, "unit", "") or "", price, total,
-             pay_type, debtor_id, qtx_id, "Buyurtma #%d" % order["id"], actor_user_id, now, fifo_cost),
+             "", "Buyurtma #%d" % order["id"], actor_user_id, now),
         )
 
 
@@ -6217,12 +4308,12 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
     need_perm(conn, x_telegram_init_data, "kassa")
     start, end, dstr = _day_bounds(day)
     rows = conn.execute(
-        "SELECT s.*, u.name AS who, d.name AS debtor_name FROM sales s LEFT JOIN users u ON u.id=s.user_id LEFT JOIN debtors d ON d.id=s.debtor_id "
+        "SELECT s.*, u.name AS who FROM sales s LEFT JOIN users u ON u.id=s.user_id "
         "WHERE s.business_id=? AND s.created_at>=? AND s.created_at<? "
         "ORDER BY s.created_at DESC, s.id DESC LIMIT 200",
         (biz["id"], start, end),
     ).fetchall()
-    totals = {"all": 0, "cash_in": 0, "naqd": 0, "karta": 0, "qarz": 0, "qarzpay": 0, "order": 0}
+    totals = {"all": 0, "naqd": 0, "karta": 0, "qarz": 0, "qarzpay": 0, "order": 0}
     out = []
     for r in rows:
         d = _sale_dict(r)
@@ -6233,86 +4324,12 @@ async def kassa_list(day: str = "", x_telegram_init_data: str = Header(default="
         pt = r["pay_type"] or ""
         if (r["source"] or "") == "qarzpay":
             totals["qarzpay"] += t
-            totals["cash_in"] += t
         elif pt in ("naqd", "karta", "qarz"):
             totals[pt] += t
-            if pt in ("naqd", "karta"):
-                totals["cash_in"] += t
         else:
             totals["order"] += t
-    dining_open = []
-    dining_finalize = []
-    dining_problem = []
-    external_payment = []
-    external_open = []
-    external_problem = []
-    is_dining = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
-    if is_dining:
-        drows = conn.execute(
-            """SELECT d.id,d.place_id,d.waiter_name,d.total,d.payment_status,d.kitchen_status,d.created_at,
-                      p.name AS place_name,p.kind AS place_kind
-               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
-               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status<>'confirmed' AND COALESCE(d.problem_open,0)=0
-               ORDER BY d.id DESC""", (biz["id"],)
-        ).fetchall()
-        for r in drows:
-            entry = dict(r)
-            entry["items"] = [dict(x) for x in conn.execute(
-                "SELECT id,item_id,name,qty,unit,price,total FROM dining_booking_items WHERE booking_id=? ORDER BY id", (r["id"],)
-            ).fetchall()]
-            dining_open.append(entry)
-        frows = conn.execute(
-            """SELECT d.id,d.total,d.kitchen_status,d.created_at,d.waiter_name,p.name AS place_name,p.kind AS place_kind
-               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
-               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND d.payment_status='confirmed'
-               ORDER BY d.id DESC""", (biz["id"],)).fetchall()
-        dining_finalize = [dict(r) for r in frows]
-        prows = conn.execute(
-            """SELECT d.id,d.total,d.kitchen_status,d.payment_status,d.created_at,d.waiter_name,
-                      d.problem_reason,d.problem_note,p.name AS place_name,p.kind AS place_kind
-               FROM dining_bookings d JOIN dining_places p ON p.id=d.place_id
-               WHERE d.business_id=? AND d.kind='order' AND d.status='active' AND COALESCE(d.problem_open,0)=1
-               ORDER BY d.problem_opened_at DESC,d.id DESC""", (biz["id"],)).fetchall()
-        dining_problem = [dict(r) for r in prows]
-        erows = conn.execute(
-            """SELECT o.id,o.title,o.payment_status,o.status,o.created_at,u.name AS customer_name,
-                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
-               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
-               WHERE o.provider_kind='business' AND o.provider_actor_id=? AND o.status='accepted'
-                 AND COALESCE(o.payment_status,'') IN ('pending','submitted','recheck')
-               ORDER BY CASE WHEN o.payment_status IN ('submitted','recheck') THEN 0 ELSE 1 END,o.id DESC""",
-            (biz["id"],),
-        ).fetchall()
-        external_payment = [dict(r) for r in erows]
-        xorows = conn.execute(
-            """SELECT o.id,o.title,o.payment_status,o.status,o.order_type,o.desired_time,o.address,o.created_at,
-                      u.name AS customer_name,
-                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
-               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
-               WHERE o.provider_kind='business' AND o.provider_actor_id=?
-                 AND o.status IN ('new','accepted','preparing','tayyor','handoff_waiting_seller','in_delivery','delivered_waiting_customer','pickup_waiting_customer')
-                 AND COALESCE(o.problem_open,0)=0
-               ORDER BY CASE o.status WHEN 'new' THEN 0 WHEN 'accepted' THEN 1 WHEN 'tayyor' THEN 2 ELSE 3 END,o.id DESC""",
-            (biz["id"],),
-        ).fetchall()
-        for r in xorows:
-            x = dict(r)
-            x["items"] = [dict(oi) for oi in conn.execute(
-                "SELECT item_id,item_name AS name,qty,unit,price_text,line_total FROM order_items WHERE order_id=? ORDER BY id",
-                (r["id"],)).fetchall()]
-            external_open.append(x)
-        xprows = conn.execute(
-            """SELECT o.id,o.title,o.payment_status,o.problem_reason,o.problem_note,o.created_at,u.name AS customer_name,
-                      COALESCE((SELECT SUM(oi.line_total) FROM order_items oi WHERE oi.order_id=o.id),0) AS total
-               FROM orders o LEFT JOIN users u ON u.id=o.customer_user_id
-               WHERE o.provider_kind='business' AND o.provider_actor_id=? AND COALESCE(o.problem_open,0)=1
-               ORDER BY o.problem_opened_at DESC,o.id DESC""", (biz["id"],)).fetchall()
-        external_problem = [dict(r) for r in xprows]
     conn.close()
-    return {"day": dstr, "sales": out, "totals": totals, "dining_mode": is_dining,
-            "dining_open": dining_open, "dining_finalize": dining_finalize,
-            "external_payment": external_payment, "external_open": external_open, "dining_problem": dining_problem,
-            "external_problem": external_problem}
+    return {"day": dstr, "sales": out, "totals": totals}
 
 
 @router.post("/kassa")
@@ -6377,11 +4394,6 @@ async def kassa_add(body: dict, x_telegram_init_data: str = Header(default="")):
     sale_id = cur.lastrowid
     # Ombor yoqilgan bo'lsa — savdo qoldiqdan ayiradi
     if it is not None and (_row_val(it, "track_stock", 0) or 0):
-        try:
-            fifo_cost = _fifo_consume(conn, biz["id"], item_id, float(qty), "sale", sale_id, now)
-        except HTTPException:
-            conn.rollback(); conn.close(); raise
-        conn.execute("UPDATE sales SET cost_total=? WHERE id=?", (fifo_cost, sale_id))
         conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(qty), item_id))
         conn.execute(
             "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -6486,11 +4498,6 @@ async def kassa_add_multi(body: dict, x_telegram_init_data: str = Header(default
         sale_id = cur.lastrowid
         it = pr["it"]
         if it is not None and (_row_val(it, "track_stock", 0) or 0):
-            try:
-                fifo_cost = _fifo_consume(conn, biz["id"], pr["item_id"], float(pr["qty"]), "sale", sale_id, now)
-            except HTTPException:
-                conn.rollback(); conn.close(); raise
-            conn.execute("UPDATE sales SET cost_total=? WHERE id=?", (fifo_cost, sale_id))
             conn.execute("UPDATE items SET stock_qty=ROUND(COALESCE(stock_qty,0)-?, 3) WHERE id=?", (float(pr["qty"]), pr["item_id"]))
             conn.execute(
                 "INSERT INTO stock_moves(business_id, item_id, delta, reason, note, order_id, user_id, created_at) "
@@ -6508,7 +4515,6 @@ async def set_order_sale_pay(sale_id: int, body: dict, x_telegram_init_data: str
     """K3: Buyurtmadan kelgan savdoga to'lov turini belgilash (butun buyurtma uchun)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "kassa")
     r = conn.execute("SELECT * FROM sales WHERE id=? AND business_id=?", (sale_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -6517,28 +4523,12 @@ async def set_order_sale_pay(sale_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(400, "Bu faqat buyurtma savdosi uchun.")
     pt = (body.get("pay_type") or "").strip()
-    if pt not in ("naqd", "karta", "qarz"):
+    if pt not in ("naqd", "karta"):
         conn.close()
         raise HTTPException(400, "To'lov turi noto'g'ri.")
-    order_rows = conn.execute("SELECT * FROM sales WHERE business_id=? AND source='order' AND order_id=?", (biz["id"], r["order_id"])).fetchall()
-    old_qtx = {int(x["qarz_tx_id"]) for x in order_rows if x["qarz_tx_id"]}
-    debtor_id = None; qtx_id = None
-    if pt == "qarz":
-        total = sum(int(x["total"] or 0) for x in order_rows)
-        if old_qtx and all(int(x["debtor_id"] or 0) == int(body.get("debtor_id") or 0) for x in order_rows):
-            debtor_id = int(body.get("debtor_id") or 0); qtx_id = next(iter(old_qtx))
-        else:
-            try:
-                debtor_id, qtx_id, _ = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), total,
-                                                     "Tashqi buyurtma #%d" % r["order_id"])
-            except HTTPException:
-                conn.rollback(); conn.close(); raise
-    for txid in old_qtx:
-        if txid != qtx_id:
-            conn.execute("DELETE FROM qarz_tx WHERE id=?", (txid,))
     conn.execute(
-        "UPDATE sales SET pay_type=?,debtor_id=?,qarz_tx_id=? WHERE business_id=? AND source='order' AND order_id=?",
-        (pt, debtor_id, qtx_id, biz["id"], r["order_id"]),
+        "UPDATE sales SET pay_type=? WHERE business_id=? AND source='order' AND order_id=?",
+        (pt, biz["id"], r["order_id"]),
     )
     conn.commit()
     conn.close()
@@ -6560,7 +4550,6 @@ async def kassa_delete_chek(chek_no: int, x_telegram_init_data: str = Header(def
         raise HTTPException(404, "Chek topilmadi.")
     now = int(time.time())
     for r in rows:
-        _fifo_restore(conn, "sale", r["id"])
         if r["item_id"]:
             it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
             if it and (it["track_stock"] or 0):
@@ -6593,7 +4582,6 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
         conn.close()
         raise HTTPException(400, "Buyurtma orqali kelgan savdo bu yerdan o'chirilmaydi.")
     now = int(time.time())
-    _fifo_restore(conn, "sale", sale_id)
     # Ombor qaytariladi (agar hisob yoqilgan bo'lsa)
     if r["item_id"]:
         it = conn.execute("SELECT track_stock FROM items WHERE id=?", (r["item_id"],)).fetchone()
@@ -6619,7 +4607,6 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
 async def qarz_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "debts", "kassa")
     rows = conn.execute(
         "SELECT * FROM debtors WHERE business_id=? ORDER BY created_at DESC", (biz["id"],)
     ).fetchall()
@@ -6633,7 +4620,6 @@ async def qarz_list(x_telegram_init_data: str = Header(default="")):
 async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "debts", "kassa")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -6666,7 +4652,6 @@ async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(d
 async def qarz_debtor(debtor_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "debts")
     r = conn.execute(
         "SELECT * FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
     ).fetchone()
@@ -6689,7 +4674,6 @@ async def qarz_debtor(debtor_id: int, x_telegram_init_data: str = Header(default
 async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "debts")
     owns = conn.execute(
         "SELECT id FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
     ).fetchone()
@@ -6899,7 +4883,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
-        return "NULL", []   # ORDER BY da yakka '0' ustun raqami deb o'qiladi — NULL xavfsiz
+        return "0", []
     secondary_columns = secondary_columns or []
     pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
     sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
@@ -7133,30 +5117,9 @@ def check_search_health():
 
     v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
     bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
-    3) Qidiruv SQL'i ishlatadigan ustunlar bazada bormi. api.py yangilanib database.py
-       eski qolsa (qisman deploy), migratsiya ustun qo'shmaydi — FTS ham, LIKE zaxira
-       ham "no such column" bilan yiqiladi va HAR BIR qidiruv 500 qaytaradi (v1600 da
-       items.stock_type bilan aynan shu bo'lgan). Shu holatni startupda aniq aytamiz.
-
     Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
     """
     problems = []
-    required_cols = (("items", "stock_type"),)
-    conn0 = db()
-    try:
-        for tbl, col in required_cols:
-            try:
-                cols = [r[1] for r in conn0.execute("PRAGMA table_info(" + tbl + ")")]
-            except Exception as exc:
-                problems.append(tbl + " jadvali o'qilmadi: " + type(exc).__name__)
-                continue
-            if cols and col not in cols:
-                problems.append(
-                    tbl + "." + col + " ustuni YO'Q — qidiruv 500 qaytaradi. Sabab: "
-                    "database.py eski (qisman deploy). To'liq v1600 fayllarini yuklab, "
-                    "serverni qayta ishga tushiring (migratsiya ustunni o'zi qo'shadi).")
-    finally:
-        conn0.close()
     missing = _check_service_directions()
     if missing:
         problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
@@ -7248,33 +5211,10 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
-def _search_error_guard(fn, *args, **kwargs):
-    """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
-    qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
-    shunchaki 'Xatolik (500)' beradi va sababni hech kim ko'rmaydi."""
-    try:
-        return fn(*args, **kwargs)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        import traceback
-        print("QIDIRUV XATOSI:", type(exc).__name__, "-", exc)
-        traceback.print_exc()
-        raise HTTPException(500, "Qidiruv xatosi: " + type(exc).__name__ + ": " + str(exc)[:200])
-
-
 @router.get("/search")
 def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
-        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
-
-
-def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
-                 page: int = 1, page_size: int = 20,
-                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -7355,19 +5295,11 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi.
-
-        DIQQAT: koordinata bo'lmaganda '0' QAYTARMANG. ORDER BY ichida yakka '0'
-        (yoki har qanday butun son) SQLite tomonidan USTUN RAQAMI deb o'qiladi
-        ('0-ustun bo'yicha tartibla'), 17 ustunli so'rovda esa 0-ustun yo'q ->
-        '2nd ORDER BY term out of range' xatosi va butun qidiruv 500 qaytaradi.
-        'NULL' ifodasi ustun raqami emas — tartibga hech qanday ta'sir qilmaydi va
-        xavfsiz. (v1536 da xuddi shu maqsadda katta konstanta ishlatilgan.)
-        """
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            return "NULL", "NULL"
+            return "0", "0"
         lon_scale = 111.0 * math.cos(math.radians(la))
         raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
                "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
@@ -7468,7 +5400,7 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                     "bm25(items_fts, 10.0, 1.0) AS _rank "
                     "FROM items_fts JOIN items i ON i.id = items_fts.rowid "
                     "JOIN businesses b ON b.id = i.business_id JOIN users bu ON bu.id=b.user_id "
-                    "WHERE items_fts MATCH ? AND b.status='active' AND (COALESCE(b.yon,'')<>'Umumiy ovqatlanish' OR COALESCE(i.stock_type,'ready_food')='ready_food') " + product_filter + " "
+                    "WHERE items_fts MATCH ? AND b.status='active' " + product_filter + " "
                     "ORDER BY " + product_quality + ", " + product_bucket + ", _rank, " + product_rating + " DESC, " + product_distance + " LIMIT ? OFFSET ?",
                     [_match] + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
                 ).fetchall()
@@ -7484,7 +5416,7 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                           b.id biz_id, b.name biz_name, b.yon biz_yon, b.tur biz_tur, b.address, b.lat, b.lng,
                           bu.region target_region, bu.district target_district, bu.mahalla target_mahalla
                    FROM items i JOIN businesses b ON b.id=i.business_id JOIN users bu ON bu.id=b.user_id
-                   WHERE b.status='active' AND (COALESCE(b.yon,'')<>'Umumiy ovqatlanish' OR COALESCE(i.stock_type,'ready_food')='ready_food') AND """ + product_where + product_filter + """
+                   WHERE b.status='active' AND """ + product_where + product_filter + """
                    ORDER BY """ + product_quality + ", " + product_bucket + ", " + product_rating + " DESC, " + product_distance + ", i.created_at DESC LIMIT ? OFFSET ?",
                 product_params + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
@@ -7705,13 +5637,6 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                    x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
-        x_telegram_init_data=x_telegram_init_data)
-
-
-def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
-                 x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
     `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
@@ -7838,25 +5763,16 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     if not biz:
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
-    dining_menu = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
-    today = time.strftime('%Y-%m-%d', time.gmtime(time.time()+5*3600))
     items = conn.execute(
-        """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file, i.queue_enabled,
-                  g.name AS group_name, g.kind AS group_kind,
-                  (SELECT COUNT(*) FROM medical_doctor_services m
-                   JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
-                   JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
-                   WHERE m.business_id=i.business_id AND m.item_id=i.id AND m.active=1) AS queue_provider_count,
-                  (SELECT COUNT(*) FROM medical_queue q
-                   WHERE q.business_id=i.business_id AND q.item_id=i.id AND q.queue_date=?
-                   AND q.status IN ('waiting','called','in_service')) AS today_queue_count
+        """SELECT i.id, i.name, i.price, i.unit, i.note, i.kind, i.group_id, i.photo_file,
+                  g.name AS group_name, g.kind AS group_kind
            FROM items i
            LEFT JOIN item_groups g ON g.id=i.group_id AND g.business_id=i.business_id
-           WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY i.created_at DESC",
-        (today, business_id),
+           WHERE i.business_id=? ORDER BY i.created_at DESC""",
+        (business_id,),
     ).fetchall()
     item_groups = conn.execute(
-        "SELECT id, name, kind FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
+        "SELECT id, name, kind FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
         (business_id,),
     ).fetchall()
     # Biznes sahifasida HAMMA e'lonlari ko'rinadi (shu jumladan 'own' — faqat mehmonlarga)
@@ -7865,12 +5781,8 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
         (business_id,),
     ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
-    queue_total = (sum(int(_row_val(i, "today_queue_count", 0) or 0) for i in items)
-                   if _queue_direction_supported(biz["yon"]) else 0)
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
-        "queue_supported": _queue_direction_supported(biz["yon"]),
-        "queue_total": queue_total,
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "logo_file": _row_val(biz, "logo_file", "") or "",
         "logo_x": float(_row_val(biz, "logo_x", 50) or 50), "logo_y": float(_row_val(biz, "logo_y", 50) or 50),
@@ -7888,14 +5800,7 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
                    "unit": i["unit"] or "dona",
                    "note": i["note"], "kind": i["kind"], "group_id": i["group_id"],
                    "group_name": i["group_name"], "group_kind": i["group_kind"],
-                   "photo_file": i["photo_file"],
-                   "queue_enabled": int(_row_val(i,"queue_enabled",0) or 0),
-                   "queue_provider_count": int(_row_val(i,"queue_provider_count",0) or 0),
-                   "today_queue_count": int(_row_val(i,"today_queue_count",0) or 0),
-                   "course_mode": _row_val(i,"course_mode","") or "", "course_duration": _row_val(i,"course_duration","") or "",
-                   "lesson_duration": _row_val(i,"lesson_duration",0) or 0, "age_from": _row_val(i,"age_from",0) or 0,
-                   "age_to": _row_val(i,"age_to",0) or 0, "course_level": _row_val(i,"course_level","") or "",
-                   "enrollment_status": _row_val(i,"enrollment_status","open") or "open"} for i in items],
+                   "photo_file": i["photo_file"]} for i in items],
         "listings": [listing_to_dict(conn, r) for r in listings],
     }
     conn.close()
@@ -8468,7 +6373,6 @@ def _load_order_items_payload(conn, body, provider, item_id=None):
             "unit": unit,
             "line_total": int(round(price_val * qty)) if price_val else 0,
             "note": it["note"] or "",
-            "kind": (_row_val(it, "kind", "product") or "product").lower(),
         })
     return normalized
 
@@ -8537,17 +6441,16 @@ def _order_seen_value(r, view):
     return int(_row_val(r, "customer_seen_at", 0) or 0)
 
 
-def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type="", dining_order_id=None, target_staff_id=None, target_perm="", medical_queue_id=None):
+def _add_notification(conn, user_id, actor_kind, actor_id, event_key, title, body="", order_id=None, ride_id=None, action_type=""):
     """Faqat amal/tasdiq talab qiladigan hodisani bir marta yozadi."""
     if not user_id or not actor_id or not event_key or not action_type:
         return
     conn.execute(
         """INSERT OR IGNORE INTO notifications
-           (user_id,actor_kind,actor_id,event_key,title,body,order_id,dining_order_id,medical_queue_id,target_staff_id,target_perm,ride_id,requires_action,action_type,is_read,created_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
+           (user_id,actor_kind,actor_id,event_key,title,body,order_id,ride_id,requires_action,action_type,is_read,created_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,0,?)""",
         (int(user_id), actor_kind, int(actor_id), str(event_key), title, body,
-         order_id, dining_order_id, medical_queue_id, target_staff_id, target_perm or "", ride_id,
-         1 if action_type else 0, action_type, int(time.time())),
+         order_id, ride_id, 1 if action_type else 0, action_type, int(time.time())),
     )
     notification = conn.execute(
         "SELECT id FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND event_key=?",
@@ -8581,26 +6484,6 @@ def _resolve_order_action(conn, order_id, action_type):
     conn.execute("""UPDATE notifications SET resolved_at=?,is_read=1,read_at=?
         WHERE order_id=? AND action_type=? AND resolved_at=0""",
         (int(time.time()), int(time.time()), order_id, action_type))
-
-
-def _notification_visible(row, staff, perms):
-    """Rahbar hammasini, xodim esa faqat o'zi yoki ruxsatiga yo'naltirilgan xabarni ko'radi."""
-    if not staff:
-        return True
-    target_staff = int(_row_val(row, "target_staff_id", 0) or 0)
-    target_perm = (_row_val(row, "target_perm", "") or "").strip()
-    if target_staff:
-        return target_staff == int(staff["id"])
-    if target_perm:
-        return target_perm in (perms or [])
-    return "notifications" in (perms or [])
-
-
-def _business_notification(conn, biz, event_key, title, body, action_type, dining_order_id,
-                           target_staff_id=None, target_perm=""):
-    _add_notification(conn, biz["user_id"], "business", biz["id"], event_key, title, body,
-                      action_type=action_type, dining_order_id=dining_order_id,
-                      target_staff_id=target_staff_id, target_perm=target_perm)
 
 
 @router.post("/push/devices")
@@ -8671,10 +6554,10 @@ async def list_notifications(actor_type: str = "user", x_telegram_init_data: str
     rows = conn.execute(
         """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1
            ORDER BY created_at DESC,id DESC LIMIT 200""", (me["id"], kind, actor_id)).fetchall()
-    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
-    visible = [r for r in rows if _notification_visible(r, staff, perms)]
-    unread = sum(1 for r in visible if not int(r["resolved_at"] or 0) and not int(r["is_read"] or 0))
-    out = [dict(r) for r in visible]; conn.close()
+    unread = conn.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1 AND resolved_at=0 AND is_read=0",
+        (me["id"], kind, actor_id)).fetchone()[0]
+    out = [dict(r) for r in rows]; conn.close()
     return {"items": out, "unread": unread}
 
 
@@ -8689,8 +6572,7 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
            ORDER BY created_at ASC,id ASC LIMIT 20""",
         (me["id"], kind, actor_id)
     ).fetchall()
-    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
-    out = [dict(r) for r in rows if _notification_visible(r, staff, perms)]; conn.close()
+    out = [dict(r) for r in rows]; conn.close()
     return {"items": out, "count": len(out)}
 
 
@@ -8698,11 +6580,6 @@ async def actionable_notifications(actor_type: str = "user", x_telegram_init_dat
 async def read_notification(notification_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
     actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
-    found = conn.execute("SELECT * FROM notifications WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?",
-                         (notification_id, me["id"], kind, actor_id)).fetchone()
-    staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
-    if not found or not _notification_visible(found, staff, perms):
-        conn.close(); raise HTTPException(404, "Bildirishnoma topilmadi.")
     cur = conn.execute("""UPDATE notifications SET is_read=1,read_at=?,
         resolved_at=CASE WHEN action_type='view_ready' THEN ? ELSE resolved_at END
         WHERE id=? AND user_id=? AND actor_kind=? AND actor_id=?""",
@@ -8716,17 +6593,8 @@ async def read_notification(notification_id: int, request: Request, x_telegram_i
 async def read_all_notifications(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db(); me = require_user(conn, x_telegram_init_data); body = await request.json()
     actor = actor_from_body(conn, me, body); kind, actor_id, _ = _actor_identity(actor); now = int(time.time())
-    staff = _staff_session(conn, x_telegram_init_data)
-    if staff:
-        perms = _perms_parse(_row_val(staff, "perms", "") or "")
-        rows = conn.execute("SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0",
-                            (me["id"], kind, actor_id)).fetchall()
-        ids = [int(r["id"]) for r in rows if _notification_visible(r, staff, perms)]
-        if ids:
-            conn.execute("UPDATE notifications SET is_read=1,read_at=? WHERE id IN (%s)" % ",".join("?" for _ in ids), (now, *ids))
-    else:
-        conn.execute("""UPDATE notifications SET is_read=1,read_at=?
-            WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0""", (now, me["id"], kind, actor_id))
+    conn.execute("""UPDATE notifications SET is_read=1,read_at=?
+        WHERE user_id=? AND actor_kind=? AND actor_id=? AND is_read=0""", (now, me["id"], kind, actor_id))
     conn.commit(); conn.close(); return {"ok": True}
 
 
@@ -8755,21 +6623,6 @@ def _order_to_dict(conn, r, view="customer"):
             _provider_hours = _pb["work_hours"] or ""
             _provider_lat, _provider_lng = _pb["lat"], _pb["lng"]
     items = _order_items_to_dict(conn, r["id"])
-    # Navbat/qabul doim xizmat hisoblanadi. Savatdagi barcha pozitsiyalar xizmat
-    # bo'lsa ham xizmat buyurtmasi; aralash savat esa oddiy buyurtmada qoladi.
-    order_category = (_row_val(r, "order_category", "") or "").lower()
-    if order_category not in ("product", "service"):
-        order_category = "service" if (r["order_type"] or "") == "booking" else "product"
-    if order_category != "service" and items:
-        item_ids = [int(x["item_id"]) for x in items if x.get("item_id")]
-        if item_ids:
-            marks = ",".join("?" for _ in item_ids)
-            kinds = [(_row_val(x, "kind", "product") or "product").lower() for x in conn.execute(
-                "SELECT kind FROM items WHERE id IN (" + marks + ")", item_ids).fetchall()]
-            if kinds and len(kinds) == len(item_ids) and all(x == "service" for x in kinds):
-                order_category = "service"
-    if order_category != "service" and (r["provider_kind"] or "") == "user" and not items:
-        order_category = "service"
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
     last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
@@ -8798,7 +6651,6 @@ def _order_to_dict(conn, r, view="customer"):
         "note": r["note"] or "",
         "phone": r["phone"] or "",
         "order_type": r["order_type"] or "delivery",
-        "order_category": order_category,
         "address": r["address"] or "",
         "desired_time": r["desired_time"] or "",
         "delivery_lat": r["delivery_lat"],
@@ -8889,11 +6741,6 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     note = (b.get("note") or "").strip()[:1000]
     phone = (b.get("phone") or "").strip()[:80]
     order_type = _clean_order_type(b.get("order_type"))
-    order_category = "service" if order_type == "booking" else "product"
-    if order_items and all((x.get("kind") or "product") == "service" for x in order_items):
-        order_category = "service"
-    elif not order_items and provider["kind"] == "user":
-        order_category = "service"
     address = (b.get("address") or "").strip()[:500]
     desired_time = (b.get("desired_time") or "").strip()[:160]
     delivery_lat = _clean_coord(b.get("delivery_lat"), -90, 90)
@@ -8908,12 +6755,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     cur = conn.execute(
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
-                              item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
+                              item_id, listing_id, title, note, phone, order_type, address, desired_time,
                               delivery_lat, delivery_lng, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
+         item_id, listing_id, title, note, phone, order_type, address, desired_time,
          delivery_lat, delivery_lng, qty, "new", now, now),
     )
     oid = cur.lastrowid
@@ -8994,7 +6841,7 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
     """Joriy kabinetga kelgan buyurtmalar."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "buyurtma", "service_orders", "dining_internal", "dining_external", "kitchen")
+    need_perm(conn, x_telegram_init_data, "buyurtma")
     actor = resolve_actor(conn, me, actor_type)
     kind, actor_id, _owner = _actor_identity(actor)
     rows = conn.execute(
@@ -9003,10 +6850,6 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
            ORDER BY created_at DESC, id DESC LIMIT 200""",
         (kind, actor_id),
     ).fetchall()
-    perms = _staff_perms_of(conn, x_telegram_init_data)
-    if perms is not None and "kitchen" in perms and not any(p in perms for p in ("kassa", "payment_review", "payment_confirm")):
-        # Oshpaz yangi/to'lov kutilayotgan tashqi buyurtmani emas, faqat tayyorlash bosqichini ko'radi.
-        rows = [r for r in rows if (r["status"] or "") not in ("new", "accepted")]
     out = [_order_to_dict(conn, r, "provider") for r in rows]
     conn.close()
     return out
@@ -9123,14 +6966,6 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
 
     is_provider = (row["provider_kind"] == kind and int(row["provider_actor_id"]) == actor_id)
     is_customer = (row["customer_kind"] == kind and int(row["customer_actor_id"]) == actor_id)
-    provider_biz = conn.execute("SELECT yon FROM businesses WHERE id=?", (row["provider_actor_id"],)).fetchone() if row["provider_kind"] == "business" else None
-    dining_external = bool(provider_biz and (provider_biz["yon"] or "").strip() == "Umumiy ovqatlanish")
-    if is_provider and dining_external and new_status in ("accepted", "rejected", "cancelled"):
-        need_any_perm(conn, x_telegram_init_data, "kassa", "payment_review", "payment_confirm")
-    elif is_provider and dining_external and new_status == "tayyor":
-        need_perm(conn, x_telegram_init_data, "kitchen")
-    elif is_provider and not dining_external and new_status in ("accepted", "rejected", "tayyor", "cancelled"):
-        need_any_perm(conn, x_telegram_init_data, "buyurtma", "dining_external", "kitchen")
     if new_status in ("accepted", "rejected", "done", "tayyor") and not is_provider:
         conn.close()
         raise HTTPException(403, "Bu buyurtma holatini faqat qabul qiluvchi kabinet o'zgartira oladi.")
@@ -9156,11 +6991,6 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
             _notify_order_side(conn, row, "customer", "ready", "Buyurtma tayyor bo'ldi",
                                ("Do'kondan olib ketishingiz mumkin." if (row["order_type"] or "") == "pickup"
                                 else "Dostavka jarayoni boshlandi."), action_type="view_ready")
-            if dining_external:
-                _add_notification(conn, int(row["provider_user_id"] or 0), "business", int(row["provider_actor_id"] or 0),
-                                  "order:%d:ready:cash" % order_id, "Tashqi buyurtma tayyor bo'ldi",
-                                  "Buyurtma #%d oshpaz tomonidan tayyorlandi." % order_id,
-                                  order_id=order_id, action_type="external_ready", target_perm="kassa")
         elif new_status in ("rejected", "cancelled"):
             _notify_order_side(conn, row, "customer", new_status, "Buyurtma bekor qilindi", row["title"] or "Buyurtma")
         cu = conn.execute("SELECT tg_id FROM users WHERE id=?", (row["customer_user_id"],)).fetchone()
@@ -9384,7 +7214,6 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
     """Provayder biznes buyurtma to'lovini tasdiqlaydi yoki rad etadi. Suhbatga xabar yoziladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    need_any_perm(conn, x_telegram_init_data, "payment_confirm", "payment_review", "kassa")
     _ensure_order_pay_column(conn)
     r = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not r:
@@ -9394,7 +7223,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(403, "Bu buyurtma sizniki emas.")
     status = (body.get("status") or "").strip()
-    if status not in ("confirmed", "rejected", "pending", "debt"):
+    if status not in ("confirmed", "rejected", "pending"):
         conn.close()
         raise HTTPException(400, "Holat noto'g'ri.")
     current_payment = _row_val(r, "payment_status", "") or ""
@@ -9402,45 +7231,19 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         conn.close()
         raise HTTPException(409, "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini yubormagan.")
     now = int(time.time())
-    if status == "debt":
-        if r["status"] != "accepted":
-            conn.close(); raise HTTPException(409, "Faqat qabul qilingan buyurtma qarzga yoziladi.")
-        if _row_val(r, "qarz_tx_id", None):
-            conn.close(); return {"ok": True, "payment_status": "confirmed", "already_debt": True}
-        total = int(conn.execute("SELECT COALESCE(SUM(line_total),0) FROM order_items WHERE order_id=?", (order_id,)).fetchone()[0] or 0)
-        try:
-            debtor_id, qtx_id, debtor_name = _new_debt_tx(conn, biz["id"], body.get("debtor_id"), total,
-                                                          "Tashqi buyurtma #%d" % order_id, now)
-        except HTTPException:
-            conn.rollback(); conn.close(); raise
+    if status == "confirmed":
         conn.execute(
-            """UPDATE orders SET payment_status='confirmed',pay_type='qarz',debtor_id=?,qarz_tx_id=?,status='preparing',
-               problem_open=0,problem_resolved_at=?,updated_at=?,customer_seen_at=0,last_event='payment' WHERE id=?""",
-            (debtor_id, qtx_id, now, now, order_id))
-        _notify_order_side(conn, r, "customer", "debt_confirmed", "Buyurtma qarzga rasmiylashtirildi",
-                           "%s nomiga %s so'm qarz yozildi." % (debtor_name, total))
-        _add_notification(conn, biz["user_id"], "business", biz["id"], "order:%d:debt:kitchen" % order_id,
-                          "Tashqi buyurtma qarzga tasdiqlandi", "Buyurtma #%d ni tayyorlashni boshlang." % order_id,
-                          order_id=order_id, action_type="start_preparing", target_perm="kitchen")
-        _resolve_order_action(conn, order_id, "confirm_payment")
-    elif status == "confirmed":
-        conn.execute(
-            """UPDATE orders SET payment_status=?,pay_type='karta',status='preparing',problem_open=0,problem_resolved_at=?,updated_at=?,
+            """UPDATE orders SET payment_status=?,status='preparing',problem_open=0,problem_resolved_at=?,updated_at=?,
                customer_seen_at=0,last_event='payment' WHERE id=?""",
             (status, now, now, order_id),
         )
         _notify_order_side(conn, r, "customer", "payment_confirmed", "To'lov tasdiqlandi",
                            "Buyurtma tayyorlanmoqda.")
-        _add_notification(conn, biz["user_id"], "business", biz["id"],
-                          "order:%d:payment_confirmed:kitchen" % order_id,
-                          "Tashqi buyurtma to'lovi tasdiqlandi",
-                          "Buyurtma #%d ni tayyorlashni boshlang." % order_id,
-                          order_id=order_id, action_type="start_preparing", target_perm="kitchen")
         _resolve_order_action(conn, order_id, "confirm_payment")
     else:
         conn.execute("UPDATE orders SET payment_status=?, updated_at=? WHERE id=?", (status, now, order_id))
     # Suhbatga tizim xabari
-    msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!", "debt": "📒 Buyurtma qarzga rasmiylashtirildi.",
+    msg = {"confirmed": "✅ To'lov tasdiqlandi. Rahmat!",
            "rejected": "❌ To'lov tasdiqlanmadi. Iltimos, to'lovni tekshiring yoki qayta yuboring.",
            "pending": "⏳ To'lov kutilmoqda."}.get(status, "")
     if msg:
@@ -9452,8 +7255,7 @@ async def set_order_payment(order_id: int, body: dict, x_telegram_init_data: str
         )
     conn.commit()
     conn.close()
-    return {"ok": True, "payment_status": ("confirmed" if status == "debt" else status),
-            "status": ("preparing" if status in ("confirmed", "debt") else r["status"])}
+    return {"ok": True, "payment_status": status, "status": ("preparing" if status == "confirmed" else r["status"])}
 
 
 @router.post("/orders/{order_id}/handoff")
@@ -10072,7 +7874,7 @@ async def specialist_reviews_manage(x_telegram_init_data: str = Header(default="
 @router.get("/business/reviews")
 async def business_reviews_manage(x_telegram_init_data: str = Header(default="")):
     """Biznes egasiga o'z do'koniga yozilgan baho va fikrlarni qaytaradi."""
-    conn = db(); me, biz = require_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "reviews"); _ensure_reviews(conn)
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
     rows = conn.execute(
         "SELECT * FROM reviews WHERE target_kind='business' AND target_id=? ORDER BY id DESC LIMIT 200",
         (biz["id"],),
@@ -10093,7 +7895,7 @@ async def business_reviews_manage(x_telegram_init_data: str = Header(default="")
 @router.put("/business/reviews/{review_id}/reply")
 async def business_review_reply(review_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     """Biznes egasi fikrni o'chirmasdan unga javob beradi yoki javobini yangilaydi."""
-    conn = db(); me, biz = require_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "reviews"); _ensure_reviews(conn)
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
     row = conn.execute(
         "SELECT id FROM reviews WHERE id=? AND target_kind='business' AND target_id=?",
         (review_id, biz["id"]),
