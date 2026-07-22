@@ -1605,6 +1605,188 @@ async def delete_item(item_id: int, x_telegram_init_data: str = Header(default="
 
 
 # ====================================================================
+# UMUMIY OVQATLANISH — STOLLAR VA XONALAR
+# ====================================================================
+def _require_dining_business(conn, init_data):
+    user, biz = require_business(conn, init_data)
+    if (biz["yon"] or "").strip() != "Umumiy ovqatlanish":
+        conn.close()
+        raise HTTPException(403, "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun.")
+    return user, biz
+
+
+@router.get("/dining/places")
+async def dining_places(x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    rows = conn.execute(
+        """SELECT p.id,p.kind,p.name,p.seats,p.x,p.y,p.locked,
+                  d.id AS active_id,d.kind AS active_kind,d.customer_name,d.booking_date,d.booking_time,d.guests,d.total
+           FROM dining_places p
+           LEFT JOIN dining_bookings d ON d.id=(
+             SELECT id FROM dining_bookings
+             WHERE business_id=p.business_id AND place_id=p.id AND status='active'
+             ORDER BY id DESC LIMIT 1)
+           WHERE p.business_id=? ORDER BY p.id""",
+        (biz["id"],),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@router.post("/dining/places")
+async def dining_place_add(request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    b = await request.json()
+    kind = (b.get("kind") or "").strip()
+    if kind not in ("table", "room"):
+        conn.close()
+        raise HTTPException(400, "Stol yoki xona turini tanlang.")
+    name = (b.get("name") or "").strip()[:60]
+    if not name:
+        name = "Stol" if kind == "table" else "Xona"
+    try:
+        seats = max(0, min(100, int(b.get("seats") or 0))) if kind == "table" else 0
+    except (TypeError, ValueError):
+        seats = 0
+    now = int(time.time())
+    # Yangi belgilar yuqorida, bir-biridan ozgina surilgan holda paydo bo'ladi.
+    count = conn.execute("SELECT COUNT(*) FROM dining_places WHERE business_id=?", (biz["id"],)).fetchone()[0]
+    x = 4 + (count % 5) * 18
+    cur = conn.execute(
+        "INSERT INTO dining_places(business_id,kind,name,seats,x,y,locked,created_at,updated_at) VALUES(?,?,?,?,?,?,1,?,?)",
+        (biz["id"], kind, name, seats, x, 4, now, now),
+    )
+    conn.commit()
+    place_id = cur.lastrowid
+    conn.close()
+    return {"id": place_id, "kind": kind, "name": name, "seats": seats, "x": x, "y": 4, "locked": 1}
+
+
+@router.put("/dining/places/{place_id}")
+async def dining_place_edit(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    row = conn.execute("SELECT * FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"])).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Stol yoki xona topilmadi.")
+    b = await request.json()
+    name = (b.get("name") if "name" in b else row["name"])
+    name = str(name or "").strip()[:60] or row["name"]
+    try:
+        seats = max(0, min(100, int(b.get("seats", row["seats"]) or 0))) if row["kind"] == "table" else 0
+        x = max(0.0, min(90.0, float(b.get("x", row["x"]))))
+        y = max(0.0, min(88.0, float(b.get("y", row["y"]))))
+    except (TypeError, ValueError):
+        conn.close()
+        raise HTTPException(400, "Joylashuv qiymati noto'g'ri.")
+    locked = 1 if str(b.get("locked", row["locked"])).lower() in ("1", "true") else 0
+    conn.execute(
+        "UPDATE dining_places SET name=?,seats=?,x=?,y=?,locked=?,updated_at=? WHERE id=? AND business_id=?",
+        (name, seats, x, y, locked, int(time.time()), place_id, biz["id"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/dining/places/{place_id}")
+async def dining_place_delete(place_id: int, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    booking_ids = [r[0] for r in conn.execute("SELECT id FROM dining_bookings WHERE business_id=? AND place_id=?", (biz["id"], place_id)).fetchall()]
+    if booking_ids:
+        marks = ",".join("?" for _ in booking_ids)
+        conn.execute("DELETE FROM dining_booking_items WHERE booking_id IN ("+marks+")", booking_ids)
+        conn.execute("DELETE FROM dining_bookings WHERE id IN ("+marks+")", booking_ids)
+    conn.execute("DELETE FROM dining_places WHERE id=? AND business_id=?", (place_id, biz["id"]))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+def _dining_place(conn, biz_id, place_id):
+    row = conn.execute("SELECT * FROM dining_places WHERE id=? AND business_id=?", (place_id, biz_id)).fetchone()
+    if not row:
+        raise HTTPException(404, "Stol yoki xona topilmadi.")
+    return row
+
+
+@router.post("/dining/places/{place_id}/booking")
+async def dining_booking_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    _dining_place(conn, biz["id"], place_id)
+    b = await request.json()
+    customer = (b.get("customer_name") or "").strip()[:80]
+    booking_date = (b.get("booking_date") or "").strip()[:10]
+    booking_time = (b.get("booking_time") or "").strip()[:5]
+    if not customer or not booking_date or not booking_time:
+        conn.close()
+        raise HTTPException(400, "Mijoz ismi, sana va vaqtni kiriting.")
+    try:
+        guests = max(1, min(100, int(b.get("guests") or 1)))
+    except (TypeError, ValueError):
+        guests = 1
+    now = int(time.time())
+    cur = conn.execute(
+        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,phone,booking_date,booking_time,guests,note,total,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,0,'active',?,?)",
+        (biz["id"], place_id, "booking", customer, (b.get("phone") or "").strip()[:30], booking_date,
+         booking_time, guests, (b.get("note") or "").strip()[:300], now, now),
+    )
+    conn.commit(); booking_id = cur.lastrowid; conn.close()
+    return {"id": booking_id, "ok": True}
+
+
+@router.post("/dining/places/{place_id}/order")
+async def dining_order_add(place_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
+    conn = db()
+    user, biz = _require_dining_business(conn, x_telegram_init_data)
+    _dining_place(conn, biz["id"], place_id)
+    b = await request.json(); incoming = b.get("items") or []
+    wanted = {}
+    for it in incoming[:100]:
+        try:
+            iid = int(it.get("item_id")); qty = max(0.01, min(999.0, float(it.get("qty") or 0)))
+            wanted[iid] = wanted.get(iid, 0) + qty
+        except (TypeError, ValueError, AttributeError):
+            continue
+    if not wanted:
+        conn.close(); raise HTTPException(400, "Zakaz uchun mahsulot tanlanmadi.")
+    marks = ",".join("?" for _ in wanted)
+    rows = conn.execute(
+        "SELECT id,name,price,unit FROM items WHERE business_id=? AND id IN ("+marks+")",
+        (biz["id"], *wanted.keys()),
+    ).fetchall()
+    if not rows:
+        conn.close(); raise HTTPException(400, "Tanlangan mahsulotlar topilmadi.")
+    prepared=[]; total=0
+    for r in rows:
+        qty=wanted[r["id"]]; price=_price_to_int(r["price"]); line=int(round(price*qty)); total+=line
+        prepared.append((r["id"],r["name"],qty,r["unit"] or "dona",price,line))
+    now=int(time.time())
+    cur=conn.execute(
+        "INSERT INTO dining_bookings(business_id,place_id,kind,customer_name,note,total,status,created_at,updated_at) VALUES(?,?, 'order',?,?,?,'active',?,?)",
+        (biz["id"],place_id,(b.get("customer_name") or "").strip()[:80],(b.get("note") or "").strip()[:300],total,now,now),
+    )
+    order_id=cur.lastrowid
+    conn.executemany("INSERT INTO dining_booking_items(booking_id,item_id,name,qty,unit,price,total) VALUES(?,?,?,?,?,?,?)",
+                     [(order_id,*x) for x in prepared])
+    conn.commit();conn.close()
+    return {"id":order_id,"total":total,"ok":True}
+
+
+@router.post("/dining/places/{place_id}/clear")
+async def dining_place_clear(place_id: int, x_telegram_init_data: str = Header(default="")):
+    conn=db();user,biz=_require_dining_business(conn,x_telegram_init_data);_dining_place(conn,biz["id"],place_id)
+    conn.execute("UPDATE dining_bookings SET status='done',updated_at=? WHERE business_id=? AND place_id=? AND status='active'",
+                 (int(time.time()),biz["id"],place_id))
+    conn.commit();conn.close();return {"ok":True}
+
+
+# ====================================================================
 # MEDIA QUTISI (botga yuborilgan rasm/videolar)
 # ====================================================================
 @router.get("/media/inbox")
@@ -6373,6 +6555,7 @@ def _load_order_items_payload(conn, body, provider, item_id=None):
             "unit": unit,
             "line_total": int(round(price_val * qty)) if price_val else 0,
             "note": it["note"] or "",
+            "kind": (_row_val(it, "kind", "product") or "product").lower(),
         })
     return normalized
 
@@ -6623,6 +6806,21 @@ def _order_to_dict(conn, r, view="customer"):
             _provider_hours = _pb["work_hours"] or ""
             _provider_lat, _provider_lng = _pb["lat"], _pb["lng"]
     items = _order_items_to_dict(conn, r["id"])
+    # Navbat/qabul doim xizmat hisoblanadi. Savatdagi barcha pozitsiyalar xizmat
+    # bo'lsa ham xizmat buyurtmasi; aralash savat esa oddiy buyurtmada qoladi.
+    order_category = (_row_val(r, "order_category", "") or "").lower()
+    if order_category not in ("product", "service"):
+        order_category = "service" if (r["order_type"] or "") == "booking" else "product"
+    if order_category != "service" and items:
+        item_ids = [int(x["item_id"]) for x in items if x.get("item_id")]
+        if item_ids:
+            marks = ",".join("?" for _ in item_ids)
+            kinds = [(_row_val(x, "kind", "product") or "product").lower() for x in conn.execute(
+                "SELECT kind FROM items WHERE id IN (" + marks + ")", item_ids).fetchall()]
+            if kinds and len(kinds) == len(item_ids) and all(x == "service" for x in kinds):
+                order_category = "service"
+    if order_category != "service" and (r["provider_kind"] or "") == "user" and not items:
+        order_category = "service"
     total_amount = sum(int(x.get("line_total") or 0) for x in items)
     chat_count = conn.execute("SELECT COUNT(*) FROM order_messages WHERE order_id=?", (r["id"],)).fetchone()[0]
     last_chat = conn.execute("SELECT text, media_type, created_at FROM order_messages WHERE order_id=? AND COALESCE(is_deleted,0)=0 ORDER BY created_at DESC, id DESC LIMIT 1", (r["id"],)).fetchone()
@@ -6651,6 +6849,7 @@ def _order_to_dict(conn, r, view="customer"):
         "note": r["note"] or "",
         "phone": r["phone"] or "",
         "order_type": r["order_type"] or "delivery",
+        "order_category": order_category,
         "address": r["address"] or "",
         "desired_time": r["desired_time"] or "",
         "delivery_lat": r["delivery_lat"],
@@ -6741,6 +6940,11 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     note = (b.get("note") or "").strip()[:1000]
     phone = (b.get("phone") or "").strip()[:80]
     order_type = _clean_order_type(b.get("order_type"))
+    order_category = "service" if order_type == "booking" else "product"
+    if order_items and all((x.get("kind") or "product") == "service" for x in order_items):
+        order_category = "service"
+    elif not order_items and provider["kind"] == "user":
+        order_category = "service"
     address = (b.get("address") or "").strip()[:500]
     desired_time = (b.get("desired_time") or "").strip()[:160]
     delivery_lat = _clean_coord(b.get("delivery_lat"), -90, 90)
@@ -6755,12 +6959,12 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
     cur = conn.execute(
         """INSERT INTO orders(customer_kind, customer_actor_id, customer_user_id,
                               provider_kind, provider_actor_id, provider_user_id,
-                              item_id, listing_id, title, note, phone, order_type, address, desired_time,
+                              item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
                               delivery_lat, delivery_lng, qty, status, created_at, updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (customer_kind, customer_actor_id, customer_user_id,
          provider["kind"], provider["actor_id"], provider["owner_user_id"],
-         item_id, listing_id, title, note, phone, order_type, address, desired_time,
+         item_id, listing_id, title, note, phone, order_type, order_category, address, desired_time,
          delivery_lat, delivery_lng, qty, "new", now, now),
     )
     oid = cur.lastrowid
