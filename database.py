@@ -728,6 +728,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN provider_seen_at INTEGER DEFAULT 0")
     if "customer_seen_at" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN customer_seen_at INTEGER DEFAULT 0")
+    if "order_category" not in ocols:
+        conn.execute("ALTER TABLE orders ADD COLUMN order_category TEXT DEFAULT ''")
     # v1483: to'lov bo'yicha muammoli buyurtmalar alohida yuritiladi.
     for _c, _t in (
         ("problem_open", "INTEGER DEFAULT 0"),
@@ -743,6 +745,18 @@ def _migrate(conn):
             conn.execute("ALTER TABLE orders ADD COLUMN %s %s" % (_c, _t))
     conn.execute("UPDATE orders SET problem_open=0 WHERE problem_open IS NULL")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
+    # v1544: eski buyurtmalarni mahsulot va xizmat bo'limlariga bir marta ajratamiz.
+    conn.execute("UPDATE orders SET order_category='service' WHERE COALESCE(order_category,'')='' AND order_type='booking'")
+    conn.execute("""UPDATE orders SET order_category='service'
+                    WHERE COALESCE(order_category,'')='' AND provider_kind='user'
+                      AND NOT EXISTS(SELECT 1 FROM order_items oi WHERE oi.order_id=orders.id)""")
+    conn.execute("""UPDATE orders SET order_category='service'
+                    WHERE COALESCE(order_category,'')=''
+                      AND EXISTS(SELECT 1 FROM order_items oi JOIN items i ON i.id=oi.item_id
+                                 WHERE oi.order_id=orders.id AND LOWER(COALESCE(i.kind,''))='service')
+                      AND NOT EXISTS(SELECT 1 FROM order_items oi JOIN items i ON i.id=oi.item_id
+                                     WHERE oi.order_id=orders.id AND LOWER(COALESCE(i.kind,'product'))<>'service')""")
+    conn.execute("UPDATE orders SET order_category='product' WHERE COALESCE(order_category,'')='' ")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
@@ -1332,3 +1346,31 @@ def _migrate(conn):
         conn.execute(
             "INSERT INTO app_meta(key,value) VALUES('search_fts_version',?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (fts_version,))
+
+    # --- v1540: Umumiy ovqatlanish — zal rejasidagi stol va xonalar ---
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_places("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "business_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL CHECK(kind IN ('table','room')), "
+        "name TEXT NOT NULL, "
+        "seats INTEGER DEFAULT 0, "
+        "x REAL NOT NULL DEFAULT 4, "
+        "y REAL NOT NULL DEFAULT 4, "
+        "locked INTEGER NOT NULL DEFAULT 1, "
+        "created_at INTEGER NOT NULL, "
+        "updated_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_places_biz ON dining_places(business_id, id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_bookings("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, place_id INTEGER NOT NULL, "
+        "kind TEXT NOT NULL CHECK(kind IN ('order','booking')), customer_name TEXT DEFAULT '', "
+        "phone TEXT DEFAULT '', booking_date TEXT DEFAULT '', booking_time TEXT DEFAULT '', "
+        "guests INTEGER DEFAULT 0, note TEXT DEFAULT '', total INTEGER DEFAULT 0, "
+        "status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_bookings_place ON dining_bookings(business_id,place_id,status,id)")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS dining_booking_items("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id INTEGER NOT NULL, item_id INTEGER, "
+        "name TEXT NOT NULL, qty REAL NOT NULL DEFAULT 1, unit TEXT DEFAULT '', price INTEGER DEFAULT 0, total INTEGER DEFAULT 0)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_booking_items ON dining_booking_items(booking_id,id)")
