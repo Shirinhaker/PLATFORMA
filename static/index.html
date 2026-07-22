@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1629 -->
+<title>Koprik</title><!-- BUILD: v1629 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
-<meta property="og:site_name" content="Ko‘prik" />
+<meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
@@ -851,6 +851,92 @@
     .phone-only{display:none!important;}
   }
 
+  /* v1629 approved public home and catalog redesign */
+  html,body{max-width:100%;overflow-x:hidden;}
+  .screens{scrollbar-width:none;}
+  .screens::-webkit-scrollbar{display:none;}
+  .web-brand{margin-right:8px;}
+  .web-nav{display:flex;}
+  .home-search-card{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
+  .home-search-card h1{font:800 clamp(28px,2.7vw,43px)/1.12 var(--font-d);letter-spacing:-.045em;}
+  .home-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:22px;}
+  .home-query-shell{min-width:0;min-height:58px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:0 12px;color:#667085;}
+  .home-query-shell svg{width:22px;height:22px;flex:0 0 auto;}
+  .home-query-shell input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#17211e;font:600 14px var(--font-b);}
+  .home-query-shell input::placeholder{color:#76817d;}
+  .home-query-clear{width:34px;height:34px;flex:0 0 auto;border:0;border-radius:10px;background:transparent;color:#667085;font:700 20px var(--font-b);cursor:pointer;}
+  .home-search-submit{min-width:120px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);padding:0 22px;font:800 14px var(--font-b);cursor:pointer;}
+  .home-catalog-open{width:100%;min-height:60px;margin-top:10px;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:#17211e;padding:9px 16px;text-align:left;cursor:pointer;box-shadow:var(--shadow);}
+  .home-catalog-open svg{width:22px;height:22px;flex:0 0 auto;color:#17211e;}
+  .home-catalog-copy{flex:1;min-width:0;}
+  .home-catalog-copy strong,.home-catalog-copy small{display:block;}
+  .home-catalog-copy strong{font:800 14px var(--font-b);}
+  .home-catalog-copy small{margin-top:2px;color:#7a8580;font-size:11px;}
+  .home-catalog-chevron{font-size:20px;line-height:1;}
+  .desktop-hero-tags{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px;}
+  .desktop-hero-tags button{min-width:0;min-height:52px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);padding:9px 10px;font:700 13px var(--font-b);cursor:pointer;}
+  .home-location-note{margin-top:auto;padding-top:20px;color:var(--soft);font-size:12px;line-height:1.45;}
+  .home-location-note b{color:var(--primary);}
+  .catalog-shell{padding-bottom:28px;}
+  .catalog-title-row{display:flex;align-items:center;justify-content:space-between;margin:16px 4px 10px;}
+  .catalog-title-row h2{font:800 18px var(--font-d);}
+  .catalog-count{color:var(--primary);font-size:13px;font-weight:800;}
+  [data-screen="catalog"] #yonList{display:grid;gap:10px;}
+  [data-screen="catalog"] #yonList .menu-card{margin:0;min-height:74px;border-radius:16px;padding:11px 14px;}
+  [data-screen="catalog"] #yonList .menu-ic{width:46px;height:46px;border-radius:14px;}
+  [data-screen="cat-types"] #typesBody{max-width:980px;margin:0 auto;padding-bottom:28px;}
+  [data-screen="cat-types"] .set-row{min-height:58px;margin-bottom:9px;border:1px solid var(--line);border-radius:15px;background:var(--card);padding:12px 15px;box-shadow:var(--shadow);cursor:pointer;}
+  @media(max-width:1079px){
+    .statusbar{display:none;}
+    .topbar{padding:10px 12px 8px;background:var(--bg);}
+    .tb-home{gap:7px;}
+    .web-brand{display:flex;font-size:24px;margin-right:auto;}
+    .web-nav{display:flex;order:1;align-self:auto;}
+    .web-nav button{height:42px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:0 12px;font-size:12px;box-shadow:var(--shadow);}
+    .web-nav button:after{display:none;}
+    .tb-home>#locBtn{order:2;}
+    .tb-home>#searchBox{display:none;}
+    .tb-home>#cartBtn{order:3;}
+    .tb-home>#taxiCabBtn{order:4;}
+    .tb-home>#cabBtn{order:5;background:var(--primary);border-color:var(--primary);color:var(--primary-ink);}
+    .screen[data-screen="home"]{padding-top:8px;}
+    .home-discovery{display:flex;flex-direction:column;gap:14px;min-width:0;}
+    .home-search-card{display:flex;padding:18px 16px;border-radius:20px;background:#062d2b;color:#fff;}
+    .home-search-card h1{font-size:24px;line-height:1.28;letter-spacing:-.035em;}
+    .home-search-row{margin-top:14px;gap:6px;}
+    .home-query-shell{min-height:48px;border-radius:9px;padding:0 9px;}
+    .home-query-shell svg{width:18px;height:18px;}
+    .home-query-shell input{font-size:12px;}
+    .home-query-clear{width:28px;height:28px;font-size:17px;}
+    .home-search-submit{min-width:82px;border-radius:9px;padding:0 12px;font-size:12px;}
+    .home-catalog-open{min-height:52px;margin-top:8px;border-radius:9px;padding:7px 11px;}
+    .home-catalog-copy strong{font-size:12px;}
+    .home-catalog-copy small{font-size:9px;}
+    .desktop-hero-tags{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;}
+    .desktop-hero-tags button{min-height:48px;color:#fff;border-color:rgba(255,255,255,.12);font-size:12px;}
+    .home-location-note{padding-top:14px;color:rgba(255,255,255,.64);font-size:10px;}
+    .home-map-pane{min-height:0;}
+    .home-map-pane .pin-eyebrow{display:none;}
+    .home-map-pane .map-wrap{border-radius:20px;}
+    #leafletMap{height:280px!important;min-height:280px;}
+    [data-screen="catalog"],[data-screen="cat-types"]{padding-bottom:24px;}
+  }
+  @media(max-width:620px){
+    .web-brand{font-size:21px;}
+    .web-nav button{padding:0 10px;}
+    .tb-home>.icon-btn{width:39px;height:39px;}
+    .tb-home>#taxiCabBtn{display:none;}
+    .screen{padding-left:10px;padding-right:10px;}
+    .story-rail{padding-right:4px;}
+  }
+  @media(min-width:1080px){
+    .web-brand{margin-right:22px;}
+    .home-discovery{grid-template-columns:minmax(520px,.95fr) minmax(600px,1.05fr);min-height:430px;}
+    .home-search-card{min-height:430px;}
+    [data-screen="catalog"],[data-screen="cat-types"]{width:min(100%,1180px);padding-top:28px;}
+    [data-screen="catalog"] #yonList{grid-template-columns:1fr;}
+  }
+
 </style>
 </head>
 <body>
@@ -869,9 +955,8 @@
 
     <header class="topbar">
       <div class="tb-home" id="tbHome">
-        <button class="web-brand web-only" id="webBrandBtn" type="button" aria-label="Ko‘prik bosh sahifasi">Ko‘prik</button>
-        <nav class="web-nav web-only" aria-label="Asosiy menyu">
-          <button class="on" id="webHomeBtn" type="button">Bosh sahifa</button>
+        <button class="web-brand" id="webBrandBtn" type="button" aria-label="Koprik bosh sahifasi">Koprik</button>
+        <nav class="web-nav" aria-label="Asosiy menyu">
           <button id="webListingsBtn" type="button">E’lonlar</button>
         </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
@@ -962,17 +1047,28 @@
         </section>
         <div id="callPanel" hidden></div>
         <div class="home-discovery">
-          <div class="desktop-hero-copy">
-            <span class="desktop-hero-kicker">⌕ Qidiruv markazida</span>
-            <h1>Kerakli mahsulot va xizmatni yaqiningizdan toping</h1>
-            <p>Mahsulot, xizmat, biznes, mutaxassis yoki e’lonlarni bitta platformada toping.</p>
-            <button class="desktop-hero-search" id="desktopHeroSearch" type="button"><span class="desktop-hero-query">⌕ &nbsp; Nima qidiryapsiz?</span><span class="desktop-hero-location">⌖ &nbsp; Yaqin atrofda</span><strong>Qidirish</strong></button>
-            <div class="desktop-hero-tags">
-              <button type="button" data-web-search-type="product">🛍 Mahsulot</button>
-              <button type="button" data-web-search-type="service">🧰 Xizmat</button>
-              <button type="button" data-web-search-type="business">🏪 Biznes</button>
-              <button type="button" data-web-search-type="specialist">👤 Mutaxassis</button>
+          <div class="home-search-card">
+            <h1>Kerakli mahsulot va<br>xizmatni yaqiningizdan toping</h1>
+            <div class="home-search-row">
+              <label class="home-query-shell" for="homeQueryInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input id="homeQueryInput" type="search" placeholder="Nima qidiryapsiz?" autocomplete="off">
+                <button class="home-query-clear" id="homeQueryClear" type="button" aria-label="Qidiruvni tozalash">×</button>
+              </label>
+              <button class="home-search-submit" id="homeSearchSubmit" type="button">Qidirish</button>
             </div>
+            <button class="home-catalog-open" id="homeCatalogOpen" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 9.8 14.2"/><path d="m22 2-7.8 20-4.4-7.8L2 9.8 22 2Z"/></svg>
+              <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
+              <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="desktop-hero-tags">
+              <button type="button" data-web-search-type="product">Mahsulot</button>
+              <button type="button" data-web-search-type="service">Xizmat</button>
+              <button type="button" data-web-search-type="business">Biznes</button>
+              <button type="button" data-web-search-type="specialist">Mutaxassis</button>
+            </div>
+            <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
           </div>
           <div class="home-map-pane">
             <div class="pin-eyebrow" id="pinEyebrow">
@@ -1005,8 +1101,6 @@
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
         <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
 
-        <button type="button" class="btn btn-primary btn-block phone-only" id="homeElonOpenBtn" style="margin-top:14px">📋 E’lonlarni ko‘rish</button>
-
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
           <div class="menu-card" id="resBar" style="margin-top:14px"><div class="menu-ic">📋</div><div class="menu-main"><h4 id="resCount">Natijalar</h4><p>Profillarni ko'rish uchun bosing</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
@@ -1025,7 +1119,7 @@
       </section>
 
       <!-- QIDIRUV (katalog ichida) -->
-      <section class="screen" data-screen="catalog">
+      <section class="screen catalog-shell" data-screen="catalog">
         <div class="search" style="margin-top:4px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           <input id="catSearch" placeholder="Nima qidiryapsiz? (biznes, mutaxasis...)" />
@@ -1046,7 +1140,7 @@
           <button class="sort-chip" data-scope="Viloyat">Viloyat</button>
           <button class="sort-chip" data-scope="Respublika">Respublika</button>
         </div>
-        <div class="sec-head" style="margin-top:10px"><h2>Faoliyat yo'nalishlari</h2><span class="link">20 ta</span></div>
+        <div class="catalog-title-row"><h2>Faoliyat yo'nalishlari</h2><span class="catalog-count" id="catalogDirectionCount">20 ta</span></div>
         <div id="yonList"></div>
       </section>
 
@@ -4343,7 +4437,6 @@
     var desktopPublic = screen==="listings" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
     el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
     el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
-    if(el("webHomeBtn")) el("webHomeBtn").classList.toggle("on",home);
     if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
@@ -6608,10 +6701,6 @@
   function openWebListings(){
     nav("listings");
   }
-  /* v1628 — telefonda E'lonlar bosh sahifada turmaydi; bosh sahifadagi
-     "E'lonlarni ko'rish" tugmasi ularni alohida "listings" oynasida ochadi.
-     Desktopda avvalgidek yuqori web menyu ishlaydi. */
-  el("homeElonOpenBtn") && el("homeElonOpenBtn").addEventListener("click", openWebListings);
   function openWebSearchType(type){
     nav("catalog");
     var target=document.querySelector('#searchTypeRow [data-search-type="'+type+'"]');
@@ -6619,9 +6708,16 @@
     setTimeout(function(){try{el("catSearch").focus();}catch(e){}},100);
   }
   el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
-  el("webHomeBtn") && el("webHomeBtn").addEventListener("click",openWebHome);
   el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
-  el("desktopHeroSearch") && el("desktopHeroSearch").addEventListener("click",function(){openWebSearchType("all");});
+  el("homeCatalogOpen") && el("homeCatalogOpen").addEventListener("click",function(){openWebSearchType("all");});
+  el("homeQueryClear") && el("homeQueryClear").addEventListener("click",function(e){e.preventDefault();e.stopPropagation();el("homeQueryInput").value="";el("homeQueryInput").focus();});
+  function submitHomeSearch(){
+    var q=(el("homeQueryInput").value||"").trim();
+    if(!q){openWebSearchType("all");return;}
+    runSearch(q);
+  }
+  el("homeSearchSubmit") && el("homeSearchSubmit").addEventListener("click",submitHomeSearch);
+  el("homeQueryInput") && el("homeQueryInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();submitHomeSearch();}});
   document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
