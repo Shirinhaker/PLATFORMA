@@ -126,7 +126,6 @@ def init_db():
             price         TEXT DEFAULT '',
             note          TEXT DEFAULT '',
             kind          TEXT DEFAULT 'product',           -- 'product' | 'service'
-            queue_enabled INTEGER NOT NULL DEFAULT 0,       -- xizmatda onlayn/oflayn navbat ishlaydimi
             photo_file    TEXT DEFAULT '',
             created_at    INTEGER NOT NULL,
             FOREIGN KEY(business_id) REFERENCES businesses(id) ON DELETE CASCADE
@@ -343,10 +342,6 @@ def init_db():
             title           TEXT NOT NULL,
             body            TEXT DEFAULT '',
             order_id        INTEGER,
-            dining_order_id INTEGER,
-            medical_queue_id INTEGER,
-            target_staff_id INTEGER,
-            target_perm     TEXT DEFAULT '',
             ride_id         INTEGER,
             requires_action INTEGER DEFAULT 0,
             action_type     TEXT DEFAULT '',
@@ -464,15 +459,6 @@ def _migrate(conn):
         conn.execute("ALTER TABLE notifications ADD COLUMN action_type TEXT DEFAULT ''")
     if "resolved_at" not in ncols:
         conn.execute("ALTER TABLE notifications ADD COLUMN resolved_at INTEGER DEFAULT 0")
-    if "dining_order_id" not in ncols:
-        conn.execute("ALTER TABLE notifications ADD COLUMN dining_order_id INTEGER")
-    if "medical_queue_id" not in ncols:
-        conn.execute("ALTER TABLE notifications ADD COLUMN medical_queue_id INTEGER")
-    if "target_staff_id" not in ncols:
-        conn.execute("ALTER TABLE notifications ADD COLUMN target_staff_id INTEGER")
-    if "target_perm" not in ncols:
-        conn.execute("ALTER TABLE notifications ADD COLUMN target_perm TEXT DEFAULT ''")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_notifications_medical_queue ON notifications(medical_queue_id,created_at)")
     conn.execute("""CREATE TABLE IF NOT EXISTS push_devices(
         id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL,token TEXT NOT NULL UNIQUE,
         platform TEXT NOT NULL DEFAULT 'android',device_name TEXT DEFAULT '',app_version TEXT DEFAULT '',
@@ -497,30 +483,10 @@ def _migrate(conn):
             created_at INTEGER NOT NULL
         )"""
     )
-    _igcols = [r["name"] for r in conn.execute("PRAGMA table_info(item_groups)").fetchall()]
-    if "storage_type" not in _igcols:
-        conn.execute("ALTER TABLE item_groups ADD COLUMN storage_type TEXT DEFAULT 'ready_food'")
     icols = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "group_id" not in icols:
         # Eski mahsulotlar avtomatik Guruhsiz bo'lib qolishi uchun NULL ustun qo'shamiz.
         conn.execute("ALTER TABLE items ADD COLUMN group_id INTEGER")
-    if "queue_enabled" not in icols:
-        conn.execute("ALTER TABLE items ADD COLUMN queue_enabled INTEGER NOT NULL DEFAULT 0")
-    _icols_edu = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
-    for _name, _sql in (
-        ("course_mode", "ALTER TABLE items ADD COLUMN course_mode TEXT DEFAULT ''"),
-        ("course_duration", "ALTER TABLE items ADD COLUMN course_duration TEXT DEFAULT ''"),
-        ("lesson_duration", "ALTER TABLE items ADD COLUMN lesson_duration INTEGER DEFAULT 0"),
-        ("age_from", "ALTER TABLE items ADD COLUMN age_from INTEGER DEFAULT 0"),
-        ("age_to", "ALTER TABLE items ADD COLUMN age_to INTEGER DEFAULT 0"),
-        ("course_level", "ALTER TABLE items ADD COLUMN course_level TEXT DEFAULT ''"),
-        ("enrollment_status", "ALTER TABLE items ADD COLUMN enrollment_status TEXT DEFAULT 'open'"),
-    ):
-        if _name not in _icols_edu:
-            conn.execute(_sql)
-    # Ta'lim yo'nalishida mahsulot bo'lmaydi: eski yozuv va guruhlarni xizmat/kursga o'tkazamiz.
-    conn.execute("UPDATE items SET kind='service' WHERE business_id IN (SELECT id FROM businesses WHERE yon='Ta''lim faoliyati')")
-    conn.execute("UPDATE item_groups SET kind='service' WHERE business_id IN (SELECT id FROM businesses WHERE yon='Ta''lim faoliyati')")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_item_groups_biz ON item_groups(business_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_items_group ON items(group_id)")
 
@@ -762,14 +728,6 @@ def _migrate(conn):
         conn.execute("ALTER TABLE orders ADD COLUMN provider_seen_at INTEGER DEFAULT 0")
     if "customer_seen_at" not in ocols:
         conn.execute("ALTER TABLE orders ADD COLUMN customer_seen_at INTEGER DEFAULT 0")
-    if "order_category" not in ocols:
-        conn.execute("ALTER TABLE orders ADD COLUMN order_category TEXT DEFAULT ''")
-    if "pay_type" not in ocols:
-        conn.execute("ALTER TABLE orders ADD COLUMN pay_type TEXT DEFAULT ''")
-    if "debtor_id" not in ocols:
-        conn.execute("ALTER TABLE orders ADD COLUMN debtor_id INTEGER")
-    if "qarz_tx_id" not in ocols:
-        conn.execute("ALTER TABLE orders ADD COLUMN qarz_tx_id INTEGER")
     # v1483: to'lov bo'yicha muammoli buyurtmalar alohida yuritiladi.
     for _c, _t in (
         ("problem_open", "INTEGER DEFAULT 0"),
@@ -785,18 +743,6 @@ def _migrate(conn):
             conn.execute("ALTER TABLE orders ADD COLUMN %s %s" % (_c, _t))
     conn.execute("UPDATE orders SET problem_open=0 WHERE problem_open IS NULL")
     conn.execute("UPDATE orders SET order_type='delivery' WHERE order_type IS NULL OR order_type=''")
-    # v1544: eski buyurtmalarni mahsulot va xizmat bo'limlariga bir marta ajratamiz.
-    conn.execute("UPDATE orders SET order_category='service' WHERE COALESCE(order_category,'')='' AND order_type='booking'")
-    conn.execute("""UPDATE orders SET order_category='service'
-                    WHERE COALESCE(order_category,'')='' AND provider_kind='user'
-                      AND NOT EXISTS(SELECT 1 FROM order_items oi WHERE oi.order_id=orders.id)""")
-    conn.execute("""UPDATE orders SET order_category='service'
-                    WHERE COALESCE(order_category,'')=''
-                      AND EXISTS(SELECT 1 FROM order_items oi JOIN items i ON i.id=oi.item_id
-                                 WHERE oi.order_id=orders.id AND LOWER(COALESCE(i.kind,''))='service')
-                      AND NOT EXISTS(SELECT 1 FROM order_items oi JOIN items i ON i.id=oi.item_id
-                                     WHERE oi.order_id=orders.id AND LOWER(COALESCE(i.kind,'product'))<>'service')""")
-    conn.execute("UPDATE orders SET order_category='product' WHERE COALESCE(order_category,'')='' ")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_kind, customer_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_provider ON orders(provider_kind, provider_actor_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status, created_at)")
@@ -985,8 +931,6 @@ def _migrate(conn):
     _icols2 = [r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()]
     if "track_stock" not in _icols2:
         conn.execute("ALTER TABLE items ADD COLUMN track_stock INTEGER DEFAULT 0")
-    if "stock_type" not in _icols2:
-        conn.execute("ALTER TABLE items ADD COLUMN stock_type TEXT DEFAULT 'ready_food'")
     if "stock_qty" not in _icols2:
         conn.execute("ALTER TABLE items ADD COLUMN stock_qty REAL DEFAULT 0")
     conn.execute(
@@ -1011,54 +955,6 @@ def _migrate(conn):
     _smcols = [r["name"] for r in conn.execute("PRAGMA table_info(stock_moves)").fetchall()]
     if "cost" not in _smcols:
         conn.execute("ALTER TABLE stock_moves ADD COLUMN cost INTEGER DEFAULT 0")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS production_batches("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,ready_item_id INTEGER NOT NULL,"
-        "qty REAL NOT NULL,total_cost INTEGER DEFAULT 0,unit_cost INTEGER DEFAULT 0,note TEXT DEFAULT '',user_id INTEGER,created_at INTEGER NOT NULL)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS production_inputs("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,qty REAL NOT NULL,"
-        "unit_cost INTEGER DEFAULT 0,total_cost INTEGER DEFAULT 0)")
-    _pbcols = [r["name"] for r in conn.execute("PRAGMA table_info(production_batches)").fetchall()]
-    if "total_cost" not in _pbcols:
-        conn.execute("ALTER TABLE production_batches ADD COLUMN total_cost INTEGER DEFAULT 0")
-    if "unit_cost" not in _pbcols:
-        conn.execute("ALTER TABLE production_batches ADD COLUMN unit_cost INTEGER DEFAULT 0")
-    _picols = [r["name"] for r in conn.execute("PRAGMA table_info(production_inputs)").fetchall()]
-    if "unit_cost" not in _picols:
-        conn.execute("ALTER TABLE production_inputs ADD COLUMN unit_cost INTEGER DEFAULT 0")
-    if "total_cost" not in _picols:
-        conn.execute("ALTER TABLE production_inputs ADD COLUMN total_cost INTEGER DEFAULT 0")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS stock_batches("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,"
-        "qty_in REAL NOT NULL,qty_remaining REAL NOT NULL,unit_cost INTEGER NOT NULL DEFAULT 0,"
-        "source_move_id INTEGER,created_at INTEGER NOT NULL)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS stock_batch_consumptions("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,item_id INTEGER NOT NULL,"
-        "qty REAL NOT NULL,unit_cost INTEGER NOT NULL DEFAULT 0,total_cost INTEGER NOT NULL DEFAULT 0,"
-        "source_type TEXT DEFAULT '',source_id INTEGER,created_at INTEGER NOT NULL)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_batches_fifo ON stock_batches(business_id,item_id,created_at,id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_stock_consumption_source ON stock_batch_consumptions(source_type,source_id,id)")
-    if "fifo_initialized" not in _icols3:
-        conn.execute("ALTER TABLE items ADD COLUMN fifo_initialized INTEGER DEFAULT 0")
-    import time as _time
-    _fifo_now = int(_time.time())
-    for _fi in conn.execute("SELECT id,business_id,stock_qty,cost_price FROM items WHERE COALESCE(fifo_initialized,0)=0").fetchall():
-        _fq = float(_fi["stock_qty"] or 0)
-        if _fq > 0:
-            conn.execute("INSERT INTO stock_batches(business_id,item_id,qty_in,qty_remaining,unit_cost,source_move_id,created_at) VALUES(?,?,?,?,?,NULL,?)",
-                         (_fi["business_id"], _fi["id"], _fq, _fq, int(_fi["cost_price"] or 0), _fifo_now))
-        conn.execute("UPDATE items SET fifo_initialized=1 WHERE id=?", (_fi["id"],))
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_production_batches_biz ON production_batches(business_id,created_at)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_production_inputs_batch ON production_inputs(batch_id,id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS item_recipes("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,ready_item_id INTEGER NOT NULL,"
-        "ingredient_item_id INTEGER NOT NULL,qty_per_unit REAL NOT NULL,updated_at INTEGER NOT NULL,"
-        "UNIQUE(business_id,ready_item_id,ingredient_item_id))")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_item_recipes_ready ON item_recipes(business_id,ready_item_id,id)")
 
     # --- v1408: KASSA — savdo daftari ---
     conn.execute(
@@ -1085,8 +981,6 @@ def _migrate(conn):
     _scols = [r["name"] for r in conn.execute("PRAGMA table_info(sales)").fetchall()]
     if "chek_no" not in _scols:
         conn.execute("ALTER TABLE sales ADD COLUMN chek_no INTEGER")
-    if "cost_total" not in _scols:
-        conn.execute("ALTER TABLE sales ADD COLUMN cost_total INTEGER DEFAULT 0")
 
     # --- v1414: XARAJATLAR ---
     conn.execute(
@@ -1438,180 +1332,3 @@ def _migrate(conn):
         conn.execute(
             "INSERT INTO app_meta(key,value) VALUES('search_fts_version',?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (fts_version,))
-
-    # --- v1540: Umumiy ovqatlanish — zal rejasidagi stol va xonalar ---
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS dining_places("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "business_id INTEGER NOT NULL, "
-        "kind TEXT NOT NULL CHECK(kind IN ('table','room')), "
-        "name TEXT NOT NULL, "
-        "seats INTEGER DEFAULT 0, "
-        "x REAL NOT NULL DEFAULT 4, "
-        "y REAL NOT NULL DEFAULT 4, "
-        "locked INTEGER NOT NULL DEFAULT 1, "
-        "created_at INTEGER NOT NULL, "
-        "updated_at INTEGER NOT NULL)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_places_biz ON dining_places(business_id, id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS dining_bookings("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, place_id INTEGER NOT NULL, "
-        "kind TEXT NOT NULL CHECK(kind IN ('order','booking')), customer_name TEXT DEFAULT '', "
-        "phone TEXT DEFAULT '', booking_date TEXT DEFAULT '', booking_time TEXT DEFAULT '', "
-        "guests INTEGER DEFAULT 0, note TEXT DEFAULT '', total INTEGER DEFAULT 0, "
-        "waiter_staff_id INTEGER, waiter_name TEXT DEFAULT '', problem_open INTEGER DEFAULT 0, "
-        "problem_reason TEXT DEFAULT '', problem_note TEXT DEFAULT '', problem_opened_at INTEGER DEFAULT 0, "
-        "kitchen_status TEXT DEFAULT 'new', payment_status TEXT DEFAULT 'open', "
-        "status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)")
-    _dbc = [r["name"] for r in conn.execute("PRAGMA table_info(dining_bookings)").fetchall()]
-    for _name, _sql in (
-        ("waiter_staff_id", "ALTER TABLE dining_bookings ADD COLUMN waiter_staff_id INTEGER"),
-        ("waiter_name", "ALTER TABLE dining_bookings ADD COLUMN waiter_name TEXT DEFAULT ''"),
-        ("problem_open", "ALTER TABLE dining_bookings ADD COLUMN problem_open INTEGER DEFAULT 0"),
-        ("problem_reason", "ALTER TABLE dining_bookings ADD COLUMN problem_reason TEXT DEFAULT ''"),
-        ("problem_note", "ALTER TABLE dining_bookings ADD COLUMN problem_note TEXT DEFAULT ''"),
-        ("problem_opened_at", "ALTER TABLE dining_bookings ADD COLUMN problem_opened_at INTEGER DEFAULT 0"),
-        ("pay_type", "ALTER TABLE dining_bookings ADD COLUMN pay_type TEXT DEFAULT ''"),
-        ("debtor_id", "ALTER TABLE dining_bookings ADD COLUMN debtor_id INTEGER"),
-        ("qarz_tx_id", "ALTER TABLE dining_bookings ADD COLUMN qarz_tx_id INTEGER"),
-        ("kitchen_status", "ALTER TABLE dining_bookings ADD COLUMN kitchen_status TEXT DEFAULT 'new'"),
-        ("payment_status", "ALTER TABLE dining_bookings ADD COLUMN payment_status TEXT DEFAULT 'open'"),
-    ):
-        if _name not in _dbc:
-            conn.execute(_sql)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_bookings_place ON dining_bookings(business_id,place_id,status,id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS dining_booking_items("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id INTEGER NOT NULL, item_id INTEGER, "
-        "name TEXT NOT NULL, qty REAL NOT NULL DEFAULT 1, unit TEXT DEFAULT '', price INTEGER DEFAULT 0, total INTEGER DEFAULT 0)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_dining_booking_items ON dining_booking_items(booking_id,id)")
-
-    # --- v1573: Ta'lim faoliyati — kurs guruhlari ---
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_groups("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, "
-        "name TEXT NOT NULL, course_item_id INTEGER, teacher_name TEXT DEFAULT '', "
-        "room_name TEXT DEFAULT '', capacity INTEGER NOT NULL DEFAULT 0, "
-        "weekdays TEXT DEFAULT '', lesson_from TEXT DEFAULT '', lesson_to TEXT DEFAULT '', "
-        "start_date TEXT DEFAULT '', end_date TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active', "
-        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_groups_biz ON education_groups(business_id,status,id)")
-    _egcols = [r["name"] for r in conn.execute("PRAGMA table_info(education_groups)").fetchall()]
-    for _name, _sql in (
-        ("billing_type", "ALTER TABLE education_groups ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'monthly'"),
-        ("package_lessons", "ALTER TABLE education_groups ADD COLUMN package_lessons INTEGER NOT NULL DEFAULT 0"),
-        ("package_price", "ALTER TABLE education_groups ADD COLUMN package_price INTEGER NOT NULL DEFAULT 0"),
-    ):
-        if _name not in _egcols:
-            conn.execute(_sql)
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_students("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER, "
-        "full_name TEXT NOT NULL, phone TEXT DEFAULT '', parent_name TEXT DEFAULT '', "
-        "parent_phone TEXT DEFAULT '', birth_date TEXT DEFAULT '', joined_date TEXT DEFAULT '', "
-        "note TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active', "
-        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_students_biz ON education_students(business_id,status,group_id,id)")
-    _escols = [r["name"] for r in conn.execute("PRAGMA table_info(education_students)").fetchall()]
-    if "monthly_fee" not in _escols:
-        conn.execute("ALTER TABLE education_students ADD COLUMN monthly_fee INTEGER NOT NULL DEFAULT 0")
-    if "user_id" not in _escols:
-        conn.execute("ALTER TABLE education_students ADD COLUMN user_id INTEGER")
-    if "payment_start_date" not in _escols:
-        conn.execute("ALTER TABLE education_students ADD COLUMN payment_start_date TEXT DEFAULT ''")
-    if "lesson_package_override" not in _escols:
-        conn.execute("ALTER TABLE education_students ADD COLUMN lesson_package_override INTEGER NOT NULL DEFAULT 0")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_student_group_history("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,student_id INTEGER NOT NULL,"
-        "group_id INTEGER NOT NULL,started_date TEXT NOT NULL,ended_date TEXT DEFAULT '',"
-        "note TEXT DEFAULT '',created_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_student_group_history ON education_student_group_history(business_id,student_id,started_date,id)")
-    conn.execute(
-        """INSERT INTO education_student_group_history(business_id,student_id,group_id,started_date,ended_date,note,created_at)
-           SELECT s.business_id,s.id,s.group_id,
-                  CASE WHEN length(COALESCE(s.joined_date,''))=10 THEN s.joined_date ELSE date('now','+5 hours') END,
-                  '','Boshlang''ich guruh',CAST(strftime('%s','now') AS INTEGER)
-           FROM education_students s WHERE s.group_id IS NOT NULL
-             AND NOT EXISTS(SELECT 1 FROM education_student_group_history h WHERE h.business_id=s.business_id AND h.student_id=s.id)"""
-    )
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_attendance("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, group_id INTEGER NOT NULL, "
-        "student_id INTEGER NOT NULL, lesson_date TEXT NOT NULL, "
-        "attendance_status TEXT NOT NULL DEFAULT 'present', note TEXT DEFAULT '', "
-        "created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, "
-        "UNIQUE(business_id,group_id,student_id,lesson_date))"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_attendance_day ON education_attendance(business_id,lesson_date,group_id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_payments("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, student_id INTEGER NOT NULL, "
-        "payment_month TEXT NOT NULL, amount INTEGER NOT NULL, pay_type TEXT NOT NULL DEFAULT 'naqd', "
-        "note TEXT DEFAULT '', sale_id INTEGER, created_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_payments_student ON education_payments(business_id,student_id,payment_month,id)")
-    _epcols = [r["name"] for r in conn.execute("PRAGMA table_info(education_payments)").fetchall()]
-    for _name, _definition in (("voided_at", "INTEGER NOT NULL DEFAULT 0"), ("voided_by", "INTEGER"), ("void_reason", "TEXT DEFAULT ''")):
-        if _name not in _epcols:
-            conn.execute("ALTER TABLE education_payments ADD COLUMN %s %s" % (_name, _definition))
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_teachers("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, business_id INTEGER NOT NULL, full_name TEXT NOT NULL, "
-        "phone TEXT DEFAULT '', specialty TEXT DEFAULT '', hired_date TEXT DEFAULT '', "
-        "salary_type TEXT NOT NULL DEFAULT 'monthly', salary_amount INTEGER NOT NULL DEFAULT 0, "
-        "note TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_teachers_biz ON education_teachers(business_id,status,id)")
-    _egcols2 = [r["name"] for r in conn.execute("PRAGMA table_info(education_groups)").fetchall()]
-    if "teacher_id" not in _egcols2:
-        conn.execute("ALTER TABLE education_groups ADD COLUMN teacher_id INTEGER")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_exams("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,group_id INTEGER NOT NULL,"
-        "title TEXT NOT NULL,exam_date TEXT NOT NULL,max_score REAL NOT NULL DEFAULT 100,note TEXT DEFAULT '',"
-        "status TEXT NOT NULL DEFAULT 'active',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_exams_biz ON education_exams(business_id,status,exam_date,id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_exam_results("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,exam_id INTEGER NOT NULL,student_id INTEGER NOT NULL,"
-        "score REAL NOT NULL DEFAULT 0,note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,"
-        "UNIQUE(business_id,exam_id,student_id))"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_exam_results ON education_exam_results(business_id,exam_id,student_id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_enrollments("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,course_item_id INTEGER NOT NULL,"
-        "user_id INTEGER NOT NULL,customer_name TEXT NOT NULL,phone TEXT DEFAULT '',note TEXT DEFAULT '',"
-        "status TEXT NOT NULL DEFAULT 'new',group_id INTEGER,student_id INTEGER,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_enrollments_biz ON education_enrollments(business_id,status,id)")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS education_teacher_payments("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,teacher_id INTEGER NOT NULL,"
-        "payment_month TEXT NOT NULL,amount INTEGER NOT NULL,pay_type TEXT NOT NULL DEFAULT 'naqd',"
-        "note TEXT DEFAULT '',expense_id INTEGER,created_at INTEGER NOT NULL)"
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_education_teacher_payments ON education_teacher_payments(business_id,teacher_id,payment_month,id)")
-    # --- Tibbiyot: xizmat-shifokor va yagona onlayn/oflayn navbat ---
-    conn.execute("CREATE TABLE IF NOT EXISTS medical_doctor_services(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,item_id INTEGER NOT NULL,active INTEGER NOT NULL DEFAULT 1,UNIQUE(business_id,staff_id,item_id))")
-    _mdscols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_doctor_services)").fetchall()]
-    if "duration_minutes" not in _mdscols:
-        conn.execute("ALTER TABLE medical_doctor_services ADD COLUMN duration_minutes INTEGER NOT NULL DEFAULT 20")
-    conn.execute("CREATE TABLE IF NOT EXISTS medical_doctors(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,specialty TEXT DEFAULT '',experience_years INTEGER NOT NULL DEFAULT 0,qualification TEXT DEFAULT '',work_days TEXT DEFAULT '1,2,3,4,5,6',work_start TEXT DEFAULT '08:00',work_end TEXT DEFAULT '17:00',avg_minutes INTEGER NOT NULL DEFAULT 20,room TEXT DEFAULT '',bio TEXT DEFAULT '',status TEXT NOT NULL DEFAULT 'active',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,staff_id))")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_doctors ON medical_doctors(business_id,status,staff_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_doctor_services ON medical_doctor_services(business_id,item_id,staff_id)")
-    conn.execute("CREATE TABLE IF NOT EXISTS medical_queue(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,user_id INTEGER,patient_name TEXT NOT NULL,phone TEXT DEFAULT '',queue_date TEXT NOT NULL,queue_no INTEGER NOT NULL,queue_code TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'online',status TEXT NOT NULL DEFAULT 'waiting',note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,item_id,staff_id,queue_date,queue_no))")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_day ON medical_queue(business_id,queue_date,staff_id,item_id,queue_no)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_service_day ON medical_queue(business_id,item_id,queue_date,status)")
-    conn.execute("CREATE TABLE IF NOT EXISTS medical_queue_history(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,queue_id INTEGER NOT NULL,action TEXT NOT NULL,old_value TEXT DEFAULT '',new_value TEXT DEFAULT '',actor_user_id INTEGER,actor_staff_id INTEGER,note TEXT DEFAULT '',created_at INTEGER NOT NULL)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_history ON medical_queue_history(business_id,queue_id,id)")
-    # Avvaldan shifokor biriktirilgan tibbiy xizmatlarning ishlashi uzilmasin.
-    conn.execute("""UPDATE items SET queue_enabled=1
-                    WHERE kind='service'
-                      AND business_id IN (SELECT id FROM businesses WHERE yon='Tibbiy xizmatlar')
-                      AND id IN (SELECT item_id FROM medical_doctor_services WHERE active=1)""")
