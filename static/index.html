@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1539 -->
+<title>Platforma</title><!-- BUILD: v1545 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +33,8 @@
     --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.4);
     --shadow-lg:0 16px 44px rgba(0,0,0,.55);
   }
+  .dining-wrap{padding:4px 0 18px}.dining-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}.dining-add{width:44px;height:44px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);font-size:28px;line-height:1;box-shadow:var(--shadow);cursor:pointer}.dining-plan{position:relative;min-height:560px;border:2px dashed var(--line);border-radius:18px;background-color:var(--card);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;overflow:hidden;touch-action:none}.dining-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--soft);pointer-events:none}.dining-place{position:absolute;width:92px;min-height:70px;border:2px solid var(--primary);border-radius:15px;background:var(--card);box-shadow:var(--shadow);padding:10px 24px 8px 8px;text-align:center;user-select:none;touch-action:none}.dining-place.room{width:118px;border-color:#8B5CF6;background:var(--primary-tint)}.dining-place.moving{outline:3px solid var(--amber);cursor:grab;z-index:4}.dining-place .dp-icon{font-size:22px}.dining-place .dp-name{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dining-place .dp-sub{font-size:11px;color:var(--soft)}.dining-place .dp-more{position:absolute;right:3px;top:3px;border:0;background:transparent;color:var(--ink);font-size:22px;width:26px;height:30px;cursor:pointer}.dining-menu{position:fixed;z-index:4100;min-width:190px;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px}.dining-menu button{width:100%;border:0;background:transparent;color:var(--ink);padding:11px 12px;text-align:left;border-radius:9px;font:600 14px var(--font-b);cursor:pointer}.dining-menu button:active{background:var(--primary-tint)}
+  .dining-wrap{padding:4px 0 18px}.dining-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}.dining-add{width:44px;height:44px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);font-size:28px;line-height:1;box-shadow:var(--shadow);cursor:pointer}.dining-plan{position:relative;min-height:560px;border:2px dashed var(--line);border-radius:18px;background-color:var(--card);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;overflow:hidden;touch-action:none}.dining-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--soft);pointer-events:none}.dining-place{position:absolute;width:78px;min-height:58px;border:2px solid var(--primary);border-radius:13px;background:var(--card);box-shadow:var(--shadow);padding:7px 20px 6px 6px;text-align:center;user-select:none;touch-action:none}.dining-place.room{width:100px;border-color:#8B5CF6;background:var(--primary-tint)}.dining-place.booking{border-color:#E6A100;background:#FFF5D6;color:#322400}.dining-place.order{border-color:#DC2626;background:#FEE2E2;color:#3B0808}.dining-place.booking .dp-sub,.dining-place.order .dp-sub{color:inherit}.dining-place.moving{outline:3px solid var(--amber);cursor:grab;z-index:4}.dining-place .dp-icon{font-size:18px}.dining-place .dp-name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dining-place .dp-sub{font-size:10px;color:var(--soft)}.dining-place .dp-more{position:absolute;right:1px;top:1px;border:0;background:transparent;color:inherit;font-size:20px;width:23px;height:27px;cursor:pointer}.dining-menu{position:fixed;z-index:4100;min-width:205px;max-height:calc(100vh - 16px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px}.dining-menu button{width:100%;border:0;background:transparent;color:var(--ink);padding:11px 12px;text-align:left;border-radius:9px;font:600 14px var(--font-b);cursor:pointer}.dining-menu button:active{background:var(--primary-tint)}.dorder-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px}.dorder-step{display:flex;align-items:center;gap:8px}.dorder-step button{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--primary-tint);color:var(--ink);font-size:20px}.dorder-step b{min-width:22px;text-align:center}.dorder-total{position:sticky;bottom:0;background:var(--bg);padding:10px 0 4px}
   [data-privileged-only]{display:none!important}
   body.is-privileged [data-privileged-only]{display:flex!important}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -817,11 +819,13 @@
         </div>
         <div class="menu-grid2">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4>Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4 id="cabItemsMenuTitle">Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="diningPlacesMenu" data-nav="cab-dining" style="display:none"><div class="menu-ic">🍽️</div><div class="menu-main"><h4>Stollar va xonalar</h4><p>Zal rejasini joylashtirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalar / Navbat</h4><p id="cabOrderHint">Kelgan buyurtma va yozilishlar</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -940,6 +944,18 @@
         <div id="itemsList"></div>
       </section>
 
+      <!-- CAB: UMUMIY OVQATLANISH — STOLLAR VA XONALAR -->
+      <section class="screen" data-screen="cab-dining">
+        <div class="dining-wrap">
+          <div class="dining-toolbar"><button class="dining-add" id="diningAdd" aria-label="Stol yoki xona qo'shish">+</button><div><b>Zal rejasi</b><div class="idesc">Belgini harakatlantirish uchun uch nuqtali menyuni oching.</div></div></div>
+          <div class="dining-plan" id="diningPlan"><div class="dining-empty" id="diningEmpty">Hozircha stol yoki xona yo'q.<br>Yuqoridagi + tugmasini bosing.</div></div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="cab-dining-order">
+        <div class="form-wrap"><div class="panel-card" style="margin-bottom:10px"><b id="dorderPlaceName">Zakaz</b><div class="idesc">Mahsulotlarni + va − orqali tanlang.</div></div><div class="item-search" style="margin-bottom:10px"><span class="ic">🔍</span><input id="dorderSearch" type="search" placeholder="Mahsulot yoki guruhni qidirish..." autocomplete="off"></div><div id="dorderItems"></div><div class="dorder-total"><div class="panel-card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Jami</b><b id="dorderTotal">0 so'm</b></div><input class="input" id="dorderCustomer" placeholder="Mijoz ismi — ixtiyoriy" style="margin-bottom:8px"><input class="input" id="dorderNote" placeholder="Izoh — ixtiyoriy" style="margin-bottom:8px"><button class="btn btn-primary btn-block" id="dorderSave">Zakazni saqlash</button></div></div>
+      </section>
+
       <!-- CAB: MAHSULOT FORMASI -->
       <section class="screen" data-screen="cab-item-form">
         <div class="form-wrap">
@@ -1045,6 +1061,9 @@
       <!-- CAB: BUYURTMALAR -->
       <section class="screen" data-screen="cab-orders">
         <div id="bizOrdersList" style="padding:6px 0"></div>
+      </section>
+      <section class="screen" data-screen="cab-service-orders">
+        <div id="bizServiceOrdersList" style="padding:6px 0"></div>
       </section>
 
       <!-- CAB: QARZ DAFTARI -->
@@ -1154,7 +1173,8 @@
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxassisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxassis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📥</div><div class="menu-main"><h4>Buyurtmalarim / Qabullarim</h4><p id="ucabOrderHint">Men bergan buyurtma va yozilishlar</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalarim</h4><p id="ucabOrderHint">Mahsulot buyurtmalarim</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalarim</h4><p id="ucabServiceOrderHint">Xizmat va qabullarim</p></div><span class="order-badge" id="ucabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-saved"><div class="menu-ic">🔖</div><div class="menu-main"><h4>Saqlanganlar</h4><p>Saqlangan e'lon va bizneslar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
@@ -1483,6 +1503,9 @@
       <!-- UCAB: BUYURTMALARIM -->
       <section class="screen" data-screen="ucab-orders">
         <div id="myOrdersList" style="padding:6px 0"></div>
+      </section>
+      <section class="screen" data-screen="ucab-service-orders">
+        <div id="myServiceOrdersList" style="padding:6px 0"></div>
       </section>
 
       <!-- UCAB: SAQLANGANLAR -->
@@ -3175,22 +3198,22 @@
   var current = "home";
   var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
-    "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar / Navbat", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
-    "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar",
+    "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
+    "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
-    "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
+    "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-service-orders":"Xizmat buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
     "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-my-docs":"Mening hujjatlarim", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
-    "cab-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
+    "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
-    "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
+    "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-service-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
     "cab-followers":"cabinet", "cab-following":"cabinet", "ucab-followers":"ucab",
     "cab-admin":"cabinet", "cab-my-docs":"cab-admin", "cab-staff":"cab-admin", "cab-staff-form":"cab-staff", "cab-tabel":"cab-staff", "cab-docs":"cab-admin", "cab-contractors":"cab-docs", "cab-contractor-form":"cab-contractors", "cab-doc-new":"cab-docs", "cab-doc-in":"cab-docs", "cab-doc-out":"cab-docs", "cab-doc-view":"cab-docs", "cab-doc-inbox":"cab-docs", "user-page":"home", "cab-report":"cabinet", "ucab-spec":"ucab", "ucab-spec-offer-form":"ucab-spec", "ucab-spec-reviews":"ucab-spec", "biz-cred":"cab-settings", help:"cab-settings", "ai-chat":"cabinet", "cat-types":"catalog", loc:"home", verify:"regform", taxidrv:"home",
-    "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa",
+    "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa", "cab-dining":"cabinet", "cab-dining-order":"cab-dining",
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
   var personBack = "home";
   var loggedIn = false;
@@ -3810,13 +3833,18 @@
     if(textId && el(textId)) el(textId).textContent = n>0 ? textWhenOn.replace("{n}", n) : textWhenOff;
   }
   function orderIsProblem(o){ return !!(o && o.problem_open); }
+  function orderIsService(o){ return !!(o && o.order_category==="service"); }
   function orderIsActive(o){ return o && !orderIsProblem(o) && ["new","accepted","preparing","tayyor","courier_assigned","courier_arrived_store","handoff_waiting_seller","in_delivery","courier_arrived_customer","delivered_waiting_customer","pickup_waiting_customer"].indexOf(o.status)>=0; }
   var ORDER_PROBLEM_REASONS={not_received:"Pul hisobga tushmadi",amount_short:"To'langan summa kam",receipt_mismatch:"Chek ma'lumoti mos kelmadi",receipt_unreadable:"Chek rasmi o'qilmaydi",wrong_receipt:"Noto'g'ri chek yuborilgan",other:"Boshqa to'lov muammosi"};
   function updateOrderBadges(){
-    var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !!o.is_unread; }).length;
-    var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !!o.is_unread; }).length;
-    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Kelgan buyurtma va yozilishlar");
-    setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Men bergan buyurtma va yozilishlar");
+    var newInbox = (ORDERS_INBOX||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
+    var newServiceInbox = (ORDERS_INBOX||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
+    var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
+    var updatesServiceMine = (ORDERS_MINE||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
+    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Mahsulot buyurtmalari");
+    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", "Xizmat va navbatlar");
+    setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Mahsulot buyurtmalarim");
+    setBadge("ucabServiceOrderBadge", updatesServiceMine, "ucabServiceOrderHint", "🔔 {n} ta xizmat yangilanishi", "Xizmat va qabullarim");
   }
   function refreshOrderBadges(){
     if(!loggedIn) return;
@@ -4485,22 +4513,19 @@
   }
 
 
-  var ordersTab = { mine:null, inbox:null }; // null = foydalanuvchi hali tanlamagan (avto)
-  function renderOrdersTabbed(list, mode, boxId){
+  var ordersTab = { mine_product:null, mine_service:null, inbox_product:null, inbox_service:null }; // null = avto
+  function renderOrdersTabbed(list, mode, boxId, category){
     var box = el(boxId); if(!box) return;
-    var tabKey = (mode==="inbox") ? "inbox" : "mine";
-    list = list || [];
-    if(!list.length){
-      box.innerHTML = '<div class="empty" style="padding:30px 16px"><h3>Buyurtmalar yo\'q</h3><p>'+(mode==="inbox"?"Biznesingizga kelgan buyurtma va yozilishlar shu yerda ko\'rinadi.":"Biznes sahifasidan buyurtma yoki navbatga yozilish yuborsangiz, shu yerda ko\'rinadi.")+'</p></div>';
-      return;
-    }
+    category = category==="service" ? "service" : "product";
+    var tabKey = ((mode==="inbox") ? "inbox_" : "mine_")+category;
+    list = (list || []).filter(function(o){return category==="service"?orderIsService(o):!orderIsService(o);});
     var problem = list.filter(orderIsProblem);
     var active = list.filter(orderIsActive);
     var done = list.filter(function(o){ return !orderIsActive(o) && !orderIsProblem(o); });
     var cur = ordersTab[tabKey];
     if(cur!=="active" && cur!=="problem" && cur!=="done"){
       // Birinchi ochilish: faol bo'lsa — Buyurtmalar, aks holda Yakunlangan
-      cur = active.length ? "active" : (problem.length ? "problem" : "done");
+      cur = active.length ? "active" : (problem.length ? "problem" : (done.length ? "done" : "active"));
     }
     var shown = cur==="done" ? done : (cur==="problem" ? problem : active);
     var uA = active.filter(function(o){return !!o.is_unread;}).length;
@@ -4517,23 +4542,27 @@
     box.querySelectorAll("[data-otab]").forEach(function(btn){
       btn.addEventListener("click", function(){
         ordersTab[tabKey] = btn.getAttribute("data-otab");
-        renderOrdersTabbed(list, mode, boxId);
+        renderOrdersTabbed(category==="service"?list.filter(orderIsService):list.filter(function(o){return !orderIsService(o);}), mode, boxId, category);
       });
     });
   }
-  function loadMyOrders(){
+  function loadMyOrders(category){
+    category=category||((current==="ucab-service-orders")?"service":"product");
+    var boxId=category==="service"?"myServiceOrdersList":"myOrdersList";
     api("GET","/api/orders/my?"+actorQuery("user")).then(function(list){
       ORDERS_MINE = list||[];
       updateOrderBadges();
-      renderOrdersTabbed(ORDERS_MINE, "mine", "myOrdersList");
-    }).catch(function(e){ el("myOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+      renderOrdersTabbed(ORDERS_MINE, "mine", boxId, category);
+    }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
-  function loadBizOrders(){
+  function loadBizOrders(category){
+    category=category||((current==="cab-service-orders")?"service":"product");
+    var boxId=category==="service"?"bizServiceOrdersList":"bizOrdersList";
     api("GET","/api/orders/inbox?"+actorQuery("business")).then(function(list){
       ORDERS_INBOX = list||[];
       updateOrderBadges();
-      renderOrdersTabbed(ORDERS_INBOX, "inbox", "bizOrdersList");
-    }).catch(function(e){ el("bizOrdersList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
+      renderOrdersTabbed(ORDERS_INBOX, "inbox", boxId, category);
+    }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function updateOrderStatus(id, status, mode){
     var atype = mode==="inbox" ? "business" : "user";
@@ -5026,8 +5055,8 @@
       var signature=(d.items||[]).map(function(n){return n.id+":"+n.action_type;}).join(",");
       if(signature!==ACTION_NOTIFY_SIGNATURE){
         ACTION_NOTIFY_SIGNATURE=signature;
-        if(activeMode==="business" && current==="cab-orders")loadBizOrders();
-        if(activeMode!=="business" && current==="ucab-orders")loadMyOrders();
+        if(activeMode==="business" && (current==="cab-orders"||current==="cab-service-orders"))loadBizOrders();
+        if(activeMode!=="business" && (current==="ucab-orders"||current==="ucab-service-orders"))loadMyOrders();
       }
       if(!items.length){hideActionNotify();return;}
       var n=items[0];
@@ -5045,8 +5074,9 @@
     activeMode=business?"business":"user";
     api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
     api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
-      if(business){ORDERS_INBOX=list||[];nav("cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox","bizOrdersList");}
-      else{ORDERS_MINE=list||[];nav("ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine","myOrdersList");}
+      var found=(list||[]).filter(function(o){return Number(o.id)===Number(n.order_id);})[0],cat=orderIsService(found)?"service":"product";
+      if(business){ORDERS_INBOX=list||[];nav(cat==="service"?"cab-service-orders":"cab-orders");renderOrdersTabbed(ORDERS_INBOX,"inbox",cat==="service"?"bizServiceOrdersList":"bizOrdersList",cat);}
+      else{ORDERS_MINE=list||[];nav(cat==="service"?"ucab-service-orders":"ucab-orders");renderOrdersTabbed(ORDERS_MINE,"mine",cat==="service"?"myServiceOrdersList":"myOrdersList",cat);}
       openOrderDetail(parseInt(n.order_id,10),mode);
     }).catch(function(e){showMsg(e.message);});
   }
@@ -8366,6 +8396,112 @@
   });
 
 
+  /* ---------- UMUMIY OVQATLANISH: STOLLAR VA XONALAR ---------- */
+  var DINING_PLACES=[];
+  function loadDiningPlaces(){
+    var plan=el("diningPlan"); if(!plan)return;
+    plan.querySelectorAll(".dining-place").forEach(function(n){n.remove();});
+    api("GET","/api/dining/places").then(function(rows){DINING_PLACES=rows||[];renderDiningPlaces();}).catch(function(e){showMsg(e.message);});
+  }
+  function renderDiningPlaces(){
+    var plan=el("diningPlan"); if(!plan)return;
+    plan.querySelectorAll(".dining-place").forEach(function(n){n.remove();});
+    if(el("diningEmpty"))el("diningEmpty").style.display=DINING_PLACES.length?"none":"flex";
+    DINING_PLACES.forEach(function(p){
+      var node=document.createElement("div");
+      node.className="dining-place "+(p.kind==="room"?"room ":"")+(p.active_kind||"")+(p.locked?"":" moving");
+      node.dataset.placeId=p.id;
+      node.style.left=(parseFloat(p.x)||0)+"%";node.style.top=(parseFloat(p.y)||0)+"%";
+      var sub=p.active_kind==="order"?"Zakaz · "+moneyText(p.total||0):p.active_kind==="booking"?"Bron · "+esc((p.booking_time||"")+" "+(p.customer_name||"")):(p.kind==="table"&&p.seats?p.seats+" joy":"Bo'sh");
+      node.innerHTML='<button class="dp-more" aria-label="Menyu">⋮</button><div class="dp-icon">'+(p.kind==="room"?'🚪':'🪑')+'</div><div class="dp-name">'+esc(p.name)+'</div><div class="dp-sub">'+sub+'</div>';
+      node.querySelector(".dp-more").onclick=function(ev){ev.stopPropagation();openDiningMenu(p,node,this);};
+      attachDiningDrag(node,p);
+      plan.appendChild(node);
+    });
+  }
+  function attachDiningDrag(node,p){
+    var active=false,dx=0,dy=0,plan=el("diningPlan");
+    node.addEventListener("pointerdown",function(ev){
+      if(p.locked||ev.target.closest("button"))return;
+      active=true;var r=node.getBoundingClientRect();dx=ev.clientX-r.left;dy=ev.clientY-r.top;
+      node.setPointerCapture(ev.pointerId);ev.preventDefault();
+    });
+    node.addEventListener("pointermove",function(ev){
+      if(!active)return;var pr=plan.getBoundingClientRect();
+      var left=Math.max(0,Math.min(pr.width-node.offsetWidth,ev.clientX-pr.left-dx));
+      var top=Math.max(0,Math.min(pr.height-node.offsetHeight,ev.clientY-pr.top-dy));
+      p.x=left/pr.width*100;p.y=top/pr.height*100;node.style.left=p.x+"%";node.style.top=p.y+"%";
+    });
+    node.addEventListener("pointerup",function(){active=false;});
+    node.addEventListener("pointercancel",function(){active=false;});
+  }
+  var DINING_MENU_AWAY=null;
+  function closeDiningMenu(){
+    var m=document.querySelector(".dining-menu");if(m)m.remove();
+    if(DINING_MENU_AWAY){document.removeEventListener("pointerdown",DINING_MENU_AWAY,true);DINING_MENU_AWAY=null;}
+  }
+  function openDiningMenu(p,node,anchor){
+    closeDiningMenu();var m=document.createElement("div");m.className="dining-menu";
+    m.innerHTML='<button data-dp-order>🛒 Zakaz qilish</button><button data-dp-book>📅 Bron qilish</button>'+(p.active_id?'<button data-dp-clear>✅ Bo\'shatish</button>':'')+'<button data-dp-move>✥ Harakatlantirish</button><button data-dp-lock>🔒 Qotirish</button><button data-dp-edit>✏️ Tahrirlash</button><button data-dp-delete style="color:#DC2626">🗑 O\'chirish</button>';
+    document.body.appendChild(m);var r=anchor.getBoundingClientRect(),mw=200;
+    m.style.left=Math.max(8,Math.min(innerWidth-mw-8,r.right-mw))+"px";m.style.top=Math.max(8,Math.min(innerHeight-m.offsetHeight-8,r.bottom+4))+"px";
+    m.querySelector("[data-dp-order]").onclick=function(){closeDiningMenu();openDiningOrder(p);};
+    m.querySelector("[data-dp-book]").onclick=function(){closeDiningMenu();openDiningBooking(p);};
+    var clearBtn=m.querySelector("[data-dp-clear]");if(clearBtn)clearBtn.onclick=function(){closeDiningMenu();askConfirm({text:p.name+" bo'shatilsinmi? Faol zakaz va bron yakunlanadi.",okText:"Bo'shatish"}).then(function(ok){if(!ok)return;api("POST","/api/dining/places/"+p.id+"/clear").then(function(){loadDiningPlaces();showMsg("Bo'shatildi ✅");}).catch(function(e){showMsg(e.message);});});};
+    m.querySelector("[data-dp-move]").onclick=function(){p.locked=0;node.classList.add("moving");closeDiningMenu();showMsg("Belgini bosib ushlab, kerakli joyga suring.");};
+    m.querySelector("[data-dp-lock]").onclick=function(){
+      p.locked=1;api("PUT","/api/dining/places/"+p.id,{x:p.x,y:p.y,locked:1}).then(function(){node.classList.remove("moving");closeDiningMenu();showMsg("Joylashuv qotirildi ✅");}).catch(function(e){showMsg(e.message);});
+    };
+    m.querySelector("[data-dp-edit]").onclick=function(){closeDiningMenu();openDiningForm(p.kind,p);};
+    m.querySelector("[data-dp-delete]").onclick=function(){closeDiningMenu();askConfirm({text:p.name+" o'chirilsinmi?",okText:"O'chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/dining/places/"+p.id).then(function(){loadDiningPlaces();showMsg("O'chirildi");}).catch(function(e){showMsg(e.message);});});};
+    setTimeout(function(){
+      DINING_MENU_AWAY=function(ev){if(!m.contains(ev.target))closeDiningMenu();};
+      document.addEventListener("pointerdown",DINING_MENU_AWAY,true);
+    },0);
+  }
+  function openDiningChoose(){
+    var back=document.createElement("div"),sheet=document.createElement("div");back.className="app-modal-back on";sheet.className="app-confirm on";
+    sheet.innerHTML='<div class="acf-title">Nima qo\'shamiz?</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0"><button class="btn btn-soft" data-dkind="table" style="height:74px;font-size:17px">🪑 Stol</button><button class="btn btn-soft" data-dkind="room" style="height:74px;font-size:17px">🚪 Xona</button></div><button class="btn btn-outline btn-block" data-cancel>Bekor qilish</button>';
+    document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}
+    back.onclick=close;sheet.querySelector("[data-cancel]").onclick=close;sheet.querySelectorAll("[data-dkind]").forEach(function(b){b.onclick=function(){var k=b.dataset.dkind;close();openDiningForm(k,null);};});
+  }
+  function openDiningForm(kind,p){
+    var back=document.createElement("div"),sheet=document.createElement("div");back.className="app-modal-back on";sheet.className="app-confirm on";
+    var isTable=kind==="table";
+    sheet.innerHTML='<div class="acf-title">'+(p?'Tahrirlash':(isTable?'Yangi stol':'Yangi xona'))+'</div><div style="text-align:left;margin:12px 2px 4px;font-size:13px;color:var(--soft)">'+(isTable?'Stol raqami yoki nomi':'Xona nomi')+'</div><input class="input" data-dname maxlength="60" value="'+esc(p?p.name:'')+'" placeholder="'+(isTable?'Masalan: Stol 1':'Masalan: VIP xona')+'">'+(isTable?'<div style="text-align:left;margin:10px 2px 4px;font-size:13px;color:var(--soft)">O\'rindiqlar soni</div><input class="input" data-dseats inputmode="numeric" value="'+(p&&p.seats?p.seats:'')+'" placeholder="4">':'')+'<div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Saqlash</button></div>';
+    document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}
+    back.onclick=close;sheet.querySelector(".acf-cancel").onclick=close;sheet.querySelector(".acf-ok").onclick=function(){
+      var name=(sheet.querySelector("[data-dname]").value||"").trim();if(!name){showMsg(isTable?"Stol nomini kiriting.":"Xona nomini kiriting.");return;}
+      var body={kind:kind,name:name,seats:isTable?(parseInt((sheet.querySelector("[data-dseats]").value||"0"),10)||0):0};
+      api(p?"PUT":"POST","/api/dining/places"+(p?"/"+p.id:""),body).then(function(){close();loadDiningPlaces();showMsg("Saqlandi ✅");}).catch(function(e){showMsg(e.message);});
+    };setTimeout(function(){sheet.querySelector("[data-dname]").focus();},60);
+  }
+  function openDiningBooking(p){
+    var back=document.createElement("div"),sheet=document.createElement("div");back.className="app-modal-back on";sheet.className="app-confirm on";
+    var today=new Date(),ymd=today.getFullYear()+"-"+("0"+(today.getMonth()+1)).slice(-2)+"-"+("0"+today.getDate()).slice(-2);
+    sheet.innerHTML='<div class="acf-title">📅 '+esc(p.name)+' — bron</div><div style="display:grid;gap:8px;margin-top:12px"><input class="input" data-bname placeholder="Mijoz ismi"><input class="input" data-bphone inputmode="tel" placeholder="Telefon raqami"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="input" data-bdate type="date" min="'+ymd+'" value="'+ymd+'"><input class="input" data-btime type="time"></div><input class="input" data-bguests inputmode="numeric" placeholder="Mehmonlar soni"><input class="input" data-bnote placeholder="Izoh — ixtiyoriy"></div><div class="acf-btns"><button class="acf-cancel">Bekor qilish</button><button class="acf-ok">Bron qilish</button></div>';
+    document.body.appendChild(back);document.body.appendChild(sheet);function close(){back.remove();sheet.remove();}back.onclick=close;sheet.querySelector(".acf-cancel").onclick=close;
+    sheet.querySelector(".acf-ok").onclick=function(){var body={customer_name:(sheet.querySelector("[data-bname]").value||"").trim(),phone:(sheet.querySelector("[data-bphone]").value||"").trim(),booking_date:sheet.querySelector("[data-bdate]").value,booking_time:sheet.querySelector("[data-btime]").value,guests:parseInt(sheet.querySelector("[data-bguests]").value||"1",10)||1,note:(sheet.querySelector("[data-bnote]").value||"").trim()};if(!body.customer_name||!body.booking_date||!body.booking_time){showMsg("Mijoz ismi, sana va vaqtni kiriting.");return;}api("POST","/api/dining/places/"+p.id+"/booking",body).then(function(){close();loadDiningPlaces();showMsg("Bron saqlandi ✅");}).catch(function(e){showMsg(e.message);});};
+  }
+  var DORDER_PLACE=null,DORDER_ROWS=[],DORDER_CART={},DORDER_QUERY="";
+  function openDiningOrder(p){DORDER_PLACE=p;DORDER_CART={};nav("cab-dining-order");}
+  function loadDiningOrder(){
+    if(!DORDER_PLACE){nav("cab-dining");return;}DORDER_QUERY="";el("dorderSearch").value="";el("dorderPlaceName").textContent=DORDER_PLACE.name+" — zakaz";el("dorderItems").innerHTML='<div class="idesc">Mahsulotlar yuklanmoqda...</div>';el("dorderCustomer").value="";el("dorderNote").value="";
+    api("GET","/api/items").then(function(rows){DORDER_ROWS=rows||[];renderDiningOrder();}).catch(function(e){el("dorderItems").innerHTML='<div class="idesc">'+esc(e.message)+'</div>';});
+  }
+  function renderDiningOrder(){
+    var box=el("dorderItems");if(!DORDER_ROWS.length){box.innerHTML='<div class="empty"><h3>Mahsulot yo\'q</h3><p>Avval Mahsulot va xizmatlar bo\'limida mahsulot qo\'shing.</p></div>';diningOrderTotal();return;}
+    var qtext=DORDER_QUERY.toLocaleLowerCase("uz").replace(/[ʻʼ‘’`]/g,"'").trim();
+    var visible=DORDER_ROWS.filter(function(it){if(!qtext)return true;var hay=[it.name,it.group_name,it.group_kind,it.kind,it.note].join(" ").toLocaleLowerCase("uz").replace(/[ʻʼ‘’`]/g,"'");return hay.indexOf(qtext)>=0;});
+    if(!visible.length){box.innerHTML='<div class="empty" style="padding:35px 16px"><h3>Topilmadi</h3><p>Boshqa nom bilan qidirib ko\'ring.</p></div>';diningOrderTotal();return;}
+    box.innerHTML=visible.map(function(it){var q=DORDER_CART[it.id]||0,price=parsePriceAmount(it.price)||0;return '<div class="dorder-row"><div><b>'+esc(it.name)+'</b>'+(it.group_name?'<div class="idesc">'+esc(it.group_name)+'</div>':'')+'<div class="idesc">'+moneyText(price)+' so\'m · '+esc(it.unit||"dona")+'</div></div><div class="dorder-step"><button data-do-minus="'+it.id+'">−</button><b>'+q+'</b><button data-do-plus="'+it.id+'">+</button></div></div>';}).join("");diningOrderTotal();
+  }
+  function diningOrderTotal(){var total=0;DORDER_ROWS.forEach(function(it){total+=(DORDER_CART[it.id]||0)*(parsePriceAmount(it.price)||0);});el("dorderTotal").textContent=moneyText(total)+" so'm";return total;}
+  if(el("dorderItems"))el("dorderItems").addEventListener("click",function(e){var plus=e.target.closest("[data-do-plus]"),minus=e.target.closest("[data-do-minus]"),id=parseInt((plus||minus)?(plus?plus.dataset.doPlus:minus.dataset.doMinus):0,10);if(!id)return;DORDER_CART[id]=Math.max(0,(DORDER_CART[id]||0)+(plus?1:-1));renderDiningOrder();});
+  if(el("dorderSearch"))el("dorderSearch").addEventListener("input",function(){DORDER_QUERY=this.value||"";renderDiningOrder();});
+  if(el("dorderSave"))el("dorderSave").addEventListener("click",function(){if(!DORDER_PLACE)return;var items=Object.keys(DORDER_CART).filter(function(id){return DORDER_CART[id]>0;}).map(function(id){return {item_id:parseInt(id,10),qty:DORDER_CART[id]};});if(!items.length){showMsg("Kamida bitta mahsulot tanlang.");return;}var btn=this;btn.disabled=true;api("POST","/api/dining/places/"+DORDER_PLACE.id+"/order",{items:items,customer_name:el("dorderCustomer").value.trim(),note:el("dorderNote").value.trim()}).then(function(){showMsg("Zakaz saqlandi ✅");nav("cab-dining");}).catch(function(e){showMsg(e.message);}).finally(function(){btn.disabled=false;});});
+  if(el("diningAdd"))el("diningAdd").addEventListener("click",openDiningChoose);
+
   function onScreenOpen(screen){
     if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
     else if(screen==="ucab-profil") loadUserProfile();
@@ -8378,6 +8514,8 @@
     else if(screen==="help") renderFaq();
     else if(screen==="ai-chat") loadAiChat();
     else if(screen==="cab-items") loadItems();
+    else if(screen==="cab-dining") loadDiningPlaces();
+    else if(screen==="cab-dining-order") loadDiningOrder();
     else if(screen==="cab-stats") loadStats();
     else if(screen==="cab-qarz") loadDebtors();
     else if(screen==="cab-ombor") loadOmbor();
@@ -8393,7 +8531,9 @@
     else if(screen==="cab-elon"){ renderMyAds("bizAdList", "business"); renderMyElons("bizElonList", "business"); }
     else if(screen==="ucab-elon"){ renderMyAds("userAdList", "user"); renderMyElons("userElonList", "user"); }
     else if(screen==="cab-orders") loadBizOrders();
+    else if(screen==="cab-service-orders") loadBizOrders("service");
     else if(screen==="ucab-orders") loadMyOrders();
+    else if(screen==="ucab-service-orders") loadMyOrders("service");
     else if(screen==="ucab-subs" || screen==="cab-following") loadFollowing(screen==="ucab-subs"?"uSubsList":"cabFollowingList", screen==="ucab-subs"?"user":"business");
     else if(screen==="ucab-followers" || screen==="cab-followers") loadFollowers(screen==="ucab-followers"?"uFollowersList":"cabFollowersList", screen==="ucab-followers"?"user":"business");
     else if(screen==="ucab-saved") loadSaved();
@@ -8454,6 +8594,10 @@
       if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
+      var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
+      if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
+      titles["cab-items"]=diningMenuName;
+      if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = b.yon==="Umumiy ovqatlanish" ? "" : "none";
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
         if(b.address){ el("cabAddr").textContent = "📍 " + b.address; el("cabAddr").style.display=""; }
@@ -9012,6 +9156,8 @@
 
   function openItemForm(data, presetGroupId, returnTo){
     itemFormReturnTo = returnTo || "cab-items";
+    // Forma qayerdan ochilgan bo'lsa, saqlamasdan orqaga bosilganda o'sha bo'limga qaytadi.
+    BACKMAP["cab-item-form"] = itemFormReturnTo;
     editItemId = data ? data.id : null;
     el("itName").value = data ? data.name : "";
     el("itPrice").value = data ? (data.price || "") : "";
@@ -9799,7 +9945,7 @@
   var STAFF_SECTIONS = {
     kassa:   { title:"Kassa", ic:"🧾", desc:"Savdo daftari va kunlik tushum", nav:"cab-kassa" },
     ombor:   { title:"Ombor", ic:"📦", desc:"Qoldiq va kirim-chiqim", nav:"cab-ombor" },
-    buyurtma:{ title:"Buyurtmalar", ic:"📥", desc:"Kelgan buyurtma va yozilishlar", nav:"cab-orders" }
+    buyurtma:{ title:"Buyurtmalar", ic:"📦", desc:"Kelgan mahsulot buyurtmalari", nav:"cab-orders" }
   };
   function showStaffLogin(){
     if(el("slErr")) el("slErr").style.display="none";
@@ -9812,7 +9958,7 @@
       STAFF_INFO = d;
       loggedIn = true;
       // Orqaga tugma xodim bo'limlaridan staff-home ga qaytsin
-      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home";
+      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home"; BACKMAP["cab-service-orders"]="staff-home";
       renderStaffHome(d);
       nav("staff-home");
     }).catch(function(){
@@ -9826,7 +9972,9 @@
     var perms = d.perms || [];
     var cards = perms.map(function(k){
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
-      return '<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+      var first='<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+      if(k!=="buyurtma")return first;
+      return first+'<div class="menu-card" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p>Xizmat va navbatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
     }).join("");
     if(!cards) cards = '<div class="item" style="display:block">Sizga hali birorta bo\'lim ruxsat etilmagan. Rahbaringizga murojaat qiling.</div>';
     el("staffHomeBody").innerHTML =
