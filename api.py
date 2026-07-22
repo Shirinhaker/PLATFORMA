@@ -24,47 +24,12 @@ import secrets
 import hashlib
 import threading
 
-from fastapi import APIRouter, Request, Response, Header, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
-
-import sqlite3
+from fastapi import APIRouter, Request, Header, HTTPException
 
 from database import db
-from district_offers import district_offers_payload, validate_media_reference
-from location_keys import canonical_district_key, safe_district_display
 from education_statistics import education_statistics_data
-from stories import (
-    MAX_VIDEO_BYTES,
-    StoryValidationError,
-    activate_story,
-    active_story,
-    can_manage_story,
-    create_story_record,
-    delete_story_files,
-    fail_story,
-    hard_delete_story,
-    list_managed_stories,
-    list_owner_stories,
-    list_story_feed,
-    list_story_viewers,
-    managed_story,
-    probe_video_seconds,
-    record_story_view,
-    report_story,
-    sniff_media_type,
-    story_storage_dir,
-    transcode_video,
-    validate_story_upload,
-)
-from subscriptions import (
-    SubscriptionValidationError,
-    activate_demo_subscription,
-    subscription_payload,
-)
-from access_config import is_privileged_tg_id, project_access_is_restricted
 
 router = APIRouter(prefix="/api")
-public_router = APIRouter()
 
 _SEARCH_RATE_LOCK = threading.Lock()
 _SEARCH_RATE = {}
@@ -247,93 +212,6 @@ def optional_user(conn, init_data):
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg["id"],)).fetchone()
 
 
-@router.get("/home/district-offers")
-async def home_district_offers(
-    response: Response,
-    x_telegram_init_data: str = Header(default=""),
-):
-    response.headers["Cache-Control"] = "private, no-store"
-    response.headers["Vary"] = "Authorization, X-Telegram-Init-Data, X-Staff-Token"
-    conn = db()
-    try:
-        me = optional_user(conn, x_telegram_init_data)
-        return district_offers_payload(conn, me["id"] if me else None)
-    finally:
-        conn.close()
-
-
-@router.post("/home/district-offers/demo-seed")
-async def seed_demo_district_offers(
-    x_telegram_init_data: str = Header(default=""),
-):
-    """Yopiq sinov davrida joriy tumanga 20 xil demo taklif yaratadi."""
-    conn = db()
-    try:
-        user = require_user(conn, x_telegram_init_data)
-        deny_staff(conn, x_telegram_init_data, "Demo takliflar")
-        if not project_access_is_restricted() or not is_privileged_tg_id(user["tg_id"]):
-            raise HTTPException(403, "Demo ma'lumot yaratishga ruxsat yo'q.")
-        district_key = (_row_val(user, "district_key", "") or "").strip()
-        district_name = (_row_val(user, "district", "") or "").strip()
-        if not district_key or not district_name:
-            raise HTTPException(400, "Avval profilingizda tumanni tanlang.")
-
-        safe_key = re.sub(r"[^a-z0-9]+", "_", district_key.lower()).strip("_")[:30]
-        product_names = (
-            "Yangi non", "Sut mahsulotlari", "Telefon aksessuari", "Uy jihozi",
-            "Bolalar kiyimi", "Avto ehtiyot qism", "Dori-darmon to'plami",
-            "Maktab anjomlari", "Qurilish materiali", "Gul va sovg'a",
-        )
-        listing_names = (
-            "Usta xizmati", "Uy ijarasi", "Ish o'rni", "Avtomobil savdosi",
-            "Yetkazib berish", "Kompyuter ta'miri", "Tikuvchilik xizmati",
-            "O'quv kursi", "Mebel buyurtmasi", "Tadbir uchun xizmat",
-        )
-        created = 0
-        for index in range(20):
-            number = index + 1
-            login = "demo_v1616_%s_%02d" % (safe_key or "district", number)
-            existing = conn.execute("SELECT id FROM users WHERE login=?", (login,)).fetchone()
-            if existing:
-                continue
-            title = product_names[index] if index < 10 else listing_names[index - 10]
-            conn.execute(
-                "INSERT INTO users(login,pass_hash,role,name,district,district_key,created_at) "
-                "VALUES(?,?,?,?,?,?,?)",
-                (login, "!demo-login-disabled!", "business", title + " egasi", district_name, district_key, int(time.time())),
-            )
-            owner_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-            conn.execute(
-                "INSERT INTO businesses(user_id,name,yon,tur,address,status,created_at) "
-                "VALUES(?,?,?,?,?,'active',?)",
-                (owner_id, title, "Savdo" if index < 10 else "Xizmatlar", "Demo", district_name, int(time.time())),
-            )
-            business_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-            if index < 10:
-                conn.execute(
-                    "INSERT INTO items(business_id,name,price,note,kind,created_at) VALUES(?,?,?,?,?,?)",
-                    (business_id, title, "%d 000 so'm" % (15 + index * 7), "Sinov mahsuloti", "product", int(time.time())),
-                )
-            else:
-                conn.execute(
-                    "INSERT INTO listings(user_id,business_id,cat,title,price,descr,address,visibility,status,created_at) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?)",
-                    (owner_id, business_id, "Xizmatlar", title, "%d 000 so'm" % (50 + (index - 10) * 25), "Sinov e'loni", district_name, "all", "active", int(time.time())),
-                )
-            conn.commit()
-            activate_demo_subscription(
-                conn, business_id, "plus" if index % 2 == 0 else "pro", 1
-            )
-            created += 1
-        count = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE login LIKE ?",
-            ("demo_v1616_%s_%%" % (safe_key or "district"),),
-        ).fetchone()[0]
-        return {"ok": True, "demo_businesses": int(count), "created": created}
-    finally:
-        conn.close()
-
-
 def resolve_actor(conn, user, actor_type="user"):
     """
     Hozirgi amal qaysi kabinet nomidan qilinyapti: oddiy user yoki biznes.
@@ -379,462 +257,6 @@ def listing_to_dict(conn, r, with_media=True):
 
 
 # ====================================================================
-# ISTORIYALAR — barcha profil turlari uchun 24 soatlik rasm/video
-# ====================================================================
-def _story_actor(conn, init_data, actor_type="user"):
-    at = (actor_type or "user").strip().lower()
-    if at not in ("user", "business"):
-        raise HTTPException(400, "Kabinet turi noto‘g‘ri.")
-    if at == "business":
-        user, biz = require_business(conn, init_data)
-        need_perm(conn, init_data, "ads")
-        return {
-            "owner_type": "business",
-            "owner_id": int(biz["id"]),
-            "created_by_user_id": int(user["id"]),
-            "user": user,
-            "business": biz,
-        }
-    if _staff_session(conn, init_data):
-        raise HTTPException(403, "Xodim shaxsiy profil nomidan istoriya joylay olmaydi.")
-    user = require_user(conn, init_data)
-    return {
-        "owner_type": "user",
-        "owner_id": int(user["id"]),
-        "created_by_user_id": int(user["id"]),
-        "user": user,
-        "business": None,
-    }
-
-
-def _story_payload(row, viewed=False):
-    sid = int(row["id"])
-    return {
-        "id": sid,
-        "owner_type": row["owner_type"],
-        "owner_id": int(row["owner_id"]),
-        "media_type": row["media_type"],
-        "media_url": "/story-media/" + str(sid),
-        "thumbnail_url": (
-            "/story-thumbnail/" + str(sid)
-            if row["thumbnail_filename"]
-            else "/story-media/" + str(sid)
-        ),
-        "caption": row["caption"] or "",
-        "duration_seconds": float(row["duration_seconds"] or 0),
-        "created_at": int(row["created_at"]),
-        "expires_at": int(row["expires_at"]),
-        "viewed": bool(viewed),
-    }
-
-
-def _managed_story_payload(row, actor_type):
-    sid = int(row["id"])
-    media_base = (
-        "/api/stories/" + str(sid) + "/owner-media?actor_type=" + actor_type
-    )
-    return {
-        "id": sid,
-        "owner_type": row["owner_type"],
-        "owner_id": int(row["owner_id"]),
-        "media_type": row["media_type"],
-        "media_url": media_base,
-        "thumbnail_url": media_base + "&thumbnail=1",
-        "caption": row["caption"] or "",
-        "duration_seconds": float(row["duration_seconds"] or 0),
-        "created_at": int(row["created_at"]),
-        "expires_at": int(row["expires_at"]),
-        "state": row["lifecycle_state"],
-        "view_count": int(row["view_count"] or 0),
-    }
-
-
-async def _stream_story_upload(upload, folder):
-    """UploadFile ni 100 MB qattiq chegarada vaqtinchalik faylga yozadi."""
-    token = secrets.token_hex(18)
-    temp_path = os.path.join(folder, ".upload_" + token)
-    total = 0
-    header = bytearray()
-    try:
-        with open(temp_path, "wb") as target:
-            while True:
-                chunk = await upload.read(1024 * 1024)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > MAX_VIDEO_BYTES:
-                    raise StoryValidationError("Video hajmi 100 MB dan oshmasin.")
-                if len(header) < 32:
-                    header.extend(chunk[: 32 - len(header)])
-                target.write(chunk)
-            target.flush()
-            os.fsync(target.fileno())
-    except Exception:
-        try:
-            if os.path.isfile(temp_path):
-                os.remove(temp_path)
-        except OSError:
-            pass
-        raise
-    if total <= 0:
-        try:
-            os.remove(temp_path)
-        except OSError:
-            pass
-        raise StoryValidationError("Istoriya fayli topilmadi.")
-    return temp_path, total, bytes(header)
-
-
-def _story_actual_mime(claimed, header):
-    actual = sniff_media_type(header)
-    claimed = (claimed or "").split(";", 1)[0].strip().lower()
-    if not actual:
-        raise StoryValidationError("Fayl media formati aniqlanmadi.")
-    if claimed.startswith("image/") and not actual.startswith("image/"):
-        raise StoryValidationError("Tanlangan fayl rasm formatiga mos emas.")
-    if claimed.startswith("video/") and not actual.startswith("video/"):
-        raise StoryValidationError("Tanlangan fayl video formatiga mos emas.")
-    return actual
-
-
-@router.get("/stories/feed")
-async def stories_feed(
-    actor_type: str = "user",
-    lat: float = None,
-    lng: float = None,
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        try:
-            actor = _story_actor(conn, x_telegram_init_data, actor_type)
-            viewer_id = int(actor["created_by_user_id"])
-            owner_type = actor["owner_type"]
-            owner_id = int(actor["owner_id"])
-            source = actor["business"] or actor["user"]
-            if lat is None:
-                lat = _row_val(source, "lat", None)
-            if lng is None:
-                lng = _row_val(source, "lng", None)
-        except HTTPException as exc:
-            if exc.status_code not in (401, 403):
-                raise
-            viewer_id = 0
-            owner_type = "user"
-            owner_id = 0
-        return list_story_feed(
-            conn,
-            viewer_user_id=viewer_id,
-            actor_type=owner_type,
-            actor_id=owner_id,
-            lat=lat,
-            lng=lng,
-        )
-    finally:
-        conn.close()
-
-
-@router.get("/stories/mine")
-async def stories_mine(
-    actor_type: str = "user",
-    state: str = "all",
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        rows = list_managed_stories(
-            conn,
-            actor["owner_type"],
-            actor["owner_id"],
-            state=state,
-        )
-        return [
-            _managed_story_payload(row, actor["owner_type"])
-            for row in rows
-        ]
-    except StoryValidationError as exc:
-        raise HTTPException(400, str(exc))
-    finally:
-        conn.close()
-
-
-@router.get("/stories/owner/{owner_type}/{owner_id}")
-async def stories_for_owner(
-    owner_type: str,
-    owner_id: int,
-    x_telegram_init_data: str = Header(default=""),
-):
-    if owner_type not in ("user", "business"):
-        raise HTTPException(400, "Profil turi noto‘g‘ri.")
-    conn = db()
-    try:
-        user = optional_user(conn, x_telegram_init_data)
-        viewer_id = int(user["id"]) if user else 0
-        rows = list_owner_stories(
-            conn, owner_type, owner_id, viewer_user_id=viewer_id
-        )
-        return [
-            _story_payload(row, viewed=bool(_row_val(row, "viewed", 0)))
-            for row in rows
-        ]
-    finally:
-        conn.close()
-
-
-@router.post("/stories")
-async def story_create(
-    file: UploadFile = File(...),
-    caption: str = Form(default=""),
-    actor_type: str = Form(default="user"),
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    story_id = None
-    temp_path = ""
-    final_media = ""
-    final_thumb = ""
-    from main import UPLOAD_DIR
-
-    folder = story_storage_dir(UPLOAD_DIR)
-    try:
-        actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        temp_path, size_bytes, header = await _stream_story_upload(file, folder)
-        actual_mime = _story_actual_mime(file.content_type, header)
-        token = secrets.token_hex(20)
-        if actual_mime.startswith("image/"):
-            extension = {
-                "image/jpeg": ".jpg",
-                "image/png": ".png",
-                "image/webp": ".webp",
-            }[actual_mime]
-            media = validate_story_upload(
-                actual_mime, size_bytes, 0, caption
-            )
-            final_media = token + extension
-            story_id = create_story_record(
-                conn, actor, media, final_media, ""
-            )
-            os.replace(temp_path, os.path.join(folder, final_media))
-            temp_path = ""
-            activate_story(conn, story_id)
-        else:
-            seconds = probe_video_seconds(temp_path)
-            media = validate_story_upload(
-                actual_mime, size_bytes, seconds, caption
-            )
-            media["mime_type"] = "video/mp4"
-            final_media = token + ".mp4"
-            final_thumb = token + ".jpg"
-            story_id = create_story_record(
-                conn, actor, media, final_media, final_thumb
-            )
-            transcode_video(
-                temp_path,
-                os.path.join(folder, final_media),
-                os.path.join(folder, final_thumb),
-            )
-            os.remove(temp_path)
-            temp_path = ""
-            activate_story(conn, story_id)
-        row = active_story(conn, story_id)
-        return {"ok": True, "story": _story_payload(row)}
-    except StoryValidationError as exc:
-        if story_id:
-            fail_story(conn, story_id)
-        delete_story_files(folder, final_media, final_thumb)
-        raise HTTPException(400, str(exc))
-    except HTTPException:
-        if story_id:
-            fail_story(conn, story_id)
-        delete_story_files(folder, final_media, final_thumb)
-        raise
-    except Exception:
-        if story_id:
-            fail_story(conn, story_id)
-        delete_story_files(folder, final_media, final_thumb)
-        raise HTTPException(500, "Istoriya joylanmadi. Qayta urinib ko‘ring.")
-    finally:
-        try:
-            await file.close()
-        except Exception:
-            pass
-        if temp_path:
-            try:
-                if os.path.isfile(temp_path):
-                    os.remove(temp_path)
-            except OSError:
-                pass
-        conn.close()
-
-
-@router.post("/stories/{story_id}/view")
-async def story_view(
-    story_id: int,
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        user = require_user(conn, x_telegram_init_data)
-        row = active_story(conn, story_id)
-        if not row:
-            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
-        if int(row["created_by_user_id"]) == int(user["id"]):
-            return {"ok": True, "counted": False}
-        record_story_view(conn, story_id, int(user["id"]))
-        return {"ok": True, "counted": True}
-    except StoryValidationError as exc:
-        raise HTTPException(404, str(exc))
-    finally:
-        conn.close()
-
-
-@router.get("/stories/{story_id}/viewers")
-async def story_viewers(
-    story_id: int,
-    actor_type: str = "user",
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        if not can_manage_story(
-            conn, story_id, actor["owner_type"], actor["owner_id"]
-        ):
-            raise HTTPException(403, "Ko‘rganlar ro‘yxati faqat istoriya egasiga ochiq.")
-        return list_story_viewers(conn, story_id)
-    finally:
-        conn.close()
-
-
-@router.delete("/stories/{story_id}")
-async def story_delete(
-    story_id: int,
-    actor_type: str = "user",
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    from main import UPLOAD_DIR
-
-    folder = story_storage_dir(UPLOAD_DIR)
-    try:
-        actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        row = managed_story(
-            conn,
-            story_id,
-            actor["owner_type"],
-            actor["owner_id"],
-        )
-        if not row:
-            raise HTTPException(
-                403,
-                "Faqat o‘zingizning istoriyangizni o‘chira olasiz.",
-            )
-        media_filename = row["media_filename"]
-        thumbnail_filename = row["thumbnail_filename"]
-        hard_delete_story(conn, story_id)
-        delete_story_files(folder, media_filename, thumbnail_filename)
-        return {"ok": True}
-    finally:
-        conn.close()
-
-
-@router.post("/stories/{story_id}/reports")
-async def story_report(
-    story_id: int,
-    body: dict,
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        user = require_user(conn, x_telegram_init_data)
-        row = active_story(conn, story_id)
-        if not row:
-            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
-        if int(row["created_by_user_id"]) == int(user["id"]):
-            raise HTTPException(400, "O‘z istoriyangiz ustidan shikoyat yubora olmaysiz.")
-        report_story(
-            conn, story_id, int(user["id"]), (body or {}).get("reason") or ""
-        )
-        return {"ok": True}
-    except StoryValidationError as exc:
-        raise HTTPException(400, str(exc))
-    finally:
-        conn.close()
-
-
-def _story_row_file_response(row, thumbnail=False):
-    filename = (
-        row["thumbnail_filename"]
-        if thumbnail and row["thumbnail_filename"]
-        else row["media_filename"]
-    )
-    if not filename or os.path.basename(filename) != filename:
-        raise HTTPException(404, "Media topilmadi.")
-    from main import UPLOAD_DIR
-
-    path = os.path.join(story_storage_dir(UPLOAD_DIR), filename)
-    if not os.path.isfile(path):
-        raise HTTPException(404, "Media topilmadi.")
-    media_type = (
-        "image/jpeg"
-        if thumbnail and row["thumbnail_filename"]
-        else row["mime_type"]
-    )
-    return FileResponse(
-        path,
-        media_type=media_type,
-        headers={"Cache-Control": "private, max-age=300"},
-    )
-
-
-def _story_file_response(story_id, thumbnail=False):
-    conn = db()
-    try:
-        row = active_story(conn, story_id)
-        if not row:
-            raise HTTPException(404, "Istoriya topilmadi yoki muddati tugagan.")
-        return _story_row_file_response(row, thumbnail=thumbnail)
-    finally:
-        conn.close()
-
-
-@router.get("/stories/{story_id}/owner-media")
-async def story_owner_media(
-    story_id: int,
-    actor_type: str = "user",
-    thumbnail: int = 0,
-    x_telegram_init_data: str = Header(default=""),
-):
-    conn = db()
-    try:
-        if thumbnail not in (0, 1):
-            raise HTTPException(400, "thumbnail 0 yoki 1 bo‘lishi kerak.")
-        actor = _story_actor(conn, x_telegram_init_data, actor_type)
-        row = managed_story(
-            conn,
-            story_id,
-            actor["owner_type"],
-            actor["owner_id"],
-        )
-        if not row:
-            raise HTTPException(403, "Bu istoriya sizga tegishli emas.")
-        return _story_row_file_response(row, thumbnail=bool(thumbnail))
-    finally:
-        conn.close()
-
-
-@public_router.get("/story-media/{story_id}")
-async def story_media(story_id: int):
-    return _story_file_response(story_id, thumbnail=False)
-
-
-@public_router.get("/story-thumbnail/{story_id}")
-async def story_thumbnail(story_id: int):
-    return _story_file_response(story_id, thumbnail=True)
-
-
-# ====================================================================
 # PROFIL
 # ====================================================================
 def _ensure_user_username(conn):
@@ -870,20 +292,7 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
     new_name = keep("name", user["name"])
     new_phone = keep("phone", user["phone"])
     new_region = keep("region", user["region"])
-    if "district" not in b:
-        new_district = user["district"]
-        new_district_key = _row_val(user, "district_key", "") or canonical_district_key(new_district)
-    elif isinstance(b["district"], str) and not b["district"].strip():
-        # Tumanni faqat foydalanuvchi aniq bo'sh qiymat yuborganda tozalaymiz.
-        new_district = ""
-        new_district_key = ""
-    else:
-        requested_district = b.get("district")
-        new_district = safe_district_display(requested_district)
-        if not new_district:
-            conn.close()
-            raise HTTPException(400, "Tuman ro'yxatdan tanlanishi kerak.")
-        new_district_key = canonical_district_key(new_district)
+    new_district = keep("district", user["district"])
     new_mahalla = keep("mahalla", user["mahalla"])
     # lat/lng: yuborilgan bo'lsa yangilanadi, yuborilmasa eskisi qoladi.
     # Bu oddiy foydalanuvchining bosh xaritadagi "Mening manzilim" markerini tiklash uchun kerak.
@@ -906,8 +315,8 @@ async def update_profile(request: Request, x_telegram_init_data: str = Header(de
                 raise HTTPException(400, "Bu username band. Boshqasini tanlang.")
         new_pubu = cand
     conn.execute(
-        "UPDATE users SET name=?, phone=?, region=?, district=?, district_key=?, mahalla=?, lat=?, lng=?, location_exact=?, pub_username=? WHERE id=?",
-        (new_name or user["name"], new_phone, new_region, new_district, new_district_key, new_mahalla, new_lat, new_lng, new_exact, new_pubu, user["id"]),
+        "UPDATE users SET name=?, phone=?, region=?, district=?, mahalla=?, lat=?, lng=?, location_exact=?, pub_username=? WHERE id=?",
+        (new_name or user["name"], new_phone, new_region, new_district, new_mahalla, new_lat, new_lng, new_exact, new_pubu, user["id"]),
     )
     conn.commit()
     conn.close()
@@ -1919,43 +1328,6 @@ def _ensure_pay_columns(conn):
         pass
 
 
-@router.get("/business/subscription")
-async def get_business_subscription(x_telegram_init_data: str = Header(default="")):
-    conn = db()
-    try:
-        deny_staff(conn, x_telegram_init_data, "Obunalarim")
-        _user, biz = require_business(conn, x_telegram_init_data)
-        return subscription_payload(conn, biz["id"])
-    finally:
-        conn.close()
-
-
-@router.post("/business/subscription/demo-activate")
-async def demo_activate_business_subscription(
-    request: Request, x_telegram_init_data: str = Header(default="")
-):
-    conn = db()
-    try:
-        deny_staff(conn, x_telegram_init_data, "Obunalarim")
-        _user, biz = require_business(conn, x_telegram_init_data)
-        try:
-            body = await request.json()
-        except Exception:
-            raise HTTPException(400, "Tarif ma'lumotlari noto'g'ri yuborildi.") from None
-        try:
-            payload = activate_demo_subscription(
-                conn,
-                biz["id"],
-                body.get("plan_code") if isinstance(body, dict) else None,
-                body.get("duration_months") if isinstance(body, dict) else None,
-            )
-        except SubscriptionValidationError as exc:
-            raise HTTPException(400, str(exc)) from None
-        return {"ok": True, **payload}
-    finally:
-        conn.close()
-
-
 @router.put("/business")
 async def update_business(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
@@ -2015,13 +1387,9 @@ async def update_business(request: Request, x_telegram_init_data: str = Header(d
         from main import reverse_geocode
         geo = await reverse_geocode(new_lat, new_lng)
         gr = (geo.get("region") or "").strip()
-        gd = safe_district_display(geo.get("district"))
-        gd_key = canonical_district_key(gd)
+        gd = (geo.get("district") or "").strip()
         if gr or gd:
-            conn.execute(
-                "UPDATE users SET region=?, district=?, district_key=?, lat=?, lng=? WHERE id=?",
-                (gr, gd, gd_key, new_lat, new_lng, user["id"]),
-            )
+            conn.execute("UPDATE users SET region=?, district=?, lat=?, lng=? WHERE id=?", (gr, gd, new_lat, new_lng, user["id"]))
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -2210,11 +1578,7 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    try:
-        photo = validate_media_reference(b.get("photo_file"))
-    except ValueError as exc:
-        conn.close()
-        raise HTTPException(400, str(exc)) from None
+    photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
     queue_enabled = _queue_item_enabled(biz, kind, b)
@@ -2248,11 +1612,7 @@ async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = 
         conn.close()
         raise HTTPException(400, "Mahsulot/xizmat nomi kiritilishi shart.")
     kind, group_id = _item_kind_and_group(conn, biz["id"], b)
-    try:
-        photo = validate_media_reference(b.get("photo_file"))
-    except ValueError as exc:
-        conn.close()
-        raise HTTPException(400, str(exc)) from None
+    photo = (b.get("photo_file") or "").strip()
     _ensure_item_min_qty(conn)
     edu = _education_item_fields(biz, b)
     queue_enabled = _queue_item_enabled(biz, kind, b)
@@ -3829,10 +3189,10 @@ def _ad_dict(row):
 def _demo_advertisements():
     """Haqiqiy reklama navbati to'lmaganda ko'rinishni sinash uchun demo bannerlar."""
     rows = [
-        ("Orzu Mebel", "Uyingiz uchun eng yaxshi tanlovlar", "/demo_ads/demo_sofa.svg", 62, 50, 1.0),
+        ("Mahalla Market", "Bugungi mahsulotlarga maxsus chegirma", "/demo_ads/demo_market.svg", 38, 50, 1.08),
         ("Samarqand Coffee", "Issiq qahva va yangi desertlar", "/demo_ads/demo_cafe.svg", 72, 52, 1.12),
         ("Smart Texnika", "Telefon va aksessuarlarga foydali taklif", "/demo_ads/demo_tech.svg", 77, 48, 1.05),
-        ("Mahalla Market", "Bugungi mahsulotlarga maxsus chegirma", "/demo_ads/demo_market.svg", 38, 50, 1.08),
+        ("Orzu Mebel", "Uyingiz uchun zamonaviy yechimlar", "/demo_ads/demo_home.svg", 78, 50, 1.10),
         ("Nafis Beauty", "Go'zalligingiz uchun yangi xizmatlar", "/demo_ads/demo_beauty.svg", 76, 50, 1.10),
     ]
     return [{
@@ -4136,28 +3496,6 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
         if b.get("visibility") == "own":
             visibility = "own"  # faqat biznes sahifasi mehmonlariga
 
-    raw_media = b.get("media") or []
-    if not isinstance(raw_media, list):
-        conn.close()
-        raise HTTPException(400, "Media ro'yxati noto'g'ri yuborildi.")
-    media_rows = []
-    try:
-        for position, media in enumerate(raw_media[:10]):
-            if not isinstance(media, dict):
-                raise ValueError("Media ma'lumoti noto'g'ri yuborildi.")
-            file_id = validate_media_reference(media.get("file_id"))
-            if file_id:
-                media_rows.append(
-                    (
-                        file_id,
-                        "video" if media.get("type") == "video" else "photo",
-                        position,
-                    )
-                )
-    except ValueError as exc:
-        conn.close()
-        raise HTTPException(400, str(exc)) from None
-
     cur = conn.execute(
         """INSERT INTO listings(user_id, business_id, cat, title, price, descr, address,
                                 lat, lng, visibility, created_at)
@@ -4167,11 +3505,13 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
          b.get("lat"), b.get("lng"), visibility, int(time.time())),
     )
     listing_id = cur.lastrowid
-    for file_id, media_type, position in media_rows:
-        conn.execute(
-            "INSERT INTO listing_media(listing_id, tg_file_id, mtype, pos) VALUES(?,?,?,?)",
-            (listing_id, file_id, media_type, position),
-        )
+    for i, m in enumerate((b.get("media") or [])[:10]):
+        fid = (m.get("file_id") or "").strip()
+        if fid:
+            conn.execute(
+                "INSERT INTO listing_media(listing_id, tg_file_id, mtype, pos) VALUES(?,?,?,?)",
+                (listing_id, fid, "video" if m.get("type") == "video" else "photo", i),
+            )
     conn.commit()
 
     # Bildirishnoma: shu e'longa mos filtri bor foydalanuvchilarga xabar
@@ -4526,9 +3866,9 @@ async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Hea
 
 
 # ====================================================================
-# XARITA (bosh ekran): faol Pro bizneslar + obunalar
+# XARITA (bosh ekran): platforma ko'rsatadiganlar + obunalar
 # ====================================================================
-def _map_business_dict(row, following=False):
+def _map_business_dict(row, source, following=False):
     """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
     return {
         "id": row["id"],
@@ -4542,6 +3882,7 @@ def _map_business_dict(row, following=False):
         "logo_zoom": float(_row_val(row, "logo_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
+        "source": source,
         "following": following,
     }
 
@@ -4555,12 +3896,14 @@ def _map_specialist_dict(row):
         "narx": row["narx"],
         "is_gov": bool(row["is_gov"]),
         "available": bool(row["available"]),
+        "district": row["district"],
         "avatar_file": _row_val(row, "avatar_file", "") or "",
         "avatar_x": float(_row_val(row, "avatar_x", 50) or 50),
         "avatar_y": float(_row_val(row, "avatar_y", 50) or 50),
         "avatar_zoom": float(_row_val(row, "avatar_zoom", 1) or 1),
         "lat": row["lat"],
         "lng": row["lng"],
+        "source": "obuna",
     }
 
 
@@ -4570,36 +3913,26 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
     Bosh sahifa xaritasi uchun obyektlar.
 
     Bu endpoint HAMMA biznesni qaytarmaydi. Faqat:
-      1) faol Pro obunasi va joylashuvi bor bizneslar;
+      1) platforma tomonidan bosh xaritada ko'rsatishga belgilangan bizneslar;
       2) joriy foydalanuvchi obuna bo'lgan, joylashuvi bor bizneslar;
       3) joriy foydalanuvchi obuna bo'lgan, ko'rinadigan va joylashuvi bor mutaxasislar.
-
-    Pro va obuna metkalari frontendda bir xil odatiy metka bilan chiziladi.
     """
     conn = db()
     user = require_user(conn, x_telegram_init_data)
 
-    # 1) Muddati tugamagan faol Pro bizneslar. Eski map_visible belgisi endi
-    # ommaviy xaritaga chiqish huquqini bermaydi.
-    pro_rows = conn.execute(
+    # 1) Platforma tomonidan ko'rsatiladigan bizneslar
+    platform_rows = conn.execute(
         """SELECT * FROM businesses
-           WHERE businesses.status='active'
-             AND businesses.lat IS NOT NULL AND businesses.lng IS NOT NULL
-             AND EXISTS(
-               SELECT 1 FROM business_subscriptions subscription
-               WHERE subscription.business_id=businesses.id
-                 AND subscription.status='active'
-                 AND subscription.plan_code='pro'
-                 AND subscription.expires_at>?
-             )
-           ORDER BY businesses.created_at DESC
-           LIMIT 200""",
-        (int(time.time()),),
+           WHERE status='active'
+             AND lat IS NOT NULL AND lng IS NOT NULL
+             AND COALESCE(map_visible, 0)=1
+           ORDER BY created_at DESC
+           LIMIT 200"""
     ).fetchall()
 
     business_map = {}
-    for b in pro_rows:
-        business_map[b["id"]] = _map_business_dict(b, following=False)
+    for b in platform_rows:
+        business_map[b["id"]] = _map_business_dict(b, "platforma", following=False)
 
     # 2) Joriy kabinet obuna bo'lgan bizneslar
     actor_ctx = resolve_actor(conn, user, "business" if (actor or "").strip().lower() == "business" else "user")
@@ -4630,14 +3963,15 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
 
     for b in followed_rows:
         if b["id"] in business_map:
+            business_map[b["id"]]["source"] = "platforma+obuna"
             business_map[b["id"]]["following"] = True
         else:
-            business_map[b["id"]] = _map_business_dict(b, following=True)
+            business_map[b["id"]] = _map_business_dict(b, "obuna", following=True)
 
     # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
     if actor_ctx["type"] == "business":
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
+            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM business_follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
@@ -4651,7 +3985,7 @@ async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="
         ).fetchall()
     else:
         specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
+            """SELECT s.*, u.name, u.district, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
                FROM follows f
                JOIN specialists s ON s.user_id=f.target_id
                JOIN users u ON u.id=s.user_id
@@ -5302,7 +4636,7 @@ def _medical_code(name):
     return letters or 'NAV'
 
 def _medical_doctor_payload(body):
-    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','mode':'slot' if body.get('mode')=='slot' else 'live','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
+    return {'staff_id':int(body.get('staff_id') or 0),'specialty':str(body.get('specialty') or '').strip()[:100],'experience_years':max(0,int(body.get('experience_years') or 0)),'qualification':str(body.get('qualification') or '').strip()[:100],'work_days':str(body.get('work_days') or '1,2,3,4,5,6')[:30],'work_start':str(body.get('work_start') or '08:00')[:5],'work_end':str(body.get('work_end') or '17:00')[:5],'avg_minutes':max(5,min(240,int(body.get('avg_minutes') or 20))),'room':str(body.get('room') or '').strip()[:50],'bio':str(body.get('bio') or '').strip()[:500],'status':'inactive' if body.get('status')=='inactive' else 'active','item_ids':[int(x) for x in body.get('item_ids',[]) if str(x).isdigit()]}
 
 @router.get("/medical/doctors")
 async def medical_doctors(x_telegram_init_data:str=Header(default="")):
@@ -5321,13 +4655,13 @@ def _medical_doctor_save_links(conn,biz_id,staff_id,item_ids,minutes):
 async def medical_doctor_add(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini biriktirish");p=_medical_doctor_payload(await request.json());staff=conn.execute("SELECT id FROM staff WHERE id=? AND business_id=? AND status='active'",(p['staff_id'],biz['id'])).fetchone()
     if not staff:conn.close();raise HTTPException(400,"Faol xodimni tanlang.")
-    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,mode,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],p['mode'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
+    now=int(time.time());cur=conn.execute("INSERT INTO medical_doctors(business_id,staff_id,specialty,experience_years,qualification,work_days,work_start,work_end,avg_minutes,room,bio,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(biz['id'],p['staff_id'],p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],now,now));_medical_doctor_save_links(conn,biz['id'],p['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True,'id':cur.lastrowid}
 
 @router.put("/medical/doctors/{doctor_id}")
 async def medical_doctor_update(doctor_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user,biz=require_business(conn,x_telegram_init_data);_require_queue_business(conn,biz['id']);deny_staff(conn,x_telegram_init_data,"Xizmat ko'rsatuvchini tahrirlash");p=_medical_doctor_payload(await request.json());old=conn.execute("SELECT * FROM medical_doctors WHERE id=? AND business_id=?",(doctor_id,biz['id'])).fetchone()
     if not old:conn.close();raise HTTPException(404,"Xizmat ko'rsatuvchi topilmadi.")
-    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,mode=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],p['mode'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
+    conn.execute("UPDATE medical_doctors SET specialty=?,experience_years=?,qualification=?,work_days=?,work_start=?,work_end=?,avg_minutes=?,room=?,bio=?,status=?,updated_at=? WHERE id=? AND business_id=?",(p['specialty'],p['experience_years'],p['qualification'],p['work_days'],p['work_start'],p['work_end'],p['avg_minutes'],p['room'],p['bio'],p['status'],int(time.time()),doctor_id,biz['id']));_medical_doctor_save_links(conn,biz['id'],old['staff_id'],p['item_ids'],p['avg_minutes']);conn.commit();conn.close();return {'ok':True}
 
 @router.get("/medical/setup")
 async def medical_setup(x_telegram_init_data: str = Header(default="")):
@@ -5352,70 +4686,19 @@ async def medical_queue_options(business_id:int,item_id:int=0,queue_date:str='',
     conn=db();_require_queue_business(conn,business_id);date=str(queue_date or time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600)))[:10]
     item=conn.execute("SELECT id FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,business_id)).fetchone()
     if not item:conn.close();raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COALESCE(d.mode,'live') AS mode,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
+    rows=conn.execute("SELECT s.id,s.name,d.specialty,d.room,d.avg_minutes,COUNT(q.id) queue_count FROM medical_doctor_services m JOIN staff s ON s.id=m.staff_id JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active' LEFT JOIN medical_queue q ON q.business_id=m.business_id AND q.staff_id=m.staff_id AND q.item_id=m.item_id AND q.queue_date=? AND q.status NOT IN ('cancelled','done') WHERE m.business_id=? AND m.item_id=? AND m.active=1 AND s.status='active' GROUP BY s.id ORDER BY queue_count,s.name",(date,business_id,item_id)).fetchall();conn.close();return [dict(r) for r in rows]
 
-def _slot_minutes(t):
-    try:
-        h,m=str(t).split(':');return int(h)*60+int(m)
-    except Exception:
-        return None
-
-def _gen_slots(work_start,work_end,step):
-    a=_slot_minutes(work_start);b=_slot_minutes(work_end);step=max(5,int(step or 20))
-    if a is None or b is None or a>=b:return []
-    out=[];t=a
-    while t+step<=b:
-        out.append('%02d:%02d'%(t//60,t%60));t+=step
-    return out
-
-def _now_minutes_uz():
-    g=time.gmtime(time.time()+5*3600);return g.tm_hour*60+g.tm_min
-
-def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note='',enforce_schedule=False,slot_time=''):
+def _medical_add_queue(conn,biz_id,item_id,staff_id,date,name,phone,source,user_id=None,note=''):
     _require_queue_business(conn,biz_id)
     item=conn.execute("SELECT name FROM items WHERE id=? AND business_id=? AND kind='service' AND queue_enabled=1",(item_id,biz_id)).fetchone()
     if not item:raise HTTPException(400,"Bu xizmat uchun navbat yoqilmagan.")
-    doctor=conn.execute("""SELECT d.work_days,d.work_start,d.work_end,d.avg_minutes,COALESCE(d.mode,'live') AS mode FROM medical_doctor_services m
+    link=conn.execute("""SELECT 1 FROM medical_doctor_services m
                          JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
                          JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
                          WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(biz_id,item_id,staff_id)).fetchone()
-    if not doctor:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
-    today=time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600))
-    if date<today:raise HTTPException(400,"O'tgan sanaga navbat olib bo'lmaydi.")
-    if enforce_schedule:
-        try:
-            wd=time.strftime('%w',time.strptime(date,'%Y-%m-%d'));wd='7' if wd=='0' else wd
-        except Exception:
-            raise HTTPException(400,"Sana noto'g'ri.")
-        work_days=[x.strip() for x in str(doctor['work_days'] or '').split(',') if x.strip()]
-        if work_days and wd not in work_days:raise HTTPException(400,"Bu kunda xizmat ko'rsatuvchi ishlamaydi.")
-    now=int(time.time());prefix=_medical_code(item['name']);mode=doctor['mode'];slot_time=str(slot_time or '').strip()
-    if mode=='slot':
-        if not re.match(r'^\d{2}:\d{2}$',slot_time):raise HTTPException(400,"Qabul vaqtini tanlang.")
-        if slot_time not in _gen_slots(doctor['work_start'],doctor['work_end'],doctor['avg_minutes']):raise HTTPException(400,"Bu vaqt qabul jadvalida yo'q.")
-        mins=_slot_minutes(slot_time)
-        if date==today and mins<=_now_minutes_uz():raise HTTPException(400,"Bu vaqt allaqachon o'tib ketgan.")
-        if user_id:
-            dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND slot_time=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id,slot_time)).fetchone()
-            if dup:raise HTTPException(400,"Bu vaqtga allaqachon yozilgansiz.")
-        code=prefix+'-'+slot_time.replace(':','')
-        try:
-            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,slot_time,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,mins,code,source,note[:200],slot_time,now,now))
-            return cur.lastrowid,code,mins
-        except sqlite3.IntegrityError:
-            raise HTTPException(409,"Bu vaqt band qilindi. Boshqa vaqt tanlang.")
-    if user_id:
-        dup=conn.execute("SELECT 1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND user_id=? AND status IN ('waiting','called','in_service') LIMIT 1",(biz_id,item_id,staff_id,date,user_id)).fetchone()
-        if dup:raise HTTPException(400,"Bu xizmatga ushbu kunga allaqachon navbatingiz bor.")
-    for _attempt in range(6):
-        no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND slot_time=''",(biz_id,item_id,staff_id,date)).fetchone()[0])
-        code=prefix+'-'+str(no).zfill(3)
-        try:
-            cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,slot_time,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,'',?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now))
-            return cur.lastrowid,code,no
-        except sqlite3.IntegrityError:
-            continue
-    raise HTTPException(409,"Navbat raqamini berishda vaqtincha xatolik. Qayta urinib ko'ring.")
+    if not link:raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
+    no=int(conn.execute("SELECT COALESCE(MAX(queue_no),0)+1 FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=?",(biz_id,item_id,staff_id,date)).fetchone()[0]);now=int(time.time());code=_medical_code(item['name'])+'-'+str(no).zfill(3)
+    cur=conn.execute("INSERT INTO medical_queue(business_id,item_id,staff_id,user_id,patient_name,phone,queue_date,queue_no,queue_code,source,status,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?, 'waiting',?,?,?)",(biz_id,item_id,staff_id,user_id,name,phone,date,no,code,source,note[:200],now,now));return cur.lastrowid,code,no
 
 def _medical_notify_user(conn,row,event,title,body,action_type):
     """Onlayn navbat hodisasini aynan oddiy foydalanuvchi profiliga yuboradi."""
@@ -5425,39 +4708,14 @@ def _medical_notify_user(conn,row,event,title,body,action_type):
                       'medical_queue:%s:%s' % (row['id'],event),title,body,
                       action_type=action_type,medical_queue_id=int(row['id']))
 
-@router.get("/medical/queue/slots")
-async def medical_queue_slots(business_id:int,item_id:int,staff_id:int,queue_date:str='',x_telegram_init_data:str=Header(default="")):
-    conn=db();_require_queue_business(conn,business_id);today=time.strftime('%Y-%m-%d',time.gmtime(time.time()+5*3600));date=str(queue_date or today)[:10]
-    doc=conn.execute("""SELECT d.work_start,d.work_end,d.avg_minutes,d.work_days,COALESCE(d.mode,'live') AS mode FROM medical_doctor_services m
-                        JOIN staff s ON s.id=m.staff_id AND s.business_id=m.business_id AND s.status='active'
-                        JOIN medical_doctors d ON d.business_id=m.business_id AND d.staff_id=m.staff_id AND d.status='active'
-                        WHERE m.business_id=? AND m.item_id=? AND m.staff_id=? AND m.active=1""",(business_id,item_id,staff_id)).fetchone()
-    if not doc:conn.close();raise HTTPException(400,"Xizmat ko'rsatuvchi hali biriktirilmagan.")
-    if doc['mode']!='slot':conn.close();return {'mode':'live','slots':[]}
-    if not re.match(r'^\d{4}-\d{2}-\d{2}$',date):conn.close();raise HTTPException(400,"Sana noto'g'ri.")
-    try:
-        wd=time.strftime('%w',time.strptime(date,'%Y-%m-%d'));wd='7' if wd=='0' else wd
-    except Exception:
-        conn.close();raise HTTPException(400,"Sana noto'g'ri.")
-    work_days=[x.strip() for x in str(doc['work_days'] or '').split(',') if x.strip()]
-    if work_days and wd not in work_days:conn.close();return {'mode':'slot','slots':[]}
-    taken=set(r[0] for r in conn.execute("SELECT slot_time FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND slot_time<>'' AND status IN ('waiting','called','in_service','done')",(business_id,item_id,staff_id,date)).fetchall())
-    nowmin=_now_minutes_uz();out=[]
-    for s in _gen_slots(doc['work_start'],doc['work_end'],doc['avg_minutes']):
-        if s in taken:continue
-        if date==today and _slot_minutes(s)<=nowmin:continue
-        out.append(s)
-    conn.close();return {'mode':'slot','slots':out}
-
 @router.post("/medical/queue/public")
 async def medical_queue_public(request:Request,x_telegram_init_data:str=Header(default="")):
     conn=db();user=require_user(conn,x_telegram_init_data);body=await request.json();bid=int(body.get('business_id') or 0);iid=int(body.get('item_id') or 0);sid=int(body.get('staff_id') or 0);date=str(body.get('queue_date') or '')[:10]
     if not re.match(r'^\d{4}-\d{2}-\d{2}$',date): conn.close();raise HTTPException(400,"Sanani tanlang.")
-    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''),enforce_schedule=True,slot_time=str(body.get('slot_time') or ''))
+    qid,code,no=_medical_add_queue(conn,bid,iid,sid,date,user['name'] or 'Bemor',user['phone'] or '', 'online',user['id'],str(body.get('note') or ''))
     row=conn.execute("SELECT * FROM medical_queue WHERE id=?",(qid,)).fetchone()
-    booked_msg=code+' navbat '+date+' sanasiga'+((' soat '+str(row['slot_time'])+' ga') if row['slot_time'] else '')+' saqlandi.'
-    _medical_notify_user(conn,row,'booked','Navbat olindi',booked_msg,'medical_queue_booked')
-    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no,'slot_time':(row['slot_time'] or '')}
+    _medical_notify_user(conn,row,'booked','Navbat olindi',code+' navbat '+date+' sanasiga saqlandi.','medical_queue_booked')
+    conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
 
 @router.get("/medical/queue/mine")
 async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
@@ -5470,25 +4728,10 @@ async def medical_queue_mine(x_telegram_init_data:str=Header(default="")):
            AND a.queue_no<q.queue_no AND a.status IN ('waiting','called','in_service'))
         ELSE 0 END AS ahead_count
         ,b.yon AS business_direction
-        ,(SELECT d.avg_minutes FROM medical_doctors d WHERE d.business_id=q.business_id AND d.staff_id=q.staff_id) AS avg_minutes
         FROM medical_queue q JOIN items i ON i.id=q.item_id JOIN staff s ON s.id=q.staff_id
         JOIN businesses b ON b.id=q.business_id WHERE q.user_id=?
         ORDER BY q.queue_date DESC,q.created_at DESC,q.id DESC LIMIT 200""",(user['id'],)).fetchall()
-    out=[dict(r) for r in rows]
-    for r in out:
-        am=int(r.get('avg_minutes') or 0)
-        r['wait_minutes']=(int(r.get('ahead_count') or 0)*am) if (am>0 and r.get('status') in ('waiting','called','in_service')) else 0
-    conn.close();return out
-
-@router.post("/medical/queue/{queue_id}/cancel-mine")
-async def medical_queue_cancel_mine(queue_id:int,x_telegram_init_data:str=Header(default="")):
-    """Oddiy foydalanuvchi faqat o'zining kutilayotgan/chaqirilgan navbatini bekor qiladi."""
-    conn=db();user=require_user(conn,x_telegram_init_data)
-    row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND user_id=?",(queue_id,user['id'])).fetchone()
-    if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
-    if row['status'] not in ('waiting','called'): conn.close();raise HTTPException(400,"Bu navbatni endi bekor qilib bo'lmaydi.")
-    now=int(time.time());conn.execute("UPDATE medical_queue SET status='cancelled',updated_at=? WHERE id=?",(now,queue_id));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(row['business_id'],queue_id,'status',row['status'],'cancelled',user['id'],now))
-    conn.commit();conn.close();return {'ok':True}
+    out=[dict(r) for r in rows];conn.close();return out
 
 @router.get("/medical/queue")
 async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(default="")):
@@ -5496,7 +4739,7 @@ async def medical_queue_list(queue_date:str='',x_telegram_init_data:str=Header(d
 
 @router.post("/medical/queue/offline")
 async def medical_queue_offline(request:Request,x_telegram_init_data:str=Header(default="")):
-    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''),slot_time=str(body.get('slot_time') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
+    conn=db();user,biz=require_business(conn,x_telegram_init_data);body=await request.json();qid,code,no=_medical_add_queue(conn,biz['id'],int(body.get('item_id') or 0),int(body.get('staff_id') or 0),str(body.get('queue_date') or '')[:10],str(body.get('patient_name') or '').strip(),str(body.get('phone') or ''),'offline',None,str(body.get('note') or ''));conn.commit();conn.close();return {'ok':True,'id':qid,'queue_code':code,'queue_no':no}
 
 @router.post("/medical/queue/{queue_id}/status")
 async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data:str=Header(default="")):
@@ -5504,14 +4747,9 @@ async def medical_queue_status(queue_id:int,request:Request,x_telegram_init_data
     if status not in allowed: conn.close();raise HTTPException(400,"Navbat holati noto'g'ri.")
     row=conn.execute("SELECT * FROM medical_queue WHERE id=? AND business_id=?",(queue_id,biz['id'])).fetchone()
     if not row: conn.close();raise HTTPException(404,"Navbat topilmadi.")
-    if row['status'] in ('done','cancelled','no_show') and status in ('waiting','called','in_service'):
-        conn.close();raise HTTPException(400,"Yakunlangan navbatni qayta faollashtirib bo'lmaydi.")
     now=int(time.time());conn.execute("UPDATE medical_queue SET status=?,updated_at=? WHERE id=? AND business_id=?",(status,now,queue_id,biz['id']));conn.execute("INSERT INTO medical_queue_history(business_id,queue_id,action,old_value,new_value,actor_user_id,created_at) VALUES(?,?,?,?,?,?,?)",(biz['id'],queue_id,'status',row['status'],status,user['id'],now))
     if status=='called':
         labels=_queue_labels(biz['yon']);_medical_notify_user(conn,row,'called','Navbatingiz keldi',str(row['queue_code'])+' navbat '+labels['called_by']+' tomonidan chaqirildi.','medical_queue_called')
-        nxt=conn.execute("SELECT * FROM medical_queue WHERE business_id=? AND item_id=? AND staff_id=? AND queue_date=? AND status='waiting' AND queue_no>? ORDER BY queue_no ASC LIMIT 1",(biz['id'],row['item_id'],row['staff_id'],row['queue_date'],row['queue_no'])).fetchone()
-        if nxt and nxt['user_id']:
-            _medical_notify_user(conn,nxt,'soon:'+str(row['queue_no']),'Navbatingiz yaqinlashdi','Tayyorlaning — '+str(nxt['queue_code'])+' navbatgacha 1 kishi qoldi.','medical_queue_soon')
     elif status=='cancelled':
         _medical_notify_user(conn,row,'cancelled','Navbat bekor qilindi',str(row['queue_code'])+' navbat muassasa tomonidan bekor qilindi.','medical_queue_cancelled')
     conn.commit();conn.close();return {'ok':True}
@@ -7622,7 +6860,7 @@ def _search_quality_sql(primary_columns, q, secondary_columns=None):
         raw = raw.replace(a, "")
     words = [w for w in re.findall(r"[0-9a-z\u0400-\u04ff]+", raw) if len(w) >= 2][:12]
     if not words:
-        return "NULL", []   # ORDER BY da yakka '0' ustun raqami deb o'qiladi — NULL xavfsiz
+        return "0", []
     secondary_columns = secondary_columns or []
     pblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in primary_columns)
     sblob = " || ' ' || ".join("COALESCE(" + col + ",'')" for col in secondary_columns) or "''"
@@ -7856,30 +7094,9 @@ def check_search_health():
 
     v1535 dan beri LIKE zaxirasi faqat FTS ISTISNO tashlaganda ishlaydi. Indeks bo'sh
     bo'lsa istisno bo'lmaydi — natija jimgina 0 chiqadi. Shu holatni ushlaymiz.
-    3) Qidiruv SQL'i ishlatadigan ustunlar bazada bormi. api.py yangilanib database.py
-       eski qolsa (qisman deploy), migratsiya ustun qo'shmaydi — FTS ham, LIKE zaxira
-       ham "no such column" bilan yiqiladi va HAR BIR qidiruv 500 qaytaradi (v1600 da
-       items.stock_type bilan aynan shu bo'lgan). Shu holatni startupda aniq aytamiz.
-
     Muammolar ro'yxatini qaytaradi (bo'sh ro'yxat = hammasi joyida).
     """
     problems = []
-    required_cols = (("items", "stock_type"),)
-    conn0 = db()
-    try:
-        for tbl, col in required_cols:
-            try:
-                cols = [r[1] for r in conn0.execute("PRAGMA table_info(" + tbl + ")")]
-            except Exception as exc:
-                problems.append(tbl + " jadvali o'qilmadi: " + type(exc).__name__)
-                continue
-            if cols and col not in cols:
-                problems.append(
-                    tbl + "." + col + " ustuni YO'Q — qidiruv 500 qaytaradi. Sabab: "
-                    "database.py eski (qisman deploy). To'liq v1600 fayllarini yuklab, "
-                    "serverni qayta ishga tushiring (migratsiya ustunni o'zi qo'shadi).")
-    finally:
-        conn0.close()
     missing = _check_service_directions()
     if missing:
         problems.append("Katalogda yo'q xizmat yo'nalishi nomi: " + ", ".join(missing))
@@ -7971,33 +7188,10 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
-def _search_error_guard(fn, *args, **kwargs):
-    """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
-    qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
-    shunchaki 'Xatolik (500)' beradi va sababni hech kim ko'rmaydi."""
-    try:
-        return fn(*args, **kwargs)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        import traceback
-        print("QIDIRUV XATOSI:", type(exc).__name__, "-", exc)
-        traceback.print_exc()
-        raise HTTPException(500, "Qidiruv xatosi: " + type(exc).__name__ + ": " + str(exc)[:200])
-
-
 @router.get("/search")
 def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
-        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
-
-
-def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
-                 page: int = 1, page_size: int = 20,
-                 x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
         raise HTTPException(400, "Qidiruv so'zi kiritilmadi.")
@@ -8078,19 +7272,14 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
-        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi.
-
-        DIQQAT: koordinata bo'lmaganda '0' QAYTARMANG. ORDER BY ichida yakka '0'
-        (yoki har qanday butun son) SQLite tomonidan USTUN RAQAMI deb o'qiladi
-        ('0-ustun bo'yicha tartibla'), 17 ustunli so'rovda esa 0-ustun yo'q ->
-        '2nd ORDER BY term out of range' xatosi va butun qidiruv 500 qaytaradi.
-        'NULL' ifodasi ustun raqami emas — tartibga hech qanday ta'sir qilmaydi va
-        xavfsiz. (v1536 da xuddi shu maqsadda katta konstanta ishlatilgan.)
-        """
+        """2 km lik masofa guruhi va guruh ichidagi aniq masofa ifodasi."""
         try:
             la, lo = float(ulat), float(ulng)
         except (TypeError, ValueError):
-            return "NULL", "NULL"
+            # SQLite ORDER BY 0 ni konstanta emas, ustun raqami deb talqin qiladi
+            # va "term out of range" bilan /search ni 500 ga yiqitadi. REAL literal
+            # esa koordinatasiz holatda xavfsiz, barcha qator uchun teng konstanta.
+            return "0.0", "0.0"
         lon_scale = 111.0 * math.cos(math.radians(la))
         raw = ("(((" + alias + ".lat-(" + repr(la) + "))*111.0)*((" + alias + ".lat-(" + repr(la) + "))*111.0) + "
                "((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + ")*((" + alias + ".lng-(" + repr(lo) + "))*" + repr(lon_scale) + "))")
@@ -8428,13 +7617,6 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                    x_telegram_init_data: str = Header(default="")):
-    return _search_error_guard(
-        _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
-        x_telegram_init_data=x_telegram_init_data)
-
-
-def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
-                 x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
     `def` (async emas) — ichida sinxron sqlite ishlatiladi. FastAPI sinxron endpointni
@@ -8588,12 +7770,9 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
         (business_id,),
     ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
-    queue_total = (sum(int(_row_val(i, "today_queue_count", 0) or 0) for i in items)
-                   if _queue_direction_supported(biz["yon"]) else 0)
     result = {
         "id": biz["id"], "name": biz["name"], "yon": biz["yon"], "tur": biz["tur"],
         "queue_supported": _queue_direction_supported(biz["yon"]),
-        "queue_total": queue_total,
         "descr": biz["descr"], "phone": biz["phone"], "telegram": biz["telegram"],
         "logo_file": _row_val(biz, "logo_file", "") or "",
         "logo_x": float(_row_val(biz, "logo_x", 50) or 50), "logo_y": float(_row_val(biz, "logo_y", 50) or 50),
