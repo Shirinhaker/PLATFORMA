@@ -19,10 +19,7 @@ Jadval tuzilishi kelishilgan dizaynga mos:
 import os
 import sqlite3
 
-from location_keys import canonical_district_key
-
 DB_PATH = os.environ.get("DB_PATH", "platforma.db")
-DISTRICT_KEY_BACKFILL_MARKER = "users_district_key_backfill_v1"
 
 
 def db():
@@ -30,12 +27,10 @@ def db():
     folder = os.path.dirname(DB_PATH)
     if folder:
         os.makedirs(folder, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA busy_timeout = 30000")
     conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 
 
@@ -54,7 +49,6 @@ def init_db():
             phone         TEXT DEFAULT '',
             region        TEXT DEFAULT '',                  -- viloyat/shahar
             district      TEXT DEFAULT '',                  -- tuman
-            district_key  TEXT DEFAULT '',                  -- tuman uchun kanonik qidiruv kaliti
             mahalla       TEXT DEFAULT '',
             lat           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
             lng           REAL,                             -- foydalanuvchining bosh sahifa manzil koordinatasi
@@ -449,42 +443,8 @@ def init_db():
     conn.close()
 
 
-def ensure_user_district_keys(conn):
-    """Add, backfill once, and index the canonical key without altering labels."""
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
-    column_added = "district_key" not in columns
-    if column_added:
-        conn.execute("ALTER TABLE users ADD COLUMN district_key TEXT DEFAULT ''")
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS app_meta("
-        "key TEXT PRIMARY KEY,value TEXT NOT NULL)"
-    )
-    backfill_marker = conn.execute(
-        "SELECT value FROM app_meta WHERE key=?",
-        (DISTRICT_KEY_BACKFILL_MARKER,),
-    ).fetchone()
-    if column_added or backfill_marker is None:
-        rows = conn.execute("SELECT id,district FROM users").fetchall()
-        for row in rows:
-            conn.execute(
-                "UPDATE users SET district_key=? WHERE id=?",
-                (canonical_district_key(row[1]), row[0]),
-            )
-        conn.execute(
-            "INSERT INTO app_meta(key,value) VALUES(?,?) "
-            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-            (DISTRICT_KEY_BACKFILL_MARKER, "1"),
-        )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_district_key ON users(district_key)")
-
-
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
-    from stories import ensure_story_tables
-    from subscriptions import init_subscription_schema
-
-    ensure_story_tables(conn)
-    init_subscription_schema(conn)
     conn.execute("""CREATE TABLE IF NOT EXISTS profile_images(
         owner_kind TEXT NOT NULL, owner_id INTEGER NOT NULL, mime_type TEXT NOT NULL,
         content BLOB NOT NULL, updated_at INTEGER NOT NULL,
@@ -634,21 +594,6 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN avatar_y REAL NOT NULL DEFAULT 50")
     if "avatar_zoom" not in cols:
         conn.execute("ALTER TABLE users ADD COLUMN avatar_zoom REAL NOT NULL DEFAULT 1")
-    ensure_user_district_keys(conn)
-    # v1613: district-offer hot path counts by kind/public visibility and
-    # fetches one deterministic row by id without materializing full catalogs.
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_items_business_kind_id "
-        "ON items(business_id,kind,id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_listings_business_public_id "
-        "ON listings(business_id,status,visibility,id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_listing_media_offer_photo "
-        "ON listing_media(listing_id,mtype,pos,id)"
-    )
     # v1479: kelajakdagi Android/iOS ilovasi uchun Telegramdan mustaqil sessiyalar.
     # Bazada tokenning o'zi emas, SHA-256 xeshi saqlanadi.
     conn.execute(
@@ -1663,14 +1608,6 @@ def _migrate(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,item_id INTEGER NOT NULL,staff_id INTEGER NOT NULL,user_id INTEGER,patient_name TEXT NOT NULL,phone TEXT DEFAULT '',queue_date TEXT NOT NULL,queue_no INTEGER NOT NULL,queue_code TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'online',status TEXT NOT NULL DEFAULT 'waiting',note TEXT DEFAULT '',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,UNIQUE(business_id,item_id,staff_id,queue_date,queue_no))")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_day ON medical_queue(business_id,queue_date,staff_id,item_id,queue_no)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_service_day ON medical_queue(business_id,item_id,queue_date,status)")
-    # Vaqtli qabul (slot) rejimi: xodimда rejim, navbatда qabul vaqti. Default 'live' — eski xatti-harakat o'zgarmaydi.
-    _mdcols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_doctors)").fetchall()]
-    if "mode" not in _mdcols:
-        conn.execute("ALTER TABLE medical_doctors ADD COLUMN mode TEXT NOT NULL DEFAULT 'live'")
-    _mqcols=[r["name"] for r in conn.execute("PRAGMA table_info(medical_queue)").fetchall()]
-    if "slot_time" not in _mqcols:
-        conn.execute("ALTER TABLE medical_queue ADD COLUMN slot_time TEXT NOT NULL DEFAULT ''")
-    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_medical_queue_slot ON medical_queue(business_id,item_id,staff_id,queue_date,slot_time) WHERE slot_time<>''")
     conn.execute("CREATE TABLE IF NOT EXISTS medical_queue_history(id INTEGER PRIMARY KEY AUTOINCREMENT,business_id INTEGER NOT NULL,queue_id INTEGER NOT NULL,action TEXT NOT NULL,old_value TEXT DEFAULT '',new_value TEXT DEFAULT '',actor_user_id INTEGER,actor_staff_id INTEGER,note TEXT DEFAULT '',created_at INTEGER NOT NULL)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_medical_queue_history ON medical_queue_history(business_id,queue_id,id)")
     # Avvaldan shifokor biriktirilgan tibbiy xizmatlarning ishlashi uzilmasin.
