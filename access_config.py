@@ -23,9 +23,9 @@ def _privileged_ids():
 
 PRIVILEGED_TG_IDS = _privileged_ids()
 
-# Loyiha hamma uchun ochiq. Zarur bo'lsa vaqtincha yopish uchun Railway'da
-# PROJECT_ACCESS_RESTRICTED=1 berishning o'zi yetadi; kodni almashtirish shart emas.
-PROJECT_ACCESS_RESTRICTED = _env_flag("PROJECT_ACCESS_RESTRICTED", False)
+# Vaqtinchalik yopiq rejim. Loyiha qayta ochilganda Railway'da
+# PROJECT_ACCESS_RESTRICTED=0 berishning o'zi yetadi; kodni almashtirish shart emas.
+PROJECT_ACCESS_RESTRICTED = _env_flag("PROJECT_ACCESS_RESTRICTED", True)
 
 
 def is_privileged_tg_id(tg_id):
