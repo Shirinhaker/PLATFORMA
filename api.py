@@ -141,6 +141,15 @@ def need_perm(conn, init_data, perm):
         raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
 
 
+def need_any_perm(conn, init_data, *allowed):
+    """Xodimga sanalgan ruxsatlarning kamida bittasi kerak; egasi doim o'tadi."""
+    perms = _staff_perms_of(conn, init_data)
+    if perms is None:
+        return
+    if not any(p in perms for p in allowed):
+        raise HTTPException(403, "Bu bo'limga ruxsatingiz yo'q.")
+
+
 def follower_count(conn, kind, target_id):
     """Oddiy foydalanuvchi va biznes kabinet obunalarining jami."""
     user_count = conn.execute(
@@ -1413,6 +1422,7 @@ async def item_groups(x_telegram_init_data: str = Header(default="")):
     """Biznesning mahsulot/xizmat guruhlari ro'yxati."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     rows = conn.execute(
         "SELECT * FROM item_groups WHERE business_id=? ORDER BY created_at ASC, id ASC",
         (biz["id"],),
@@ -1426,6 +1436,7 @@ async def add_item_group(request: Request, x_telegram_init_data: str = Header(de
     """Yangi guruh qo'shadi. Guruh turi faqat yaratilganda belgilanadi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -1447,6 +1458,7 @@ async def edit_item_group(group_id: int, request: Request, x_telegram_init_data:
     """Guruhning faqat nomini o'zgartiradi. kind o'zgartirilmaydi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT * FROM item_groups WHERE id=? AND business_id=?",
         (group_id, biz["id"]),
@@ -1470,6 +1482,7 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
     """Guruhni xavfsiz o'chiradi: avval ichidagi tovarlar Guruhsizga o'tadi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT id FROM item_groups WHERE id=? AND business_id=?",
         (group_id, biz["id"]),
@@ -1488,6 +1501,7 @@ async def delete_item_group(group_id: int, x_telegram_init_data: str = Header(de
 async def my_items(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_any_perm(conn, x_telegram_init_data, "items", "dining_internal", "kitchen", "kassa", "open_accounts")
     _ensure_item_min_qty(conn)
     rows = conn.execute(
         """SELECT i.*, g.name AS group_name, g.kind AS group_kind
@@ -1510,6 +1524,7 @@ async def my_items(x_telegram_init_data: str = Header(default="")):
 async def add_item(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -1534,6 +1549,7 @@ async def add_item(request: Request, x_telegram_init_data: str = Header(default=
 async def edit_item(item_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     row = conn.execute(
         "SELECT id FROM items WHERE id=? AND business_id=?", (item_id, biz["id"])
     ).fetchone()
@@ -1564,6 +1580,7 @@ async def upload_item_image(request: Request, x_telegram_init_data: str = Header
     """Tovar rasmini yuklash. Rasm UPLOAD_DIR/items papkasiga saqlanadi va /uploads/items/... URL qaytariladi."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     conn.close()
     ctype = (request.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
     allowed = {
@@ -1598,6 +1615,7 @@ async def upload_item_image(request: Request, x_telegram_init_data: str = Header
 async def delete_item(item_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "items")
     conn.execute("DELETE FROM items WHERE id=? AND business_id=?", (item_id, biz["id"]))
     conn.commit()
     conn.close()
@@ -1981,7 +1999,7 @@ async def upload_advertisement_image(
 ):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Reklama")
+    need_perm(conn, x_telegram_init_data, "ads")
     if (actor_type or "user").lower() == "business":
         resolve_actor(conn, user, "business")
     conn.close()
@@ -2007,7 +2025,7 @@ async def upload_advertisement_image(
 async def create_advertisement(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Reklama")
+    need_perm(conn, x_telegram_init_data, "ads")
     b = await request.json()
     actor = actor_from_body(conn, user, b)
     title = str(b.get("title") or "").strip()
@@ -2071,6 +2089,7 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
 async def my_advertisements(actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "ads")
     actor = resolve_actor(conn, user, actor_type)
     if actor["type"] == "business":
         rows = conn.execute("SELECT * FROM advertisements WHERE business_id=? ORDER BY created_at DESC", (actor["business_id"],)).fetchall()
@@ -2085,7 +2104,7 @@ async def my_advertisements(actor_type: str = "user", x_telegram_init_data: str 
 async def cancel_advertisement(ad_id: int, actor_type: str = "user", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Reklama")
+    need_perm(conn, x_telegram_init_data, "ads")
     actor = resolve_actor(conn, user, actor_type)
     now = int(time.time())
     if actor["type"] == "business":
@@ -2182,7 +2201,7 @@ async def upload_listing_media(request: Request, actor_type: str = "user",
     """E'lon rasmi yoki videosini qurilmadan bevosita serverga yuklaydi."""
     conn = db()
     user = require_user(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "E'lon mediasi")
+    need_perm(conn, x_telegram_init_data, "ads")
     resolve_actor(conn, user, actor_type)
     conn.close()
 
@@ -3203,7 +3222,14 @@ def _professions(conn, biz_id):
     return out
 
 
-_STAFF_PERM_KEYS = ("kassa", "ombor", "buyurtma")
+_STAFF_PERM_KEYS = (
+    "items", "buyurtma", "service_orders", "kassa", "ombor", "expenses", "debts",
+    "statistics", "chats", "notifications", "reviews", "ads", "documents", "reports",
+    # Umumiy ovqatlanish uchun yo'nalishli ruxsatlar
+    "dining_places", "dining_internal", "dining_external", "kitchen", "ready_food",
+    "raw_stock", "recipes", "production", "open_accounts", "payment_review",
+    "payment_confirm", "payment_problems",
+)
 
 
 def _perms_parse(raw):
@@ -3319,7 +3345,8 @@ async def staff_list(x_telegram_init_data: str = Header(default="")):
     conn.close()
     return {"active": active, "fired": fired,
             "active_count": len(active), "fired_count": len(fired),
-            "total_salary": total_salary, "firm_login": firm_login}
+            "total_salary": total_salary, "firm_login": firm_login,
+            "business_direction": (biz["yon"] or "")}
 
 
 @router.post("/staff")
@@ -3746,6 +3773,7 @@ def _doc_dict(r, contr_name=""):
 async def documents_list(direction: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     if direction in _DOC_DIRECTIONS:
         rows = conn.execute("SELECT * FROM documents WHERE business_id=? AND direction=? ORDER BY id DESC",
@@ -3767,6 +3795,7 @@ async def documents_list(direction: str = "", x_telegram_init_data: str = Header
 async def document_get(doc_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     r = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -3802,7 +3831,7 @@ def _doc_fields(b):
 async def document_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     f = _doc_fields(body)
     if not f[6]:
@@ -3823,7 +3852,7 @@ async def document_add(body: dict, x_telegram_init_data: str = Header(default=""
 async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -3843,7 +3872,7 @@ async def document_update(doc_id: int, body: dict, x_telegram_init_data: str = H
 async def document_delete(doc_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     r = conn.execute("SELECT id FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
     if not r:
@@ -3860,7 +3889,7 @@ async def document_send(doc_id: int, body: dict, x_telegram_init_data: str = Hea
     """Chiquvchi hujjatni STIR bo'yicha boshqa firmaga yuboradi (nusxasi 'kiruvchi' bo'ladi)."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Hujjatlar")
+    need_perm(conn, x_telegram_init_data, "documents")
     _ensure_documents(conn)
     _ensure_pay_columns(conn)
     doc = conn.execute("SELECT * FROM documents WHERE id=? AND business_id=?", (doc_id, biz["id"])).fetchone()
@@ -4010,13 +4039,14 @@ async def staff_auth_login(body: dict):
     if not check_password(password, _row_val(st, "pass_hash", "") or ""):
         conn.close()
         raise HTTPException(401, "Login yoki parol noto'g'ri.")
-    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
+    biz = conn.execute("SELECT name,yon FROM businesses WHERE id=?", (st["business_id"],)).fetchone()
     token = secrets.token_urlsafe(24)
     conn.execute("INSERT INTO staff_sessions(token, staff_id, business_id, created_at) VALUES(?,?,?,?)",
                  (token, st["id"], st["business_id"], int(time.time())))
     conn.commit()
     result = {"ok": True, "token": token, "name": st["name"] or "Xodim",
               "business_name": (biz["name"] if biz else ""),
+              "business_direction": (biz["yon"] if biz else ""),
               "perms": _perms_parse(_row_val(st, "perms", "") or "")}
     conn.close()
     return result
@@ -4041,8 +4071,9 @@ async def staff_auth_me(x_staff_token: str = Header(default="")):
         conn.commit()
         conn.close()
         raise HTTPException(401, "Kirish huquqi o'chirilgan.")
-    biz = conn.execute("SELECT name FROM businesses WHERE id=?", (sess["business_id"],)).fetchone()
+    biz = conn.execute("SELECT name,yon FROM businesses WHERE id=?", (sess["business_id"],)).fetchone()
     result = {"name": st["name"] or "Xodim", "business_name": (biz["name"] if biz else ""),
+              "business_direction": (biz["yon"] if biz else ""),
               "perms": _perms_parse(_row_val(st, "perms", "") or "")}
     conn.close()
     return result
@@ -4174,7 +4205,7 @@ def _period_shift(period, anchor, direction):
 async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    deny_staff(conn, x_telegram_init_data, "Statistika")
+    need_perm(conn, x_telegram_init_data, "statistics")
     bid = biz["id"]
     start, end, label, buckets = _period_bounds(period, anchor)
     n = len(buckets)
@@ -4282,6 +4313,7 @@ async def stats(period: str = "oy", anchor: str = "", x_telegram_init_data: str 
 async def stats_nav(period: str = "oy", anchor: str = "", dir: int = -1, x_telegram_init_data: str = Header(default="")):
     conn = db()
     require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "statistics")
     conn.close()
     return {"anchor": _period_shift(period, anchor, dir)}
 
@@ -4316,6 +4348,7 @@ def _expense_add(conn, biz_id, category, amount, note, user_id, source="manual",
 async def expense_cats_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "expenses")
     cats = _expense_cats(conn, biz["id"])
     conn.close()
     return {"cats": cats, "default": _DEFAULT_EXP_CATS}
@@ -4325,6 +4358,7 @@ async def expense_cats_list(x_telegram_init_data: str = Header(default="")):
 async def expense_cats_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "expenses")
     name = (body.get("name") or "").strip()[:40]
     if not name:
         conn.close()
@@ -4343,6 +4377,7 @@ async def expense_cats_add(body: dict, x_telegram_init_data: str = Header(defaul
 async def expenses_list(day: str = "", x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "expenses")
     start, end, dstr = _day_bounds(day)
     rows = conn.execute(
         "SELECT e.*, u.name AS who FROM expenses e LEFT JOIN users u ON u.id=e.user_id "
@@ -4369,6 +4404,7 @@ async def expenses_list(day: str = "", x_telegram_init_data: str = Header(defaul
 async def expenses_add(body: dict, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "expenses")
     category = (body.get("category") or "Boshqa").strip()[:40] or "Boshqa"
     try:
         amount = int(str(body.get("amount") or "0").replace(" ", "") or 0)
@@ -4388,6 +4424,7 @@ async def expenses_add(body: dict, x_telegram_init_data: str = Header(default=""
 async def expenses_delete(expense_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "expenses")
     r = conn.execute("SELECT * FROM expenses WHERE id=? AND business_id=?", (expense_id, biz["id"])).fetchone()
     if not r:
         conn.close()
@@ -4789,6 +4826,7 @@ async def kassa_delete(sale_id: int, x_telegram_init_data: str = Header(default=
 async def qarz_list(x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "debts")
     rows = conn.execute(
         "SELECT * FROM debtors WHERE business_id=? ORDER BY created_at DESC", (biz["id"],)
     ).fetchall()
@@ -4802,6 +4840,7 @@ async def qarz_list(x_telegram_init_data: str = Header(default="")):
 async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "debts")
     b = await request.json()
     name = (b.get("name") or "").strip()
     if not name:
@@ -4834,6 +4873,7 @@ async def qarz_add_debtor(request: Request, x_telegram_init_data: str = Header(d
 async def qarz_debtor(debtor_id: int, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "debts")
     r = conn.execute(
         "SELECT * FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
     ).fetchone()
@@ -4856,6 +4896,7 @@ async def qarz_debtor(debtor_id: int, x_telegram_init_data: str = Header(default
 async def qarz_add_tx(debtor_id: int, request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
+    need_perm(conn, x_telegram_init_data, "debts")
     owns = conn.execute(
         "SELECT id FROM debtors WHERE id=? AND business_id=?", (debtor_id, biz["id"])
     ).fetchone()
@@ -7045,7 +7086,7 @@ async def inbox_orders(actor_type: str = "business", x_telegram_init_data: str =
     """Joriy kabinetga kelgan buyurtmalar."""
     conn = db()
     me = require_user(conn, x_telegram_init_data)
-    need_perm(conn, x_telegram_init_data, "buyurtma")
+    need_any_perm(conn, x_telegram_init_data, "buyurtma", "service_orders", "dining_internal", "dining_external", "kitchen")
     actor = resolve_actor(conn, me, actor_type)
     kind, actor_id, _owner = _actor_identity(actor)
     rows = conn.execute(
@@ -8078,7 +8119,7 @@ async def specialist_reviews_manage(x_telegram_init_data: str = Header(default="
 @router.get("/business/reviews")
 async def business_reviews_manage(x_telegram_init_data: str = Header(default="")):
     """Biznes egasiga o'z do'koniga yozilgan baho va fikrlarni qaytaradi."""
-    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "reviews"); _ensure_reviews(conn)
     rows = conn.execute(
         "SELECT * FROM reviews WHERE target_kind='business' AND target_id=? ORDER BY id DESC LIMIT 200",
         (biz["id"],),
@@ -8099,7 +8140,7 @@ async def business_reviews_manage(x_telegram_init_data: str = Header(default="")
 @router.put("/business/reviews/{review_id}/reply")
 async def business_review_reply(review_id: int, body: dict, x_telegram_init_data: str = Header(default="")):
     """Biznes egasi fikrni o'chirmasdan unga javob beradi yoki javobini yangilaydi."""
-    conn = db(); me, biz = require_business(conn, x_telegram_init_data); _ensure_reviews(conn)
+    conn = db(); me, biz = require_business(conn, x_telegram_init_data); need_perm(conn, x_telegram_init_data, "reviews"); _ensure_reviews(conn)
     row = conn.execute(
         "SELECT id FROM reviews WHERE id=? AND target_kind='business' AND target_id=?",
         (review_id, biz["id"]),
