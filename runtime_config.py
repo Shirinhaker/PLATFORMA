@@ -123,7 +123,7 @@ def validate_runtime_config(
     if Path(str(upload_dir)).resolve(strict=False) == Path(str(backup_dir)).resolve(strict=False):
         errors.append("UPLOAD_DIR va BACKUP_DIR alohida papkalar bo‘lishi kerak")
 
-    if env_flag("PROJECT_ACCESS_RESTRICTED", True, env) and not str(
+    if env_flag("PROJECT_ACCESS_RESTRICTED", False, env) and not str(
         env.get("PRIVILEGED_TG_IDS", "")
     ).strip():
         errors.append("yopiq rejimda PRIVILEGED_TG_IDS aniq ko‘rsatilishi kerak")
