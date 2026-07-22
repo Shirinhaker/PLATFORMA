@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Ko‘prik</title><!-- BUILD: v1620 -->
+<title>Platforma</title><!-- BUILD: v1600 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,12 +40,6 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   body{background:#cfd6d2;font-family:var(--font-b);color:var(--ink);display:flex;justify-content:center;min-height:100vh;}
   [data-theme="dark"] body{background:#050807;}
-  .project-closed{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;padding:24px;background:var(--bg);color:var(--ink);}
-  .project-closed[hidden]{display:none!important;}
-  .project-closed-card{width:min(100%,420px);padding:30px 24px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:var(--shadow-lg);text-align:center;}
-  .project-closed-icon{width:62px;height:62px;margin:0 auto 16px;border-radius:20px;display:grid;place-items:center;background:var(--primary-tint);font-size:29px;}
-  .project-closed-card h1{font:800 23px/1.25 var(--font-d);}
-  .project-closed-card p{margin-top:10px;color:var(--soft);font-size:14px;line-height:1.55;}
 
   .phone{width:100%;max-width:420px;height:100vh;height:100dvh;background:var(--bg);position:relative;display:flex;flex-direction:column;overflow:hidden;}
   @media(min-width:440px){ .phone{margin:18px 0;min-height:auto;height:calc(100vh - 36px);border-radius:30px;box-shadow:var(--shadow-lg);} }
@@ -54,77 +48,6 @@
   @media(min-width:1080px){ .phone{max-width:840px;} .order-sheet,.order-detail-sheet{max-width:840px;} }
   /* Kabinet menyusi: keng ekranda 2 ustun */
   @media(min-width:720px){ .menu-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;} .menu-grid2 .menu-card{margin:0;} }
-
-  /* v1611 — Kabinet 2 guruh: Onlaynlashtirish / Tizimlashtirish */
-  .cab-group{margin:16px 0 4px;}
-  .cab-head + .cab-group{margin-top:8px;}
-  .cab-group-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px;}
-  .cab-group-ic{width:34px;height:34px;border-radius:11px;background:var(--primary-tint);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto;}
-  .cab-group-main h3{font-size:15.5px;font-weight:800;line-height:1.2;}
-  .cab-group-main p{font-size:12px;color:var(--soft);margin-top:1px;line-height:1.35;}
-
-  /* v1612 — biznes Obunalarim */
-  .subscription-shell{padding:4px 0 26px;min-width:0;}
-  .subscription-demo-note{display:flex;gap:10px;align-items:flex-start;padding:12px 13px;border:1px solid rgba(240,162,27,.38);border-radius:15px;background:var(--amber-tint);font-size:12.5px;line-height:1.5;margin-bottom:12px;overflow-wrap:anywhere;}
-  .subscription-demo-note span{font-size:18px;line-height:1.2;flex:0 0 auto;}
-  .subscription-current{position:relative;overflow:hidden;border-radius:21px;padding:18px;background:linear-gradient(135deg,#073f3b,#0e8c84 68%,#29b4a8);color:#fff;box-shadow:0 12px 28px rgba(8,91,85,.22);min-width:0;}
-  .subscription-current:after{content:"";position:absolute;width:150px;height:150px;right:-58px;top:-72px;border-radius:50%;background:rgba(255,255,255,.1);}
-  .subscription-current-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0;}
-  .subscription-current-copy{min-width:0;}
-  .subscription-current-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.78;}
-  .subscription-current-name{font-family:var(--font-d);font-size:26px;font-weight:800;margin-top:4px;overflow-wrap:anywhere;}
-  .subscription-current-badge{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;border-radius:999px;padding:7px 10px;background:rgba(255,255,255,.16);font-size:12px;font-weight:800;}
-  .subscription-current-badge:before{content:"";width:7px;height:7px;border-radius:50%;background:#7df4c8;box-shadow:0 0 0 3px rgba(125,244,200,.17);}
-  .subscription-current-dates{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:16px;}
-  .subscription-date{min-width:0;border:1px solid rgba(255,255,255,.18);border-radius:13px;background:rgba(0,0,0,.1);padding:10px;}
-  .subscription-date span{display:block;font-size:10.5px;opacity:.72;margin-bottom:3px;}
-  .subscription-date b{display:block;font-size:12.5px;overflow-wrap:anywhere;}
-  .subscription-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:20px 2px 10px;}
-  .subscription-section-title h3{font-family:var(--font-d);font-size:16px;font-weight:800;}
-  .subscription-section-title p{font-size:11.5px;color:var(--soft);text-align:right;}
-  .subscription-duration{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:5px;border:1px solid var(--line);border-radius:15px;background:var(--card);box-shadow:var(--shadow);}
-  .subscription-duration button{min-width:0;height:40px;border:0;border-radius:11px;background:transparent;color:var(--soft);font:700 13px var(--font-b);cursor:pointer;}
-  .subscription-duration button.on{background:var(--primary);color:var(--primary-ink);box-shadow:0 5px 12px rgba(14,140,132,.2);}
-  .subscription-duration button:disabled,.subscription-action:disabled{cursor:not-allowed;opacity:.6;}
-  .subscription-plan-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0;}
-  .subscription-plan-card{position:relative;display:flex;flex-direction:column;min-width:0;border:1.5px solid var(--line);border-radius:19px;background:var(--card);padding:16px;box-shadow:var(--shadow);overflow:hidden;}
-  .subscription-plan-card.current{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,140,132,.1),var(--shadow);}
-  .subscription-plan-card[data-plan="plus"]{border-top:4px solid var(--amber);}
-  .subscription-plan-card[data-plan="pro"]{border-top:4px solid var(--primary);}
-  .subscription-plan-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
-  .subscription-plan-icon{width:42px;height:42px;border-radius:13px;background:var(--primary-tint);display:grid;place-items:center;font-size:20px;flex:0 0 auto;}
-  .subscription-plan-card[data-plan="plus"] .subscription-plan-icon{background:var(--amber-tint);}
-  .subscription-plan-name{font-family:var(--font-d);font-size:19px;font-weight:800;margin-top:1px;}
-  .subscription-plan-caption{font-size:12px;color:var(--soft);line-height:1.45;margin-top:3px;overflow-wrap:anywhere;}
-  .subscription-current-pill{display:none;border-radius:999px;padding:5px 8px;background:var(--primary-tint);color:var(--primary);font-size:10.5px;font-weight:800;flex:0 0 auto;}
-  .subscription-plan-card.current .subscription-current-pill{display:inline-flex;}
-  .subscription-benefits{display:grid;gap:8px;margin:15px 0 16px;list-style:none;}
-  .subscription-benefits li{position:relative;padding-left:23px;color:var(--ink);font-size:12.5px;line-height:1.45;overflow-wrap:anywhere;}
-  .subscription-benefits li:before{content:"✓";position:absolute;left:0;top:0;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:900;}
-  .subscription-action{width:100%;min-height:43px;margin-top:auto;border:0;border-radius:13px;background:var(--primary-tint);color:var(--primary);font:800 13px var(--font-b);padding:10px 12px;cursor:pointer;overflow-wrap:anywhere;}
-  .subscription-plan-card[data-plan="plus"] .subscription-action{background:var(--amber);color:#3b2700;}
-  .subscription-plan-card[data-plan="pro"] .subscription-action{background:var(--primary);color:var(--primary-ink);}
-  .subscription-action-message{display:none;margin-top:10px;border-radius:13px;padding:10px 12px;font-size:12.5px;line-height:1.45;overflow-wrap:anywhere;}
-  .subscription-action-message.on{display:block;background:var(--primary-tint);color:var(--primary);}
-  .subscription-action-message.error{display:block;background:#fee2e2;color:#991b1b;}
-  .subscription-history{display:grid;gap:8px;min-width:0;}
-  .subscription-history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;min-width:0;border:1px solid var(--line);border-radius:15px;background:var(--card);padding:12px;}
-  .subscription-history-row b,.subscription-history-row span{overflow-wrap:anywhere;}
-  .subscription-history-row p{font-size:11.5px;color:var(--soft);line-height:1.45;margin-top:3px;}
-  .subscription-history-status{border-radius:999px;padding:5px 8px;background:var(--line);color:var(--soft);font-size:10.5px;font-weight:800;text-align:center;}
-  .subscription-state{border:1px solid var(--line);border-radius:18px;background:var(--card);padding:28px 18px;text-align:center;box-shadow:var(--shadow);}
-  .subscription-state h3{font-family:var(--font-d);font-size:16px;margin-bottom:5px;}
-  .subscription-state p{color:var(--soft);font-size:12.5px;line-height:1.5;overflow-wrap:anywhere;}
-  @media(min-width:720px){
-    .subscription-plan-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;}
-    .subscription-current{padding:22px;}
-    .subscription-current-name{font-size:30px;}
-  }
-  @media(max-width:380px){
-    .subscription-current-dates{grid-template-columns:minmax(0,1fr);}
-    .subscription-section-title{align-items:flex-start;flex-direction:column;}
-    .subscription-section-title p{text-align:left;}
-  }
 
   /* v1472 — Reklama boshqaruvi */
   .ad{min-height:150px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(120deg,var(--primary),#0b6f6a);}
@@ -206,7 +129,6 @@
   .ad .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85;}
   .ad h3{font-family:var(--font-d);font-size:18px;font-weight:800;margin:5px 0 3px;letter-spacing:-.01em;}
   .ad p{font-size:13px;opacity:.9;max-width:80%;}
-  .ad-cta{display:inline-flex;width:max-content;margin-top:12px;border-radius:9px;background:var(--amber);color:#342300;padding:9px 18px;font-size:12px;font-weight:800;}
   .ad .tag{position:absolute;top:14px;right:14px;background:var(--amber);color:#3a2603;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:8px;}
   .ad .blob{position:absolute;right:-30px;bottom:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1);}
   .dots-row{display:flex;gap:6px;justify-content:center;margin-top:11px;}
@@ -236,27 +158,6 @@
   .pin .tail{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;margin-top:-2px;}
   [data-theme="dark"] .pin .tail{border-top-color:#0e1413;}
   .pin .plabel{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);text-align:center;line-height:1.5;}
-
-  /* v1613 — tuman bo'yicha uzluksiz takliflar */
-  .district-offers{margin:14px -18px 0;overflow:hidden;min-width:0}
-  .district-offers-viewport{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;padding:0 18px;max-width:100%}
-  .district-offers-viewport::-webkit-scrollbar{display:none}
-  .district-offers-track{display:flex;width:max-content;gap:10px;will-change:transform;animation:districtOffersFlow 68s linear infinite}
-  .district-offers-track.is-static{animation:none;will-change:auto}
-  .district-offers.is-paused .district-offers-track,
-  .district-offers:focus-within .district-offers-track{animation-play-state:paused}
-  .district-offer-card{width:178px;flex:0 0 178px;min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden;color:var(--ink);box-shadow:var(--shadow);cursor:pointer;text-align:left;font:inherit;padding:0}
-  .district-offer-media{height:112px;background:var(--primary-tint);overflow:hidden;display:grid;place-items:center;font-size:32px}
-  .district-offer-media img{width:100%;height:100%;object-fit:cover}
-  .district-offer-body{display:block;padding:10px;min-width:0}
-  .district-offer-title,.district-offer-business{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .district-offer-title{font-weight:800;font-size:13.5px}
-  .district-offer-business{margin-top:4px;color:var(--soft);font-size:11.5px}
-  .district-offer-kind{display:inline-flex;align-items:center;margin-top:7px;border-radius:999px;background:var(--primary-tint);color:var(--primary);padding:3px 7px;font-size:10px;font-weight:800;line-height:1.2}
-  .district-offer-price{margin-top:7px;color:var(--primary);font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .district-select-btn{display:block;margin:0 18px;width:calc(100% - 36px);min-height:46px;border:1.5px solid var(--primary);border-radius:14px;background:var(--primary-tint);color:var(--primary);font:800 14px var(--font-b);cursor:pointer}
-  @keyframes districtOffersFlow{from{transform:translateX(0)}to{transform:translateX(calc(-50% - 5px))}}
-  @media(prefers-reduced-motion:reduce){.district-offers-track{animation:none!important}}
 
   /* business cards */
   .biz-card{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px;box-shadow:var(--shadow);cursor:pointer;margin-bottom:11px;}
@@ -674,169 +575,9 @@
   .acf-btns button{flex:1;height:46px;border-radius:13px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;font-size:14.5px;cursor:pointer;}
   .acf-ok{border-color:var(--primary);background:var(--primary);color:#fff;}
   .acf-ok.danger{border-color:#DC2626;background:#DC2626;color:#fff;}
-  /* v1608 — 24 soatlik istoriyalar */
-  .story-strip{margin:0 -2px 14px;overflow:hidden;}
-  .story-rail{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 8px;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;}
-  .story-rail::-webkit-scrollbar{display:none;}
-  .story-card{flex:0 0 80px;width:80px;border:0;background:transparent;color:var(--ink);padding:0;cursor:pointer;scroll-snap-align:start;font:inherit;text-align:center;}
-  .story-thumb{position:relative;width:80px;height:80px;display:grid;place-items:center;overflow:hidden;border-radius:18px;border:2px solid var(--line);background:var(--card);box-shadow:var(--shadow);transition:transform .14s,border-color .14s;}
-  .story-card:active .story-thumb{transform:scale(.96);}
-  .story-card.unseen .story-thumb{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-tint);}
-  .story-card.seen .story-thumb{border-color:var(--line);opacity:.86;}
-  .story-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .story-fallback{font-family:var(--font-d);font-size:23px;font-weight:900;color:var(--primary);}
-  .story-name{display:block;margin-top:6px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .story-add .story-thumb{border-style:dashed;border-color:var(--primary);background:var(--primary-tint);}
-  .story-plus{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:var(--primary);color:#fff;font-size:25px;font-weight:500;line-height:1;}
-  .has-story{box-shadow:0 0 0 3px var(--primary),0 0 0 5px var(--primary-tint)!important;}
-  .story-layer{position:fixed;inset:0;z-index:6800;background:rgba(3,20,19,.64);display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
-  .story-layer.on{display:flex;}
-  .story-sheet{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:var(--shadow-lg);}
-  .story-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
-  .story-sheet-title{font-family:var(--font-d);font-size:19px;font-weight:900;}
-  .story-text-btn{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:8px 11px;font:inherit;font-weight:700;cursor:pointer;}
-  .story-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .story-source-btn{min-height:88px;border:1.5px solid var(--line);border-radius:17px;background:var(--card);color:var(--ink);padding:13px;font:inherit;font-weight:800;cursor:pointer;box-shadow:var(--shadow);}
-  .story-source-btn small{display:block;margin-top:5px;color:var(--soft);font-weight:600;line-height:1.35;}
-  .story-preview{height:min(54vh,520px);border-radius:19px;overflow:hidden;background:#071514;display:none;align-items:center;justify-content:center;}
-  .story-preview.on{display:flex;}
-  .story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain;display:block;background:#071514;}
-  .story-preview [hidden]{display:none!important;}
-  .story-compose-fields{display:none;margin-top:12px;}
-  .story-compose-fields.on{display:block;}
-  .story-progress-wrap{height:7px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0;display:none;}
-  .story-progress-wrap.on{display:block;}
-  .story-upload-progress{width:0;height:100%;background:var(--primary);transition:width .15s;}
-  .story-upload-status{display:none;margin:10px 2px 4px;color:var(--soft);font-size:13px;font-weight:700;line-height:1.4;}
-  .story-upload-status.on{display:block;}
-  .story-upload-error{display:none;margin:10px 0;padding:11px 12px;border:1px solid #F2B8B5;border-radius:13px;background:#FFF1F0;color:#A61B1B;font-size:13px;font-weight:700;line-height:1.45;}
-  .story-upload-error.on{display:block;}
-  .story-viewer{position:fixed;inset:0;z-index:7000;background:#061211;display:none;color:#fff;align-items:center;justify-content:center;}
-  .story-viewer.on{display:flex;}
-  .story-stage{position:relative;width:min(100vw,520px);height:100dvh;max-height:920px;background:#071514;overflow:hidden;}
-  .story-viewer-media{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-  .story-viewer-media img,.story-viewer-media video{width:100%;height:100%;object-fit:contain;background:#071514;}
-  .story-viewer-top{position:absolute;z-index:4;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 12px 16px;background:linear-gradient(180deg,rgba(0,0,0,.76),transparent);pointer-events:none;}
-  .story-progress{display:flex;gap:4px;margin-bottom:10px;}
-  .story-progress-seg{height:3px;flex:1;border-radius:99px;background:rgba(255,255,255,.35);overflow:hidden;}
-  .story-progress-seg span{display:block;width:0;height:100%;background:#fff;}
-  .story-progress-seg.done span{width:100%;}
-  .story-progress-seg.current span{width:var(--story-progress,0%);}
-  .story-owner-row{display:flex;align-items:center;gap:10px;pointer-events:auto;}
-  .story-owner-avatar{width:36px;height:36px;border-radius:11px;overflow:hidden;background:rgba(255,255,255,.14);display:grid;place-items:center;font-weight:900;}
-  .story-owner-avatar img{width:100%;height:100%;object-fit:cover;}
-  .story-owner-main{min-width:0;flex:1;}
-  .story-owner-name{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .story-owner-time{font-size:11.5px;color:rgba(255,255,255,.76);margin-top:2px;}
-  .story-viewer-close{border:0;border-radius:10px;background:rgba(0,0,0,.38);color:#fff;padding:8px 10px;font:inherit;font-weight:800;cursor:pointer;}
-  .story-tap{position:absolute;z-index:2;top:90px;bottom:90px;width:34%;border:0;background:transparent;cursor:pointer;}
-  .story-tap.prev{left:0;}.story-tap.next{right:0;}
-  .story-viewer-bottom{position:absolute;z-index:4;left:0;right:0;bottom:0;padding:44px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(0,0,0,.78),transparent);pointer-events:none;}
-  .story-viewer-caption{font-size:14px;line-height:1.45;margin-bottom:12px;white-space:pre-wrap;text-shadow:0 1px 3px rgba(0,0,0,.5);}
-  .story-viewer-actions{display:flex;gap:8px;pointer-events:auto;}
-  .story-viewer-actions button{border:1px solid rgba(255,255,255,.34);border-radius:12px;background:rgba(0,0,0,.36);color:#fff;padding:9px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;}
-  .story-viewers-sheet{position:fixed;inset:0;z-index:7100;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;}
-  .story-viewers-sheet.on{display:flex;}
-  .story-viewers-card{width:100%;max-width:520px;max-height:72vh;overflow:auto;border-radius:22px 22px 0 0;background:var(--bg);color:var(--ink);padding:18px 16px calc(18px + env(safe-area-inset-bottom));}
-  .story-viewer-person{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);}
-  .story-viewer-person:last-child{border-bottom:0;}
-  .my-stories-shell{padding:2px 0 22px;min-width:0;overflow:hidden;}
-  .my-stories-tabs{display:flex;gap:8px;margin-bottom:14px;}
-  .my-stories-tabs .ad-tab{flex:1;min-width:0;}
-  .my-stories-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0;}
-  .my-story-card{display:grid;grid-template-columns:112px minmax(0,1fr);gap:12px;min-width:0;overflow:hidden;border:1.5px solid var(--line);border-radius:18px;background:var(--card);padding:10px;box-shadow:var(--shadow);}
-  .my-story-thumb{position:relative;width:112px;height:144px;overflow:hidden;border-radius:14px;background:#071514;display:grid;place-items:center;color:#fff;}
-  .my-story-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-  .my-story-thumb-fallback{text-align:center;padding:8px;font-size:12px;color:rgba(255,255,255,.8);}
-  .my-story-video-badge{position:absolute;right:7px;bottom:7px;border-radius:999px;background:rgba(0,0,0,.62);padding:4px 7px;font-size:11px;font-weight:800;}
-  .my-story-main{display:flex;flex-direction:column;min-width:0;}
-  .my-story-caption{font-weight:800;font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  .my-story-meta{margin-top:5px;color:var(--soft);font-size:12px;line-height:1.45;}
-  .my-story-state{display:inline-flex;align-items:center;width:max-content;max-width:100%;margin-top:7px;border-radius:999px;padding:5px 8px;background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:900;}
-  .my-story-state.archived{background:var(--line);color:var(--soft);}
-  .my-story-actions{display:flex;gap:7px;margin-top:auto;padding-top:9px;}
-  .my-story-actions button{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);padding:8px 6px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
-  .my-story-actions button.danger{color:#DC2626;}
-  .my-stories-status{grid-column:1/-1;}
-  @media(max-width:759px){.my-stories-grid{grid-template-columns:minmax(0,1fr)}.my-story-card{grid-template-columns:96px minmax(0,1fr)}.my-story-thumb{width:96px;height:126px}}
-  @media(max-width:759px){.story-layer{align-items:stretch;background:var(--bg);backdrop-filter:none}.story-sheet{height:100dvh;max-height:none;border-radius:0;padding-top:calc(16px + env(safe-area-inset-top))}.story-preview{height:min(46dvh,440px)}}
-  @media(min-width:760px){.story-card{flex-basis:92px;width:92px}.story-thumb{width:92px;height:92px;border-radius:20px}.story-name{font-size:12px}.story-layer{align-items:center}.story-sheet{border-radius:24px;max-height:88vh}.story-stage{height:min(92vh,900px);border-radius:22px;box-shadow:0 28px 80px rgba(0,0,0,.45)}}
-
-  /* v1618 — dastlabki Ko‘prik web dizayniga mos desktop bosh sahifa */
-  .web-only,.desktop-hero-copy{display:none;}
-  .web-brand{border:0;background:none;color:var(--primary);font:800 28px/1 var(--font-d);letter-spacing:-.045em;cursor:pointer;white-space:nowrap;}
-  .web-nav{align-self:stretch;align-items:center;gap:6px;}
-  .web-nav button{position:relative;height:48px;padding:0 14px;border:0;background:transparent;color:var(--ink);font:700 14px var(--font-b);cursor:pointer;white-space:nowrap;}
-  .web-nav button:after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:transparent;}
-  .web-nav button.on{color:var(--primary);}
-  .web-nav button.on:after{background:var(--primary);}
-  .web-header-label{display:none;}
-  @media(min-width:1080px){
-    body{background:var(--bg);}
-    .phone{max-width:none;width:100%;height:100vh;height:100dvh;margin:0;border-radius:0;box-shadow:none;}
-    .statusbar{display:none;}
-    .topbar{height:82px;padding:0 34px;border-bottom:1px solid var(--line);background:var(--card);box-shadow:0 2px 12px rgba(16,40,33,.035);}
-    .tb-home{width:min(100%,1440px);height:100%;margin:0 auto;gap:12px;}
-    .web-only{display:flex;}
-    .web-brand{margin-right:32px;}
-    .web-nav{margin-right:auto;}
-    .tb-home>.search{display:none;}
-    .tb-home>.icon-btn{width:auto;min-width:46px;height:46px;padding:0 13px;border-radius:14px;display:flex;gap:8px;}
-    .tb-home>.icon-btn .web-header-label{display:inline;font-size:13px;font-weight:750;}
-    .tb-home>#cabBtn{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);padding:0 17px;}
-    .tb-home>#locBtn{max-width:190px;}
-    #webLocationLabel{max-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .tb-sub{width:min(100%,1440px);height:100%;margin:0 auto;}
-    .screens{padding-bottom:42px;}
-    .screen{width:min(100%,1440px);margin:0 auto;padding:22px 34px 0;}
-    .screen[data-screen="home"]{padding-top:18px;}
-    .story-strip{margin-bottom:18px;}
-    .story-rail{gap:12px;}
-    .ad{min-height:184px;border-radius:22px;}
-    .ad.has-image .ad-photo{height:184px;}
-    .ad.has-image .ad-overlay{background:linear-gradient(90deg,rgba(2,27,27,.92) 0%,rgba(2,27,27,.68) 38%,rgba(2,27,27,.08) 72%);}
-    .ad.has-image .ad-copy{top:0;right:auto;bottom:0;width:54%;padding:24px 26px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;}
-    .ad .tag{left:26px;right:auto;top:16px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.42);}
-    .ad.has-image .ad-copy .eyebrow{display:none;}
-    .ad.has-image .ad-copy h3{font-size:22px;margin-top:12px;}
-    .ad.has-image .ad-copy p{max-width:100%;}
-    .home-discovery{display:grid;grid-template-columns:minmax(390px,.82fr) minmax(600px,1.18fr);gap:20px;align-items:stretch;min-height:430px;margin-top:0;}
-    .desktop-hero-copy{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;min-height:430px;overflow:visible;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
-    .desktop-hero-kicker{display:inline-flex;width:max-content;max-width:100%;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:var(--primary-tint);color:var(--primary);font-size:12px;font-weight:800;}
-    .desktop-hero-copy h1{margin-top:16px;font:800 clamp(28px,2.7vw,43px)/1.12 var(--font-d);letter-spacing:-.045em;}
-    .desktop-hero-copy>p{margin-top:13px;color:var(--soft);font-size:15px;line-height:1.65;max-width:560px;}
-    .desktop-hero-search{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;width:100%;min-height:58px;margin-top:20px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg);padding:7px 8px 7px 17px;color:var(--soft);font:600 14px var(--font-b);cursor:pointer;text-align:left;}
-    .desktop-hero-query{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .desktop-hero-location{border-left:1px solid var(--line);padding:10px 12px;color:var(--ink);font-weight:750;white-space:nowrap;}
-    .desktop-hero-search strong{flex:0 0 auto;border-radius:12px;padding:12px 18px;background:var(--primary);color:var(--primary-ink);}
-    .desktop-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-    .desktop-hero-tags button{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:9px 12px;font:700 12px var(--font-b);cursor:pointer;}
-    .home-map-pane{display:flex;flex-direction:column;min-width:0;min-height:430px;}
-    .home-map-pane .pin-eyebrow{margin-top:0;}
-    .home-map-pane .map-wrap{flex:1;border-radius:24px;}
-    #leafletMap{height:100%!important;min-height:430px;}
-    .district-offers{margin:22px 0 0;}
-    .district-offers-viewport{padding:0;}
-    .district-offers-track{animation-duration:150s;}
-    .district-offer-card{width:410px;flex-basis:410px;height:150px;display:grid;grid-template-columns:180px minmax(0,1fr);}
-    .district-offer-media{height:150px;font-size:34px;}
-    .district-offer-body{padding:16px 14px;align-self:center;}
-    .district-offer-title{font-size:15px;}
-    #seedDistrictOffers{width:auto;margin:10px 0 0 auto;padding:0 18px;}
-  }
-  @media(min-width:1320px){
-    .web-header-label{display:inline!important;}
-  }
 </style>
 </head>
 <body>
-  <div class="project-closed" id="projectClosed" hidden role="alert" aria-live="assertive">
-    <div class="project-closed-card">
-      <div class="project-closed-icon">🔒</div>
-      <h1>Loyiha vaqtincha yopiq</h1>
-      <p id="projectClosedMessage">Loyiha sinov uchun vaqtincha yopildi. Qayta ochilganda xabar beriladi.</p>
-    </div>
-  </div>
   <div class="phone">
     <div class="statusbar">
       <span>9:41</span>
@@ -845,14 +586,8 @@
 
     <header class="topbar">
       <div class="tb-home" id="tbHome">
-        <button class="web-brand web-only" id="webBrandBtn" type="button" aria-label="Ko‘prik bosh sahifasi">Ko‘prik</button>
-        <nav class="web-nav web-only" aria-label="Asosiy menyu">
-          <button class="on" id="webHomeBtn" type="button">Bosh sahifa</button>
-          <button id="webListingsBtn" type="button">E’lonlar</button>
-        </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
-          <span class="web-header-label" id="webLocationLabel">Manzil</span>
         </button>
         <div class="search" id="searchBox">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -862,13 +597,10 @@
         <button class="icon-btn" id="cartBtn" aria-label="Savat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6"/></svg>
           <span class="badge" id="cartBadge" hidden>0</span>
-          <span class="web-header-label">Savat</span>
         </button>
-        <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖<span class="web-header-label">Taxi</span></button>
-        <button class="icon-btn web-only" id="desktopThemeBtn" aria-label="Rang rejimini almashtirish"></button>
+        <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖</button>
         <button class="icon-btn" id="cabBtn" aria-label="Kabinet">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          <span class="web-header-label">Kabinet</span>
         </button>
       </div>
       <div class="tb-sub" id="tbSub">
@@ -885,41 +617,6 @@
       <div class="action-notify-body" id="actionNotifyBody"></div>
     </div>
 
-    <div class="story-layer" id="storyComposer" aria-hidden="true">
-      <div class="story-sheet" role="dialog" aria-modal="true" aria-labelledby="storyComposerTitle">
-        <div class="story-sheet-head"><div class="story-sheet-title" id="storyComposerTitle">Istoriya joylash</div><button class="story-text-btn" id="storyComposerClose" type="button">Yopish</button></div>
-        <input id="storyFileInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" hidden>
-        <div class="story-source-grid" id="storySourceChoices">
-          <button class="story-source-btn" id="storyCameraBtn" type="button">Kamera orqali<small>Hozir rasm yoki video oling</small></button>
-          <button class="story-source-btn" id="storyGalleryBtn" type="button">Galereyadan<small>Telefondagi rasm yoki videoni tanlang</small></button>
-        </div>
-        <div class="story-preview" id="storyPreview"><img id="storyPreviewImage" alt="Istoriya rasmi" hidden><video id="storyPreviewVideo" controls playsinline hidden></video></div>
-        <div class="story-compose-fields" id="storyComposeFields">
-          <div class="field"><label>Qisqa matn — ixtiyoriy</label><textarea class="textarea" id="storyCaption" maxlength="200" placeholder="Istoriya haqida qisqa yozing"></textarea><div class="idesc" id="storyCaptionCount">0 / 200</div></div>
-          <button class="btn btn-soft btn-block" id="storyChooseAgain" type="button">Boshqa fayl tanlash</button>
-          <div class="story-upload-status" id="storyUploadStatus" aria-live="polite"></div>
-          <div class="story-progress-wrap" id="storyUploadProgressWrap"><div class="story-upload-progress" id="storyUploadProgress"></div></div>
-          <div class="story-upload-error" id="storyUploadError" role="alert"></div>
-          <button class="btn btn-primary btn-block" id="storyUploadBtn" type="button">Joylash</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="story-viewer" id="storyViewer" aria-hidden="true">
-      <div class="story-stage" role="dialog" aria-modal="true" aria-label="Istoriya">
-        <div class="story-viewer-media" id="storyViewerMedia"></div>
-        <button class="story-tap prev" id="storyTapPrev" type="button" aria-label="Oldingi istoriya"></button>
-        <button class="story-tap next" id="storyTapNext" type="button" aria-label="Keyingi istoriya"></button>
-        <div class="story-viewer-top">
-          <div class="story-progress" id="storyProgress"></div>
-          <div class="story-owner-row"><div class="story-owner-avatar" id="storyOwnerAvatar"></div><div class="story-owner-main"><div class="story-owner-name" id="storyOwnerName"></div><div class="story-owner-time" id="storyOwnerTime"></div></div><button class="story-viewer-close" id="storyViewerClose" type="button">Yopish</button></div>
-        </div>
-        <div class="story-viewer-bottom"><div class="story-viewer-caption" id="storyViewerCaption"></div><div class="story-viewer-actions" id="storyViewerActions"></div></div>
-      </div>
-    </div>
-
-    <div class="story-viewers-sheet" id="storyViewersSheet" aria-hidden="true"><div class="story-viewers-card"><div class="story-sheet-head"><div class="story-sheet-title">Ko‘rganlar</div><button class="story-text-btn" id="storyViewersClose" type="button">Yopish</button></div><div id="storyViewersList"></div></div></div>
-
     <div id="bizCartBar" style="display:none;flex:none;padding:8px 14px 10px;background:var(--bg);border-bottom:1px solid var(--line)">
       <button class="btn btn-amber btn-block" id="bizCartBarBtn" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px">
         <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🛒 Savatcha: <b id="bizCartBarCount">0</b> ta<span id="bizCartBarTotalWrap" style="display:none"> · <b id="bizCartBarTotal"></b></span></span>
@@ -931,40 +628,7 @@
 
       <!-- HOME -->
       <section class="screen active" data-screen="home">
-        <section class="story-strip" id="storyStrip" aria-label="Istoriyalar">
-          <div class="story-rail" id="storyRail">
-            <button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>
-          </div>
-        </section>
-        <div id="callPanel" hidden></div>
-        <div class="home-discovery">
-          <div class="desktop-hero-copy">
-            <span class="desktop-hero-kicker">⌕ Qidiruv markazida</span>
-            <h1>Kerakli mahsulot va xizmatni yaqiningizdan toping</h1>
-            <p>Mahsulot, xizmat, biznes, mutaxassis yoki e’lonlarni bitta platformada toping.</p>
-            <button class="desktop-hero-search" id="desktopHeroSearch" type="button"><span class="desktop-hero-query">⌕ &nbsp; Nima qidiryapsiz?</span><span class="desktop-hero-location">⌖ &nbsp; Yaqin atrofda</span><strong>Qidirish</strong></button>
-            <div class="desktop-hero-tags">
-              <button type="button" data-web-search-type="product">🛍 Mahsulot</button>
-              <button type="button" data-web-search-type="service">🧰 Xizmat</button>
-              <button type="button" data-web-search-type="business">🏪 Biznes</button>
-              <button type="button" data-web-search-type="specialist">👤 Mutaxassis</button>
-            </div>
-          </div>
-          <div class="home-map-pane">
-            <div class="pin-eyebrow" id="pinEyebrow">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
-              Yaqin atrofdagilar
-            </div>
-            <div class="map-wrap">
-              <div id="leafletMap" style="width:100%;height:230px;background:var(--map-land)"></div>
-              <div class="map-chip" id="mapChip"></div>
-              <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
-              <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="ad" id="adBox" style="margin-top:20px">
+        <div class="ad" id="adBox">
           <img class="ad-photo" id="adPhoto" alt="Reklama">
           <div class="ad-overlay"></div>
           <span class="tag">Reklama</span>
@@ -972,26 +636,30 @@
             <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
             <h3 id="adTitle">Bu yerda reklamangiz</h3>
             <p id="adText">Bizneslar uchun bosh sahifada ko'rinish joyi.</p>
-            <span class="ad-cta">Ko‘rish</span>
           </div>
           <div class="blob"></div>
         </div>
         <div class="dots-row" id="adDots"><span class="on"></span></div>
 
-        <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
-        <button type="button" class="btn btn-soft btn-block" id="seedDistrictOffers" data-privileged-only style="margin-top:10px">20 ta demo taklif qo‘shish</button>
+        <div id="callPanel" hidden></div>
+        <div class="pin-eyebrow" id="pinEyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+          Yaqin atrofdagilar
+        </div>
+        <div class="map-wrap">
+          <div id="leafletMap" style="width:100%;height:230px;background:var(--map-land)"></div>
+          <div class="map-chip" id="mapChip"></div>
+          <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
+          <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
+        </div>
 
         <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
           <div class="menu-card" id="resBar" style="margin-top:14px"><div class="menu-ic">📋</div><div class="menu-main"><h4 id="resCount">Natijalar</h4><p>Profillarni ko'rish uchun bosing</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
           <div id="resList" hidden></div>
         </div>
-      </section>
-
-      <!-- E’LONLAR — yuqori web menyusidan alohida ochiladi -->
-      <section class="screen" data-screen="listings">
-        <div class="sec-head" id="elonHead" style="margin-top:4px"><h2>E’lonlar</h2></div>
-        <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e’lonlar shu oynada chiqadi.</p>
+        <div class="sec-head" id="elonHead"><h2>E'lonlar</h2></div>
+        <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e'lonlar xaritada paydo bo'ladi.</p>
         <div class="elon-row" id="elonRow"></div>
         <div id="elonList"></div>
       </section>
@@ -1150,31 +818,10 @@
             <div class="cab-status" id="cabAddr" style="color:var(--soft);font-size:13px;margin-top:2px"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>0</b> obuna</span></div></div>
         </div>
-        <div class="cab-group" id="cabGroupOnline">
-          <div class="cab-group-head"><span class="cab-group-ic">🌐</span><div class="cab-group-main"><h3>Onlaynlashtirish</h3><p>Mijozlar ko'radigan va onlayn savdo bo'limlari</p></div></div>
-          <div class="menu-grid2" id="cabGridOnline">
+        <div class="menu-grid2">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-subscriptions"><div class="menu-ic">💎</div><div class="menu-main"><h4>Obunalarim</h4><p>Bepul, Plus va Pro tariflarini boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4 id="cabItemsMenuTitle">Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="diningPlacesMenu" data-nav="cab-dining" style="display:none"><div class="menu-ic">🍽️</div><div class="menu-main"><h4>Stollar va xonalar</h4><p>Zal rejasini joylashtirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="educationEnrollmentsMenu" data-nav="cab-education-enrollments" style="display:none"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kursga yozilishlar</h4><p>Yangi arizalarni guruhga qabul qilish</p></div><span class="order-badge" id="eduEnrollmentBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabOrdersMenu" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabServiceOrdersMenu" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi biznes istoriyalari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-          </div>
-        </div>
-        <div class="cab-group" id="cabGroupTizim">
-          <div class="cab-group-head"><span class="cab-group-ic">🗂</span><div class="cab-group-main"><h3>Tizimlashtirish</h3><p>Ichki tartib: hisob-kitob, ombor va boshqaruv</p></div></div>
-          <div class="menu-grid2" id="cabGridTizim">
-        <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabDebtMenu" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabWarehouseMenu" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" id="cabGeneralStatsMenu" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationGroupsMenu" data-nav="cab-education-groups" style="display:none"><div class="menu-ic">👥</div><div class="menu-main"><h4>Guruhlar</h4><p>Kurs guruhlari va dars jadvali</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStudentsMenu" data-nav="cab-education-students" style="display:none"><div class="menu-ic">🎓</div><div class="menu-main"><h4>O'quvchilar</h4><p>Ro'yxat va guruhlarga biriktirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationScheduleMenu" data-nav="cab-education-schedule" style="display:none"><div class="menu-ic">🗓️</div><div class="menu-main"><h4>Dars jadvali</h4><p>Haftalik guruh va o'qituvchilar jadvali</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1183,11 +830,22 @@
         <div class="menu-card" id="educationTeachersMenu" data-nav="cab-education-teachers" style="display:none"><div class="menu-ic">🧑‍🏫</div><div class="menu-main"><h4>O'qituvchilar</h4><p>O'qituvchi, fan va ish haqi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationPayrollMenu" data-nav="cab-education-payroll" style="display:none"><div class="menu-ic">💰</div><div class="menu-main"><h4>O'qituvchi maoshi</h4><p>Hisoblangan va to'langan maoshlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStatisticsMenu" data-nav="cab-education-statistics" style="display:none"><div class="menu-ic">📊</div><div class="menu-main"><h4>Ta'lim statistikasi</h4><p>Davomat, to'lovlar, maosh va natija</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="educationEnrollmentsMenu" data-nav="cab-education-enrollments" style="display:none"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kursga yozilishlar</h4><p>Yangi arizalarni guruhga qabul qilish</p></div><span class="order-badge" id="eduEnrollmentBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabOrdersMenu" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabServiceOrdersMenu" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabDebtMenu" data-nav="cab-qarz"><div class="menu-ic">📒</div><div class="menu-main"><h4>Qarz daftari</h4><p>Mijozlar qarzlarini yuritish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabWarehouseMenu" data-nav="cab-ombor"><div class="menu-ic">📦</div><div class="menu-main"><h4>Ombor</h4><p>Qoldiq va kirim-chiqim</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-xarajat"><div class="menu-ic">💸</div><div class="menu-main"><h4>Xarajatlar</h4><p>Kunlik xarajatlar hisobi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" id="cabGeneralStatsMenu" data-nav="cab-stats"><div class="menu-ic">📊</div><div class="menu-main"><h4>Statistika</h4><p>Tushum, xarajat, foyda va tovarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ai-chat" data-privileged-only><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="cabReportMenu" data-nav="cab-report" data-privileged-only><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-          </div>
         </div>
         <button class="btn btn-outline btn-block" style="margin-top:10px" id="toUserBtn">👤 Oddiy kabinetga qaytish</button>
       </section>
@@ -1269,48 +927,6 @@
             <div class="idesc" style="margin-top:5px">Ish boshlanish va tugash vaqtini belgilang.</div>
           </div>
           <button class="btn btn-primary btn-block" id="bpSave">Saqlash</button>
-        </div>
-      </section>
-
-      <!-- CAB: BIZNES TARIFLARI -->
-      <section class="screen" data-screen="cab-subscriptions">
-        <div class="subscription-shell">
-          <div class="subscription-demo-note"><span>🧪</span><div><b>Sinov rejimi</b><br>Haqiqiy to‘lov hali ulanmagan. Tarifni demo tarzida faollashtirib, ishlashini tekshirishingiz mumkin.</div></div>
-          <div class="subscription-state" id="businessSubscriptionLoading" aria-live="polite"><h3>Tariflar yuklanmoqda</h3><p>Joriy obunangiz serverdan olinmoqda.</p></div>
-          <div class="subscription-state" id="businessSubscriptionError" hidden aria-live="assertive"></div>
-          <div id="businessSubscriptionContent" hidden>
-            <div class="subscription-current" id="businessSubscriptionCurrent"></div>
-
-            <div class="subscription-section-title"><h3>Muddatni tanlang</h3><p>Plus va Pro uchun</p></div>
-            <div class="subscription-duration" id="businessSubscriptionDurations" role="group" aria-label="Obuna muddati">
-              <button type="button" class="on" data-sub-duration="1" aria-pressed="true">1 oy</button>
-              <button type="button" data-sub-duration="3" aria-pressed="false">3 oy</button>
-              <button type="button" data-sub-duration="12" aria-pressed="false">12 oy</button>
-            </div>
-
-            <div class="subscription-section-title"><h3>Tariflar</h3><p>Mahsulot va xizmatlarni joylash cheksiz</p></div>
-            <div class="subscription-plan-grid">
-              <article class="subscription-plan-card" data-plan="free">
-                <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">🌱</div><div style="min-width:0"><div class="subscription-plan-name">Bepul</div><div class="subscription-plan-caption">Asosiy biznes profil uchun</div></div></div><span class="subscription-current-pill">Joriy</span></div>
-                <ul class="subscription-benefits"><li>Biznes profilidan foydalanish</li><li>Mahsulot va xizmatlarni cheksiz joylash</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="free">Bepulga o‘tish</button>
-              </article>
-              <article class="subscription-plan-card" data-plan="plus">
-                <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">✨</div><div style="min-width:0"><div class="subscription-plan-name">Plus</div><div class="subscription-plan-caption">Yaqin mijozlarga ko‘rinish</div></div></div><span class="subscription-current-pill">Joriy</span></div>
-                <ul class="subscription-benefits"><li>Bepul tarifdagi barcha imkoniyatlar</li><li>Mahsulot yoki xizmatlarni “Sizga yaqin” bo‘limiga chiqarish huquqi</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="plus">Plus demo faollashtirish</button>
-              </article>
-              <article class="subscription-plan-card" data-plan="pro">
-                <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">💎</div><div style="min-width:0"><div class="subscription-plan-name">Pro</div><div class="subscription-plan-caption">Hudud bo‘yicha keng ko‘rinish</div></div></div><span class="subscription-current-pill">Joriy</span></div>
-                <ul class="subscription-benefits"><li>Plus tarifdagi barcha imkoniyatlar</li><li>Biznes metkasini xaritada ko‘rsatish huquqi</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="pro">Pro demo faollashtirish</button>
-              </article>
-            </div>
-            <div class="subscription-action-message" id="businessSubscriptionActionMessage" aria-live="polite"></div>
-
-            <div class="subscription-section-title"><h3>Obuna tarixi</h3><p>Avvalgi tariflar</p></div>
-            <div class="subscription-history" id="businessSubscriptionHistory"></div>
-          </div>
         </div>
       </section>
 
@@ -1476,7 +1092,7 @@
 
 
       <section class="screen" data-screen="cab-medical-doctors"><div class="form-wrap"><button class="btn btn-primary btn-block" id="medicalDoctorAdd" style="margin-bottom:10px">+ Shifokor biriktirish</button><div id="medicalDoctorsList"></div></div></section>
-      <section class="screen" data-screen="cab-medical-doctor-form"><div class="form-wrap"><input type="hidden" id="medicalDoctorId"><div class="field"><label id="medicalDoctorStaffLabel">Ma'muriyatdagi shifokor</label><select class="input" id="medicalDoctorStaff"></select></div><div class="field"><label>Mutaxassisligi</label><input class="input" id="medicalDoctorSpecialty"></div><div class="field"><label>Tajribasi (yil)</label><input class="input" type="number" id="medicalDoctorExperience"></div><div class="field"><label>Malaka/toifasi</label><input class="input" id="medicalDoctorQualification"></div><div class="field"><label>Ish kunlari</label><input class="input" id="medicalDoctorDays" placeholder="1,2,3,4,5,6"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="input" type="time" id="medicalDoctorStart"><input class="input" type="time" id="medicalDoctorEnd"></div><div class="field"><label>O'rtacha qabul (daqiqa)</label><input class="input" type="number" id="medicalDoctorMinutes"></div><div class="field"><label>Navbat turi</label><select class="input" id="medicalDoctorMode"><option value="live">Jonli navbat (tartib raqami)</option><option value="slot">Vaqtli qabul (aniq soatga)</option></select></div><div class="field"><label>Xona/joy</label><input class="input" id="medicalDoctorRoom"></div><div class="field"><label id="medicalDoctorBioLabel">Shifokor haqida</label><textarea class="textarea" id="medicalDoctorBio"></textarea></div><div class="field"><label>Holati</label><select class="input" id="medicalDoctorStatus"><option value="active">Faol</option><option value="inactive">Vaqtincha qabul qilmaydi</option></select></div><div class="field"><label id="medicalDoctorServicesLabel">Qabul qiladigan xizmatlari</label><div id="medicalDoctorServices"></div></div><button class="btn btn-primary btn-block" id="medicalDoctorSave">Saqlash</button></div></section>
+      <section class="screen" data-screen="cab-medical-doctor-form"><div class="form-wrap"><input type="hidden" id="medicalDoctorId"><div class="field"><label id="medicalDoctorStaffLabel">Ma'muriyatdagi shifokor</label><select class="input" id="medicalDoctorStaff"></select></div><div class="field"><label>Mutaxassisligi</label><input class="input" id="medicalDoctorSpecialty"></div><div class="field"><label>Tajribasi (yil)</label><input class="input" type="number" id="medicalDoctorExperience"></div><div class="field"><label>Malaka/toifasi</label><input class="input" id="medicalDoctorQualification"></div><div class="field"><label>Ish kunlari</label><input class="input" id="medicalDoctorDays" placeholder="1,2,3,4,5,6"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="input" type="time" id="medicalDoctorStart"><input class="input" type="time" id="medicalDoctorEnd"></div><div class="field"><label>O'rtacha qabul (daqiqa)</label><input class="input" type="number" id="medicalDoctorMinutes"></div><div class="field"><label>Xona/joy</label><input class="input" id="medicalDoctorRoom"></div><div class="field"><label id="medicalDoctorBioLabel">Shifokor haqida</label><textarea class="textarea" id="medicalDoctorBio"></textarea></div><div class="field"><label>Holati</label><select class="input" id="medicalDoctorStatus"><option value="active">Faol</option><option value="inactive">Vaqtincha qabul qilmaydi</option></select></div><div class="field"><label id="medicalDoctorServicesLabel">Qabul qiladigan xizmatlari</label><div id="medicalDoctorServices"></div></div><button class="btn btn-primary btn-block" id="medicalDoctorSave">Saqlash</button></div></section>
       <section class="screen" data-screen="cab-medical-queue"><div class="form-wrap"><div class="panel-card"><b id="medicalQueueTitle">🏥 Yagona navbat</b><div class="idesc" id="medicalQueueDescription">Onlayn va oflayn bemorlar bitta ketma-ketlikda.</div></div><input class="input" type="date" id="medicalQueueDate" style="margin-bottom:10px"><div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn btn-primary" id="medicalOfflineAdd" style="flex:1">+ Oflayn navbat</button><button class="btn btn-outline" id="medicalSetupBtn" style="flex:1">Shifokorlar</button></div><div id="medicalQueueList"></div></div></section>
 
       <!-- CAB: MAHSULOT FORMASI -->
@@ -1718,7 +1334,6 @@
         <div class="menu-grid2">
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi shaxsiy istoriyalar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxassisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxassis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -2044,7 +1659,7 @@
         </div>
       </section>
 
-      <!-- UCAB: KUZATAYOTGANLAR -->
+      <!-- UCAB: OBUNALARIM -->
       <section class="screen" data-screen="ucab-subs">
         <div id="uSubsList"></div>
       </section>
@@ -2072,32 +1687,12 @@
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
 
-      <section class="screen" data-screen="ucab-stories">
-        <div class="my-stories-shell">
-          <div class="my-stories-tabs ad-tabs" id="ucabStoriesTabs">
-            <button type="button" class="ad-tab on" data-my-story-state="active">Faol</button>
-            <button type="button" class="ad-tab" data-my-story-state="archived">Arxiv</button>
-          </div>
-          <div class="my-stories-grid" id="ucabStoriesList"></div>
-        </div>
-      </section>
-
-      <section class="screen" data-screen="cab-stories">
-        <div class="my-stories-shell">
-          <div class="my-stories-tabs ad-tabs" id="cabStoriesTabs">
-            <button type="button" class="ad-tab on" data-my-story-state="active">Faol</button>
-            <button type="button" class="ad-tab" data-my-story-state="archived">Arxiv</button>
-          </div>
-          <div class="my-stories-grid" id="cabStoriesList"></div>
-        </div>
-      </section>
-
       <!-- CAB: OBUNACHILAR -->
       <section class="screen" data-screen="cab-followers">
         <div id="cabFollowersList"></div>
       </section>
 
-      <!-- CAB: KUZATAYOTGANLAR -->
+      <!-- CAB: OBUNALARIM -->
       <section class="screen" data-screen="cab-following">
         <div id="cabFollowingList"></div>
       </section>
@@ -2321,15 +1916,9 @@
   function authHeader(){ return STAFF_TOKEN ? ("staff:" + STAFF_TOKEN) : INIT_DATA; }
 
   function apiHeaders(){
-    var h = {};
-    if(STAFF_TOKEN){
-      h["X-Telegram-Init-Data"] = "staff:" + STAFF_TOKEN;
-      h["X-Staff-Token"] = STAFF_TOKEN;
-    } else if(MOBILE_TOKEN){
-      h["Authorization"] = "Bearer " + MOBILE_TOKEN;
-    } else if(INIT_DATA){
-      h["X-Telegram-Init-Data"] = INIT_DATA;
-    }
+    var h = { "X-Telegram-Init-Data": authHeader() };
+    if(STAFF_TOKEN) h["X-Staff-Token"] = STAFF_TOKEN;
+    if(MOBILE_TOKEN && !STAFF_TOKEN) h["Authorization"] = "Bearer " + MOBILE_TOKEN;
     return h;
   }
 
@@ -2343,11 +1932,7 @@
       return r.json().catch(function(){ return {}; }).then(function(data){
         if(!r.ok){
           var msg = (data && data.detail) ? data.detail : ("Xatolik (" + r.status + ")");
-          var error=new Error(msg);
-          error.status=r.status;
-          error.code=(data&&data.code)||"";
-          if(error.code==="project_temporarily_closed") showProjectClosed(msg);
-          throw error;
+          throw new Error(msg);
         }
         return data;
       });
@@ -2364,11 +1949,7 @@
       return r.json().catch(function(){ return {}; }).then(function(data){
         if(!r.ok){
           var msg = (data && data.detail) ? data.detail : ("Xatolik (" + r.status + ")");
-          var error=new Error(msg);
-          error.status=r.status;
-          error.code=(data&&data.code)||"";
-          if(error.code==="project_temporarily_closed") showProjectClosed(msg);
-          throw error;
+          throw new Error(msg);
         }
         return data;
       });
@@ -2377,14 +1958,6 @@
 
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
   var ME = { registered:false, role:null, name:"", id:null, business_id:null, is_privileged:false };
-  function showProjectClosed(message){
-    var gate=el("projectClosed");
-    if(!gate)return;
-    var copy=el("projectClosedMessage");
-    if(copy&&message)copy.textContent=message;
-    gate.hidden=false;
-    document.body.classList.add("project-access-closed");
-  }
   function applyPrivilegedVisibility(){
     document.body.classList.toggle("is-privileged", !!(ME && ME.is_privileged));
   }
@@ -2393,449 +1966,11 @@
   function setActiveMode(mode){
     activeMode=mode==="business"?"business":"user";
     try{localStorage.setItem("koprik_active_mode",activeMode);}catch(e){}
-    if(typeof loadStories==="function") setTimeout(loadStories,0);
     return activeMode;
   }
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
   function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
   function withActor(body, type){ body = body || {}; body.actor_type = type || actorType(); return body; }
-
-  /* ============================================================
-     ISTORIYALAR — bosh sahifa, joylash va ko'rish
-     ============================================================ */
-  var STORY_GROUPS=[];
-  var STORY_GROUP_INDEX=-1;
-  var STORY_ITEM_INDEX=0;
-  var STORY_SELECTED_FILE=null;
-  var STORY_OBJECT_URL="";
-  var STORY_TIMER=null;
-  var STORY_PROGRESS_TIMER=null;
-  var STORY_STARTED_AT=0;
-  var STORY_DURATION_MS=5000;
-  var STORY_VIDEO_LIMIT_MS=60*1000;
-  var STORY_IMAGE_LIMIT=10*1024*1024;
-  var STORY_VIDEO_LIMIT=100*1024*1024;
-  window.__ownStoryGroupIndex=-1;
-
-  var MY_STORIES={
-    ucab:{state:"active",items:[]},
-    cab:{state:"active",items:[]}
-  };
-  var MY_STORY_OBJECT_URLS=[];
-  var MY_STORY_LOAD_TOKEN=0;
-  var MANAGED_STORY_VIEW_CONTEXT=null;
-
-  function myStoryScreenConfig(screen){
-    var business=screen==="cab-stories";
-    return {
-      key:business?"cab":"ucab",
-      actorType:business?"business":"user",
-      listId:business?"cabStoriesList":"ucabStoriesList",
-      tabsId:business?"cabStoriesTabs":"ucabStoriesTabs"
-    };
-  }
-  function myStoriesEmptyHtml(state){
-    return state==="archived"
-      ? '<div class="empty my-stories-status"><h3>Arxiv hozircha bo‘sh</h3><p>24 soati tugagan istoriyalar shu yerda saqlanadi.</p></div>'
-      : '<div class="empty my-stories-status"><h3>Hali istoriya joylamagansiz</h3><p>Rasm yoki 1 daqiqagacha video joylang.</p><button class="btn btn-primary" type="button" data-my-story-add>Istoriya joylash</button></div>';
-  }
-  function myStoriesErrorHtml(){
-    return '<div class="empty my-stories-status"><h3>Istoriyalar yuklanmadi</h3><p>Internet aloqasini tekshirib qayta urining.</p><button class="btn btn-outline" type="button" data-my-stories-retry>Qayta yuklash</button></div>';
-  }
-  function myStoryMissingMediaHtml(){
-    return '<span class="my-story-thumb-fallback">Media topilmadi</span>';
-  }
-  function myStoryActionTemplate(storyId,screen){
-    return '<button type="button" data-my-story-open="'+storyId+'" data-my-story-screen="'+screen+'">Ko‘rish</button><button type="button" class="danger" data-my-story-delete="'+storyId+'" data-my-story-screen="'+screen+'">O‘chirish</button>';
-  }
-  function myStoryDate(seconds){
-    return new Date(Number(seconds||0)*1000).toLocaleString("uz-UZ",{
-      day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
-    });
-  }
-  function myStoryRemaining(expiresAt){
-    var seconds=Math.max(0,Number(expiresAt||0)-Math.floor(Date.now()/1000));
-    var hours=Math.floor(seconds/3600),minutes=Math.floor((seconds%3600)/60);
-    return hours>0?hours+" soat "+minutes+" daqiqa qoldi":minutes+" daqiqa qoldi";
-  }
-  function fetchStoryObjectUrl(url){
-    return fetch(url,{headers:apiHeaders()}).then(function(response){
-      if(!response.ok){
-        return response.json().catch(function(){return {};}).then(function(data){
-          throw new Error((data&&data.detail)||"Media topilmadi");
-        });
-      }
-      return response.blob();
-    }).then(function(blob){
-      var objectUrl=URL.createObjectURL(blob);
-      MY_STORY_OBJECT_URLS.push(objectUrl);
-      return objectUrl;
-    });
-  }
-  function releaseMyStoryObjectUrl(url){
-    var index=MY_STORY_OBJECT_URLS.indexOf(url);
-    if(index>=0)MY_STORY_OBJECT_URLS.splice(index,1);
-    try{URL.revokeObjectURL(url);}catch(error){}
-  }
-  function revokeMyStoryObjectUrls(){
-    MY_STORY_LOAD_TOKEN++;
-    MY_STORY_OBJECT_URLS.splice(0).forEach(function(url){
-      try{URL.revokeObjectURL(url);}catch(error){}
-    });
-  }
-  function myStoryCardHtml(item,screen){
-    var archived=item.state==="archived";
-    var stateText=archived?"Arxiv":("Faol · "+myStoryRemaining(item.expires_at));
-    var caption=item.caption?esc(item.caption):"Matnsiz istoriya";
-    return '<article class="my-story-card" data-my-story-id="'+item.id+'">'+
-      '<div class="my-story-thumb" data-my-story-thumb="'+item.id+'" data-my-story-thumb-url="'+esc(item.thumbnail_url)+'">'+
-        myStoryMissingMediaHtml()+(item.media_type==="video"?'<span class="my-story-video-badge">▶ Video</span>':'')+
-      '</div><div class="my-story-main"><div class="my-story-caption">'+caption+'</div>'+
-      '<div class="my-story-meta">'+esc(myStoryDate(item.created_at))+'<br>👁 '+Number(item.view_count||0)+' ko‘rish</div>'+
-      '<span class="my-story-state'+(archived?' archived':'')+'">'+esc(stateText)+'</span>'+
-      '<div class="my-story-actions">'+myStoryActionTemplate(item.id,screen)+'</div></div></article>';
-  }
-  function hydrateMyStoryThumbnails(list){
-    var token=MY_STORY_LOAD_TOKEN;
-    var nodes=Array.prototype.slice.call(list.querySelectorAll("[data-my-story-thumb-url]"));
-    return nodes.reduce(function(chain,node){
-      return chain.then(function(){
-        if(token!==MY_STORY_LOAD_TOKEN)return;
-        return fetchStoryObjectUrl(node.getAttribute("data-my-story-thumb-url")).then(function(url){
-          if(token!==MY_STORY_LOAD_TOKEN){releaseMyStoryObjectUrl(url);return;}
-          var img=document.createElement("img");img.src=url;img.alt="Istoriya muqovasi";
-          var fallback=node.querySelector(".my-story-thumb-fallback");if(fallback)fallback.remove();
-          node.insertBefore(img,node.firstChild);
-        }).catch(function(){
-          node.setAttribute("data-media-missing","1");
-        });
-      });
-    },Promise.resolve());
-  }
-  function renderMyStories(screen,items){
-    var config=myStoryScreenConfig(screen),state=MY_STORIES[config.key].state,list=el(config.listId);
-    if(!list)return;
-    if(!items.length){list.innerHTML=myStoriesEmptyHtml(state);return;}
-    list.innerHTML=items.map(function(item){return myStoryCardHtml(item,screen);}).join("");
-    hydrateMyStoryThumbnails(list);
-  }
-  function loadMyStories(screen,state){
-    var config=myStoryScreenConfig(screen),store=MY_STORIES[config.key];
-    if(state)store.state=state;
-    var list=el(config.listId),tabs=el(config.tabsId);if(!list)return Promise.resolve();
-    revokeMyStoryObjectUrls();
-    if(tabs)tabs.querySelectorAll("[data-my-story-state]").forEach(function(button){
-      button.classList.toggle("on",button.getAttribute("data-my-story-state")===store.state);
-    });
-    list.innerHTML='<div class="empty my-stories-status"><h3>Yuklanmoqda</h3><p>Istoriyalar olinmoqda.</p></div>';
-    var path="/api/stories/mine?actor_type="+encodeURIComponent(config.actorType)+"&state="+encodeURIComponent(store.state);
-    return api("GET",path).then(function(items){
-      if(current!==screen)return;
-      store.items=Array.isArray(items)?items:[];
-      renderMyStories(screen,store.items);
-    }).catch(function(error){
-      if(current!==screen)return;
-      if(error.status===401||error.status===403){
-        showMsg(error.message);
-        nav(config.actorType==="business"?"cabinet":"ucab");
-        return;
-      }
-      list.innerHTML=myStoriesErrorHtml();
-      showMsg(error.message);
-    });
-  }
-  function refreshMyStoryScreen(){
-    if(current==="ucab-stories"||current==="cab-stories")return loadMyStories(current);
-    return Promise.resolve();
-  }
-  function openManagedStory(storyId,screen){
-    var config=myStoryScreenConfig(screen),item=MY_STORIES[config.key].items.filter(function(row){return Number(row.id)===Number(storyId);})[0];
-    if(!item)return;
-    fetchStoryObjectUrl(item.media_url).then(function(objectUrl){
-      if(current!==screen){releaseMyStoryObjectUrl(objectUrl);return;}
-      MANAGED_STORY_VIEW_CONTEXT={
-        groups:STORY_GROUPS,
-        groupIndex:STORY_GROUP_INDEX,
-        itemIndex:STORY_ITEM_INDEX,
-        objectUrl:objectUrl,
-        actorType:config.actorType,
-        screen:screen
-      };
-      STORY_GROUPS=[{
-        owner_type:config.actorType,
-        owner_id:item.owner_id,
-        name:"Mening istoriyam",
-        avatar_url:"",
-        is_own:true,
-        has_unseen:false,
-        stories:[Object.assign({},item,{media_url:objectUrl,thumbnail_url:objectUrl,viewed:true})]
-      }];
-      openStoryViewer(0);
-    }).catch(function(error){showMsg(error.message);});
-  }
-  function restoreManagedStoryViewerContext(){
-    if(!MANAGED_STORY_VIEW_CONTEXT)return;
-    var context=MANAGED_STORY_VIEW_CONTEXT;
-    STORY_GROUPS=context.groups;
-    STORY_GROUP_INDEX=context.groupIndex;
-    STORY_ITEM_INDEX=context.itemIndex;
-    MANAGED_STORY_VIEW_CONTEXT=null;
-  }
-  function storyActionActorType(){
-    return MANAGED_STORY_VIEW_CONTEXT?MANAGED_STORY_VIEW_CONTEXT.actorType:(STAFF_INFO?"business":actorType());
-  }
-
-  function storyInitial(name){
-    var value=(name||"K").trim();
-    return esc((value.charAt(0)||"K").toUpperCase());
-  }
-  function storyAvatarHtml(group){
-    if(group && group.avatar_url) return '<img src="'+esc(group.avatar_url)+'" alt="" loading="lazy">';
-    return '<span class="story-fallback">'+storyInitial(group&&group.name)+'</span>';
-  }
-  function storyCanPost(){
-    if(STAFF_INFO) return !!((STAFF_INFO.perms||[]).indexOf("ads")>=0);
-    if(!ME || !ME.registered) return false;
-    if(actorType()==="business") return !!ME.business_id;
-    return true;
-  }
-  function updateStoryProfileRings(){
-    var own=window.__ownStoryGroupIndex>=0?STORY_GROUPS[window.__ownStoryGroupIndex]:null;
-    ["ucabAvatar","upAvatarView"].forEach(function(id){var node=el(id);if(node)node.classList.toggle("has-story",!!own&&own.owner_type==="user");});
-    ["cabLogo","bpAvatarView"].forEach(function(id){var node=el(id);if(node)node.classList.toggle("has-story",!!own&&own.owner_type==="business");});
-  }
-  function renderStoryRail(){
-    var rail=el("storyRail"); if(!rail) return;
-    var add='<button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>';
-    var cards=STORY_GROUPS.map(function(group,index){
-      return '<button class="story-card '+(group.has_unseen?'unseen':'seen')+'" type="button" data-story-group="'+index+'" aria-label="'+esc(group.name||"Istoriya")+' istoriyasini ko‘rish">'+
-        '<span class="story-thumb">'+storyAvatarHtml(group)+'</span><span class="story-name">'+esc(group.is_own?'Sizning istoriya':(group.name||"Profil"))+'</span></button>';
-    }).join("");
-    rail.innerHTML=add+cards;
-    window.__ownStoryGroupIndex=STORY_GROUPS.findIndex(function(group){return !!group.is_own;});
-    updateStoryProfileRings();
-  }
-  function loadStories(){
-    var rail=el("storyRail"); if(!rail) return Promise.resolve([]);
-    var url="/api/stories/feed?actor_type="+encodeURIComponent(STAFF_INFO?"business":actorType());
-    return api("GET",url).then(function(groups){
-      STORY_GROUPS=Array.isArray(groups)?groups:[];
-      renderStoryRail();
-      return STORY_GROUPS;
-    }).catch(function(){
-      STORY_GROUPS=[];
-      renderStoryRail();
-      return [];
-    });
-  }
-  function clearStoryObjectUrl(){
-    if(STORY_OBJECT_URL){try{URL.revokeObjectURL(STORY_OBJECT_URL);}catch(e){} STORY_OBJECT_URL="";}
-  }
-  function resetStoryComposer(){
-    clearStoryObjectUrl(); STORY_SELECTED_FILE=null;
-    if(el("storyFileInput")){el("storyFileInput").value="";el("storyFileInput").removeAttribute("capture");}
-    if(el("storyCaption")) el("storyCaption").value="";
-    if(el("storyCaptionCount")) el("storyCaptionCount").textContent="0 / 200";
-    if(el("storyPreview")) el("storyPreview").classList.remove("on");
-    if(el("storyPreviewImage")){el("storyPreviewImage").hidden=true;el("storyPreviewImage").removeAttribute("src");}
-    if(el("storyPreviewVideo")){try{el("storyPreviewVideo").pause();}catch(e){}el("storyPreviewVideo").hidden=true;el("storyPreviewVideo").removeAttribute("src");}
-    if(el("storyComposeFields")) el("storyComposeFields").classList.remove("on");
-    if(el("storySourceChoices")) el("storySourceChoices").style.display="grid";
-    if(el("storyUploadProgressWrap")) el("storyUploadProgressWrap").classList.remove("on");
-    if(el("storyUploadProgress")) el("storyUploadProgress").style.width="0%";
-    if(el("storyUploadStatus")){el("storyUploadStatus").classList.remove("on");el("storyUploadStatus").textContent="";}
-    if(el("storyUploadError")){el("storyUploadError").classList.remove("on");el("storyUploadError").textContent="";}
-    if(el("storyUploadBtn")){el("storyUploadBtn").disabled=false;el("storyUploadBtn").textContent="Joylash";}
-  }
-  function openStoryComposer(){
-    if(!storyCanPost()){
-      if(STAFF_INFO){showMsg("Istoriya joylash uchun xodimga reklama ruxsati kerak.");return;}
-      showLogin("istoriya joylash"); return;
-    }
-    resetStoryComposer();
-    el("storyComposer").classList.add("on");
-    el("storyComposer").setAttribute("aria-hidden","false");
-  }
-  function closeStoryComposer(){
-    var layer=el("storyComposer"); if(!layer)return;
-    layer.classList.remove("on");layer.setAttribute("aria-hidden","true");resetStoryComposer();
-  }
-  function storyVideoDuration(file){
-    return new Promise(function(resolve,reject){
-      var video=document.createElement("video"),url=URL.createObjectURL(file),done=false;
-      function finish(err,value){if(done)return;done=true;URL.revokeObjectURL(url);video.removeAttribute("src");err?reject(err):resolve(value);}
-      video.preload="metadata";
-      video.onloadedmetadata=function(){finish(null,Number(video.duration||0)*1000);};
-      video.onerror=function(){finish(new Error("Video ochilmadi."));};
-      video.src=url;
-      setTimeout(function(){finish(new Error("Video davomiyligi aniqlanmadi."));},8000);
-    });
-  }
-  function prepareStoryFile(file){
-    if(!file) return Promise.resolve(false);
-    var type=(file.type||"").toLowerCase(),isImage=type.indexOf("image/")===0,isVideo=type.indexOf("video/")===0;
-    if(!isImage&&!isVideo){showMsg("Rasm yoki video tanlang.");return Promise.resolve(false);}
-    if(isImage&&file.size>STORY_IMAGE_LIMIT){showMsg("Rasm hajmi 10 MB dan oshmasin.");return Promise.resolve(false);}
-    if(isVideo&&file.size>STORY_VIDEO_LIMIT){showMsg("Video hajmi 100 MB dan oshmasin.");return Promise.resolve(false);}
-    var durationCheck=isVideo?storyVideoDuration(file):Promise.resolve(0);
-    return durationCheck.then(function(duration){
-      if(isVideo&&(!duration||duration>STORY_VIDEO_LIMIT_MS+250)){showMsg("Video 1 daqiqadan oshmasin.");return false;}
-      clearStoryObjectUrl(); STORY_SELECTED_FILE=file; STORY_OBJECT_URL=URL.createObjectURL(file);
-      el("storySourceChoices").style.display="none";el("storyPreview").classList.add("on");el("storyComposeFields").classList.add("on");
-      var image=el("storyPreviewImage"),video=el("storyPreviewVideo");
-      if(isImage){image.src=STORY_OBJECT_URL;image.hidden=false;video.hidden=true;video.removeAttribute("src");}
-      else{video.src=STORY_OBJECT_URL;video.hidden=false;image.hidden=true;image.removeAttribute("src");}
-      return true;
-    }).catch(function(err){showMsg(err.message||"Video ochilmadi.");return false;});
-  }
-  function chooseStoryFile(camera){
-    var input=el("storyFileInput");if(!input)return;
-    input.value="";
-    if(camera) input.setAttribute("capture","environment"); else input.removeAttribute("capture");
-    input.click();
-  }
-  function uploadStory(){
-    if(!STORY_SELECTED_FILE){showMsg("Avval rasm yoki video tanlang.");return;}
-    var button=el("storyUploadBtn"),wrap=el("storyUploadProgressWrap"),bar=el("storyUploadProgress"),status=el("storyUploadStatus"),error=el("storyUploadError");
-    var isVideo=(STORY_SELECTED_FILE.type||"").toLowerCase().indexOf("video/")===0;
-    button.disabled=true;button.textContent="Yuborilmoqda...";wrap.classList.add("on");bar.style.width="0%";
-    status.textContent="Fayl yuborilmoqda — 0%";status.classList.add("on");error.textContent="";error.classList.remove("on");
-    var form=new FormData();form.append("file",STORY_SELECTED_FILE,STORY_SELECTED_FILE.name||"story");form.append("caption",(el("storyCaption").value||"").trim());form.append("actor_type",STAFF_INFO?"business":actorType());
-    var xhr=new XMLHttpRequest();xhr.open("POST","/api/stories",true);
-    var headers=apiHeaders();Object.keys(headers).forEach(function(key){xhr.setRequestHeader(key,headers[key]);});
-    xhr.upload.onprogress=function(event){if(event.lengthComputable){var percent=Math.min(99,Math.round(event.loaded/event.total*100));bar.style.width=percent+"%";status.textContent="Fayl yuborilmoqda — "+percent+"%";}};
-    xhr.upload.onload=function(){bar.style.width="100%";status.textContent=isVideo?"Video serverda tayyorlanmoqda...":"Istoriya saqlanmoqda...";button.textContent=isVideo?"Video tayyorlanmoqda...":"Saqlanmoqda...";};
-    xhr.onload=function(){
-      var data={};try{data=JSON.parse(xhr.responseText||"{}");}catch(e){}
-      if(xhr.status>=200&&xhr.status<300){bar.style.width="100%";showMsg("Istoriya joylandi ✅");closeStoryComposer();loadStories();refreshMyStoryScreen();}
-      else{var message=(data&&data.detail)||(xhr.status===413?"Video hajmi server chegarasidan oshdi.":"Istoriya joylanmadi. Qayta urinib ko‘ring.");button.disabled=false;button.textContent="Qayta urinish";status.classList.remove("on");error.textContent=message;error.classList.add("on");showMsg(message);}
-    };
-    xhr.onerror=function(){var message="Internet aloqasini tekshiring.";button.disabled=false;button.textContent="Qayta urinish";status.classList.remove("on");error.textContent=message;error.classList.add("on");showMsg(message);};
-    xhr.send(form);
-  }
-  function storyTimeAgo(seconds){
-    var age=Math.max(0,Math.floor(Date.now()/1000-Number(seconds||0)));
-    if(age<60)return "hozir";if(age<3600)return Math.floor(age/60)+" daqiqa oldin";return Math.floor(age/3600)+" soat oldin";
-  }
-  function clearStoryTimers(){clearTimeout(STORY_TIMER);clearInterval(STORY_PROGRESS_TIMER);STORY_TIMER=null;STORY_PROGRESS_TIMER=null;}
-  function currentStoryGroup(){return STORY_GROUPS[STORY_GROUP_INDEX]||null;}
-  function currentStory(){var group=currentStoryGroup();return group&&(group.stories||[])[STORY_ITEM_INDEX]||null;}
-  function markStoryViewed(story){
-    if(!story||story.viewed||!ME||!ME.registered)return;
-    story.viewed=true;
-    api("POST","/api/stories/"+story.id+"/view").catch(function(){});
-    var group=currentStoryGroup();if(group){group.has_unseen=(group.stories||[]).some(function(item){return !item.viewed;});renderStoryRail();}
-  }
-  function startStoryProgress(duration){
-    clearStoryTimers();STORY_DURATION_MS=Math.max(1000,Math.min(STORY_VIDEO_LIMIT_MS,Number(duration)||5000));STORY_STARTED_AT=Date.now();
-    function paint(){var progress=Math.min(100,(Date.now()-STORY_STARTED_AT)/STORY_DURATION_MS*100);var seg=el("storyProgress")&&el("storyProgress").querySelector(".current");if(seg)seg.style.setProperty("--story-progress",progress+"%");}
-    STORY_PROGRESS_TIMER=setInterval(paint,80);STORY_TIMER=setTimeout(function(){advanceStory(1);},STORY_DURATION_MS);
-  }
-  function storyActionsHtml(group,story){
-    if(group.is_own)return '<button type="button" data-story-viewers="'+story.id+'">Ko‘rganlar</button><button type="button" data-story-delete="'+story.id+'">O‘chirish</button>';
-    return '<button type="button" data-story-report="'+story.id+'">Shikoyat</button>';
-  }
-  function renderStoryViewer(){
-    var group=currentStoryGroup(),story=currentStory();if(!group||!story){closeStoryViewer();return;}
-    var progress=(group.stories||[]).map(function(_,index){return '<span class="story-progress-seg '+(index<STORY_ITEM_INDEX?'done':(index===STORY_ITEM_INDEX?'current':''))+'"><span></span></span>';}).join("");
-    el("storyProgress").innerHTML=progress;el("storyOwnerAvatar").innerHTML=storyAvatarHtml(group);el("storyOwnerName").textContent=group.name||"Profil";el("storyOwnerTime").textContent=storyTimeAgo(story.created_at);el("storyViewerCaption").textContent=story.caption||"";el("storyViewerActions").innerHTML=storyActionsHtml(group,story);
-    var media=el("storyViewerMedia");media.innerHTML="";
-    if(story.media_type==="video"){
-      var video=document.createElement("video");video.src=story.media_url;video.autoplay=true;video.playsInline=true;video.controls=false;video.muted=false;media.appendChild(video);
-      video.onloadedmetadata=function(){var ms=Math.min(STORY_VIDEO_LIMIT_MS,Math.max(1000,(Number(video.duration)||Number(story.duration_seconds)||5)*1000));startStoryProgress(ms);};
-      video.onended=function(){advanceStory(1);};video.play().catch(function(){video.muted=true;video.play().catch(function(){});});
-      setTimeout(function(){if(!STORY_TIMER)startStoryProgress((Number(story.duration_seconds)||5)*1000);},1200);
-    }else{
-      var image=document.createElement("img");image.src=story.media_url;image.alt="Istoriya";media.appendChild(image);startStoryProgress(5000);
-    }
-    setTimeout(function(){if(currentStory()&&currentStory().id===story.id)markStoryViewed(story);},700);
-  }
-  function openStoryViewer(groupIndex,itemIndex){
-    if(groupIndex<0||groupIndex>=STORY_GROUPS.length)return;
-    STORY_GROUP_INDEX=groupIndex;STORY_ITEM_INDEX=Math.max(0,Number(itemIndex)||0);
-    var group=currentStoryGroup();if(!group)return;
-    var firstUnseen=(group.stories||[]).findIndex(function(item){return !item.viewed;});if(itemIndex==null&&firstUnseen>=0)STORY_ITEM_INDEX=firstUnseen;
-    el("storyViewer").classList.add("on");el("storyViewer").setAttribute("aria-hidden","false");renderStoryViewer();
-  }
-  function closeStoryViewer(){
-    clearStoryTimers();var viewer=el("storyViewer");if(!viewer)return;
-    var video=viewer.querySelector("video");if(video)try{video.pause();}catch(e){}
-    viewer.classList.remove("on");viewer.setAttribute("aria-hidden","true");el("storyViewerMedia").innerHTML="";
-    restoreManagedStoryViewerContext();
-  }
-  function advanceStory(direction){
-    var group=currentStoryGroup();if(!group)return closeStoryViewer();
-    var next=STORY_ITEM_INDEX+direction;
-    if(next>=0&&next<(group.stories||[]).length){STORY_ITEM_INDEX=next;renderStoryViewer();return;}
-    var nextGroup=STORY_GROUP_INDEX+direction;
-    if(nextGroup>=0&&nextGroup<STORY_GROUPS.length){STORY_GROUP_INDEX=nextGroup;STORY_ITEM_INDEX=direction>0?0:Math.max(0,(STORY_GROUPS[nextGroup].stories||[]).length-1);renderStoryViewer();return;}
-    closeStoryViewer();
-  }
-  function closeStoryViewers(){var sheet=el("storyViewersSheet");if(sheet){sheet.classList.remove("on");sheet.setAttribute("aria-hidden","true");}}
-  function showStoryViewers(storyId){
-    api("GET","/api/stories/"+storyId+"/viewers?actor_type="+encodeURIComponent(storyActionActorType())).then(function(items){
-      el("storyViewersList").innerHTML=items.length?items.map(function(item){return '<div class="story-viewer-person"><span class="story-owner-avatar">'+storyInitial(item.name)+'</span><div><b>'+esc(item.name||"Foydalanuvchi")+'</b><div class="idesc">'+storyTimeAgo(item.viewed_at)+'</div></div></div>';}).join(""):'<div class="empty" style="padding:24px 10px"><h3>Hali ko‘rishmagan</h3><p>Ko‘rganlar shu yerda chiqadi.</p></div>';
-      el("storyViewersSheet").classList.add("on");el("storyViewersSheet").setAttribute("aria-hidden","false");
-    }).catch(function(err){showMsg(err.message);});
-  }
-  function deleteStory(storyId){askConfirm({title:"Istoriyani o‘chirish",text:"Bu istoriya darhol o‘chiriladi.",okText:"O‘chirish",danger:true}).then(function(ok){if(!ok)return;api("DELETE","/api/stories/"+storyId+"?actor_type="+encodeURIComponent(storyActionActorType())).then(function(){showMsg("Istoriya o‘chirildi.");closeStoryViewer();loadStories();refreshMyStoryScreen();}).catch(function(err){showMsg(err.message);});});}
-  function reportStory(storyId){
-    if(!ME||!ME.registered){showLogin("shikoyat yuborish");return;}
-    askInput({title:"Istoriya ustidan shikoyat",okText:"Yuborish",fields:[{key:"reason",label:"Sababi",placeholder:"Kamida 10 ta belgi",required:true}]}).then(function(data){if(!data)return;var reason=(data.reason||"").trim();if(reason.length<10){showMsg("Sababni kamida 10 ta belgi bilan yozing.");return;}api("POST","/api/stories/"+storyId+"/reports",{reason:reason}).then(function(){showMsg("Shikoyat yuborildi.");}).catch(function(err){showMsg(err.message);});});
-  }
-  document.addEventListener("click",function(event){
-    var add=event.target.closest("#storyAddCard");if(add){openStoryComposer();return;}
-    var card=event.target.closest("[data-story-group]");if(card){openStoryViewer(Number(card.getAttribute("data-story-group")));return;}
-    var viewers=event.target.closest("[data-story-viewers]");if(viewers){showStoryViewers(Number(viewers.getAttribute("data-story-viewers")));return;}
-    var del=event.target.closest("[data-story-delete]");if(del){deleteStory(Number(del.getAttribute("data-story-delete")));return;}
-    var report=event.target.closest("[data-story-report]");if(report){reportStory(Number(report.getAttribute("data-story-report")));}
-  });
-  document.addEventListener("click",function(event){
-    var stateButton=event.target.closest("[data-my-story-state]");
-    if(stateButton){
-      loadMyStories(current,stateButton.getAttribute("data-my-story-state"));
-      return;
-    }
-    if(event.target.closest("[data-my-stories-retry]")){
-      refreshMyStoryScreen();return;
-    }
-    if(event.target.closest("[data-my-story-add]")){
-      openStoryComposer();return;
-    }
-    var openButton=event.target.closest("[data-my-story-open]");
-    if(openButton){
-      openManagedStory(
-        Number(openButton.getAttribute("data-my-story-open")),
-        openButton.getAttribute("data-my-story-screen")
-      );
-      return;
-    }
-    var deleteButton=event.target.closest("[data-my-story-delete]");
-    if(deleteButton){
-      var storyId=Number(deleteButton.getAttribute("data-my-story-delete"));
-      var screen=deleteButton.getAttribute("data-my-story-screen");
-      var config=myStoryScreenConfig(screen);
-      askConfirm({title:"Istoriyani o‘chirish",text:"Istoriya va uning media fayli butunlay o‘chiriladi.",okText:"O‘chirish",danger:true}).then(function(ok){
-        if(!ok)return;
-        api("DELETE","/api/stories/"+storyId+"?actor_type="+encodeURIComponent(config.actorType)).then(function(){
-          showMsg("Istoriya o‘chirildi.");loadStories();loadMyStories(screen);
-        }).catch(function(error){showMsg(error.message);});
-      });
-    }
-  });
-  el("storyComposerClose")&&el("storyComposerClose").addEventListener("click",closeStoryComposer);
-  el("storyComposer")&&el("storyComposer").addEventListener("click",function(e){if(e.target===this)closeStoryComposer();});
-  el("storyCameraBtn")&&el("storyCameraBtn").addEventListener("click",function(){chooseStoryFile(true);});
-  el("storyGalleryBtn")&&el("storyGalleryBtn").addEventListener("click",function(){chooseStoryFile(false);});
-  el("storyChooseAgain")&&el("storyChooseAgain").addEventListener("click",function(){chooseStoryFile(false);});
-  el("storyFileInput")&&el("storyFileInput").addEventListener("change",function(){prepareStoryFile(this.files&&this.files[0]);});
-  el("storyCaption")&&el("storyCaption").addEventListener("input",function(){el("storyCaptionCount").textContent=this.value.length+" / 200";});
-  el("storyUploadBtn")&&el("storyUploadBtn").addEventListener("click",uploadStory);
-  el("storyViewerClose")&&el("storyViewerClose").addEventListener("click",closeStoryViewer);
-  el("storyTapPrev")&&el("storyTapPrev").addEventListener("click",function(){advanceStory(-1);});
-  el("storyTapNext")&&el("storyTapNext").addEventListener("click",function(){advanceStory(1);});
-  el("storyViewersClose")&&el("storyViewersClose").addEventListener("click",closeStoryViewers);
-  el("storyViewersSheet")&&el("storyViewersSheet").addEventListener("click",function(e){if(e.target===this)closeStoryViewers();});
 
 
   var YON = [
@@ -3113,9 +2248,9 @@
                  ic:t.ic, c:t.c, lat:e2.lat, lng:e2.lng, desc:e2.descr||"",
                  media:e2.media||[], is_saved:!!e2.is_saved, user_id:e2.user_id, owner_name:e2.owner_name||"" };
       });
-      if(current!=="listings")renderPins(key); // alohida e'lon oynasida yashirin xaritani chizmaymiz
+      renderPins(key);              // toifa metkalari avtomatik xaritada
       renderElonList(key);
-      if(current!=="listings")fitElonBounds(key);
+      fitElonBounds(key);           // xarita barcha metkalarni qamrab oladigan hududga moslashadi
       screensEl.scrollTo({top:0, behavior:"smooth"});
     }).catch(function(e){ el("elonList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
@@ -3171,10 +2306,10 @@
   function toggleElon(id){
     // akkordeon: ochiq bo'lsa yopamiz, yopiq bo'lsa ochamiz
     selElon = (selElon===id) ? null : id;
-    if(current!=="listings")renderPins(mapMode); // bosh xaritadagi holat uchun
+    renderPins(mapMode);          // ochilgan e'lon metkasi ajralib ko'rinadi
     renderElonList(mapMode);
     // ochilgan e'lon metkasiga xaritani avtomatik suramiz
-    if(current!=="listings" && selElon!=null && LMAP){
+    if(selElon!=null && LMAP){
       var e = ELONS.filter(function(x){ return x.id===selElon; })[0];
       if(e && e.lat!=null && e.lng!=null){
         try{ LMAP.setView([e.lat, e.lng], 15, { animate:true }); }catch(err){}
@@ -3266,6 +2401,8 @@
     renderMapChip();
     fitResultBounds(pins);
     el("clearSearch").hidden = false;
+    el("elonHead").style.display="none"; el("elonHint").style.display="none";
+    el("elonRow").style.display="none"; el("elonList").style.display="none";
     el("resWrap").hidden = false;
     el("resCount").textContent = "Natijalar \u2014 " + count + " ta";
     el("resList").innerHTML = list_html;
@@ -3277,6 +2414,8 @@
     el("searchInput").value = "";
     el("catSearch").value = "";
     el("clearSearch").hidden = true;
+    el("elonHead").style.display=""; el("elonHint").style.display="";
+    el("elonRow").style.display=""; el("elonList").style.display="";
     el("resWrap").hidden = true;
     el("resList").innerHTML = "";
     mapMode = "biz";
@@ -3295,7 +2434,7 @@
   var pickMode="to", TO_PIN=null;               // qaysi maydon tahrirlanmoqda ("from"/"to") + qizil manzil belgisi
   var _skipMove=false, _fromGeoTimer=null;      // dasturiy siljishni o'tkazib yuborish + boshlanish geokod taymeri
   function homePartsHide(h){
-    ["adBox","adDots","pinEyebrow"].forEach(function(id){
+    ["adBox","adDots","pinEyebrow","elonHead","elonHint","elonRow","elonList"].forEach(function(id){
       var x=el(id); if(x) x.style.display = h ? "none" : "";
     });
   }
@@ -4066,7 +3205,6 @@
     if(el("tbTitle")) el("tbTitle").textContent = b.name || "Do'kon";
     var meta = [b.yon, b.tur].filter(Boolean).join(" · ");
     var items = (b.items||[]);
-    var queueBanner=(!!b.queue_supported && (Number(b.queue_total)>0 || items.some(function(it){return Number(it.queue_enabled)===1;}))) ? '<div class="idesc" data-biz-queue-total style="margin-top:10px;color:var(--primary);font-weight:800">👥 Bugungi jami navbat: '+(Number(b.queue_total)||0)+' ta</div>' : '';
     var itemsHtml = items.length ? (
       '<div class="sec-head"><h2>Mahsulotlar</h2><span class="link">'+items.length+' ta</span></div>'+
       items.map(function(it){
@@ -4094,7 +3232,6 @@
         (b.followers?'<div class="idesc" style="margin-top:2px">'+b.followers+' obunachi</div>':'')+
         (b.descr?'<div class="biz-desc" style="margin-top:8px">'+esc(b.descr)+'</div>':'')+
       '</div>'+
-      queueBanner+
       itemsHtml+
       listHtml+
       (items.length||listings.length ? '' : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha ma\'lumot yo\'q</div>')+
@@ -4184,7 +3321,7 @@
     }
     var btn = el("rgSubmit"); btn.disabled = true; btn.textContent = "Yuborilmoqda...";
     api("POST", "/api/mobile-auth/register/request-code", body).then(function(r){
-      renderRegisterCode(phone, r.request_id);
+      renderRegisterCode(phone, r.request_id, r.test_code || "");
     }).catch(function(e){
       showMsg(e.message);
     }).finally(function(){
@@ -4192,10 +3329,11 @@
     });
   }
 
-  function renderRegisterCode(phone, requestId){
+  function renderRegisterCode(phone, requestId, testCode){
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">Telefonni tasdiqlash</div>'+
       '<div class="lead-sub"><b>'+esc(phone)+'</b> raqamiga yuborilgan 6 xonali kodni kiriting.</div>'+
+      (testCode?'<div class="ad-info" style="margin-bottom:12px">Sinov kodi: <b style="font-size:18px">'+esc(testCode)+'</b></div>':'')+
       '<div class="field"><label>Tasdiqlash kodi</label><input class="input" id="rgCode" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"></div>'+
       '<button class="btn btn-primary btn-block" id="rgVerify">Tasdiqlash va kirish</button>'+
       '<button class="btn btn-outline btn-block" id="rgCodeBack" style="margin-top:10px">Telefonni o\'zgartirish</button></div>';
@@ -4234,21 +3372,21 @@
 
   /* ---------- navigation ---------- */
   var current = "home";
-  var titles = { catalog:"Qidiruv", listings:"E’lonlar", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
-    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
+  var titles = { catalog:"Qidiruv", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
+    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
-    "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-stories":"Istoriyalarim", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
-    ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-stories":"Istoriyalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
-    "ucab-subs":"Kuzatayotganlar", "ucab-orders":"Buyurtmalarim", "ucab-service-orders":"Xizmat buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
+    "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
+    ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
+    "ucab-subs":"Obunalarim", "ucab-orders":"Buyurtmalarim", "ucab-service-orders":"Xizmat buyurtmalarim", "ucab-saved":"Saqlanganlar", "ucab-settings":"Sozlamalar",
     chats:"Suhbatlar", chat:"Suhbat", notify:"Bildirishnomalarim", "notify-form":"Yangi filtr", "biz-open":"Biznes ochish",
-    "cab-followers":"Obunachilarim", "cab-following":"Kuzatayotganlar", "ucab-followers":"Obunachilarim",
+    "cab-followers":"Obunachilarim", "cab-following":"Obunalarim", "ucab-followers":"Obunachilarim",
     "staff-login":"Kirish", "staff-home":"Do'kon", "cab-admin":"Ma'muriyat", "cab-my-docs":"Mening hujjatlarim", "cab-staff":"Xodimlar", "cab-staff-form":"Xodim", "cab-tabel":"Ish tabeli", "cab-docs":"Hujjatlar", "cab-contractors":"Kontragentlar", "cab-contractor-form":"Kontragent", "cab-doc-new":"Hujjat yaratish", "cab-doc-in":"Ichki hujjatlar", "cab-doc-out":"Chiquvchi hujjatlar", "cab-doc-view":"Hujjat", "cab-doc-inbox":"Kiruvchi hujjatlar", "user-page":"Foydalanuvchi", "cab-report":"Hisobot", "cat-types":"Faoliyat turlari", loc:"Manzilim", verify:"Tasdiqlash", taxidrv:"Taxi \u2014 haydovchi",
     "ucab-spec":"Mutaxassisligim", "ucab-spec-offer-form":"Xizmat yoki mahsulot", "ucab-spec-reviews":"Mijoz fikrlari", person:"Mutaxassis sahifasi", "biz-cred":"Login va parol", help:"Yordam", pickloc:"Joyni tanlash", "ai-chat":"AI yordamchi" };
   titles["cab-education-student-card"]="O'quvchi kartasi";
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   titles["cab-education-payment-control"]="To'lov nazorati";
-  var BACKMAP = { catalog:"home", listings:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
-    cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
+  var BACKMAP = { catalog:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
+    cabinet:"home", "cab-profil":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-service-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
@@ -4257,8 +3395,6 @@
     "cab-kassa":"cabinet", "cab-ombor":"cabinet", "cab-xarajat":"cabinet", "cab-kassa-form":"cab-kassa", "cab-dining":"cabinet", "cab-dining-order":"cab-dining", "cab-education-groups":"cabinet", "cab-education-group-form":"cab-education-groups", "cab-education-students":"cabinet", "cab-education-student-form":"cab-education-students", "cab-education-schedule":"cabinet", "cab-education-attendance":"cabinet", "cab-education-payments":"cabinet", "cab-education-payment-form":"cab-education-payments", "cab-education-teachers":"cabinet", "cab-education-teacher-form":"cab-education-teachers", "cab-education-exams":"cabinet", "cab-education-exam-form":"cab-education-exams", "cab-education-exam-results":"cab-education-exams", "cab-education-enrollments":"cabinet", "cab-education-payroll":"cabinet", "cab-education-payroll-form":"cab-education-payroll", "cab-education-statistics":"cabinet",
     chat:"chats", chats:"home", "notify-form":"notify", notify:"home", "biz-open":"home" };
   BACKMAP["cab-education-student-card"]="cab-education-students";
-  BACKMAP["ucab-stories"]="ucab";
-  BACKMAP["cab-stories"]="cabinet";
   BACKMAP["cab-education-student-transfer"]="cab-education-student-card";
   BACKMAP["cab-education-payment-control"]="cabinet";
   var personBack = "home";
@@ -4276,20 +3412,13 @@
       screen = "cabinet";
     }
     if(screen!=="chat" && typeof stopChatPoll==="function") stopChatPoll();
-    var previousScreen=current;
-    if((previousScreen==="ucab-stories"||previousScreen==="cab-stories") && previousScreen!==screen){
-      revokeMyStoryObjectUrls();
-    }
     current = screen;
     var secs = document.querySelectorAll(".screen");
     for(var i=0;i<secs.length;i++) secs[i].classList.toggle("active", secs[i].getAttribute("data-screen")===screen);
     screensEl.scrollTop = 0;
     var home = screen==="home";
-    var desktopPublic = screen==="listings" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
-    el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
-    el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
-    if(el("webHomeBtn")) el("webHomeBtn").classList.toggle("on",home);
-    if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
+    el("tbHome").style.display = home ? "flex" : "none";
+    el("tbSub").style.display = home ? "none" : "flex";
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
@@ -4297,145 +3426,9 @@
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
     if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
-    if(home && typeof loadStories === "function") setTimeout(loadStories,40);
-    if(home && typeof loadDistrictOffers === "function") loadDistrictOffers(false);
   }
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
-
-  /* ---------- TUMANDAGI UZLUKSIZ TAKLIFLAR ---------- */
-  var DISTRICT_OFFERS_CACHE=null;
-  var DISTRICT_OFFERS_LOADING=null;
-  var DISTRICT_OFFERS_GENERATION=0;
-  var DISTRICT_OFFER_SLOT_MS=30*60*1000;
-  var DISTRICT_OFFERS_REFRESH_TIMER=null;
-  var DISTRICT_OFFER_MEDIA_PATHS=/^\/(?:media|uploads)\/(?:[A-Za-z0-9][A-Za-z0-9._-]*)(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
-  var DISTRICT_OFFER_PROFILE_MEDIA=/^\/profile-media\/(?:business|user)\/[1-9][0-9]*(?:\?v=[0-9]+)?$/;
-  var DISTRICT_OFFER_MEDIA_ID=/^[A-Za-z0-9_-]{1,512}$/;
-
-  function clearDistrictOffersCache(){
-    var mount=el("districtOffersMount");
-    if(mount){ mount.innerHTML=""; mount.hidden=true; mount.classList.remove("is-paused"); }
-    DISTRICT_OFFERS_CACHE=null;
-    DISTRICT_OFFERS_LOADING=null;
-    DISTRICT_OFFERS_GENERATION++;
-  }
-  function scheduleDistrictOffersRefresh(){
-    if(DISTRICT_OFFERS_REFRESH_TIMER) clearTimeout(DISTRICT_OFFERS_REFRESH_TIMER);
-    var delay=DISTRICT_OFFER_SLOT_MS-(Date.now()%DISTRICT_OFFER_SLOT_MS)+1000;
-    DISTRICT_OFFERS_REFRESH_TIMER=setTimeout(function(){
-      DISTRICT_OFFERS_REFRESH_TIMER=null;
-      loadDistrictOffers(true);
-    },delay);
-  }
-  document.addEventListener("visibilitychange",function(){
-    if(!document.hidden){ loadDistrictOffers(true); scheduleDistrictOffersRefresh(); }
-  });
-  function safeDistrictOfferMediaUrl(value){
-    var media=String(value||"").trim();
-    if(!media || /^(?:\/\/|https?:|javascript:)/i.test(media)) return "";
-    if(media.charAt(0)==="/") return (DISTRICT_OFFER_MEDIA_PATHS.test(media)||DISTRICT_OFFER_PROFILE_MEDIA.test(media))?media:"";
-    return DISTRICT_OFFER_MEDIA_ID.test(media)?"/media/"+media:"";
-  }
-  function districtOfferCardHtml(item, duplicate){
-    var kind=item.kind||"";
-    var photo=item.image||item.business_logo||"";
-    var fallback=kind==="listing"?"📣":kind==="service"?"🧰":"🛍️";
-    var mediaUrl=safeDistrictOfferMediaUrl(photo);
-    var media=mediaUrl?'<img src="'+esc(mediaUrl)+'" alt="" loading="lazy">':fallback;
-    var kindLabel=kind==="listing"?"E’lon":kind==="service"?"Xizmat":"Mahsulot";
-    var price=item.price?'<div class="district-offer-price">'+esc(item.price)+(item.unit?' / '+esc(item.unit):'')+'</div>':"";
-    return '<button type="button" class="district-offer-card" data-district-business="'+esc(item.business_id)+'" data-district-content="'+esc(item.content_id)+'" data-district-kind="'+esc(kind)+'"'+(duplicate?' tabindex="-1" aria-hidden="true"':'')+'>'+ 
-      '<span class="district-offer-media">'+media+'</span>'+ 
-      '<span class="district-offer-body"><span class="district-offer-title">'+esc(item.title||"Taklif")+'</span><span class="district-offer-business">'+esc(item.business_name||"")+'</span><span class="district-offer-kind" data-district-kind-badge>'+kindLabel+'</span>'+price+'</span>'+ 
-    '</button>';
-  }
-  function bindDistrictOffersMount(mount){
-    if(mount.getAttribute("data-district-bound")==="1") return;
-    mount.setAttribute("data-district-bound","1");
-    function pause(){ mount.classList.add("is-paused"); }
-    function resume(){ mount.classList.remove("is-paused"); }
-    mount.addEventListener("pointerenter",pause);
-    mount.addEventListener("pointerleave",resume);
-    mount.addEventListener("touchstart",pause,{passive:true});
-    mount.addEventListener("touchend",resume,{passive:true});
-    mount.addEventListener("touchcancel",resume,{passive:true});
-    mount.addEventListener("focusin",pause);
-    mount.addEventListener("focusout",function(e){
-      if(!e.relatedTarget || !mount.contains(e.relatedTarget)) resume();
-    });
-    mount.addEventListener("click",function(e){
-      var select=e.target.closest("[data-district-select]");
-      if(select){ nav("loc"); return; }
-      var card=e.target.closest("[data-district-content]");
-      if(!card) return;
-      var businessId=parseInt(card.getAttribute("data-district-business"),10);
-      var contentId=parseInt(card.getAttribute("data-district-content"),10);
-      var kind=card.getAttribute("data-district-kind");
-      if(kind==="listing") openElonSrv(contentId);
-      else if(kind==="product" || kind==="service") openBizSrv(businessId,contentId);
-    });
-  }
-  function renderDistrictOffers(payload){
-    var mount=el("districtOffersMount");
-    if(!mount) return;
-    bindDistrictOffersMount(mount);
-    mount.classList.remove("is-paused");
-    if(payload && payload.needs_district){
-      mount.innerHTML='<button type="button" class="district-select-btn" data-district-select>Tumanni tanlang</button>';
-      mount.hidden=false;
-      return;
-    }
-    var items=payload && Array.isArray(payload.items)?payload.items:[];
-    if(!items.length){
-      mount.innerHTML="";
-      mount.hidden=true;
-      return;
-    }
-    var cards=items.map(function(item){return districtOfferCardHtml(item,false);}).join("");
-    if(items.length>1) cards+=items.map(function(item){return districtOfferCardHtml(item,true);}).join("");
-    mount.innerHTML='<div class="district-offers-viewport"><div class="district-offers-track'+(items.length===1?' is-static':'')+'">'+cards+'</div></div>';
-    mount.hidden=false;
-  }
-  function loadDistrictOffers(force){
-    var mount=el("districtOffersMount");
-    if(DISTRICT_OFFERS_LOADING) return DISTRICT_OFFERS_LOADING;
-    var currentSlot=Math.floor(Date.now()/DISTRICT_OFFER_SLOT_MS);
-    if(!force && DISTRICT_OFFERS_CACHE && Number(DISTRICT_OFFERS_CACHE.slot)===currentSlot){
-      renderDistrictOffers(DISTRICT_OFFERS_CACHE);
-      scheduleDistrictOffersRefresh();
-      return Promise.resolve(DISTRICT_OFFERS_CACHE);
-    }
-    var generation=DISTRICT_OFFERS_GENERATION;
-    var request=api("GET","/api/home/district-offers").then(function(payload){
-      if(generation!==DISTRICT_OFFERS_GENERATION) return payload;
-      DISTRICT_OFFERS_CACHE=payload;
-      renderDistrictOffers(payload);
-      scheduleDistrictOffersRefresh();
-      return payload;
-    }).catch(function(){
-      if(generation===DISTRICT_OFFERS_GENERATION){
-        DISTRICT_OFFERS_CACHE=null;
-        if(mount){ mount.innerHTML=""; mount.hidden=true; }
-      }
-      return null;
-    }).finally(function(){
-      if(DISTRICT_OFFERS_LOADING===request) DISTRICT_OFFERS_LOADING=null;
-    });
-    DISTRICT_OFFERS_LOADING=request;
-    return request;
-  }
-  if(el("seedDistrictOffers")) el("seedDistrictOffers").addEventListener("click",function(){
-    var btn=this; btn.disabled=true; btn.textContent="Demo takliflar yaratilmoqda...";
-    api("POST","/api/home/district-offers/demo-seed").then(function(r){
-      clearDistrictOffersCache();
-      return loadDistrictOffers(true).then(function(){
-        showMsg((r.demo_businesses||20)+" ta demo taklif tayyor.");
-      });
-    }).catch(function(e){ showMsg(e.message); }).finally(function(){
-      btn.disabled=false; btn.textContent="20 ta demo taklif qo‘shish";
-    });
-  });
 
   /* ---------- SERVERGA ULANGAN SAHIFALAR ---------- */
   var curFollow = null;  // {kind, id} — obuna tugmasi uchun
@@ -5036,8 +4029,8 @@
     var newServiceInbox = (ORDERS_INBOX||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
     var updatesMine = (ORDERS_MINE||[]).filter(function(o){ return !orderIsService(o)&&!!o.is_unread; }).length;
     var updatesServiceMine = (ORDERS_MINE||[]).filter(function(o){ return orderIsService(o)&&!!o.is_unread; }).length;
-    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", window.__cabOrderHintDefault||"Mahsulot buyurtmalari");
-    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", window.__cabServiceOrderHintDefault||"Xizmat va navbatlar");
+    setBadge("cabOrderBadge", newInbox, "cabOrderHint", "🔔 {n} ta yangi/o‘zgargan buyurtma", "Mahsulot buyurtmalari");
+    setBadge("cabServiceOrderBadge", newServiceInbox, "cabServiceOrderHint", "🔔 {n} ta yangi/o‘zgargan xizmat", "Xizmat va navbatlar");
     setBadge("ucabOrderBadge", updatesMine, "ucabOrderHint", "🔔 {n} ta buyurtma yangilanishi", "Mahsulot buyurtmalarim");
     setBadge("ucabServiceOrderBadge", updatesServiceMine, "ucabServiceOrderHint", "🔔 {n} ta xizmat yangilanishi", "Xizmat va qabullarim");
   }
@@ -5761,7 +4754,7 @@
       var medical=q.business_direction==="Tibbiy xizmatlar",provider=queueProviderLabel(q.business_direction);
       return '<div class="panel-card'+(focus?' medical-queue-focus':'')+'" data-medical-queue-card="'+q.id+'" data-medical-queue-id="'+q.id+'">'+
         '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span class="order-no-pill">NAVBAT '+esc(q.queue_code)+'</span><div class="iname" style="margin-top:9px">'+esc(q.service_name||"Xizmat")+'</div><div class="idesc">🏢 '+esc(q.business_name||"Biznes")+'</div><div class="idesc">'+(medical?'🩺':'🧑‍💼')+' '+esc(q.doctor_name||provider)+'</div></div><span class="tx-amt '+(active?'st-ok':'')+'">'+esc(medicalQueueStatusText(q.status))+'</span></div>'+ 
-        '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)"><div class="idesc">📅 Sana: <b>'+esc(q.queue_date||"—")+'</b></div>'+(q.slot_time?'<div class="idesc">🕐 Qabul vaqti: <b>'+esc(q.slot_time)+'</b></div>':(active?'<div class="idesc">👥 Oldingizda: <b>'+esc(q.ahead_count||0)+' ta navbat</b></div>'+(Number(q.wait_minutes)>0?'<div class="idesc">⏳ Taxminiy kutish: <b>~'+Number(q.wait_minutes)+' daqiqa</b></div>':''):''))+(q.note?'<div class="idesc">Izoh: '+esc(q.note)+'</div>':'')+(active?'<button class="mini-btn" style="margin-top:9px" data-medical-cancel-mine="'+q.id+'">Navbatni bekor qilish</button>':'')+'</div></div>';
+        '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)"><div class="idesc">📅 Sana: <b>'+esc(q.queue_date||"—")+'</b></div>'+(active?'<div class="idesc">👥 Oldingizda: <b>'+esc(q.ahead_count||0)+' ta navbat</b></div>':'')+(q.note?'<div class="idesc">Izoh: '+esc(q.note)+'</div>':'')+'</div></div>';
     }).join(''):'<div class="idesc" style="padding:6px 2px 14px">Hozircha xizmat navbati olinmagan.</div>';
     if(MEDICAL_QUEUE_FOCUS_ID){
       var card=box.querySelector('[data-medical-queue-card="'+MEDICAL_QUEUE_FOCUS_ID+'"]');
@@ -6371,7 +5364,7 @@
     }).catch(function(e){showMsg(e.message);});
   }
   el("actionNotify") && el("actionNotify").addEventListener("click",function(e){if(e.target.closest("#actionNotifyClose"))return;openActionNotification(ACTION_NOTIFY_CURRENT);});
-  el("actionNotifyClose") && el("actionNotifyClose").addEventListener("click",function(e){e.stopPropagation();var n=ACTION_NOTIFY_CURRENT;if(n){ACTION_NOTIFY_DISMISSED[n.id]=1;if(n.medical_queue_id)api("PUT","/api/notifications/"+n.id+"/read",withActor({},"user")).then(refreshNotifyBadge).catch(function(){});}hideActionNotify();});
+  el("actionNotifyClose") && el("actionNotifyClose").addEventListener("click",function(e){e.stopPropagation();if(ACTION_NOTIFY_CURRENT)ACTION_NOTIFY_DISMISSED[ACTION_NOTIFY_CURRENT.id]=1;hideActionNotify();});
   function startActionNotifyPolling(){
     if(ACTION_NOTIFY_TIMER)clearInterval(ACTION_NOTIFY_TIMER);
     pollActionNotifications();ACTION_NOTIFY_TIMER=setInterval(pollActionNotifications,2000);
@@ -6550,24 +5543,7 @@
 
   /* ---------- events ---------- */
   el("themeBtn").addEventListener("click", toggleTheme);
-  el("desktopThemeBtn") && el("desktopThemeBtn").addEventListener("click", toggleTheme);
   el("backBtn").addEventListener("click", function(){ nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home")); });
-
-  function openWebHome(){ nav("home"); }
-  function openWebListings(){
-    nav("listings");
-  }
-  function openWebSearchType(type){
-    nav("catalog");
-    var target=document.querySelector('#searchTypeRow [data-search-type="'+type+'"]');
-    if(target) target.click();
-    setTimeout(function(){try{el("catSearch").focus();}catch(e){}},100);
-  }
-  el("webBrandBtn") && el("webBrandBtn").addEventListener("click",openWebHome);
-  el("webHomeBtn") && el("webHomeBtn").addEventListener("click",openWebHome);
-  el("webListingsBtn") && el("webListingsBtn").addEventListener("click",openWebListings);
-  el("desktopHeroSearch") && el("desktopHeroSearch").addEventListener("click",function(){openWebSearchType("all");});
-  document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
   el("cartBtn").addEventListener("click", function(){
@@ -7101,26 +6077,19 @@
         g = g || {};
         var viloyat = g.region || "";
         var tuman = g.district || "";
-        // Manzil matni (ko'cha/uy) tuman emas: faqat geokoderning ma'muriy
-        // tuman maydoni profilda saqlanadi.
-        applyHomeLocation(viloyat, tuman, "", lat, lng, 15);
+        var place = g.address || tuman || "Joylashuvim";
+        applyHomeLocation(viloyat, tuman || place, "", lat, lng, 15);
         if(loggedIn){
-          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:tuman, mahalla:"", lat:lat, lng:lng, location_exact:1 });
+          return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:(tuman||place), mahalla:"", lat:lat, lng:lng, location_exact:1 });
         }
       }).then(function(){
-        clearDistrictOffersCache();
-        loadDistrictOffers(true);
         done(); nav("home");
       }).catch(function(){
         // Geocode ishlamasa ham koordinata saqlanadi; xarita pin chiqarmasdan shu joyga yaqinlashadi.
         if(loggedIn){
-          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"", mahalla:"", lat:lat, lng:lng, location_exact:1 })
-            .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); })
-            .catch(function(){})
+          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"Joylashuvim", mahalla:"", lat:lat, lng:lng, location_exact:1 })
             .finally(function(){ done(); nav("home"); });
         } else {
-          clearDistrictOffersCache();
-          loadDistrictOffers(true);
           done(); nav("home");
         }
       });
@@ -7251,11 +6220,6 @@
     } else if(region){
       LOC = region;
     }
-    if(el("webLocationLabel")){
-      var webPlace=[region,district].filter(function(value){return !!String(value||"").trim();}).join(", ");
-      el("webLocationLabel").textContent=webPlace||"Manzil";
-      el("webLocationLabel").title=webPlace||"Manzil";
-    }
     // Bosh sahifada oddiy foydalanuvchining manzili pin/metka bo'lib chiqmaydi.
     // Xaritani faqat tanlangan viloyat/tuman markaziga olib boramiz.
     var p = findLocPoint(region, district);
@@ -7283,11 +6247,9 @@
     // serverga ham matn + koordinatani saqlaymiz (qayta kirganda xarita shu tuman/viloyatga qaytishi uchun)
     if(loggedIn){
       api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:saveLat, lng:saveLng, location_exact:USER_LOC_EXACT?1:0 })
-        .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); nav("home"); })
+        .then(function(){ nav("home"); })
         .catch(function(e){ showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
     } else {
-      clearDistrictOffersCache();
-      loadDistrictOffers(true);
       nav("home");
     }
   });
@@ -7393,8 +6355,6 @@
     loggedIn = true;
     setActiveMode((role==="business") ? "business" : "user");
     el("loginReason").style.display="none";
-    clearDistrictOffersCache();
-    loadDistrictOffers(true);
     // serverdan to'liq profilni yangilaymiz
     api("GET","/api/me").then(function(d){
       if(d && d.registered){
@@ -7441,7 +6401,8 @@
       loginRequestId=r.request_id; loginRequestPhone=phone;
       el("loginCodePhone").textContent=phone;
       el("loginCode").value="";
-      el("loginTestCode").style.display="none"; el("loginTestCode").textContent="";
+      if(r.test_code){ el("loginTestCode").style.display="block"; el("loginTestCode").innerHTML='Sinov kodi: <b style="font-size:18px">'+esc(r.test_code)+'</b>'; }
+      else { el("loginTestCode").style.display="none"; el("loginTestCode").textContent=""; }
       el("loginStep1").hidden=true; el("loginStep2").hidden=false;
       startLoginResendTimer();
       setTimeout(function(){ try{ el("loginCode").focus(); }catch(e){} },100);
@@ -7485,8 +6446,6 @@
         try{ localStorage.removeItem("koprik_mobile_token");localStorage.removeItem("koprik_active_mode"); }catch(e2){}
       }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
-      clearDistrictOffersCache();
-      loadDistrictOffers(true);
       nav("home");
       return;
     }
@@ -10285,13 +9244,13 @@
 
   var MEDICAL_SETUP={items:[],staff:[],links:[]};
   var MEDICAL_DOCTORS=[];
-  function loadMedicalDoctors(){var box=el("medicalDoctorsList"),labels=queueUiLabels(window.__businessDirection);applyQueueLabels(window.__businessDirection);box.innerHTML='<div class="idesc">Yuklanmoqda...</div>';Promise.all([api("GET","/api/medical/doctors"),api("GET","/api/medical/setup")]).then(function(res){MEDICAL_DOCTORS=res[0]||[];MEDICAL_SETUP=res[1]||{items:[],staff:[]};box.innerHTML=MEDICAL_DOCTORS.length?MEDICAL_DOCTORS.map(function(d){return '<button class="panel-card" data-medical-doctor="'+d.id+'" style="display:block;width:100%;text-align:left;color:inherit"><div style="display:flex;justify-content:space-between"><div><b>'+esc(d.name)+'</b><div class="idesc">'+esc(d.specialty||d.profession||"Mutaxassislik belgilanmagan")+' · '+esc(d.room||"Joy belgilanmagan")+'</div></div><span class="sort-chip">'+(d.status==='active'?'Faol':'Qabul qilmaydi')+'</span></div><div class="idesc" style="margin-top:7px">'+(d.item_ids||[]).length+' xizmat · '+d.work_start+'–'+d.work_end+' · '+(d.mode==='slot'?'🕐 Vaqtli qabul':'Jonli navbat')+'</div></button>';}).join(''):'<div class="empty"><h3>'+labels.provider+' yo‘q</h3><p>Ma’muriyatdagi faol xodimni xizmatga biriktiring.</p></div>';}).catch(function(e){box.innerHTML='<div class="elon-hint">'+esc(e.message)+'</div>';});}
-  function openMedicalDoctorForm(d){d=d||{};el("medicalDoctorId").value=d.id||"";el("medicalDoctorStaff").innerHTML=(MEDICAL_SETUP.staff||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+' · '+esc(s.profession||"Xodim")+'</option>';}).join('');el("medicalDoctorStaff").value=String(d.staff_id||"");el("medicalDoctorStaff").disabled=!!d.id;el("medicalDoctorSpecialty").value=d.specialty||"";el("medicalDoctorExperience").value=d.experience_years||0;el("medicalDoctorQualification").value=d.qualification||"";el("medicalDoctorDays").value=d.work_days||"1,2,3,4,5,6";el("medicalDoctorStart").value=d.work_start||"08:00";el("medicalDoctorEnd").value=d.work_end||"17:00";el("medicalDoctorMinutes").value=d.avg_minutes||20;el("medicalDoctorMode").value=d.mode||"live";el("medicalDoctorRoom").value=d.room||"";el("medicalDoctorBio").value=d.bio||"";el("medicalDoctorStatus").value=d.status||"active";var selected=d.item_ids||[];el("medicalDoctorServices").innerHTML=(MEDICAL_SETUP.items||[]).map(function(i){return '<label style="display:flex;gap:8px;margin:8px 2px"><input type="checkbox" data-med-doctor-service="'+i.id+'" '+(selected.indexOf(i.id)>=0?'checked':'')+'> '+esc(i.name)+'</label>';}).join('')||'<div class="idesc">Avval xizmatlar bo‘limida xizmat uchun navbat tizimini yoqing.</div>';nav("cab-medical-doctor-form");}
+  function loadMedicalDoctors(){var box=el("medicalDoctorsList"),labels=queueUiLabels(window.__businessDirection);applyQueueLabels(window.__businessDirection);box.innerHTML='<div class="idesc">Yuklanmoqda...</div>';Promise.all([api("GET","/api/medical/doctors"),api("GET","/api/medical/setup")]).then(function(res){MEDICAL_DOCTORS=res[0]||[];MEDICAL_SETUP=res[1]||{items:[],staff:[]};box.innerHTML=MEDICAL_DOCTORS.length?MEDICAL_DOCTORS.map(function(d){return '<button class="panel-card" data-medical-doctor="'+d.id+'" style="display:block;width:100%;text-align:left;color:inherit"><div style="display:flex;justify-content:space-between"><div><b>'+esc(d.name)+'</b><div class="idesc">'+esc(d.specialty||d.profession||"Mutaxassislik belgilanmagan")+' · '+esc(d.room||"Joy belgilanmagan")+'</div></div><span class="sort-chip">'+(d.status==='active'?'Faol':'Qabul qilmaydi')+'</span></div><div class="idesc" style="margin-top:7px">'+(d.item_ids||[]).length+' xizmat · '+d.work_start+'–'+d.work_end+' · '+d.avg_minutes+' daqiqa</div></button>';}).join(''):'<div class="empty"><h3>'+labels.provider+' yo‘q</h3><p>Ma’muriyatdagi faol xodimni xizmatga biriktiring.</p></div>';}).catch(function(e){box.innerHTML='<div class="elon-hint">'+esc(e.message)+'</div>';});}
+  function openMedicalDoctorForm(d){d=d||{};el("medicalDoctorId").value=d.id||"";el("medicalDoctorStaff").innerHTML=(MEDICAL_SETUP.staff||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.name)+' · '+esc(s.profession||"Xodim")+'</option>';}).join('');el("medicalDoctorStaff").value=String(d.staff_id||"");el("medicalDoctorStaff").disabled=!!d.id;el("medicalDoctorSpecialty").value=d.specialty||"";el("medicalDoctorExperience").value=d.experience_years||0;el("medicalDoctorQualification").value=d.qualification||"";el("medicalDoctorDays").value=d.work_days||"1,2,3,4,5,6";el("medicalDoctorStart").value=d.work_start||"08:00";el("medicalDoctorEnd").value=d.work_end||"17:00";el("medicalDoctorMinutes").value=d.avg_minutes||20;el("medicalDoctorRoom").value=d.room||"";el("medicalDoctorBio").value=d.bio||"";el("medicalDoctorStatus").value=d.status||"active";var selected=d.item_ids||[];el("medicalDoctorServices").innerHTML=(MEDICAL_SETUP.items||[]).map(function(i){return '<label style="display:flex;gap:8px;margin:8px 2px"><input type="checkbox" data-med-doctor-service="'+i.id+'" '+(selected.indexOf(i.id)>=0?'checked':'')+'> '+esc(i.name)+'</label>';}).join('')||'<div class="idesc">Avval xizmatlar bo‘limida xizmat uchun navbat tizimini yoqing.</div>';nav("cab-medical-doctor-form");}
   el("medicalDoctorAdd")&&el("medicalDoctorAdd").addEventListener("click",function(){openMedicalDoctorForm(null);});
   el("medicalDoctorsList")&&el("medicalDoctorsList").addEventListener("click",function(e){var b=e.target.closest("[data-medical-doctor]");if(!b)return;var d=MEDICAL_DOCTORS.filter(function(x){return x.id===parseInt(b.dataset.medicalDoctor,10);})[0];if(d)openMedicalDoctorForm(d);});
-  el("medicalDoctorSave")&&el("medicalDoctorSave").addEventListener("click",function(){var id=parseInt(el("medicalDoctorId").value||0,10),itemIds=[];el("medicalDoctorServices").querySelectorAll("[data-med-doctor-service]:checked").forEach(function(x){itemIds.push(parseInt(x.dataset.medDoctorService,10));});var body={staff_id:parseInt(el("medicalDoctorStaff").value||0,10),specialty:el("medicalDoctorSpecialty").value,experience_years:parseInt(el("medicalDoctorExperience").value||0,10),qualification:el("medicalDoctorQualification").value,work_days:el("medicalDoctorDays").value,work_start:el("medicalDoctorStart").value,work_end:el("medicalDoctorEnd").value,avg_minutes:parseInt(el("medicalDoctorMinutes").value||20,10),mode:el("medicalDoctorMode").value,room:el("medicalDoctorRoom").value,bio:el("medicalDoctorBio").value,status:el("medicalDoctorStatus").value,item_ids:itemIds};if(!body.staff_id||!itemIds.length){showMsg("Xodim va kamida bitta xizmatni tanlang.");return;}api(id?"PUT":"POST",id?"/api/medical/doctors/"+id:"/api/medical/doctors",body).then(function(){nav("cab-medical-doctors");showMsg(queueUiLabels(window.__businessDirection).provider+" saqlandi.");}).catch(function(e){showMsg(e.message);});});
+  el("medicalDoctorSave")&&el("medicalDoctorSave").addEventListener("click",function(){var id=parseInt(el("medicalDoctorId").value||0,10),itemIds=[];el("medicalDoctorServices").querySelectorAll("[data-med-doctor-service]:checked").forEach(function(x){itemIds.push(parseInt(x.dataset.medDoctorService,10));});var body={staff_id:parseInt(el("medicalDoctorStaff").value||0,10),specialty:el("medicalDoctorSpecialty").value,experience_years:parseInt(el("medicalDoctorExperience").value||0,10),qualification:el("medicalDoctorQualification").value,work_days:el("medicalDoctorDays").value,work_start:el("medicalDoctorStart").value,work_end:el("medicalDoctorEnd").value,avg_minutes:parseInt(el("medicalDoctorMinutes").value||20,10),room:el("medicalDoctorRoom").value,bio:el("medicalDoctorBio").value,status:el("medicalDoctorStatus").value,item_ids:itemIds};if(!body.staff_id||!itemIds.length){showMsg("Xodim va kamida bitta xizmatni tanlang.");return;}api(id?"PUT":"POST",id?"/api/medical/doctors/"+id:"/api/medical/doctors",body).then(function(){nav("cab-medical-doctors");showMsg(queueUiLabels(window.__businessDirection).provider+" saqlandi.");}).catch(function(e){showMsg(e.message);});});
   function ensureMedicalSwapControl(){if(!el("medicalSwapBtn")){el("medicalQueueList").insertAdjacentHTML("beforebegin",'<button class="btn btn-outline btn-block" id="medicalSwapBtn" style="margin-bottom:10px">↔ Navbatlarni almashtirish</button>');el("medicalSwapBtn").onclick=function(){askInput({title:"Navbatlarni almashtirish",fields:[{key:"first",label:"Birinchi navbat ID",required:true,numeric:true},{key:"second",label:"Ikkinchi navbat ID",required:true,numeric:true}]}).then(function(v){if(!v)return;api("POST","/api/medical/queue/"+v.first+"/swap",{other_queue_id:parseInt(v.second,10)}).then(function(){showMsg("Navbatlar almashtirildi.");loadMedicalQueue();}).catch(function(e){showMsg(e.message);});});};}}
-  function loadMedicalQueue(){var date=el("medicalQueueDate").value||localIsoDate();el("medicalQueueDate").value=date;el("medicalQueueList").innerHTML='<div class="idesc">Yuklanmoqda...</div>';api("GET","/api/medical/queue?queue_date="+date).then(function(rows){el("medicalQueueList").innerHTML=rows.length?rows.map(function(q){var labels={waiting:"Kutilmoqda",called:"Chaqirildi",in_service:"Qabulda",done:"Yakunlandi",no_show:"Kelmadi",cancelled:"Bekor qilindi",skipped:"O'tkazib yuborildi"};return '<div class="panel-card"><div style="display:flex;justify-content:space-between"><div><b>'+esc(q.queue_code)+' · '+esc(q.patient_name)+'</b><div class="idesc">'+esc(q.service_name)+' · '+esc(q.doctor_name)+' · '+(q.source==='online'?'Onlayn':'Oflayn')+(q.slot_time?' · 🕐 '+esc(q.slot_time):'')+'</div></div><span class="sort-chip">'+labels[q.status]+'</span></div><div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap"><button class="mini-btn" data-med-status="'+q.id+'" data-status="called">Chaqirish</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="in_service">Qabul</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="done">Yakunlash</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="no_show">Kelmadi</button><button class="mini-btn" style="border-color:#DC2626;color:#DC2626" data-med-status="'+q.id+'" data-status="cancelled">Bekor qilish</button></div></div>';}).join(''):'<div class="empty"><h3>Navbat yo‘q</h3><p>Onlayn yoki oflayn navbat qo‘shing.</p></div>';}).catch(function(e){showMsg(e.message);});}
+  function loadMedicalQueue(){var date=el("medicalQueueDate").value||localIsoDate();el("medicalQueueDate").value=date;el("medicalQueueList").innerHTML='<div class="idesc">Yuklanmoqda...</div>';api("GET","/api/medical/queue?queue_date="+date).then(function(rows){el("medicalQueueList").innerHTML=rows.length?rows.map(function(q){var labels={waiting:"Kutilmoqda",called:"Chaqirildi",in_service:"Qabulda",done:"Yakunlandi",no_show:"Kelmadi",cancelled:"Bekor qilindi",skipped:"O'tkazib yuborildi"};return '<div class="panel-card"><div style="display:flex;justify-content:space-between"><div><b>'+esc(q.queue_code)+' · '+esc(q.patient_name)+'</b><div class="idesc">'+esc(q.service_name)+' · '+esc(q.doctor_name)+' · '+(q.source==='online'?'Onlayn':'Oflayn')+'</div></div><span class="sort-chip">'+labels[q.status]+'</span></div><div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap"><button class="mini-btn" data-med-status="'+q.id+'" data-status="called">Chaqirish</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="in_service">Qabul</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="done">Yakunlash</button><button class="mini-btn" data-med-status="'+q.id+'" data-status="no_show">Kelmadi</button><button class="mini-btn" style="border-color:#DC2626;color:#DC2626" data-med-status="'+q.id+'" data-status="cancelled">Bekor qilish</button></div></div>';}).join(''):'<div class="empty"><h3>Navbat yo‘q</h3><p>Onlayn yoki oflayn navbat qo‘shing.</p></div>';}).catch(function(e){showMsg(e.message);});}
   el("medicalQueueDate")&&el("medicalQueueDate").addEventListener("change",loadMedicalQueue);
   el("medicalQueueList")&&el("medicalQueueList").addEventListener("click",function(e){var b=e.target.closest("[data-med-status]");if(!b)return;function saveStatus(){api("POST","/api/medical/queue/"+b.dataset.medStatus+"/status",{status:b.dataset.status}).then(loadMedicalQueue).catch(function(er){showMsg(er.message);});}if(b.dataset.status==="cancelled"){askConfirm({text:"Bu navbat bekor qilinsinmi? Foydalanuvchiga xabar yuboriladi.",okText:"Bekor qilish",danger:true}).then(function(ok){if(ok)saveStatus();});}else saveStatus();});
   el("medicalSetupBtn")&&el("medicalSetupBtn").addEventListener("click",function(){nav("cab-medical-doctors");});
@@ -10337,22 +9296,10 @@
       if(!v)return;
       api("GET","/api/medical/queue/options?business_id="+businessId+"&item_id="+itemId+"&queue_date="+v.queue_date).then(function(ds){
         if(!ds.length)throw new Error(provider+" hali biriktirilmagan.");
-        var providerOptions=ds.map(function(x){return {value:String(x.id),label:x.name+(x.specialty?' — '+x.specialty:'')+((x.mode==='slot')?' (vaqtli qabul)':' (navbat '+x.queue_count+' ta)')};});
+        var providerOptions=ds.map(function(x){return {value:String(x.id),label:x.name+(x.specialty?' — '+x.specialty:'')+' (navbat '+x.queue_count+' ta)'};});
         return askInput({title:provider+"ni tanlang",fields:[{key:"staff_id",label:provider,placeholder:provider+"ni tanlang",options:providerOptions,required:true}]}).then(function(s){
           if(!s)return;
-          var staffId=parseInt(s.staff_id,10);
-          var prov=ds.filter(function(x){return Number(x.id)===staffId;})[0]||{};
-          if(prov.mode==='slot'){
-            return api("GET","/api/medical/queue/slots?business_id="+businessId+"&item_id="+itemId+"&staff_id="+staffId+"&queue_date="+v.queue_date).then(function(sl){
-              var slots=(sl&&sl.slots)||[];
-              if(!slots.length)throw new Error("Bu kunga bo'sh vaqt yo'q. Boshqa sana tanlang.");
-              return askInput({title:"Qabul vaqtini tanlang",fields:[{key:"slot_time",label:"Bo'sh vaqtlar",placeholder:"Vaqtni tanlang",options:slots.map(function(t){return {value:t,label:t};}),required:true}]}).then(function(t){
-                if(!t)return;
-                return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:staffId,queue_date:v.queue_date,slot_time:t.slot_time});
-              });
-            });
-          }
-          return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:staffId,queue_date:v.queue_date});
+          return api("POST","/api/medical/queue/public",{business_id:businessId,item_id:itemId,staff_id:parseInt(s.staff_id,10),queue_date:v.queue_date});
         });
       }).then(function(r){
         if(r){showMsg("Navbatingiz: "+r.queue_code);if(v.queue_date===localIsoDate())incrementMedicalServiceQueueCount(itemId);refreshNotifyBadge();pollActionNotifications();}
@@ -10360,115 +9307,11 @@
     });
   }
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-book]");if(!b)return;var direction=b.dataset.medicalDirection||"",providers=Math.max(0,parseInt(b.dataset.medicalProviderCount||0,10)||0);if(!providers){showMsg(direction==="Tibbiy xizmatlar"?"Shifokor hali biriktirilmagan.":"Xizmat ko'rsatuvchi hali biriktirilmagan.");return;}openMedicalBooking(parseInt(b.dataset.medicalBusiness,10),parseInt(b.dataset.medicalBook,10),b.dataset.medicalService||"Xizmat",direction);});
-  document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-cancel-mine]");if(!b)return;var id=parseInt(b.dataset.medicalCancelMine,10);if(!id)return;askConfirm({text:"Navbatingizni bekor qilasizmi?",okText:"Ha, bekor qilaman",danger:true}).then(function(ok){if(!ok)return;b.disabled=true;api("POST","/api/medical/queue/"+id+"/cancel-mine").then(function(){showMsg("Navbat bekor qilindi.");loadMyOrders("service");}).catch(function(err){b.disabled=false;showMsg(err.message);});});});
-
-  var BUSINESS_SUB_DURATION=1;
-  var BUSINESS_SUB_DATA=null;
-  var BUSINESS_SUB_PENDING=false;
-  function businessSubscriptionPlanName(code){return code==="pro"?"Pro":code==="plus"?"Plus":"Bepul";}
-  function businessSubscriptionDate(seconds){
-    if(!Number(seconds||0))return "—";
-    return new Date(Number(seconds)*1000).toLocaleDateString("uz-UZ",{day:"2-digit",month:"long",year:"numeric"});
-  }
-  function setBusinessSubscriptionBusy(busy){
-    BUSINESS_SUB_PENDING=!!busy;
-    document.querySelectorAll('[data-screen="cab-subscriptions"] [data-sub-duration], [data-screen="cab-subscriptions"] [data-sub-activate]').forEach(function(button){
-      button.disabled=!!busy;
-    });
-  }
-  function renderBusinessSubscription(data){
-    BUSINESS_SUB_DATA=data||{};
-    var currentPlan=(data&&data.current)||{plan_code:"free",starts_at:0,expires_at:0,is_virtual:true};
-    var code=currentPlan.plan_code||"free", paid=code!=="free";
-    el("businessSubscriptionCurrent").innerHTML=
-      '<div class="subscription-current-top"><div class="subscription-current-copy"><div class="subscription-current-label">Joriy tarif</div><div class="subscription-current-name">'+esc(businessSubscriptionPlanName(code))+'</div></div><span class="subscription-current-badge">Faol</span></div>'+
-      '<div class="subscription-current-dates"><div class="subscription-date"><span>Boshlangan sana</span><b>'+(currentPlan.starts_at?esc(businessSubscriptionDate(currentPlan.starts_at)):(currentPlan.is_virtual?'Avtomatik Bepul':'—'))+'</b></div><div class="subscription-date"><span>Tugash sanasi</span><b>'+(paid?esc(businessSubscriptionDate(currentPlan.expires_at)):'Muddatsiz')+'</b></div></div>';
-    document.querySelectorAll('[data-screen="cab-subscriptions"] [data-plan]').forEach(function(card){
-      card.classList.toggle("current",card.getAttribute("data-plan")===code);
-    });
-    document.querySelectorAll('[data-screen="cab-subscriptions"] [data-sub-activate]').forEach(function(button){
-      var plan=button.getAttribute("data-sub-activate"),same=plan===code;
-      if(plan==="free")button.textContent=same?"Joriy tarif":"Bepulga o‘tish";
-      else button.textContent=same?"Muddatni uzaytirish":businessSubscriptionPlanName(plan)+" demo faollashtirish";
-      button.disabled=BUSINESS_SUB_PENDING||(plan==="free"&&same);
-    });
-    var history=(data&&data.history)||[],historyBox=el("businessSubscriptionHistory");
-    if(!history.length){
-      historyBox.innerHTML='<div class="subscription-state" style="padding:22px 16px"><h3>Tarix hozircha bo‘sh</h3><p>Tarif almashtirilganda yoki muddati tugaganda avvalgi obunalar shu yerda ko‘rinadi.</p></div>';
-    }else{
-      historyBox.innerHTML=history.map(function(item){
-        var status=item.status==="expired"?"Muddati tugagan":"Almashtirilgan";
-        var period=businessSubscriptionDate(item.starts_at)+" — "+(item.expires_at?businessSubscriptionDate(item.expires_at):"Muddatsiz");
-        return '<div class="subscription-history-row"><div style="min-width:0"><b>'+esc(businessSubscriptionPlanName(item.plan_code))+'</b><p>'+esc(period)+(item.duration_months?' · '+Number(item.duration_months)+' oy':'')+'</p></div><span class="subscription-history-status">'+esc(status)+'</span></div>';
-      }).join("");
-    }
-    el("businessSubscriptionLoading").hidden=true;
-    el("businessSubscriptionError").hidden=true;
-    el("businessSubscriptionContent").hidden=false;
-  }
-  function loadBusinessSubscription(){
-    if(STAFF_INFO){showMsg("Obunalarim faqat biznes egasi uchun.");nav("staff-home");return;}
-    el("businessSubscriptionLoading").hidden=false;
-    el("businessSubscriptionError").hidden=true;
-    el("businessSubscriptionContent").hidden=true;
-    setBusinessSubscriptionBusy(true);
-    api("GET","/api/business/subscription").then(function(data){
-      BUSINESS_SUB_PENDING=false;
-      renderBusinessSubscription(data);
-    }).catch(function(error){
-      el("businessSubscriptionLoading").hidden=true;
-      el("businessSubscriptionContent").hidden=true;
-      el("businessSubscriptionError").hidden=false;
-      el("businessSubscriptionError").innerHTML='<h3>Tariflar yuklanmadi</h3><p>'+esc(error.message||"Internet aloqasini tekshiring.")+'</p><button type="button" class="btn btn-outline" data-sub-retry style="margin-top:12px;width:auto">Qayta yuklash</button>';
-    }).finally(function(){
-      BUSINESS_SUB_PENDING=false;
-      setBusinessSubscriptionBusy(false);
-      if(BUSINESS_SUB_DATA&&el("businessSubscriptionContent").hidden===false)renderBusinessSubscription(BUSINESS_SUB_DATA);
-    });
-  }
-  function activateBusinessSubscription(planCode){
-    if(BUSINESS_SUB_PENDING)return;
-    var code=String(planCode||"").toLowerCase();
-    if(["free","plus","pro"].indexOf(code)<0)return;
-    var message=el("businessSubscriptionActionMessage");
-    message.className="subscription-action-message on";
-    message.textContent=businessSubscriptionPlanName(code)+" tarifi faollashtirilmoqda...";
-    setBusinessSubscriptionBusy(true);
-    api("POST","/api/business/subscription/demo-activate",{plan_code:code,duration_months:code==="free"?0:BUSINESS_SUB_DURATION}).then(function(data){
-      BUSINESS_SUB_PENDING=false;
-      renderBusinessSubscription(data);
-      message.className="subscription-action-message on";
-      message.textContent=businessSubscriptionPlanName(code)+" tarifi saqlandi ✅";
-      showMsg("Tarif saqlandi ✅");
-    }).catch(function(error){
-      message.className="subscription-action-message error";
-      message.textContent=error.message||"Tarif faollashtirilmadi. Qayta urinib ko‘ring.";
-      showMsg(message.textContent);
-    }).finally(function(){
-      BUSINESS_SUB_PENDING=false;
-      setBusinessSubscriptionBusy(false);
-      if(BUSINESS_SUB_DATA)renderBusinessSubscription(BUSINESS_SUB_DATA);
-    });
-  }
-  document.addEventListener("click",function(event){
-    var durationButton=event.target.closest('[data-screen="cab-subscriptions"] [data-sub-duration]');
-    if(durationButton){
-      if(BUSINESS_SUB_PENDING)return;
-      BUSINESS_SUB_DURATION=parseInt(durationButton.getAttribute("data-sub-duration"),10)||1;
-      document.querySelectorAll('[data-screen="cab-subscriptions"] [data-sub-duration]').forEach(function(button){var on=button===durationButton;button.classList.toggle("on",on);button.setAttribute("aria-pressed",on?"true":"false");});
-      return;
-    }
-    var activationButton=event.target.closest('[data-screen="cab-subscriptions"] [data-sub-activate]');
-    if(activationButton){activateBusinessSubscription(activationButton.getAttribute("data-sub-activate"));return;}
-    if(event.target.closest('[data-screen="cab-subscriptions"] [data-sub-retry]'))loadBusinessSubscription();
-  });
 
   function onScreenOpen(screen){
-    if(screen==="listings"){renderElonRow();loadElonCounts();}
-    else if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
+    if(screen==="loc"){ setLocSelects((ME&&ME.region)||"",(ME&&ME.district)||"",(ME&&ME.mahalla)||""); setTimeout(initUserLocMap,120); }
     else if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
-    else if(screen==="cab-subscriptions") loadBusinessSubscription();
     else if(screen==="cab-reviews") loadBusinessReviews(false);
     else if(screen==="cab-my-docs") loadMyDocuments();
     else if(screen==="ucab-spec") loadSpecialist();
@@ -10505,7 +9348,6 @@
     else if(screen==="cab-doc-inbox") loadInbox();
     else if(screen==="cab-elon"){ renderMyAds("bizAdList", "business"); renderMyElons("bizElonList", "business"); }
     else if(screen==="ucab-elon"){ renderMyAds("userAdList", "user"); renderMyElons("userElonList", "user"); }
-    else if(screen==="ucab-stories" || screen==="cab-stories") loadMyStories(screen);
     else if(screen==="cab-orders") loadBizOrders();
     else if(screen==="cab-service-orders") loadBizOrders("service");
     else if(screen==="ucab-orders") loadMyOrders();
@@ -10531,8 +9373,8 @@
   function loadFollowing(boxId, atype){
     api("GET","/api/follows/my?"+actorQuery(atype)).then(function(list){
       var box=el(boxId);
-      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Kuzatayotganlar yo\'q</h3><p>Biznes yoki mutaxassisni kuzatganingizda shu yerda ko\'rinadi.</p></div>'; return; }
-      box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta kuzatilmoqda</div>' + list.map(personRow).join("");
+      if(!list.length){ box.innerHTML='<div class="empty" style="padding:30px 16px"><h3>Obunalar yo\'q</h3><p>Biznes yoki mutaxasislarga obuna bo\'lganingizda shu yerda ko\'rinadi.</p></div>'; return; }
+      box.innerHTML = '<div class="list-sub" style="margin-top:8px">'+list.length+' ta obuna</div>' + list.map(personRow).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
   function loadFollowers(boxId, atype){
@@ -10557,79 +9399,12 @@
       }).join("");
     }).catch(function(e){ el("savedList").innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
+  function applyEducationMenuVisibility(isEducation){
+    ["cabOrdersMenu","cabServiceOrdersMenu","cabDebtMenu","cabWarehouseMenu","cabGeneralStatsMenu","cabReportMenu"].forEach(function(id){var node=el(id);if(node&&isEducation)node.remove();});
+  }
   function queueUiLabels(direction){var medical=direction==="Tibbiy xizmatlar";return {medical:medical,provider:medical?"Shifokor":"Xizmat ko‘rsatuvchi",providers:medical?"Shifokorlar":"Xizmat ko‘rsatuvchilar",customer:medical?"Bemor":"Mijoz"};}
   function applyQueueLabels(direction){var q=queueUiLabels(direction);if(el("medicalDoctorAdd"))el("medicalDoctorAdd").textContent="+ "+q.provider+" biriktirish";if(el("medicalDoctorStaffLabel"))el("medicalDoctorStaffLabel").textContent="Ma'muriyatdagi "+q.provider.toLowerCase();if(el("medicalDoctorBioLabel"))el("medicalDoctorBioLabel").textContent=q.provider+" haqida";if(el("medicalDoctorServicesLabel"))el("medicalDoctorServicesLabel").textContent=q.medical?"Qabul qiladigan xizmatlari":"Ko‘rsatadigan xizmatlari";if(el("medicalQueueDescription"))el("medicalQueueDescription").textContent="Onlayn va oflayn "+q.customer.toLowerCase()+"lar bitta ketma-ketlikda.";if(el("medicalSetupBtn"))el("medicalSetupBtn").textContent=q.providers;}
-  function ensureQueueMenu(direction){var enabled=isQueueDirection(direction),q=queueUiLabels(direction),queue=el("medicalQueueMenu"),providers=el("medicalDoctorsMenu"),anchor=el("diningPlacesMenu");if(enabled&&anchor&&!providers){anchor.insertAdjacentHTML("afterend",'<div class="menu-card" id="medicalDoctorsMenu" data-nav="cab-medical-doctors"><div class="menu-ic">🧑‍💼</div><div class="menu-main"><h4></h4><p></p></div><span class="chev">›</span></div>');providers=el("medicalDoctorsMenu");}if(enabled&&providers&&!queue){providers.insertAdjacentHTML("afterend",'<div class="menu-card" id="medicalQueueMenu" data-nav="cab-medical-queue"><div class="menu-ic">🏥</div><div class="menu-main"><h4>Navbat boshqaruvi</h4><p>Onlayn va oflayn yagona navbat</p></div><span class="chev">›</span></div>');queue=el("medicalQueueMenu");}if(providers){providers.style.display=enabled?"":"none";var h=providers.querySelector("h4"),p=providers.querySelector("p");if(h)h.textContent=q.providers;if(p)p.textContent=q.provider+" kartasi, xizmat va ish jadvali";}if(queue)queue.style.display=enabled?"":"none";if(enabled)applyQueueLabels(direction);}
-
-  /* ---------- Kabinet: 2 guruh (Onlaynlashtirish / Tizimlashtirish), 20 yo'nalishga moslashadi ---------- */
-  var CAB_DEFAULT_LABELS = {
-    "cab-items":{t:"Mahsulot va xizmatlar", p:"Qo'shish, tahrirlash, o'chirish"},
-    "cab-orders":{t:"Buyurtmalar", p:"Mahsulot buyurtmalari"},
-    "cab-service-orders":{t:"Xizmat buyurtmalari", p:"Xizmat va navbatlar"},
-    "cab-ombor":{t:"Ombor", p:"Qoldiq va kirim-chiqim"},
-    "cab-qarz":{t:"Qarz daftari", p:"Mijozlar qarzlarini yuritish"}
-  };
-  /* Har bir yo'nalish uchun: labels — bo'lim nomi/tavsifi, hide — shu yo'nalishga kerak bo'lmagan bo'limlar */
-  var CAB_PLANS = {
-    "Savdo":{labels:{"cab-items":{t:"Mahsulotlar",p:"Tovar, narx va rasm qo'shish"},"cab-orders":{p:"Onlayn mahsulot buyurtmalari"},"cab-ombor":{p:"Tovar qoldig'i va kirim-chiqim"}}},
-    "Transport va logistika":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va tariflar",p:"Yo'nalish, tarif va narxlar"},"cab-service-orders":{p:"Zakaz va yo'l buyurtmalari"},"cab-qarz":{p:"Mijoz va hamkor qarzlari"}}},
-    "Xizmat ko'rsatish":{labels:{"cab-items":{t:"Xizmatlarim",p:"Xizmat turlari va narxlar"},"cab-service-orders":{p:"Chaqiruv va navbatlar"},"cab-ombor":{p:"Ehtiyot qism va materiallar"}}},
-    "Maishiy xizmatlar":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Salon xizmatlari ro'yxati"},"cab-service-orders":{p:"Yozilish va navbatlar"},"cab-ombor":{p:"Kosmetika va materiallar qoldig'i"}}},
-    "Umumiy ovqatlanish":{labels:{"cab-items":{t:"Menyu va xizmatlarimiz",p:"Taomlar, narx va rasm"},"cab-orders":{p:"Onlayn zakazlar"},"cab-ombor":{p:"Masalliqlar qoldig'i va kirim-chiqim"}}},
-    "Qurilish":{labels:{"cab-items":{t:"Xizmatlar va ishlar",p:"Ish turlari va taxminiy narxlar"},"cab-service-orders":{p:"Obyekt va chaqiruvlar"},"cab-ombor":{p:"Qurilish materiallari qoldig'i"}}},
-    "Tibbiy xizmatlar":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Qabul, tahlil va muolajalar"},"cab-service-orders":{p:"Qabulga yozilishlar"},"cab-ombor":{p:"Dori va materiallar qoldig'i"}}},
-    "Ta'lim faoliyati":{hide:["cab-orders","cab-service-orders","cab-qarz","cab-ombor","cab-stats","cab-report"],labels:{"cab-items":{t:"Kurslar va xizmatlar",p:"Kurslar, narx va davomiylik"}}},
-    "Ko'chmas mulk":{hide:["cab-ombor"],labels:{"cab-items":{t:"Obyektlar bazasi",p:"Sotuv va ijara obyektlari"},"cab-service-orders":{p:"Ko'rik va murojaatlar"}}},
-    "Qishloq xo'jaligi":{labels:{"cab-items":{t:"Mahsulotlarim",p:"Hosil, narx va o'lchov birligi"},"cab-ombor":{p:"Hosil va em-xashak qoldig'i"}}},
-    "Axborot texnologiyalari":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va paketlar",p:"Loyiha, xizmat va narxlar"},"cab-service-orders":{p:"Loyiha buyurtmalari"}}},
-    "Konsalting va professional":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Maslahat va hujjat xizmatlari"},"cab-service-orders":{p:"Qabul va murojaatlar"}}},
-    "Madaniyat, sport, ko'ngilochar":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Mashg'ulot, ijara va tadbirlar"},"cab-service-orders":{p:"Bron va yozilishlar"}}},
-    "Turizm va mehmonxona":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xonalar va turpaketlar",p:"Xona, tur va narxlar"},"cab-service-orders":{p:"Bron buyurtmalari"}}},
-    "Ishlab chiqarish":{labels:{"cab-items":{t:"Mahsulotlar katalogi",p:"Tayyor mahsulot va narxlar"},"cab-orders":{p:"Ulgurji buyurtmalar"},"cab-ombor":{p:"Xomashyo va tayyor mahsulot"}}},
-    "Hunarmandchilik":{labels:{"cab-items":{t:"Buyumlarim",p:"Qo'l mehnati buyumlari va narxlar"},"cab-orders":{p:"Buyurtma va zakazlar"},"cab-ombor":{p:"Material va tayyor buyumlar"}}},
-    "Reklama va marketing":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va paketlar",p:"SMM, target va kontent narxlari"},"cab-service-orders":{p:"Loyiha buyurtmalari"}}},
-    "Poligrafiya va nashriyot":{labels:{"cab-items":{t:"Xizmatlar va narxlar",p:"Chop etish turlari va narxlar"},"cab-orders":{p:"Chop buyurtmalari"},"cab-ombor":{p:"Qog'oz va material qoldig'i"}}},
-    "Moliyaviy faoliyat":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va tariflar",p:"Sug'urta, qarz va boshqa tariflar"},"cab-service-orders":{p:"Murojaat va arizalar"}}},
-    "Import-eksport":{labels:{"cab-items":{t:"Tovarlar va xizmatlar",p:"Tovar pozitsiyalari va xizmatlar"},"cab-orders":{p:"Partiya buyurtmalari"},"cab-ombor":{p:"Yuk va tovar qoldig'i"}}}
-  };
-  var CAB_EDU_MENU_IDS=["educationGroupsMenu","educationStudentsMenu","educationScheduleMenu","educationAttendanceMenu","educationPaymentsMenu","educationPaymentControlMenu","educationTeachersMenu","educationPayrollMenu","educationStatisticsMenu","educationEnrollmentsMenu"];
-  function cabMenuCard(nav){return document.querySelector('#cabGroupOnline .menu-card[data-nav="'+nav+'"], #cabGroupTizim .menu-card[data-nav="'+nav+'"]');}
-  function setCabCardLabel(nav, lab){
-    var card=cabMenuCard(nav); if(!card||!lab) return;
-    var h=card.querySelector("h4"), p=card.querySelector("p");
-    if(lab.t){ if(h)h.textContent=lab.t; titles[nav]=lab.t; }
-    if(lab.p && p) p.textContent=lab.p;
-  }
-  function applyCabinetLayout(direction){
-    var plan=CAB_PLANS[direction]||{}, edu=direction==="Ta'lim faoliyati", dining=direction==="Umumiy ovqatlanish";
-    /* 1) standart holatga qaytarish (yo'nalish o'zgarganda eski sozlash qolib ketmasin) */
-    Object.keys(CAB_DEFAULT_LABELS).forEach(function(nav){ setCabCardLabel(nav, CAB_DEFAULT_LABELS[nav]); });
-    ["cab-orders","cab-service-orders","cab-qarz","cab-ombor","cab-kassa","cab-xarajat","cab-stats","cab-report"].forEach(function(nav){var c=cabMenuCard(nav); if(c)c.style.display="";});
-    window.__cabOrderHintDefault=CAB_DEFAULT_LABELS["cab-orders"].p;
-    window.__cabServiceOrderHintDefault=CAB_DEFAULT_LABELS["cab-service-orders"].p;
-    /* 2) yo'nalishga xos maxsus bo'limlar */
-    if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = dining?"":"none";
-    CAB_EDU_MENU_IDS.forEach(function(id){var n=el(id); if(n)n.style.display=edu?"":"none";});
-    ensureQueueMenu(direction);
-    /* 3) reja bo'yicha nom va tavsiflar */
-    var labels=plan.labels||{};
-    Object.keys(labels).forEach(function(nav){ setCabCardLabel(nav, labels[nav]); });
-    if(labels["cab-orders"]&&labels["cab-orders"].p) window.__cabOrderHintDefault=labels["cab-orders"].p;
-    if(labels["cab-service-orders"]&&labels["cab-service-orders"].p) window.__cabServiceOrderHintDefault=labels["cab-service-orders"].p;
-    /* 4) reja bo'yicha yashirish */
-    (plan.hide||[]).forEach(function(nav){var c=cabMenuCard(nav); if(c)c.style.display="none";});
-    /* 5) guruhda birorta ko'rinadigan kartochka qolmasa — sarlavhani ham yashiramiz */
-    ["cabGroupOnline","cabGroupTizim"].forEach(function(gid){
-      var g=el(gid); if(!g) return;
-      var priv=document.body.classList.contains("is-privileged");
-      var any=Array.prototype.some.call(g.querySelectorAll(".menu-card"),function(c){
-        if(c.style.display==="none") return false;
-        if(c.hasAttribute("data-privileged-only") && !priv) return false;
-        return true;
-      });
-      g.style.display=any?"":"none";
-    });
-  }
+  function ensureQueueMenu(direction){var enabled=isQueueDirection(direction),q=queueUiLabels(direction),queue=el("medicalQueueMenu"),providers=el("medicalDoctorsMenu"),anchor=el("educationGroupsMenu");if(enabled&&anchor&&!providers){anchor.insertAdjacentHTML("beforebegin",'<div class="menu-card" id="medicalDoctorsMenu" data-nav="cab-medical-doctors"><div class="menu-ic">🧑‍💼</div><div class="menu-main"><h4></h4><p></p></div><span class="chev">›</span></div>');providers=el("medicalDoctorsMenu");}if(enabled&&anchor&&!queue){anchor.insertAdjacentHTML("beforebegin",'<div class="menu-card" id="medicalQueueMenu" data-nav="cab-medical-queue"><div class="menu-ic">🏥</div><div class="menu-main"><h4>Navbat boshqaruvi</h4><p>Onlayn va oflayn yagona navbat</p></div><span class="chev">›</span></div>');queue=el("medicalQueueMenu");}if(providers){providers.style.display=enabled?"":"none";var h=providers.querySelector("h4"),p=providers.querySelector("p");if(h)h.textContent=q.providers;if(p)p.textContent=q.provider+" kartasi, xizmat va ish jadvali";}if(queue)queue.style.display=enabled?"":"none";if(enabled)applyQueueLabels(direction);}
   function loadCabinetCounts(){
     refreshOrderBadges();
     loadBusinessReviews(true);
@@ -10644,8 +9419,23 @@
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
       window.__businessDirection=b.yon||"";
+      ensureQueueMenu(b.yon);
       window.__businessDirectionLoaded=true;
-      applyCabinetLayout(b.yon);
+      applyEducationMenuVisibility(b.yon==="Ta'lim faoliyati");
+      var diningMenuName=b.yon==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":(b.yon==="Ta'lim faoliyati"?"Kurslar va xizmatlar":"Mahsulot va xizmatlar");
+      if(el("cabItemsMenuTitle"))el("cabItemsMenuTitle").textContent=diningMenuName;
+      titles["cab-items"]=diningMenuName;
+      if(el("diningPlacesMenu")) el("diningPlacesMenu").style.display = b.yon==="Umumiy ovqatlanish" ? "" : "none";
+      if(el("educationGroupsMenu")) el("educationGroupsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationStudentsMenu")) el("educationStudentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationScheduleMenu")) el("educationScheduleMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationAttendanceMenu")) el("educationAttendanceMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationPaymentsMenu")) el("educationPaymentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationPaymentControlMenu")) el("educationPaymentControlMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationTeachersMenu")) el("educationTeachersMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationEnrollmentsMenu")) el("educationEnrollmentsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationPayrollMenu")) el("educationPayrollMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
+      if(el("educationStatisticsMenu")) el("educationStatisticsMenu").style.display = b.yon==="Ta'lim faoliyati" ? "" : "none";
       if(b.yon==="Ta'lim faoliyati")api("GET","/api/education/enrollments").then(function(rows){var n=(rows||[]).filter(function(x){return x.status==="new";}).length,bg=el("eduEnrollmentBadge");if(bg){bg.textContent=n;bg.hidden=!n;}}).catch(function(){});
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
@@ -10707,12 +9497,10 @@
     if(el("upAvatarInput")) el("upAvatarInput").click();
   });
   el("upAvatarView") && el("upAvatarView").addEventListener("click", function(){
-    if(window.__ownStoryGroupIndex>=0) openStoryViewer(window.__ownStoryGroupIndex);
-    else if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("ucabAvatar") && el("ucabAvatar").addEventListener("click", function(){
-    if(window.__ownStoryGroupIndex>=0) openStoryViewer(window.__ownStoryGroupIndex);
-    else if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
+    if(CURRENT_USER_AVATAR) openImageViewer(CURRENT_USER_AVATAR,CURRENT_USER_CROP);
   });
   el("upAvatarInput") && el("upAvatarInput").addEventListener("change", function(){
     var inp=this, file=inp.files && inp.files[0];
@@ -10775,8 +9563,7 @@
   });
   el("bpName") && el("bpName").addEventListener("input",function(){if(el("bpCardName"))el("bpCardName").textContent=this.value.trim()||"Biznes";});
   el("bpLogoBtn") && el("bpLogoBtn").addEventListener("click",function(){if(el("bpLogoInput"))el("bpLogoInput").click();});
-  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(window.__ownStoryGroupIndex>=0)openStoryViewer(window.__ownStoryGroupIndex);else if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
-  el("cabLogo") && el("cabLogo").addEventListener("click",function(){if(window.__ownStoryGroupIndex>=0)openStoryViewer(window.__ownStoryGroupIndex);else if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
+  el("bpAvatarView") && el("bpAvatarView").addEventListener("click",function(){if(CURRENT_BIZ_LOGO)openImageViewer(CURRENT_BIZ_LOGO,CURRENT_BIZ_CROP);});
   el("imageViewerClose") && el("imageViewerClose").addEventListener("click",closeImageViewer);
   el("imageViewer") && el("imageViewer").addEventListener("click",function(e){if(e.target===this)closeImageViewer();});
   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeImageViewer();});
@@ -11547,10 +10334,10 @@
   /* ---------- v1472: BOSH SAHIFA REKLAMALARI ---------- */
   var HOME_ADS = [], HOME_AD_INDEX = 0, HOME_AD_TIMER = null, HOME_AD_VIEW_TIMER = null, HOME_AD_SEEN = [], HOME_AD_SWITCHING = false;
   var DEMO_HOME_ADS = [
-    {id:-1,title:"Orzu Mebel",caption:"Uyingiz uchun eng yaxshi tanlovlar",image_file:"/demo_ads/demo_sofa.svg",crop_x:62,crop_y:50,crop_zoom:1,is_demo:true},
+    {id:-1,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
     {id:-2,title:"Samarqand Coffee",caption:"Issiq qahva va yangi desertlar",image_file:"/demo_ads/demo_cafe.svg",crop_x:72,crop_y:52,crop_zoom:1.12,is_demo:true},
     {id:-3,title:"Smart Texnika",caption:"Telefon va aksessuarlarga foydali taklif",image_file:"/demo_ads/demo_tech.svg",crop_x:77,crop_y:48,crop_zoom:1.05,is_demo:true},
-    {id:-4,title:"Mahalla Market",caption:"Bugungi mahsulotlarga maxsus chegirma",image_file:"/demo_ads/demo_market.svg",crop_x:38,crop_y:50,crop_zoom:1.08,is_demo:true},
+    {id:-4,title:"Orzu Mebel",caption:"Uyingiz uchun zamonaviy yechimlar",image_file:"/demo_ads/demo_home.svg",crop_x:78,crop_y:50,crop_zoom:1.10,is_demo:true},
     {id:-5,title:"Nafis Beauty",caption:"Go'zalligingiz uchun yangi xizmatlar",image_file:"/demo_ads/demo_beauty.svg",crop_x:76,crop_y:50,crop_zoom:1.10,is_demo:true}
   ];
   function fmtMoney(n){ return new Intl.NumberFormat("uz-UZ").format(Number(n||0)) + " so'm"; }
@@ -11618,7 +10405,7 @@
   }
   function loadHomeAds(animate){
     if(!HOME_ADS.length)applyHomeAds(DEMO_HOME_ADS.slice(),false);
-    return api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);return HOME_ADS;}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);return HOME_ADS;});
+    api("GET","/api/advertisements/active").then(function(list){applyHomeAds(list,!!animate);}).catch(function(){applyHomeAds(DEMO_HOME_ADS.slice(),!!animate);});
   }
   document.addEventListener("visibilitychange",function(){
     if(document.hidden){if(HOME_AD_TIMER)clearInterval(HOME_AD_TIMER);flushHomeAdViews();}
@@ -12040,7 +10827,7 @@
   /* ---------- theme ---------- */
   var sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.2 4.2l1.8 1.8M18 18l1.8 1.8M1.5 12h2.5M20 12h2.5M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/></svg>';
   var moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>';
-  function setIcon(){ var icon=document.documentElement.getAttribute("data-theme")==="dark" ? sun : moon;el("themeBtn").innerHTML=icon;if(el("desktopThemeBtn"))el("desktopThemeBtn").innerHTML=icon; }
+  function setIcon(){ el("themeBtn").innerHTML = document.documentElement.getAttribute("data-theme")==="dark" ? sun : moon; }
   function toggleTheme(){ var d=document.documentElement; d.setAttribute("data-theme", d.getAttribute("data-theme")==="dark"?"light":"dark"); setIcon(); }
 
   /* ---------- init ---------- */
@@ -12058,7 +10845,6 @@
     notifications:{title:"Bildirishnomalar",ic:"🔔",desc:"Yangi xabar va amallar",attr:'data-notify="1"'},
     reviews:{title:"Mijoz fikrlari",ic:"⭐",desc:"Baho va javoblar",nav:"cab-reviews"},
     ads:{title:"E'lon va reklamalar",ic:"📢",desc:"Reklama boshqaruvi",nav:"cab-elon"},
-    story_archive:{title:"Istoriyalarim",ic:"🎞️",desc:"Faol va arxivdagi biznes istoriyalari",nav:"cab-stories"},
     documents:{title:"Hujjatlar",ic:"📄",desc:"Firma hujjatlari",nav:"cab-docs"},
     reports:{title:"Hisobotlar",ic:"📑",desc:"Biznes hisobotlari",nav:"cab-report"},
     dining_places:{title:"Stollar va xonalar",ic:"🍽️",desc:"Zal rejasi",nav:"cab-dining"},
@@ -12096,7 +10882,7 @@
       loggedIn = true;
       activeMode="business";
       // Orqaga tugma xodim bo'limlaridan staff-home ga qaytsin
-      ["cab-items","cab-kassa","cab-ombor","cab-orders","cab-service-orders","cab-xarajat","cab-qarz","cab-stats","cab-reviews","cab-elon","cab-stories","cab-docs","cab-report","cab-dining","cab-education-groups","cab-education-students","cab-education-schedule","cab-education-attendance","cab-education-payment-control","cab-education-teachers","cab-education-enrollments","cab-education-payroll","cab-education-statistics"].forEach(function(s){BACKMAP[s]="staff-home";});
+      ["cab-items","cab-kassa","cab-ombor","cab-orders","cab-service-orders","cab-xarajat","cab-qarz","cab-stats","cab-reviews","cab-elon","cab-docs","cab-report","cab-dining","cab-education-groups","cab-education-students","cab-education-schedule","cab-education-attendance","cab-education-payment-control","cab-education-teachers","cab-education-enrollments","cab-education-payroll","cab-education-statistics"].forEach(function(s){BACKMAP[s]="staff-home";});
       renderStaffHome(d);
       nav("staff-home");
     }).catch(function(){
@@ -12117,10 +10903,6 @@
       var attr=sc.attr||(sc.nav?('data-nav="'+sc.nav+'"'):'');
       return '<div class="menu-card" '+attr+'><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
     }).join("");
-    if(perms.indexOf("ads")>=0){
-      var storySection=STAFF_SECTIONS.story_archive;
-      cards+='<div class="menu-card" data-nav="'+storySection.nav+'"><div class="menu-ic">'+storySection.ic+'</div><div class="menu-main"><h4>'+esc(storySection.title)+'</h4><p>'+esc(storySection.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
-    }
     if(!cards) cards = '<div class="item" style="display:block">Sizga hali birorta bo\'lim ruxsat etilmagan. Rahbaringizga murojaat qiling.</div>';
     el("staffHomeBody").innerHTML =
       '<div style="padding:14px 2px 6px">'+
@@ -12169,7 +10951,6 @@
     nav("home");
     loadElonCounts();
     loadHomeAds();
-    loadStories();
     // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
     try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
     // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
@@ -12190,16 +10971,11 @@
         }
         loadHomeMap();
         loadHomeAds();
-        loadStories();
         refreshOrderBadges();
         refreshNotifyBadge();
         startActionNotifyPolling();
       }
     }).catch(function(err){
-      if(err&&err.code==="project_temporarily_closed"){
-        showProjectClosed(err.message);
-        return;
-      }
       // Telegram ID oq ro'yxatda bo'lmasa (403) — bu ehtimol xodim. Login oynasini ko'rsatamiz.
       var msg = (err && err.message) ? err.message : "";
       // Oq ro'yxatda yo'q (yopiq/Telegram/Loyiha xabari) — ehtimol xodim. Login oynasi.
