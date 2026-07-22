@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Platforma</title><!-- BUILD: v1545 -->
+<title>Platforma</title><!-- BUILD: v1547 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="qrcode.min.js?v=1475"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1700,9 +1700,9 @@
             <div class="field"><label>Login</label><input class="input" id="stLogin" autocomplete="off" placeholder="masalan: vali01" style="text-transform:lowercase"></div>
             <div class="field"><label>Parol <span id="stPassHint" class="idesc"></span></label><input class="input" id="stPass" type="text" autocomplete="new-password" placeholder="kamida 4 belgi"></div>
             <div style="font-weight:700;margin:6px 2px">Ruxsat berilgan bo'limlar:</div>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermKassa" style="width:18px;height:18px"> 💵 Kassa</label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermOmbor" style="width:18px;height:18px"> 📦 Ombor</label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 2px;font-weight:600"><input type="checkbox" id="stPermBuyurtma" style="width:18px;height:18px"> 🛍️ Buyurtmalar</label>
+            <div class="field"><label>Tayyor ruxsat shabloni</label><select class="input" id="stPermTemplate"><option value="">Qo'lda tanlash</option><option value="waiter">Ofitsiant</option><option value="cook">Oshpaz</option><option value="cashier">Kassir</option><option value="storekeeper">Omborchi</option><option value="manager">Menejer</option></select></div>
+            <div style="display:flex;gap:7px;margin:7px 0 10px"><button type="button" class="mini-btn" id="stPermAll" style="flex:1;height:36px">Barchasini belgilash</button><button type="button" class="mini-btn" id="stPermNone" style="flex:1;height:36px">Tozalash</button></div>
+            <div id="stPermList"></div>
           </div>
           <button class="btn btn-soft btn-block" id="stAccessSave" style="margin-top:10px">Kirish huquqini saqlash</button>
         </div>
@@ -1798,6 +1798,12 @@
     document.body.classList.toggle("is-privileged", !!(ME && ME.is_privileged));
   }
   var activeMode = "user";   // hozir qaysi kabinetdamiz: "user" yoki "business"
+  try{ activeMode=localStorage.getItem("koprik_active_mode")==="business"?"business":"user"; }catch(e){}
+  function setActiveMode(mode){
+    activeMode=mode==="business"?"business":"user";
+    try{localStorage.setItem("koprik_active_mode",activeMode);}catch(e){}
+    return activeMode;
+  }
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
   function actorQuery(type){ return "actor_type=" + encodeURIComponent(type || actorType()); }
   function withActor(body, type){ body = body || {}; body.actor_type = type || actorType(); return body; }
@@ -3224,7 +3230,8 @@
     nav("login");
   }
   function nav(screen){
-    if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged)){
+    var staffCanReport=!!(STAFF_INFO&&(STAFF_INFO.perms||[]).indexOf("reports")>=0);
+    if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged) && !(screen==="cab-report"&&staffCanReport)){
       showMsg("Bu bo'lim ushbu profil uchun yopiq.");
       screen = "cabinet";
     }
@@ -4996,8 +5003,8 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
-  function goBiz(){ activeMode="business"; nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
-  function goUser(){ activeMode="user"; nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
+  function goBiz(){ setActiveMode("business"); nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
+  function goUser(){ setActiveMode("user"); nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
 
 
   var NF_CATS = {uy:"🏠 Uy-joy", ish:"💼 Ish", moshina:"🚙 Moshinalar", hayvon:"🐾 Hayvonlar", texnika:"📱 Texnika", boshqa:"📦 Boshqalar"};
@@ -5071,7 +5078,7 @@
     ACTION_NOTIFY_DISMISSED[n.id]=1;
     hideActionNotify();
     var business=n.actor_kind==="business",mode=business?"inbox":"mine";
-    activeMode=business?"business":"user";
+    setActiveMode(business?"business":"user");
     api("PUT","/api/notifications/"+n.id+"/read",withActor({},business?"business":"user")).catch(function(){});
     api("GET",business?("/api/orders/inbox?"+actorQuery("business")):("/api/orders/my?"+actorQuery("user"))).then(function(list){
       var found=(list||[]).filter(function(o){return Number(o.id)===Number(n.order_id);})[0],cat=orderIsService(found)?"service":"product";
@@ -6069,7 +6076,7 @@
 
   function afterAuth(role){
     loggedIn = true;
-    activeMode = (role==="business") ? "business" : "user";
+    setActiveMode((role==="business") ? "business" : "user");
     el("loginReason").style.display="none";
     // serverdan to'liq profilni yangilaymiz
     api("GET","/api/me").then(function(d){
@@ -6159,7 +6166,7 @@
       if(MOBILE_TOKEN){
         api("POST","/api/mobile-auth/logout").catch(function(){});
         MOBILE_TOKEN=null;
-        try{ localStorage.removeItem("koprik_mobile_token"); }catch(e2){}
+        try{ localStorage.removeItem("koprik_mobile_token");localStorage.removeItem("koprik_active_mode"); }catch(e2){}
       }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
       nav("home");
@@ -6503,9 +6510,48 @@
 
   /* ---------- XODIMLAR (kadr) ---------- */
   var editStaffId = null;
+  var STAFF_GENERAL_PERMS=[
+    {k:"items",ic:"🛍️",n:"Mahsulot va xizmatlar"},{k:"buyurtma",ic:"📦",n:"Buyurtmalar"},
+    {k:"service_orders",ic:"🧰",n:"Xizmat buyurtmalari"},{k:"kassa",ic:"🧾",n:"Kassa"},
+    {k:"ombor",ic:"📦",n:"Ombor"},{k:"expenses",ic:"💸",n:"Xarajatlar"},
+    {k:"debts",ic:"📒",n:"Qarz daftari"},{k:"statistics",ic:"📊",n:"Statistika"},
+    {k:"chats",ic:"💬",n:"Suhbatlar"},{k:"notifications",ic:"🔔",n:"Bildirishnomalar"},
+    {k:"reviews",ic:"⭐",n:"Mijoz fikrlari"},{k:"ads",ic:"📢",n:"E'lon va reklamalar"},
+    {k:"documents",ic:"📄",n:"Hujjatlar"},{k:"reports",ic:"📑",n:"Hisobotlar"}
+  ];
+  var STAFF_DINING_PERMS=[
+    {k:"dining_places",ic:"🍽️",n:"Stollar va xonalar"},{k:"dining_internal",ic:"🪑",n:"Ichki buyurtmalar"},
+    {k:"dining_external",ic:"🛵",n:"Tashqi buyurtmalar"},{k:"kitchen",ic:"👨‍🍳",n:"Oshpaz buyurtmalari"},
+    {k:"ready_food",ic:"🍲",n:"Tayyor taomlar ombori"},{k:"raw_stock",ic:"🥕",n:"Mahsulot va xomashyo"},
+    {k:"recipes",ic:"📖",n:"Retseptlar"},{k:"production",ic:"🥘",n:"Taom tayyorlash / kirim"},
+    {k:"open_accounts",ic:"🧾",n:"Kassadagi ochiq hisoblar"},{k:"payment_review",ic:"🔎",n:"To'lovni tekshirish"},
+    {k:"payment_confirm",ic:"✅",n:"To'lovni tasdiqlash"},{k:"payment_problems",ic:"⚠️",n:"Muammoli to'lovlar"}
+  ];
+  var STAFF_PERM_TEMPLATES={
+    waiter:["dining_places","dining_internal","chats","notifications"],
+    cook:["buyurtma","service_orders","dining_internal","dining_external","kitchen","notifications"],
+    cashier:["buyurtma","service_orders","kassa","open_accounts","payment_review","payment_confirm","payment_problems","debts"],
+    storekeeper:["ombor","ready_food","raw_stock","recipes","production","expenses"],
+    manager:[]
+  };
+  function staffPermDefs(){
+    var dining=window.__businessDirection==="Umumiy ovqatlanish";
+    var base=STAFF_GENERAL_PERMS.map(function(x){return {k:x.k,ic:x.ic,n:(dining&&x.k==="items")?"Menyu va xizmatlarimiz":x.n};});
+    return dining?base.concat(STAFF_DINING_PERMS):base;
+  }
+  function renderStaffPerms(selected){
+    var box=el("stPermList");if(!box)return;selected=selected||[];var defs=staffPermDefs(),dining=window.__businessDirection==="Umumiy ovqatlanish";
+    var html='<div class="idesc" style="font-weight:700;margin:5px 0">Umumiy bo\'limlar</div>';
+    defs.forEach(function(p,i){if(dining&&i===STAFF_GENERAL_PERMS.length)html+='<div class="idesc" style="font-weight:700;margin:12px 0 5px">🍽️ Umumiy ovqatlanish bo\'limlari</div>';html+='<label style="display:flex;align-items:center;gap:8px;margin:7px 2px;font-weight:600"><input type="checkbox" data-st-perm="'+p.k+'" style="width:18px;height:18px"'+(selected.indexOf(p.k)>=0?' checked':'')+'> '+p.ic+' '+esc(p.n)+'</label>';});
+    html+='<div class="idesc" style="margin-top:10px">Login, parol, akkaunt egaligi, xodimlar boshqaruvi va asosiy to\'lov sozlamalari faqat rahbarda qoladi.</div>';box.innerHTML=html;
+  }
+  function applyStaffPermTemplate(key){
+    var defs=staffPermDefs(),wanted=key==="manager"?defs.map(function(x){return x.k;}):(STAFF_PERM_TEMPLATES[key]||[]);
+    el("stPermList").querySelectorAll("[data-st-perm]").forEach(function(c){c.checked=wanted.indexOf(c.dataset.stPerm)>=0;});
+  }
   function loadStaff(){
     el("staffList").innerHTML = '<div class="idesc">Yuklanmoqda...</div>';
-    api("GET","/api/staff").then(function(d){ window.__firmLogin = d.firm_login || ""; renderStaff(d); })
+    api("GET","/api/staff").then(function(d){ window.__firmLogin = d.firm_login || "";window.__businessDirection=d.business_direction||""; renderStaff(d); })
       .catch(function(e){ el("staffList").innerHTML = '<div class="idesc">'+esc(e.message)+'</div>'; });
   }
   function staffCard(x, fired){
@@ -6571,9 +6617,8 @@
       el("stPass").value = "";
       el("stPassHint").textContent = (x && x.has_pass) ? "(o'rnatilgan — bo'sh qoldirsangiz o'zgarmaydi)" : "(yangi parol kiriting)";
       var pr = (x && x.perms) ? x.perms : [];
-      el("stPermKassa").checked = pr.indexOf("kassa")>=0;
-      el("stPermOmbor").checked = pr.indexOf("ombor")>=0;
-      el("stPermBuyurtma").checked = pr.indexOf("buyurtma")>=0;
+      renderStaffPerms(pr);
+      if(el("stPermTemplate"))el("stPermTemplate").value="";
       // Firma logini
       if(el("stFirmLogin")) el("stFirmLogin").textContent = window.__firmLogin || "—";
       // Saqlangan login/parol (yulduzcha, Ko'rsatish bilan)
@@ -6616,6 +6661,13 @@
   el("stCanLogin") && el("stCanLogin").addEventListener("change", function(){
     el("stAccessFields").style.display = this.checked ? "block" : "none";
   });
+  el("stPermTemplate") && el("stPermTemplate").addEventListener("change",function(){if(this.value)applyStaffPermTemplate(this.value);});
+  el("stProf") && el("stProf").addEventListener("change",function(){
+    var p=(this.value||"").toLocaleLowerCase("uz"),key=p.indexOf("ofitsiant")>=0?"waiter":p.indexOf("oshpaz")>=0?"cook":p.indexOf("kassir")>=0?"cashier":p.indexOf("ombor")>=0?"storekeeper":p.indexOf("menejer")>=0?"manager":"";
+    if(key&&el("stPermList")&&el("stPermList").children.length){el("stPermTemplate").value=key;applyStaffPermTemplate(key);}
+  });
+  el("stPermAll") && el("stPermAll").addEventListener("click",function(){el("stPermList").querySelectorAll("[data-st-perm]").forEach(function(c){c.checked=true;});});
+  el("stPermNone") && el("stPermNone").addEventListener("click",function(){el("stPermList").querySelectorAll("[data-st-perm]").forEach(function(c){c.checked=false;});if(el("stPermTemplate"))el("stPermTemplate").value="";});
   el("stPassToggle") && el("stPassToggle").addEventListener("click", function(){
     var shown = el("stSavedPass").textContent !== "••••••";
     if(shown){ el("stSavedPass").textContent = "••••••"; this.textContent = "Ko'rsatish"; }
@@ -6627,9 +6679,7 @@
   el("stAccessSave") && el("stAccessSave").addEventListener("click", function(){
     if(!editStaffId){ showMsg("Avval xodimni saqlang."); return; }
     var perms = [];
-    if(el("stPermKassa").checked) perms.push("kassa");
-    if(el("stPermOmbor").checked) perms.push("ombor");
-    if(el("stPermBuyurtma").checked) perms.push("buyurtma");
+    el("stPermList").querySelectorAll("[data-st-perm]:checked").forEach(function(c){perms.push(c.dataset.stPerm);});
     var body = {
       can_login: el("stCanLogin").checked ? 1 : 0,
       login: (el("stLogin").value||"").trim(),
@@ -9943,9 +9993,21 @@
   /* ---------- init ---------- */
   /* ---------- XODIM REJIMI (Faza 2) ---------- */
   var STAFF_SECTIONS = {
+    items:   { title:"Mahsulot va xizmatlar", ic:"🛍️", desc:"Qo'shish va tahrirlash", nav:"cab-items" },
     kassa:   { title:"Kassa", ic:"🧾", desc:"Savdo daftari va kunlik tushum", nav:"cab-kassa" },
     ombor:   { title:"Ombor", ic:"📦", desc:"Qoldiq va kirim-chiqim", nav:"cab-ombor" },
-    buyurtma:{ title:"Buyurtmalar", ic:"📦", desc:"Kelgan mahsulot buyurtmalari", nav:"cab-orders" }
+    buyurtma:{ title:"Buyurtmalar", ic:"📦", desc:"Kelgan mahsulot buyurtmalari", nav:"cab-orders" },
+    service_orders:{title:"Xizmat buyurtmalari",ic:"🧰",desc:"Xizmat va navbatlar",nav:"cab-service-orders"},
+    expenses:{title:"Xarajatlar",ic:"💸",desc:"Kunlik xarajatlar",nav:"cab-xarajat"},
+    debts:{title:"Qarz daftari",ic:"📒",desc:"Mijozlar qarzlari",nav:"cab-qarz"},
+    statistics:{title:"Statistika",ic:"📊",desc:"Tushum va natijalar",nav:"cab-stats"},
+    chats:{title:"Suhbatlar",ic:"💬",desc:"Mijozlar bilan xabarlar",attr:'data-chats="1"'},
+    notifications:{title:"Bildirishnomalar",ic:"🔔",desc:"Yangi xabar va amallar",attr:'data-notify="1"'},
+    reviews:{title:"Mijoz fikrlari",ic:"⭐",desc:"Baho va javoblar",nav:"cab-reviews"},
+    ads:{title:"E'lon va reklamalar",ic:"📢",desc:"Reklama boshqaruvi",nav:"cab-elon"},
+    documents:{title:"Hujjatlar",ic:"📄",desc:"Firma hujjatlari",nav:"cab-docs"},
+    reports:{title:"Hisobotlar",ic:"📑",desc:"Biznes hisobotlari",nav:"cab-report"},
+    dining_places:{title:"Stollar va xonalar",ic:"🍽️",desc:"Zal rejasi",nav:"cab-dining"}
   };
   function showStaffLogin(){
     if(el("slErr")) el("slErr").style.display="none";
@@ -9957,8 +10019,9 @@
     api("GET","/api/staff-auth/me").then(function(d){
       STAFF_INFO = d;
       loggedIn = true;
+      activeMode="business";
       // Orqaga tugma xodim bo'limlaridan staff-home ga qaytsin
-      BACKMAP["cab-kassa"]="staff-home"; BACKMAP["cab-ombor"]="staff-home"; BACKMAP["cab-orders"]="staff-home"; BACKMAP["cab-service-orders"]="staff-home";
+      ["cab-items","cab-kassa","cab-ombor","cab-orders","cab-service-orders","cab-xarajat","cab-qarz","cab-stats","cab-reviews","cab-elon","cab-docs","cab-report","cab-dining"].forEach(function(s){BACKMAP[s]="staff-home";});
       renderStaffHome(d);
       nav("staff-home");
     }).catch(function(){
@@ -9970,11 +10033,11 @@
   }
   function renderStaffHome(d){
     var perms = d.perms || [];
+    STAFF_SECTIONS.items.title=d.business_direction==="Umumiy ovqatlanish"?"Menyu va xizmatlarimiz":"Mahsulot va xizmatlar";
     var cards = perms.map(function(k){
       var sc = STAFF_SECTIONS[k]; if(!sc) return "";
-      var first='<div class="menu-card" data-nav="'+sc.nav+'"><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
-      if(k!=="buyurtma")return first;
-      return first+'<div class="menu-card" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p>Xizmat va navbatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
+      var attr=sc.attr||(sc.nav?('data-nav="'+sc.nav+'"'):'');
+      return '<div class="menu-card" '+attr+'><div class="menu-ic">'+sc.ic+'</div><div class="menu-main"><h4>'+esc(sc.title)+'</h4><p>'+esc(sc.desc)+'</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
     }).join("");
     if(!cards) cards = '<div class="item" style="display:block">Sizga hali birorta bo\'lim ruxsat etilmagan. Rahbaringizga murojaat qiling.</div>';
     el("staffHomeBody").innerHTML =
@@ -10035,6 +10098,7 @@
                has_business: !!d.has_business,
                business_id: d.business ? d.business.id : null,
                is_privileged: !!d.is_privileged };
+        if(activeMode==="business" && !ME.has_business)setActiveMode("user");
         applyPrivilegedVisibility();
         loggedIn = true;
         // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
