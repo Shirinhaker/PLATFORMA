@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1633 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1634 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -856,14 +856,14 @@
   .web-nav{display:flex;}
   .home-search-card{display:flex;flex-direction:column;min-width:0;border:1px solid var(--line);border-radius:24px;padding:30px 32px;background:var(--card);box-shadow:var(--shadow);}
   .home-search-card h1{font:800 clamp(28px,2.7vw,43px)/1.12 var(--font-d);letter-spacing:-.045em;}
-  .home-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:22px;}
-  .home-query-shell{min-width:0;min-height:58px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:0 12px;color:#667085;}
+  .home-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"query submit" "catalog catalog";column-gap:8px;row-gap:10px;margin-top:22px;}
+  .home-query-shell{grid-area:query;min-width:0;min-height:58px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:0 12px;color:#667085;}
   .home-query-shell svg{width:22px;height:22px;flex:0 0 auto;}
   .home-query-shell input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#17211e;font:600 14px var(--font-b);}
   .home-query-shell input::placeholder{color:#76817d;}
   .home-query-clear{width:34px;height:34px;flex:0 0 auto;border:0;border-radius:10px;background:transparent;color:#667085;font:700 20px var(--font-b);cursor:pointer;}
-  .home-search-submit{min-width:120px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);padding:0 22px;font:800 14px var(--font-b);cursor:pointer;}
-  .home-catalog-open{width:100%;min-height:60px;margin-top:10px;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:#17211e;padding:9px 16px;text-align:left;cursor:pointer;box-shadow:var(--shadow);}
+  .home-search-submit{grid-area:submit;min-width:120px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);padding:0 22px;font:800 14px var(--font-b);cursor:pointer;}
+  .home-catalog-open{grid-area:catalog;width:100%;min-height:60px;margin-top:0;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;background:#fff;color:#17211e;padding:9px 16px;text-align:left;cursor:pointer;box-shadow:var(--shadow);}
   .home-catalog-open svg{width:22px;height:22px;flex:0 0 auto;color:#17211e;}
   .home-catalog-copy{flex:1;min-width:0;}
   .home-catalog-copy strong,.home-catalog-copy small{display:block;}
@@ -904,7 +904,7 @@
     .home-query-shell input{font-size:12px;}
     .home-query-clear{width:28px;height:28px;font-size:17px;}
     .home-search-submit{min-width:82px;border-radius:9px;padding:0 12px;font-size:12px;}
-    .home-catalog-open{min-height:52px;margin-top:8px;border-radius:9px;padding:7px 11px;}
+    .home-catalog-open{min-height:52px;margin-top:0;border-radius:9px;padding:7px 11px;}
     .home-catalog-copy strong{font-size:12px;}
     .home-catalog-copy small{font-size:9px;}
     .home-location-note{padding-top:14px;color:rgba(255,255,255,.64);font-size:10px;}
@@ -934,7 +934,7 @@
     .phone.home-active .tb-home>.icon-btn svg{width:17px;height:17px;}
     .phone.home-active .tb-home>#taxiCabBtn{display:grid;font-size:15px!important;}
     .phone.home-active .screens{min-height:0;padding-bottom:0;}
-    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:58px minmax(0,1fr) 72px 4px 92px;gap:4px;align-content:stretch;}
+    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:58px minmax(0,1fr) 100px 4px 92px;gap:4px;align-content:stretch;}
     .screen[data-screen="home"]>.story-strip{height:58px;margin:0;min-width:0;}
     .screen[data-screen="home"] .story-rail{height:58px;gap:7px;padding:0 1px 2px;overflow-x:auto;overflow-y:hidden;}
     .screen[data-screen="home"] .story-card{width:50px;flex-basis:50px;}
@@ -944,30 +944,33 @@
     .screen[data-screen="home"] .home-discovery{display:grid;min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr);gap:4px;}
     .screen[data-screen="home"] .home-search-card{min-height:0;padding:6px 8px;border-radius:12px;}
     .screen[data-screen="home"] .home-search-card h1{font-size:15px;line-height:1.08;letter-spacing:-.02em;}
-    .screen[data-screen="home"] .home-search-row{height:36px;margin-top:5px;gap:4px;}
+    .screen[data-screen="home"] .home-search-row{height:36px;margin-top:5px;grid-template-columns:minmax(0,1fr) 94px 64px;grid-template-areas:"query catalog submit";column-gap:4px;row-gap:0;}
+    .screen[data-screen="home"] .home-search-card.mobile-search-focused .home-search-row{grid-template-columns:minmax(0,1fr) 64px;grid-template-areas:"query submit";}
+    .screen[data-screen="home"] .home-search-card.mobile-search-focused #homeCatalogOpen{display:none;}
     .screen[data-screen="home"] .home-query-shell{min-height:36px;height:36px;padding:0 7px;border-radius:8px;}
     .screen[data-screen="home"] .home-query-shell svg{width:14px;height:14px;}
     .screen[data-screen="home"] .home-query-shell input{font-size:10px;}
     .screen[data-screen="home"] .home-query-clear{width:22px;height:22px;font-size:14px;}
     .screen[data-screen="home"] .home-search-submit{min-width:64px;height:36px;padding:0 8px;border-radius:8px;font-size:10px;}
-    .screen[data-screen="home"] .home-catalog-open{min-height:32px;height:32px;margin-top:4px;padding:3px 8px;border-radius:8px;gap:6px;}
-    .screen[data-screen="home"] .home-catalog-open svg{width:14px;height:14px;}
-    .screen[data-screen="home"] .home-catalog-copy strong{font-size:9px;}
-    .screen[data-screen="home"] .home-catalog-copy small{font-size:7px;line-height:1;}
-    .screen[data-screen="home"] .home-catalog-chevron{font-size:14px;}
+    .screen[data-screen="home"] .home-catalog-open{min-width:0;min-height:36px;height:36px;margin:0;padding:0 6px;border-radius:8px;gap:4px;box-shadow:none;}
+    .screen[data-screen="home"] .home-catalog-open svg{width:12px;height:12px;}
+    .screen[data-screen="home"] .home-catalog-copy strong{font-size:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .screen[data-screen="home"] .home-catalog-copy small{display:none;}
+    .screen[data-screen="home"] .home-catalog-chevron{font-size:11px;}
     .screen[data-screen="home"] .home-location-note{display:none;}
     .screen[data-screen="home"] .home-map-pane{min-width:0;min-height:0;height:100%;}
     .screen[data-screen="home"] .home-map-pane .map-wrap{height:100%;min-height:0;border-radius:12px;}
     .screen[data-screen="home"] #leafletMap{height:100%!important;min-height:0;}
+    .screen[data-screen="home"] #leafletMap .leaflet-control-zoom{display:none!important;}
     .screen[data-screen="home"] .map-chip{top:5px;left:5px;max-width:calc(100% - 44px);padding:4px 6px;border-radius:7px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .screen[data-screen="home"] #taxiBtn{top:5px!important;right:5px!important;width:28px;height:28px;font-size:14px!important;}
-    .screen[data-screen="home"]>#adBox{height:72px;min-height:72px;margin-top:0!important;padding:7px 9px;border-radius:12px;}
+    .screen[data-screen="home"]>#adBox{height:100px;min-height:100px;margin-top:0!important;padding:7px 9px;border-radius:12px;}
     .screen[data-screen="home"]>#adBox .tag{left:8px;top:5px;padding:2px 5px;font-size:7px;}
     .screen[data-screen="home"]>#adBox .ad-copy{padding:5px 8px;}
-    .screen[data-screen="home"]>#adBox .ad-copy h3{margin:10px 0 1px;font-size:11px;line-height:1.05;}
-    .screen[data-screen="home"]>#adBox .ad-copy p{max-width:72%;font-size:8px;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .screen[data-screen="home"]>#adBox .ad-copy h3{margin:13px 0 2px;font-size:13px;line-height:1.08;}
+    .screen[data-screen="home"]>#adBox .ad-copy p{max-width:72%;font-size:9px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .screen[data-screen="home"]>#adBox .ad-cta{display:none;}
-    .screen[data-screen="home"]>#adBox .ad-photo{height:72px;}
+    .screen[data-screen="home"]>#adBox .ad-photo{height:100px;}
     .screen[data-screen="home"]>#adDots{height:4px;margin:0;gap:3px;}
     .screen[data-screen="home"]>#adDots span{height:3px;width:3px;}
     .screen[data-screen="home"]>#adDots span.on{width:10px;}
@@ -1131,13 +1134,13 @@
                 <input id="homeQueryInput" type="search" placeholder="Nima qidiryapsiz?" autocomplete="off">
                 <button class="home-query-clear" id="homeQueryClear" type="button" aria-label="Qidiruvni tozalash">×</button>
               </label>
+              <button class="home-catalog-open" id="homeCatalogOpen" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 9.8 14.2"/><path d="m22 2-7.8 20-4.4-7.8L2 9.8 22 2Z"/></svg>
+                <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
+                <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
+              </button>
               <button class="home-search-submit" id="homeSearchSubmit" type="button">Qidirish</button>
             </div>
-            <button class="home-catalog-open" id="homeCatalogOpen" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 9.8 14.2"/><path d="m22 2-7.8 20-4.4-7.8L2 9.8 22 2Z"/></svg>
-              <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
-              <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
-            </button>
             <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
           </div>
           <div class="home-map-pane" id="homeMapPane">
@@ -6805,6 +6808,17 @@
   }
   el("homeSearchSubmit") && el("homeSearchSubmit").addEventListener("click",submitHomeSearch);
   el("homeQueryInput") && el("homeQueryInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();submitHomeSearch();}});
+  el("homeQueryInput") && el("homeQueryInput").addEventListener("focus",function(){
+    var card=this.closest(".home-search-card");
+    if(card) card.classList.add("mobile-search-focused");
+  });
+  el("homeQueryInput") && el("homeQueryInput").addEventListener("blur",function(){
+    var input=this;
+    setTimeout(function(){
+      var card=input.closest(".home-search-card");
+      if(card && document.activeElement!==input) card.classList.remove("mobile-search-focused");
+    },0);
+  });
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
   el("cartBtn").addEventListener("click", function(){
