@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1630 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1631 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -828,8 +828,6 @@
     .desktop-hero-query{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .desktop-hero-location{border-left:1px solid var(--line);padding:10px 12px;color:var(--ink);font-weight:750;white-space:nowrap;}
     .desktop-hero-search strong{flex:0 0 auto;border-radius:12px;padding:12px 18px;background:var(--primary);color:var(--primary-ink);}
-    .desktop-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-    .desktop-hero-tags button{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);padding:9px 12px;font:700 12px var(--font-b);cursor:pointer;}
     .home-map-pane{display:flex;flex-direction:column;min-width:0;min-height:430px;}
     .home-map-pane .pin-eyebrow{margin-top:0;}
     .home-map-pane .map-wrap{flex:1;border-radius:24px;}
@@ -872,8 +870,6 @@
   .home-catalog-copy strong{font:800 14px var(--font-b);}
   .home-catalog-copy small{margin-top:2px;color:#7a8580;font-size:11px;}
   .home-catalog-chevron{font-size:20px;line-height:1;}
-  .desktop-hero-tags{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px;}
-  .desktop-hero-tags button{min-width:0;min-height:52px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);padding:9px 10px;font:700 13px var(--font-b);cursor:pointer;}
   .home-location-note{margin-top:auto;padding-top:20px;color:var(--soft);font-size:12px;line-height:1.45;}
   .home-location-note b{color:var(--primary);}
   .catalog-shell{padding-bottom:28px;}
@@ -911,8 +907,6 @@
     .home-catalog-open{min-height:52px;margin-top:8px;border-radius:9px;padding:7px 11px;}
     .home-catalog-copy strong{font-size:12px;}
     .home-catalog-copy small{font-size:9px;}
-    .desktop-hero-tags{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;}
-    .desktop-hero-tags button{min-height:48px;color:#fff;border-color:rgba(255,255,255,.12);font-size:12px;}
     .home-location-note{padding-top:14px;color:rgba(255,255,255,.64);font-size:10px;}
     .home-map-pane{min-height:0;}
     .home-map-pane .pin-eyebrow{display:none;}
@@ -940,55 +934,63 @@
     .phone.home-active .tb-home>.icon-btn svg{width:17px;height:17px;}
     .phone.home-active .tb-home>#taxiCabBtn{display:grid;font-size:15px!important;}
     .phone.home-active .screens{min-height:0;padding-bottom:0;}
-    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:52px minmax(0,1fr) 58px 4px 72px;gap:4px;align-content:stretch;}
-    .screen[data-screen="home"]>.story-strip{height:52px;margin:0;min-width:0;}
-    .screen[data-screen="home"] .story-rail{height:52px;gap:6px;padding:0 1px 2px;overflow-x:auto;overflow-y:hidden;}
-    .screen[data-screen="home"] .story-card{width:44px;flex-basis:44px;}
-    .screen[data-screen="home"] .story-thumb{width:42px;height:42px;border-radius:12px;}
+    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:58px minmax(0,1fr) 72px 4px 92px;gap:4px;align-content:stretch;}
+    .screen[data-screen="home"]>.story-strip{height:58px;margin:0;min-width:0;}
+    .screen[data-screen="home"] .story-rail{height:58px;gap:7px;padding:0 1px 2px;overflow-x:auto;overflow-y:hidden;}
+    .screen[data-screen="home"] .story-card{width:50px;flex-basis:50px;}
+    .screen[data-screen="home"] .story-thumb{width:48px;height:48px;border-radius:13px;}
     .screen[data-screen="home"] .story-plus{width:23px;height:23px;border-radius:8px;font-size:18px;}
     .screen[data-screen="home"] .story-name{margin-top:2px;font-size:8px;line-height:1;}
     .screen[data-screen="home"] .home-discovery{display:grid;min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr);gap:4px;}
-    .screen[data-screen="home"] .home-search-card{min-height:0;padding:4px 7px;border-radius:12px;}
-    .screen[data-screen="home"] .home-search-card h1{font-size:14px;line-height:1.05;letter-spacing:-.02em;}
-    .screen[data-screen="home"] .home-search-row{height:32px;margin-top:4px;gap:4px;}
-    .screen[data-screen="home"] .home-query-shell{min-height:32px;height:32px;padding:0 6px;border-radius:8px;}
+    .screen[data-screen="home"] .home-search-card{min-height:0;padding:6px 8px;border-radius:12px;}
+    .screen[data-screen="home"] .home-search-card h1{font-size:15px;line-height:1.08;letter-spacing:-.02em;}
+    .screen[data-screen="home"] .home-search-row{height:36px;margin-top:5px;gap:4px;}
+    .screen[data-screen="home"] .home-query-shell{min-height:36px;height:36px;padding:0 7px;border-radius:8px;}
     .screen[data-screen="home"] .home-query-shell svg{width:14px;height:14px;}
     .screen[data-screen="home"] .home-query-shell input{font-size:10px;}
     .screen[data-screen="home"] .home-query-clear{width:22px;height:22px;font-size:14px;}
-    .screen[data-screen="home"] .home-search-submit{min-width:60px;height:32px;padding:0 7px;border-radius:8px;font-size:10px;}
-    .screen[data-screen="home"] .home-catalog-open{min-height:28px;height:28px;margin-top:3px;padding:2px 7px;border-radius:8px;gap:6px;}
+    .screen[data-screen="home"] .home-search-submit{min-width:64px;height:36px;padding:0 8px;border-radius:8px;font-size:10px;}
+    .screen[data-screen="home"] .home-catalog-open{min-height:32px;height:32px;margin-top:4px;padding:3px 8px;border-radius:8px;gap:6px;}
     .screen[data-screen="home"] .home-catalog-open svg{width:14px;height:14px;}
     .screen[data-screen="home"] .home-catalog-copy strong{font-size:9px;}
     .screen[data-screen="home"] .home-catalog-copy small{font-size:7px;line-height:1;}
     .screen[data-screen="home"] .home-catalog-chevron{font-size:14px;}
-    .screen[data-screen="home"] .desktop-hero-tags{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-top:3px;}
-    .screen[data-screen="home"] .desktop-hero-tags button{min-height:24px;height:24px;padding:1px 2px;border-radius:7px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .screen[data-screen="home"] .home-location-note{display:none;}
     .screen[data-screen="home"] .home-map-pane{min-width:0;min-height:0;height:100%;}
     .screen[data-screen="home"] .home-map-pane .map-wrap{height:100%;min-height:0;border-radius:12px;}
     .screen[data-screen="home"] #leafletMap{height:100%!important;min-height:0;}
     .screen[data-screen="home"] .map-chip{top:5px;left:5px;max-width:calc(100% - 44px);padding:4px 6px;border-radius:7px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .screen[data-screen="home"] #taxiBtn{top:5px!important;right:5px!important;width:28px;height:28px;font-size:14px!important;}
-    .screen[data-screen="home"]>#adBox{height:58px;min-height:58px;margin-top:0!important;padding:6px 8px;border-radius:11px;}
+    .screen[data-screen="home"]>#adBox{height:72px;min-height:72px;margin-top:0!important;padding:7px 9px;border-radius:12px;}
     .screen[data-screen="home"]>#adBox .tag{left:8px;top:5px;padding:2px 5px;font-size:7px;}
     .screen[data-screen="home"]>#adBox .ad-copy{padding:5px 8px;}
     .screen[data-screen="home"]>#adBox .ad-copy h3{margin:10px 0 1px;font-size:11px;line-height:1.05;}
     .screen[data-screen="home"]>#adBox .ad-copy p{max-width:72%;font-size:8px;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .screen[data-screen="home"]>#adBox .ad-cta{display:none;}
-    .screen[data-screen="home"]>#adBox .ad-photo{height:58px;}
+    .screen[data-screen="home"]>#adBox .ad-photo{height:72px;}
     .screen[data-screen="home"]>#adDots{height:4px;margin:0;gap:3px;}
     .screen[data-screen="home"]>#adDots span{height:3px;width:3px;}
     .screen[data-screen="home"]>#adDots span.on{width:10px;}
-    .screen[data-screen="home"]>#districtOffersMount{height:72px;margin:0 -8px;min-width:0;overflow:hidden;}
-    .screen[data-screen="home"] .district-offers-viewport{height:72px;padding:0 8px;overflow-x:auto;overflow-y:hidden;min-width:0;max-width:100%;}
-    .screen[data-screen="home"] .district-offers-track{height:72px;gap:5px;}
-    .screen[data-screen="home"] .district-offer-card{width:145px;flex-basis:145px;height:70px;display:grid;grid-template-columns:50px minmax(0,1fr);border-radius:10px;}
-    .screen[data-screen="home"] .district-offer-media{height:70px;font-size:19px;}
-    .screen[data-screen="home"] .district-offer-body{padding:5px 6px;align-self:center;}
-    .screen[data-screen="home"] .district-offer-title{font-size:9px;}
-    .screen[data-screen="home"] .district-offer-business{margin-top:1px;font-size:7px;}
+    .screen[data-screen="home"]>#districtOffersMount{height:92px;margin:0 -8px;min-width:0;overflow:hidden;}
+    .screen[data-screen="home"] .district-offers-viewport{height:92px;padding:0 8px;overflow-x:auto;overflow-y:hidden;min-width:0;max-width:100%;}
+    .screen[data-screen="home"] .district-offers-track{height:92px;gap:6px;}
+    .screen[data-screen="home"] .district-offer-card{width:164px;flex-basis:164px;height:90px;display:grid;grid-template-columns:62px minmax(0,1fr);border-radius:11px;}
+    .screen[data-screen="home"] .district-offer-media{height:90px;font-size:22px;}
+    .screen[data-screen="home"] .district-offer-body{padding:6px 7px;align-self:center;}
+    .screen[data-screen="home"] .district-offer-title{font-size:10px;}
+    .screen[data-screen="home"] .district-offer-business{margin-top:2px;font-size:8px;}
     .screen[data-screen="home"] .district-kind-badge{margin-top:3px;padding:2px 4px;font-size:6px;}
     .screen[data-screen="home"] .district-offer-price{margin-top:3px;font-size:8px;}
+    /* v1631 — mobil qidiruv natijalari xarita ostida */
+    .phone.home-active.search-results-active .screens{overflow-y:auto;}
+    .phone.home-active.search-results-active .screen[data-screen="home"].active{display:flex;flex-direction:column;height:auto;min-height:100%;}
+    .phone.home-active.search-results-active .story-strip{order:1;flex:0 0 58px;}
+    .phone.home-active.search-results-active .home-discovery{order:2;flex:none;grid-template-rows:auto 150px;}
+    .phone.home-active.search-results-active .home-map-pane{height:150px;}
+    .phone.home-active.search-results-active #resWrap{order:3;margin-top:6px;}
+    .phone.home-active.search-results-active #adBox{order:4;margin-top:8px!important;}
+    .phone.home-active.search-results-active #adDots{order:5;}
+    .phone.home-active.search-results-active #districtOffersMount{order:6;margin-top:4px;}
   }
   @media(min-width:1080px){
     .web-brand{margin-right:22px;}
@@ -1123,12 +1125,6 @@
               <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
               <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
             </button>
-            <div class="desktop-hero-tags">
-              <button type="button" data-web-search-type="product">Mahsulot</button>
-              <button type="button" data-web-search-type="service">Xizmat</button>
-              <button type="button" data-web-search-type="business">Biznes</button>
-              <button type="button" data-web-search-type="specialist">Mutaxassis</button>
-            </div>
             <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
           </div>
           <div class="home-map-pane">
@@ -3469,6 +3465,8 @@
     }catch(e){}
   }
   function enterResults(list_html, pins, count){
+    var phone=document.querySelector(".phone");
+    if(phone) phone.classList.add("search-results-active");
     pins = (pins||[]).filter(function(r){ return validPin(r.lat, r.lng); });  // yaroqsiz koordinata xaritani qulatmasin
     RES = {pins:pins, html:list_html, count:count};
     renderPins("result");
@@ -3483,6 +3481,9 @@
     screensEl.scrollTop = 0;
   }
   function exitResults(){
+    var phone=document.querySelector(".phone");
+    if(phone) phone.classList.remove("search-results-active");
+    setTimeout(function(){ try{ if(LMAP) LMAP.invalidateSize(); }catch(e){} },120);
     el("searchInput").value = "";
     el("catSearch").value = "";
     el("clearSearch").hidden = true;
@@ -6767,7 +6768,6 @@
   }
   el("homeSearchSubmit") && el("homeSearchSubmit").addEventListener("click",submitHomeSearch);
   el("homeQueryInput") && el("homeQueryInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();submitHomeSearch();}});
-  document.querySelectorAll("[data-web-search-type]").forEach(function(button){button.addEventListener("click",function(){openWebSearchType(button.getAttribute("data-web-search-type")||"all");});});
 
   el("locBtn").addEventListener("click", function(){ nav("loc"); });
   el("cartBtn").addEventListener("click", function(){
