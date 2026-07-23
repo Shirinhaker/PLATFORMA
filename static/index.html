@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1636 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1637 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -499,6 +499,77 @@
   .menu-main{flex:1;min-width:0;}
   .menu-main h4{font-family:var(--font-d);font-weight:700;font-size:14.5px;}
   .menu-main p{font-size:12px;color:var(--soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* v1637 — biznes va oddiy foydalanuvchi uchun responsiv kabinet paneli */
+  .dashboard-shell{min-width:0;padding:2px 0 28px;}
+  .dashboard-identity{display:flex;align-items:center;gap:13px;background:transparent;border:0;border-radius:0;padding:8px 2px 12px;box-shadow:none;margin:0;}
+  .dashboard-identity-copy{flex:1;min-width:0;}
+  .dashboard-identity .cab-logo{width:58px;height:58px;border-radius:17px;}
+  .dashboard-identity .cab-name{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-identity .cab-status{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-identity .stat-chips{margin-top:7px;}
+  .dashboard-identity-action{flex:0 0 auto;width:auto!important;min-height:42px;margin:0!important;padding:0 15px;}
+  .dashboard-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:8px 0 16px;}
+  .dashboard-metric{min-width:0;min-height:112px;border:1px solid var(--line);border-radius:17px;background:var(--card);padding:14px;box-shadow:var(--shadow);cursor:pointer;text-align:left;color:var(--ink);font:inherit;}
+  .dashboard-metric.primary{border-color:var(--primary);background:var(--primary);color:var(--primary-ink);}
+  .dashboard-metric-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-metric.primary .dashboard-metric-label,.dashboard-metric.primary .dashboard-metric-sub{color:rgba(255,255,255,.78);}
+  .dashboard-metric-value{display:block;margin-top:8px;font:800 clamp(20px,6vw,28px)/1.08 var(--font-d);letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-metric-sub{display:block;margin-top:5px;color:var(--soft);font-size:10.5px;line-height:1.35;}
+  .dashboard-main{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start;}
+  .dashboard-menu-panel,.dashboard-activity{min-width:0;}
+  .dashboard-panel-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 2px 10px;}
+  .dashboard-panel-title h2{font:800 16.5px/1.25 var(--font-d);}
+  .dashboard-panel-title span{color:var(--soft);font-size:11.5px;text-align:right;}
+  .dashboard-screen .cab-group{margin:13px 0 0;}
+  .dashboard-screen .cab-group:first-of-type{margin-top:0;}
+  .dashboard-screen .cab-group-head{margin:0 2px 9px;}
+  .dashboard-screen .menu-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+  .dashboard-screen .menu-card{min-width:0;min-height:118px;margin:0;padding:12px 9px;flex-direction:column;justify-content:center;text-align:center;gap:8px;border-radius:16px;}
+  .dashboard-screen .menu-card .menu-ic{width:42px;height:42px;border-radius:13px;}
+  .dashboard-screen .menu-card .menu-main{width:100%;}
+  .dashboard-screen .menu-card .menu-main h4{font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .dashboard-screen .menu-card .menu-main p{display:none;}
+  .dashboard-screen .menu-card>.chev{display:none;}
+  .dashboard-screen .menu-card .order-badge{position:absolute;right:8px;top:8px;}
+  .dashboard-screen .menu-card{position:relative;}
+  .dashboard-activity{border:1px solid var(--line);border-radius:19px;background:var(--card);padding:15px;box-shadow:var(--shadow);}
+  .dashboard-activity-list{display:grid;gap:0;}
+  .dashboard-activity-row{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-width:0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);padding:11px 0;text-align:left;font:inherit;cursor:pointer;}
+  .dashboard-activity-row:last-child{border-bottom:0;}
+  .dashboard-activity-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);font-weight:900;}
+  .dashboard-activity-copy{min-width:0;}
+  .dashboard-activity-copy b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-activity-copy span{display:block;margin-top:3px;color:var(--soft);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dashboard-activity-meta{text-align:right;white-space:nowrap;}
+  .dashboard-activity-meta b{display:block;color:var(--primary);font-size:11.5px;}
+  .dashboard-activity-meta span{display:block;margin-top:3px;color:var(--soft);font-size:10px;}
+  .dashboard-empty{padding:28px 12px;text-align:center;color:var(--soft);font-size:12.5px;line-height:1.5;}
+  .dashboard-empty b{display:block;color:var(--ink);font-family:var(--font-d);font-size:14px;margin-bottom:4px;}
+  .dashboard-screen .dashboard-switch-mobile{margin-top:12px;}
+  @media(min-width:720px){
+    .phone.dashboard-active{max-width:1040px;}
+    .dashboard-shell{padding-bottom:34px;}
+    .dashboard-identity{padding:10px 4px 16px;}
+    .dashboard-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;}
+    .dashboard-metric{min-height:116px;padding:16px;}
+    .dashboard-metric-value{font-size:25px;}
+    .dashboard-screen .menu-grid2{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .dashboard-screen .menu-card{min-height:126px;}
+  }
+  @media(min-width:1080px){
+    .dashboard-main{grid-template-columns:minmax(0,1.04fr) minmax(380px,.96fr);gap:20px;}
+    .dashboard-activity{position:sticky;top:0;padding:18px;}
+    .dashboard-panel-title h2{font-size:18px;}
+    .dashboard-screen .menu-card{min-height:132px;}
+  }
+  @media(max-width:560px){
+    .dashboard-identity{align-items:flex-start;}
+    .dashboard-identity-action{display:none;}
+    .dashboard-screen .dashboard-switch-mobile{display:block;}
+  }
+  @media(min-width:561px){
+    .dashboard-screen .dashboard-switch-mobile{display:none;}
+  }
   .soon-mini{flex:none;background:var(--amber-tint);color:#8a5a06;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:8px;}
   [data-theme="dark"] .soon-mini{color:var(--amber);}
   .textarea{width:100%;min-height:92px;border-radius:13px;border:1.5px solid var(--line);background:var(--card);padding:12px 14px;font:inherit;font-size:15px;color:var(--ink);outline:none;resize:none;}
@@ -1345,13 +1416,24 @@
         <div id="staffHomeBody"></div>
       </section>
 
-      <section class="screen" data-screen="cabinet">
-        <div class="cab-head">
+      <section class="screen dashboard-screen" data-screen="cabinet">
+        <div class="dashboard-shell">
+        <div class="cab-head dashboard-identity">
           <div class="cab-logo" id="cabLogo">🛒</div>
-          <div><div class="cab-name" id="cabName">—</div><div class="cab-status" id="cabStatus"></div>
+          <div class="dashboard-identity-copy"><div class="cab-name" id="cabName">—</div><div class="cab-status" id="cabStatus"></div>
             <div class="cab-status" id="cabAddr" style="color:var(--soft);font-size:13px;margin-top:2px"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="cab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="cab-following"><b>0</b> obuna</span></div></div>
+          <button class="btn btn-outline dashboard-identity-action" id="toUserBtn">Oddiy kabinet</button>
         </div>
+        <div class="dashboard-metrics" id="cabDashboardMetrics" aria-live="polite">
+          <div class="dashboard-metric primary"><span class="dashboard-metric-label">Yuklanmoqda</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Bugungi holat</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Yuklanmoqda</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Joriy holat</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Yuklanmoqda</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Joriy holat</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Yuklanmoqda</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Joriy holat</small></div>
+        </div>
+        <div class="dashboard-main">
+          <div class="dashboard-menu-panel">
+            <div class="dashboard-panel-title"><h2>Boshqaruv bo‘limlari</h2><span id="cabDashboardDirection">Faoliyat yo‘nalishi</span></div>
         <div class="cab-group" id="cabGroupOnline">
           <div class="cab-group-head"><span class="cab-group-ic">🌐</span><div class="cab-group-main"><h3>Onlaynlashtirish</h3><p>Mijozlar ko'radigan va onlayn savdo bo'limlari</p></div></div>
           <div class="menu-grid2" id="cabGridOnline">
@@ -1391,7 +1473,16 @@
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           </div>
         </div>
-        <button class="btn btn-outline btn-block" style="margin-top:10px" id="toUserBtn">👤 Oddiy kabinetga qaytish</button>
+        <button class="btn btn-outline btn-block dashboard-switch-mobile" id="toUserBtnMobile">Oddiy kabinetga qaytish</button>
+          </div>
+          <aside class="dashboard-activity" aria-labelledby="cabRecentTitle">
+            <div class="dashboard-panel-title"><h2 id="cabRecentTitle">So‘nggi faollik</h2><span id="cabActivityCount">0 ta</span></div>
+            <div class="dashboard-activity-list" id="cabRecentActivity" aria-live="polite">
+              <div class="dashboard-empty"><b>Yuklanmoqda</b>Buyurtma va xizmatlar tekshirilmoqda.</div>
+            </div>
+          </aside>
+        </div>
+        </div>
       </section>
 
       <!-- CAB: PROFIL -->
@@ -1911,12 +2002,22 @@
       </section>
 
       <!-- UCAB: FOYDALANUVCHI KABINETI -->
-      <section class="screen" data-screen="ucab">
-        <div class="cab-head">
+      <section class="screen dashboard-screen" data-screen="ucab">
+        <div class="dashboard-shell">
+        <div class="cab-head dashboard-identity">
           <div class="cab-logo" id="ucabAvatar" style="background:var(--amber-tint)">🙂</div>
-          <div><div class="cab-name" id="ucabName">—</div><div class="cab-status" id="ucabStatus"></div>
+          <div class="dashboard-identity-copy"><div class="cab-name" id="ucabName">—</div><div class="cab-status" id="ucabStatus"></div>
             <div class="stat-chips"><span class="stat-chip" data-nav="ucab-followers"><b>0</b> obunachi</span><span class="stat-chip" data-nav="ucab-subs"><b>0</b> obuna</span></div></div>
         </div>
+        <div class="dashboard-metrics" id="ucabDashboardMetrics" aria-live="polite">
+          <div class="dashboard-metric primary"><span class="dashboard-metric-label">Faol buyurtmalar</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Joriy buyurtmalar</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Obunalar</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">Kuzatilayotgan profillar</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Saqlanganlar</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">E’lon va bizneslar</small></div>
+          <div class="dashboard-metric"><span class="dashboard-metric-label">Bildirishnomalar</span><strong class="dashboard-metric-value">0</strong><small class="dashboard-metric-sub">O‘qilmagan xabarlar</small></div>
+        </div>
+        <div class="dashboard-main">
+          <div class="dashboard-menu-panel">
+            <div class="dashboard-panel-title"><h2>Mening bo‘limlarim</h2><span>Profil va faoliyatlar</span></div>
         <div class="menu-grid2">
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1930,6 +2031,15 @@
         <div class="menu-card" data-nav="ucab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         </div>
         <button class="btn btn-amber btn-block" style="margin-top:10px" id="bizOpenBtn">🏪 Biznes ochish</button>
+          </div>
+          <aside class="dashboard-activity" aria-labelledby="ucabRecentTitle">
+            <div class="dashboard-panel-title"><h2 id="ucabRecentTitle">So‘nggi faollik</h2><span id="ucabActivityCount">0 ta</span></div>
+            <div class="dashboard-activity-list" id="ucabRecentActivity" aria-live="polite">
+              <div class="dashboard-empty"><b>Yuklanmoqda</b>Buyurtmalar tekshirilmoqda.</div>
+            </div>
+          </aside>
+        </div>
+        </div>
       </section>
 
       <!-- UCAB: PROFIL -->
@@ -4567,6 +4677,7 @@
     screensEl.scrollTop = 0;
     var home = screen==="home";
     document.querySelector(".phone").classList.toggle("home-active",home);
+    document.querySelector(".phone").classList.toggle("dashboard-active",screen==="cabinet"||screen==="ucab");
     var desktopPublic = screen==="listings" && window.matchMedia && window.matchMedia("(min-width:1080px)").matches;
     el("tbHome").style.display = (home || desktopPublic) ? "flex" : "none";
     el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
@@ -6594,6 +6705,7 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; });
   });
   el("toUserBtn") && el("toUserBtn").addEventListener("click", function(){ goUser(); });
+  el("toUserBtnMobile") && el("toUserBtnMobile").addEventListener("click", function(){ goUser(); });
   function goBiz(){ setActiveMode("business"); nav("cabinet"); loadHomeMap(); refreshNotifyBadge(); }
   function goUser(){ setActiveMode("user"); nav("ucab"); loadHomeMap(); refreshNotifyBadge(); }
 
@@ -10942,6 +11054,35 @@
     "Moliyaviy faoliyat":{hide:["cab-ombor"],labels:{"cab-items":{t:"Xizmatlar va tariflar",p:"Sug'urta, qarz va boshqa tariflar"},"cab-service-orders":{p:"Murojaat va arizalar"}}},
     "Import-eksport":{labels:{"cab-items":{t:"Tovarlar va xizmatlar",p:"Tovar pozitsiyalari va xizmatlar"},"cab-orders":{p:"Partiya buyurtmalari"},"cab-ombor":{p:"Yuk va tovar qoldig'i"}}}
   };
+  function dashboardMetric(label,key,sub,nav,format){return {label:label,key:key,sub:sub||"",nav:nav||"",format:format||"count"};}
+  var CAB_DASHBOARD_PLANS = {
+    "Savdo":[dashboardMetric("Bugungi savdo","revenue","Bugungi tushum","cab-kassa","money"),dashboardMetric("Yangi buyurtma","new_orders","Qabul qilinmagan buyurtmalar","cab-orders"),dashboardMetric("Umumiy qarz","debt_total","Qarz daftaridagi qoldiq","cab-qarz","money"),dashboardMetric("Ombor ogohlantirishi","low_stock","Kam qolgan mahsulotlar","cab-ombor")],
+    "Transport va logistika":[dashboardMetric("Bugungi buyurtmalar","today_orders","Bugun kelgan buyurtmalar","cab-service-orders"),dashboardMetric("Faol safarlar","active_orders","Jarayondagi buyurtmalar","cab-service-orders"),dashboardMetric("Yetkazilmoqda","in_delivery","Yo‘ldagi buyurtmalar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi savdo tushumi","cab-kassa","money")],
+    "Xizmat ko'rsatish":[dashboardMetric("Yangi murojaatlar","new_orders","Yangi xizmat so‘rovlari","cab-service-orders"),dashboardMetric("Bugungi xizmatlar","service_today","Bugun kelgan xizmatlar","cab-service-orders"),dashboardMetric("Kutilayotgan ishlar","pending_orders","Navbatdagi xizmatlar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi savdo tushumi","cab-kassa","money")],
+    "Maishiy xizmatlar":[dashboardMetric("Bugungi yozilishlar","service_today","Bugungi xizmat buyurtmalari","cab-service-orders"),dashboardMetric("Navbat","service_active","Jarayondagi xizmatlar","cab-service-orders"),dashboardMetric("Yakunlangan xizmatlar","completed_today","Bugun yakunlanganlar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi savdo tushumi","cab-kassa","money")],
+    "Umumiy ovqatlanish":[dashboardMetric("Bugungi savdo","sales_count","Bugungi savdolar soni","cab-kassa"),dashboardMetric("Ochiq buyurtmalar","active_orders","Jarayondagi buyurtmalar","cab-orders"),dashboardMetric("Band stol/xona","occupied_places","Faol band joylar","cab-dining"),dashboardMetric("Ombor ogohlantirishi","low_stock","Kam qolgan masalliqlar","cab-ombor")],
+    "Qurilish":[dashboardMetric("Yangi murojaatlar","new_orders","Yangi obyekt so‘rovlari","cab-service-orders"),dashboardMetric("Faol loyihalar","active_orders","Jarayondagi ishlar","cab-service-orders"),dashboardMetric("Yaqin muddatlar","deadlines","Muddati yaqin ishlar","cab-service-orders"),dashboardMetric("To‘lanmagan","debt_total","Qarz va kutilayotgan to‘lov","cab-qarz","money")],
+    "Tibbiy xizmatlar":[dashboardMetric("Bugungi qabullar","service_today","Bugungi yozilishlar","cab-service-orders"),dashboardMetric("Navbat","service_active","Kutayotgan va qabuldagi","cab-medical-queue"),dashboardMetric("Yangi yozilishlar","new_orders","Yangi qabul so‘rovlari","cab-service-orders"),dashboardMetric("Bugungi to‘lovlar","revenue","Bugungi tushum","cab-kassa","money")],
+    "Ta'lim faoliyati":[dashboardMetric("Bugungi darslar","today_lessons","Bugungi jadval","cab-education-schedule"),dashboardMetric("Guruhlar","groups","Faol guruhlar","cab-education-groups"),dashboardMetric("O‘quvchilar","students","Faol o‘quvchilar","cab-education-students"),dashboardMetric("Muddati o‘tgan to‘lov","debt_total","To‘lov nazoratidagi qarz","cab-education-payment-control","money")],
+    "Ko'chmas mulk":[dashboardMetric("Faol obyektlar","items_count","Katalogdagi obyektlar","cab-items"),dashboardMetric("Yangi murojaatlar","new_orders","Yangi ko‘rik so‘rovlari","cab-service-orders"),dashboardMetric("Bugungi ko‘riklar","service_today","Bugungi ko‘rik buyurtmalari","cab-service-orders"),dashboardMetric("Yakunlangan bitimlar","completed_today","Bugun yakunlanganlar","cab-service-orders")],
+    "Qishloq xo'jaligi":[dashboardMetric("Bugungi ishlab chiqarish","sales_count","Bugungi hisob yozuvlari","cab-kassa"),dashboardMetric("Yangi buyurtmalar","new_orders","Yangi mahsulot buyurtmalari","cab-orders"),dashboardMetric("Ombordagi pozitsiyalar","items_count","Mahsulot va hosil turlari","cab-ombor"),dashboardMetric("Bugungi xarajatlar","expenses","Bugungi xarajat","cab-xarajat","money")],
+    "Axborot texnologiyalari":[dashboardMetric("Yangi murojaatlar","new_orders","Yangi loyiha so‘rovlari","cab-service-orders"),dashboardMetric("Faol loyihalar","active_orders","Jarayondagi loyihalar","cab-service-orders"),dashboardMetric("Yaqin muddatlar","deadlines","Muddati yaqin loyihalar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi tushum","cab-kassa","money")],
+    "Konsalting va professional":[dashboardMetric("Bugungi maslahatlar","service_today","Bugungi xizmat so‘rovlari","cab-service-orders"),dashboardMetric("Yangi murojaatlar","new_orders","Yangi konsultatsiyalar","cab-service-orders"),dashboardMetric("Faol ishlar","active_orders","Jarayondagi ishlar","cab-service-orders"),dashboardMetric("To‘lanmagan","debt_total","Kutilayotgan to‘lovlar","cab-qarz","money")],
+    "Madaniyat, sport, ko'ngilochar":[dashboardMetric("Bugungi tashriflar","completed_today","Bugun yakunlangan buyurtmalar","cab-service-orders"),dashboardMetric("Faol a’zolar","followers","Biznes obunachilari","cab-followers"),dashboardMetric("Band vaqtlar","service_active","Faol bron va yozilishlar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi tushum","cab-kassa","money")],
+    "Turizm va mehmonxona":[dashboardMetric("Band xonalar","service_active","Faol bronlar","cab-service-orders"),dashboardMetric("Bugungi kelishlar","service_today","Bugungi bron so‘rovlari","cab-service-orders"),dashboardMetric("Yangi bronlar","new_orders","Yangi buyurtmalar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi tushum","cab-kassa","money")],
+    "Ishlab chiqarish":[dashboardMetric("Bugungi ishlab chiqarish","sales_count","Bugungi hisob yozuvlari","cab-kassa"),dashboardMetric("Faol buyurtmalar","active_orders","Jarayondagi buyurtmalar","cab-orders"),dashboardMetric("Xomashyo ogohlantirishi","low_stock","Kam qolgan materiallar","cab-ombor"),dashboardMetric("Kechikkan ishlar","problem_orders","Muammoli buyurtmalar","cab-orders")],
+    "Hunarmandchilik":[dashboardMetric("Yangi buyurtmalar","new_orders","Yangi buyurtmalar","cab-orders"),dashboardMetric("Jarayondagi ishlar","active_orders","Faol buyurtmalar","cab-orders"),dashboardMetric("Tayyor mahsulotlar","items_count","Katalogdagi buyumlar","cab-items"),dashboardMetric("Material ogohlantirishi","low_stock","Kam qolgan materiallar","cab-ombor")],
+    "Reklama va marketing":[dashboardMetric("Faol kampaniyalar","active_orders","Jarayondagi loyihalar","cab-service-orders"),dashboardMetric("Yangi mijozlar","new_orders","Yangi murojaatlar","cab-service-orders"),dashboardMetric("Kutilayotgan kontent","pending_orders","Navbatdagi ishlar","cab-service-orders"),dashboardMetric("Bugungi tushum","revenue","Bugungi tushum","cab-kassa","money")],
+    "Poligrafiya va nashriyot":[dashboardMetric("Yangi buyurtmalar","new_orders","Yangi chop buyurtmalari","cab-orders"),dashboardMetric("Chop etilmoqda","active_orders","Jarayondagi buyurtmalar","cab-orders"),dashboardMetric("Tayyor buyurtmalar","completed_today","Bugun yakunlanganlar","cab-orders"),dashboardMetric("Material ogohlantirishi","low_stock","Kam qolgan materiallar","cab-ombor")],
+    "Moliyaviy faoliyat":[dashboardMetric("Yangi arizalar","new_orders","Yangi murojaatlar","cab-service-orders"),dashboardMetric("Ko‘rib chiqilmoqda","active_orders","Jarayondagi arizalar","cab-service-orders"),dashboardMetric("Tasdiqlangan","accepted_orders","Qabul qilingan arizalar","cab-service-orders"),dashboardMetric("Muddati kelgan to‘lov","debt_total","Qarz daftaridagi qoldiq","cab-qarz","money")],
+    "Import-eksport":[dashboardMetric("Faol jo‘natmalar","active_orders","Jarayondagi buyurtmalar","cab-orders"),dashboardMetric("Bojxonada","in_delivery","Yo‘ldagi jo‘natmalar","cab-orders"),dashboardMetric("Hujjati yetishmaydi","problem_orders","Muammoli buyurtmalar","cab-orders"),dashboardMetric("Kutilayotgan to‘lov","debt_total","To‘lanmagan qoldiq","cab-qarz","money")]
+  };
+  var CAB_DASHBOARD_DEFAULT=[
+    dashboardMetric("Bugungi tushum","revenue","Bugungi savdo tushumi","cab-kassa","money"),
+    dashboardMetric("Yangi buyurtmalar","new_orders","Qabul qilinmagan buyurtmalar","cab-orders"),
+    dashboardMetric("Faol buyurtmalar","active_orders","Jarayondagi buyurtmalar","cab-orders"),
+    dashboardMetric("Bildirishnomalar","problem_orders","E’tibor talab holatlar","cab-orders")
+  ];
   var CAB_EDU_MENU_IDS=["educationGroupsMenu","educationStudentsMenu","educationScheduleMenu","educationAttendanceMenu","educationPaymentsMenu","educationPaymentControlMenu","educationTeachersMenu","educationPayrollMenu","educationStatisticsMenu","educationEnrollmentsMenu"];
   function cabMenuCard(nav){return document.querySelector('#cabGroupOnline .menu-card[data-nav="'+nav+'"], #cabGroupTizim .menu-card[data-nav="'+nav+'"]');}
   function setCabCardLabel(nav, lab){
@@ -10980,29 +11121,153 @@
       g.style.display=any?"":"none";
     });
   }
+  function dashboardMoney(value){
+    var n=parseInt(value||0,10)||0;
+    return n>0?moneyText(n):"0 so‘m";
+  }
+  function dashboardValue(metric,value){
+    if(metric.format==="money")return dashboardMoney(value);
+    return String(parseInt(value||0,10)||0);
+  }
+  function dashboardMetricCards(metrics,snapshot){
+    return (metrics||[]).map(function(metric,index){
+      var nav=metric.nav?' data-nav="'+esc(metric.nav)+'"':"";
+      return '<button type="button" class="dashboard-metric'+(index===0?' primary':'')+'"'+nav+'>'+
+        '<span class="dashboard-metric-label">'+esc(metric.label)+'</span>'+
+        '<strong class="dashboard-metric-value">'+esc(dashboardValue(metric,snapshot[metric.key]))+'</strong>'+
+        '<small class="dashboard-metric-sub">'+esc(metric.sub||"Joriy holat")+'</small></button>';
+    }).join("");
+  }
+  function dashboardTodayStart(){
+    var now=new Date();now.setHours(0,0,0,0);return Math.floor(now.getTime()/1000);
+  }
+  function businessDashboardSnapshot(orders,stats,debtors,items,profile){
+    orders=orders||[];stats=stats||{};debtors=debtors||[];items=items||[];profile=profile||{};
+    var todayStart=dashboardTodayStart();
+    var active=orders.filter(orderIsActive);
+    var service=orders.filter(orderIsService);
+    var completedStatuses=["done","delivered","pickup_waiting_customer"];
+    var completedToday=orders.filter(function(order){return completedStatuses.indexOf(order.status)>=0&&Number(order.updated_at||order.created_at||0)>=todayStart;}).length;
+    var lowStock=items.filter(function(item){return !!Number(item.track_stock||0)&&Number(item.stock_qty||0)<=Number(item.min_qty||0);}).length;
+    if(!lowStock&&Array.isArray(stats.low_stock))lowStock=stats.low_stock.length;
+    return {
+      revenue:Number(stats.revenue||0),
+      expenses:Number(stats.expenses||0),
+      sales_count:Number(stats.sales_count||0),
+      new_orders:orders.filter(function(order){return order.status==="new";}).length,
+      today_orders:orders.filter(function(order){return Number(order.created_at||0)>=todayStart;}).length,
+      active_orders:active.length,
+      pending_orders:orders.filter(function(order){return ["new","accepted","preparing"].indexOf(order.status)>=0;}).length,
+      accepted_orders:orders.filter(function(order){return order.status==="accepted";}).length,
+      in_delivery:orders.filter(function(order){return ["courier_assigned","courier_arrived_store","handoff_waiting_seller","in_delivery","courier_arrived_customer","delivered_waiting_customer"].indexOf(order.status)>=0;}).length,
+      completed_today:completedToday,
+      service_today:service.filter(function(order){return Number(order.created_at||0)>=todayStart;}).length,
+      service_active:service.filter(orderIsActive).length,
+      debt_total:debtors.reduce(function(sum,row){return sum+Math.max(0,Number(row.balance||0));},0),
+      low_stock:lowStock,
+      items_count:items.length,
+      problem_orders:orders.filter(function(order){return !!order.problem_open;}).length,
+      followers:Number(profile.business_followers!=null?profile.business_followers:profile.followers||0),
+      occupied_places:0,
+      deadlines:0,
+      groups:0,
+      students:0,
+      today_lessons:0
+    };
+  }
+  function dashboardOrderActivity(orders,mode){
+    orders=(orders||[]).slice().sort(function(a,b){return Number(b.created_at||0)-Number(a.created_at||0);});
+    var box=el(mode==="business"?"cabRecentActivity":"ucabRecentActivity");
+    var counter=el(mode==="business"?"cabActivityCount":"ucabActivityCount");
+    if(counter)counter.textContent=orders.length+" ta";
+    if(!box)return;
+    if(!orders.length){
+      box.innerHTML='<div class="dashboard-empty"><b>Hozircha faollik yo‘q</b>Yangi buyurtma yoki xizmat paydo bo‘lsa, shu yerda ko‘rinadi.</div>';
+      return;
+    }
+    box.innerHTML=orders.slice(0,5).map(function(order){
+      var nav=mode==="business"?(orderIsService(order)?"cab-service-orders":"cab-orders"):(orderIsService(order)?"ucab-service-orders":"ucab-orders");
+      var total=Number(order.total_amount||0);
+      return '<button type="button" class="dashboard-activity-row" data-nav="'+nav+'">'+
+        '<span class="dashboard-activity-icon">'+(orderIsService(order)?"X":"B")+'</span>'+
+        '<span class="dashboard-activity-copy"><b>Buyurtma #'+esc(order.id)+' — '+esc(order.title||"Buyurtma")+'</b><span>'+esc(notifyTime(order.created_at)||"Vaqt ko‘rsatilmagan")+'</span></span>'+
+        '<span class="dashboard-activity-meta"><b>'+(total?esc(dashboardMoney(total)):esc(orderStatusText(order.status)))+'</b><span>'+esc(orderStatusText(order.status))+'</span></span></button>';
+    }).join("");
+  }
+  function renderCabinetDashboard(direction,snapshot,orders){
+    snapshot=snapshot||{};orders=orders||[];
+    var metrics=CAB_DASHBOARD_PLANS[direction]||CAB_DASHBOARD_DEFAULT;
+    if(el("cabDashboardMetrics"))el("cabDashboardMetrics").innerHTML=dashboardMetricCards(metrics,snapshot);
+    if(el("cabDashboardDirection"))el("cabDashboardDirection").textContent=direction||"Faoliyat yo‘nalishi tanlanmagan";
+    dashboardOrderActivity(orders,"business");
+  }
+  function loadCabinetDashboard(direction,profile){
+    renderCabinetDashboard(direction,businessDashboardSnapshot([],{},[],[],profile),[]);
+    Promise.all([
+      api("GET","/api/orders/inbox?"+actorQuery("business")).catch(function(){return [];}),
+      api("GET","/api/stats?period=kun").catch(function(){return {};}),
+      api("GET","/api/qarz/debtors").catch(function(){return [];}),
+      api("GET","/api/items").catch(function(){return [];})
+    ]).then(function(result){
+      ORDERS_INBOX=result[0]||[];
+      updateOrderBadges();
+      renderCabinetDashboard(direction,businessDashboardSnapshot(result[0],result[1],result[2],result[3],profile),result[0]);
+    });
+  }
+  function renderUcabDashboard(profile,orders,saved,notifications){
+    profile=profile||{};orders=orders||[];saved=saved||[];notifications=notifications||{};
+    var snapshot={
+      active_orders:orders.filter(orderIsActive).length,
+      following:Number(profile.following||0),
+      saved:saved.length,
+      unread:Number(notifications.unread||0)
+    };
+    var metrics=[
+      dashboardMetric("Faol buyurtmalar","active_orders","Joriy buyurtmalar","ucab-orders"),
+      dashboardMetric("Obunalar","following","Kuzatilayotgan profillar","ucab-subs"),
+      dashboardMetric("Saqlanganlar","saved","E’lon va bizneslar","ucab-saved"),
+      dashboardMetric("Bildirishnomalar","unread","O‘qilmagan xabarlar","notify")
+    ];
+    if(el("ucabDashboardMetrics"))el("ucabDashboardMetrics").innerHTML=dashboardMetricCards(metrics,snapshot);
+    dashboardOrderActivity(orders,"user");
+  }
+  function loadUcabDashboard(profile){
+    renderUcabDashboard(profile,[],[],{});
+    Promise.all([
+      api("GET","/api/orders/my?"+actorQuery("user")).catch(function(){return [];}),
+      api("GET","/api/saved?"+actorQuery("user")).catch(function(){return [];}),
+      api("GET","/api/notifications?"+actorQuery("user")).catch(function(){return {items:[],unread:0};})
+    ]).then(function(result){
+      ORDERS_MINE=result[0]||[];
+      updateOrderBadges();
+      renderUcabDashboard(profile,result[0],result[1],result[2]);
+    });
+  }
   function loadCabinetCounts(){
     refreshOrderBadges();
     loadBusinessReviews(true);
-    api("GET","/api/profile").then(function(d){
+    Promise.all([
+      api("GET","/api/profile").catch(function(){return {};}),
+      api("GET","/api/me").catch(function(){return {};})
+    ]).then(function(result){
+      var d=result[0]||{},me=result[1]||{},b=me.business||{};
       var f=document.querySelector('[data-nav="cab-followers"] b'), g=document.querySelector('[data-nav="cab-following"] b');
       if(f) f.textContent = (d.business_followers!=null?d.business_followers:d.followers);
       if(g) g.textContent = (d.business_following!=null?d.business_following:0);
-    }).catch(function(){});
-    api("GET","/api/me").then(function(d){
-      var b=d.business||{};
-      if(el("cabName")) el("cabName").textContent = b.name || d.name || "Biznes";
+      if(el("cabName")) el("cabName").textContent = b.name || me.name || "Biznes";
       renderBusinessLogo("cabLogo", b.logo_file||"",{x:b.logo_x==null?50:b.logo_x,y:b.logo_y==null?50:b.logo_y,zoom:b.logo_zoom||1});
       if(el("cabStatus")) el("cabStatus").textContent = "Faol" + (b.yon?(" · "+b.yon):"");
       window.__businessDirection=b.yon||"";
       window.__businessDirectionLoaded=true;
       applyCabinetLayout(b.yon);
+      loadCabinetDashboard(b.yon,d);
       if(b.yon==="Ta'lim faoliyati")api("GET","/api/education/enrollments").then(function(rows){var n=(rows||[]).filter(function(x){return x.status==="new";}).length,bg=el("eduEnrollmentBadge");if(bg){bg.textContent=n;bg.hidden=!n;}}).catch(function(){});
       // biznes manzili kabinet boshida ko'rsatiladi
       if(el("cabAddr")){
         if(b.address){ el("cabAddr").textContent = "📍 " + b.address; el("cabAddr").style.display=""; }
         else { el("cabAddr").textContent = ""; el("cabAddr").style.display="none"; }
       }
-    }).catch(function(){});
+    });
   }
   function loadUcabCounts(){
     refreshOrderBadges();
@@ -11014,7 +11279,8 @@
       if(el("ucabStatus")) el("ucabStatus").textContent = userLocationText(d);
       renderUserAvatar("ucabAvatar", d.avatar_file||"");
       if(ME) ME.avatar_file=d.avatar_file||"";
-    }).catch(function(){});
+      loadUcabDashboard(d);
+    }).catch(function(){loadUcabDashboard({});});
     // biznes ochilgan bo'lsa, tugma matnini o'zgartiramiz
     var bo = el("bizOpenBtn");
     if(bo){
