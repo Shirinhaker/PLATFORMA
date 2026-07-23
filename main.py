@@ -58,7 +58,7 @@ from integrations import (
 )
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1637"
+APP_BUILD = "v1638"
 APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
@@ -512,7 +512,27 @@ async def whitelist_middleware(request: Request, call_next):
             response = await call_next(request)
             return _set_privileged_access_cookie(response, request, tg["id"])
 
-        is_public_district_offers = path == "/api/home/district-offers"
+        is_public_home_discovery = path in (
+            "/api/home/district-offers",
+            "/api/map",
+        ) or (
+            request.method == "GET"
+            and (
+                (
+                    path.startswith("/api/business/")
+                    and path[len("/api/business/"):].isdigit()
+                )
+                or (
+                    path.startswith("/api/user/")
+                    and path[len("/api/user/"):].isdigit()
+                )
+                or (
+                    path.startswith("/api/person/")
+                    and path[len("/api/person/"):].isdigit()
+                )
+                or path.startswith("/api/stories/owner/")
+            )
+        )
         # XODIM (staff) kirishi Telegram whitelistdan ozod:
         #  1) /api/staff-auth* (login / me / logout)
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
@@ -537,7 +557,7 @@ async def whitelist_middleware(request: Request, call_next):
             return await call_next(request)
         tg = verify_init_data(init_data)
         if not tg:
-            if is_public_district_offers:
+            if is_public_home_discovery:
                 return await call_next(request)
             return JSONResponse(
                 status_code=401,
@@ -558,7 +578,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True}
+    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True, "first_visit_district_v1638": True, "district_paid_discovery_v1638": True, "profile_only_stories_v1638": True}
 
 
 @app.get("/healthz", include_in_schema=False)
