@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1631 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1633 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -999,6 +999,20 @@
     [data-screen="catalog"],[data-screen="cat-types"]{width:min(100%,1180px);padding-top:28px;}
     [data-screen="catalog"] #yonList{grid-template-columns:1fr;}
   }
+  /* v1633 — Taxi bosh sahifadan mustaqil ekran */
+  .screen[data-screen="taxi-call"]{padding-top:10px;padding-bottom:18px;}
+  .taxi-call-shell{width:min(100%,920px);margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  #taxiMapHost{min-width:0;}
+  #taxiMapHost .home-map-pane{display:block;width:100%;min-height:380px;}
+  #taxiMapHost .pin-eyebrow{display:none!important;}
+  #taxiMapHost .map-wrap{height:380px;min-height:380px;border-radius:20px;}
+  #taxiMapHost #leafletMap{height:380px!important;min-height:380px;}
+  @media(max-width:620px){
+    .screen[data-screen="taxi-call"]{padding:8px 10px 14px;}
+    #taxiMapHost .home-map-pane{min-height:280px;}
+    #taxiMapHost .map-wrap{height:280px;min-height:280px;}
+    #taxiMapHost #leafletMap{height:280px!important;min-height:280px;}
+  }
 
 </style>
 </head>
@@ -1108,8 +1122,7 @@
             <button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>
           </div>
         </section>
-        <div id="callPanel" hidden></div>
-        <div class="home-discovery">
+        <div class="home-discovery" id="homeDiscovery">
           <div class="home-search-card">
             <h1>Kerakli mahsulot va<br>xizmatni yaqiningizdan toping</h1>
             <div class="home-search-row">
@@ -1127,7 +1140,7 @@
             </button>
             <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
           </div>
-          <div class="home-map-pane">
+          <div class="home-map-pane" id="homeMapPane">
             <div class="pin-eyebrow" id="pinEyebrow">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
               Yaqin atrofdagilar
@@ -1157,10 +1170,18 @@
 
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
 
-        <div id="driverCard" hidden></div>
         <div id="resWrap" hidden>
           <div class="menu-card" id="resBar" style="margin-top:14px"><div class="menu-ic">📋</div><div class="menu-main"><h4 id="resCount">Natijalar</h4><p>Profillarni ko'rish uchun bosing</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
           <div id="resList" hidden></div>
+        </div>
+      </section>
+
+      <!-- TAXI CHAQIRUV — bosh sahifadan mustaqil ekran -->
+      <section class="screen" data-screen="taxi-call">
+        <div class="taxi-call-shell">
+          <div id="callPanel" hidden></div>
+          <div id="driverCard" hidden></div>
+          <div id="taxiMapHost"></div>
         </div>
       </section>
 
@@ -3504,10 +3525,18 @@
   /* --- v1385: "Qayerdan" ham qo'lda, ham GPS bilan --- */
   var pickMode="to", TO_PIN=null;               // qaysi maydon tahrirlanmoqda ("from"/"to") + qizil manzil belgisi
   var _skipMove=false, _fromGeoTimer=null;      // dasturiy siljishni o'tkazib yuborish + boshlanish geokod taymeri
-  function homePartsHide(h){
-    ["adBox","adDots","pinEyebrow"].forEach(function(id){
-      var x=el(id); if(x) x.style.display = h ? "none" : "";
-    });
+  function moveHomeMapToTaxi(){
+    if(el("taxiMapHost") && el("homeMapPane") && el("homeMapPane").parentNode!==el("taxiMapHost")){
+      el("taxiMapHost").appendChild(el("homeMapPane"));
+    }
+  }
+  function restoreHomeMap(){
+    if(el("homeDiscovery") && el("homeMapPane") && el("homeMapPane").parentNode!==el("homeDiscovery")){
+      el("homeDiscovery").appendChild(el("homeMapPane"));
+    }
+  }
+  function refreshMainMapSize(){
+    setTimeout(function(){ try{ if(LMAP) LMAP.invalidateSize(); }catch(e){} },120);
   }
   /* ---------- v1389: MASOFA BO'YICHA TAXMINIY NARX ---------- */
   var PRICING_CFG = { taxi:{base:5000,per_km:2000,min:9000}, dostavka:{base:10000,per_km:2500,min:15000} };
@@ -3577,17 +3606,20 @@
   function enterCall(){
     if(mapMode==="result") exitResults();
     callMode=true; callState="form"; pickMode="to";
+    var phone=document.querySelector(".phone");
+    if(phone) phone.classList.remove("search-results-active");
     loadPricing();
     cFromText=""; cToText=""; clearOrderMap();   // oldingi zakaz qoldiqlarini tozalaymiz
-    homePartsHide(true);
     el("resWrap").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
+    moveHomeMapToTaxi();
     ensureMap(); clearMarkers();
     el("centerPin").hidden=false;
     el("callPanel").hidden=false;
     renderCallPanel();
-    nav("home");
+    nav("taxi-call");
     screensEl.scrollTop=0;
+    refreshMainMapSize();
     orderDetectFrom();   // boshlanishni GPS bilan aniqlaymiz
     resumeActiveRide();  // tugamagan zakaz bo'lsa, davom ettiramiz
   }
@@ -3598,8 +3630,10 @@
     el("centerPin").hidden=true;
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
     cFromText=""; cToText=""; clearOrderMap();   // xarita qatlamlarini va holatni tozalaymiz
-    homePartsHide(false);
+    restoreHomeMap();
+    nav("home");
     loadHomeMap();
+    refreshMainMapSize();
   }
 
   /* ---------- v1385: ZAKAZ XARITASI (boshlanish/manzil — qo'lda yoki GPS) ---------- */
@@ -4444,7 +4478,7 @@
 
   /* ---------- navigation ---------- */
   var current = "home";
-  var titles = { catalog:"Qidiruv", listings:"E’lonlar", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
+  var titles = { catalog:"Qidiruv", listings:"E’lonlar", "taxi-call":"Taxi chaqirish", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-stories":"Istoriyalarim", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
@@ -4457,7 +4491,7 @@
   titles["cab-education-student-card"]="O'quvchi kartasi";
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   titles["cab-education-payment-control"]="To'lov nazorati";
-  var BACKMAP = { catalog:"home", listings:"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
+  var BACKMAP = { catalog:"home", listings:"home", "taxi-call":"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
     cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
@@ -6745,7 +6779,10 @@
   /* ---------- events ---------- */
   el("themeBtn").addEventListener("click", toggleTheme);
   el("desktopThemeBtn") && el("desktopThemeBtn").addEventListener("click", toggleTheme);
-  el("backBtn").addEventListener("click", function(){ nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home")); });
+  el("backBtn").addEventListener("click", function(){
+    if(current==="taxi-call"){ exitCall(); return; }
+    nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home"));
+  });
 
   function openWebHome(){ nav("home"); }
   function openWebListings(){
@@ -6817,7 +6854,7 @@
     }
     if(t=e.target.closest("[data-mt]")){ this.querySelectorAll("[data-mt]").forEach(function(x){ x.classList.toggle("on", x===t); }); return; }
     if(e.target.closest("[data-zakaz]")){
-      if(!loggedIn){ showLogin("Zakaz qilish"); return; }
+      if(!loggedIn){ exitCall(); showLogin("Zakaz qilish"); return; }
       submitRide();
       return;
     }
