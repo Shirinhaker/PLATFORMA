@@ -239,7 +239,9 @@ def _offer_item(conn, business, kind, content):
     }
 
 
-def district_offers_payload(conn, user_id, now=None, limit=MAX_DISTRICT_OFFERS):
+def district_offers_payload(
+    conn, user_id, now=None, limit=MAX_DISTRICT_OFFERS, district=""
+):
     """Return a stable, rotating set of public paid-business offers for one district."""
     current_time = int(time.time() if now is None else now)
     slot = offer_time_slot(current_time)
@@ -248,7 +250,10 @@ def district_offers_payload(conn, user_id, now=None, limit=MAX_DISTRICT_OFFERS):
         user = conn.execute(
             "SELECT district_key FROM users WHERE id=?", (int(user_id),)
         ).fetchone()
-    district_key = _row_value(user, "district_key") if user else ""
+    requested_district_key = canonical_district_key(district)
+    district_key = requested_district_key or (
+        _row_value(user, "district_key") if user else ""
+    )
     if not district_key:
         return {"needs_district": True, "slot": slot, "items": []}
 
