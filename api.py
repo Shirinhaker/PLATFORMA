@@ -250,6 +250,7 @@ def optional_user(conn, init_data):
 @router.get("/home/district-offers")
 async def home_district_offers(
     response: Response,
+    district: str = "",
     x_telegram_init_data: str = Header(default=""),
 ):
     response.headers["Cache-Control"] = "private, no-store"
@@ -257,7 +258,9 @@ async def home_district_offers(
     conn = db()
     try:
         me = optional_user(conn, x_telegram_init_data)
-        return district_offers_payload(conn, me["id"] if me else None)
+        return district_offers_payload(
+            conn, me["id"] if me else None, district=district
+        )
     finally:
         conn.close()
 
@@ -4565,111 +4568,117 @@ def _map_specialist_dict(row):
 
 
 @router.get("/map")
-async def home_map(actor: str = "", x_telegram_init_data: str = Header(default="")):
+async def home_map(
+    actor: str = "",
+    district: str = "",
+    x_telegram_init_data: str = Header(default=""),
+):
     """
     Bosh sahifa xaritasi uchun obyektlar.
 
-    Bu endpoint HAMMA biznesni qaytarmaydi. Faqat:
-      1) faol Pro obunasi va joylashuvi bor bizneslar;
-      2) joriy foydalanuvchi obuna bo'lgan, joylashuvi bor bizneslar;
-      3) joriy foydalanuvchi obuna bo'lgan, ko'rinadigan va joylashuvi bor mutaxasislar.
-
-    Pro va obuna metkalari frontendda bir xil odatiy metka bilan chiziladi.
+    Tanlangan tumandagi faol Plus yoki Pro obunasi va koordinatasi bor
+    bizneslarni qaytaradi. Kirgan foydalanuvchi shu tumandagi kuzatayotgan
+    mutaxassislarini ham ko'radi. Tuman qiymati javob obyektlariga qo'shilmaydi.
     """
     conn = db()
-    user = require_user(conn, x_telegram_init_data)
+    try:
+        user = optional_user(conn, x_telegram_init_data)
+        district_key = canonical_district_key(district)
+        if not district_key and user:
+            district_key = _row_val(user, "district_key", "") or ""
+        if not district_key:
+            return {"needs_district": True, "businesses": [], "specialists": []}
 
-    # 1) Muddati tugamagan faol Pro bizneslar. Eski map_visible belgisi endi
-    # ommaviy xaritaga chiqish huquqini bermaydi.
-    pro_rows = conn.execute(
-        """SELECT * FROM businesses
-           WHERE businesses.status='active'
-             AND businesses.lat IS NOT NULL AND businesses.lng IS NOT NULL
-             AND EXISTS(
-               SELECT 1 FROM business_subscriptions subscription
-               WHERE subscription.business_id=businesses.id
-                 AND subscription.status='active'
-                 AND subscription.plan_code='pro'
-                 AND subscription.expires_at>?
-             )
-           ORDER BY businesses.created_at DESC
-           LIMIT 200""",
-        (int(time.time()),),
-    ).fetchall()
+        actor_ctx = None
+        followed_business_ids = set()
+        if user:
+            actor_ctx = resolve_actor(
+                conn,
+                user,
+                "business"
+                if (actor or "").strip().lower() == "business"
+                else "user",
+            )
+            if actor_ctx["type"] == "business":
+                followed_business_ids = {
+                    int(row["target_id"])
+                    for row in conn.execute(
+                        "SELECT target_id FROM business_follows "
+                        "WHERE business_id=? AND target_kind='business'",
+                        (actor_ctx["business_id"],),
+                    ).fetchall()
+                }
+            else:
+                followed_business_ids = {
+                    int(row["target_id"])
+                    for row in conn.execute(
+                        "SELECT target_id FROM follows "
+                        "WHERE follower_id=? AND target_kind='business'",
+                        (user["id"],),
+                    ).fetchall()
+                }
 
-    business_map = {}
-    for b in pro_rows:
-        business_map[b["id"]] = _map_business_dict(b, following=False)
-
-    # 2) Joriy kabinet obuna bo'lgan bizneslar
-    actor_ctx = resolve_actor(conn, user, "business" if (actor or "").strip().lower() == "business" else "user")
-    if actor_ctx["type"] == "business":
-        followed_rows = conn.execute(
-            """SELECT b.* FROM business_follows f
-               JOIN businesses b ON b.id=f.target_id
-               WHERE f.business_id=?
-                 AND f.target_kind='business'
-                 AND b.status='active'
+        paid_rows = conn.execute(
+            """SELECT b.* FROM businesses b
+               JOIN users u ON u.id=b.user_id
+               WHERE b.status='active'
+                 AND u.district_key=?
                  AND b.lat IS NOT NULL AND b.lng IS NOT NULL
-               ORDER BY f.created_at DESC
+                 AND EXISTS(
+                   SELECT 1 FROM business_subscriptions subscription
+                   WHERE subscription.business_id=b.id
+                     AND subscription.status='active'
+                     AND subscription.plan_code IN ('plus','pro')
+                     AND subscription.expires_at>?
+                 )
+               ORDER BY b.created_at DESC
                LIMIT 200""",
-            (actor_ctx["business_id"],),
+            (district_key, int(time.time())),
         ).fetchall()
-    else:
-        followed_rows = conn.execute(
-            """SELECT b.* FROM follows f
-               JOIN businesses b ON b.id=f.target_id
-               WHERE f.follower_id=?
-                 AND f.target_kind='business'
-                 AND b.status='active'
-                 AND b.lat IS NOT NULL AND b.lng IS NOT NULL
-               ORDER BY f.created_at DESC
-               LIMIT 200""",
-            (user["id"],),
-        ).fetchall()
+        businesses = [
+            _map_business_dict(
+                row, following=int(row["id"]) in followed_business_ids
+            )
+            for row in paid_rows
+        ]
 
-    for b in followed_rows:
-        if b["id"] in business_map:
-            business_map[b["id"]]["following"] = True
-        else:
-            business_map[b["id"]] = _map_business_dict(b, following=True)
+        specialist_rows = []
+        if actor_ctx and actor_ctx["type"] == "business":
+            specialist_rows = conn.execute(
+                """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y,
+                          u.avatar_zoom
+                   FROM business_follows f
+                   JOIN specialists s ON s.user_id=f.target_id
+                   JOIN users u ON u.id=s.user_id
+                   WHERE f.business_id=? AND f.target_kind='user'
+                     AND u.district_key=? AND s.visible=1
+                     AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+                   ORDER BY f.created_at DESC LIMIT 200""",
+                (actor_ctx["business_id"], district_key),
+            ).fetchall()
+        elif actor_ctx:
+            specialist_rows = conn.execute(
+                """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y,
+                          u.avatar_zoom
+                   FROM follows f
+                   JOIN specialists s ON s.user_id=f.target_id
+                   JOIN users u ON u.id=s.user_id
+                   WHERE f.follower_id=? AND f.target_kind='user'
+                     AND u.district_key=? AND s.visible=1
+                     AND s.lat IS NOT NULL AND s.lng IS NOT NULL
+                   ORDER BY f.created_at DESC LIMIT 200""",
+                (user["id"], district_key),
+            ).fetchall()
 
-    # 3) Joriy kabinet obuna bo'lgan, xaritada ko'rinishga ruxsat bergan mutaxassislar
-    if actor_ctx["type"] == "business":
-        specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
-               FROM business_follows f
-               JOIN specialists s ON s.user_id=f.target_id
-               JOIN users u ON u.id=s.user_id
-               WHERE f.business_id=?
-                 AND f.target_kind='user'
-                 AND s.visible=1
-                 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
-               ORDER BY f.created_at DESC
-               LIMIT 200""",
-            (actor_ctx["business_id"],),
-        ).fetchall()
-    else:
-        specialist_rows = conn.execute(
-            """SELECT s.*, u.name, u.avatar_file, u.avatar_x, u.avatar_y, u.avatar_zoom
-               FROM follows f
-               JOIN specialists s ON s.user_id=f.target_id
-               JOIN users u ON u.id=s.user_id
-               WHERE f.follower_id=?
-                 AND f.target_kind='user'
-                 AND s.visible=1
-                 AND s.lat IS NOT NULL AND s.lng IS NOT NULL
-               ORDER BY f.created_at DESC
-               LIMIT 200""",
-            (user["id"],),
-        ).fetchall()
-
-    result = {
-        "businesses": list(business_map.values()),
-        "specialists": [_map_specialist_dict(s) for s in specialist_rows],
-    }
-    conn.close()
-    return result
+        return {
+            "needs_district": False,
+            "businesses": businesses,
+            "specialists": [
+                _map_specialist_dict(row) for row in specialist_rows
+            ],
+        }
+    finally:
+        conn.close()
 
 # ====================================================================
 # SAQLANGANLAR
@@ -5244,7 +5253,6 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
         "avatar_x": float(_row_val(u, "avatar_x", 50) or 50), "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
         "avatar_zoom": float(_row_val(u, "avatar_zoom", 1) or 1),
         "pub_username": _row_val(u, "pub_username", "") or "",
-        "region": u["region"] or "", "district": u["district"] or "",
         "listings": listings, "specialist": specialist,
         "followers": follower_count(conn, "user", u["id"]),
     }
@@ -8640,7 +8648,7 @@ async def person_page(user_id: int, actor_type: str = "user", x_telegram_init_da
     ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     result = {
-        "id": u["id"], "name": u["name"], "district": u["district"],
+        "id": u["id"], "name": u["name"],
         "followers": follower_count(conn, "user", u["id"]),
         "is_following": is_following(
             conn, viewer["id"] if viewer else None, "user", u["id"],
