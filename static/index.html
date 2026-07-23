@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1635 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1636 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -3488,7 +3488,8 @@
       setTimeout(function(){ try{ LMAP.invalidateSize(); }catch(e){} }, 120);
     }catch(e){}
   }
-  function enterResults(list_html, pins, count){
+  function enterResults(list_html, pins, count, options){
+    options=options||{};
     var phone=document.querySelector(".phone");
     if(phone) phone.classList.add("search-results-active");
     pins = (pins||[]).filter(function(r){ return validPin(r.lat, r.lng); });  // yaroqsiz koordinata xaritani qulatmasin
@@ -3501,10 +3502,19 @@
     el("resCount").textContent = "Natijalar \u2014 " + count + " ta";
     el("resList").innerHTML = list_html;
     el("resList").hidden = false;
-    nav("home");
+    var historyState=window.history&&history.state;
+    var resultHistoryActive=!!(
+      historyState&&historyState.koprikApp&&historyState.screen==="home"&&historyState.results
+    );
+    nav("home",{
+      fromHistory:!!options.fromHistory,
+      forceHistory:!options.fromHistory&&!resultHistoryActive,
+      historyExtra:{results:true}
+    });
     screensEl.scrollTop = 0;
   }
-  function exitResults(){
+  function exitResults(options){
+    options=options||{};
     var phone=document.querySelector(".phone");
     if(phone) phone.classList.remove("search-results-active");
     setTimeout(function(){ try{ if(LMAP) LMAP.invalidateSize(); }catch(e){} },120);
@@ -3516,6 +3526,11 @@
     mapMode = "biz";
     renderMapChip();
     loadHomeMap();
+    if(!options.fromHistory&&!options.preserveHistory&&window.history&&history.state&&history.state.koprikApp&&history.state.results){
+      try{
+        history.replaceState(appHistoryState("home",{results:false}),"",window.location.href);
+      }catch(e){}
+    }
   }
   /* ---------- TAXI CHAQIRUV ---------- */
   var callMode=false, callTab="taxi", ozim=false, callState="form";
@@ -3606,8 +3621,9 @@
       '<button class="btn btn-primary btn-block" data-zakaz>Zakaz qilish</button>'+
       '</div>';
   }
-  function enterCall(){
-    if(mapMode==="result") exitResults();
+  function enterCall(options){
+    options=options||{};
+    if(mapMode==="result") exitResults({preserveHistory:true});
     callMode=true; callState="form"; pickMode="to";
     var phone=document.querySelector(".phone");
     if(phone) phone.classList.remove("search-results-active");
@@ -3620,13 +3636,14 @@
     el("centerPin").hidden=false;
     el("callPanel").hidden=false;
     renderCallPanel();
-    nav("taxi-call");
+    nav("taxi-call",{fromHistory:!!options.fromHistory});
     screensEl.scrollTop=0;
     refreshMainMapSize();
     orderDetectFrom();   // boshlanishni GPS bilan aniqlaymiz
     resumeActiveRide();  // tugamagan zakaz bo'lsa, davom ettiramiz
   }
-  function exitCall(){
+  function exitCall(options){
+    options=options||{};
     callMode=false; callState="form"; ozim=false; callTab="taxi"; pickMode="to";
     stopRidePoll(); CUR_RIDE=null; _shownRideStatus=null;
     el("callPanel").hidden=true; el("callPanel").innerHTML="";
@@ -3634,8 +3651,8 @@
     el("driverCard").hidden=true; el("driverCard").innerHTML="";
     cFromText=""; cToText=""; clearOrderMap();   // xarita qatlamlarini va holatni tozalaymiz
     restoreHomeMap();
-    nav("home");
-    loadHomeMap();
+    nav(options.targetScreen||"home",{fromHistory:!!options.fromHistory});
+    if(!options.restoreResults) loadHomeMap();
     refreshMainMapSize();
   }
 
@@ -4481,6 +4498,22 @@
 
   /* ---------- navigation ---------- */
   var current = "home";
+  var APP_HISTORY_READY=false;
+  function appHistoryState(screen,extra){
+    extra=extra||{};
+    return {koprikApp:true,screen:screen||"home",results:!!extra.results};
+  }
+  function writeAppHistory(screen,extra,replace){
+    if(!window.history||!history.pushState)return;
+    try{
+      if(replace||!APP_HISTORY_READY){
+        history.replaceState(appHistoryState(screen,extra),"",window.location.href);
+        APP_HISTORY_READY=true;
+      }else{
+        history.pushState(appHistoryState(screen,extra),"",window.location.href);
+      }
+    }catch(e){}
+  }
   var titles = { catalog:"Qidiruv", listings:"E’lonlar", "taxi-call":"Taxi chaqirish", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
     cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
@@ -4516,7 +4549,8 @@
     r.style.display = "block";
     nav("login");
   }
-  function nav(screen){
+  function nav(screen,options){
+    options=options||{};
     var staffCanReport=!!(STAFF_INFO&&(STAFF_INFO.perms||[]).indexOf("reports")>=0);
     if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged) && !(screen==="cab-report"&&staffCanReport)){
       showMsg("Bu bo'lim ushbu profil uchun yopiq.");
@@ -4546,7 +4580,55 @@
     if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
     if(home && typeof loadStories === "function") setTimeout(loadStories,40);
     if(home && typeof loadDistrictOffers === "function") loadDistrictOffers(false);
+    if(options.fromHistory){
+      APP_HISTORY_READY=true;
+    }else if(!APP_HISTORY_READY){
+      writeAppHistory(screen,options.historyExtra,true);
+    }else if(previousScreen!==screen||options.forceHistory){
+      writeAppHistory(screen,options.historyExtra,false);
+    }
   }
+  function fallbackBackScreen(){
+    return current==="person" ? personBack :
+      current==="list" ? listBack :
+      current==="pickloc" ? pickReturnScreen() :
+      (BACKMAP[current]||"home");
+  }
+  function appBack(){
+    var state=window.history&&history.state;
+    if(state&&state.koprikApp&&history.length>1){
+      history.back();
+      return;
+    }
+    if(current==="taxi-call"){exitCall();return;}
+    nav(fallbackBackScreen());
+  }
+  window.addEventListener("popstate",function(event){
+    var state=event.state;
+    if(!state||!state.koprikApp)return;
+    APP_HISTORY_READY=true;
+    var target=state.screen||"home";
+    var wantsResults=target==="home"&&!!state.results;
+    if(current==="taxi-call"&&target!=="taxi-call"){
+      exitCall({fromHistory:true,targetScreen:target,restoreResults:wantsResults});
+      if(wantsResults&&RES&&RES.html){
+        enterResults(RES.html,RES.pins,RES.count,{fromHistory:true});
+      }
+      return;
+    }
+    if(target==="taxi-call"&&current!=="taxi-call"){
+      enterCall({fromHistory:true});
+      return;
+    }
+    if(!wantsResults&&!el("resWrap").hidden){
+      exitResults({fromHistory:true});
+    }
+    if(wantsResults&&RES&&RES.html){
+      enterResults(RES.html,RES.pins,RES.count,{fromHistory:true});
+      return;
+    }
+    nav(target,{fromHistory:true});
+  });
   function openBiz(id){ renderBiz(id); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; nav("business"); el("tbTitle").textContent = (BIZ.filter(function(x){return x.id===id;})[0]||{}).name||"Biznes"; }
   function openPerson(id){ nav("person"); }
 
@@ -6783,8 +6865,7 @@
   el("themeBtn").addEventListener("click", toggleTheme);
   el("desktopThemeBtn") && el("desktopThemeBtn").addEventListener("click", toggleTheme);
   el("backBtn").addEventListener("click", function(){
-    if(current==="taxi-call"){ exitCall(); return; }
-    nav(current==="person" ? personBack : current==="list" ? listBack : current==="pickloc" ? pickReturnScreen() : (BACKMAP[current] || "home"));
+    appBack();
   });
 
   function openWebHome(){ nav("home"); }
