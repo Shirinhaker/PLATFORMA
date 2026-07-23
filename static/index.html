@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1637 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1638 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -766,6 +766,9 @@
   .acf-ok.danger{border-color:#DC2626;background:#DC2626;color:#fff;}
   /* v1608 — 24 soatlik istoriyalar */
   .story-strip{margin:0 -2px 14px;overflow:hidden;}
+  .profile-story-strip{margin:14px 0 6px;padding:12px;border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;}
+  .profile-story-title{font-family:var(--font-d);font-size:14px;font-weight:800;margin-bottom:9px;}
+  .profile-story-strip .story-rail{padding-bottom:2px;}
   .story-rail{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 8px;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;}
   .story-rail::-webkit-scrollbar{display:none;}
   .story-card{flex:0 0 80px;width:80px;border:0;background:transparent;color:var(--ink);padding:0;cursor:pointer;scroll-snap-align:start;font:inherit;text-align:center;}
@@ -1006,13 +1009,7 @@
     .phone.home-active .tb-home>.icon-btn svg{width:17px;height:17px;}
     .phone.home-active .tb-home>#taxiCabBtn{display:grid;font-size:15px!important;}
     .phone.home-active .screens{min-height:0;padding-bottom:0;}
-    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:58px minmax(0,1fr) 100px 4px 92px;gap:4px;align-content:stretch;}
-    .screen[data-screen="home"]>.story-strip{height:58px;margin:0;min-width:0;}
-    .screen[data-screen="home"] .story-rail{height:58px;gap:7px;padding:0 1px 2px;overflow-x:auto;overflow-y:hidden;}
-    .screen[data-screen="home"] .story-card{width:50px;flex-basis:50px;}
-    .screen[data-screen="home"] .story-thumb{width:48px;height:48px;border-radius:13px;}
-    .screen[data-screen="home"] .story-plus{width:23px;height:23px;border-radius:8px;font-size:18px;}
-    .screen[data-screen="home"] .story-name{margin-top:2px;font-size:8px;line-height:1;}
+    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:minmax(0,1fr) 122px 4px 110px;gap:4px;align-content:stretch;}
     .screen[data-screen="home"] .home-discovery{display:grid;min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr);gap:4px;}
     .screen[data-screen="home"] .home-search-card{min-height:0;padding:6px 8px;border-radius:12px;}
     .screen[data-screen="home"] .home-search-card h1{font-size:15px;line-height:1.08;letter-spacing:-.02em;}
@@ -1036,21 +1033,21 @@
     .screen[data-screen="home"] #leafletMap .leaflet-control-zoom{display:none!important;}
     .screen[data-screen="home"] .map-chip{top:5px;left:5px;max-width:calc(100% - 44px);padding:4px 6px;border-radius:7px;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .screen[data-screen="home"] #taxiBtn{top:5px!important;right:5px!important;width:28px;height:28px;font-size:14px!important;}
-    .screen[data-screen="home"]>#adBox{height:100px;min-height:100px;margin-top:0!important;padding:7px 9px;border-radius:12px;}
+    .screen[data-screen="home"]>#adBox{height:122px;min-height:122px;margin-top:0!important;padding:7px 9px;border-radius:12px;}
     .screen[data-screen="home"]>#adBox .tag{left:8px;top:5px;padding:2px 5px;font-size:7px;}
     .screen[data-screen="home"]>#adBox .ad-copy{padding:5px 8px;}
     .screen[data-screen="home"]>#adBox .ad-copy h3{margin:13px 0 2px;font-size:13px;line-height:1.08;}
     .screen[data-screen="home"]>#adBox .ad-copy p{max-width:72%;font-size:9px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .screen[data-screen="home"]>#adBox .ad-cta{display:none;}
-    .screen[data-screen="home"]>#adBox .ad-photo{height:100px;}
+    .screen[data-screen="home"]>#adBox .ad-photo{height:122px;}
     .screen[data-screen="home"]>#adDots{height:4px;margin:0;gap:3px;}
     .screen[data-screen="home"]>#adDots span{height:3px;width:3px;}
     .screen[data-screen="home"]>#adDots span.on{width:10px;}
-    .screen[data-screen="home"]>#districtOffersMount{height:92px;margin:0 -8px;min-width:0;overflow:hidden;}
-    .screen[data-screen="home"] .district-offers-viewport{height:92px;padding:0 8px;overflow-x:auto;overflow-y:hidden;min-width:0;max-width:100%;}
-    .screen[data-screen="home"] .district-offers-track{height:92px;gap:6px;}
-    .screen[data-screen="home"] .district-offer-card{width:164px;flex-basis:164px;height:90px;display:grid;grid-template-columns:62px minmax(0,1fr);border-radius:11px;}
-    .screen[data-screen="home"] .district-offer-media{height:90px;font-size:22px;}
+    .screen[data-screen="home"]>#districtOffersMount{height:110px;margin:0 -8px;min-width:0;overflow:hidden;}
+    .screen[data-screen="home"] .district-offers-viewport{height:110px;padding:0 8px;overflow-x:auto;overflow-y:hidden;min-width:0;max-width:100%;}
+    .screen[data-screen="home"] .district-offers-track{height:110px;gap:6px;}
+    .screen[data-screen="home"] .district-offer-card{width:174px;flex-basis:174px;height:108px;display:grid;grid-template-columns:70px minmax(0,1fr);border-radius:11px;}
+    .screen[data-screen="home"] .district-offer-media{height:108px;font-size:22px;}
     .screen[data-screen="home"] .district-offer-body{padding:6px 7px;align-self:center;}
     .screen[data-screen="home"] .district-offer-title{font-size:10px;}
     .screen[data-screen="home"] .district-offer-business{margin-top:2px;font-size:8px;}
@@ -1059,13 +1056,12 @@
     /* v1631 — mobil qidiruv natijalari xarita ostida */
     .phone.home-active.search-results-active .screens{overflow-y:auto;}
     .phone.home-active.search-results-active .screen[data-screen="home"].active{display:flex;flex-direction:column;height:auto;min-height:100%;}
-    .phone.home-active.search-results-active .story-strip{order:1;flex:0 0 58px;}
-    .phone.home-active.search-results-active .home-discovery{order:2;flex:none;grid-template-rows:auto 150px;}
+    .phone.home-active.search-results-active .home-discovery{order:1;flex:none;grid-template-rows:auto 150px;}
     .phone.home-active.search-results-active .home-map-pane{height:150px;}
-    .phone.home-active.search-results-active #resWrap{order:3;margin-top:6px;}
-    .phone.home-active.search-results-active #adBox{order:4;margin-top:8px!important;}
-    .phone.home-active.search-results-active #adDots{order:5;}
-    .phone.home-active.search-results-active #districtOffersMount{order:6;margin-top:4px;}
+    .phone.home-active.search-results-active #resWrap{order:2;margin-top:6px;}
+    .phone.home-active.search-results-active #adBox{order:3;margin-top:8px!important;}
+    .phone.home-active.search-results-active #adDots{order:4;}
+    .phone.home-active.search-results-active #districtOffersMount{order:5;margin-top:4px;}
   }
   @media(min-width:1080px){
     .web-brand{margin-right:22px;}
@@ -1192,11 +1188,6 @@
 
       <!-- HOME -->
       <section class="screen active" data-screen="home">
-        <section class="story-strip" id="storyStrip" aria-label="Istoriyalar">
-          <div class="story-rail" id="storyRail">
-            <button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>
-          </div>
-        </section>
         <div class="home-discovery" id="homeDiscovery">
           <div class="home-search-card">
             <h1>Kerakli mahsulot va<br>xizmatni yaqiningizdan toping</h1>
@@ -1208,12 +1199,12 @@
               </label>
               <button class="home-catalog-open" id="homeCatalogOpen" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 9.8 14.2"/><path d="m22 2-7.8 20-4.4-7.8L2 9.8 22 2Z"/></svg>
-                <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small>Qumqo‘rg‘on tumani</small></span>
+                <span class="home-catalog-copy"><strong>Katalog bo‘yicha</strong><small id="homeCatalogLocation">Hudud tanlanmagan</small></span>
                 <span class="home-catalog-chevron" aria-hidden="true">⌄</span>
               </button>
               <button class="home-search-submit" id="homeSearchSubmit" type="button">Qidirish</button>
             </div>
-            <div class="home-location-note">Joriy hudud: Qumqo‘rg‘on tumani&nbsp; · &nbsp;Masofani <b>15 km gacha</b> sozlash</div>
+            <div class="home-location-note" id="homeLocationNote">Joriy hudud: tanlanmagan</div>
           </div>
           <div class="home-map-pane" id="homeMapPane">
             <div class="pin-eyebrow" id="pinEyebrow">
@@ -1303,8 +1294,9 @@
       <!-- MANZILIM -->
       <section class="screen" data-screen="loc">
         <div class="form-wrap">
-          <div class="lead">Manzilim</div>
-          <div class="lead-sub">Manzilingizga qarab yaqin atrofdagi biznes va mutaxasislar ko'rsatiladi.</div>
+          <div class="lead">Hududingizni tanlang</div>
+          <div class="lead-sub">Tanlangan tumandagi obunali profillar, mahsulotlar va xizmatlar ko‘rsatiladi.</div>
+          <div class="ad-info" id="locRequiredHint">Ko‘prikdan foydalanishni boshlash uchun avval tumaningizni belgilang. Bu ma’lumot boshqa foydalanuvchilarga ko‘rsatilmaydi.</div>
           <button class="btn btn-primary btn-block" id="locAuto">📡 Avtomatik aniqlash</button>
           <div class="list-sub" style="text-align:center;margin:14px 0 10px">yoki ro'yxatdan tanlang:</div>
           <div class="field"><label>Viloyat / shahar</label><select class="input" id="locViloyat"></select></div>
@@ -2973,6 +2965,42 @@
       return [];
     });
   }
+  function profileStoriesHtml(ownerType,ownerId){
+    var key=String(ownerType||"user")+"-"+parseInt(ownerId,10);
+    return '<section class="profile-story-strip" id="profileStories-'+key+'" hidden>'+
+      '<div class="profile-story-title">Istoriyalar</div>'+
+      '<div class="story-rail" id="profileStoryRail-'+key+'"></div>'+
+    '</section>';
+  }
+  function loadProfileStories(ownerType,ownerId,name,avatarUrl){
+    ownerType=ownerType==="business"?"business":"user";
+    ownerId=parseInt(ownerId,10);
+    if(!ownerId)return Promise.resolve([]);
+    var key=ownerType+"-"+ownerId;
+    var mount=el("profileStories-"+key),rail=el("profileStoryRail-"+key);
+    if(!mount||!rail)return Promise.resolve([]);
+    return api("GET","/api/stories/owner/"+ownerType+"/"+ownerId).then(function(stories){
+      stories=Array.isArray(stories)?stories:[];
+      if(!stories.length){mount.hidden=true;rail.innerHTML="";return stories;}
+      var isOwn=!!(ME&&ME.registered&&(
+        (ownerType==="user"&&Number(ME.id)===ownerId)||
+        (ownerType==="business"&&Number(ME.business_id)===ownerId)
+      ));
+      STORY_GROUPS=[{
+        owner_type:ownerType,owner_id:ownerId,name:name||"Profil",
+        avatar_url:avatarUrl||"",is_own:isOwn,
+        has_unseen:stories.some(function(item){return !item.viewed;}),
+        stories:stories
+      }];
+      var group=STORY_GROUPS[0];
+      rail.innerHTML='<button class="story-card '+(group.has_unseen?'unseen':'seen')+
+        '" type="button" data-story-group="0" aria-label="'+esc(group.name)+' istoriyasini ko‘rish">'+
+        '<span class="story-thumb">'+storyAvatarHtml(group)+'</span>'+
+        '<span class="story-name">'+esc(group.is_own?'Sizning istoriya':group.name)+'</span></button>';
+      mount.hidden=false;
+      return stories;
+    }).catch(function(){mount.hidden=true;rail.innerHTML="";return [];});
+  }
   function clearStoryObjectUrl(){
     if(STORY_OBJECT_URL){try{URL.revokeObjectURL(STORY_OBJECT_URL);}catch(e){} STORY_OBJECT_URL="";}
   }
@@ -3257,7 +3285,46 @@
   /* ---------- render: map pins ---------- */
   var mapMode = "biz";
   var selElon = null;
-  var LOC = "Yunusobod tumani";
+  var LOC = "Hudud tanlanmagan";
+  var HOME_LOCATION_STORAGE_KEY = "koprik_home_location_v1";
+  var HOME_LOCATION = {
+    region:"", district:"", mahalla:"", lat:null, lng:null, exact:false
+  };
+  var HOME_LOCATION_REQUIRED = true;
+  function restoreHomeLocation(){
+    var stored=null;
+    try{ stored=JSON.parse(localStorage.getItem(HOME_LOCATION_STORAGE_KEY)||"null"); }catch(e){}
+    if(!stored || !String(stored.district||"").trim()) return null;
+    HOME_LOCATION={
+      region:String(stored.region||""),
+      district:String(stored.district||""),
+      mahalla:String(stored.mahalla||""),
+      lat:stored.lat==null?null:Number(stored.lat),
+      lng:stored.lng==null?null:Number(stored.lng),
+      exact:!!stored.exact
+    };
+    HOME_LOCATION_REQUIRED=false;
+    return HOME_LOCATION;
+  }
+  function rememberHomeLocation(region,district,mahalla,lat,lng,exact){
+    if(!String(district||"").trim()) return false;
+    HOME_LOCATION={
+      region:String(region||""),
+      district:String(district||""),
+      mahalla:String(mahalla||""),
+      lat:lat==null?null:Number(lat),
+      lng:lng==null?null:Number(lng),
+      exact:!!exact
+    };
+    HOME_LOCATION_REQUIRED=false;
+    try{localStorage.setItem(HOME_LOCATION_STORAGE_KEY,JSON.stringify(HOME_LOCATION));}catch(e){}
+    return true;
+  }
+  function homeDistrictParam(){
+    return encodeURIComponent(
+      HOME_LOCATION.district || (ME&&ME.district) || ""
+    );
+  }
   var RES = {pins:[], html:"", count:0};
 
   /* ---------- Bosh xarita: Leaflet + OpenStreetMap ---------- */
@@ -3414,7 +3481,10 @@
   }
   function loadHomeMap(){
     if(mapMode!=="biz") return;
-    api("GET","/api/map?actor="+(activeMode==="business"?"business":"user")+"&_="+Date.now()).then(function(data){
+    if(!homeDistrictParam()){
+      BIZ=[];SPEC=[];renderPins("biz");return Promise.resolve(null);
+    }
+    return api("GET","/api/map?district="+homeDistrictParam()+"&actor="+(activeMode==="business"?"business":"user")+"&_="+Date.now()).then(function(data){
       data = data || {};
       BIZ = (data.businesses||[]).map(function(b){
         var m = yonMeta(b.yon);
@@ -4122,7 +4192,6 @@
     var av = u.avatar_file
       ? '<div class="biz-logo" style="padding:0;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="'+avatarImageStyle(u.avatar_x,u.avatar_y,u.avatar_zoom)+'"></div>'
       : '<div class="biz-logo" style="background:linear-gradient(135deg,#6a8dff,#9a6bff)"><span style="font-size:16px;font-weight:800;color:#fff">'+esc(ini)+'</span></div>';
-    var loc = [u.district, u.region].filter(Boolean).join(", ");
     return '<div class="biz-card" data-usrv="'+u.id+'">'+av+
       '<div class="biz-main"><div class="biz-name">'+esc(u.name||"Foydalanuvchi")+'</div>'+
         '<div class="biz-meta"><span class="cat">@'+esc(u.pub_username||"")+'</span>'+(loc?'<span class="dot-sep"></span>'+esc(loc):'')+'</div></div>'+
@@ -4321,7 +4390,6 @@
     var avatar = u.avatar_file
       ? '<span style="display:block;width:84px;height:84px;border-radius:50%;overflow:hidden"><img src="'+esc(u.avatar_file)+'" alt="" style="'+avatarImageStyle(u.avatar_x,u.avatar_y,u.avatar_zoom)+'"></span>'
       : '<div style="width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;background:linear-gradient(135deg,#6a8dff,#9a6bff)">'+esc(initial)+'</div>';
-    var loc = [u.district, u.region].filter(Boolean).join(", ");
     var sp = u.specialist;
     var spHtml = sp ? specialistPublicSections(sp) : "";
     var listings = (u.listings||[]);
@@ -4337,12 +4405,13 @@
         avatar+
         '<div style="font-size:20px;font-weight:800;margin-top:10px">'+esc(u.name||"Foydalanuvchi")+'</div>'+
         (u.pub_username?'<div class="idesc">@'+esc(u.pub_username)+'</div>':'')+
-        (loc?'<div class="idesc" style="margin-top:2px">📍 '+esc(loc)+'</div>':'')+
         (u.followers?'<div class="idesc" style="margin-top:2px">'+u.followers+' obunachi</div>':'')+
       '</div>'+
+      profileStoriesHtml("user",u.id)+
       spHtml+
       listHtml+
       (sp ? '<div id="rvBoxUser"></div>' : '');
+    loadProfileStories("user", u.id, u.name||"Foydalanuvchi", u.avatar_file||"");
     if(sp) loadReviews("specialist", u.id, "rvBoxUser");
   }
 
@@ -4468,11 +4537,13 @@
         (b.followers?'<div class="idesc" style="margin-top:2px">'+b.followers+' obunachi</div>':'')+
         (b.descr?'<div class="biz-desc" style="margin-top:8px">'+esc(b.descr)+'</div>':'')+
       '</div>'+
+      profileStoriesHtml("business",b.id)+
       queueBanner+
       itemsHtml+
       listHtml+
       (items.length||listings.length ? '' : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha ma\'lumot yo\'q</div>')+
       '<div id="rvBoxBizPage"></div>';
+    loadProfileStories("business", b.id, b.name||"Biznes", b.logo_file||"");
     loadReviews("business", b.id, "rvBoxBizPage");
   }
   // Deep-link: ilova havola orqali ochilганда to'g'ri sahifa
@@ -4661,6 +4732,7 @@
   }
   function nav(screen,options){
     options=options||{};
+    if(HOME_LOCATION_REQUIRED && screen==="home") screen="loc";
     var staffCanReport=!!(STAFF_INFO&&(STAFF_INFO.perms||[]).indexOf("reports")>=0);
     if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged) && !(screen==="cab-report"&&staffCanReport)){
       showMsg("Bu bo'lim ushbu profil uchun yopiq.");
@@ -4684,12 +4756,14 @@
     if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
-    if(el("backBtn")) el("backBtn").style.display = (screen==="staff-home"||screen==="staff-login") ? "none" : "";
+    if(el("backBtn")) el("backBtn").style.display = (
+      screen==="staff-home" || screen==="staff-login" ||
+      (screen==="loc" && HOME_LOCATION_REQUIRED)
+    ) ? "none" : "";
     if(screen==="staff-home" && STAFF_INFO) el("tbTitle").textContent = STAFF_INFO.business_name || "Do'kon";
     if(typeof updateCartBadge === "function") updateCartBadge();
     if(typeof onScreenOpen === "function") onScreenOpen(screen);
     if(typeof pollActionNotifications === "function") setTimeout(pollActionNotifications,80);
-    if(home && typeof loadStories === "function") setTimeout(loadStories,40);
     if(home && typeof loadDistrictOffers === "function") loadDistrictOffers(false);
     if(options.fromHistory){
       APP_HISTORY_READY=true;
@@ -4839,6 +4913,10 @@
   }
   function loadDistrictOffers(force){
     var mount=el("districtOffersMount");
+    if(!homeDistrictParam()){
+      renderDistrictOffers({needs_district:true,items:[]});
+      return Promise.resolve(null);
+    }
     if(DISTRICT_OFFERS_LOADING) return DISTRICT_OFFERS_LOADING;
     var currentSlot=Math.floor(Date.now()/DISTRICT_OFFER_SLOT_MS);
     if(!force && DISTRICT_OFFERS_CACHE && Number(DISTRICT_OFFERS_CACHE.slot)===currentSlot){
@@ -4847,7 +4925,7 @@
       return Promise.resolve(DISTRICT_OFFERS_CACHE);
     }
     var generation=DISTRICT_OFFERS_GENERATION;
-    var request=api("GET","/api/home/district-offers").then(function(payload){
+    var request=api("GET","/api/home/district-offers?district="+homeDistrictParam()).then(function(payload){
       if(generation!==DISTRICT_OFFERS_GENERATION) return payload;
       DISTRICT_OFFERS_CACHE=payload;
       renderDistrictOffers(payload);
@@ -4948,6 +5026,7 @@
         '<div class="biz-title">'+esc(b.name)+'</div>'+
         '<div class="biz-sub"><span>'+esc(b.tur||"")+'</span>'+(b.address?'<span class="dot-sep"></span><span>'+esc(b.address)+'</span>':'')+'<span class="dot-sep"></span><span>'+b.followers+' obunachi</span></div>'+
         (b.descr?'<div class="biz-desc">'+esc(b.descr)+'</div>':'')+
+        profileStoriesHtml("business",b.id)+
         // Yuqori tugmalar: Obuna / Xabar / Bog'lanish (avval pastda edi — #2)
         '<div style="display:flex;gap:8px;margin:14px 0 6px">'+
           '<button class="btn btn-soft" style="flex:1" id="pageFollow">'+(b.is_following?"✓ Obunadasiz":"+ Obuna")+'</button>'+
@@ -4968,6 +5047,7 @@
       var bm = el("bizMsgBtn");
       if(bm) bm.addEventListener("click", function(){ openChat("business", b.id, b.name); });
       loadReviews("business", b.id, "rvBoxBiz");
+      loadProfileStories("business", b.id, b.name||"Biznes", b.logo_file||"");
       if(focusItemId){
         setTimeout(function(){
           var target=document.querySelector('[data-public-item="'+parseInt(focusItemId,10)+'"]');
@@ -6916,6 +6996,7 @@
         '<div class="stat-chips"><span class="stat-chip"><b>'+p.followers+'</b> obunachi</span></div></div></div>';
       var body = head;
       body += '<button class="btn btn-primary btn-block" style="margin-bottom:10px" id="pageMsg">✍️ Xabar yozish</button>';
+      body += profileStoriesHtml("user",p.id);
       if(sp){
         body += specialistPublicSections(sp);
       } else {
@@ -6937,6 +7018,7 @@
       el("tbTitle").textContent = p.name;
       bindPageFollow();
       if(sp) loadReviews("specialist", p.id, "rvBoxPerson");
+      loadProfileStories("user", p.id, p.name||"Foydalanuvchi", p.avatar_file||"");
       var pm = el("pageMsg");
       if(pm) pm.addEventListener("click", function(){ openChat("user", p.id, p.name); });
     }).catch(function(e){ showMsg(e.message); });
@@ -7538,33 +7620,27 @@
     }
     navigator.geolocation.getCurrentPosition(function(pos){
       var lat=pos.coords.latitude, lng=pos.coords.longitude;
-      applyHomeLocation("", "Joylashuvim", "", lat, lng, 15);
       api("GET","/api/geocode?lat="+lat+"&lng="+lng).then(function(g){
         g = g || {};
         var viloyat = g.region || "";
         var tuman = g.district || "";
+        if(!String(tuman||"").trim()){
+          throw new Error("Tuman aniqlanmadi. Iltimos, ro‘yxatdan tanlang.");
+        }
         // Manzil matni (ko'cha/uy) tuman emas: faqat geokoderning ma'muriy
         // tuman maydoni profilda saqlanadi.
-        applyHomeLocation(viloyat, tuman, "", lat, lng, 15);
+        applyHomeLocation(viloyat, tuman, "", lat, lng, 13);
         if(loggedIn){
           return api("PUT","/api/profile",{ name:(ME.name||""), region:viloyat, district:tuman, mahalla:"", lat:lat, lng:lng, location_exact:1 });
         }
       }).then(function(){
         clearDistrictOffersCache();
         loadDistrictOffers(true);
+        loadHomeMap();
         done(); nav("home");
-      }).catch(function(){
-        // Geocode ishlamasa ham koordinata saqlanadi; xarita pin chiqarmasdan shu joyga yaqinlashadi.
-        if(loggedIn){
-          api("PUT","/api/profile",{ name:(ME.name||""), region:"", district:"", mahalla:"", lat:lat, lng:lng, location_exact:1 })
-            .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); })
-            .catch(function(){})
-            .finally(function(){ done(); nav("home"); });
-        } else {
-          clearDistrictOffersCache();
-          loadDistrictOffers(true);
-          done(); nav("home");
-        }
+      }).catch(function(error){
+        done();
+        showMsg((error&&error.message)||"Tuman aniqlanmadi. Iltimos, ro‘yxatdan tanlang.");
       });
     }, function(err){
       done();
@@ -7584,7 +7660,8 @@
   }
   function initUserLocMap(){
     if(typeof L==="undefined"||!el("userLocMap")) return;
-    api("GET","/api/profile").then(function(d){
+    function mountUserLocMap(d){
+      d=d||{};
       var exact=!!d.location_exact&&d.lat!=null&&d.lng!=null;
       var s=selectedLoc(), start=exact?[parseFloat(d.lat),parseFloat(d.lng)]:(s?[s.lat,s.lng]:(CENTER||[41.311,69.280]));
       USER_LOC_EXACT=exact;
@@ -7601,7 +7678,12 @@
       }else USER_LOC_MAP.setView(start,exact?16:12);
       userLocInfo();
       setTimeout(function(){try{USER_LOC_MAP.invalidateSize();}catch(e){}},120);
-    }).catch(function(){userLocInfo();});
+    }
+    if(loggedIn){
+      api("GET","/api/profile").then(mountUserLocMap).catch(function(){mountUserLocMap({});});
+    }else{
+      mountUserLocMap({});
+    }
   }
   function fillRegionSelects(){
     var R = window.UZ_REGIONS || [];
@@ -7688,6 +7770,8 @@
     if(el("locMahalla")) el("locMahalla").value = mahalla || "";
   }
   function applyHomeLocation(region, district, mahalla, lat, lng, zoom){
+    var previousDistrict=normLocText(HOME_LOCATION.district);
+    var nextDistrict=normLocText(district);
     if(district || mahalla){
       LOC = (district || "") + ((district && mahalla) ? (", "+mahalla) : (mahalla||""));
     } else if(region){
@@ -7697,6 +7781,24 @@
       var webPlace=[region,district].filter(function(value){return !!String(value||"").trim();}).join(", ");
       el("webLocationLabel").textContent=webPlace||"Manzil";
       el("webLocationLabel").title=webPlace||"Manzil";
+    }
+    if(String(district||"").trim()){
+      rememberHomeLocation(
+        region,district,mahalla,lat,lng,
+        !!(lat!=null&&lng!=null&&Number(zoom)>=16)
+      );
+      if(previousDistrict && previousDistrict!==nextDistrict){
+        BIZ=[];SPEC=[];
+        if(typeof clearDistrictOffersCache==="function") clearDistrictOffersCache();
+      }
+    }
+    if(el("homeCatalogLocation")){
+      el("homeCatalogLocation").textContent=String(district||"").trim()||"Hudud tanlanmagan";
+    }
+    if(el("homeLocationNote")){
+      el("homeLocationNote").textContent=String(district||"").trim()
+        ? ("Joriy hudud: "+String(district).trim())
+        : "Joriy hudud: tanlanmagan";
     }
     // Bosh sahifada oddiy foydalanuvchining manzili pin/metka bo'lib chiqmaydi.
     // Xaritani faqat tanlangan viloyat/tuman markaziga olib boramiz.
@@ -7717,7 +7819,10 @@
 
   el("locSave").addEventListener("click", function(){
     var s = selectedLoc();
-    if(!s){ nav("home"); return; }
+    if(!s || !String(s.tuman||"").trim()){
+      showMsg("Iltimos, tumaningizni tanlang.");
+      return;
+    }
     var mahalla = (el("locMahalla").value||"").trim();
     var saveLat=USER_LOC_EXACT&&USER_LOC_POINT?USER_LOC_POINT.lat:s.lat;
     var saveLng=USER_LOC_EXACT&&USER_LOC_POINT?USER_LOC_POINT.lng:s.lng;
@@ -7725,11 +7830,19 @@
     // serverga ham matn + koordinatani saqlaymiz (qayta kirganda xarita shu tuman/viloyatga qaytishi uchun)
     if(loggedIn){
       api("PUT","/api/profile",{ name:(ME.name||""), region:s.viloyat, district:s.tuman, mahalla:mahalla, lat:saveLat, lng:saveLng, location_exact:USER_LOC_EXACT?1:0 })
-        .then(function(){ clearDistrictOffersCache(); loadDistrictOffers(true); nav("home"); })
-        .catch(function(e){ showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi"); nav("home"); });
+        .then(function(){
+          clearDistrictOffersCache();
+          loadDistrictOffers(true);
+          loadHomeMap();
+          nav("home");
+        })
+        .catch(function(e){
+          showMsg((e && e.message) ? e.message : "Manzilni saqlashda xatolik bo'ldi");
+        });
     } else {
       clearDistrictOffersCache();
       loadDistrictOffers(true);
+      loadHomeMap();
       nav("home");
     }
   });
@@ -12814,12 +12927,21 @@
   function boot(){
     if(STAFF_TOKEN){ staffBoot(); return; }   // xodim rejimi
     try { renderMapChip(); renderElonRow(); renderYon(); setIcon(); } catch(e){}
-    nav("home");
+    var storedHomeLocation=restoreHomeLocation();
+    if(storedHomeLocation){
+      applyHomeLocation(
+        storedHomeLocation.region,storedHomeLocation.district,
+        storedHomeLocation.mahalla,storedHomeLocation.lat,
+        storedHomeLocation.lng,storedHomeLocation.exact?16:13
+      );
+    }
+    nav(HOME_LOCATION_REQUIRED?"loc":"home");
     loadElonCounts();
     loadHomeAds();
-    loadStories();
     // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
-    try { ensureMap(); renderPins("biz"); } catch(e){ /* xarita keyin yuklanadi */ }
+    if(!HOME_LOCATION_REQUIRED){
+      try { ensureMap(); loadHomeMap(); } catch(e){ /* xarita keyin yuklanadi */ }
+    }
     // Kabinet faqat login-parol orqali olingan mobil sessiya bilan avtomatik tiklanadi.
     if(MOBILE_TOKEN) api("GET", "/api/me").then(function(d){
       if(d && d.registered){
@@ -12836,9 +12958,27 @@
         if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
         }
-        loadHomeMap();
+        if(String(d.district||"").trim()){
+          HOME_LOCATION_REQUIRED=false;
+          if(current==="loc") nav("home");
+          loadHomeMap();
+          loadDistrictOffers(true);
+        }else if(String(HOME_LOCATION.district||"").trim()){
+          HOME_LOCATION_REQUIRED=false;
+          api("PUT","/api/profile",{
+            name:(ME.name||""),region:HOME_LOCATION.region,
+            district:HOME_LOCATION.district,mahalla:HOME_LOCATION.mahalla,
+            lat:HOME_LOCATION.lat,lng:HOME_LOCATION.lng,
+            location_exact:HOME_LOCATION.exact?1:0
+          }).catch(function(){});
+          if(current==="loc") nav("home");
+          loadHomeMap();
+          loadDistrictOffers(true);
+        }else{
+          HOME_LOCATION_REQUIRED=true;
+          nav("loc");
+        }
         loadHomeAds();
-        loadStories();
         refreshOrderBadges();
         refreshNotifyBadge();
         startActionNotifyPolling();
