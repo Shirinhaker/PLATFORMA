@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1634 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1635 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -872,6 +872,7 @@
   .home-catalog-chevron{font-size:20px;line-height:1;}
   .home-location-note{margin-top:auto;padding-top:20px;color:var(--soft);font-size:12px;line-height:1.45;}
   .home-location-note b{color:var(--primary);}
+  .search-results-summary{margin:8px 0 6px;color:var(--ink);font-size:13px;font-weight:800;line-height:1.25;}
   .catalog-shell{padding-bottom:28px;}
   .catalog-title-row{display:flex;align-items:center;justify-content:space-between;margin:16px 4px 10px;}
   .catalog-title-row h2{font:800 18px var(--font-d);}
@@ -1157,10 +1158,14 @@
           </div>
         </div>
 
+        <div id="resWrap" hidden>
+          <div class="search-results-summary" id="resCount" aria-live="polite">Natijalar — 0 ta</div>
+          <div id="resList" hidden></div>
+        </div>
+
         <div class="ad" id="adBox" style="margin-top:20px">
           <img class="ad-photo" id="adPhoto" alt="Reklama">
           <div class="ad-overlay"></div>
-          <span class="tag">Reklama</span>
           <div class="ad-copy">
             <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
             <h3 id="adTitle">Bu yerda reklamangiz</h3>
@@ -1172,11 +1177,6 @@
         <div class="dots-row" id="adDots"><span class="on"></span></div>
 
         <div class="district-offers" id="districtOffersMount" hidden aria-label="Hududiy takliflar"></div>
-
-        <div id="resWrap" hidden>
-          <div class="menu-card" id="resBar" style="margin-top:14px"><div class="menu-ic">📋</div><div class="menu-main"><h4 id="resCount">Natijalar</h4><p>Profillarni ko'rish uchun bosing</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
-          <div id="resList" hidden></div>
-        </div>
       </section>
 
       <!-- TAXI CHAQIRUV — bosh sahifadan mustaqil ekran -->
@@ -7312,8 +7312,6 @@
     var av=e.target.closest("[data-davail]");
     if(av){ toggleDriverAvail(av.getAttribute("data-davail")==="1" ? 1 : 0); return; }
   });
-
-  el("resBar").addEventListener("click", function(){ var r=el("resList"); r.hidden=!r.hidden; });
 
   el("scopeRow").addEventListener("click", function(e){
     var c=e.target.closest("[data-scope]"); if(!c) return;
