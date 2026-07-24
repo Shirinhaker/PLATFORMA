@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="uz" data-theme="light">
+<html lang="uz" data-theme="light" data-ui-release="v1647">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1646 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1647 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -1098,6 +1098,273 @@
     #taxiMapHost #leafletMap{height:280px!important;min-height:280px;}
   }
 
+  /* v1647 — tasdiqlangan Ko‘prik dizayni: manzil, auth va profillar */
+  [data-ui-release="v1647"] .koprik-flow-shell{
+    --flow-bg:#10201b;
+    --flow-card:#142720;
+    --flow-line:#29463d;
+    --flow-ink:#edf7f3;
+    --flow-soft:#9eb1aa;
+    width:min(100%,760px);
+    margin:0 auto;
+    border:1px solid var(--flow-line);
+    border-radius:24px;
+    background:var(--flow-bg);
+    color:var(--flow-ink);
+    box-shadow:0 18px 48px rgba(3,15,12,.22);
+  }
+  [data-ui-release="v1647"] .koprik-auth-shell{
+    max-width:560px;
+    padding:clamp(20px,4vw,34px);
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .lead{
+    color:var(--flow-ink);
+    font:800 clamp(22px,4vw,30px)/1.18 var(--font-d);
+    letter-spacing:-.035em;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .lead-sub,
+  [data-ui-release="v1647"] .koprik-flow-shell .idesc,
+  [data-ui-release="v1647"] .koprik-flow-shell .list-sub{
+    color:var(--flow-soft);
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .field label{
+    color:var(--flow-ink);
+    font-weight:750;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .input,
+  [data-ui-release="v1647"] .koprik-flow-shell .textarea{
+    min-height:50px;
+    border:1px solid var(--flow-line);
+    border-radius:13px;
+    background:#f6fbf9;
+    color:#10201b;
+    box-shadow:none;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .input::placeholder,
+  [data-ui-release="v1647"] .koprik-flow-shell .textarea::placeholder{
+    color:#6b7d76;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .input:focus,
+  [data-ui-release="v1647"] .koprik-flow-shell .textarea:focus{
+    border-color:#2bd0be;
+    box-shadow:0 0 0 3px rgba(43,208,190,.17);
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .btn{
+    min-height:48px;
+    border-radius:13px;
+    font-weight:800;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .btn-primary{
+    border-color:#2bd0be;
+    background:#2bd0be;
+    color:#06211d;
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .btn-soft,
+  [data-ui-release="v1647"] .koprik-flow-shell .btn-outline{
+    border-color:var(--flow-line);
+    background:var(--flow-card);
+    color:var(--flow-ink);
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .form-foot{
+    color:var(--flow-soft);
+  }
+  [data-ui-release="v1647"] .koprik-flow-shell .form-foot b{
+    color:#2bd0be;
+  }
+  [data-ui-release="v1647"] .screen[data-screen="loc"],
+  [data-ui-release="v1647"] .screen[data-screen="login"],
+  [data-ui-release="v1647"] .screen[data-screen="register"],
+  [data-ui-release="v1647"] .screen[data-screen="regform"],
+  [data-ui-release="v1647"] .screen[data-screen="staff-login"]{
+    padding-top:clamp(14px,4vw,34px);
+    padding-bottom:32px;
+  }
+  [data-ui-release="v1647"] .koprik-location-shell{
+    max-width:840px;
+    padding:clamp(18px,3.5vw,32px);
+  }
+  [data-ui-release="v1647"] .location-privacy-note{
+    margin:16px 0;
+    padding:1px;
+    border:1px solid rgba(43,208,190,.28);
+    border-radius:15px;
+    background:#142720;
+  }
+  [data-ui-release="v1647"] .location-privacy-note .ad-info{
+    margin:0;
+    border:0;
+    background:transparent;
+    color:var(--flow-soft);
+  }
+  [data-ui-release="v1647"] .koprik-location-shell .order-map-wrap{
+    min-height:240px;
+    border:1px solid var(--flow-line);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  [data-ui-release="v1647"] .koprik-location-shell .order-map-help{
+    border:1px solid rgba(255,255,255,.24);
+    background:rgba(8,28,23,.82);
+    color:#edf7f3;
+  }
+  [data-ui-release="v1647"] .koprik-role-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:12px;
+    margin-top:14px;
+  }
+  [data-ui-release="v1647"] .koprik-role-grid>.lead-sub{
+    grid-column:1/-1;
+  }
+  [data-ui-release="v1647"] .koprik-role-grid .role-card{
+    min-width:0;
+    min-height:128px;
+    margin:0;
+    border:1px solid var(--flow-line);
+    border-radius:18px;
+    background:var(--flow-card);
+    color:var(--flow-ink);
+    box-shadow:none;
+  }
+  [data-ui-release="v1647"] .koprik-role-grid .role-card:hover,
+  [data-ui-release="v1647"] .koprik-role-grid .role-card:focus-visible{
+    border-color:#2bd0be;
+    box-shadow:0 0 0 3px rgba(43,208,190,.13);
+  }
+  [data-ui-release="v1647"] .koprik-role-grid .role-main p{
+    color:var(--flow-soft);
+    white-space:normal;
+  }
+  [data-ui-release="v1647"] .koprik-role-grid .chev{
+    color:#2bd0be;
+  }
+  [data-ui-release="v1647"] .koprik-staff-shell{
+    margin:clamp(8px,5vh,48px) auto 0;
+    text-align:left;
+  }
+  [data-ui-release="v1647"] .koprik-staff-shell>div:first-child{
+    padding-bottom:18px;
+    border-bottom:1px solid var(--flow-line);
+  }
+  [data-ui-release="v1647"] .koprik-staff-shell #slErr{
+    border-radius:12px;
+    padding:10px 12px;
+    background:#351a1a;
+    color:#ffaaa4!important;
+  }
+  [data-ui-release="v1647"] .koprik-profile-surface{
+    border:1px solid #29463d;
+    border-radius:22px;
+    background:#10201b;
+    color:#edf7f3;
+    box-shadow:0 16px 42px rgba(3,15,12,.18);
+  }
+  [data-ui-release="v1647"] .dashboard-screen .dashboard-shell{
+    --bg:#0b1714;
+    --card:#142720;
+    --ink:#edf7f3;
+    --soft:#9eb1aa;
+    --line:#29463d;
+    --primary:#2bd0be;
+    --primary-ink:#06211d;
+    --primary-tint:#17362f;
+    width:min(100%,1180px);
+    margin:0 auto;
+    padding:clamp(14px,2vw,24px);
+  }
+  [data-ui-release="v1647"] .dashboard-screen .dashboard-identity{
+    padding:4px 2px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  [data-ui-release="v1647"] .dashboard-screen .dashboard-metric{
+    box-shadow:none;
+  }
+  [data-ui-release="v1647"] .dashboard-screen .dashboard-metric.primary{
+    border-color:#2bd0be;
+    background:#168d80;
+    color:#fff;
+  }
+  [data-ui-release="v1647"] .dashboard-screen .cab-group{
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:19px;
+    background:#0f1d19;
+  }
+  [data-ui-release="v1647"] .dashboard-screen .menu-card,
+  [data-ui-release="v1647"] .dashboard-screen .dashboard-activity{
+    box-shadow:none;
+  }
+  [data-ui-release="v1647"] .dashboard-screen .menu-card:hover,
+  [data-ui-release="v1647"] .dashboard-screen .menu-card:focus-visible{
+    border-color:#2bd0be;
+    transform:translateY(-1px);
+  }
+  [data-ui-release="v1647"] .user-profile-card.koprik-profile-surface{
+    --ink:#edf7f3;
+    --soft:#9eb1aa;
+    --line:#29463d;
+    --primary:#2bd0be;
+    --primary-tint:#17362f;
+    background:#10201b;
+  }
+  [data-ui-release="v1647"] .public-profile-hero{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:24px 18px;
+    margin:4px 0 16px;
+  }
+  [data-ui-release="v1647"] .specialist-card{
+    --ink:#edf7f3;
+    --soft:#9eb1aa;
+    --line:#29463d;
+    --primary:#2bd0be;
+    --primary-tint:#17362f;
+    padding:16px;
+  }
+  [data-ui-release="v1647"] .public-profile-hero .idesc,
+  [data-ui-release="v1647"] .specialist-card .idesc{
+    color:#9eb1aa;
+  }
+  @media(min-width:720px){
+    [data-ui-release="v1647"] .koprik-role-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+    [data-ui-release="v1647"] .koprik-location-shell{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:0 14px;
+    }
+    [data-ui-release="v1647"] .koprik-location-shell>.lead,
+    [data-ui-release="v1647"] .koprik-location-shell>.lead-sub,
+    [data-ui-release="v1647"] .koprik-location-shell>.location-privacy-note,
+    [data-ui-release="v1647"] .koprik-location-shell>#locAuto,
+    [data-ui-release="v1647"] .koprik-location-shell>.list-sub,
+    [data-ui-release="v1647"] .koprik-location-shell>.field:nth-last-of-type(1),
+    [data-ui-release="v1647"] .koprik-location-shell>#locSave{
+      grid-column:1/-1;
+    }
+  }
+  @media(max-width:719px){
+    [data-ui-release="v1647"] .koprik-flow-shell{
+      border-radius:20px;
+    }
+    [data-ui-release="v1647"] .koprik-auth-shell,
+    [data-ui-release="v1647"] .koprik-location-shell{
+      padding:18px 15px;
+    }
+    [data-ui-release="v1647"] .koprik-location-shell .order-map-wrap{
+      min-height:210px;
+    }
+    [data-ui-release="v1647"] .dashboard-screen .dashboard-shell{
+      border-right:0;
+      border-left:0;
+      border-radius:0;
+      padding:14px 10px 24px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -1313,10 +1580,10 @@
 
       <!-- MANZILIM -->
       <section class="screen" data-screen="loc">
-        <div class="form-wrap">
+        <div class="form-wrap koprik-flow-shell koprik-location-shell">
           <div class="lead">Hududingizni tanlang</div>
           <div class="lead-sub">Tanlangan tumandagi obunali profillar, mahsulotlar va xizmatlar ko‘rsatiladi.</div>
-          <div class="ad-info" id="locRequiredHint">Ko‘prikdan foydalanishni boshlash uchun avval tumaningizni belgilang. Bu ma’lumot boshqa foydalanuvchilarga ko‘rsatilmaydi.</div>
+          <div class="location-privacy-note"><div class="ad-info" id="locRequiredHint">Ko‘prikdan foydalanishni boshlash uchun avval tumaningizni belgilang. Bu ma’lumot boshqa foydalanuvchilarga ko‘rsatilmaydi.</div></div>
           <button class="btn btn-primary btn-block" id="locAuto">📡 Avtomatik aniqlash</button>
           <div class="list-sub" style="text-align:center;margin:14px 0 10px">yoki ro'yxatdan tanlang:</div>
           <div class="field"><label>Viloyat / shahar</label><select class="input" id="locViloyat"></select></div>
@@ -1348,7 +1615,7 @@
 
       <!-- LOGIN -->
       <section class="screen" data-screen="login">
-        <div class="form-wrap">
+        <div class="form-wrap koprik-flow-shell koprik-auth-shell">
           <div class="lead">Kabinetga kirish</div>
           <div class="lead-sub" id="loginReason" style="display:none;color:var(--primary);font-weight:600"></div>
           <div id="loginStep1">
@@ -1374,10 +1641,10 @@
       </section>
 
       <!-- REGISTER CHOICE -->
-      <section class="screen" data-screen="register">
-        <div class="form-wrap">
+      <section class="screen koprik-registration-screen" data-screen="register">
+        <div class="form-wrap koprik-flow-shell koprik-auth-shell">
           <div class="lead">Ro'yxatdan o'tish</div>
-          <div id="regRoleChoice">
+          <div id="regRoleChoice" class="koprik-role-grid">
           <div class="lead-sub">Kim sifatida ro'yxatdan o'tmoqchisiz?</div>
           <div class="role-card" data-role="biznes">
             <div class="role-ic" style="background:var(--primary-tint);color:var(--primary)">🏪</div>
@@ -1394,14 +1661,14 @@
       </section>
 
       <!-- REGISTER FORM (stub) -->
-      <section class="screen" data-screen="regform">
-        <div id="regBody"></div>
+      <section class="screen koprik-registration-screen" data-screen="regform">
+        <div id="regBody" class="koprik-flow-shell koprik-auth-shell"></div>
       </section>
 
       <!-- CABINET (BIZNES) -->
       <!-- XODIM: KIRISH OYNASI -->
       <section class="screen" data-screen="staff-login">
-        <div style="max-width:420px;margin:0 auto;padding:24px 4px">
+        <div class="koprik-flow-shell koprik-auth-shell koprik-staff-shell">
           <div style="text-align:center;margin-bottom:18px">
             <div style="font-size:40px">🏪</div>
             <div style="font-size:20px;font-weight:800;margin-top:6px">Xodim kirishi</div>
@@ -1422,7 +1689,7 @@
       </section>
 
       <section class="screen dashboard-screen" data-screen="cabinet">
-        <div class="dashboard-shell">
+        <div class="dashboard-shell koprik-profile-surface">
         <div class="cab-head dashboard-identity">
           <div class="cab-logo" id="cabLogo">🛒</div>
           <div class="dashboard-identity-copy"><div class="cab-name" id="cabName">—</div><div class="cab-status" id="cabStatus"></div>
@@ -1493,7 +1760,7 @@
       <!-- CAB: PROFIL -->
       <section class="screen" data-screen="cab-profil">
         <div class="form-wrap">
-          <div class="user-profile-card">
+          <div class="user-profile-card koprik-profile-surface">
             <div class="user-profile-avatar business-profile-avatar no-photo" id="bpAvatarView" title="Rasmni kattalashtirish">🏪</div>
             <div class="user-profile-main">
               <div class="user-profile-name" id="bpCardName">—</div>
@@ -2008,7 +2275,7 @@
 
       <!-- UCAB: FOYDALANUVCHI KABINETI -->
       <section class="screen dashboard-screen" data-screen="ucab">
-        <div class="dashboard-shell">
+        <div class="dashboard-shell koprik-profile-surface">
         <div class="cab-head dashboard-identity">
           <div class="cab-logo" id="ucabAvatar" style="background:var(--amber-tint)">🙂</div>
           <div class="dashboard-identity-copy"><div class="cab-name" id="ucabName">—</div><div class="cab-status" id="ucabStatus"></div>
@@ -2050,7 +2317,7 @@
       <!-- UCAB: PROFIL -->
       <section class="screen" data-screen="ucab-profil">
         <div class="form-wrap">
-          <div class="user-profile-card">
+          <div class="user-profile-card koprik-profile-surface">
             <div class="user-profile-avatar" id="upAvatarView">🙂</div>
             <div class="user-profile-main">
               <div class="user-profile-name" id="upCardName">—</div>
@@ -4389,7 +4656,7 @@
 
   function specialistPublicSections(sp){
     if(!sp) return "";
-    var html = '<div class="panel-card"><b>🧑‍🔧 '+esc(sp.kasb||"Mutaxassis")+'</b>'+
+    var html = '<div class="panel-card specialist-card koprik-profile-surface"><b>🧑‍🔧 '+esc(sp.kasb||"Mutaxassis")+'</b>'+
       (sp.descr?'<div class="idesc" style="margin-top:7px;line-height:1.55">'+esc(sp.descr)+'</div>':'')+'</div>';
     var creds = sp.credentials || [];
     if(creds.length){
@@ -4436,7 +4703,7 @@
       }).join("")
     ) : '<div class="idesc" style="text-align:center;margin-top:16px">Hozircha e\'lon yo\'q</div>';
     el("userBody").innerHTML =
-      '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 0 8px">'+
+      '<div class="public-profile-hero koprik-profile-surface">'+
         avatar+
         '<div style="font-size:20px;font-weight:800;margin-top:10px">'+esc(u.name||"Foydalanuvchi")+'</div>'+
         (u.pub_username?'<div class="idesc">@'+esc(u.pub_username)+'</div>':'')+
@@ -4564,7 +4831,7 @@
       }).join("")
     ) : "";
     el("bizBody").innerHTML =
-      '<div style="padding:16px 0 4px">'+
+      '<div class="public-profile-hero koprik-profile-surface">'+
         '<div style="font-size:20px;font-weight:800">'+esc(b.name||"Do\'kon")+'</div>'+
         (meta?'<div class="idesc" style="margin-top:2px">'+esc(meta)+'</div>':'')+
         (b.address?'<div class="idesc" style="margin-top:2px">📍 '+esc(b.address)+'</div>':'')+
@@ -7160,7 +7427,7 @@
       curFollow = {kind:"user", id:p.id};
       var sp = p.specialist;
       var ini = (p.name||"?").trim().split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toUpperCase();
-      var head = '<div class="cab-head"><div class="cab-logo" style="background:var(--amber-tint)"><span style="font-size:19px;font-weight:800;color:#8a5a06">'+esc(ini)+'</span></div>'+
+      var head = '<div class="cab-head koprik-profile-surface"><div class="cab-logo" style="background:var(--amber-tint)"><span style="font-size:19px;font-weight:800;color:#8a5a06">'+esc(ini)+'</span></div>'+
         '<div><div class="cab-name">'+esc(p.name)+'</div><div class="cab-status">'+(sp?esc(sp.kasb):"Foydalanuvchi")+'</div>'+
         '<div class="stat-chips"><span class="stat-chip"><b>'+p.followers+'</b> obunachi</span></div></div></div>';
       var body = head;
