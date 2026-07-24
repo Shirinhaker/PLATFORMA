@@ -56,11 +56,21 @@ from integrations import (
     get_provider,
     integration_status,
 )
+from telegram_auth import (
+    TELEGRAM_LINK_TTL,
+    TELEGRAM_RESEND_AFTER,
+    TelegramAuthError,
+    activate_start_challenge,
+    create_start_challenge,
+    hash_start_token,
+    verify_telegram_code,
+)
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1638"
+APP_BUILD = "v1639"
 APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "").strip().lstrip("@")
 
 
 def _init_data_max_age():
@@ -279,6 +289,84 @@ def find_user_by_phone(conn, phone):
     return matches[0] if matches else None
 
 
+def telegram_bot_username():
+    """Deep-link uchun xavfsiz Telegram bot username."""
+    return str(BOT_USERNAME or "").strip().lstrip("@")
+
+
+def telegram_deep_link(start_token):
+    username = telegram_bot_username()
+    if not username:
+        raise HTTPException(
+            503,
+            "Telegram bot username sozlanmagan. Keyinroq urinib ko‘ring.",
+        )
+    return (
+        "https://t.me/"
+        + username
+        + "?start="
+        + str(start_token or "")
+    )
+
+
+def create_mobile_session(conn, user_id, device_name, now=None):
+    """Tasdiqlangan qurilma uchun 30 kunlik sessiya yaratadi."""
+    current = int(time.time()) if now is None else int(now)
+    token = secrets.token_urlsafe(48)
+    expires_at = current + MOBILE_SESSION_TTL
+    conn.execute(
+        """INSERT INTO mobile_sessions
+           (user_id,token_hash,device_name,created_at,expires_at,last_used_at,revoked_at)
+           VALUES(?,?,?,?,?,?,0)""",
+        (
+            int(user_id),
+            hashlib.sha256(token.encode()).hexdigest(),
+            str(device_name or "Qurilma")[:120],
+            current,
+            expires_at,
+            current,
+        ),
+    )
+    return {
+        "access_token": token,
+        "expires_at": expires_at,
+        "expires_in": MOBILE_SESSION_TTL,
+    }
+
+
+def password_login_owner(conn, login, password):
+    """Oddiy yoki biznes loginini tekshiradi, xato bo‘lsa None qaytaradi."""
+    login = str(login or "").strip().lower()
+    password = str(password or "")
+    if len(login) < 3 or len(password) < 4:
+        return None
+    user = conn.execute(
+        "SELECT * FROM users WHERE lower(login)=?",
+        (login,),
+    ).fetchone()
+    if user and check_password(password, user["pass_hash"] or ""):
+        return user
+    business = conn.execute(
+        """SELECT * FROM businesses
+           WHERE lower(biz_login)=? AND status='active'""",
+        (login,),
+    ).fetchone()
+    if not business or not check_password(
+        password,
+        business["biz_pass_hash"] or "",
+    ):
+        return None
+    return conn.execute(
+        "SELECT * FROM users WHERE id=?",
+        (business["user_id"],),
+    ).fetchone()
+
+
+def raise_telegram_auth_http(error):
+    status = 429 if error.code == "attempts_exhausted" else 400
+    raise HTTPException(status, str(error))
+
+
 # ---------- Telegram bot ----------
 async def tg_call(method, payload):
     if TEST_MODE:
@@ -300,11 +388,12 @@ async def send_code(tg_id, code, purpose):
     await tg_call("sendMessage", {
         "chat_id": tg_id,
         "text": title + " uchun tasdiqlash kodingiz — KOD: " + code +
-                "\n\nKod 10 daqiqa amal qiladi. Uni hech kimga bermang.",
+                "\n\nKod 5 daqiqa amal qiladi. Uni hech kimga bermang.",
     })
 
 
 async def setup_bot():
+    global BOT_USERNAME
     if not (BOT_TOKEN and BASE_URL) or TEST_MODE:
         print("Bot sozlanmadi (BOT_TOKEN/BASE_URL yo'q yoki TEST_MODE).")
         return
@@ -313,11 +402,16 @@ async def setup_bot():
     await tg_call("setWebhook", {
         "url": BASE_URL + "/webhook",
         "secret_token": WEBHOOK_SECRET,
-        "allowed_updates": ["message", "callback_query"],
+        "allowed_updates": ["message"],
     })
-    # Platforma endi hamma uchun ochiq: global Web App menyusi.
+    if not BOT_USERNAME:
+        bot_info = await tg_call("getMe", {})
+        if isinstance(bot_info, dict) and bot_info.get("ok"):
+            BOT_USERNAME = str(
+                (bot_info.get("result") or {}).get("username") or ""
+            ).strip().lstrip("@")
     await tg_call("setChatMenuButton", {
-        "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+        "menu_button": {"type": "default"},
     })
 
     print("Bot sozlandi:", BASE_URL)
@@ -538,8 +632,10 @@ async def whitelist_middleware(request: Request, call_next):
         #  2) staff token bilan kelgan har qanday so'rov (endpoint tokenni o'zi tekshiradi)
         if path.startswith("/api/staff-auth") or path in (
             "/api/password-auth/login",
-            "/api/mobile-auth/request-code", "/api/mobile-auth/verify-code",
-            "/api/mobile-auth/register/request-code", "/api/mobile-auth/register/verify-code",
+            "/api/telegram-auth/register/start",
+            "/api/telegram-auth/register/verify",
+            "/api/telegram-auth/login/start",
+            "/api/telegram-auth/login/verify",
         ):
             return await call_next(request)
         if has_staff:
@@ -578,7 +674,7 @@ app.include_router(ai_router)
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": True, "phone_registration_ui": True, "telegram_registration_ui": True, "dual_registration": True, "password_only_login": True, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True, "first_visit_district_v1638": True, "district_paid_discovery_v1638": True, "profile_only_stories_v1638": True}
+    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": False, "phone_registration_ui": False, "telegram_registration_ui": True, "dual_registration": False, "password_only_login": False, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True, "first_visit_district_v1638": True, "district_paid_discovery_v1638": True, "profile_only_stories_v1638": True, "telegram_auth_only_bot_v1639": True, "telegram_deep_link_otp_v1639": True, "trusted_device_30d_v1639": True}
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -675,13 +771,13 @@ async def manual_setup(x_telegram_init_data: str = Header(default="")):
         result["setWebhook"] = await tg_call("setWebhook", {
             "url": BASE_URL + "/webhook",
             "secret_token": WEBHOOK_SECRET,
-            "allowed_updates": ["message", "callback_query"],
+            "allowed_updates": ["message"],
         })
     except Exception as e:
         result["setWebhook_xato"] = str(e)
     try:
         result["menu_global"] = await tg_call("setChatMenuButton", {
-            "menu_button": {"type": "web_app", "text": "Platforma", "web_app": {"url": BASE_URL}},
+            "menu_button": {"type": "default"},
         })
     except Exception as e:
         result["menu_xato"] = str(e)
@@ -700,88 +796,433 @@ async def webhook(request: Request, x_telegram_bot_api_secret_token: str = Heade
         raise HTTPException(403, "forbidden")
     update = await request.json()
     msg = update.get("message")
-    cq = update.get("callback_query")
+    if not msg or not isinstance(msg.get("text"), str):
+        return {"ok": True}
+    text = msg["text"].strip()
+    if text.split(" ", 1)[0] != "/start":
+        return {"ok": True}
+    chat_id = int((msg.get("chat") or {}).get("id") or 0)
+    from_id = int((msg.get("from") or {}).get("id") or chat_id)
+    start_token = text.split(" ", 1)[1].strip() if " " in text else ""
+    if not start_token:
+        await tg_call(
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": (
+                    "Ko‘prik tasdiqlash botiga xush kelibsiz.\n\n"
+                    "Kod olish uchun koprik.uz saytida "
+                    "“Telegram orqali kod olish” tugmasini bosing."
+                ),
+            },
+        )
+        return {"ok": True}
 
-    # Tasdiqlash tugmasi bosilganda (login so'rovini tasdiqlash/rad etish)
-    if cq:
-        data = cq.get("data", "")
-        from_id = cq["from"]["id"]
-        cq_id = cq["id"]
-        action, _, rid = data.partition("_")
-        if action in ("approve", "reject") and rid.isdigit():
-            conn = db()
-            row = conn.execute("SELECT * FROM login_requests WHERE id=?", (int(rid),)).fetchone()
-            if not row:
-                conn.close()
-                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "So'rov topilmadi yoki muddati tugagan."})
-                return {"ok": True}
-            # faqat akkaunt egasi tasdiqlay oladi
-            user = conn.execute("SELECT * FROM users WHERE id=?", (row["user_id"],)).fetchone()
-            if not user or user["tg_id"] != from_id:
-                conn.close()
-                await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": "Bu so'rov sizga tegishli emas."})
-                return {"ok": True}
-            new_status = "approved" if action == "approve" else "rejected"
-            conn.execute("UPDATE login_requests SET status=? WHERE id=?", (new_status, row["id"]))
-            conn.commit()
+    conn = db()
+    challenge = conn.execute(
+        """SELECT * FROM telegram_auth_challenges
+           WHERE start_token_hash=?""",
+        (hash_start_token(start_token),),
+    ).fetchone()
+    if challenge and challenge["purpose"] == "login":
+        owner = conn.execute(
+            "SELECT tg_id FROM users WHERE id=?",
+            (challenge["user_id"],),
+        ).fetchone()
+        if owner and owner["tg_id"] and int(owner["tg_id"]) != from_id:
             conn.close()
-            note = "✅ Tasdiqlandi. Endi yangi qurilmada kabinetga kirasiz." if action == "approve" \
-                   else "❌ Rad etildi. Kirishga ruxsat berilmadi."
-            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id, "text": note})
-            # xabar matnini yangilaymiz
-            try:
-                await tg_call("editMessageText", {
-                    "chat_id": from_id,
-                    "message_id": cq["message"]["message_id"],
-                    "text": cq["message"].get("text", "") + "\n\n" + note,
-                })
-            except Exception:
-                pass
-        else:
-            await tg_call("answerCallbackQuery", {"callback_query_id": cq_id})
-        return {"ok": True}
-
-    # Foto/video kelsa — e'lon uchun "pochta qutisi"ga olamiz
-    if msg and (msg.get("photo") or msg.get("video")):
-        tg_id = msg["chat"]["id"]
-        if msg.get("photo"):
-            file_id = msg["photo"][-1]["file_id"]  # eng katta o'lcham
-            mtype = "photo"
-        else:
-            file_id = msg["video"]["file_id"]
-            mtype = "video"
-        conn = db()
-        conn.execute(
-            "INSERT INTO media_inbox(tg_id, file_id, mtype, created_at) VALUES(?,?,?,?)",
-            (tg_id, file_id, mtype, int(time.time())),
+            await tg_call(
+                "sendMessage",
+                {
+                    "chat_id": chat_id,
+                    "text": (
+                        "Bu kirish so‘rovi boshqa Telegram "
+                        "akkauntiga tegishli."
+                    ),
+                },
+            )
+            return {"ok": True, "bot_error": "wrong_telegram_account"}
+    try:
+        activated = activate_start_challenge(
+            conn,
+            start_token,
+            from_id,
+            MOBILE_OTP_SECRET,
+            fixed_code=(
+                os.environ.get("TEST_OTP_CODE", "")
+                if TEST_MODE
+                else ""
+            ),
         )
-        # faqat oxirgi 20 tasi saqlanadi
-        conn.execute(
-            "DELETE FROM media_inbox WHERE tg_id=? AND id NOT IN "
-            "(SELECT id FROM media_inbox WHERE tg_id=? ORDER BY id DESC LIMIT 20)",
-            (tg_id, tg_id),
-        )
-        conn.commit()
+    except TelegramAuthError as error:
         conn.close()
-        await tg_call("sendMessage", {
-            "chat_id": tg_id,
-            "text": ("Rasm" if mtype == "photo" else "Video") +
-                    " qabul qilindi ✅ Endi ilovadagi e'lon formasiga qaytsangiz, u yerda ko'rinadi.",
-        })
-        return {"ok": True}
-
-    if msg and isinstance(msg.get("text"), str) and msg["text"].split(" ")[0] == "/start":
-        await tg_call("sendMessage", {
-            "chat_id": msg["chat"]["id"],
-            "text": "Assalomu alaykum! Platformani ochish uchun pastdagi tugmani bosing.",
-            "reply_markup": {"inline_keyboard": [[
-                {"text": "Platformani ochish", "web_app": {"url": BASE_URL}}
-            ]]},
-        })
+        await tg_call(
+            "sendMessage",
+            {"chat_id": chat_id, "text": str(error)},
+        )
+        return {"ok": True, "bot_error": error.code}
+    conn.close()
+    await send_code(
+        chat_id,
+        activated["code"],
+        activated["purpose"],
+    )
     return {"ok": True}
 
 
-# ---------- Katalog ----------
+# ---------- Sayt uchun Telegram autentifikatsiyasi ----------
+@app.post("/api/telegram-auth/register/start")
+async def telegram_register_start(request: Request):
+    body = await request.json()
+    role = "business" if body.get("role") == "business" else "user"
+    name = str(body.get("name") or "").strip()[:120]
+    raw_phone = str(body.get("phone") or "").strip()
+    phone = normalize_uz_phone(raw_phone) if raw_phone else ""
+    if len(name) < 2:
+        raise HTTPException(
+            400,
+            "Ism-familiya yoki biznes nomini kiriting.",
+        )
+    if raw_phone and not phone:
+        raise HTTPException(
+            400,
+            "Telefon raqamini +998XXXXXXXXX ko‘rinishida kiriting.",
+        )
+    payload = {
+        "role": role,
+        "name": name,
+        "phone": phone,
+        "yon": str(body.get("yon") or "").strip()[:120],
+        "address": str(body.get("address") or "").strip()[:300],
+    }
+    conn = db()
+    if phone:
+        duplicate = any(
+            normalize_uz_phone(row["phone"]) == phone
+            and str(row["role"] or "user") == role
+            for row in conn.execute(
+                "SELECT phone,role FROM users WHERE COALESCE(phone,'')<>''"
+            ).fetchall()
+        )
+        if duplicate:
+            conn.close()
+            raise HTTPException(
+                409,
+                "Bu telefon raqami bilan shu turdagi profil mavjud.",
+            )
+    now = int(time.time())
+    cur = conn.execute(
+        """INSERT INTO telegram_pending_registrations
+           (payload_json,role,created_at,expires_at,verified_at)
+           VALUES(?,?,?,?,0)""",
+        (
+            json.dumps(payload, ensure_ascii=False),
+            role,
+            now,
+            now + TELEGRAM_LINK_TTL,
+        ),
+    )
+    pending_id = cur.lastrowid
+    created = create_start_challenge(
+        conn,
+        "register",
+        pending_registration_id=pending_id,
+        now=now,
+    )
+    conn.close()
+    return {
+        "ok": True,
+        "request_id": created["id"],
+        "deep_link": telegram_deep_link(created["start_token"]),
+        "expires_in": TELEGRAM_LINK_TTL,
+        "resend_after": TELEGRAM_RESEND_AFTER,
+    }
+
+
+@app.post("/api/telegram-auth/register/verify")
+async def telegram_register_verify(request: Request):
+    body = await request.json()
+    request_id = int(body.get("request_id") or 0)
+    code = "".join(
+        ch for ch in str(body.get("code") or "") if ch.isdigit()
+    )
+    if request_id <= 0 or len(code) != 6:
+        raise HTTPException(400, "6 xonali tasdiqlash kodini kiriting.")
+    conn = db()
+    try:
+        challenge = verify_telegram_code(
+            conn,
+            request_id,
+            code,
+            MOBILE_OTP_SECRET,
+        )
+    except TelegramAuthError as error:
+        conn.close()
+        raise_telegram_auth_http(error)
+    if challenge["purpose"] != "register":
+        conn.close()
+        raise HTTPException(400, "Ro‘yxatdan o‘tish so‘rovi noto‘g‘ri.")
+    pending = conn.execute(
+        """SELECT * FROM telegram_pending_registrations
+           WHERE id=?""",
+        (challenge["pending_registration_id"],),
+    ).fetchone()
+    now = int(time.time())
+    if (
+        not pending
+        or int(pending["verified_at"] or 0)
+        or int(pending["expires_at"] or 0) <= now
+    ):
+        conn.close()
+        raise HTTPException(
+            400,
+            "Ro‘yxatdan o‘tish so‘rovi topilmadi yoki muddati tugagan.",
+        )
+    try:
+        payload = json.loads(pending["payload_json"])
+    except Exception:
+        conn.close()
+        raise HTTPException(400, "Ro‘yxatdan o‘tish ma’lumoti buzilgan.")
+    role = "business" if payload.get("role") == "business" else "user"
+    if conn.execute(
+        "SELECT 1 FROM users WHERE tg_id=?",
+        (challenge["tg_id"],),
+    ).fetchone():
+        conn.close()
+        raise HTTPException(
+            409,
+            "Bu Telegram akkauntida profil allaqachon mavjud.",
+        )
+    phone = normalize_uz_phone(payload.get("phone"))
+    if phone:
+        duplicate = any(
+            normalize_uz_phone(row["phone"]) == phone
+            and str(row["role"] or "user") == role
+            for row in conn.execute(
+                "SELECT phone,role FROM users WHERE COALESCE(phone,'')<>''"
+            ).fetchall()
+        )
+        if duplicate:
+            conn.close()
+            raise HTTPException(
+                409,
+                "Bu telefon raqami bilan shu turdagi profil mavjud.",
+            )
+
+    if role == "business":
+        login = gen_owner_key()
+        password = None
+        for _ in range(30):
+            shown_login = gen_biz_login()
+            exists = conn.execute(
+                "SELECT 1 FROM businesses WHERE biz_login=?",
+                (shown_login,),
+            ).fetchone() or conn.execute(
+                "SELECT 1 FROM users WHERE login=?",
+                (shown_login,),
+            ).fetchone()
+            if not exists:
+                break
+        shown_password = gen_pass()
+    else:
+        for _ in range(30):
+            login = gen_login()
+            if not conn.execute(
+                "SELECT 1 FROM users WHERE login=?",
+                (login,),
+            ).fetchone():
+                break
+        password = gen_pass()
+        shown_login = login
+        shown_password = password
+
+    cur = conn.execute(
+        """INSERT INTO users(
+               tg_id,username,login,pass_hash,role,name,phone,created_at
+           ) VALUES(?,'',?,?,?,?,?,?)""",
+        (
+            challenge["tg_id"],
+            login,
+            hash_password(password) if password else "",
+            role,
+            str(payload.get("name") or "")[:120],
+            phone,
+            now,
+        ),
+    )
+    user_id = cur.lastrowid
+    if role == "business":
+        conn.execute(
+            """INSERT INTO businesses(
+                   user_id,name,yon,address,phone,biz_login,biz_pass_hash,
+                   status,created_at
+               ) VALUES(?,?,?,?,?,?,?,'active',?)""",
+            (
+                user_id,
+                str(payload.get("name") or "")[:120],
+                str(payload.get("yon") or "")[:120],
+                str(payload.get("address") or "")[:300],
+                phone,
+                shown_login,
+                hash_password(shown_password),
+                now,
+            ),
+        )
+    session = create_mobile_session(
+        conn,
+        user_id,
+        body.get("device_name"),
+        now=now,
+    )
+    conn.execute(
+        """UPDATE telegram_pending_registrations SET verified_at=?
+           WHERE id=?""",
+        (now, pending["id"]),
+    )
+    conn.commit()
+    conn.close()
+
+    cabinet = "Biznes kabinetingiz" if role == "business" else "Kabinetingiz"
+    await tg_call(
+        "sendMessage",
+        {
+            "chat_id": challenge["tg_id"],
+            "text": (
+                "Ko‘prik platformasiga xush kelibsiz! ✅\n\n"
+                + cabinet
+                + " uchun doimiy kirish ma’lumotlari:\n\n"
+                + "🔑 Login: "
+                + shown_login
+                + "\n🔐 Parol: "
+                + shown_password
+                + "\n\nBu ma’lumotlarni xavfsiz joyda saqlang."
+            ),
+        },
+    )
+    return {
+        "ok": True,
+        "access_token": session["access_token"],
+        "token_type": "Bearer",
+        "expires_in": session["expires_in"],
+        "expires_at": session["expires_at"],
+        "login": shown_login,
+        "password": shown_password,
+        "role": role,
+        "user": {
+            "id": user_id,
+            "name": str(payload.get("name") or "")[:120],
+            "role": role,
+        },
+    }
+
+
+@app.post("/api/telegram-auth/login/start")
+async def telegram_login_start(request: Request):
+    body = await request.json()
+    conn = db()
+    user = password_login_owner(
+        conn,
+        body.get("login"),
+        body.get("password"),
+    )
+    if not user:
+        conn.close()
+        raise HTTPException(401, "Login yoki parol noto‘g‘ri.")
+    created = create_start_challenge(
+        conn,
+        "login",
+        user_id=user["id"],
+    )
+    conn.close()
+    return {
+        "ok": True,
+        "request_id": created["id"],
+        "deep_link": telegram_deep_link(created["start_token"]),
+        "expires_in": TELEGRAM_LINK_TTL,
+        "resend_after": TELEGRAM_RESEND_AFTER,
+    }
+
+
+@app.post("/api/telegram-auth/login/verify")
+async def telegram_login_verify(request: Request):
+    body = await request.json()
+    request_id = int(body.get("request_id") or 0)
+    code = "".join(
+        ch for ch in str(body.get("code") or "") if ch.isdigit()
+    )
+    if request_id <= 0 or len(code) != 6:
+        raise HTTPException(400, "6 xonali tasdiqlash kodini kiriting.")
+    conn = db()
+    existing_challenge = conn.execute(
+        "SELECT * FROM telegram_auth_challenges WHERE id=?",
+        (request_id,),
+    ).fetchone()
+    if not existing_challenge or existing_challenge["purpose"] != "login":
+        conn.close()
+        raise HTTPException(400, "Kirish so‘rovi topilmadi.")
+    user = conn.execute(
+        "SELECT * FROM users WHERE id=?",
+        (existing_challenge["user_id"],),
+    ).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(400, "Kirish so‘rovi topilmadi.")
+    if user["tg_id"] and int(user["tg_id"]) != int(
+        existing_challenge["tg_id"] or 0
+    ):
+        conn.close()
+        raise HTTPException(
+            403,
+            "Bu akkaunt boshqa Telegram foydalanuvchisiga bog‘langan.",
+        )
+    try:
+        challenge = verify_telegram_code(
+            conn,
+            request_id,
+            code,
+            MOBILE_OTP_SECRET,
+        )
+    except TelegramAuthError as error:
+        conn.close()
+        raise_telegram_auth_http(error)
+    if not user["tg_id"]:
+        owner = conn.execute(
+            "SELECT id FROM users WHERE tg_id=? AND id<>?",
+            (challenge["tg_id"], user["id"]),
+        ).fetchone()
+        if owner:
+            conn.close()
+            raise HTTPException(
+                409,
+                "Bu Telegram akkaunti boshqa profilga bog‘langan.",
+            )
+        conn.execute(
+            "UPDATE users SET tg_id=? WHERE id=?",
+            (challenge["tg_id"], user["id"]),
+        )
+    session = create_mobile_session(
+        conn,
+        user["id"],
+        body.get("device_name"),
+    )
+    conn.commit()
+    conn.close()
+    return {
+        "ok": True,
+        "access_token": session["access_token"],
+        "token_type": "Bearer",
+        "expires_in": session["expires_in"],
+        "expires_at": session["expires_at"],
+        "login_role": user["role"],
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "role": user["role"],
+        },
+    }
+
+
+# ---------- Eski SMS autentifikatsiyasi (v1639 da frontend ishlatmaydi) ----------
 @app.post("/api/mobile-auth/register/request-code")
 async def mobile_register_request_code(request: Request):
     """Yangi akkaunt uchun telefon tasdiqlash kodini tayyorlaydi."""
@@ -1014,36 +1455,11 @@ async def mobile_logout(request: Request):
 
 @app.post("/api/password-auth/login")
 async def password_auth_login(request: Request):
-    """Oddiy yoki biznes login-paroli orqali 30 kunlik xavfsiz sessiya beradi."""
-    body = await request.json()
-    login = str(body.get("login") or "").strip().lower()
-    password = str(body.get("password") or "")
-    if len(login) < 3 or len(password) < 4:
-        raise HTTPException(400, "Login va parolni kiriting.")
-    conn = db(); user = None; login_role = "user"
-    user_row = conn.execute("SELECT * FROM users WHERE lower(login)=?", (login,)).fetchone()
-    if user_row and check_password(password, user_row["pass_hash"] or ""):
-        user = user_row
-    else:
-        biz = conn.execute("SELECT * FROM businesses WHERE lower(biz_login)=? AND status='active'", (login,)).fetchone()
-        if biz and check_password(password, biz["biz_pass_hash"] or ""):
-            user = conn.execute("SELECT * FROM users WHERE id=?", (biz["user_id"],)).fetchone()
-            login_role = "business"
-    if not user:
-        # Login mavjud yoki yo'qligini oshkor qilmaymiz.
-        conn.close(); raise HTTPException(401, "Login yoki parol noto'g'ri.")
-    now = int(time.time()); token = secrets.token_urlsafe(48); expires_at = now + MOBILE_SESSION_TTL
-    conn.execute(
-        """INSERT INTO mobile_sessions(user_id,token_hash,device_name,created_at,expires_at,last_used_at,revoked_at)
-           VALUES(?,?,?,?,?,?,0)""",
-        (user["id"], hashlib.sha256(token.encode()).hexdigest(),
-         str(body.get("device_name") or "Qurilma")[:120], now, expires_at, now),
+    """v1639: to‘g‘ridan-to‘g‘ri sessiya berish o‘chirildi."""
+    raise HTTPException(
+        410,
+        "Telegram orqali yangi kirish tasdig‘idan foydalaning.",
     )
-    conn.commit(); conn.close()
-    return {"ok": True, "access_token": token, "token_type": "Bearer",
-            "expires_in": MOBILE_SESSION_TTL, "expires_at": expires_at,
-            "login_role": login_role,
-            "user": {"id": user["id"], "name": user["name"], "role": login_role}}
 
 
 @app.get("/api/catalog")
