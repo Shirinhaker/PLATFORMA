@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1642 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1643 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -1017,7 +1017,12 @@
     .phone.home-active .tb-home>.icon-btn svg{width:17px;height:17px;}
     .phone.home-active .tb-home>#taxiCabBtn{display:grid;font-size:15px!important;}
     .phone.home-active .screens{min-height:0;padding-bottom:0;}
-    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:minmax(0,1fr) 122px 4px 110px;gap:4px;align-content:stretch;}
+    .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:88px minmax(0,1fr) 122px 4px 110px;gap:4px;align-content:stretch;}
+    .screen[data-screen="home"]>#homeStoryStrip{height:88px;margin:0;min-width:0;overflow:hidden;}
+    .screen[data-screen="home"]>#homeStoryStrip .story-rail{height:88px;gap:7px;padding:0 2px 2px;}
+    .screen[data-screen="home"]>#homeStoryStrip .story-card{width:66px;flex-basis:66px;}
+    .screen[data-screen="home"]>#homeStoryStrip .story-thumb{width:62px;height:62px;border-radius:16px;}
+    .screen[data-screen="home"]>#homeStoryStrip .story-name{margin-top:3px;font-size:9px;}
     .screen[data-screen="home"] .home-discovery{display:grid;min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr);gap:4px;}
     .screen[data-screen="home"] .home-search-card{min-height:0;padding:6px 8px;border-radius:12px;}
     .screen[data-screen="home"] .home-search-card h1{font-size:15px;line-height:1.08;letter-spacing:-.02em;}
@@ -1200,6 +1205,9 @@
 
       <!-- HOME -->
       <section class="screen active" data-screen="home">
+        <section class="story-strip" id="homeStoryStrip" hidden aria-label="Istoriyalar">
+          <div class="story-rail" id="storyRail"></div>
+        </section>
         <div class="home-discovery" id="homeDiscovery">
           <div class="home-search-card">
             <h1>Kerakli mahsulot va<br>xizmatni yaqiningizdan toping</h1>
@@ -2735,7 +2743,7 @@
   function setActiveMode(mode){
     activeMode=mode==="business"?"business":"user";
     try{localStorage.setItem("koprik_active_mode",activeMode);}catch(e){}
-    if(typeof loadStories==="function") setTimeout(loadStories,0);
+    if(typeof updateHomeStoriesVisibility==="function") setTimeout(updateHomeStoriesVisibility,0);
     return activeMode;
   }
   function actorType(){ return activeMode === "business" ? "business" : "user"; }
@@ -2969,6 +2977,20 @@
       renderStoryRail();
       return [];
     });
+  }
+  function updateHomeStoriesVisibility(){
+    var strip=el("homeStoryStrip"),rail=el("storyRail");
+    if(!strip||!rail)return Promise.resolve([]);
+    var allowed=!!(loggedIn&&ME&&ME.registered&&!STAFF_INFO);
+    strip.hidden=!allowed;
+    if(!allowed){
+      STORY_GROUPS=[];
+      window.__ownStoryGroupIndex=-1;
+      rail.innerHTML="";
+      updateStoryProfileRings();
+      return Promise.resolve([]);
+    }
+    return loadStories();
   }
   function profileStoriesHtml(ownerType,ownerId){
     var key=String(ownerType||"user")+"-"+parseInt(ownerId,10);
@@ -8100,6 +8122,7 @@
                business_id: d.business ? d.business.id : null,
                is_privileged: !!d.is_privileged };
         applyPrivilegedVisibility();
+        updateHomeStoriesVisibility();
       }
     }).catch(function(){});
     nav(role==="business" ? "cabinet" : "ucab");
@@ -8214,6 +8237,7 @@
         try{ localStorage.removeItem("koprik_mobile_token");localStorage.removeItem("koprik_active_mode"); }catch(e2){}
       }
       loggedIn=false; ME={registered:false,role:null,name:"",id:null,business_id:null,is_privileged:false}; applyPrivilegedVisibility();
+      updateHomeStoriesVisibility();
       clearDistrictOffersCache();
       loadDistrictOffers(true);
       nav("home");
@@ -13124,6 +13148,7 @@
         if(activeMode==="business" && !ME.has_business)setActiveMode("user");
         applyPrivilegedVisibility();
         loggedIn = true;
+        updateHomeStoriesVisibility();
         // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
         if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
