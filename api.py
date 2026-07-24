@@ -4193,20 +4193,6 @@ async def create_listing(request: Request, x_telegram_init_data: str = Header(de
             targets = []
     conn.close()
 
-    # Telegram xabarlarini yuboramiz (o'ziga emas)
-    for t in targets:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": t["tg_id"],
-                "text": "📢 Yangi e'lon — " + _cat_name(cat) + ":\n" + title +
-                        ((" — " + (b.get("price") or "")) if b.get("price") else ""),
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"id": listing_id}
 
 
@@ -8795,22 +8781,7 @@ async def send_message(request: Request, x_telegram_init_data: str = Header(defa
     mid = cur.lastrowid
     conn.commit()
 
-    # Telegram bildirishnomasi qabul qiluvchining egasi akkauntiga boradi.
-    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
-    receiver_tg = receiver["tg_id"]
     conn.close()
-    if receiver_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": receiver_tg,
-                "text": "💬 Sizga yangi xabar: " + sender_name + "\n\n" + (text[:200]),
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"ok": True, "id": mid, "created_at": now}
 
 
@@ -8875,26 +8846,8 @@ async def send_message_image(request: Request, to: int, to_kind: str = "user", a
     )
     mid = cur.lastrowid
 
-    sender_name = _actor_brief(conn, sender_kind, sender_actor_id)["name"]
-    receiver_tg = receiver["tg_id"]
     conn.commit()
     conn.close()
-
-    if receiver_tg:
-        try:
-            from main import tg_call, BASE_URL
-            msg = "📷 Sizga yangi rasm: " + sender_name
-            if caption:
-                msg += "\n\n" + caption[:300]
-            await tg_call("sendMessage", {
-                "chat_id": receiver_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
 
 
@@ -9660,45 +9613,7 @@ async def create_order(request: Request, x_telegram_init_data: str = Header(defa
         )
     conn.commit()
 
-    customer_name = _actor_brief(conn, customer_kind, customer_actor_id)["name"]
-    total_amount = sum(int(x.get("line_total") or 0) for x in order_items)
-    total_text = _fmt_summa(total_amount)
-    items_text = ""
-    if order_items:
-        items_text = "\n" + "\n".join(["• " + x["item_name"] + " × " + str(x["qty"]) for x in order_items[:8]])
-    provider_tg = provider.get("tg_id")
     conn.close()
-
-    if provider_tg:
-        try:
-            from main import tg_call, BASE_URL
-            msg = "📥 Yangi buyurtma: " + customer_name + "\n\n" + title + items_text
-            if total_text:
-                msg += "\nJami: " + total_text
-            detail_lines = []
-            if order_type:
-                detail_lines.append("Turi: " + ({"delivery":"Yetkazib berish", "pickup":"Olib ketish", "booking":"Navbat/qabul"}.get(order_type, order_type)))
-            if phone:
-                detail_lines.append("Telefon: " + phone)
-            if address:
-                detail_lines.append("Manzil: " + address[:160])
-            if delivery_lat is not None and delivery_lng is not None:
-                detail_lines.append("Xarita: " + str(round(delivery_lat, 6)) + ", " + str(round(delivery_lng, 6)))
-            if desired_time:
-                detail_lines.append("Vaqt: " + desired_time[:120])
-            if detail_lines:
-                msg += "\n" + "\n".join(detail_lines)
-            if note:
-                msg += "\n\nIzoh: " + note[:200]
-            await tg_call("sendMessage", {
-                "chat_id": provider_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ochish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"ok": True, "id": oid, "status": "new", "created_at": now}
 
 
@@ -9934,19 +9849,6 @@ async def update_order_status(order_id: int, request: Request, x_telegram_init_d
 
     conn.commit()
     conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": notify_text,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
 
     return {"ok": True, "status": new_status, "updated_at": now}
 
@@ -10355,25 +10257,8 @@ async def send_order_chat_message(order_id: int, request: Request, x_telegram_in
     mid = cur.lastrowid
     _mark_order_changed_for_side(conn, order_id, side, now)
 
-    sender_name = _actor_brief(conn, kind, actor_id)["name"]
-    other = _order_other_side_info(conn, row, side)
-    notify_tg = other.get("tg_id")
-    order_title = row["title"] or "Buyurtma"
     conn.commit()
     conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": "💬 Buyurtma bo'yicha yangi xabar: " + sender_name + "\n\n" + order_title + "\n" + text[:300],
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"ok": True, "id": mid, "created_at": now}
 
 
@@ -10441,28 +10326,8 @@ async def send_order_chat_image(order_id: int, request: Request, actor_type: str
 
     _mark_order_changed_for_side(conn, order_id, side, now)
 
-    sender_name = _actor_brief(conn, kind, actor_id)["name"]
-    other = _order_other_side_info(conn, row, side)
-    notify_tg = other.get("tg_id")
-    order_title = row["title"] or "Buyurtma"
     conn.commit()
     conn.close()
-
-    if notify_tg:
-        try:
-            from main import tg_call, BASE_URL
-            msg = "📷 Buyurtma bo'yicha yangi rasm: " + sender_name + "\n\n" + order_title
-            if caption:
-                msg += "\n" + caption[:300]
-            await tg_call("sendMessage", {
-                "chat_id": notify_tg,
-                "text": msg,
-                "reply_markup": {"inline_keyboard": [[
-                    {"text": "Ilovada ko'rish", "web_app": {"url": BASE_URL}}
-                ]]},
-            })
-        except Exception:
-            pass
     return {"ok": True, "id": mid, "created_at": now, "media_url": media_url, "media_type": "photo"}
 
 
