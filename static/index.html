@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1641 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1642 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -195,7 +195,15 @@
   .badge{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;border-radius:9px;background:var(--amber);color:#3a2603;font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 4px;border:2px solid var(--bg);}
   .back-btn{flex:none;width:40px;height:40px;border-radius:11px;border:none;background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer;}
   .back-btn svg{width:24px;height:24px;}
-  .tb-title{font-family:var(--font-d);font-weight:700;font-size:18px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tb-title{flex:1;min-width:0;font-family:var(--font-d);font-weight:700;font-size:18px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cabinet-home-btn{flex:none;min-height:38px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--primary);padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:800 12px var(--font-b);cursor:pointer;box-shadow:var(--shadow);}
+  .cabinet-home-btn[hidden]{display:none;}
+  .cabinet-home-btn svg{width:18px;height:18px;}
+  .cabinet-home-btn:active{transform:scale(.96);}
+  @media(max-width:390px){
+    .cabinet-home-btn{width:40px;padding:0;}
+    .cabinet-home-btn span{display:none;}
+  }
 
   /* screens */
   .screens{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:28px;}
@@ -1133,6 +1141,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div class="tb-title" id="tbTitle">Sahifa</div>
+        <button class="cabinet-home-btn" id="cabinetHomeBtn" type="button" aria-label="Bosh sahifaga chiqish" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>
+          <span>Bosh sahifa</span>
+        </button>
       </div>
     </header>
 
@@ -4852,6 +4864,10 @@
     r.style.display = "block";
     nav("login");
   }
+  function isCabinetRoute(screen){
+    return screen==="cabinet" || screen==="ucab" ||
+      screen.indexOf("cab-")===0 || screen.indexOf("ucab-")===0;
+  }
   function nav(screen,options){
     options=options||{};
     if(HOME_LOCATION_REQUIRED && screen==="home") screen="loc";
@@ -4877,6 +4893,7 @@
     el("tbSub").style.display = (home || desktopPublic) ? "none" : "flex";
     if(el("webListingsBtn")) el("webListingsBtn").classList.toggle("on",screen==="listings");
     if(!home) el("tbTitle").textContent = titles[screen] || "";
+    if(el("cabinetHomeBtn")) el("cabinetHomeBtn").hidden=!isCabinetRoute(screen);
     // Xodim rejimi: staff-home va staff-login da orqaga tugma yo'q (ildiz sahifa)
     if(el("backBtn")) el("backBtn").style.display = (
       screen==="staff-home" || screen==="staff-login" ||
@@ -7182,6 +7199,9 @@
   el("desktopThemeBtn") && el("desktopThemeBtn").addEventListener("click", toggleTheme);
   el("backBtn").addEventListener("click", function(){
     appBack();
+  });
+  el("cabinetHomeBtn").addEventListener("click",function(){
+    nav("home");
   });
 
   function openWebHome(){ nav("home"); }
