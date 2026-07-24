@@ -702,6 +702,44 @@ def _migrate(conn):
         )"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_mobile_pending_phone ON mobile_pending_registrations(phone, created_at)")
+    # v1639: sayt uchun Telegram deep-link orqali bir martalik tasdiqlash.
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS telegram_pending_registrations(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload_json TEXT NOT NULL,
+            role TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            verified_at INTEGER DEFAULT 0
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS telegram_auth_challenges(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            purpose TEXT NOT NULL,
+            user_id INTEGER DEFAULT 0,
+            pending_registration_id INTEGER DEFAULT 0,
+            start_token_hash TEXT NOT NULL UNIQUE,
+            tg_id INTEGER DEFAULT 0,
+            code_hash TEXT DEFAULT '',
+            attempts INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 5,
+            created_at INTEGER NOT NULL,
+            start_expires_at INTEGER NOT NULL,
+            code_sent_at INTEGER DEFAULT 0,
+            code_expires_at INTEGER DEFAULT 0,
+            verified_at INTEGER DEFAULT 0,
+            invalidated_at INTEGER DEFAULT 0
+        )"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_tg_auth_start
+           ON telegram_auth_challenges(start_token_hash, start_expires_at)"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_tg_auth_user
+           ON telegram_auth_challenges(user_id, purpose, created_at)"""
+    )
     # login_requests jadvali bormi? (CREATE TABLE IF NOT EXISTS yuqorida bor, lekin ishonch uchun)
     conn.execute(
         """CREATE TABLE IF NOT EXISTS login_requests(
