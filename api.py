@@ -7965,6 +7965,44 @@ def _check_search_rate(user_id):
                     _SEARCH_RATE.pop(old_key, None)
 
 
+def _public_discovery_context(
+    conn, init_data, actor_type, scope, region="", district="", mahalla=""
+):
+    """Kirgan profil yoki brauzerda tanlangan ochiq hudud kontekstini qaytaradi."""
+    staff_ctx = _staff_ctx(conn, init_data)
+    user = staff_ctx[2] if staff_ctx else optional_user(conn, init_data)
+    if user:
+        actor_ctx = resolve_actor(conn, user, actor_type)
+        return (
+            user,
+            actor_ctx,
+            str(user["region"] or ""),
+            str(user["district"] or ""),
+            str(user["mahalla"] or ""),
+        )
+
+    def clean(value):
+        value = " ".join(str(value or "").strip().split())
+        if len(value) > 120:
+            raise HTTPException(400, "Hudud nomi 120 belgidan oshmasin.")
+        return value
+
+    region, district, mahalla = clean(region), clean(district), clean(mahalla)
+    if scope == "Viloyat" and not region:
+        raise HTTPException(400, "Avval manzilni belgilang.")
+    if scope == "Tuman" and not district:
+        raise HTTPException(400, "Avval manzilni belgilang.")
+    if scope == "Mahalla" and (not district or not mahalla):
+        raise HTTPException(400, "Avval manzilni belgilang.")
+    return (
+        None,
+        {"type": "user", "user_id": None, "business_id": None, "business": None},
+        region,
+        district,
+        mahalla,
+    )
+
+
 def _search_error_guard(fn, *args, **kwargs):
     """Kutilmagan istisnoni yashirmaymiz: to'liq traceback server logiga,
     qisqa sabab esa telefonga (data.detail orqali) chiqadi. Aks holda FastAPI
@@ -7981,16 +8019,25 @@ def _search_error_guard(fn, *args, **kwargs):
 
 
 @router.get("/search")
-def search(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+def search(request: Request, response: Response,
+           q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+           region: str = "", district: str = "", mahalla: str = "",
            page: int = 1, page_size: int = 20,
            x_telegram_init_data: str = Header(default="")):
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Vary"] = "Authorization, X-Telegram-Init-Data, X-Staff-Token"
+    guest_rate_key = "guest:" + str(request.client.host if request.client else "unknown")
     return _search_error_guard(
         _search_impl, q=q, scope=scope, result_type=result_type, actor_type=actor_type,
-        page=page, page_size=page_size, x_telegram_init_data=x_telegram_init_data)
+        region=region, district=district, mahalla=mahalla,
+        page=page, page_size=page_size, guest_rate_key=guest_rate_key,
+        x_telegram_init_data=x_telegram_init_data)
 
 
 def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_type: str = "user",
+                 region: str = "", district: str = "", mahalla: str = "",
                  page: int = 1, page_size: int = 20,
+                 guest_rate_key: str = "guest:unknown",
                  x_telegram_init_data: str = Header(default="")):
     q = (q or "").strip()
     if not q:
@@ -8025,22 +8072,35 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
     # biznes kabinet uchun businesses koordinatasi olinadi; ular aralashtirilmaydi.
     ulat = ulng = None
     viewer_region = viewer_district = viewer_mahalla = ""
-    _u = require_user(conn, x_telegram_init_data)
     try:
-        _check_search_rate(_row_val(_u, "id", 0))
+        _u, actor_ctx, viewer_region, viewer_district, viewer_mahalla = (
+            _public_discovery_context(
+                conn,
+                x_telegram_init_data,
+                actor_type,
+                scope,
+                region=region,
+                district=district,
+                mahalla=mahalla,
+            )
+        )
     except Exception:
         conn.close()
         raise
-    actor_ctx = resolve_actor(conn, _u, actor_type)
-    if actor_ctx["type"] == "business":
+    try:
+        _check_search_rate(
+            _row_val(_u, "id", 0) if _u else guest_rate_key
+        )
+    except Exception:
+        conn.close()
+        raise
+    if _u and actor_ctx["type"] == "business":
         _biz = actor_ctx["business"]
         ulat, ulng = _biz["lat"], _biz["lng"]
         # Biznesda alohida ma'muriy ustunlar yo'q; egasining profil hududi olinadi.
-        viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
-    else:
+    elif _u:
         if int(_row_val(_u, "location_exact", 0) or 0):
             ulat, ulng = _u["lat"], _u["lng"]
-        viewer_region, viewer_district, viewer_mahalla = _u["region"], _u["district"], _u["mahalla"]
 
     def _search_prefilter_sql(user_alias, geo_alias):
         """Metka va ma'muriy hududni LIMITdan oldin SQL ichida filtrlaydi."""
@@ -8055,20 +8115,22 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
         elif scope == "Tuman":
-            if vr and vd:
-                parts.extend([
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
-                ])
-                params.extend([vr, vd])
+            if vr:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
+                params.append(vr)
+            if vd:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?")
+                params.append(vd)
         elif scope == "Mahalla":
-            if vr and vd and vm:
-                parts.extend([
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?",
-                ])
-                params.extend([vr, vd, vm])
+            if vr:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
+                params.append(vr)
+            if vd:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?")
+                params.append(vd)
+            if vm:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?")
+                params.append(vm)
         return " AND " + " AND ".join(parts), params
 
     def _distance_order_sql(alias):
@@ -8381,7 +8443,7 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
             user_params.extend([uq, uq, prefix_like, prefix_like])
             user_params.extend([fetch_limit, fetch_offset])
             urows = conn.execute(
-                "SELECT id, name, pub_username, username, region, district, avatar_file, avatar_x, avatar_y, avatar_zoom FROM users "
+                "SELECT id, name, pub_username, username, avatar_file, avatar_x, avatar_y, avatar_zoom FROM users "
                 "WHERE ((COALESCE(pub_username,'')<>'' AND lower(pub_username) LIKE ?) "
                 "   OR (COALESCE(username,'')<>'' AND lower(username) LIKE ?) "
                 + user_name_clause + ") "
@@ -8398,7 +8460,6 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
                 users.append({"id": u["id"], "name": u["name"] or "Foydalanuvchi",
                               "pub_username": handle,
-                              "region": u["region"] or "", "district": u["district"] or "",
                               "avatar_file": _row_val(u, "avatar_file", "") or "",
                               "avatar_x": float(_row_val(u, "avatar_x", 50) or 50),
                               "avatar_y": float(_row_val(u, "avatar_y", 50) or 50),
@@ -8421,13 +8482,16 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
 
 @router.get("/browse")
 def browse_by_type(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
+                   region: str = "", district: str = "", mahalla: str = "",
                    x_telegram_init_data: str = Header(default="")):
     return _search_error_guard(
         _browse_impl, tur=tur, scope=scope, actor_type=actor_type,
+        region=region, district=district, mahalla=mahalla,
         x_telegram_init_data=x_telegram_init_data)
 
 
 def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
+                 region: str = "", district: str = "", mahalla: str = "",
                  x_telegram_init_data: str = Header(default="")):
     """Katalogdan faoliyat turi tanlanganda: shu turdagi biznes va mutaxasislar.
 
@@ -8439,19 +8503,31 @@ def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
         raise HTTPException(400, "Faoliyat turi kiritilmadi.")
     terms = _search_terms(tur)
     conn = db()
-    user = require_user(conn, x_telegram_init_data)
-    actor_ctx = resolve_actor(conn, user, actor_type)
-    viewer_region = user["region"] or ""
-    viewer_district = user["district"] or ""
-    viewer_mahalla = user["mahalla"] or ""
-    if actor_ctx["type"] == "business":
+    try:
+        user, actor_ctx, viewer_region, viewer_district, viewer_mahalla = (
+            _public_discovery_context(
+                conn,
+                x_telegram_init_data,
+                actor_type,
+                scope,
+                region=region,
+                district=district,
+                mahalla=mahalla,
+            )
+        )
+    except Exception:
+        conn.close()
+        raise
+    if user and actor_ctx["type"] == "business":
         _ab = actor_ctx["business"]
         browse_lat, browse_lng = _ab["lat"], _ab["lng"]
-    else:
+    elif user:
         if int(_row_val(user, "location_exact", 0) or 0):
             browse_lat, browse_lng = user["lat"], user["lng"]
         else:
             browse_lat = browse_lng = None
+    else:
+        browse_lat = browse_lng = None
 
     def browse_distance(alias):
         try:
@@ -8473,20 +8549,22 @@ def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
                 parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
                 params.append(vr)
         elif scope == "Tuman":
-            if vr and vd:
-                parts.extend([
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
-                ])
-                params.extend([vr, vd])
+            if vr:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
+                params.append(vr)
+            if vd:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?")
+                params.append(vd)
         elif scope == "Mahalla":
-            if vr and vd and vm:
-                parts.extend([
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?",
-                    "LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?",
-                ])
-                params.extend([vr, vd, vm])
+            if vr:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".region,'')))=?")
+                params.append(vr)
+            if vd:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".district,'')))=?")
+                params.append(vd)
+            if vm:
+                parts.append("LOWER(TRIM(COALESCE(" + user_alias + ".mahalla,'')))=?")
+                params.append(vm)
         return " AND " + " AND ".join(parts), params
 
     biz_filter, biz_filter_params = browse_filter("u", "b")
