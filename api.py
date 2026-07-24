@@ -4515,7 +4515,7 @@ async def my_followers(actor_type: str = "user", x_telegram_init_data: str = Hea
 
 
 # ====================================================================
-# XARITA (bosh ekran): faol Pro bizneslar + obunalar
+# XARITA (bosh ekran): faol Pro bizneslar + joriy profil obunalari
 # ====================================================================
 def _map_business_dict(row, following=False):
     """Bosh xarita uchun biznesni ixcham ko'rinishga o'tkazadi."""
@@ -4562,9 +4562,10 @@ async def home_map(
     """
     Bosh sahifa xaritasi uchun obyektlar.
 
-    Tanlangan tumandagi faol Plus yoki Pro obunasi va koordinatasi bor
-    bizneslarni qaytaradi. Kirgan foydalanuvchi shu tumandagi kuzatayotgan
-    mutaxassislarini ham ko'radi. Tuman qiymati javob obyektlariga qo'shilmaydi.
+    Tanlangan tumandagi faol Pro bizneslar hamda joriy profil obuna bo'lgan
+    bizneslarni tarifidan qat'i nazar qaytaradi. Kirgan foydalanuvchi shu
+    tumandagi kuzatayotgan mutaxassislarini ham ko'radi. Tuman qiymati javob
+    obyektlariga qo'shilmaydi.
     """
     conn = db()
     try:
@@ -4604,28 +4605,37 @@ async def home_map(
                     ).fetchall()
                 }
 
-        paid_rows = conn.execute(
-            """SELECT b.* FROM businesses b
+        followed_ids = sorted(followed_business_ids)
+        followed_condition = "0"
+        if followed_ids:
+            followed_condition = (
+                "b.id IN (" + ",".join("?" for _ in followed_ids) + ")"
+            )
+        business_rows = conn.execute(
+            f"""SELECT b.* FROM businesses b
                JOIN users u ON u.id=b.user_id
                WHERE b.status='active'
                  AND u.district_key=?
                  AND b.lat IS NOT NULL AND b.lng IS NOT NULL
-                 AND EXISTS(
-                   SELECT 1 FROM business_subscriptions subscription
-                   WHERE subscription.business_id=b.id
-                     AND subscription.status='active'
-                     AND subscription.plan_code IN ('plus','pro')
-                     AND subscription.expires_at>?
+                 AND (
+                   {followed_condition}
+                   OR EXISTS(
+                     SELECT 1 FROM business_subscriptions subscription
+                     WHERE subscription.business_id=b.id
+                       AND subscription.status='active'
+                       AND subscription.plan_code='pro'
+                       AND subscription.expires_at>?
+                   )
                  )
                ORDER BY b.created_at DESC
                LIMIT 200""",
-            (district_key, int(time.time())),
+            (district_key, *followed_ids, int(time.time())),
         ).fetchall()
         businesses = [
             _map_business_dict(
                 row, following=int(row["id"]) in followed_business_ids
             )
-            for row in paid_rows
+            for row in business_rows
         ]
 
         specialist_rows = []
