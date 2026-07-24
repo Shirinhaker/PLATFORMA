@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1639 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1640 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -4563,19 +4563,82 @@
   var regRole="user", telegramRegisterRequestId=0,
       telegramRegisterPayload=null, telegramRegisterDeepLink="",
       registerResendTimer=null;
+  var TELEGRAM_AUTH_PENDING_KEY="koprik_telegram_auth_pending_v1";
+  function saveTelegramAuthPending(kind,data){
+    data=data||{};
+    data.kind=kind;
+    try{
+      sessionStorage.setItem(TELEGRAM_AUTH_PENDING_KEY,JSON.stringify(data));
+    }catch(e){}
+  }
+  function clearTelegramAuthPending(){
+    try{sessionStorage.removeItem(TELEGRAM_AUTH_PENDING_KEY);}catch(e){}
+  }
+  function readTelegramAuthPending(){
+    try{
+      var raw=sessionStorage.getItem(TELEGRAM_AUTH_PENDING_KEY);
+      if(!raw) return null;
+      var pending=JSON.parse(raw);
+      if(!pending||!pending.kind||!pending.request_id||
+         Number(pending.expires_at||0)<=Date.now()){
+        clearTelegramAuthPending();
+        return null;
+      }
+      return pending;
+    }catch(e){
+      clearTelegramAuthPending();
+      return null;
+    }
+  }
+  function restoreTelegramAuthPending(){
+    if(MOBILE_TOKEN){
+      clearTelegramAuthPending();
+      return false;
+    }
+    var pending=readTelegramAuthPending();
+    if(!pending) return false;
+    var resendLeft=Math.max(0,Math.ceil(
+      (Number(pending.resend_at||0)-Date.now())/1000
+    ));
+    if(pending.kind==="register"){
+      regRole=pending.role==="business"?"business":"user";
+      telegramRegisterRequestId=Number(pending.request_id||0);
+      telegramRegisterPayload=pending.payload||null;
+      telegramRegisterDeepLink=pending.deep_link||"";
+      nav("regform");
+      renderTelegramRegisterCode(resendLeft);
+      return true;
+    }
+    if(pending.kind==="login"){
+      telegramLoginRequestId=Number(pending.request_id||0);
+      telegramLoginCredentials=null;
+      telegramLoginDeepLink=pending.deep_link||"";
+      nav("login");
+      renderTelegramLoginCode(resendLeft);
+      return true;
+    }
+    clearTelegramAuthPending();
+    return false;
+  }
   function resetRegisterMethod(){
     stopRegisterTimer();
+    clearTelegramAuthPending();
     telegramRegisterRequestId=0;
     telegramRegisterPayload=null;
     telegramRegisterDeepLink="";
     if(el("regRoleChoice")) el("regRoleChoice").hidden=false;
   }
-  function openTelegramAuthLink(url){
+  function openTelegramAuthLink(url,allowSameTab){
     if(!url) return;
     var opened=null;
-    try{ opened=window.open(url,"_blank","noopener"); }catch(e){}
-    if(!opened){
+    try{
+      opened=window.open(url,"_blank");
+      if(opened) opened.opener=null;
+    }catch(e){}
+    if(!opened&&allowSameTab){
       try{ window.location.href=url; }catch(e2){ showMsg("Telegram havolasini ochib bo'lmadi."); }
+    }else if(!opened){
+      showMsg("Telegram avtomatik ochilmadi. “Telegramni ochish” tugmasini bosing.");
     }
   }
   function stopRegisterTimer(){
@@ -4640,6 +4703,14 @@
       telegramRegisterRequestId=r.request_id;
       telegramRegisterPayload=body;
       telegramRegisterDeepLink=r.deep_link||"";
+      saveTelegramAuthPending("register",{
+        request_id:r.request_id,
+        deep_link:telegramRegisterDeepLink,
+        role:regRole,
+        payload:body,
+        resend_at:Date.now()+Number(r.resend_after||60)*1000,
+        expires_at:Date.now()+Number(r.expires_in||600)*1000
+      });
       renderTelegramRegisterCode(r.resend_after||60);
       if(autoOpen!==false) openTelegramAuthLink(telegramRegisterDeepLink);
       return r;
@@ -4669,7 +4740,7 @@
       '<button class="btn btn-soft btn-block" id="rgOpenTelegram" style="margin-top:10px">✈️ Telegramni ochish</button>'+
       '<button class="btn btn-outline btn-block" id="rgResend" style="margin-top:10px" disabled>Yangi kod olish</button>'+
       '<button class="btn btn-outline btn-block" id="rgCodeBack" style="margin-top:10px">Ma\'lumotlarni o\'zgartirish</button></div>';
-    el("rgOpenTelegram").addEventListener("click",function(){openTelegramAuthLink(telegramRegisterDeepLink);});
+    el("rgOpenTelegram").addEventListener("click",function(){openTelegramAuthLink(telegramRegisterDeepLink,true);});
     el("rgResend").addEventListener("click",function(){
       if(!telegramRegisterPayload) return;
       var button=this;
@@ -4683,6 +4754,7 @@
     });
     el("rgCodeBack").addEventListener("click",function(){
       stopRegisterTimer();
+      clearTelegramAuthPending();
       renderReg(regRole);
     });
     el("rgVerify").addEventListener("click",function(){
@@ -4695,6 +4767,7 @@
         MOBILE_TOKEN=r.access_token;STAFF_TOKEN=null;
         try{localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN);localStorage.removeItem("koprik_staff_token");}catch(e){}
         stopRegisterTimer();
+        clearTelegramAuthPending();
         showCredentials(r.login,r.password,r.role);
       }).catch(function(e){ showMsg(e.message); }).finally(function(){
         btn.disabled=false; btn.textContent="Tasdiqlash va kirish";
@@ -4705,6 +4778,7 @@
   }
 
   function showCredentials(login, password, role){
+    clearTelegramAuthPending();
     var isBusiness = role === "business";
     el("regBody").innerHTML =
       '<div class="form-wrap"><div class="lead">'+(isBusiness?'Biznes profilingiz ochildi! ✅':'Ro\'yxatdan o\'tdingiz! ✅')+'</div>'+
@@ -8043,16 +8117,26 @@
       else b.textContent="Kodni qayta yuborish ("+left+")";
     },1000);
   }
+  function renderTelegramLoginCode(resendAfter){
+    el("loginCode").value="";
+    el("loginStep1").hidden=true;
+    el("loginStep2").hidden=false;
+    startLoginResendTimer(resendAfter);
+    setTimeout(function(){ try{ el("loginCode").focus(); }catch(e){} },100);
+  }
   function requestTelegramLogin(autoOpen){
     if(!telegramLoginCredentials) return Promise.reject(new Error("Login va parolni qayta kiriting."));
     return api("POST","/api/telegram-auth/login/start",telegramLoginCredentials).then(function(r){
       telegramLoginRequestId=r.request_id;
       telegramLoginDeepLink=r.deep_link||"";
-      el("loginCode").value="";
-      el("loginStep1").hidden=true; el("loginStep2").hidden=false;
-      startLoginResendTimer(r.resend_after||60);
+      saveTelegramAuthPending("login",{
+        request_id:r.request_id,
+        deep_link:telegramLoginDeepLink,
+        resend_at:Date.now()+Number(r.resend_after||60)*1000,
+        expires_at:Date.now()+Number(r.expires_in||600)*1000
+      });
+      renderTelegramLoginCode(r.resend_after||60);
       if(autoOpen!==false) openTelegramAuthLink(telegramLoginDeepLink);
-      setTimeout(function(){ try{ el("loginCode").focus(); }catch(e){} },100);
       return r;
     });
   }
@@ -8066,6 +8150,7 @@
       MOBILE_TOKEN=r.access_token;STAFF_TOKEN=null;
       try{localStorage.setItem("koprik_mobile_token",MOBILE_TOKEN);localStorage.removeItem("koprik_staff_token");}catch(e){}
       stopLoginTimer();
+      clearTelegramAuthPending();
       telegramLoginRequestId=0;
       telegramLoginCredentials=null;
       telegramLoginDeepLink="";
@@ -8076,7 +8161,7 @@
     }).catch(function(e){ showMsg(e.message); }).finally(function(){ btn.disabled=false; btn.textContent="Tasdiqlash va kirish"; });
   });
   el("loginOpenTelegram").addEventListener("click",function(){
-    openTelegramAuthLink(telegramLoginDeepLink);
+    openTelegramAuthLink(telegramLoginDeepLink,true);
   });
   el("loginResend").addEventListener("click",function(){
     var button=this;
@@ -8090,6 +8175,7 @@
   });
   el("loginBack").addEventListener("click", function(){
     stopLoginTimer();
+    clearTelegramAuthPending();
     telegramLoginRequestId=0;
     telegramLoginCredentials=null;
     telegramLoginDeepLink="";
@@ -12998,7 +13084,8 @@
         storedHomeLocation.lng,storedHomeLocation.exact?16:13
       );
     }
-    nav(HOME_LOCATION_REQUIRED?"loc":"home");
+    var restoredTelegramAuth=restoreTelegramAuthPending();
+    if(!restoredTelegramAuth) nav(HOME_LOCATION_REQUIRED?"loc":"home");
     loadElonCounts();
     loadHomeAds();
     // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
