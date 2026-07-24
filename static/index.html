@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1643 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1644 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -3352,6 +3352,14 @@
       HOME_LOCATION.district || (ME&&ME.district) || ""
     );
   }
+  function homeSearchContextQuery(){
+    var context={
+      region:String(HOME_LOCATION.region||(ME&&ME.region)||""),
+      district:String(HOME_LOCATION.district||(ME&&ME.district)||"")
+    };
+    return "region="+encodeURIComponent(context.region)+
+      "&district="+encodeURIComponent(context.district);
+  }
   var RES = {pins:[], html:"", count:0};
 
   /* ---------- Bosh xarita: Leaflet + OpenStreetMap ---------- */
@@ -4221,7 +4229,7 @@
       : '<div class="biz-logo" style="background:linear-gradient(135deg,#6a8dff,#9a6bff)"><span style="font-size:16px;font-weight:800;color:#fff">'+esc(ini)+'</span></div>';
     return '<div class="biz-card" data-usrv="'+u.id+'">'+av+
       '<div class="biz-main"><div class="biz-name">'+esc(u.name||"Foydalanuvchi")+'</div>'+
-        '<div class="biz-meta"><span class="cat">@'+esc(u.pub_username||"")+'</span>'+(loc?'<span class="dot-sep"></span>'+esc(loc):'')+'</div></div>'+
+        '<div class="biz-meta"><span class="cat">@'+esc(u.pub_username||"")+'</span></div></div>'+
       '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>';
   }
   function validPin(lat, lng){
@@ -4303,7 +4311,7 @@
     if(!append){
       enterResults('<div class="empty" style="padding:30px 16px"><h3>Qidirilmoqda…</h3><p>Iltimos, biroz kuting.</p></div>', [], 0);
     }
-    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&page="+requestedPage+"&page_size=20&"+actorQuery()).then(function(data){
+    api("GET","/api/search?q="+encodeURIComponent(q)+"&scope="+encodeURIComponent(scope)+"&result_type="+encodeURIComponent(searchResultType)+"&page="+requestedPage+"&page_size=20&"+actorQuery()+"&"+homeSearchContextQuery()).then(function(data){
       if(requestSeq!==SEARCH_REQUEST_SEQ) return;
       if(q.charAt(0)==="@"){ data.products=[]; data.listings=[]; data.specialists=[]; }  // username rejimi
       if(append && SEARCH_DATA){
@@ -4336,7 +4344,7 @@
       callBtn = '<button class="btn btn-amber btn-block" style="margin:4px 0 14px" data-alert="Chaqiruv tizimi 2-bosqichda ishlaydi (namuna).">🚖 Chaqirish <span class="soon-mini" style="margin-left:8px">tez orada</span></button>';
     }
     el("searchInput").value = t;
-    api("GET","/api/browse?tur="+encodeURIComponent(t)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()).then(function(data){
+    api("GET","/api/browse?tur="+encodeURIComponent(t)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()+"&"+homeSearchContextQuery()).then(function(data){
       var r = buildResults({products:[],listings:[],specialists:data.specialists,businesses:data.businesses}, t, callBtn);
       enterResults(r.html, r.pins, r.total);
     }).catch(function(e){
