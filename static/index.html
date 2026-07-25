@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1647 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1648 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -149,6 +149,9 @@
   .ad-preview{display:none;position:relative;border-radius:16px;overflow:hidden;background:var(--line);margin-top:9px;}
   .ad-preview.on{display:block;}
   .ad-preview img{width:100%;height:150px;object-fit:cover;display:block;}
+  .ad-preview-remove{position:absolute;top:8px;right:8px;z-index:3;width:36px;height:36px;border:2px solid #fff;border-radius:50%;background:#dc2626;color:#fff;font:900 22px/1 Arial,sans-serif;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.28);}
+  .ad-preview-remove:active{transform:scale(.94);}
+  .ad-preview-remove:focus-visible{outline:3px solid var(--amber);outline-offset:2px;}
   .ad-crop-box{display:none;margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
   .ad-crop-box.on{display:block}
   .ad-crop-hint{font-size:12px;color:var(--soft);margin-bottom:8px;line-height:1.4}
@@ -2098,7 +2101,7 @@
           <div class="field"><label>Reklama rasmi</label>
             <button type="button" class="upload" id="baImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="baImageInput" accept="image/jpeg,image/png,image/webp" hidden>
-            <div class="ad-preview" id="baPreview"><img alt="Reklama rasmi"></div>
+            <div class="ad-preview" id="baPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="baImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
             <div class="ad-crop-box" id="baCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="baCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="baCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="baCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="baImageInfo"></div>
           </div>
@@ -2383,7 +2386,7 @@
           <div class="field"><label>Reklama rasmi</label>
             <button type="button" class="upload" id="uaImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="uaImageInput" accept="image/jpeg,image/png,image/webp" hidden>
-            <div class="ad-preview" id="uaPreview"><img alt="Reklama rasmi"></div>
+            <div class="ad-preview" id="uaPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="uaImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
             <div class="ad-crop-box" id="uaCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="uaCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="uaCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="uaCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="uaImageInfo"></div>
           </div>
@@ -12838,8 +12841,8 @@
   });
 
   var AD_FORM = {
-    ba:{actor:"business", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1},
-    ua:{actor:"user", targets:[], file:null, image_file:"",crop_x:50,crop_y:50,crop_zoom:1}
+    ba:{actor:"business", targets:[], file:null, image_file:"",preview_url:"",crop_x:50,crop_y:50,crop_zoom:1},
+    ua:{actor:"user", targets:[], file:null, image_file:"",preview_url:"",crop_x:50,crop_y:50,crop_zoom:1}
   };
   function clampAdCrop(v){return Math.max(0,Math.min(100,v));}
   function renderAdCrop(prefix){
@@ -12850,6 +12853,31 @@
     el(prefix+"CropZoom").value=st.crop_zoom;
   }
   function resetAdCrop(prefix){var st=AD_FORM[prefix];st.crop_x=50;st.crop_y=50;st.crop_zoom=1;renderAdCrop(prefix);}
+  function clearAdImage(prefix){
+    var st=AD_FORM[prefix];
+    st.file=null;
+    st.image_file="";
+    if(st.preview_url){
+      try{URL.revokeObjectURL(st.preview_url);}catch(e){}
+      st.preview_url="";
+    }
+    el(prefix+"ImageInput").value="";
+    el(prefix+"Preview").classList.remove("on");
+    el(prefix+"Preview").querySelector("img").removeAttribute("src");
+    el(prefix+"CropBox").classList.remove("on");
+    el(prefix+"CropStage").querySelector("img").removeAttribute("src");
+    el(prefix+"ImageInfo").textContent="";
+    resetAdCrop(prefix);
+  }
+  function requestAdImageRemoval(prefix){
+    return askConfirm({
+      text:"Tanlangan reklama rasmi o‘chirilsinmi?",
+      okText:"O‘chirish",
+      danger:true
+    }).then(function(ok){
+      if(ok) clearAdImage(prefix);
+    });
+  }
   function adDailyUi(prefix){
     var all=el(prefix+"AllDay").checked,start=el(prefix+"DailyStart").value||"19:00",end=el(prefix+"DailyEnd").value||"21:00";
     el(prefix+"DailyTimes").style.display=all?"none":"flex";
@@ -12889,12 +12917,11 @@
     }).catch(function(e){ el(prefix+"PriceNote").textContent=e.message; });
   }
   function resetAdForm(prefix){
-    var st=AD_FORM[prefix]; st.targets=[]; st.file=null; st.image_file="";st.crop_x=50;st.crop_y=50;st.crop_zoom=1;
+    var st=AD_FORM[prefix]; st.targets=[];
     el(prefix+"Title").value=""; el(prefix+"Caption").value=""; el(prefix+"Days").value="1";
     el(prefix+"AllDay").checked=true;el(prefix+"DailyStart").value="19:00";el(prefix+"DailyEnd").value="21:00";adDailyUi(prefix);
-    el(prefix+"ImageInput").value=""; el(prefix+"Preview").classList.remove("on"); el(prefix+"Preview").querySelector("img").removeAttribute("src");
-    el(prefix+"CropBox").classList.remove("on");el(prefix+"CropStage").querySelector("img").removeAttribute("src");renderAdCrop(prefix);
-    el(prefix+"ImageInfo").textContent=""; adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
+    clearAdImage(prefix);
+    adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
   }
   function openAdForm(prefix){ resetAdForm(prefix); nav(prefix==="ba"?"cab-ad-form":"ucab-ad-form"); }
   function bindAdForm(prefix){
@@ -12914,14 +12941,22 @@
     el(prefix+"DailyStart").addEventListener("input",function(){adDailyUi(prefix);});
     el(prefix+"DailyEnd").addEventListener("input",function(){adDailyUi(prefix);});
     el(prefix+"ImageBtn").addEventListener("click",function(){ el(prefix+"ImageInput").click(); });
+    el(prefix+"ImageRemove").addEventListener("click",function(){
+      requestAdImageRemoval(prefix);
+    });
     el(prefix+"ImageInput").addEventListener("change",function(){
       var f=this.files&&this.files[0]; if(!f)return;
       if(["image/jpeg","image/png","image/webp"].indexOf(f.type)<0){ showMsg("Faqat JPG, PNG yoki WEBP rasm tanlang."); this.value=""; return; }
       if(f.size>5*1024*1024){ showMsg("Rasm hajmi 5 MB dan oshmasin."); this.value=""; return; }
+      if(st.preview_url){
+        try{URL.revokeObjectURL(st.preview_url);}catch(e){}
+      }
       st.file=f; st.image_file="";
       resetAdCrop(prefix);
-      var url=URL.createObjectURL(f), img=new Image();
+      st.preview_url=URL.createObjectURL(f);
+      var url=st.preview_url, img=new Image();
       img.onload=function(){
+        if(st.preview_url!==url)return;
         var ratio=img.width/img.height, warn=[];
         if(img.width<960||img.height<400) warn.push("sifat past bo'lishi mumkin: kamida 960×400 tavsiya etiladi");
         if(ratio<2.0||ratio>2.8) warn.push("nisbat 2.4:1 ga yaqin bo'lsa yaxshi ko'rinadi");
