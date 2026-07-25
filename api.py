@@ -3815,7 +3815,9 @@ def _ad_dict(row):
     return {
         "id": row["id"], "user_id": row["user_id"], "business_id": row["business_id"],
         "actor_type": row["actor_type"], "title": row["title"], "caption": row["caption"],
-        "image_file": row["image_file"], "targets": targets,
+        "image_file": row["image_file"],
+        "mobile_image_file": str(_row_val(row, "mobile_image_file", "") or ""),
+        "targets": targets,
         "crop_x": float(_row_val(row, "crop_x", 50) or 50),
         "crop_y": float(_row_val(row, "crop_y", 50) or 50),
         "crop_zoom": float(_row_val(row, "crop_zoom", 1) or 1),
@@ -3841,6 +3843,7 @@ def _demo_advertisements():
     return [{
         "id": -(i + 1), "user_id": None, "business_id": None, "actor_type": "demo",
         "title": title, "caption": caption, "image_file": image,
+        "mobile_image_file": "",
         "crop_x": x, "crop_y": y, "crop_zoom": zoom,
         "daily_all_day": True, "daily_start": "00:00", "daily_end": "23:59",
         "targets": [{"level": "republic", "region": "", "district": ""}],
@@ -3912,6 +3915,7 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     title = str(b.get("title") or "").strip()
     caption = str(b.get("caption") or "").strip()
     image_file = str(b.get("image_file") or "").strip()
+    mobile_image_file = str(b.get("mobile_image_file") or "").strip()
     try:
         crop_x = max(0.0, min(100.0, float(b.get("crop_x", 50))))
         crop_y = max(0.0, min(100.0, float(b.get("crop_y", 50))))
@@ -3933,6 +3937,9 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     if not image_file.startswith("/uploads/ads/"):
         conn.close()
         raise HTTPException(400, "Reklama rasmini yuklang.")
+    if mobile_image_file and not mobile_image_file.startswith("/uploads/ads/"):
+        conn.close()
+        raise HTTPException(400, "Telefon rasmi manzili noto'g'ri.")
     targets = _clean_ad_targets(b.get("targets"))
     try:
         start_at = int(b.get("start_at") or 0)
@@ -3948,11 +3955,11 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     price = _ad_price(targets, b.get("duration_days"))
     end_at = start_at + price["days"] * 86400
     cur = conn.execute(
-        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,crop_x,crop_y,crop_zoom,daily_all_day,daily_start,daily_end,
+        """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,mobile_image_file,crop_x,crop_y,crop_zoom,daily_all_day,daily_start,daily_end,
                                        targets_json,start_at,end_at,duration_days,price,status,
                                        views,clicks,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
-        (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, crop_x, crop_y, crop_zoom,
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
+        (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, mobile_image_file, crop_x, crop_y, crop_zoom,
          1 if daily_all_day else 0, daily_start, daily_end,
          json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
          "active", now, now),
