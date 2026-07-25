@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1648 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1649 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -132,6 +132,8 @@
   /* v1472 — Reklama boshqaruvi */
   .ad{min-height:150px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(120deg,var(--primary),#0b6f6a);}
   .ad.has-image{background:#14201d;padding:0;}
+  .ad .ad-picture{display:none;}
+  .ad.has-image .ad-picture{display:block;width:100%;height:100%;}
   .ad.has-image .ad-photo{display:block;width:100%;height:170px;object-fit:cover;}
   .ad .ad-photo{display:none;}
   .ad .ad-photo,.ad .ad-copy{opacity:1;transition:opacity 1s ease}
@@ -149,6 +151,8 @@
   .ad-preview{display:none;position:relative;border-radius:16px;overflow:hidden;background:var(--line);margin-top:9px;}
   .ad-preview.on{display:block;}
   .ad-preview img{width:100%;height:150px;object-fit:cover;display:block;}
+  .ad-preview.ad-desktop-preview img{height:auto;aspect-ratio:7.46/1;}
+  .ad-preview.ad-mobile-preview img{height:auto;aspect-ratio:3.2/1;}
   .ad-preview-remove{position:absolute;top:8px;right:8px;z-index:3;width:36px;height:36px;border:2px solid #fff;border-radius:50%;background:#dc2626;color:#fff;font:900 22px/1 Arial,sans-serif;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.28);}
   .ad-preview-remove:active{transform:scale(.94);}
   .ad-preview-remove:focus-visible{outline:3px solid var(--amber);outline-offset:2px;}
@@ -1516,7 +1520,10 @@
         </div>
 
         <div class="ad" id="adBox" style="margin-top:20px">
-          <img class="ad-photo" id="adPhoto" alt="Reklama">
+          <picture class="ad-picture">
+            <source id="adMobileSource" media="(max-width: 1079px)">
+            <img class="ad-photo" id="adPhoto" alt="Reklama">
+          </picture>
           <div class="ad-overlay"></div>
           <div class="ad-copy">
             <div class="eyebrow" id="adEyebrow">Tavsiya etamiz</div>
@@ -2097,13 +2104,19 @@
       <!-- CAB: REKLAMA FORMASI -->
       <section class="screen" data-screen="cab-ad-form">
         <div class="form-wrap" id="baForm">
-          <div class="ad-quality"><b>Rasm talabi:</b> tavsiya etiladi 1200×500 px (nisbat 2.4:1), kamida 960×400 px. JPG, PNG yoki WEBP; hajmi 5 MB gacha. Muhim yozuv va logoni rasm chetiga juda yaqin qo'ymang.</div>
-          <div class="field"><label>Reklama rasmi</label>
+          <div class="ad-quality"><b>Rasm talabi:</b> kompyuter uchun 2744 × 368 px (7.46:1), telefon uchun 800 × 250 px (3.2:1) tavsiya etiladi. JPG, PNG yoki WEBP; har biri 5 MB gacha.</div>
+          <div class="field"><label>Kompyuter uchun rasm — majburiy</label>
             <button type="button" class="upload" id="baImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="baImageInput" accept="image/jpeg,image/png,image/webp" hidden>
-            <div class="ad-preview" id="baPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="baImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
+            <div class="ad-preview ad-desktop-preview" id="baPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="baImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
             <div class="ad-crop-box" id="baCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="baCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="baCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="baCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="baImageInfo"></div>
+          </div>
+          <div class="field"><label>Telefon uchun rasm — ixtiyoriy</label>
+            <button type="button" class="upload" id="baMobileImageBtn">📱 Telefon rasmini tanlash</button>
+            <input type="file" id="baMobileImageInput" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="ad-preview ad-mobile-preview" id="baMobilePreview"><img alt="Telefon banneri"><button type="button" class="ad-preview-remove" id="baMobileImageRemove" aria-label="Tanlangan telefon rasmini o‘chirish">×</button></div>
+            <div class="idesc" id="baMobileImageInfo">Yuklanmasa, telefonda kompyuter rasmi ko‘rsatiladi.</div>
           </div>
           <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="baTitle" maxlength="120" placeholder="Masalan: Bugun 20% chegirma"></div>
           <div class="field"><label>Qisqa matn</label><textarea class="textarea" id="baCaption" maxlength="240" placeholder="Reklama haqida qisqa va aniq ma'lumot"></textarea></div>
@@ -2382,13 +2395,19 @@
       <!-- UCAB: REKLAMA FORMASI -->
       <section class="screen" data-screen="ucab-ad-form">
         <div class="form-wrap" id="uaForm">
-          <div class="ad-quality"><b>Rasm talabi:</b> tavsiya etiladi 1200×500 px (nisbat 2.4:1), kamida 960×400 px. JPG, PNG yoki WEBP; hajmi 5 MB gacha. Muhim yozuv va logoni rasm chetiga juda yaqin qo'ymang.</div>
-          <div class="field"><label>Reklama rasmi</label>
+          <div class="ad-quality"><b>Rasm talabi:</b> kompyuter uchun 2744 × 368 px (7.46:1), telefon uchun 800 × 250 px (3.2:1) tavsiya etiladi. JPG, PNG yoki WEBP; har biri 5 MB gacha.</div>
+          <div class="field"><label>Kompyuter uchun rasm — majburiy</label>
             <button type="button" class="upload" id="uaImageBtn">🖼 Galereyadan rasm tanlash</button>
             <input type="file" id="uaImageInput" accept="image/jpeg,image/png,image/webp" hidden>
-            <div class="ad-preview" id="uaPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="uaImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
+            <div class="ad-preview ad-desktop-preview" id="uaPreview"><img alt="Reklama rasmi"><button type="button" class="ad-preview-remove" id="uaImageRemove" aria-label="Tanlangan reklama rasmini o‘chirish">×</button></div>
             <div class="ad-crop-box" id="uaCropBox"><div class="ad-crop-hint">Rasmni barmoq bilan suring va masshtabni sozlang.</div><div class="ad-crop-stage" id="uaCropStage"><img alt="Banner ko'rinishi"></div><div class="ad-crop-controls"><span>−</span><input type="range" id="uaCropZoom" min="1" max="3" step="0.05" value="1" aria-label="Rasm masshtabi"><span>+</span><button type="button" class="mini-btn" id="uaCropReset" style="height:36px;padding:0 10px">Tiklash</button></div></div>
             <div class="idesc" id="uaImageInfo"></div>
+          </div>
+          <div class="field"><label>Telefon uchun rasm — ixtiyoriy</label>
+            <button type="button" class="upload" id="uaMobileImageBtn">📱 Telefon rasmini tanlash</button>
+            <input type="file" id="uaMobileImageInput" accept="image/jpeg,image/png,image/webp" hidden>
+            <div class="ad-preview ad-mobile-preview" id="uaMobilePreview"><img alt="Telefon banneri"><button type="button" class="ad-preview-remove" id="uaMobileImageRemove" aria-label="Tanlangan telefon rasmini o‘chirish">×</button></div>
+            <div class="idesc" id="uaMobileImageInfo">Yuklanmasa, telefonda kompyuter rasmi ko‘rsatiladi.</div>
           </div>
           <div class="field"><label>Reklama sarlavhasi</label><input class="input" id="uaTitle" maxlength="120" placeholder="Masalan: Yangi xizmatimiz ochildi"></div>
           <div class="field"><label>Qisqa matn</label><textarea class="textarea" id="uaCaption" maxlength="240" placeholder="Reklama haqida qisqa va aniq ma'lumot"></textarea></div>
@@ -12774,17 +12793,25 @@
     if(!box) return;
     if(!HOME_ADS.length){
       box.classList.remove("has-image"); box.removeAttribute("data-ad-id");
-      el("adPhoto").removeAttribute("src");el("adPhoto").style.objectPosition="50% 50%";el("adPhoto").style.transform="none";el("adPhoto").style.transformOrigin="50% 50%"; el("adEyebrow").textContent="Tavsiya etamiz";
+      el("adMobileSource").removeAttribute("srcset");el("adPhoto").removeAttribute("src");el("adPhoto").style.objectPosition="50% 50%";el("adPhoto").style.transform="none";el("adPhoto").style.transformOrigin="50% 50%"; el("adEyebrow").textContent="Tavsiya etamiz";
       el("adTitle").textContent="Bu yerda reklamangiz"; el("adText").textContent="Bizneslar uchun bosh sahifada ko'rinish joyi.";
       dots.innerHTML='<span class="on"></span>'; return;
     }
     if(HOME_AD_INDEX>=HOME_ADS.length) HOME_AD_INDEX=0;
     var a=HOME_ADS[HOME_AD_INDEX];
     box.classList.add("has-image"); box.setAttribute("data-ad-id",a.id);
+    var mobileImage=a.mobile_image_file||a.image_file;
+    el("adMobileSource").srcset=mobileImage;
     el("adPhoto").src=a.image_file;
-    el("adPhoto").style.objectPosition=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
-    el("adPhoto").style.transform="scale("+(a.crop_zoom||1)+")";
-    el("adPhoto").style.transformOrigin=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
+    if(a.mobile_image_file){
+      el("adPhoto").style.objectPosition="50% 50%";
+      el("adPhoto").style.transform="none";
+      el("adPhoto").style.transformOrigin="50% 50%";
+    }else{
+      el("adPhoto").style.objectPosition=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
+      el("adPhoto").style.transform="scale("+(a.crop_zoom||1)+")";
+      el("adPhoto").style.transformOrigin=(a.crop_x==null?50:a.crop_x)+"% "+(a.crop_y==null?50:a.crop_y)+"%";
+    }
     el("adEyebrow").textContent="Tavsiya etamiz";
     el("adTitle").textContent=a.title||"Reklama"; el("adText").textContent=a.caption||"Batafsil ko'rish uchun bosing.";
     dots.innerHTML=HOME_ADS.map(function(_,i){return '<span class="'+(i===HOME_AD_INDEX?'on':'')+'" data-home-ad-dot="'+i+'"></span>';}).join("");
@@ -12841,8 +12868,8 @@
   });
 
   var AD_FORM = {
-    ba:{actor:"business", targets:[], file:null, image_file:"",preview_url:"",crop_x:50,crop_y:50,crop_zoom:1},
-    ua:{actor:"user", targets:[], file:null, image_file:"",preview_url:"",crop_x:50,crop_y:50,crop_zoom:1}
+    ba:{actor:"business", targets:[], file:null, image_file:"",preview_url:"",mobile_file:null,mobile_image_file:"",mobile_preview_url:"",crop_x:50,crop_y:50,crop_zoom:1},
+    ua:{actor:"user", targets:[], file:null, image_file:"",preview_url:"",mobile_file:null,mobile_image_file:"",mobile_preview_url:"",crop_x:50,crop_y:50,crop_zoom:1}
   };
   function clampAdCrop(v){return Math.max(0,Math.min(100,v));}
   function renderAdCrop(prefix){
@@ -12876,6 +12903,28 @@
       danger:true
     }).then(function(ok){
       if(ok) clearAdImage(prefix);
+    });
+  }
+  function clearAdMobileImage(prefix){
+    var st=AD_FORM[prefix];
+    st.mobile_file=null;
+    st.mobile_image_file="";
+    if(st.mobile_preview_url){
+      try{URL.revokeObjectURL(st.mobile_preview_url);}catch(e){}
+      st.mobile_preview_url="";
+    }
+    el(prefix+"MobileImageInput").value="";
+    el(prefix+"MobilePreview").classList.remove("on");
+    el(prefix+"MobilePreview").querySelector("img").removeAttribute("src");
+    el(prefix+"MobileImageInfo").textContent="Yuklanmasa, telefonda kompyuter rasmi ko‘rsatiladi.";
+  }
+  function requestAdMobileImageRemoval(prefix){
+    return askConfirm({
+      text:"Tanlangan telefon rasmi o‘chirilsinmi?",
+      okText:"O‘chirish",
+      danger:true
+    }).then(function(ok){
+      if(ok) clearAdMobileImage(prefix);
     });
   }
   function adDailyUi(prefix){
@@ -12921,6 +12970,7 @@
     el(prefix+"Title").value=""; el(prefix+"Caption").value=""; el(prefix+"Days").value="1";
     el(prefix+"AllDay").checked=true;el(prefix+"DailyStart").value="19:00";el(prefix+"DailyEnd").value="21:00";adDailyUi(prefix);
     clearAdImage(prefix);
+    clearAdMobileImage(prefix);
     adFillRegions(prefix); el(prefix+"Level").value="district"; adLevelUi(prefix); adSetDefaultStart(prefix); renderAdTargets(prefix);
   }
   function openAdForm(prefix){ resetAdForm(prefix); nav(prefix==="ba"?"cab-ad-form":"ucab-ad-form"); }
@@ -12944,6 +12994,10 @@
     el(prefix+"ImageRemove").addEventListener("click",function(){
       requestAdImageRemoval(prefix);
     });
+    el(prefix+"MobileImageBtn").addEventListener("click",function(){ el(prefix+"MobileImageInput").click(); });
+    el(prefix+"MobileImageRemove").addEventListener("click",function(){
+      requestAdMobileImageRemoval(prefix);
+    });
     el(prefix+"ImageInput").addEventListener("change",function(){
       var f=this.files&&this.files[0]; if(!f)return;
       if(["image/jpeg","image/png","image/webp"].indexOf(f.type)<0){ showMsg("Faqat JPG, PNG yoki WEBP rasm tanlang."); this.value=""; return; }
@@ -12958,12 +13012,33 @@
       img.onload=function(){
         if(st.preview_url!==url)return;
         var ratio=img.width/img.height, warn=[];
-        if(img.width<960||img.height<400) warn.push("sifat past bo'lishi mumkin: kamida 960×400 tavsiya etiladi");
-        if(ratio<2.0||ratio>2.8) warn.push("nisbat 2.4:1 ga yaqin bo'lsa yaxshi ko'rinadi");
+        if(img.width<1372||img.height<184) warn.push("sifat past bo'lishi mumkin: kamida 1372×184 tavsiya etiladi");
+        if(ratio<6.8||ratio>8.2) warn.push("nisbat 7.46:1 ga yaqin bo'lsa yaxshi ko'rinadi");
         el(prefix+"ImageInfo").textContent=img.width+"×"+img.height+" px"+(warn.length?" · ⚠️ "+warn.join("; "):" · ✅ mos");
       };
       img.src=url; el(prefix+"Preview").querySelector("img").src=url; el(prefix+"Preview").classList.add("on");
       el(prefix+"CropStage").querySelector("img").src=url;el(prefix+"CropBox").classList.add("on");renderAdCrop(prefix);
+    });
+    el(prefix+"MobileImageInput").addEventListener("change",function(){
+      var f=this.files&&this.files[0]; if(!f)return;
+      if(["image/jpeg","image/png","image/webp"].indexOf(f.type)<0){ showMsg("Faqat JPG, PNG yoki WEBP rasm tanlang."); this.value=""; return; }
+      if(f.size>5*1024*1024){ showMsg("Rasm hajmi 5 MB dan oshmasin."); this.value=""; return; }
+      if(st.mobile_preview_url){
+        try{URL.revokeObjectURL(st.mobile_preview_url);}catch(e){}
+      }
+      st.mobile_file=f; st.mobile_image_file="";
+      st.mobile_preview_url=URL.createObjectURL(f);
+      var url=st.mobile_preview_url, img=new Image();
+      img.onload=function(){
+        if(st.mobile_preview_url!==url)return;
+        var ratio=img.width/img.height, warn=[];
+        if(img.width<400||img.height<125) warn.push("sifat past bo'lishi mumkin: kamida 400×125 tavsiya etiladi");
+        if(ratio<2.9||ratio>3.5) warn.push("nisbat 3.2:1 ga yaqin bo'lsa yaxshi ko'rinadi");
+        el(prefix+"MobileImageInfo").textContent=img.width+"×"+img.height+" px"+(warn.length?" · ⚠️ "+warn.join("; "):" · ✅ mos");
+      };
+      img.src=url;
+      el(prefix+"MobilePreview").querySelector("img").src=url;
+      el(prefix+"MobilePreview").classList.add("on");
     });
     el(prefix+"Region").addEventListener("change",function(){ adFillDistricts(prefix); });
     el(prefix+"Level").addEventListener("change",function(){ adLevelUi(prefix); });
@@ -12991,7 +13066,16 @@
       var startAt=Math.floor(new Date(start).getTime()/1000); if(!isFinite(startAt)){ showMsg("Boshlanish vaqti noto'g'ri."); return; }
       var btn=this; btn.disabled=true; btn.textContent="Joylashtirilmoqda...";
       var up=st.image_file?Promise.resolve({image_file:st.image_file}):uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.file);
-      up.then(function(r){ st.image_file=r.image_file; return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"23:59",targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1}); })
+      up.then(function(r){
+        st.image_file=r.image_file;
+        var mobileUp=st.mobile_image_file
+          ?Promise.resolve({image_file:st.mobile_image_file})
+          :(st.mobile_file?uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.mobile_file):Promise.resolve({image_file:""}));
+        return mobileUp;
+      }).then(function(r){
+        st.mobile_image_file=r.image_file||"";
+        return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,mobile_image_file:st.mobile_image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"23:59",targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1});
+      })
       .then(function(){ showMsg("Reklama joylashtirildi ✅"); loadHomeAds(); nav(prefix==="ba"?"cab-elon":"ucab-elon"); })
       .catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Reklamani joylashtirish"; });
