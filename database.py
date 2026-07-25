@@ -1391,6 +1391,7 @@ def _migrate(conn):
         "title TEXT DEFAULT '', "
         "caption TEXT DEFAULT '', "
         "image_file TEXT NOT NULL, "
+        "mobile_image_file TEXT NOT NULL DEFAULT '', "
         "crop_x REAL NOT NULL DEFAULT 50, "
         "crop_y REAL NOT NULL DEFAULT 50, "
         "crop_zoom REAL NOT NULL DEFAULT 1, "
@@ -1413,6 +1414,8 @@ def _migrate(conn):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_schedule ON advertisements(status, start_at, end_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_ads_owner ON advertisements(user_id, business_id, created_at)")
     adcols = [r["name"] for r in conn.execute("PRAGMA table_info(advertisements)").fetchall()]
+    if "mobile_image_file" not in adcols:
+        conn.execute("ALTER TABLE advertisements ADD COLUMN mobile_image_file TEXT NOT NULL DEFAULT ''")
     if "crop_x" not in adcols:
         conn.execute("ALTER TABLE advertisements ADD COLUMN crop_x REAL NOT NULL DEFAULT 50")
     if "crop_y" not in adcols:
