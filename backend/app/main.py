@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.auth.router import router as auth_router
+from app.auth.service import AuthService
 from app.cache.client import RedisClient
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
@@ -13,6 +15,7 @@ from app.db.session import Database
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
+from app.profiles.router import router as profiles_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -27,6 +30,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await redis_client.start()
         app.state.database = database
         app.state.redis = redis_client
+        app.state.auth_service = AuthService(
+            database.session,
+            redis_client,
+            resolved,
+        )
         try:
             yield
         finally:
@@ -34,7 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await database.stop()
 
     app = FastAPI(
-        title="Ko‘prik API",
+        title="Koprik API",
         version="1.0.0",
         lifespan=lifespan,
     )
@@ -51,6 +59,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.r2 = build_r2_storage(resolved)
     app.include_router(platform_router)
     app.include_router(media_router)
+    app.include_router(auth_router)
+    app.include_router(profiles_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
@@ -61,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "message": exc.message,
                 "request_id": request_id_context.get(),
             },
+            headers=exc.headers,
         )
 
     return app
