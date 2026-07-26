@@ -1415,6 +1415,11 @@ def _migrate(conn):
         "end_at INTEGER NOT NULL, "
         "duration_days INTEGER NOT NULL DEFAULT 1, "
         "price INTEGER NOT NULL DEFAULT 0, "
+        "district_count INTEGER NOT NULL DEFAULT 0, "
+        "hours_per_day INTEGER NOT NULL DEFAULT 0, "
+        "district_hour_rate INTEGER NOT NULL DEFAULT 0, "
+        "billable_district_hours INTEGER NOT NULL DEFAULT 0, "
+        "price_code TEXT NOT NULL DEFAULT '', "
         "status TEXT NOT NULL DEFAULT 'active', "
         "views INTEGER NOT NULL DEFAULT 0, "
         "clicks INTEGER NOT NULL DEFAULT 0, "
@@ -1440,6 +1445,18 @@ def _migrate(conn):
         conn.execute("ALTER TABLE advertisements ADD COLUMN daily_start TEXT NOT NULL DEFAULT '00:00'")
     if "daily_end" not in adcols:
         conn.execute("ALTER TABLE advertisements ADD COLUMN daily_end TEXT NOT NULL DEFAULT '23:59'")
+    ad_snapshot_columns = {
+        "district_count": "INTEGER NOT NULL DEFAULT 0",
+        "hours_per_day": "INTEGER NOT NULL DEFAULT 0",
+        "district_hour_rate": "INTEGER NOT NULL DEFAULT 0",
+        "billable_district_hours": "INTEGER NOT NULL DEFAULT 0",
+        "price_code": "TEXT NOT NULL DEFAULT ''",
+    }
+    for name, definition in ad_snapshot_columns.items():
+        if name not in adcols:
+            conn.execute(
+                f"ALTER TABLE advertisements ADD COLUMN {name} {definition}"
+            )
 
     # --- v1396: Mahsulotlar (items) FTS — biznes maydonlari bilan (denormalizatsiya) ---
     # name = mahsulot nomi; body = mahsulot izohi/turi + tegishli biznes (nom, yo'nalish, tur, tavsif, manzil).
