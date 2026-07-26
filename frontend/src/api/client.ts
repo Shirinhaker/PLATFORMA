@@ -1,32 +1,256 @@
 import type { AuthContext } from "../auth/adapter";
+import type {
+  ApiErrorBody,
+  Authenticated,
+  BuildInfo,
+  BusinessProfile,
+  BusinessProfilePatch,
+  ChallengeResent,
+  ChallengeStarted,
+  ChallengeVerification,
+  Me,
+  ProfileImageAttachment,
+  RegistrationStart,
+  SessionIdentity,
+  UploadGrant,
+  UploadGrantRequest,
+  UserProfile,
+  UserProfilePatch,
+} from "./types";
 
-export type BuildInfo = {
-  api_version: "v1";
-  foundation: "phase1";
-  legacy_build: "v1656";
-};
+
+type SessionResponse = Omit<SessionIdentity, "name"> & { name?: string };
+type LoginStart = { login: string; password: string };
+
+
+export class ApiClientError extends Error {
+  readonly code: string;
+  readonly requestId: string;
+
+  constructor(
+    readonly status: number,
+    body: ApiErrorBody,
+  ) {
+    super(body.message);
+    this.name = "ApiClientError";
+    this.code = body.code;
+    this.requestId = body.request_id;
+  }
+}
+
 
 export class ApiClient {
+  private csrfToken = "";
+
   constructor(
     private readonly baseUrl: string,
     private readonly fetcher: typeof fetch,
     private readonly auth: AuthContext,
   ) {}
 
-  async getBuild(): Promise<BuildInfo> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    authenticated = false,
+  ): Promise<T> {
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
     if (this.auth.kind === "telegram") {
       headers["X-Telegram-Init-Data"] = this.auth.initData;
     }
-    const response = await this.fetcher(
-      `${this.baseUrl}/api/v1/build`,
-      { credentials: "include", headers },
-    );
-    if (!response.ok) {
-      throw new Error(`API xatosi: ${response.status}`);
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
     }
-    return response.json() as Promise<BuildInfo>;
+    if (authenticated && method !== "GET") {
+      if (!this.csrfToken) {
+        throw new ApiClientError(403, {
+          code: "csrf_unavailable",
+          message: "Sessiya xavfsizlik ma’lumoti topilmadi.",
+          request_id: "",
+        });
+      }
+      headers["X-CSRF-Token"] = this.csrfToken;
+    }
+
+    const response = await this.fetcher(
+      `${this.baseUrl.replace(/\/+$/, "")}${path}`,
+      {
+        method,
+        credentials: "include",
+        headers,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      },
+    );
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    if (!response.ok) {
+      const fallback: ApiErrorBody = {
+        code: "http_error",
+        message: `API xatosi: ${response.status}`,
+        request_id: "",
+      };
+      const error = payload && typeof payload === "object"
+        ? { ...fallback, ...payload } as ApiErrorBody
+        : fallback;
+      throw new ApiClientError(response.status, error);
+    }
+    if (
+      payload
+      && typeof payload === "object"
+      && "csrf_token" in payload
+      && typeof payload.csrf_token === "string"
+    ) {
+      this.csrfToken = payload.csrf_token;
+    }
+    return payload as T;
+  }
+
+  getBuild(): Promise<BuildInfo> {
+    return this.request("GET", "/api/v1/build");
+  }
+
+  startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {
+    return this.request("POST", "/api/v1/auth/register/start", body);
+  }
+
+  verifyRegistration(
+    body: ChallengeVerification,
+  ): Promise<Authenticated> {
+    return this.request("POST", "/api/v1/auth/register/verify", body);
+  }
+
+  startLogin(body: LoginStart): Promise<ChallengeStarted> {
+    return this.request("POST", "/api/v1/auth/login/start", body);
+  }
+
+  verifyLogin(body: ChallengeVerification): Promise<Authenticated> {
+    return this.request("POST", "/api/v1/auth/login/verify", body);
+  }
+
+  resendChallenge(requestId: number): Promise<ChallengeResent> {
+    return this.request(
+      "POST",
+      `/api/v1/auth/challenges/${requestId}/resend`,
+    );
+  }
+
+  async getSession(): Promise<SessionIdentity> {
+    const session = await this.request<SessionResponse>(
+      "GET",
+      "/api/v1/auth/session",
+    );
+    if (typeof session.name === "string") {
+      return session as SessionIdentity;
+    }
+    const me = await this.getMe();
+    return { ...session, name: me.name };
+  }
+
+  async logout(): Promise<void> {
+    await this.request<void>(
+      "POST",
+      "/api/v1/auth/logout",
+      undefined,
+      true,
+    );
+    this.csrfToken = "";
+  }
+
+  getMe(): Promise<Me> {
+    return this.request("GET", "/api/v1/me", undefined, true);
+  }
+
+  getUserProfile(): Promise<UserProfile> {
+    return this.request(
+      "GET",
+      "/api/v1/user-profile",
+      undefined,
+      true,
+    );
+  }
+
+  updateUserProfile(body: UserProfilePatch): Promise<UserProfile> {
+    return this.request(
+      "PUT",
+      "/api/v1/user-profile",
+      body,
+      true,
+    );
+  }
+
+  getBusinessProfile(): Promise<BusinessProfile> {
+    return this.request(
+      "GET",
+      "/api/v1/business-profile",
+      undefined,
+      true,
+    );
+  }
+
+  updateBusinessProfile(
+    body: BusinessProfilePatch,
+  ): Promise<BusinessProfile> {
+    return this.request(
+      "PUT",
+      "/api/v1/business-profile",
+      body,
+      true,
+    );
+  }
+
+  createUploadGrant(body: UploadGrantRequest): Promise<UploadGrant> {
+    return this.request(
+      "POST",
+      "/api/v1/media/upload-grants",
+      body,
+      true,
+    );
+  }
+
+  async uploadGrantedFile(grant: UploadGrant, file: File): Promise<void> {
+    const response = await this.fetcher(grant.upload_url, {
+      method: grant.method,
+      credentials: "omit",
+      headers: grant.headers,
+      body: file,
+    });
+    if (!response.ok) {
+      throw new Error("Rasm obyekt saqlash xizmatiga yuklanmadi.");
+    }
+  }
+
+  attachUserAvatar(
+    body: ProfileImageAttachment,
+  ): Promise<UserProfile> {
+    return this.request(
+      "PUT",
+      "/api/v1/user-profile/avatar",
+      body,
+      true,
+    );
+  }
+
+  attachBusinessLogo(
+    body: ProfileImageAttachment,
+  ): Promise<BusinessProfile> {
+    return this.request(
+      "PUT",
+      "/api/v1/business-profile/logo",
+      body,
+      true,
+    );
   }
 }
+
+
+export type { BuildInfo } from "./types";
