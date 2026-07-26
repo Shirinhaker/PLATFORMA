@@ -1,7 +1,8 @@
 from functools import lru_cache
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator
+from cryptography.fernet import Fernet
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,18 @@ class Settings(BaseSettings):
     r2_bucket: str = "koprik-development"
     r2_access_key_id: str = Field(default="")
     r2_secret_access_key: str = Field(default="")
+    telegram_bot_token: str = Field(default="")
+    telegram_bot_username: str = Field(default="")
+    telegram_webhook_secret: str = Field(default="")
+    otp_secret: str = Field(default="")
+    csrf_secret: str = Field(default="")
+    outbox_encryption_key: str = Field(default="")
+    auth_cookie_name: str = "koprik_session"
+    session_ttl_seconds: int = 30 * 24 * 60 * 60
+    telegram_link_ttl_seconds: int = 10 * 60
+    telegram_code_ttl_seconds: int = 5 * 60
+    telegram_resend_seconds: int = 60
+    telegram_max_attempts: int = 5
 
     @field_validator("cors_origins")
     @classmethod
@@ -51,6 +64,35 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return self.cors_origins.split(",") if self.cors_origins else []
+
+    @model_validator(mode="after")
+    def validate_auth_secrets(self) -> "Settings":
+        if self.environment not in {"staging", "production"}:
+            return self
+
+        required = {
+            "telegram_bot_token": self.telegram_bot_token,
+            "telegram_bot_username": self.telegram_bot_username,
+            "telegram_webhook_secret": self.telegram_webhook_secret,
+            "otp_secret": self.otp_secret,
+            "csrf_secret": self.csrf_secret,
+            "outbox_encryption_key": self.outbox_encryption_key,
+        }
+        missing = [name for name, value in required.items() if not value.strip()]
+        if missing:
+            raise ValueError(
+                "Staging va production uchun auth sirlari to‘liq bo‘lishi kerak: "
+                + ", ".join(missing)
+            )
+
+        try:
+            Fernet(self.outbox_encryption_key.encode("ascii"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "outbox_encryption_key Fernet kaliti bo‘lishi kerak."
+            ) from exc
+
+        return self
 
 
 @lru_cache
