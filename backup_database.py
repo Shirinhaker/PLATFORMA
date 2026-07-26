@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -11,6 +13,11 @@ from pathlib import Path
 
 BACKUP_PREFIX = "platforma-"
 BACKUP_SUFFIX = ".sqlite3"
+MANIFEST_SUFFIX = ".manifest.json"
+
+
+def backup_manifest_path(backup_path):
+    return Path(str(backup_path) + MANIFEST_SUFFIX)
 
 
 def _backup_files(backup_dir: Path):
@@ -35,6 +42,8 @@ def prune_database_backups(backup_dir: str, retention: int = 14):
     removed = []
     for path in _backup_files(folder)[keep:]:
         path.unlink()
+        manifest = backup_manifest_path(path)
+        manifest.unlink(missing_ok=True)
         removed.append(str(path))
     return removed
 
@@ -69,6 +78,23 @@ def create_database_backup(db_path: str, backup_dir: str, retention: int = 14):
         source.close()
 
     os.chmod(target_path, 0o600)
+    digest = hashlib.sha256()
+    with target_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    manifest_path = backup_manifest_path(target_path)
+    manifest = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source_size": source_path.stat().st_size,
+        "backup_file": target_path.name,
+        "sha256": digest.hexdigest(),
+        "integrity": "ok",
+    }
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(manifest_path, 0o600)
     prune_database_backups(str(target_dir), retention=retention)
     return str(target_path)
 
