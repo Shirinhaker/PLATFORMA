@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1654 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1655 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -1343,9 +1343,29 @@
     flex-direction:column;
     align-items:center;
     text-align:center;
+    position:relative;
     padding:24px 18px;
     margin:4px 0 16px;
   }
+  .profile-action-wrap{position:absolute;right:10px;top:10px;z-index:8;}
+  .profile-more{
+    width:44px;height:44px;border:1px solid var(--line);border-radius:13px;
+    background:var(--card);color:var(--ink);font:800 24px/1 var(--font-b);
+    display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);
+  }
+  .profile-action-menu{
+    position:absolute;right:0;top:49px;width:min(220px,calc(100vw - 42px));
+    padding:6px;border:1px solid var(--line);border-radius:13px;
+    background:var(--card);box-shadow:var(--shadow-lg);text-align:left;
+  }
+  .profile-action-menu[hidden]{display:none!important;}
+  .profile-action-menu button{
+    width:100%;min-height:44px;border:0;border-radius:9px;padding:10px 12px;
+    background:transparent;color:#c62828;text-align:left;
+    font:700 14px/1.35 var(--font-b);cursor:pointer;
+  }
+  .profile-action-menu button:active{background:var(--primary-tint);}
+  .public-business-heading{position:relative;padding-right:50px;}
   [data-ui-release="v1647"] .specialist-card{
     --ink:#edf7f3;
     --soft:#9eb1aa;
@@ -2163,11 +2183,11 @@
             </div>
             <div class="ad-targets" id="baTargets"></div>
           </div>
-          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="baStart"></div>
-          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="baAllDay" checked> Kun bo'yi ko'rinsin</label><div id="baDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><input class="input" type="time" id="baDailyStart" value="19:00" aria-label="Kunlik boshlanish"><span>—</span><input class="input" type="time" id="baDailyEnd" value="21:00" aria-label="Kunlik tugash"></div><div class="idesc" id="baDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
-          <div class="field"><label>Qancha vaqt?</label><select class="input" id="baDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
+          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="date" id="baStart"></div>
+          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="baAllDay" checked> Kun bo'yi ko'rinsin</label><div id="baDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><select class="input" id="baDailyStart" aria-label="Kunlik boshlanish"><option value="00:00">00:00</option><option value="01:00">01:00</option><option value="02:00">02:00</option><option value="03:00">03:00</option><option value="04:00">04:00</option><option value="05:00">05:00</option><option value="06:00">06:00</option><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="12:00">12:00</option><option value="13:00">13:00</option><option value="14:00">14:00</option><option value="15:00">15:00</option><option value="16:00">16:00</option><option value="17:00">17:00</option><option value="18:00">18:00</option><option value="19:00" selected>19:00</option><option value="20:00">20:00</option><option value="21:00">21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option></select><span>—</span><select class="input" id="baDailyEnd" aria-label="Kunlik tugash"><option value="00:00">00:00</option><option value="01:00">01:00</option><option value="02:00">02:00</option><option value="03:00">03:00</option><option value="04:00">04:00</option><option value="05:00">05:00</option><option value="06:00">06:00</option><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="12:00">12:00</option><option value="13:00">13:00</option><option value="14:00">14:00</option><option value="15:00">15:00</option><option value="16:00">16:00</option><option value="17:00">17:00</option><option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option><option value="21:00" selected>21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option></select></div><div class="idesc" id="baDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
+          <div class="field"><label>Qancha vaqt?</label><select class="input" id="baDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun</option><option value="14">14 kun</option><option value="30">30 kun</option></select></div>
           <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="baPrice">0 so'm</div><div class="idesc" id="baPriceNote">Hududni tanlang.</div></div>
-          <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
+          <div class="ad-info">Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama tasdiqlangandan keyin jadval bo'yicha ko'rinadi.</div>
           <button class="btn btn-primary btn-block" id="baSubmit">Reklamani joylashtirish</button>
         </div>
       </section>
@@ -2455,11 +2475,11 @@
             </div>
             <div class="ad-targets" id="uaTargets"></div>
           </div>
-          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="datetime-local" id="uaStart"></div>
-          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="uaAllDay" checked> Kun bo'yi ko'rinsin</label><div id="uaDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><input class="input" type="time" id="uaDailyStart" value="19:00" aria-label="Kunlik boshlanish"><span>—</span><input class="input" type="time" id="uaDailyEnd" value="21:00" aria-label="Kunlik tugash"></div><div class="idesc" id="uaDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
-          <div class="field"><label>Qancha vaqt?</label><select class="input" id="uaDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun (10% chegirma)</option><option value="14">14 kun (15% chegirma)</option><option value="30">30 kun (25% chegirma)</option></select></div>
+          <div class="field"><label>Qachondan ko'rinsin?</label><input class="input" type="date" id="uaStart"></div>
+          <div class="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label><label style="display:flex;align-items:center;gap:9px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:13px"><input type="checkbox" id="uaAllDay" checked> Kun bo'yi ko'rinsin</label><div id="uaDailyTimes" style="display:none;gap:9px;align-items:center;margin-top:9px"><select class="input" id="uaDailyStart" aria-label="Kunlik boshlanish"><option value="00:00">00:00</option><option value="01:00">01:00</option><option value="02:00">02:00</option><option value="03:00">03:00</option><option value="04:00">04:00</option><option value="05:00">05:00</option><option value="06:00">06:00</option><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="12:00">12:00</option><option value="13:00">13:00</option><option value="14:00">14:00</option><option value="15:00">15:00</option><option value="16:00">16:00</option><option value="17:00">17:00</option><option value="18:00">18:00</option><option value="19:00" selected>19:00</option><option value="20:00">20:00</option><option value="21:00">21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option></select><span>—</span><select class="input" id="uaDailyEnd" aria-label="Kunlik tugash"><option value="00:00">00:00</option><option value="01:00">01:00</option><option value="02:00">02:00</option><option value="03:00">03:00</option><option value="04:00">04:00</option><option value="05:00">05:00</option><option value="06:00">06:00</option><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option><option value="11:00">11:00</option><option value="12:00">12:00</option><option value="13:00">13:00</option><option value="14:00">14:00</option><option value="15:00">15:00</option><option value="16:00">16:00</option><option value="17:00">17:00</option><option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option><option value="21:00" selected>21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option></select></div><div class="idesc" id="uaDailyHint" style="margin-top:6px">Reklama kun davomida uzluksiz ko'rinadi.</div></div>
+          <div class="field"><label>Qancha vaqt?</label><select class="input" id="uaDays"><option value="1">1 kun</option><option value="3">3 kun</option><option value="7">7 kun</option><option value="14">14 kun</option><option value="30">30 kun</option></select></div>
           <div class="ad-price-box"><div class="idesc">Hisoblangan reklama narxi</div><div class="price" id="uaPrice">0 so'm</div><div class="idesc" id="uaPriceNote">Hududni tanlang.</div></div>
-          <div class="ad-info">Hozircha to'lov tizimi ulanmagan. Sinov bosqichida reklama joylashtirilgach belgilangan vaqtda avtomatik ko'rinadi.</div>
+          <div class="ad-info">Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama tasdiqlangandan keyin jadval bo'yicha ko'rinadi.</div>
           <button class="btn btn-primary btn-block" id="uaSubmit">Reklamani joylashtirish</button>
         </div>
       </section>
@@ -4807,12 +4827,149 @@
     return html;
   }
 
+  var PROFILE_REPORT_PENDING_KEY="koprik_profile_report_pending_v1655";
+  var PROFILE_REPORT_REASONS=[
+    {value:"fraud",label:"Yolg‘on yoki noto‘g‘ri ma’lumot / firibgarlik"},
+    {value:"spam",label:"Keraksiz yoki takroriy reklama"},
+    {value:"illegal",label:"Noqonuniy yoki taqiqlangan faoliyat"},
+    {value:"abuse",label:"Haqorat, bezovta qilish yoki nomaqbul xatti-harakat"},
+    {value:"other",label:"Boshqa sabab"}
+  ];
+
+  function savePendingProfileReport(kind,id){
+    if(["profile","business"].indexOf(kind)<0)return;
+    try{
+      sessionStorage.setItem(PROFILE_REPORT_PENDING_KEY,JSON.stringify({
+        kind:kind,
+        id:Number(id),
+        expires_at:Date.now()+15*60*1000
+      }));
+    }catch(e){}
+  }
+  function clearPendingProfileReport(){
+    try{sessionStorage.removeItem(PROFILE_REPORT_PENDING_KEY);}catch(e){}
+  }
+  function readPendingProfileReport(){
+    try{
+      var raw=sessionStorage.getItem(PROFILE_REPORT_PENDING_KEY);
+      if(!raw)return null;
+      var value=JSON.parse(raw);
+      if(!value || ["profile","business"].indexOf(value.kind)<0 ||
+         !Number(value.id) || Number(value.expires_at||0)<=Date.now()){
+        clearPendingProfileReport();
+        return null;
+      }
+      return value;
+    }catch(e){
+      clearPendingProfileReport();
+      return null;
+    }
+  }
+  function isOwnReportTarget(kind,id){
+    if(!ME||!ME.registered)return false;
+    var targetId=Number(id);
+    if(kind==="profile")return Number(ME.id)===targetId;
+    if(kind==="business")return Number(ME.business_id)===targetId;
+    return false;
+  }
+  function profileActionMenuHtml(kind,id){
+    if(isOwnReportTarget(kind,id))return "";
+    return '<div class="profile-action-wrap">'+
+      '<button type="button" class="profile-more" data-profile-menu-toggle="'+esc(kind)+':'+Number(id)+'" aria-label="Profil amallari" aria-expanded="false">⋮</button>'+
+      '<div class="profile-action-menu" data-profile-report-menu="'+esc(kind)+':'+Number(id)+'" hidden>'+
+        '<button type="button" data-profile-report="'+esc(kind)+':'+Number(id)+'">Shikoyat qilish</button>'+
+      '</div>'+
+    '</div>';
+  }
+  function submitProfileReport(kind,id,reasonCode,comment){
+    return api("POST","/api/reports",{
+      content_kind:kind,
+      content_id:Number(id),
+      reason_code:reasonCode,
+      comment:comment
+    });
+  }
+  function openProfileReport(kind,id){
+    if(isOwnReportTarget(kind,id)){
+      showMsg("O‘z profilingiz ustidan shikoyat qilib bo‘lmaydi.");
+      return;
+    }
+    if(!ME||!ME.registered){
+      savePendingProfileReport(kind,id);
+      showLogin("shikoyat yuborish");
+      return;
+    }
+    askInput({
+      title:"Profil ustidan shikoyat",
+      okText:"Yuborish",
+      fields:[
+        {
+          key:"reason",label:"Sababi",required:true,
+          placeholder:"Sababni tanlang",options:PROFILE_REPORT_REASONS
+        },
+        {
+          key:"comment",label:"Qo‘shimcha izoh — ixtiyoriy",
+          placeholder:"500 belgigacha",multiline:true,maxlength:500
+        }
+      ]
+    }).then(function(data){
+      if(!data)return;
+      var comment=(data.comment||"").trim();
+      if(comment.length>500){
+        showMsg("Izoh 500 belgidan oshmasin.");
+        return;
+      }
+      return submitProfileReport(kind,id,data.reason,comment).then(function(){
+        showMsg("Shikoyatingiz yuborildi.");
+      }).catch(function(error){
+        showMsg(error.message||"Shikoyat yuborilmadi.");
+      });
+    });
+  }
+  function resumePendingProfileReport(){
+    var pending=readPendingProfileReport();
+    if(!pending||!ME||!ME.registered)return false;
+    clearPendingProfileReport();
+    var opened=pending.kind==="business"
+      ?openBizPage(pending.id)
+      :openUser(pending.id);
+    Promise.resolve(opened).then(function(profile){
+      if(profile&&!isOwnReportTarget(pending.kind,pending.id)){
+        openProfileReport(pending.kind,pending.id);
+      }
+    });
+    return true;
+  }
+  document.addEventListener("click",function(e){
+    var toggle=e.target.closest("[data-profile-menu-toggle]");
+    var report=e.target.closest("[data-profile-report]");
+    document.querySelectorAll("[data-profile-report-menu]").forEach(function(menu){
+      var same=toggle&&menu.getAttribute("data-profile-report-menu")===toggle.getAttribute("data-profile-menu-toggle");
+      menu.hidden=same?!menu.hidden:true;
+      var button=document.querySelector('[data-profile-menu-toggle="'+menu.getAttribute("data-profile-report-menu")+'"]');
+      if(button)button.setAttribute("aria-expanded",menu.hidden?"false":"true");
+    });
+    if(toggle){
+      e.preventDefault();
+      return;
+    }
+    if(report){
+      e.preventDefault();
+      var parts=(report.getAttribute("data-profile-report")||"").split(":");
+      openProfileReport(parts[0],parseInt(parts[1],10));
+    }
+  });
+
   /* ---------- FOYDALANUVCHI OMMAVIY SAHIFASI ---------- */
   function openUser(userId){
     el("userBody").innerHTML = '<div class="idesc" style="padding:20px">Yuklanmoqda...</div>';
     nav("user-page");
-    api("GET","/api/user/"+userId).then(renderUser).catch(function(e){
+    return api("GET","/api/user/"+userId).then(function(user){
+      renderUser(user);
+      return user;
+    }).catch(function(e){
       el("userBody").innerHTML = '<div class="empty"><h3>Topilmadi</h3><p>'+esc(e.message)+'</p></div>';
+      return null;
     });
   }
   function renderUser(u){
@@ -4836,6 +4993,7 @@
         '<div style="font-size:20px;font-weight:800;margin-top:10px">'+esc(u.name||"Foydalanuvchi")+'</div>'+
         (u.pub_username?'<div class="idesc">@'+esc(u.pub_username)+'</div>':'')+
         (u.followers?'<div class="idesc" style="margin-top:2px">'+u.followers+' obunachi</div>':'')+
+        profileActionMenuHtml("profile",u.id)+
       '</div>'+
       profileStoriesHtml("user",u.id)+
       spHtml+
@@ -4931,8 +5089,12 @@
     el("bizBody").innerHTML = '<div class="idesc" style="padding:20px">Yuklanmoqda...</div>';
     if(el("tbTitle")) el("tbTitle").textContent = "Do'kon";
     nav("business");
-    api("GET","/api/business/"+id).then(renderBizPage).catch(function(e){
+    return api("GET","/api/business/"+id).then(function(business){
+      renderBizPage(business);
+      return business;
+    }).catch(function(e){
       el("bizBody").innerHTML = '<div class="empty"><h3>Topilmadi</h3><p>'+esc(e.message)+'</p></div>';
+      return null;
     });
   }
   function renderBizPage(b){
@@ -4966,6 +5128,7 @@
         (b.phone?'<div class="idesc" style="margin-top:2px">📞 '+esc(b.phone)+'</div>':'')+
         (b.followers?'<div class="idesc" style="margin-top:2px">'+b.followers+' obunachi</div>':'')+
         (b.descr?'<div class="biz-desc" style="margin-top:8px">'+esc(b.descr)+'</div>':'')+
+        profileActionMenuHtml("business",b.id)+
       '</div>'+
       profileStoriesHtml("business",b.id)+
       queueBanner+
@@ -5571,7 +5734,7 @@
   }
 
   function openBizSrv(id, focusItemId){
-    api("GET","/api/business/"+id+"?"+actorQuery()).then(function(b){
+    return api("GET","/api/business/"+id+"?"+actorQuery()).then(function(b){
       curFollow = {kind:"business", id:b.id};
       resetOrderDraft(b.id, b.name);
       // Savatcha uchun: joriy do'kon + mahsulotlar lug'ati (stepper qayta chizish uchun)
@@ -5587,9 +5750,12 @@
       var elonsBlock = (b.listings&&b.listings.length) ? '<div class="sec-head"><h2>E\'lonlari</h2><span class="link">'+b.listings.length+' ta</span></div>'+elons : '';
       el("bizBody").innerHTML =
         '<div class="biz-hero" style="background:var(--primary-tint)"><div class="emoji">🏪</div><span class="htag">'+esc(b.yon||"")+'</span></div>'+
-        '<div class="biz-title">'+esc(b.name)+'</div>'+
-        '<div class="biz-sub"><span>'+esc(b.tur||"")+'</span>'+(b.address?'<span class="dot-sep"></span><span>'+esc(b.address)+'</span>':'')+'<span class="dot-sep"></span><span>'+b.followers+' obunachi</span></div>'+
-        (b.descr?'<div class="biz-desc">'+esc(b.descr)+'</div>':'')+
+        '<div class="public-business-heading">'+
+          '<div class="biz-title">'+esc(b.name)+'</div>'+
+          '<div class="biz-sub"><span>'+esc(b.tur||"")+'</span>'+(b.address?'<span class="dot-sep"></span><span>'+esc(b.address)+'</span>':'')+'<span class="dot-sep"></span><span>'+b.followers+' obunachi</span></div>'+
+          (b.descr?'<div class="biz-desc">'+esc(b.descr)+'</div>':'')+
+          profileActionMenuHtml("business",b.id)+
+        '</div>'+
         profileStoriesHtml("business",b.id)+
         // Yuqori tugmalar: Obuna / Xabar / Bog'lanish (avval pastda edi — #2)
         '<div style="display:flex;gap:8px;margin:14px 0 6px">'+
@@ -5641,7 +5807,8 @@
         });
         var em=el("bizSearchEmpty"); if(em) em.style.display = (q && shown===0) ? "block" : "none";
       });
-    }).catch(function(e){ showMsg(e.message); });
+      return b;
+    }).catch(function(e){ showMsg(e.message); return null; });
   }
 
   /* ---------- BUYURTMALAR / NAVBATLAR ---------- */
@@ -8527,8 +8694,12 @@
         applyPrivilegedVisibility();
         updateHomeStoriesVisibility();
       }
-    }).catch(function(){});
-    nav(role==="business" ? "cabinet" : "ucab");
+      if(!resumePendingProfileReport()){
+        nav(role==="business" ? "cabinet" : "ucab");
+      }
+    }).catch(function(){
+      nav(role==="business" ? "cabinet" : "ucab");
+    });
     startActionNotifyPolling();
   }
 
@@ -11607,7 +11778,9 @@
       var quantity=Math.max(1,parseInt(PAYMENT_CONTEXT.target&&PAYMENT_CONTEXT.target.quantity||1,10)||1);
       el("paymentRequestSubtitle").textContent=PAYMENT_CONTEXT.subtitle||"Kvitansiyani yuboring";
       el("paymentServiceLabel").textContent=PAYMENT_CONTEXT.label||paymentServiceLabel(PAYMENT_CONTEXT.service_type,PAYMENT_CONTEXT.target&&PAYMENT_CONTEXT.target.plan_code);
-      el("paymentAmountLabel").textContent=fmtMoney(Number(price.amount_uzs||0)*quantity);
+      var catalogAmount=Number(price.amount_uzs||0)*quantity;
+      var displayAmount=Number(PAYMENT_CONTEXT.display_amount||0);
+      el("paymentAmountLabel").textContent=fmtMoney(displayAmount>0?displayAmount:catalogAmount);
       var methods=catalog.payment_methods||[];
       if(!methods.length)throw new Error("To‘lov usuli hali sozlanmagan.");
       el("paymentMethodSelect").innerHTML=methods.map(function(method){return '<option value="'+method.id+'">'+esc(method.name)+'</option>';}).join("");
@@ -11632,14 +11805,15 @@
     }).catch(function(){});
   }
   function openAdvertisementPayment(ad,actor){
-    var days=Math.max(1,parseInt(ad&&ad.duration_days||1,10)||1);
+    var quantity=Math.max(1,parseInt(ad&&ad.billable_district_hours||1,10)||1);
     openPaymentRequest({
       actor_type:actor==="business"?"business":"user",
       service_type:"advertisement",
-      price_code:"advertisement_district_day",
-      label:"Reklama · "+days+" kun",
+      price_code:"advertisement_district_hour",
+      label:"Reklama · "+quantity+" tuman-soat",
       subtitle:"Reklama administrator tasdig‘idan keyin ko‘rsatiladi.",
-      target:{target_id:Number(ad.id),quantity:days}
+      display_amount:Number(ad.price||0),
+      target:{target_id:Number(ad.id)}
     }).catch(function(){});
   }
   function submitPaymentRequest(){
@@ -12469,6 +12643,13 @@
                  selectOptionsHtml(Array.isArray(f.options)?f.options:[],f.value,f.placeholder)+
                  '</select>';
         }
+        if(f.multiline){
+          var max=Math.max(1,Math.min(5000,parseInt(f.maxlength||500,10)||500));
+          return label+'<textarea class="textarea" data-ai="'+i+'" '+
+                 'maxlength="'+max+'"'+
+                 ' placeholder="'+esc(f.placeholder||"")+'">'+
+                 esc(f.value||"")+'</textarea>';
+        }
         return label+'<input class="input" data-ai="'+i+'" type="text"'+(f.numeric?' inputmode="numeric"':'')+
                ' placeholder="'+esc(f.placeholder||"")+'" value="'+esc(f.value||"")+'">';
       }).join("");
@@ -13206,9 +13387,9 @@
     el(prefix+"DailyHint").textContent=all?"Reklama kun davomida uzluksiz ko'rinadi.":("Har kuni "+start+" dan "+end+" gacha ko'rinadi"+(start>end?" (ertasi kungacha).":"."));
   }
   function adSetDefaultStart(prefix){
-    var d=new Date(Date.now()+5*60000); d.setSeconds(0,0);
+    var d=new Date();
     var pad=function(n){return String(n).padStart(2,"0");};
-    el(prefix+"Start").value=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+    el(prefix+"Start").value=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
   }
   function adFillRegions(prefix){
     var regs=window.UZ_REGIONS||[];
@@ -13232,10 +13413,13 @@
   }
   function calcAdPrice(prefix){
     var st=AD_FORM[prefix], days=parseInt(el(prefix+"Days").value,10)||1;
+    var allDay=el(prefix+"AllDay").checked;
+    var dailyStart=el(prefix+"DailyStart").value||"00:00";
+    var dailyEnd=el(prefix+"DailyEnd").value||"00:00";
     if(!st.targets.length){ el(prefix+"Price").textContent="0 so'm"; el(prefix+"PriceNote").textContent="Hududni tanlang."; return; }
-    api("POST","/api/advertisements/price",{targets:st.targets,duration_days:days}).then(function(p){
+    api("POST","/api/advertisements/price",{targets:st.targets,duration_days:days,daily_all_day:allDay,daily_start:dailyStart,daily_end:dailyEnd}).then(function(p){
       el(prefix+"Price").textContent=fmtMoney(p.total);
-      el(prefix+"PriceNote").textContent="Kunlik "+fmtMoney(p.daily)+(p.discount?(" · "+p.discount+"% chegirma"):"")+" · "+p.days+" kun";
+      el(prefix+"PriceNote").textContent=p.district_count+" tuman × "+p.hours_per_day+" soat × "+p.duration_days+" kun × "+fmtMoney(p.district_hour_rate);
     }).catch(function(e){ el(prefix+"PriceNote").textContent=e.message; });
   }
   function resetAdForm(prefix){
@@ -13260,9 +13444,9 @@
     cropStage.addEventListener("pointerup",stopCropDrag);cropStage.addEventListener("pointercancel",stopCropDrag);
     el(prefix+"CropZoom").addEventListener("input",function(){st.crop_zoom=Math.max(1,Math.min(3,parseFloat(this.value)||1));renderAdCrop(prefix);});
     el(prefix+"CropReset").addEventListener("click",function(){resetAdCrop(prefix);});
-    el(prefix+"AllDay").addEventListener("change",function(){adDailyUi(prefix);});
-    el(prefix+"DailyStart").addEventListener("input",function(){adDailyUi(prefix);});
-    el(prefix+"DailyEnd").addEventListener("input",function(){adDailyUi(prefix);});
+    el(prefix+"AllDay").addEventListener("change",function(){adDailyUi(prefix);calcAdPrice(prefix);});
+    el(prefix+"DailyStart").addEventListener("change",function(){adDailyUi(prefix);calcAdPrice(prefix);});
+    el(prefix+"DailyEnd").addEventListener("change",function(){adDailyUi(prefix);calcAdPrice(prefix);});
     el(prefix+"ImageBtn").addEventListener("click",function(){ el(prefix+"ImageInput").click(); });
     el(prefix+"ImageRemove").addEventListener("click",function(){
       requestAdImageRemoval(prefix);
@@ -13336,7 +13520,6 @@
       var allDay=el(prefix+"AllDay").checked,dailyStart=el(prefix+"DailyStart").value,dailyEnd=el(prefix+"DailyEnd").value;
       if(!allDay&&(!dailyStart||!dailyEnd)){showMsg("Kunlik boshlanish va tugash vaqtini tanlang.");return;}
       if(!allDay&&dailyStart===dailyEnd){showMsg("Kunlik boshlanish va tugash vaqti bir xil bo'lmasin.");return;}
-      var startAt=Math.floor(new Date(start).getTime()/1000); if(!isFinite(startAt)){ showMsg("Boshlanish vaqti noto'g'ri."); return; }
       var btn=this; btn.disabled=true; btn.textContent="Joylashtirilmoqda...";
       var up=st.image_file?Promise.resolve({image_file:st.image_file}):uploadRaw("POST","/api/advertisements/image?actor_type="+st.actor,st.file);
       up.then(function(r){
@@ -13347,7 +13530,7 @@
         return mobileUp;
       }).then(function(r){
         st.mobile_image_file=r.image_file||"";
-        return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,mobile_image_file:st.mobile_image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"23:59",targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1});
+        return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,mobile_image_file:st.mobile_image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"00:00",targets:st.targets,start_date:start,duration_days:parseInt(el(prefix+"Days").value,10)||1});
       })
       .then(function(ad){
         showMsg("Reklama saqlandi. Endi to‘lov kvitansiyasini yuboring.");
@@ -13365,7 +13548,8 @@
         var start=new Date(a.start_at*1000).toLocaleString("uz-UZ");
         var daily=a.daily_all_day?"Kun bo'yi":("Har kuni "+a.daily_start+"–"+a.daily_end);
         var crop='object-position:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%;transform:scale('+(a.crop_zoom||1)+');transform-origin:'+(a.crop_x==null?50:a.crop_x)+'% '+(a.crop_y==null?50:a.crop_y)+'%';
-        return '<div class="ad-own-card"><div class="ad-own-top"><div style="width:76px;height:48px;overflow:hidden;border-radius:10px;background:var(--line);flex:none"><img src="'+esc(a.image_file)+'" alt="" style="width:100%;height:100%;'+crop+'"></div><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(start)+' · '+a.duration_days+' kun</div><div class="li-meta">🕒 '+esc(daily)+'</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
+        var billing=a.district_count>0?(a.district_count+" tuman · kuniga "+a.hours_per_day+" soat · "+a.duration_days+" kun"):(esc(start)+" · "+a.duration_days+" kun · "+esc(daily));
+        return '<div class="ad-own-card"><div class="ad-own-top"><div style="width:76px;height:48px;overflow:hidden;border-radius:10px;background:var(--line);flex:none"><img src="'+esc(a.image_file)+'" alt="" style="width:100%;height:100%;'+crop+'"></div><div style="flex:1;min-width:0"><div class="li-title">'+esc(a.title)+'</div><div class="li-meta">'+esc(tg)+'</div><div class="li-meta">'+esc(billing)+'</div></div><span class="ad-status '+esc(a.status)+'">'+esc(adStatusLabel(a.status))+'</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><b style="color:var(--primary)">'+fmtMoney(a.price)+'</b><span class="li-meta">👁 '+a.views+' · ↗ '+a.clicks+'</span></div>'+(a.status!=="cancelled"&&a.status!=="ended"?'<button class="btn btn-outline btn-block" style="height:40px;margin-top:9px;color:#DC2626" data-ad-del="'+a.id+'" data-ad-actor="'+actor+'">Bekor qilish</button>':'')+'</div>';
       }).join("");
     }).catch(function(e){ el(boxId).innerHTML='<p class="elon-hint">'+esc(e.message)+'</p>'; });
   }
@@ -13832,6 +14016,7 @@
         applyPrivilegedVisibility();
         loggedIn = true;
         updateHomeStoriesVisibility();
+        resumePendingProfileReport();
         // saqlangan manzilni tiklaymiz: matn qaytadi, xarita esa pin chiqarmasdan shu tuman/viloyatga boradi.
         if(d.region || d.district || d.mahalla || (d.lat!=null && d.lng!=null)){
           applyHomeLocation(d.region||"", d.district||"", d.mahalla||"", d.lat, d.lng, 13);
