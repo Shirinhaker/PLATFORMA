@@ -20,6 +20,9 @@ import os
 import sqlite3
 
 from location_keys import canonical_district_key
+from payments import ensure_payment_schema
+from admin_audit import ensure_admin_audit_schema
+from moderation import ensure_moderation_schema
 
 DB_PATH = os.environ.get("DB_PATH", "platforma.db")
 DISTRICT_KEY_BACKFILL_MARKER = "users_district_key_backfill_v1"
@@ -480,11 +483,20 @@ def ensure_user_district_keys(conn):
 
 def _migrate(conn):
     """Eski bazaga yetishmayotgan ustun va jadvallarni xavfsiz qo'shadi (ma'lumot yo'qolmaydi)."""
+    from feature_flags import ensure_feature_flag_schema
+    from admin_auth import ensure_admin_auth_schema
     from stories import ensure_story_tables
     from subscriptions import init_subscription_schema
+    from notification_delivery import ensure_notification_delivery_schema
 
+    ensure_feature_flag_schema(conn)
+    ensure_payment_schema(conn)
+    ensure_admin_auth_schema(conn)
+    ensure_admin_audit_schema(conn)
+    ensure_moderation_schema(conn)
     ensure_story_tables(conn)
     init_subscription_schema(conn)
+    ensure_notification_delivery_schema(conn)
     conn.execute("""CREATE TABLE IF NOT EXISTS profile_images(
         owner_kind TEXT NOT NULL, owner_id INTEGER NOT NULL, mime_type TEXT NOT NULL,
         content BLOB NOT NULL, updated_at INTEGER NOT NULL,
