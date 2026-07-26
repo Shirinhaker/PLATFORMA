@@ -1,19 +1,20 @@
 from dataclasses import dataclass
 import secrets
+from typing import Literal
 
 import boto3
 
+from app.accounts.model import AccountType
 from app.core.config import Settings
 
 
-ALLOWED_CONTENT_TYPES = {
+PROFILE_IMAGE_TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/webp": ".webp",
-    "video/mp4": ".mp4",
-    "application/pdf": ".pdf",
+    "image/gif": ".gif",
 }
-MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+MAX_PROFILE_IMAGE_BYTES = 8 * 1024 * 1024
 
 
 class UploadRejected(ValueError):
@@ -37,20 +38,42 @@ class R2Storage:
     def create_upload_grant(
         self,
         *,
-        actor_id: int,
+        owner_type: AccountType,
+        owner_id: int,
+        purpose: Literal["avatar", "logo"],
         filename: str,
         content_type: str,
         size_bytes: int,
     ) -> UploadGrant:
-        if content_type not in ALLOWED_CONTENT_TYPES:
-            raise UploadRejected("Fayl turi ruxsat etilmagan.")
-        if size_bytes < 1 or size_bytes > MAX_UPLOAD_BYTES:
-            raise UploadRejected("Fayl hajmi ruxsat etilgan chegaradan tashqarida.")
-        suffix = ALLOWED_CONTENT_TYPES[content_type]
+        allowed_purpose = (
+            owner_type is AccountType.USER and purpose == "avatar"
+        ) or (
+            owner_type is AccountType.BUSINESS and purpose == "logo"
+        )
+        if not allowed_purpose:
+            raise UploadRejected("Bu rasm turi akkauntga mos emas.")
+        if content_type not in PROFILE_IMAGE_TYPES:
+            raise UploadRejected("Rasm turi ruxsat etilmagan.")
+        if not 1 <= size_bytes <= MAX_PROFILE_IMAGE_BYTES:
+            raise UploadRejected("Rasm hajmi 8 MB dan oshmasin.")
+        suffix = PROFILE_IMAGE_TYPES[content_type]
         object_key = (
-            f"private/uploads/{actor_id}/"
+            f"private/{owner_type.value}/{owner_id}/{purpose}/"
             f"{secrets.token_hex(16)}{suffix}"
         )
+        return self._presigned_put(
+            object_key,
+            content_type,
+            expires_in=900,
+        )
+
+    def _presigned_put(
+        self,
+        object_key: str,
+        content_type: str,
+        *,
+        expires_in: int,
+    ) -> UploadGrant:
         upload_url = self.client.generate_presigned_url(
             "put_object",
             Params={
@@ -58,14 +81,14 @@ class R2Storage:
                 "Key": object_key,
                 "ContentType": content_type,
             },
-            ExpiresIn=900,
+            ExpiresIn=expires_in,
         )
         return UploadGrant(
             object_key=object_key,
             upload_url=upload_url,
             method="PUT",
             headers={"Content-Type": content_type},
-            expires_in_seconds=900,
+            expires_in_seconds=expires_in,
         )
 
 
