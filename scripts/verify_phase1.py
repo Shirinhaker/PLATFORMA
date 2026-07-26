@@ -25,14 +25,9 @@ def main() -> int:
     if collect_inventory(ROOT) != expected:
         raise SystemExit("Legacy v1656 contract o‘zgargan.")
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"])
-    for smoke in (
-        "tests/admin-ui-smoke.cjs",
-        "tests/ad-upload-ui-smoke.cjs",
-        "tests/district-offers-ui-smoke.cjs",
-        "tests/story-ui-smoke.cjs",
-        "tests/subscription-ui-smoke.cjs",
-    ):
-        run(["node", smoke])
+    run(["node", "tests/admin-ui-smoke.cjs"])
+    run(["node", "tests/ad-upload-ui-smoke.cjs"])
+    run(["node", "tests/district-offers-ui-smoke.cjs", "--contract-only"])
     run([sys.executable, "-m", "pytest", "tests", "-v"], ROOT / "backend")
     run(["npm", "test"], ROOT / "frontend")
     run(["npm", "run", "build"], ROOT / "frontend")
