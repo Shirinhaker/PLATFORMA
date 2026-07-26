@@ -86,6 +86,21 @@ def init_subscription_schema(conn):
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_business_subscriptions_active "
         "ON business_subscriptions(business_id) WHERE status='active'"
     )
+    columns = {
+        row["name"] if hasattr(row, "keys") else row[1]
+        for row in conn.execute("PRAGMA table_info(business_subscriptions)")
+    }
+    if "payment_request_id" not in columns:
+        conn.execute(
+            "ALTER TABLE business_subscriptions "
+            "ADD COLUMN payment_request_id INTEGER"
+        )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS "
+        "uq_business_subscriptions_payment_request "
+        "ON business_subscriptions(payment_request_id) "
+        "WHERE payment_request_id IS NOT NULL"
+    )
 
 
 def subscription_entitlements(plan_code):
@@ -264,6 +279,71 @@ def activate_demo_subscription(conn, business_id, plan_code, duration_months, no
     except Exception:
         conn.rollback()
         raise
+
+
+def activate_paid_subscription(
+    conn,
+    business_id,
+    plan_code,
+    duration_months,
+    payment_request_id,
+    now=None,
+):
+    """Activate one paid plan inside the caller's review transaction."""
+    code, duration = _validate_activation(plan_code, duration_months)
+    if code == "free":
+        raise SubscriptionValidationError("Bepul tarif to‘lov talab qilmaydi.")
+    business_id = int(business_id)
+    payment_request_id = int(payment_request_id)
+    now = int(time.time() if now is None else now)
+    if not conn.in_transaction:
+        raise RuntimeError("Paid activation requires an active transaction.")
+    existing = conn.execute(
+        """
+        SELECT * FROM business_subscriptions
+        WHERE payment_request_id=?
+        """,
+        (payment_request_id,),
+    ).fetchone()
+    if existing:
+        return _subscription_dict(existing)
+    current = _subscription_dict(
+        _active_subscription_row(conn, business_id, now)
+    )
+    base = now
+    if current and current["plan_code"] == code:
+        base = max(now, int(current["expires_at"] or 0))
+    conn.execute(
+        """
+        UPDATE business_subscriptions SET status='superseded'
+        WHERE business_id=? AND status='active'
+        """,
+        (business_id,),
+    )
+    expires_at = _add_calendar_months(base, duration)
+    cursor = conn.execute(
+        """
+        INSERT INTO business_subscriptions(
+          business_id,plan_code,duration_months,starts_at,expires_at,
+          status,is_demo,created_at,payment_request_id
+        ) VALUES(?,?,?,?,?,'active',0,?,?)
+        """,
+        (
+            business_id,
+            code,
+            duration,
+            now,
+            expires_at,
+            now,
+            payment_request_id,
+        ),
+    )
+    return _subscription_dict(
+        conn.execute(
+            "SELECT * FROM business_subscriptions WHERE id=?",
+            (cursor.lastrowid,),
+        ).fetchone()
+    )
 
 
 def subscription_payload(conn, business_id, now=None):
