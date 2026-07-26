@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1655 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1656 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -1452,7 +1452,7 @@
           <span class="badge" id="cartBadge" hidden>0</span>
           <span class="web-header-label">Savat</span>
         </button>
-        <button class="icon-btn" id="taxiCabBtn" aria-label="Taxi bo'limi" style="font-size:19px">🚖<span class="web-header-label">Taxi</span></button>
+        <button class="icon-btn" id="taxiCabBtn" data-feature="taxi" aria-label="Taxi bo'limi" style="font-size:19px" hidden>🚖<span class="web-header-label">Taxi</span></button>
         <button class="icon-btn web-only" id="desktopThemeBtn" aria-label="Rang rejimini almashtirish"></button>
         <button class="icon-btn" id="cabBtn" aria-label="Kabinet">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -1552,7 +1552,7 @@
             <div class="map-wrap">
               <div id="leafletMap" style="width:100%;height:230px;background:var(--map-land)"></div>
               <div class="map-chip" id="mapChip"></div>
-              <button class="icon-btn" id="taxiBtn" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500">🚖</button>
+              <button class="icon-btn" id="taxiBtn" data-feature="taxi" aria-label="Chaqiruv" style="position:absolute;top:12px;right:12px;font-size:19px;z-index:500" hidden>🚖</button>
               <div id="centerPin" hidden style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:36px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));pointer-events:none">📍</div>
             </div>
           </div>
@@ -3095,7 +3095,8 @@
     listings:false,
     stories:false,
     chat:false,
-    systemization:false
+    systemization:false,
+    taxi:false
   };
   function applyFeatureVisibility(){
     document.querySelectorAll("[data-feature]").forEach(function(node){
@@ -3793,7 +3794,7 @@
     if(!el("leafletMap")) return null;
     if(typeof L==="undefined") return null;
     MAIN_MAPBOX=false;
-    LMAP=L.map("leafletMap",{zoomControl:true,attributionControl:true}).setView(CENTER,14);
+    LMAP=L.map("leafletMap",{zoomControl:false,attributionControl:true}).setView(CENTER,14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(LMAP);
@@ -4253,6 +4254,7 @@
   }
   function enterCall(options){
     options=options||{};
+    if(!FEATURES.taxi){showMsg("Taxi chaqirish MVPda vaqtincha yopiq.");return;}
     if(mapMode==="result") exitResults({preserveHistory:true});
     callMode=true; callState="form"; pickMode="to";
     var phone=document.querySelector(".phone");
@@ -5458,6 +5460,10 @@
   }
   function nav(screen,options){
     options=options||{};
+    if((screen==="taxi-call"||screen==="taxidrv")&&!FEATURES.taxi){
+      showMsg("Taxi chaqirish MVPda vaqtincha yopiq.");
+      screen="home";
+    }
     if(HOME_LOCATION_REQUIRED && screen==="home") screen="loc";
     var staffCanReport=!!(STAFF_INFO&&(STAFF_INFO.perms||[]).indexOf("reports")>=0);
     if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged) && !(screen==="cab-report"&&staffCanReport)){
@@ -7856,8 +7862,8 @@
   });
   el("catSearch").addEventListener("keydown", function(e){ if(e.key==="Enter"){e.preventDefault();runSearch(this.value);} });
   el("clearSearch").addEventListener("click", exitResults);
-  el("taxiBtn").addEventListener("click", function(){ if(callMode) exitCall(); else enterCall(); });
-  el("taxiCabBtn").addEventListener("click", function(){ if(!loggedIn){ showLogin("Taxi bo'limi"); return; } openTaxiDriver(); nav("taxidrv"); });
+  el("taxiBtn").addEventListener("click", function(){ if(!FEATURES.taxi){showMsg("Taxi chaqirish MVPda vaqtincha yopiq.");return;} if(callMode) exitCall(); else enterCall(); });
+  el("taxiCabBtn").addEventListener("click", function(){ if(!FEATURES.taxi){showMsg("Taxi chaqirish MVPda vaqtincha yopiq.");return;} if(!loggedIn){ showLogin("Taxi bo'limi"); return; } openTaxiDriver(); nav("taxidrv"); });
 
   el("callPanel").addEventListener("click", function(e){
     var t;
