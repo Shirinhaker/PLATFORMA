@@ -53,6 +53,10 @@ jobs:
       - name: Install frontend
         working-directory: frontend
         run: npm ci
+      - name: Install browser smoke dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.0
+          npx playwright install --with-deps chromium
       - name: Apply foundation migration
         working-directory: backend
         run: python -m alembic upgrade head
