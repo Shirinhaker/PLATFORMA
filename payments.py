@@ -47,6 +47,11 @@ PRICE_RULES = {
         "unit": "day",
         "amount_uzs": 50_000,
     },
+    "advertisement_district_hour": {
+        "service_type": "advertisement",
+        "unit": "district_hour",
+        "amount_uzs": 20_000,
+    },
     "listing_publish": {
         "service_type": "listing",
         "amount_uzs": 10_000,
@@ -118,6 +123,7 @@ def ensure_payment_schema(conn):
           amount_snapshot INTEGER NOT NULL,
           currency TEXT NOT NULL DEFAULT 'UZS',
           price_code TEXT NOT NULL DEFAULT '',
+          target_snapshot_json TEXT NOT NULL DEFAULT '{}',
           payment_method_id INTEGER NOT NULL,
           status TEXT NOT NULL DEFAULT 'pending'
             CHECK(status IN ('pending','approved','rejected','cancelled')),
@@ -185,6 +191,15 @@ def ensure_payment_schema(conn):
         conn.execute(
             "ALTER TABLE platform_prices ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'"
         )
+    payment_columns = {
+        row["name"] if hasattr(row, "keys") else row[1]
+        for row in conn.execute("PRAGMA table_info(payment_requests)")
+    }
+    if "target_snapshot_json" not in payment_columns:
+        conn.execute(
+            "ALTER TABLE payment_requests "
+            "ADD COLUMN target_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+        )
     stamp = _now()
     conn.execute(
         """
@@ -209,12 +224,15 @@ def ensure_default_prices(conn, now=None):
             for key, value in rule.items()
             if key not in ("amount_uzs", "service_type")
         }
+        default_active = (
+            0 if price_code == "advertisement_district_day" else 1
+        )
         conn.execute(
             """
             INSERT INTO platform_prices(
               price_code,amount_uzs,service_type,config_json,active,
               created_at,updated_at
-            ) VALUES(?,?,?,?,1,?,?)
+            ) VALUES(?,?,?,?,?,?,?)
             ON CONFLICT(price_code) DO NOTHING
             """,
             (
@@ -222,10 +240,18 @@ def ensure_default_prices(conn, now=None):
                 int(rule["amount_uzs"]),
                 str(rule["service_type"]),
                 json.dumps(config, ensure_ascii=False, sort_keys=True),
+                default_active,
                 stamp,
                 stamp,
             ),
         )
+    conn.execute(
+        """
+        UPDATE platform_prices
+        SET active=0
+        WHERE price_code='advertisement_district_day'
+        """
+    )
     conn.commit()
 
 
@@ -353,7 +379,7 @@ def _payment(conn, payment_id):
 
 def create_payment_request(
     conn, *, owner, service, target, price, receipt, now,
-    receipt_claimer=None,
+    receipt_claimer=None, target_snapshot=None,
 ):
     actor_type, user_id, business_id = _validate_owner(owner)
     service = str(service or "").strip()
@@ -363,6 +389,13 @@ def create_payment_request(
     price = dict(price or {})
     amount = int(price.get("amount") or 0)
     quantity = max(1, int(target.get("quantity") or 1))
+    snapshot = target_snapshot if isinstance(target_snapshot, dict) else {}
+    snapshot_json = json.dumps(
+        snapshot,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
     if amount < 0 or str(price.get("currency") or "UZS").upper() != "UZS":
         raise PaymentValidationError("To‘lov narxi noto‘g‘ri.")
     filename, mime, digest = _validate_receipt(receipt)
@@ -384,8 +417,8 @@ def create_payment_request(
               request_code,actor_type,user_id,business_id,service_type,
               target_id,plan_code,duration_months,quantity,
               unit_price_snapshot,amount_snapshot,currency,price_code,
-              payment_method_id,status,created_at,updated_at
-            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?)
+              target_snapshot_json,payment_method_id,status,created_at,updated_at
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending',?,?)
             """,
             (
                 request_code,
@@ -401,6 +434,7 @@ def create_payment_request(
                 amount * quantity,
                 "UZS",
                 str(price.get("price_code") or ""),
+                snapshot_json,
                 method_id,
                 stamp,
                 stamp,
@@ -428,7 +462,13 @@ def create_payment_request(
             business_id or user_id,
             "",
             stamp,
-            {"price_code": str(price.get("price_code") or "")},
+            {
+                "price_code": str(price.get("price_code") or ""),
+                "billable_district_hours": snapshot.get(
+                    "billable_district_hours"
+                ),
+                "schedule_start": snapshot.get("schedule_start"),
+            },
         )
         conn.commit()
     except Exception:
@@ -458,8 +498,11 @@ def _review(
         row = _payment(conn, payment_id)
         if not row or row["status"] != expected:
             raise PaymentConflict("To‘lov holati allaqachon o‘zgargan.")
+        activation_metadata = {}
         if to_status == "approved" and activator is not None:
-            activator(conn, _dict(row), stamp)
+            activation_metadata = activator(
+                conn, _dict(row), stamp
+            ) or {}
         updates = {
             "approved": ("approved_at", stamp),
             "rejected": ("rejected_at", stamp),
@@ -509,6 +552,7 @@ def _review(
             admin_tg_id,
             reason,
             stamp,
+            activation_metadata,
         )
         if post_event is not None:
             post_event(conn, _dict(row), to_status, reason, stamp)
