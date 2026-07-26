@@ -16,6 +16,8 @@ dependencies = [
   "alembic>=1.14,<2",
   "redis>=5,<8",
   "boto3>=1.35,<2",
+  "argon2-cffi>=23.1,<26",
+  "cryptography>=44,<47",
   "python-json-logger>=3,<4",
 ]
 
