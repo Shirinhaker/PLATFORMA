@@ -23,7 +23,7 @@ function FoundationStatus({ build }: { build: BuildInfo }) {
       <div className="foundation__status-icon">
         <CheckIcon />
       </div>
-      <h1>Ko‘prik yangi platforma foundation’i tayyor</h1>
+      <h1>Koprik yangi platforma foundation’i tayyor</h1>
       <p className="foundation__phase">Phase 1</p>
       <dl className="foundation__facts">
         <div>
@@ -65,7 +65,7 @@ export function App({ api }: { api: BuildApi }) {
   return (
     <div className="app-shell">
       <header className="app-shell__header">
-        <span>Ko‘prik</span>
+        <span>Koprik</span>
       </header>
       {failed ? (
         <main className="foundation foundation--message" role="alert">
