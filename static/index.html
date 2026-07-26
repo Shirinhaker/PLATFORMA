@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
-<title>Koprik</title><!-- BUILD: v1650 --><!-- UI: approved-home-catalog -->
+<title>Koprik</title><!-- BUILD: v1654 --><!-- UI: approved-home-catalog -->
 <link rel="canonical" href="https://koprik.uz/" />
 <meta property="og:site_name" content="Koprik" />
 <meta property="og:url" content="https://koprik.uz/" />
@@ -40,6 +40,7 @@
   .dining-wrap{padding:4px 0 18px}.dining-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}.dining-add{width:44px;height:44px;border:0;border-radius:14px;background:var(--primary);color:var(--primary-ink);font-size:28px;line-height:1;box-shadow:var(--shadow);cursor:pointer}.dining-plan{position:relative;min-height:560px;border:2px dashed var(--line);border-radius:18px;background-color:var(--card);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;overflow:hidden;touch-action:none}.dining-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--soft);pointer-events:none}.dining-place{position:absolute;width:78px;min-height:58px;border:2px solid var(--primary);border-radius:13px;background:var(--card);box-shadow:var(--shadow);padding:7px 20px 6px 6px;text-align:center;user-select:none;touch-action:none}.dining-place.room{width:100px;border-color:#8B5CF6;background:var(--primary-tint)}.dining-place.booking{border-color:#E6A100;background:#FFF5D6;color:#322400}.dining-place.order{border-color:#DC2626;background:#FEE2E2;color:#3B0808}.dining-place.booking .dp-sub,.dining-place.order .dp-sub{color:inherit}.dining-place.moving{outline:3px solid var(--amber);cursor:grab;z-index:4}.dining-place .dp-icon{font-size:18px}.dining-place .dp-name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dining-place .dp-sub{font-size:10px;color:var(--soft)}.dining-place .dp-more{position:absolute;right:1px;top:1px;border:0;background:transparent;color:inherit;font-size:20px;width:23px;height:27px;cursor:pointer}.dining-menu{position:fixed;z-index:4100;min-width:205px;max-height:calc(100vh - 16px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px}.dining-menu button{width:100%;border:0;background:transparent;color:var(--ink);padding:11px 12px;text-align:left;border-radius:9px;font:600 14px var(--font-b);cursor:pointer}.dining-menu button:active{background:var(--primary-tint)}.dorder-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px}.dorder-step{display:flex;align-items:center;gap:8px}.dorder-step button{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--primary-tint);color:var(--ink);font-size:20px}.dorder-step b{min-width:22px;text-align:center}.dorder-total{position:sticky;bottom:0;background:var(--bg);padding:10px 0 4px}
   [data-privileged-only]{display:none!important}
   body.is-privileged [data-privileged-only]{display:flex!important}
+  [data-feature][hidden]{display:none!important}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   body{background:#cfd6d2;font-family:var(--font-b);color:var(--ink);display:flex;justify-content:center;min-height:100vh;}
   [data-theme="dark"] body{background:#050807;}
@@ -128,6 +129,28 @@
     .subscription-section-title{align-items:flex-start;flex-direction:column;}
     .subscription-section-title p{text-align:left;}
   }
+  .payment-list{display:grid;gap:10px;min-width:0;}
+  .payment-card{border:1px solid var(--line);border-radius:16px;background:var(--card);padding:13px;box-shadow:var(--shadow);min-width:0;}
+  .payment-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .payment-card-code{font-size:12px;color:var(--soft);margin-top:3px;overflow-wrap:anywhere;}
+  .payment-status{display:inline-flex;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap;background:var(--line);color:var(--soft);}
+  .payment-status.pending{background:var(--amber-tint);color:#865600;}
+  .payment-status.approved{background:#dcfce7;color:#166534;}
+  .payment-status.rejected,.payment-status.cancelled{background:#fee2e2;color:#991b1b;}
+  .payment-modal{position:fixed;inset:0;z-index:5200;display:none;align-items:flex-end;justify-content:center;background:rgba(3,14,12,.62);padding:12px;}
+  .payment-modal.on{display:flex;}
+  .payment-modal-card{width:min(100%,520px);max-height:92vh;overflow:auto;border:1px solid var(--line);border-radius:24px 24px 18px 18px;background:var(--card);padding:18px;box-shadow:var(--shadow-lg);}
+  .payment-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+  .payment-modal-head h2{font:800 20px/1.25 var(--font-d);}
+  .payment-modal-close{width:38px;height:38px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font-size:22px;cursor:pointer;}
+  .payment-summary{border-radius:16px;background:var(--primary-tint);padding:13px;margin-bottom:13px;}
+  .payment-summary strong{display:block;font:800 22px/1.25 var(--font-d);color:var(--primary);margin-top:4px;}
+  .payment-method-details{border:1px dashed var(--line);border-radius:13px;padding:11px;margin-top:8px;color:var(--soft);font-size:12.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .payment-receipt-preview{display:none;position:relative;width:116px;height:116px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg);margin-top:9px;}
+  .payment-receipt-preview.on{display:block;}
+  .payment-receipt-preview img{width:100%;height:100%;object-fit:cover;}
+  .payment-receipt-remove{position:absolute;right:5px;top:5px;width:27px;height:27px;border:0;border-radius:50%;background:#ef4444;color:#fff;font-size:18px;line-height:1;cursor:pointer;}
+  @media(min-width:720px){.payment-modal{align-items:center}.payment-modal-card{border-radius:24px;}}
 
   /* v1472 — Reklama boshqaruvi */
   .ad{min-height:150px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(120deg,var(--primary),#0b6f6a);}
@@ -181,6 +204,7 @@
   .ad-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:800;}
   .ad-status.ended,.ad-status.cancelled{background:var(--line);color:var(--soft);}
   .ad-status.scheduled{background:var(--amber-tint);color:#8a5a06;}
+  .ad-status.payment_pending{background:var(--amber-tint);color:#8a5a06;}
 
   /* status bar (preview only) */
   .statusbar{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:12.5px;font-weight:600;color:var(--soft);flex:none;}
@@ -1025,11 +1049,11 @@
     .phone.home-active .tb-home>#taxiCabBtn{display:grid;font-size:15px!important;}
     .phone.home-active .screens{min-height:0;padding-bottom:0;}
     .screen[data-screen="home"].active{display:grid;height:100%;min-height:0;padding:4px 8px;grid-template-rows:88px minmax(0,1fr) 122px 4px 110px;gap:4px;align-content:stretch;}
-    .screen[data-screen="home"]>#homeStoryStrip{height:88px;margin:0;min-width:0;overflow:hidden;}
-    .screen[data-screen="home"]>#homeStoryStrip .story-rail{height:88px;gap:7px;padding:0 2px 2px;}
-    .screen[data-screen="home"]>#homeStoryStrip .story-card{width:66px;flex-basis:66px;}
-    .screen[data-screen="home"]>#homeStoryStrip .story-thumb{width:62px;height:62px;border-radius:16px;}
-    .screen[data-screen="home"]>#homeStoryStrip .story-name{margin-top:3px;font-size:9px;}
+    .screen[data-screen="home"]>#followedProfileStrip{height:88px;margin:0;min-width:0;overflow:hidden;}
+    .screen[data-screen="home"]>#followedProfileStrip .story-rail{height:88px;gap:7px;padding:0 2px 2px;}
+    .screen[data-screen="home"]>#followedProfileStrip .story-card{width:66px;flex-basis:66px;}
+    .screen[data-screen="home"]>#followedProfileStrip .story-thumb{width:62px;height:62px;border-radius:16px;}
+    .screen[data-screen="home"]>#followedProfileStrip .story-name{margin-top:3px;font-size:9px;}
     .screen[data-screen="home"] .home-discovery{display:grid;min-width:0;min-height:0;grid-template-rows:auto minmax(0,1fr);gap:4px;}
     .screen[data-screen="home"] .home-search-card{min-height:0;padding:6px 8px;border-radius:12px;}
     .screen[data-screen="home"] .home-search-card h1{font-size:15px;line-height:1.08;letter-spacing:-.02em;}
@@ -1392,7 +1416,7 @@
       <div class="tb-home" id="tbHome">
         <button class="web-brand" id="webBrandBtn" type="button" aria-label="Koprik bosh sahifasi">Koprik</button>
         <nav class="web-nav" aria-label="Asosiy menyu">
-          <button id="webListingsBtn" type="button">E’lonlar</button>
+          <button id="webListingsBtn" type="button" data-feature="listings">E’lonlar</button>
         </nav>
         <button class="icon-btn" id="locBtn" aria-label="Manzilim">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
@@ -1479,8 +1503,8 @@
 
       <!-- HOME -->
       <section class="screen active" data-screen="home">
-        <section class="story-strip" id="homeStoryStrip" hidden aria-label="Istoriyalar">
-          <div class="story-rail" id="storyRail"></div>
+        <section class="story-strip" id="followedProfileStrip" hidden aria-label="Obuna bo‘lingan profillar">
+          <div class="story-rail" id="followedProfileRail"></div>
         </section>
         <div class="home-discovery" id="homeDiscovery">
           <div class="home-search-card">
@@ -1547,7 +1571,7 @@
       </section>
 
       <!-- E’LONLAR — desktopda yuqori web menyusidan alohida ochiladi, telefonda bosh sahifada turadi -->
-      <section class="screen" data-screen="listings">
+      <section class="screen" data-screen="listings" data-feature="listings">
         <div id="elonSection">
           <div class="sec-head" id="elonHead" style="margin-top:4px"><h2>E’lonlar</h2></div>
           <p class="elon-hint" id="elonHint">Toifani tanlang — tegishli e’lonlar shu oynada chiqadi.</p>
@@ -1634,7 +1658,7 @@
             <button class="btn btn-primary btn-block" style="margin-top:8px" id="passwordLoginGo">Telegram orqali tasdiqlash</button>
             <div class="form-foot">Akkauntingiz yo'qmi? <b id="goRegister">Ro'yxatdan o'tish</b></div>
             <div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line,#e5e7eb)">
-              <button class="btn btn-soft btn-block" id="goStaffLogin">👥 Xodimlar uchun kirish</button>
+              <button class="btn btn-soft btn-block" id="goStaffLogin" data-feature="systemization">👥 Xodimlar uchun kirish</button>
               <div class="idesc" style="margin-top:6px">Do'kon xodimi bo'lsangiz — firma va o'z login-parolingiz bilan kiring.</div>
             </div>
           </div>
@@ -1720,19 +1744,20 @@
           <div class="menu-grid2" id="cabGridOnline">
         <div class="menu-card" data-nav="cab-profil"><div class="menu-ic">🏪</div><div class="menu-main"><h4>Profil / Mening sahifam</h4><p>Mijozlar ko'radigan ma'lumotlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-subscriptions"><div class="menu-ic">💎</div><div class="menu-main"><h4>Obunalarim</h4><p>Bepul, Plus va Pro tariflarini boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-payments"><div class="menu-ic">💳</div><div class="menu-main"><h4>To‘lovlarim</h4><p>Yuborilgan to‘lovlar va tekshiruv holati</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-items"><div class="menu-ic">🛍️</div><div class="menu-main"><h4 id="cabItemsMenuTitle">Mahsulot va xizmatlar</h4><p>Qo'shish, tahrirlash, o'chirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="diningPlacesMenu" data-nav="cab-dining" style="display:none"><div class="menu-ic">🍽️</div><div class="menu-main"><h4>Stollar va xonalar</h4><p>Zal rejasini joylashtirish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationEnrollmentsMenu" data-nav="cab-education-enrollments" style="display:none"><div class="menu-ic">📥</div><div class="menu-main"><h4>Kursga yozilishlar</h4><p>Yangi arizalarni guruhga qabul qilish</p></div><span class="order-badge" id="eduEnrollmentBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="cabOrdersMenu" data-nav="cab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalar</h4><p id="cabOrderHint">Mahsulot buyurtmalari</p></div><span class="order-badge" id="cabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="cabServiceOrdersMenu" data-nav="cab-service-orders"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Xizmat buyurtmalari</h4><p id="cabServiceOrderHint">Xizmat va navbatlar</p></div><span class="order-badge" id="cabServiceOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1" data-feature="chat"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlar</h4><p>Mijozlar bilan xabarlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-reviews"><div class="menu-ic">⭐</div><div class="menu-main"><h4>Mijoz fikrlari</h4><p><span id="cabReviewAvg">0</span> baho · <span id="cabReviewCount">0</span> ta fikr</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="cab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi biznes istoriyalari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>Reklamalarim</h4><p>Bosh sahifa reklamalarini boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-stories" data-feature="stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriya arxivi</h4><p>Faol va arxivdagi biznes istoriyalari</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
           </div>
         </div>
-        <div class="cab-group" id="cabGroupTizim">
+        <div class="cab-group" id="cabGroupTizim" data-feature="systemization">
           <div class="cab-group-head"><span class="cab-group-ic">🗂</span><div class="cab-group-main"><h3>Tizimlashtirish</h3><p>Ichki tartib: hisob-kitob, ombor va boshqaruv</p></div></div>
           <div class="menu-grid2" id="cabGridTizim">
         <div class="menu-card" data-nav="cab-kassa"><div class="menu-ic">🧾</div><div class="menu-main"><h4>Kassa</h4><p>Savdo daftari va kunlik tushum</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -1849,7 +1874,7 @@
       <!-- CAB: BIZNES TARIFLARI -->
       <section class="screen" data-screen="cab-subscriptions">
         <div class="subscription-shell">
-          <div class="subscription-demo-note"><span>🧪</span><div><b>Sinov rejimi</b><br>Haqiqiy to‘lov hali ulanmagan. Tarifni demo tarzida faollashtirib, ishlashini tekshirishingiz mumkin.</div></div>
+          <div class="subscription-demo-note"><span>🧾</span><div><b>To‘lov tartibi</b><br>Plus yoki Pro tarifini tanlang, kvitansiyani yuboring. Tarif administrator tasdiqlagandan keyin faollashadi.</div></div>
           <div class="subscription-state" id="businessSubscriptionLoading" aria-live="polite"><h3>Tariflar yuklanmoqda</h3><p>Joriy obunangiz serverdan olinmoqda.</p></div>
           <div class="subscription-state" id="businessSubscriptionError" hidden aria-live="assertive"></div>
           <div id="businessSubscriptionContent" hidden>
@@ -1867,17 +1892,17 @@
               <article class="subscription-plan-card" data-plan="free">
                 <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">🌱</div><div style="min-width:0"><div class="subscription-plan-name">Bepul</div><div class="subscription-plan-caption">Asosiy biznes profil uchun</div></div></div><span class="subscription-current-pill">Joriy</span></div>
                 <ul class="subscription-benefits"><li>Biznes profilidan foydalanish</li><li>Mahsulot va xizmatlarni cheksiz joylash</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="free">Bepulga o‘tish</button>
+                <button type="button" class="subscription-action" data-sub-activate="free">Joriy bepul tarif</button>
               </article>
               <article class="subscription-plan-card" data-plan="plus">
                 <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">✨</div><div style="min-width:0"><div class="subscription-plan-name">Plus</div><div class="subscription-plan-caption">Yaqin mijozlarga ko‘rinish</div></div></div><span class="subscription-current-pill">Joriy</span></div>
                 <ul class="subscription-benefits"><li>Bepul tarifdagi barcha imkoniyatlar</li><li>Mahsulot yoki xizmatlarni “Sizga yaqin” bo‘limiga chiqarish huquqi</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="plus">Plus demo faollashtirish</button>
+                <button type="button" class="subscription-action" data-sub-activate="plus">Plus uchun to‘lov qilish</button>
               </article>
               <article class="subscription-plan-card" data-plan="pro">
                 <div class="subscription-plan-top"><div style="display:flex;gap:10px;min-width:0"><div class="subscription-plan-icon">💎</div><div style="min-width:0"><div class="subscription-plan-name">Pro</div><div class="subscription-plan-caption">Hudud bo‘yicha keng ko‘rinish</div></div></div><span class="subscription-current-pill">Joriy</span></div>
                 <ul class="subscription-benefits"><li>Plus tarifdagi barcha imkoniyatlar</li><li>Biznes metkasini xaritada ko‘rsatish huquqi</li></ul>
-                <button type="button" class="subscription-action" data-sub-activate="pro">Pro demo faollashtirish</button>
+                <button type="button" class="subscription-action" data-sub-activate="pro">Pro uchun to‘lov qilish</button>
               </article>
             </div>
             <div class="subscription-action-message" id="businessSubscriptionActionMessage" aria-live="polite"></div>
@@ -1885,6 +1910,16 @@
             <div class="subscription-section-title"><h3>Obuna tarixi</h3><p>Avvalgi tariflar</p></div>
             <div class="subscription-history" id="businessSubscriptionHistory"></div>
           </div>
+        </div>
+      </section>
+
+      <!-- UMUMIY: TO'LOVLARIM -->
+      <section class="screen" data-screen="cab-payments">
+        <div class="form-wrap" id="myPaymentsSection">
+          <div class="lead">To‘lovlarim</div>
+          <div class="lead-sub">Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.</div>
+          <button type="button" class="btn btn-outline btn-block" id="myPaymentsRefresh" style="margin-bottom:12px">Yangilash</button>
+          <div class="payment-list" id="myPaymentsList"><div class="subscription-state"><h3>Yuklanmoqda</h3><p>To‘lovlar tekshirilmoqda.</p></div></div>
         </div>
       </section>
 
@@ -2087,14 +2122,14 @@
       <section class="screen" data-screen="cab-elon">
         <div class="ad-tabs" data-ad-tabs="business">
           <button class="ad-tab on" data-ad-tab="ads">Reklamalarim</button>
-          <button class="ad-tab" data-ad-tab="listings">E'lonlarim</button>
+          <button class="ad-tab" data-ad-tab="listings" data-feature="listings">E'lonlarim</button>
         </div>
         <div id="bizAdsPane">
           <div class="ad-info">Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.</div>
           <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="bizAdAdd">+ Reklama joylashtirish</button>
           <div id="bizAdList"></div>
         </div>
-        <div id="bizElonsPane" hidden>
+        <div id="bizElonsPane" data-feature="listings" data-feature-static-hidden hidden>
           <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="bizElonAdd">+ E'lon joylash</button>
           <div id="bizElonList"></div>
         </div>
@@ -2138,7 +2173,7 @@
       </section>
 
       <!-- CAB: E'LON FORMASI -->
-      <section class="screen" data-screen="cab-elon-form">
+      <section class="screen" data-screen="cab-elon-form" data-feature="listings">
         <div class="form-wrap">
           <div class="field"><label>Toifa</label>
             <div class="sort-row" id="bizElonCats" style="padding-bottom:4px"></div>
@@ -2307,9 +2342,10 @@
             <div class="dashboard-panel-title"><h2>Mening bo‘limlarim</h2><span>Profil va faoliyatlar</span></div>
         <div class="menu-grid2">
         <div class="menu-card" data-nav="ucab-profil"><div class="menu-ic">👤</div><div class="menu-main"><h4>Profilim</h4><p>Ism, telefon, yashash tumani</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>E'lonlarim va reklamalarim</h4><p>E'lon va bosh sahifa reklamasi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ucab-stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriyalarim</h4><p>Faol va arxivdagi shaxsiy istoriyalar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-chats="1"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlarim</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="cab-payments"><div class="menu-ic">💳</div><div class="menu-main"><h4>To‘lovlarim</h4><p>Reklama to‘lovlari va tekshiruv holati</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-elon"><div class="menu-ic">📢</div><div class="menu-main"><h4>Reklamalarim</h4><p>Bosh sahifa reklamalarini boshqarish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ucab-stories" data-feature="stories"><div class="menu-ic">🎞️</div><div class="menu-main"><h4>Istoriya arxivi</h4><p>Faol va arxivdagi shaxsiy istoriyalar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-chats="1" data-feature="chat"><div class="menu-ic">💬</div><div class="menu-main"><h4>Suhbatlar</h4><p>Xabarlar va chatlar</p></div><span class="chev" id="ucabChatBadgeWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-notify="1"><div class="menu-ic">🔔</div><div class="menu-main"><h4>Bildirishnomalarim</h4><p>Qiziqishlaringizni belgilang</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-spec"><div class="menu-ic">🧰</div><div class="menu-main"><h4>Mutaxassisligim va xizmatlarim</h4><p>Qidiruv va xaritada mutaxassis sifatida chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="ucab-orders"><div class="menu-ic">📦</div><div class="menu-main"><h4>Buyurtmalarim</h4><p id="ucabOrderHint">Mahsulot buyurtmalarim</p></div><span class="order-badge" id="ucabOrderBadge" hidden>0</span><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -2378,14 +2414,14 @@
       <section class="screen" data-screen="ucab-elon">
         <div class="ad-tabs" data-ad-tabs="user">
           <button class="ad-tab on" data-ad-tab="ads">Reklamalarim</button>
-          <button class="ad-tab" data-ad-tab="listings">E'lonlarim</button>
+          <button class="ad-tab" data-ad-tab="listings" data-feature="listings">E'lonlarim</button>
         </div>
         <div id="userAdsPane">
           <div class="ad-info">Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.</div>
           <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="userAdAdd">+ Reklama joylashtirish</button>
           <div id="userAdList"></div>
         </div>
-        <div id="userElonsPane" hidden>
+        <div id="userElonsPane" data-feature="listings" data-feature-static-hidden hidden>
           <button class="btn btn-primary btn-block" style="margin:6px 0 14px" id="userElonAdd">+ E'lon joylash</button>
           <div id="userElonList"></div>
         </div>
@@ -2429,7 +2465,7 @@
       </section>
 
       <!-- UCAB: E'LON FORMASI -->
-      <section class="screen" data-screen="ucab-elon-form">
+      <section class="screen" data-screen="ucab-elon-form" data-feature="listings">
         <div class="form-wrap">
           <div class="field"><label>Toifa</label>
             <div class="sort-row" id="userElonCats" style="padding-bottom:4px"></div>
@@ -2677,7 +2713,7 @@
         <div class="set-row danger" data-logout>🚪 Tizimdan chiqish</div>
       </section>
 
-      <section class="screen" data-screen="ucab-stories">
+      <section class="screen" data-screen="ucab-stories" data-feature="stories">
         <div class="my-stories-shell">
           <div class="my-stories-tabs ad-tabs" id="ucabStoriesTabs">
             <button type="button" class="ad-tab on" data-my-story-state="active">Faol</button>
@@ -2687,7 +2723,7 @@
         </div>
       </section>
 
-      <section class="screen" data-screen="cab-stories">
+      <section class="screen" data-screen="cab-stories" data-feature="stories">
         <div class="my-stories-shell">
           <div class="my-stories-tabs ad-tabs" id="cabStoriesTabs">
             <button type="button" class="ad-tab on" data-my-story-state="active">Faol</button>
@@ -2911,6 +2947,26 @@
     </div>
   </div>
 
+  <div class="payment-modal" id="paymentRequestModal" aria-hidden="true">
+    <div class="payment-modal-card" role="dialog" aria-modal="true" aria-labelledby="paymentRequestTitle">
+      <div class="payment-modal-head">
+        <div><h2 id="paymentRequestTitle">To‘lov so‘rovini yuborish</h2><div class="idesc" id="paymentRequestSubtitle">Xizmat ma’lumotlari</div></div>
+        <button type="button" class="payment-modal-close" id="paymentRequestClose" aria-label="Yopish">×</button>
+      </div>
+      <div class="payment-summary"><span id="paymentServiceLabel">Xizmat</span><strong id="paymentAmountLabel">—</strong><div class="idesc">Narx server tomonidan hisoblanadi.</div></div>
+      <div class="field"><label>To‘lov usuli</label><select class="select" id="paymentMethodSelect"></select><div class="payment-method-details" id="paymentMethodDetails"></div></div>
+      <div class="field">
+        <label>To‘lov kvitansiyasi</label>
+        <button type="button" class="upload" id="paymentReceiptChoose">🧾 JPG, PNG yoki WEBP tanlash</button>
+        <input type="file" id="paymentReceiptInput" accept="image/jpeg,image/png,image/webp" hidden>
+        <div class="payment-receipt-preview" id="paymentReceiptPreview"><img id="paymentReceiptImage" alt="Tanlangan kvitansiya"><button type="button" class="payment-receipt-remove" id="paymentReceiptRemove" aria-label="Kvitansiyani olib tashlash">×</button></div>
+        <div class="idesc" style="margin-top:7px">Maksimum 5 MB. Kvitansiya ochiq fayllar orasida saqlanmaydi.</div>
+      </div>
+      <div class="subscription-action-message" id="paymentRequestMessage" aria-live="polite"></div>
+      <button type="button" class="btn btn-primary btn-block" id="paymentRequestSubmit">To‘lov so‘rovini yuborish</button>
+    </div>
+  </div>
+
 <script>
 (function(){
   "use strict";
@@ -3015,6 +3071,32 @@
 
   /* joriy foydalanuvchi holati (serverdan to'ladi) */
   var ME = { registered:false, role:null, name:"", id:null, business_id:null, is_privileged:false };
+  var FEATURES = {
+    listings:false,
+    stories:false,
+    chat:false,
+    systemization:false
+  };
+  function applyFeatureVisibility(){
+    document.querySelectorAll("[data-feature]").forEach(function(node){
+      var enabled=!!FEATURES[node.getAttribute("data-feature")];
+      if(!enabled){
+        node.hidden=true;
+      }else if(!node.hasAttribute("data-feature-static-hidden")){
+        node.hidden=false;
+      }
+    });
+  }
+  function loadFeatures(){
+    return api("GET","/api/features").then(function(data){
+      FEATURES=Object.assign(FEATURES,data||{});
+      applyFeatureVisibility();
+      return FEATURES;
+    }).catch(function(){
+      applyFeatureVisibility();
+      return FEATURES;
+    });
+  }
   function showProjectClosed(message){
     var gate=el("projectClosed");
     if(!gate)return;
@@ -3244,12 +3326,11 @@
   }
   function renderStoryRail(){
     var rail=el("storyRail"); if(!rail) return;
-    var add='<button class="story-card story-add" id="storyAddCard" type="button" aria-label="Istoriya qo‘shish"><span class="story-thumb"><span class="story-plus">+</span></span><span class="story-name">Istoriya</span></button>';
     var cards=STORY_GROUPS.map(function(group,index){
       return '<button class="story-card '+(group.has_unseen?'unseen':'seen')+'" type="button" data-story-group="'+index+'" aria-label="'+esc(group.name||"Istoriya")+' istoriyasini ko‘rish">'+
         '<span class="story-thumb">'+storyAvatarHtml(group)+'</span><span class="story-name">'+esc(group.is_own?'Sizning istoriya':(group.name||"Profil"))+'</span></button>';
     }).join("");
-    rail.innerHTML=add+cards;
+    rail.innerHTML=cards;
     window.__ownStoryGroupIndex=STORY_GROUPS.findIndex(function(group){return !!group.is_own;});
     updateStoryProfileRings();
   }
@@ -3267,18 +3348,34 @@
     });
   }
   function updateHomeStoriesVisibility(){
-    var strip=el("homeStoryStrip"),rail=el("storyRail");
+    return loadFollowedProfileStrip();
+  }
+  function followedProfileCard(item){
+    var image=item.image_url?'<img src="'+esc(item.image_url)+'" alt="" loading="lazy" onerror="this.remove()">':'';
+    return '<button class="story-card" type="button" data-follow-profile-kind="'+esc(item.kind||"user")+
+      '" data-follow-profile-id="'+Number(item.id||0)+'" aria-label="'+esc(item.name||"Profil")+' profilini ochish">'+
+      '<span class="story-thumb">'+image+'<span class="story-fallback">'+storyInitial(item.name||"K")+'</span></span>'+
+      '<span class="story-name">'+esc(item.name||"Profil")+'</span></button>';
+  }
+  function loadFollowedProfileStrip(){
+    var strip=el("followedProfileStrip"),rail=el("followedProfileRail");
     if(!strip||!rail)return Promise.resolve([]);
     var allowed=!!(loggedIn&&ME&&ME.registered&&!STAFF_INFO);
     strip.hidden=!allowed;
     if(!allowed){
-      STORY_GROUPS=[];
-      window.__ownStoryGroupIndex=-1;
       rail.innerHTML="";
-      updateStoryProfileRings();
       return Promise.resolve([]);
     }
-    return loadStories();
+    return api("GET","/api/follows/my?"+actorQuery(actorType())).then(function(items){
+      items=Array.isArray(items)?items:[];
+      rail.innerHTML=items.map(followedProfileCard).join("");
+      strip.hidden=!items.length;
+      return items;
+    }).catch(function(){
+      rail.innerHTML="";
+      strip.hidden=true;
+      return [];
+    });
   }
   function profileStoriesHtml(ownerType,ownerId){
     var key=String(ownerType||"user")+"-"+parseInt(ownerId,10);
@@ -3472,6 +3569,16 @@
     askInput({title:"Istoriya ustidan shikoyat",okText:"Yuborish",fields:[{key:"reason",label:"Sababi",placeholder:"Kamida 10 ta belgi",required:true}]}).then(function(data){if(!data)return;var reason=(data.reason||"").trim();if(reason.length<10){showMsg("Sababni kamida 10 ta belgi bilan yozing.");return;}api("POST","/api/stories/"+storyId+"/reports",{reason:reason}).then(function(){showMsg("Shikoyat yuborildi.");}).catch(function(err){showMsg(err.message);});});
   }
   document.addEventListener("click",function(event){
+    var profile=event.target.closest("[data-follow-profile-kind]");
+    if(profile){
+      var profileId=Number(profile.getAttribute("data-follow-profile-id"));
+      if(profile.getAttribute("data-follow-profile-kind")==="business"){
+        openBiz(profileId);
+      }else{
+        openPersonSrv(profileId);
+      }
+      return;
+    }
     var add=event.target.closest("#storyAddCard");if(add){openStoryComposer();return;}
     var card=event.target.closest("[data-story-group]");if(card){openStoryViewer(Number(card.getAttribute("data-story-group")));return;}
     var viewers=event.target.closest("[data-story-viewers]");if(viewers){showStoryViewers(Number(viewers.getAttribute("data-story-viewers")));return;}
@@ -5148,7 +5255,7 @@
     }catch(e){}
   }
   var titles = { catalog:"Qidiruv", listings:"E’lonlar", "taxi-call":"Taxi chaqirish", list:"Natijalar", business:"Biznes", login:"Kirish", register:"Ro'yxatdan o'tish", regform:"Ro'yxat", cart:"Savat",
-    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
+    cabinet:"Biznes kabineti", "cab-profil":"Profil / Mening sahifam", "cab-subscriptions":"Obunalarim", "cab-payments":"To‘lovlarim", "cab-reviews":"Mijoz fikrlari", "cab-items":"Mahsulot va xizmatlar", "cab-item-form":"Yangi mahsulot",
     "cab-elon":"E'lonlarim va reklamalarim", "cab-ad-form":"Reklama joylashtirish", "cab-elon-form":"E'lon joylash", "cab-orders":"Buyurtmalar", "cab-service-orders":"Xizmat buyurtmalari", "cab-qarz":"Qarz daftari", "cab-ombor":"Ombor", "cab-kassa":"Kassa", "cab-kassa-form":"Savdo yozish", "cab-xarajat":"Xarajatlar",
     "cab-qarz-card":"Ali Valiyev", "cab-stats":"Statistika", "cab-settings":"Sozlamalar", "cab-stories":"Istoriyalarim", "cab-dining":"Stollar va xonalar", "cab-dining-order":"Zakaz qilish", "cab-education-groups":"Guruhlar", "cab-education-group-form":"Guruh", "cab-education-students":"O'quvchilar", "cab-education-student-form":"O'quvchi", "cab-education-schedule":"Dars jadvali", "cab-education-attendance":"Davomat", "cab-education-payments":"O'quvchi to'lovlari", "cab-education-payment-form":"To'lov qabul qilish", "cab-education-teachers":"O'qituvchilar", "cab-education-teacher-form":"O'qituvchi", "cab-education-exams":"Imtihon va natijalar", "cab-education-exam-form":"Imtihon", "cab-education-exam-results":"Natijalar", "cab-education-enrollments":"Kursga yozilishlar", "cab-education-payroll":"O'qituvchi maoshi", "cab-education-payroll-form":"Maosh to'lash", "cab-education-statistics":"Ta'lim statistikasi",
     ucab:"Mening kabinetim", "ucab-profil":"Profilim", "ucab-elon":"E'lonlarim va reklamalarim", "ucab-stories":"Istoriyalarim", "ucab-ad-form":"Reklama joylashtirish", "ucab-elon-form":"E'lon joylash",
@@ -5161,7 +5268,7 @@
   titles["cab-education-student-transfer"]="Guruhga o'tkazish";
   titles["cab-education-payment-control"]="To'lov nazorati";
   var BACKMAP = { catalog:"home", listings:"home", "taxi-call":"home", list:"home", business:"home", login:"home", register:"login", regform:"register", cart:"home",
-    cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
+    cabinet:"home", "cab-profil":"cabinet", "cab-subscriptions":"cabinet", "cab-payments":"cabinet", "cab-reviews":"cabinet", "cab-items":"cabinet", "cab-item-form":"cab-items", "cab-elon":"cabinet", "cab-ad-form":"cab-elon", "cab-elon-form":"cab-elon",
     "cab-orders":"cabinet", "cab-service-orders":"cabinet", "cab-qarz":"cabinet", "cab-qarz-card":"cab-qarz", "cab-stats":"cabinet", "cab-settings":"cabinet",
     ucab:"home", "ucab-profil":"ucab", "ucab-elon":"ucab", "ucab-ad-form":"ucab-elon", "ucab-elon-form":"ucab-elon",
     "ucab-subs":"ucab", "ucab-orders":"ucab", "ucab-service-orders":"ucab", "ucab-saved":"ucab", "ucab-settings":"ucab",
@@ -11427,6 +11534,186 @@
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-book]");if(!b)return;var direction=b.dataset.medicalDirection||"",providers=Math.max(0,parseInt(b.dataset.medicalProviderCount||0,10)||0);if(!providers){showMsg(direction==="Tibbiy xizmatlar"?"Shifokor hali biriktirilmagan.":"Xizmat ko'rsatuvchi hali biriktirilmagan.");return;}openMedicalBooking(parseInt(b.dataset.medicalBusiness,10),parseInt(b.dataset.medicalBook,10),b.dataset.medicalService||"Xizmat",direction);});
   document.addEventListener("click",function(e){var b=e.target.closest("[data-medical-cancel-mine]");if(!b)return;var id=parseInt(b.dataset.medicalCancelMine,10);if(!id)return;askConfirm({text:"Navbatingizni bekor qilasizmi?",okText:"Ha, bekor qilaman",danger:true}).then(function(ok){if(!ok)return;b.disabled=true;api("POST","/api/medical/queue/"+id+"/cancel-mine").then(function(){showMsg("Navbat bekor qilindi.");loadMyOrders("service");}).catch(function(err){b.disabled=false;showMsg(err.message);});});});
 
+  var PAYMENT_CATALOG=null;
+  var PAYMENT_CATALOG_PROMISE=null;
+  var PAYMENT_CONTEXT=null;
+  var PAYMENT_RECEIPT_FILE=null;
+  var PAYMENT_RECEIPT_URL="";
+  var PAYMENT_RESUBMIT_FILES={};
+  var PAYMENT_RESUBMIT_SUFFIX="/resubmit";
+  var PAYMENT_SUBSCRIPTION_PREFIX={plus:"subscription_plus_",pro:"subscription_pro_"};
+  function paymentStatusLabel(status){
+    return status==="approved"?"Tasdiqlangan":status==="rejected"?"Rad etilgan":status==="cancelled"?"Bekor qilingan":"Tekshirilmoqda";
+  }
+  function paymentServiceLabel(service,plan){
+    if(service==="subscription")return (plan==="pro"?"Pro":"Plus")+" obuna";
+    if(service==="advertisement")return "Reklama joylashtirish";
+    if(service==="listing")return "E’lon joylashtirish";
+    return "To‘lov";
+  }
+  function loadPaymentCatalog(){
+    if(PAYMENT_CATALOG)return Promise.resolve(PAYMENT_CATALOG);
+    if(PAYMENT_CATALOG_PROMISE)return PAYMENT_CATALOG_PROMISE;
+    PAYMENT_CATALOG_PROMISE=api("GET","/api/payments/catalog").then(function(data){
+      PAYMENT_CATALOG=data||{services:{},payment_methods:[]};
+      return PAYMENT_CATALOG;
+    }).finally(function(){PAYMENT_CATALOG_PROMISE=null;});
+    return PAYMENT_CATALOG_PROMISE;
+  }
+  function paymentCatalogPrice(code){
+    var services=(PAYMENT_CATALOG&&PAYMENT_CATALOG.services)||{},found=null;
+    Object.keys(services).some(function(key){
+      found=(services[key]||[]).filter(function(row){return row.price_code===code;})[0]||null;
+      return !!found;
+    });
+    return found;
+  }
+  function paymentMethodText(method){
+    if(!method)return "To‘lov usulini tanlang.";
+    var details=method.details||{},lines=[];
+    if(method.recipient_name)lines.push("Qabul qiluvchi: "+method.recipient_name);
+    Object.keys(details).forEach(function(key){if(details[key]!==null&&details[key]!=="")lines.push(String(details[key]));});
+    if(method.instructions)lines.push(method.instructions);
+    return lines.join("\n")||"Rekvizitlar administrator tomonidan kiritiladi.";
+  }
+  function renderPaymentMethod(){
+    var select=el("paymentMethodSelect"),id=parseInt(select.value||"0",10);
+    var method=((PAYMENT_CATALOG&&PAYMENT_CATALOG.payment_methods)||[]).filter(function(row){return Number(row.id)===id;})[0];
+    el("paymentMethodDetails").textContent=paymentMethodText(method);
+  }
+  function clearPaymentReceipt(){
+    PAYMENT_RECEIPT_FILE=null;
+    if(PAYMENT_RECEIPT_URL){try{URL.revokeObjectURL(PAYMENT_RECEIPT_URL);}catch(e){}}
+    PAYMENT_RECEIPT_URL="";
+    el("paymentReceiptInput").value="";
+    el("paymentReceiptPreview").classList.remove("on");
+    el("paymentReceiptImage").removeAttribute("src");
+  }
+  function closePaymentRequest(){
+    el("paymentRequestModal").classList.remove("on");
+    el("paymentRequestModal").setAttribute("aria-hidden","true");
+    clearPaymentReceipt();
+    PAYMENT_CONTEXT=null;
+  }
+  function openPaymentRequest(context){
+    PAYMENT_CONTEXT=context||null;
+    clearPaymentReceipt();
+    var message=el("paymentRequestMessage");
+    message.className="subscription-action-message";
+    message.textContent="";
+    return loadPaymentCatalog().then(function(catalog){
+      var price=paymentCatalogPrice(PAYMENT_CONTEXT.price_code);
+      if(!price)throw new Error("Tanlangan xizmat narxi hozir faol emas.");
+      var quantity=Math.max(1,parseInt(PAYMENT_CONTEXT.target&&PAYMENT_CONTEXT.target.quantity||1,10)||1);
+      el("paymentRequestSubtitle").textContent=PAYMENT_CONTEXT.subtitle||"Kvitansiyani yuboring";
+      el("paymentServiceLabel").textContent=PAYMENT_CONTEXT.label||paymentServiceLabel(PAYMENT_CONTEXT.service_type,PAYMENT_CONTEXT.target&&PAYMENT_CONTEXT.target.plan_code);
+      el("paymentAmountLabel").textContent=fmtMoney(Number(price.amount_uzs||0)*quantity);
+      var methods=catalog.payment_methods||[];
+      if(!methods.length)throw new Error("To‘lov usuli hali sozlanmagan.");
+      el("paymentMethodSelect").innerHTML=methods.map(function(method){return '<option value="'+method.id+'">'+esc(method.name)+'</option>';}).join("");
+      renderPaymentMethod();
+      el("paymentRequestModal").classList.add("on");
+      el("paymentRequestModal").setAttribute("aria-hidden","false");
+    }).catch(function(error){
+      PAYMENT_CONTEXT=null;
+      showMsg(error.message||"To‘lov ma’lumotlari yuklanmadi.");
+      throw error;
+    });
+  }
+  function openSubscriptionPayment(planCode){
+    var code=String(planCode||"").toLowerCase();
+    if(code!=="plus"&&code!=="pro"){showMsg("Bepul tarif avtomatik ishlaydi.");return;}
+    openPaymentRequest({
+      actor_type:"business",
+      service_type:"subscription",
+      price_code:PAYMENT_SUBSCRIPTION_PREFIX[code]+BUSINESS_SUB_DURATION+"m",
+      label:businessSubscriptionPlanName(code)+" obuna · "+BUSINESS_SUB_DURATION+" oy",
+      target:{plan_code:code,duration_months:BUSINESS_SUB_DURATION}
+    }).catch(function(){});
+  }
+  function openAdvertisementPayment(ad,actor){
+    var days=Math.max(1,parseInt(ad&&ad.duration_days||1,10)||1);
+    openPaymentRequest({
+      actor_type:actor==="business"?"business":"user",
+      service_type:"advertisement",
+      price_code:"advertisement_district_day",
+      label:"Reklama · "+days+" kun",
+      subtitle:"Reklama administrator tasdig‘idan keyin ko‘rsatiladi.",
+      target:{target_id:Number(ad.id),quantity:days}
+    }).catch(function(){});
+  }
+  function submitPaymentRequest(){
+    if(!PAYMENT_CONTEXT||!PAYMENT_RECEIPT_FILE){showMsg("To‘lov kvitansiyasini tanlang.");return;}
+    var button=el("paymentRequestSubmit"),message=el("paymentRequestMessage");
+    button.disabled=true;button.textContent="Yuborilmoqda...";
+    message.className="subscription-action-message on";message.textContent="Kvitansiya xavfsiz yuklanmoqda...";
+    uploadRaw("POST","/api/payments/receipts",PAYMENT_RECEIPT_FILE).then(function(uploaded){
+      return api("POST","/api/payments/requests",{
+        actor_type:PAYMENT_CONTEXT.actor_type,
+        service_type:PAYMENT_CONTEXT.service_type,
+        price_code:PAYMENT_CONTEXT.price_code,
+        payment_method_id:parseInt(el("paymentMethodSelect").value||"0",10),
+        receipt_token:uploaded.receipt_token,
+        target:PAYMENT_CONTEXT.target||{}
+      });
+    }).then(function(){
+      var actor=PAYMENT_CONTEXT.actor_type;
+      closePaymentRequest();
+      activeMode=actor==="business"?"business":"user";
+      BACKMAP["cab-payments"]=actor==="business"?"cabinet":"ucab";
+      nav("cab-payments");
+      showMsg("To‘lov so‘rovi yuborildi. Administrator tekshiradi ✅");
+    }).catch(function(error){
+      message.className="subscription-action-message error";
+      message.textContent=error.message||"To‘lov yuborilmadi.";
+    }).finally(function(){button.disabled=false;button.textContent="To‘lov so‘rovini yuborish";});
+  }
+  function loadMyPayments(){
+    var actor=activeMode==="business"?"business":"user",box=el("myPaymentsList");
+    BACKMAP["cab-payments"]=actor==="business"?"cabinet":"ucab";
+    box.innerHTML='<div class="subscription-state"><h3>Yuklanmoqda</h3><p>To‘lovlar tekshirilmoqda.</p></div>';
+    api("GET","/api/payments/my?actor_type="+actor).then(function(rows){
+      if(!rows.length){box.innerHTML='<div class="subscription-state"><h3>To‘lovlar yo‘q</h3><p>Yuborgan kvitansiyalaringiz shu yerda ko‘rinadi.</p></div>';return;}
+      box.innerHTML=rows.map(function(row){
+        var rejected=row.status==="rejected";
+        return '<article class="payment-card"><div class="payment-card-head"><div><b>'+esc(paymentServiceLabel(row.service_type,row.plan_code))+'</b><div class="payment-card-code">'+esc(row.request_code)+' · '+new Date(row.created_at*1000).toLocaleString("uz-UZ")+'</div></div><span class="payment-status '+esc(row.status)+'">'+esc(paymentStatusLabel(row.status))+'</span></div><div style="font-size:18px;font-weight:800;margin-top:10px">'+esc(fmtMoney(row.amount))+'</div>'+(row.reason?'<div class="subscription-action-message error" style="display:block">'+esc(row.reason)+'</div>':'')+(rejected?'<input type="file" hidden accept="image/jpeg,image/png,image/webp" data-pay-resubmit-file="'+row.id+'"><button type="button" class="btn btn-outline btn-block" style="margin-top:10px" data-pay-resubmit-choose="'+row.id+'">Yangi kvitansiya tanlash</button><button type="button" class="btn btn-primary btn-block" style="margin-top:7px" data-pay-resubmit="'+row.id+'">Qayta yuborish</button>':'')+'</article>';
+      }).join("");
+    }).catch(function(error){box.innerHTML='<div class="subscription-state"><h3>Yuklanmadi</h3><p>'+esc(error.message)+'</p></div>';});
+  }
+  el("paymentRequestClose").addEventListener("click",closePaymentRequest);
+  el("paymentRequestModal").addEventListener("click",function(event){if(event.target===this)closePaymentRequest();});
+  el("paymentMethodSelect").addEventListener("change",renderPaymentMethod);
+  el("paymentReceiptChoose").addEventListener("click",function(){el("paymentReceiptInput").click();});
+  el("paymentReceiptRemove").addEventListener("click",clearPaymentReceipt);
+  el("paymentReceiptInput").addEventListener("change",function(){
+    var file=this.files&&this.files[0];if(!file)return;
+    if(["image/jpeg","image/png","image/webp"].indexOf(file.type)<0||file.size>5*1024*1024){showMsg("JPG, PNG yoki WEBP; maksimum 5 MB.");clearPaymentReceipt();return;}
+    PAYMENT_RECEIPT_FILE=file;PAYMENT_RECEIPT_URL=URL.createObjectURL(file);
+    el("paymentReceiptImage").src=PAYMENT_RECEIPT_URL;el("paymentReceiptPreview").classList.add("on");
+  });
+  el("paymentRequestSubmit").addEventListener("click",submitPaymentRequest);
+  el("myPaymentsRefresh").addEventListener("click",loadMyPayments);
+  document.addEventListener("click",function(event){
+    var choose=event.target.closest("[data-pay-resubmit-choose]");
+    if(choose){var input=document.querySelector('[data-pay-resubmit-file="'+choose.dataset.payResubmitChoose+'"]');if(input)input.click();return;}
+    var submit=event.target.closest("[data-pay-resubmit]");
+    if(!submit)return;
+    var id=submit.dataset.payResubmit,file=PAYMENT_RESUBMIT_FILES[id];
+    if(!file){showMsg("Yangi kvitansiyani tanlang.");return;}
+    submit.disabled=true;
+    uploadRaw("POST","/api/payments/receipts",file).then(function(uploaded){
+      return api("POST","/api/payments/"+id+PAYMENT_RESUBMIT_SUFFIX,{receipt_token:uploaded.receipt_token});
+    }).then(function(){showMsg("Kvitansiya qayta yuborildi ✅");delete PAYMENT_RESUBMIT_FILES[id];loadMyPayments();})
+      .catch(function(error){showMsg(error.message);}).finally(function(){submit.disabled=false;});
+  });
+  document.addEventListener("change",function(event){
+    var input=event.target.closest("[data-pay-resubmit-file]");if(!input)return;
+    var file=input.files&&input.files[0];if(!file)return;
+    if(["image/jpeg","image/png","image/webp"].indexOf(file.type)<0||file.size>5*1024*1024){showMsg("JPG, PNG yoki WEBP; maksimum 5 MB.");input.value="";return;}
+    PAYMENT_RESUBMIT_FILES[input.dataset.payResubmitFile]=file;
+    var button=document.querySelector('[data-pay-resubmit-choose="'+input.dataset.payResubmitFile+'"]');if(button)button.textContent="Kvitansiya tanlandi ✅";
+  });
+
   var BUSINESS_SUB_DURATION=1;
   var BUSINESS_SUB_DATA=null;
   var BUSINESS_SUB_PENDING=false;
@@ -11453,9 +11740,9 @@
     });
     document.querySelectorAll('[data-screen="cab-subscriptions"] [data-sub-activate]').forEach(function(button){
       var plan=button.getAttribute("data-sub-activate"),same=plan===code;
-      if(plan==="free")button.textContent=same?"Joriy tarif":"Bepulga o‘tish";
-      else button.textContent=same?"Muddatni uzaytirish":businessSubscriptionPlanName(plan)+" demo faollashtirish";
-      button.disabled=BUSINESS_SUB_PENDING||(plan==="free"&&same);
+      if(plan==="free")button.textContent=same?"Joriy bepul tarif":"Bepul tarif avtomatik";
+      else button.textContent=same?"Muddatni uzaytirish":businessSubscriptionPlanName(plan)+" uchun to‘lov qilish";
+      button.disabled=BUSINESS_SUB_PENDING||plan==="free";
     });
     var history=(data&&data.history)||[],historyBox=el("businessSubscriptionHistory");
     if(!history.length){
@@ -11495,25 +11782,8 @@
     if(BUSINESS_SUB_PENDING)return;
     var code=String(planCode||"").toLowerCase();
     if(["free","plus","pro"].indexOf(code)<0)return;
-    var message=el("businessSubscriptionActionMessage");
-    message.className="subscription-action-message on";
-    message.textContent=businessSubscriptionPlanName(code)+" tarifi faollashtirilmoqda...";
-    setBusinessSubscriptionBusy(true);
-    api("POST","/api/business/subscription/demo-activate",{plan_code:code,duration_months:code==="free"?0:BUSINESS_SUB_DURATION}).then(function(data){
-      BUSINESS_SUB_PENDING=false;
-      renderBusinessSubscription(data);
-      message.className="subscription-action-message on";
-      message.textContent=businessSubscriptionPlanName(code)+" tarifi saqlandi ✅";
-      showMsg("Tarif saqlandi ✅");
-    }).catch(function(error){
-      message.className="subscription-action-message error";
-      message.textContent=error.message||"Tarif faollashtirilmadi. Qayta urinib ko‘ring.";
-      showMsg(message.textContent);
-    }).finally(function(){
-      BUSINESS_SUB_PENDING=false;
-      setBusinessSubscriptionBusy(false);
-      if(BUSINESS_SUB_DATA)renderBusinessSubscription(BUSINESS_SUB_DATA);
-    });
+    if(code==="free"){showMsg("Bepul tarif avtomatik ishlaydi.");return;}
+    openSubscriptionPayment(code);
   }
   document.addEventListener("click",function(event){
     var durationButton=event.target.closest('[data-screen="cab-subscriptions"] [data-sub-duration]');
@@ -11534,6 +11804,7 @@
     else if(screen==="ucab-profil") loadUserProfile();
     else if(screen==="cab-profil") loadBizProfile();
     else if(screen==="cab-subscriptions") loadBusinessSubscription();
+    else if(screen==="cab-payments") loadMyPayments();
     else if(screen==="cab-reviews") loadBusinessReviews(false);
     else if(screen==="cab-my-docs") loadMyDocuments();
     else if(screen==="ucab-spec") loadSpecialist();
@@ -12784,7 +13055,7 @@
     return title||"Taklif bilan tanishing";
   }
   function adStatusLabel(st){
-    return st==="active"?"Faol":st==="scheduled"?"Rejalashtirilgan":st==="ended"?"Yakunlangan":st==="cancelled"?"Bekor qilingan":st;
+    return st==="active"?"Faol":st==="scheduled"?"Rejalashtirilgan":st==="payment_pending"?"To‘lov kutilmoqda":st==="ended"?"Yakunlangan":st==="cancelled"?"Bekor qilingan":st;
   }
   function adTargetLabel(t){
     if(t.level==="republic") return "🇺🇿 Respublika";
@@ -13078,7 +13349,10 @@
         st.mobile_image_file=r.image_file||"";
         return api("POST","/api/advertisements",{actor_type:st.actor,title:title,caption:(el(prefix+"Caption").value||"").trim(),image_file:st.image_file,mobile_image_file:st.mobile_image_file,crop_x:st.crop_x,crop_y:st.crop_y,crop_zoom:st.crop_zoom,daily_all_day:allDay,daily_start:dailyStart||"00:00",daily_end:dailyEnd||"23:59",targets:st.targets,start_at:startAt,duration_days:parseInt(el(prefix+"Days").value,10)||1});
       })
-      .then(function(){ showMsg("Reklama joylashtirildi ✅"); loadHomeAds(); nav(prefix==="ba"?"cab-elon":"ucab-elon"); })
+      .then(function(ad){
+        showMsg("Reklama saqlandi. Endi to‘lov kvitansiyasini yuboring.");
+        openAdvertisementPayment(ad,st.actor);
+      })
       .catch(function(e){ showMsg(e.message); })
       .finally(function(){ btn.disabled=false; btn.textContent="Reklamani joylashtirish"; });
     });
@@ -13515,8 +13789,20 @@
   });
 
   function boot(){
+    return loadFeatures().then(bootAfterFeatures);
+  }
+  function bootAfterFeatures(){
+    if(STAFF_TOKEN&&!FEATURES.systemization){
+      STAFF_TOKEN=null;STAFF_INFO=null;
+      try{localStorage.removeItem("koprik_staff_token");}catch(e){}
+    }
     if(STAFF_TOKEN){ staffBoot(); return; }   // xodim rejimi
-    try { renderMapChip(); renderElonRow(); renderYon(); setIcon(); } catch(e){}
+    try {
+      renderMapChip();
+      if(FEATURES.listings)renderElonRow();
+      renderYon();
+      setIcon();
+    } catch(e){}
     var storedHomeLocation=restoreHomeLocation();
     if(storedHomeLocation){
       applyHomeLocation(
@@ -13527,7 +13813,7 @@
     }
     var restoredTelegramAuth=restoreTelegramAuthPending();
     if(!restoredTelegramAuth) nav(HOME_LOCATION_REQUIRED?"loc":"home");
-    loadElonCounts();
+    if(FEATURES.listings)loadElonCounts();
     loadHomeAds();
     // Bosh xarita Mapbox config/kutubxonasi kechiksa ham ilova ishlashda davom etadi.
     if(!HOME_LOCATION_REQUIRED){
