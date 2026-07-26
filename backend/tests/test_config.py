@@ -33,3 +33,37 @@ def test_cors_origins_are_normalized_to_exact_https_origins():
 def test_cors_origins_reject_wildcards_http_and_paths(value):
     with pytest.raises(ValidationError):
         Settings(cors_origins=value)
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_deployed_environments_require_auth_and_telegram_secrets(environment):
+    with pytest.raises(ValidationError):
+        Settings(environment=environment)
+
+
+def test_staging_accepts_complete_auth_and_telegram_secrets():
+    settings = Settings(
+        environment="staging",
+        telegram_bot_token="bot-token",
+        telegram_bot_username="koprik_test_bot",
+        telegram_webhook_secret="webhook-secret",
+        otp_secret="otp-secret",
+        csrf_secret="csrf-secret",
+        outbox_encryption_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    )
+
+    assert settings.auth_cookie_name == "koprik_session"
+    assert settings.session_ttl_seconds == 30 * 24 * 60 * 60
+
+
+def test_staging_rejects_invalid_outbox_encryption_key():
+    with pytest.raises(ValidationError):
+        Settings(
+            environment="staging",
+            telegram_bot_token="bot-token",
+            telegram_bot_username="koprik_test_bot",
+            telegram_webhook_secret="webhook-secret",
+            otp_secret="otp-secret",
+            csrf_secret="csrf-secret",
+            outbox_encryption_key="not-a-fernet-key",
+        )
