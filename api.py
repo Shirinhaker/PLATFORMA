@@ -62,6 +62,13 @@ from subscriptions import (
     subscription_payload,
 )
 from access_config import is_privileged_tg_id, project_access_is_restricted
+from feature_flags import feature_enabled
+from moderation import (
+    CONTENT_KINDS,
+    REPORT_REASONS,
+    content_is_public,
+    public_owner_allowed,
+)
 
 router = APIRouter(prefix="/api")
 public_router = APIRouter()
@@ -71,6 +78,138 @@ _SEARCH_RATE = {}
 _FUZZY_CACHE_LOCK = threading.Lock()      # faqat keshni o'qish/yozish uchun (qisqa)
 _FUZZY_BUILD_LOCK = threading.Lock()      # to'liq skanni bitta threadga cheklaydi
 _FUZZY_CACHE = {"expires": 0.0, "weights": None}
+
+
+def _report_content_owner(conn, kind, content_id):
+    """Return (actor_type, actor_id) for self-report prevention."""
+    if kind in ("product", "service"):
+        row = conn.execute(
+            "SELECT business_id FROM items WHERE id=? AND kind=?",
+            (int(content_id), kind),
+        ).fetchone()
+        return ("business", int(row["business_id"])) if row else None
+    if kind == "advertisement":
+        row = conn.execute(
+            """
+            SELECT actor_type,user_id,business_id FROM advertisements
+            WHERE id=? AND status='active'
+            """,
+            (int(content_id),),
+        ).fetchone()
+        if not row:
+            return None
+        return (
+            ("business", int(row["business_id"]))
+            if row["actor_type"] == "business" and row["business_id"]
+            else ("user", int(row["user_id"]))
+        )
+    if kind == "business":
+        return (
+            ("business", int(content_id))
+            if conn.execute(
+                "SELECT 1 FROM businesses WHERE id=? AND status='active'",
+                (int(content_id),),
+            ).fetchone()
+            else None
+        )
+    if kind == "profile":
+        return (
+            ("user", int(content_id))
+            if conn.execute(
+                "SELECT 1 FROM users WHERE id=?", (int(content_id),)
+            ).fetchone()
+            else None
+        )
+    if kind == "listing":
+        row = conn.execute(
+            """
+            SELECT user_id,business_id FROM listings
+            WHERE id=? AND status='active'
+            """,
+            (int(content_id),),
+        ).fetchone()
+        if not row:
+            return None
+        return (
+            ("business", int(row["business_id"]))
+            if row["business_id"]
+            else ("user", int(row["user_id"]))
+        )
+    return None
+
+
+@router.post("/reports", status_code=201)
+async def create_moderation_report(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+):
+    body = await request.json()
+    kind = str(body.get("content_kind") or "").strip()
+    try:
+        content_id = int(body.get("content_id") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Kontent raqami noto‘g‘ri.")
+    reason_code = str(body.get("reason_code") or "").strip()
+    comment = str(body.get("comment") or "").strip()
+    if kind not in CONTENT_KINDS or kind == "story":
+        raise HTTPException(400, "Kontent turi noto‘g‘ri.")
+    if reason_code not in REPORT_REASONS:
+        raise HTTPException(400, "Shikoyat sababi noto‘g‘ri.")
+    if len(comment) > 500:
+        raise HTTPException(400, "Izoh 500 belgidan oshmasin.")
+    conn = db()
+    try:
+        user = require_user(conn, x_telegram_init_data)
+        owner = _report_content_owner(conn, kind, content_id)
+        if not owner or not content_is_public(conn, kind, content_id):
+            raise HTTPException(404, "Ochiq kontent topilmadi.")
+        own_business = conn.execute(
+            "SELECT id FROM businesses WHERE user_id=?", (int(user["id"]),)
+        ).fetchone()
+        if (
+            (owner[0] == "user" and owner[1] == int(user["id"]))
+            or (
+                owner[0] == "business"
+                and own_business
+                and owner[1] == int(own_business["id"])
+            )
+        ):
+            raise HTTPException(400, "O‘z kontentingiz ustidan shikoyat qilib bo‘lmaydi.")
+        recent = conn.execute(
+            """
+            SELECT COUNT(*) AS count FROM moderation_reports
+            WHERE reporter_user_id=? AND created_at>=?
+            """,
+            (int(user["id"]), int(time.time()) - 86400),
+        ).fetchone()["count"]
+        if int(recent or 0) >= 10:
+            raise HTTPException(429, "Bir kunlik shikoyat chegarasi tugagan.")
+        stamp = int(time.time())
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO moderation_reports(
+                  reporter_user_id,content_kind,content_id,reason_code,
+                  comment,status,created_at,updated_at
+                ) VALUES(?,?,?,?,?,'open',?,?)
+                """,
+                (
+                    int(user["id"]), kind, content_id, reason_code,
+                    comment, stamp, stamp,
+                ),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            raise HTTPException(409, "Bu kontent uchun ochiq shikoyatingiz bor.")
+        return {
+            "id": int(cursor.lastrowid),
+            "status": "open",
+            "content_kind": kind,
+            "content_id": content_id,
+        }
+    finally:
+        conn.close()
 
 
 # ---------- Yordamchilar ----------
@@ -259,7 +398,10 @@ async def home_district_offers(
     try:
         me = optional_user(conn, x_telegram_init_data)
         return district_offers_payload(
-            conn, me["id"] if me else None, district=district
+            conn,
+            me["id"] if me else None,
+            district=district,
+            include_listings=feature_enabled(conn, "listings"),
         )
     finally:
         conn.close()
@@ -274,6 +416,15 @@ async def seed_demo_district_offers(
     try:
         user = require_user(conn, x_telegram_init_data)
         deny_staff(conn, x_telegram_init_data, "Demo takliflar")
+        if not feature_enabled(conn, "listings"):
+            raise HTTPException(
+                404,
+                {
+                    "code": "feature_disabled",
+                    "feature": "listings",
+                    "detail": "E'lonlar MVP bosqichida o'chirilgan.",
+                },
+            )
         if not project_access_is_restricted() or not is_privileged_tg_id(user["tg_id"]):
             raise HTTPException(403, "Demo ma'lumot yaratishga ruxsat yo'q.")
         district_key = (_row_val(user, "district_key", "") or "").strip()
@@ -1937,6 +2088,9 @@ async def get_business_subscription(x_telegram_init_data: str = Header(default="
 async def demo_activate_business_subscription(
     request: Request, x_telegram_init_data: str = Header(default="")
 ):
+    from main import TEST_MODE
+    if not TEST_MODE:
+        raise HTTPException(404, "Demo obuna mavjud emas.")
     conn = db()
     try:
         deny_staff(conn, x_telegram_init_data, "Obunalarim")
@@ -3861,7 +4015,7 @@ async def advertisement_rates(x_telegram_init_data: str = Header(default="")):
         "rates": AD_RATES,
         "discounts": {"7": 10, "14": 15, "30": 25},
         "currency": "UZS",
-        "note": "To'lov tizimi ulanmaguncha reklama sinov rejimida darhol faol qilinadi.",
+        "note": "Reklama kvitansiya yuborilib, administrator tasdiqlagandan keyin faol bo'ladi.",
     }
 
 
@@ -3962,7 +4116,7 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
         (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, mobile_image_file, crop_x, crop_y, crop_zoom,
          1 if daily_all_day else 0, daily_start, daily_end,
          json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
-         "active", now, now),
+         "payment_pending", now, now),
     )
     conn.commit()
     ad_id = cur.lastrowid
@@ -4021,6 +4175,16 @@ async def active_advertisements(x_telegram_init_data: str = Header(default="")):
     uz_now = time.gmtime(now + 5 * 3600)
     minute_now = uz_now.tm_hour * 60 + uz_now.tm_min
     for r in rows:
+        owner_type = (
+            "business"
+            if r["actor_type"] == "business" and r["business_id"]
+            else "user"
+        )
+        owner_id = r["business_id"] or r["user_id"]
+        if not public_owner_allowed(conn, owner_type, owner_id):
+            continue
+        if not content_is_public(conn, "advertisement", r["id"]):
+            continue
         if not bool(int(_row_val(r, "daily_all_day", 1) or 0)):
             try:
                 sh, sm = map(int, str(_row_val(r, "daily_start", "00:00")).split(":"))
@@ -4478,11 +4642,23 @@ async def my_follows(actor_type: str = "user", x_telegram_init_data: str = Heade
         if r["target_kind"] == "business":
             t = conn.execute("SELECT id, name, yon FROM businesses WHERE id=?", (r["target_id"],)).fetchone()
             if t:
-                result.append({"kind": "business", "id": t["id"], "name": t["name"], "info": t["yon"]})
+                result.append({
+                    "kind": "business",
+                    "id": t["id"],
+                    "name": t["name"],
+                    "info": t["yon"],
+                    "image_url": "/profile-media/business/" + str(t["id"]),
+                })
         else:
-            t = conn.execute("SELECT id, name, district FROM users WHERE id=?", (r["target_id"],)).fetchone()
+            t = conn.execute("SELECT id, name FROM users WHERE id=?", (r["target_id"],)).fetchone()
             if t:
-                result.append({"kind": "user", "id": t["id"], "name": t["name"], "info": t["district"]})
+                result.append({
+                    "kind": "user",
+                    "id": t["id"],
+                    "name": t["name"],
+                    "info": "Foydalanuvchi",
+                    "image_url": "/profile-media/user/" + str(t["id"]),
+                })
     conn.close()
     return result
 
@@ -4643,6 +4819,8 @@ async def home_map(
                 row, following=int(row["id"]) in followed_business_ids
             )
             for row in business_rows
+            if public_owner_allowed(conn, "business", row["id"])
+            and content_is_public(conn, "business", row["id"])
         ]
 
         specialist_rows = []
@@ -4678,6 +4856,8 @@ async def home_map(
             "businesses": businesses,
             "specialists": [
                 _map_specialist_dict(row) for row in specialist_rows
+                if public_owner_allowed(conn, "user", row["user_id"])
+                and content_is_public(conn, "profile", row["user_id"])
             ],
         }
     finally:
@@ -4700,6 +4880,16 @@ async def toggle_save(request: Request, x_telegram_init_data: str = Header(defau
     if kind not in ("listing", "business") or not target_id:
         conn.close()
         raise HTTPException(400, "Saqlash nishoni noto'g'ri.")
+    if kind == "listing" and not feature_enabled(conn, "listings"):
+        conn.close()
+        raise HTTPException(
+            404,
+            {
+                "code": "feature_disabled",
+                "feature": "listings",
+                "detail": "E'lonlar MVP bosqichida o'chirilgan.",
+            },
+        )
     existing = conn.execute(
         "SELECT id FROM saved WHERE user_id=? AND target_kind=? AND target_id=?",
         (user["id"], kind, target_id),
@@ -4730,8 +4920,11 @@ async def my_saved(actor_type: str = "user", x_telegram_init_data: str = Header(
         "SELECT * FROM saved WHERE user_id=? ORDER BY created_at DESC", (user["id"],)
     ).fetchall()
     result = []
+    listings_enabled = feature_enabled(conn, "listings")
     for r in rows:
         if r["target_kind"] == "listing":
+            if not listings_enabled:
+                continue
             t = conn.execute(
                 "SELECT id, title, price, cat FROM listings WHERE id=? AND status='active'",
                 (r["target_id"],),
@@ -5235,12 +5428,14 @@ async def public_user(user_id: int, x_telegram_init_data: str = Header(default="
     if not u:
         conn.close()
         raise HTTPException(404, "Foydalanuvchi topilmadi.")
-    # Shaxsiy e'lonlar (biznesga tegishli emas, faol)
-    rows = conn.execute(
-        "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' "
-        "ORDER BY created_at DESC LIMIT 100",
-        (user_id,),
-    ).fetchall()
+    # Shaxsiy e'lonlar faqat e'lon funksiyasi yoqilganida oshkor qilinadi.
+    rows = []
+    if feature_enabled(conn, "listings"):
+        rows = conn.execute(
+            "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' "
+            "ORDER BY created_at DESC LIMIT 100",
+            (user_id,),
+        ).fetchall()
     listings = [listing_to_dict(conn, r) for r in rows]
     # Mutaxassislik (agar bor va ko'rinadigan bo'lsa)
     sp = conn.execute("SELECT * FROM specialists WHERE user_id=? AND visible=1", (user_id,)).fetchone()
@@ -8079,6 +8274,7 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
     if result_type not in ("all", "product", "service", "business", "specialist", "user"):
         raise HTTPException(400, "Qidiruv turi noto'g'ri.")
     conn = db()
+    listings_enabled = feature_enabled(conn, "listings")
     try:
         _ensure_pay_columns(conn)       # businesses.username kafolati
         _ensure_user_username(conn)     # users.pub_username kafolati
@@ -8285,9 +8481,10 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 product_params + product_filter_params + product_quality_params + [fetch_limit, fetch_offset],
             ).fetchall()
 
-        # E'lonlar — FTS (bm25 moslik). Xatolik yoki indeks bo'lmasa eski LIKE'ga qaytadi.
-        listings = None
-        if _match:
+        # E'lonlar MVPda o'chirilgan bo'lsa jadval qidiruv uchun umuman
+        # o'qilmaydi; yoqilganida avvalgi FTS/LIKE tartibi saqlanadi.
+        listings = [] if not listings_enabled else None
+        if listings_enabled and _match:
             try:
                 listings = conn.execute(
                     "SELECT l.*, lb.yon listing_business_yon, lb.tur listing_business_tur, "
@@ -8301,7 +8498,7 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 ).fetchall()
             except Exception:
                 listings = None
-        if listings is None:
+        if listings_enabled and listings is None:
             listing_where, listing_params = _like_where(
                 ["l.title", "l.cat", "l.price", "l.descr", "l.address"],
                 terms,
@@ -8399,6 +8596,33 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
                 has_more = hm2
                 corrected = cq
 
+    # Adminning reaktiv moderatsiyasi faqat public discovery javobiga ta'sir
+    # qiladi; egasining kabinet endpointlari o'z kontentini ko'rishda davom etadi.
+    products = [
+        row for row in products
+        if public_owner_allowed(conn, "business", row["biz_id"])
+        and content_is_public(conn, row["kind"], row["id"])
+    ]
+    listings = [
+        row for row in listings
+        if public_owner_allowed(
+            conn,
+            "business" if row["business_id"] else "user",
+            row["business_id"] or row["user_id"],
+        )
+        and content_is_public(conn, "listing", row["id"])
+    ]
+    specialists = [
+        row for row in specialists
+        if public_owner_allowed(conn, "user", row["user_id"])
+        and content_is_public(conn, "profile", row["user_id"])
+    ]
+    businesses = [
+        row for row in businesses
+        if public_owner_allowed(conn, "business", row["id"])
+        and content_is_public(conn, "business", row["id"])
+    ]
+
     result = {
         "q": q,
         "scope": scope,
@@ -8474,6 +8698,10 @@ def _search_impl(q: str = "", scope: str = "", result_type: str = "all", actor_t
             ).fetchall()
             user_more = len(urows) > page_size
             for u in urows[:page_size]:
+                if not public_owner_allowed(conn, "user", u["id"]):
+                    continue
+                if not content_is_public(conn, "profile", u["id"]):
+                    continue
                 handle = (u["pub_username"] or "").strip() or (_row_val(u, "username", "") or "").strip()
                 users.append({"id": u["id"], "name": u["name"] or "Foydalanuvchi",
                               "pub_username": handle,
@@ -8596,6 +8824,11 @@ def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
         "b.created_at DESC LIMIT 100",
         business_params + biz_filter_params,
     ).fetchall()
+    businesses = [
+        row for row in businesses
+        if public_owner_allowed(conn, "business", row["id"])
+        and content_is_public(conn, "business", row["id"])
+    ]
 
     specialist_where, specialist_params = _like_where(
         ["s.kasb", "s.descr", "s.hudud", "s.org", "s.lavozim", "u.name", "u.district"],
@@ -8610,6 +8843,11 @@ def _browse_impl(tur: str = "", scope: str = "Tuman", actor_type: str = "user",
         "s.available DESC, s.created_at DESC LIMIT 100",
         specialist_params + spec_filter_params,
     ).fetchall()
+    specialists = [
+        row for row in specialists
+        if public_owner_allowed(conn, "user", row["user_id"])
+        and content_is_public(conn, "profile", row["user_id"])
+    ]
     result = {
         "scope": scope,
         "actor_type": actor_ctx["type"],
@@ -8650,6 +8888,14 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
     if not biz:
         conn.close()
         raise HTTPException(404, "Biznes topilmadi.")
+    if (
+        not public_owner_allowed(conn, "business", business_id)
+        or not content_is_public(conn, "business", business_id)
+    ):
+        owner = viewer and int(viewer["id"]) == int(biz["user_id"])
+        if not owner:
+            conn.close()
+            raise HTTPException(404, "Biznes topilmadi.")
     dining_menu = (biz["yon"] or "").strip() == "Umumiy ovqatlanish"
     today = time.strftime('%Y-%m-%d', time.gmtime(time.time()+5*3600))
     items = conn.execute(
@@ -8667,15 +8913,22 @@ async def business_page(business_id: int, actor_type: str = "user", x_telegram_i
            WHERE i.business_id=?""" + (" AND COALESCE(i.stock_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY i.created_at DESC",
         (today, business_id),
     ).fetchall()
+    items = [
+        row for row in items
+        if content_is_public(conn, row["kind"], row["id"])
+    ]
     item_groups = conn.execute(
         "SELECT id, name, kind FROM item_groups WHERE business_id=?" + (" AND COALESCE(storage_type,'ready_food')='ready_food'" if dining_menu else "") + " ORDER BY created_at ASC, id ASC",
         (business_id,),
     ).fetchall()
-    # Biznes sahifasida HAMMA e'lonlari ko'rinadi (shu jumladan 'own' — faqat mehmonlarga)
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE business_id=? AND status='active' ORDER BY created_at DESC",
-        (business_id,),
-    ).fetchall()
+    # Yoqilgan rejimda biznesning barcha e'lonlari ko'rinadi; MVPda o'chiq
+    # bo'lsa profilning boshqa ma'lumotlari ishlashda davom etadi.
+    listings = []
+    if feature_enabled(conn, "listings"):
+        listings = conn.execute(
+            "SELECT * FROM listings WHERE business_id=? AND status='active' ORDER BY created_at DESC",
+            (business_id,),
+        ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     queue_total = (sum(int(_row_val(i, "today_queue_count", 0) or 0) for i in items)
                    if _queue_direction_supported(biz["yon"]) else 0)
@@ -8723,10 +8976,12 @@ async def person_page(user_id: int, actor_type: str = "user", x_telegram_init_da
         conn.close()
         raise HTTPException(404, "Foydalanuvchi topilmadi.")
     sp = conn.execute("SELECT * FROM specialists WHERE user_id=? AND visible=1", (user_id,)).fetchone()
-    listings = conn.execute(
-        "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' AND visibility='all' "
-        "ORDER BY created_at DESC", (user_id,),
-    ).fetchall()
+    listings = []
+    if feature_enabled(conn, "listings"):
+        listings = conn.execute(
+            "SELECT * FROM listings WHERE user_id=? AND business_id IS NULL AND status='active' AND visibility='all' "
+            "ORDER BY created_at DESC", (user_id,),
+        ).fetchall()
     viewer_actor = resolve_actor(conn, viewer, actor_type) if viewer else None
     result = {
         "id": u["id"], "name": u["name"],
@@ -9448,7 +9703,7 @@ async def list_notifications(actor_type: str = "user", x_telegram_init_data: str
     conn = db(); me = require_user(conn, x_telegram_init_data)
     actor = resolve_actor(conn, me, actor_type); kind, actor_id, _ = _actor_identity(actor)
     rows = conn.execute(
-        """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=? AND requires_action=1
+        """SELECT * FROM notifications WHERE user_id=? AND actor_kind=? AND actor_id=?
            ORDER BY created_at DESC,id DESC LIMIT 200""", (me["id"], kind, actor_id)).fetchall()
     staff = _staff_session(conn, x_telegram_init_data); perms = _perms_parse(_row_val(staff, "perms", "") or "") if staff else None
     visible = [r for r in rows if _notification_visible(r, staff, perms)]
