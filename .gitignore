@@ -9,6 +9,7 @@ frontend/dist/
 backend/.coverage
 backend/htmlcov/
 .superpowers/
+.worktrees/
 platforma.db
 *.sqlite
 *.sqlite3
