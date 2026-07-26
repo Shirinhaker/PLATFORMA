@@ -14,8 +14,9 @@ describe("App", () => {
       } as const),
     };
     render(<App api={api} />);
+    expect(screen.getByRole("banner")).toHaveTextContent("Koprik");
     expect(
-      await screen.findByText("Ko‘prik yangi platforma foundation’i tayyor"),
+      await screen.findByText("Koprik yangi platforma foundation’i tayyor"),
     ).toBeInTheDocument();
     expect(screen.getByText("Eski faol BUILD: v1656")).toBeInTheDocument();
     expect(screen.getByText("API v1")).toBeInTheDocument();
