@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.cache.client import RedisClient
@@ -37,6 +38,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    if resolved.cors_origin_list:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=resolved.cors_origin_list,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     app.add_middleware(RequestIdMiddleware)
     app.state.settings = resolved
     app.state.r2 = build_r2_storage(resolved)
