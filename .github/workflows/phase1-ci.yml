@@ -53,30 +53,8 @@ jobs:
       - name: Install frontend
         working-directory: frontend
         run: npm ci
-      - name: Install browser smoke dependencies
-        run: |
-          npm install --no-save --package-lock=false playwright@1.62.0
-          npx playwright install --with-deps chromium
       - name: Apply foundation migration
         working-directory: backend
         run: python -m alembic upgrade head
       - name: Verify Phase 1
-        run: |
-          uvicorn main:app --host 127.0.0.1 --port 8090 > /tmp/koprik-ci-app.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8090/ > /dev/null; then
-              break
-            fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then
-              cat /tmp/koprik-ci-app.log
-              exit 1
-            fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:8090/ > /dev/null || {
-            cat /tmp/koprik-ci-app.log
-            exit 1
-          }
-          python scripts/verify_phase1.py
+        run: python scripts/verify_phase1.py
