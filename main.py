@@ -30,7 +30,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from database import db, init_db, DB_PATH
@@ -56,6 +56,11 @@ from integrations import (
     get_provider,
     integration_status,
 )
+from feature_flags import (
+    feature_enabled,
+    feature_snapshot,
+    guarded_feature_for_path,
+)
 from telegram_auth import (
     TELEGRAM_LINK_TTL,
     TELEGRAM_RESEND_AFTER,
@@ -67,7 +72,7 @@ from telegram_auth import (
 )
 
 # ---------- Sozlamalar ----------
-APP_BUILD = "v1650"
+APP_BUILD = "v1654"
 APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 BOT_USERNAME = os.environ.get("BOT_USERNAME", "").strip().lstrip("@")
@@ -112,6 +117,24 @@ def resolve_upload_dir():
 
 UPLOAD_DIR = resolve_upload_dir()
 
+_READINESS_INTEGRITY_CACHE = {
+    "checked_at": 0.0,
+    "value": False,
+}
+
+
+def _cached_database_quick_check(conn):
+    now = time.monotonic()
+    if now - _READINESS_INTEGRITY_CACHE["checked_at"] < 60:
+        return bool(_READINESS_INTEGRITY_CACHE["value"])
+    row = conn.execute("PRAGMA quick_check").fetchone()
+    value = bool(row and row[0] == "ok")
+    _READINESS_INTEGRITY_CACHE.update(
+        checked_at=now,
+        value=value,
+    )
+    return value
+
 
 def resolve_backup_dir():
     env_dir = (os.environ.get("BACKUP_DIR") or "").strip()
@@ -134,6 +157,10 @@ def _backup_retention():
 
 BACKUP_DIR = resolve_backup_dir()
 BACKUP_RETENTION = _backup_retention()
+PAYMENT_RECEIPT_DIR = os.environ.get(
+    "PAYMENT_RECEIPT_DIR",
+    "private/payment_receipts",
+).strip()
 DATABASE_BACKUP_ON_START = env_flag(
     "DATABASE_BACKUP_ON_START", default=is_production()
 )
@@ -430,9 +457,12 @@ async def lifespan(app):
     warm_search_cache()
     await setup_bot()
     push_task = None
+    payment_outbox_task = None
     if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH"):
         from push_worker import push_worker_loop
         push_task = asyncio.create_task(push_worker_loop())
+    from notification_delivery import telegram_outbox_worker
+    payment_outbox_task = asyncio.create_task(telegram_outbox_worker())
     try:
         yield
     finally:
@@ -440,6 +470,12 @@ async def lifespan(app):
             push_task.cancel()
             try:
                 await push_task
+            except asyncio.CancelledError:
+                pass
+        if payment_outbox_task:
+            payment_outbox_task.cancel()
+            try:
+                await payment_outbox_task
             except asyncio.CancelledError:
                 pass
 
@@ -528,6 +564,62 @@ def _inject_mobile_init_data(request, mobile_token):
     request.scope["headers"] = headers
 
 
+def _blocked_mutation_response():
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": "Hisob vaqtincha bloklangan.",
+            "code": "account_blocked",
+        },
+    )
+
+
+def _mutation_block_exempt(path):
+    return (
+        path == "/api/reports"
+        or path.endswith("/logout")
+        or path.startswith("/api/admin/")
+    )
+
+
+def _account_blocked_for_user(conn, user_id):
+    from moderation import account_restrictions
+
+    if "account_blocked" in account_restrictions(conn, "user", user_id):
+        return True
+    business = conn.execute(
+        "SELECT id FROM businesses WHERE user_id=?", (int(user_id),)
+    ).fetchone()
+    return bool(
+        business
+        and "account_blocked"
+        in account_restrictions(conn, "business", business["id"])
+    )
+
+
+def _staff_account_blocked(conn, init_data, staff_token=""):
+    from moderation import account_restrictions
+
+    token = str(staff_token or "").strip()
+    if not token and str(init_data or "").startswith("staff:"):
+        token = str(init_data)[6:].strip()
+    if not token:
+        return False
+    row = conn.execute(
+        """
+        SELECT s.business_id FROM staff_sessions ss
+        JOIN staff s ON s.id=ss.staff_id
+        WHERE ss.token=? AND s.status='active'
+        """,
+        (token,),
+    ).fetchone()
+    return bool(
+        row
+        and "account_blocked"
+        in account_restrictions(conn, "business", row["business_id"])
+    )
+
+
 @app.middleware("http")
 async def build_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
@@ -571,7 +663,31 @@ async def whitelist_middleware(request: Request, call_next):
             return _project_temporarily_closed_response()
         return await call_next(request)
 
+    # Istoriya media yo'llari /api prefiksidan tashqarida, shu sabab ularning
+    # MVP guardi umumiy API autentifikatsiya blokidan oldin tekshiriladi.
+    media_feature = guarded_feature_for_path(path)
+    if media_feature and not path.startswith("/api/"):
+        conn = db()
+        try:
+            media_feature_enabled = feature_enabled(conn, media_feature)
+        finally:
+            conn.close()
+        if not media_feature_enabled:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "detail": "Bu bo'lim MVP bosqichida o'chirilgan.",
+                    "code": "feature_disabled",
+                    "feature": media_feature,
+                },
+            )
+
     if path.startswith("/api/"):
+        # Admin panel oddiy Bearer/initData tizimidan butunlay ajratilgan.
+        # Har bir /api/admin endpoint o'z HttpOnly admin sessiyasini tekshiradi.
+        if path.startswith("/api/admin/"):
+            return await call_next(request)
+
         init_data = request.headers.get("x-telegram-init-data", "").strip()
         staff_token = request.headers.get("x-staff-token", "").strip()
         auth = (request.headers.get("authorization") or "").strip()
@@ -606,7 +722,28 @@ async def whitelist_middleware(request: Request, call_next):
             response = await call_next(request)
             return _set_privileged_access_cookie(response, request, tg["id"])
 
+        guarded_feature = guarded_feature_for_path(path)
+        if guarded_feature:
+            conn = db()
+            try:
+                guarded_feature_enabled = feature_enabled(conn, guarded_feature)
+            finally:
+                conn.close()
+            if not guarded_feature_enabled:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "detail": "Bu bo'lim MVP bosqichida o'chirilgan.",
+                        "code": "feature_disabled",
+                        "feature": guarded_feature,
+                    },
+                )
+
+        if path == "/api/features":
+            return await call_next(request)
+
         is_public_home_discovery = path in (
+            "/api/build",
             "/api/home/district-offers",
             "/api/map",
             "/api/search",
@@ -641,6 +778,16 @@ async def whitelist_middleware(request: Request, call_next):
         ):
             return await call_next(request)
         if has_staff:
+            if (
+                request.method in ("POST", "PUT", "PATCH", "DELETE")
+                and not _mutation_block_exempt(path)
+            ):
+                conn = db()
+                try:
+                    if _staff_account_blocked(conn, init_data, staff_token):
+                        return _blocked_mutation_response()
+                finally:
+                    conn.close()
             return await call_next(request)
         # Mobil ilova Telegram initData o'rniga Bearer token yuboradi.
         if has_bearer:
@@ -650,6 +797,16 @@ async def whitelist_middleware(request: Request, call_next):
             conn.close()
             if not mobile_user:
                 return JSONResponse(status_code=401, content={"detail": "Mobil sessiya tugagan yoki noto'g'ri."})
+            if (
+                request.method in ("POST", "PUT", "PATCH", "DELETE")
+                and not _mutation_block_exempt(path)
+            ):
+                conn = db()
+                try:
+                    if _account_blocked_for_user(conn, mobile_user["id"]):
+                        return _blocked_mutation_response()
+                finally:
+                    conn.close()
             # Mavjud endpointlar o'zgarmasligi uchun ichki mobil sessiya belgisi uzatiladi.
             _inject_mobile_init_data(request, mobile_token)
             return await call_next(request)
@@ -661,6 +818,19 @@ async def whitelist_middleware(request: Request, call_next):
                 status_code=401,
                 content={"detail": "Iltimos, ilovani Telegram bot orqali oching."},
             )
+        if (
+            request.method in ("POST", "PUT", "PATCH", "DELETE")
+            and not _mutation_block_exempt(path)
+        ):
+            conn = db()
+            try:
+                row = conn.execute(
+                    "SELECT id FROM users WHERE tg_id=?", (int(tg["id"]),)
+                ).fetchone()
+                if row and _account_blocked_for_user(conn, row["id"]):
+                    return _blocked_mutation_response()
+            finally:
+                conn.close()
     return await call_next(request)
 
 
@@ -673,10 +843,40 @@ app.include_router(public_api_router)
 from ai_agent import router as ai_router
 app.include_router(ai_router)
 
+from admin_api import router as admin_api_router
+app.include_router(admin_api_router)
+
+from payment_api import router as payment_api_router, admin_router as payment_admin_router
+app.include_router(payment_api_router)
+app.include_router(payment_admin_router)
+
+
+@app.get("/api/features")
+async def public_feature_flags():
+    """Frontend uchun faqat ommaviy yoqilgan/o'chirilgan holatlarni qaytaradi."""
+    conn = db()
+    try:
+        return feature_snapshot(conn)
+    finally:
+        conn.close()
+
 
 @app.get("/api/build")
 async def app_build():
-    return {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": False, "phone_registration_ui": False, "telegram_registration_ui": True, "dual_registration": False, "password_only_login": False, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True, "first_visit_district_v1638": True, "district_paid_discovery_v1638": True, "profile_only_stories_v1638": False, "telegram_auth_only_bot_v1639": True, "telegram_deep_link_otp_v1639": True, "trusted_device_30d_v1639": True, "telegram_auth_return_restore_v1640": True, "registered_telegram_registration_block_v1641": True, "cabinet_direct_home_v1642": True, "authenticated_home_stories_v1643": True, "public_guest_search_v1644": True, "followed_business_any_plan_map_v1645": True, "linked_telegram_auto_code_v1646": True, "auth_profile_design_v1647": True, "ad_image_remove_v1648": True, "responsive_ad_images_v1649": True, "ad_banner_labels_hidden_v1650": True}
+    payload = {"ok": True, "build": APP_BUILD, "stories": True, "story_archive": True, "story_images": True, "story_videos_60s": True, "story_video_upload_fix": True, "railpack_ffmpeg": True, "ai": True, "business_follow_map": True, "home_ads": True, "ad_image_positioning": True, "specialist_portfolio": True, "profile_avatar": True, "business_profile_upgrade": True, "user_avatar_zoom": True, "search_actor_separation": True, "listing_device_media": True, "mobile_auth_foundation": True, "mobile_phone_verification": False, "phone_registration_ui": False, "telegram_registration_ui": True, "dual_registration": False, "password_only_login": False, "single_profile_credentials": True, "separate_profile_registration": True, "business_review_management": True, "problem_orders": True, "strict_payment_flow": True, "preparing_ready_flow": True, "delivery_handoff_flow": True, "in_app_notifications": True, "push_notification_foundation": True, "firebase_push_sender": True, "action_notifications_only": True, "notification_actor_separation": True, "realtime_action_notifications": True, "ready_notification": True, "notification_all_screens": True, "order_number_time": True, "customer_order_number": True, "separate_receipt_items": True, "notification_hide_on_open": True, "public_access": True, "privileged_business_sections": True, "business_subscriptions_demo": True, "district_offers": True, "stories_subscription_independent": True, "pro_follow_map": True, "temporary_privileged_access_only": False, "security_hardening_v1616": True, "demo_district_offers_20": True, "district_offers_slow_carousel": True, "responsive_web_home_v1618": True, "separate_listings_screen": True, "home_advertisement_middle": True, "desktop_layout_polish_v1620": True, "production_foundation_v1621": True, "domain_integration_ready_v1622": True, "frontend_assets_v1623": True, "listing_media_preview_v1624": True, "static_assets_deploy_fix_v1625": True, "mobile_home_listings_v1626": True, "single_file_frontend_v1627": True, "mobile_listings_button_v1628": True, "public_launch_v1629": True, "mobile_home_single_screen_v1630": True, "mobile_home_search_results_v1631": True, "taxi_call_clean_screen_v1632": True, "separate_taxi_screen_v1633": True, "mobile_inline_catalog_search_v1634": True, "mobile_home_zoom_controls_hidden_v1634": True, "unified_search_results_v1635": True, "home_ad_tag_hidden_v1635": True, "browser_history_navigation_v1636": True, "search_result_history_v1636": True, "responsive_cabinet_dashboard_v1637": True, "direction_dashboard_metrics_v1637": True, "user_cabinet_dashboard_v1637": True, "first_visit_district_v1638": True, "district_paid_discovery_v1638": True, "profile_only_stories_v1638": False, "telegram_auth_only_bot_v1639": True, "telegram_deep_link_otp_v1639": True, "trusted_device_30d_v1639": True, "telegram_auth_return_restore_v1640": True, "registered_telegram_registration_block_v1641": True, "cabinet_direct_home_v1642": True, "authenticated_home_stories_v1643": True, "public_guest_search_v1644": True, "followed_business_any_plan_map_v1645": True, "linked_telegram_auto_code_v1646": True, "auth_profile_design_v1647": True, "ad_image_remove_v1648": True, "responsive_ad_images_v1649": True, "ad_banner_labels_hidden_v1650": True, "mvp_feature_guards_v1651": True, "followed_profiles_no_stories_v1651": True, "admin_auth_v1651": True, "manual_payments_v1652": True, "private_receipts_v1652": True, "paid_subscription_activation_v1652": True, "admin_site_v1653": True, "moderation_v1653": True, "append_only_admin_audit_v1653": True}
+    payload.update(
+        {
+            "mvp_release_v1654": True,
+            "stories_enabled": False,
+            "listings_enabled": False,
+            "general_chat_enabled": False,
+            "systemization_enabled": False,
+            "orders_enabled": True,
+            "service_orders_enabled": True,
+            "order_chat_enabled": True,
+        }
+    )
+    return payload
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -687,21 +887,64 @@ async def healthcheck():
 
 @app.get("/readyz", include_in_schema=False)
 async def readiness_check():
-    """Baza va media papkasi ishlashga tayyorligini tekshiradi."""
+    """Baza, private storage, admin assetlar va MVP flaglarini tekshiradi."""
     database_ready = False
+    database_integrity = False
+    features = {}
+    conn = None
     try:
         conn = db()
         conn.execute("SELECT 1").fetchone()
-        conn.close()
         database_ready = True
+        database_integrity = _cached_database_quick_check(conn)
+        features = feature_snapshot(conn)
     except Exception:
         database_ready = False
+        database_integrity = False
+    finally:
+        if conn is not None:
+            conn.close()
     uploads_ready = os.path.isdir(UPLOAD_DIR) and os.access(UPLOAD_DIR, os.W_OK)
+    receipts_path = os.path.abspath(PAYMENT_RECEIPT_DIR)
+    uploads_path = os.path.abspath(UPLOAD_DIR)
+    static_path = os.path.abspath("static")
+    payment_receipts_ready = (
+        os.path.isdir(PAYMENT_RECEIPT_DIR)
+        and os.access(PAYMENT_RECEIPT_DIR, os.W_OK)
+        and receipts_path != uploads_path
+        and not receipts_path.startswith(uploads_path + os.sep)
+        and receipts_path != static_path
+        and not receipts_path.startswith(static_path + os.sep)
+    )
+    admin_assets_ready = all(
+        os.path.isfile(os.path.join(ADMIN_DIR, name))
+        for name in ("index.html", "styles.css", "app.js")
+    )
+    expected_features = {
+        "listings": False,
+        "stories": False,
+        "chat": False,
+        "systemization": False,
+    }
+    features_ready = features == expected_features
     payload = {
-        "ok": database_ready and uploads_ready,
+        "ok": all(
+            (
+                database_ready,
+                database_integrity,
+                uploads_ready,
+                payment_receipts_ready,
+                admin_assets_ready,
+                features_ready,
+            )
+        ),
         "build": APP_BUILD,
         "database": database_ready,
+        "database_integrity": database_integrity,
         "uploads": uploads_ready,
+        "payment_receipts": payment_receipts_ready,
+        "admin_assets": admin_assets_ready,
+        "features": features,
     }
     if not payload["ok"]:
         return JSONResponse(status_code=503, content=payload)
@@ -1949,8 +2192,37 @@ validate_runtime_config(
 )
 validate_domain_config()
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PAYMENT_RECEIPT_DIR, exist_ok=True)
 print("UPLOAD_DIR:", os.path.abspath(UPLOAD_DIR))
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# ---------- Alohida admin panel ----------
+ADMIN_DIR = os.path.join(os.path.dirname(__file__), "admin")
+app.mount(
+    "/admin-assets",
+    StaticFiles(directory=ADMIN_DIR),
+    name="admin-assets",
+)
+
+
+@app.get("/admin/", include_in_schema=False)
+async def admin_local_entry():
+    return FileResponse(os.path.join(ADMIN_DIR, "index.html"))
+
+
+@app.get("/", include_in_schema=False)
+async def domain_entry(request: Request):
+    host = (
+        (request.headers.get("host") or "")
+        .split(":", 1)[0]
+        .strip()
+        .lower()
+        .rstrip(".")
+    )
+    if host == "admin." + PRIMARY_DOMAIN:
+        return FileResponse(os.path.join(ADMIN_DIR, "index.html"))
+    return FileResponse(os.path.join("static", "index.html"))
+
 
 # ---------- Mini App (eng oxirida) ----------
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
