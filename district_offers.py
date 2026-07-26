@@ -97,13 +97,15 @@ def _content_count_sql(kind, has_stock_type):
     )
 
 
-def _candidate_query_parts(plan_codes, has_stock_type):
+def _candidate_query_parts(plan_codes, has_stock_type, include_listings=True):
     product_count = _content_count_sql("product", has_stock_type)
     service_count = _content_count_sql("service", has_stock_type)
-    listing_count = (
-        "(SELECT COUNT(*) FROM listings l WHERE l.business_id=b.id "
-        "AND l.status='active' AND l.visibility='all')"
-    )
+    listing_count = "0"
+    if include_listings:
+        listing_count = (
+            "(SELECT COUNT(*) FROM listings l WHERE l.business_id=b.id "
+            "AND l.status='active' AND l.visibility='all')"
+        )
     item_stock_clause = ""
     if has_stock_type:
         item_stock_clause = (
@@ -111,16 +113,31 @@ def _candidate_query_parts(plan_codes, has_stock_type):
             "OR COALESCE(i.stock_type,'ready_food')='ready_food')"
         )
     content_eligible = (
-        "(EXISTS (SELECT 1 FROM items i WHERE i.business_id=b.id "
+        "EXISTS (SELECT 1 FROM items i WHERE i.business_id=b.id "
         "AND i.kind IN ('product','service')"
         + item_stock_clause
-        + ") OR EXISTS (SELECT 1 FROM listings l WHERE l.business_id=b.id "
-        "AND l.status='active' AND l.visibility='all'))"
+        + ")"
     )
+    if include_listings:
+        content_eligible = (
+            "("
+            + content_eligible
+            + " OR EXISTS (SELECT 1 FROM listings l WHERE l.business_id=b.id "
+            "AND l.status='active' AND l.visibility='all'))"
+        )
     placeholders = ",".join("?" for _ in plan_codes)
     scope = (
         "FROM users u JOIN businesses b ON b.user_id=u.id "
         "WHERE u.district_key=? AND b.status='active' "
+        "AND NOT EXISTS (SELECT 1 FROM account_restrictions ar "
+        "WHERE ar.actor_type='business' AND ar.actor_id=b.id "
+        "AND ar.status='active' "
+        "AND ar.restriction IN ('content_hidden','account_blocked')) "
+        "AND NOT EXISTS (SELECT 1 FROM content_moderation bcm "
+        "WHERE bcm.content_kind='business' AND bcm.content_id=b.id "
+        "AND bcm.id=(SELECT MAX(bcm2.id) FROM content_moderation bcm2 "
+        "WHERE bcm2.content_kind='business' AND bcm2.content_id=b.id) "
+        "AND bcm.status IN ('hidden','removed')) "
         "AND EXISTS (SELECT 1 FROM business_subscriptions bs "
         "WHERE bs.business_id=b.id AND bs.status='active' "
         "AND bs.plan_code IN ("
@@ -141,13 +158,23 @@ def _candidate_query_parts(plan_codes, has_stock_type):
 
 
 def _eligible_candidates(
-    conn, district_key, current_time, has_stock_type, slot, max_items
+    conn,
+    district_key,
+    current_time,
+    has_stock_type,
+    slot,
+    max_items,
+    include_listings=True,
 ):
     """Return only the rotated candidate rows while preserving global fairness."""
     plan_codes = home_nearby_eligible_plan_codes()
     if not plan_codes or max_items <= 0:
         return []
-    fields, scope = _candidate_query_parts(plan_codes, has_stock_type)
+    fields, scope = _candidate_query_parts(
+        plan_codes,
+        has_stock_type,
+        include_listings=include_listings,
+    )
     base_params = (district_key, *plan_codes, current_time)
     candidate_count = int(
         conn.execute("SELECT COUNT(*) " + scope, base_params).fetchone()[0] or 0
@@ -183,6 +210,11 @@ def _item_at_offset(conn, business, kind, offset, has_stock_type):
         "SELECT id,name,price,unit,kind,photo_file FROM items "
         "WHERE business_id=? AND kind=?"
         + stock_clause
+        + " AND NOT EXISTS (SELECT 1 FROM content_moderation cm "
+        "WHERE cm.content_kind=items.kind AND cm.content_id=items.id "
+        "AND cm.id=(SELECT MAX(cm2.id) FROM content_moderation cm2 "
+        "WHERE cm2.content_kind=items.kind AND cm2.content_id=items.id) "
+        "AND cm.status IN ('hidden','removed'))"
         + " ORDER BY id LIMIT 1 OFFSET ?",
         (business["id"], kind, int(offset)),
     ).fetchone()
@@ -192,6 +224,11 @@ def _listing_at_offset(conn, business_id, offset):
     return conn.execute(
         "SELECT id,title,price FROM listings "
         "WHERE business_id=? AND status='active' AND visibility='all' "
+        "AND NOT EXISTS (SELECT 1 FROM content_moderation cm "
+        "WHERE cm.content_kind='listing' AND cm.content_id=listings.id "
+        "AND cm.id=(SELECT MAX(cm2.id) FROM content_moderation cm2 "
+        "WHERE cm2.content_kind='listing' AND cm2.content_id=listings.id) "
+        "AND cm.status IN ('hidden','removed')) "
         "ORDER BY id LIMIT 1 OFFSET ?",
         (business_id, int(offset)),
     ).fetchone()
@@ -240,9 +277,19 @@ def _offer_item(conn, business, kind, content):
 
 
 def district_offers_payload(
-    conn, user_id, now=None, limit=MAX_DISTRICT_OFFERS, district=""
+    conn,
+    user_id,
+    now=None,
+    limit=MAX_DISTRICT_OFFERS,
+    district="",
+    include_listings=True,
 ):
     """Return a stable, rotating set of public paid-business offers for one district."""
+    # Domain-level callers (including import/ETL and isolated tests) may provide
+    # a minimal connection without running the application-wide migration.
+    from moderation import ensure_moderation_schema
+
+    ensure_moderation_schema(conn)
     current_time = int(time.time() if now is None else now)
     slot = offer_time_slot(current_time)
     user = None
@@ -270,7 +317,13 @@ def district_offers_payload(
 
     has_stock_type = "stock_type" in _table_columns(conn, "items")
     candidates = _eligible_candidates(
-        conn, district_key, current_time, has_stock_type, slot, max_items
+        conn,
+        district_key,
+        current_time,
+        has_stock_type,
+        slot,
+        max_items,
+        include_listings=include_listings,
     )
     if not candidates:
         return {"needs_district": False, "slot": slot, "items": []}
@@ -279,7 +332,11 @@ def district_offers_payload(
     for business in candidates:
         available_kinds = [
             (kind, int(_row_value(business, kind + "_count", 0) or 0))
-            for kind in ("product", "service", "listing")
+            for kind in (
+                ("product", "service", "listing")
+                if include_listings
+                else ("product", "service")
+            )
             if int(_row_value(business, kind + "_count", 0) or 0) > 0
         ]
         kind, content_count = available_kinds[
