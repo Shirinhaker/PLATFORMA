@@ -23,6 +23,7 @@ import calendar
 import secrets
 import hashlib
 import threading
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, Response, Header, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
@@ -69,6 +70,15 @@ from moderation import (
     content_is_public,
     public_owner_allowed,
 )
+from ad_pricing import (
+    AdPricingError,
+    VALID_AD_DURATIONS,
+    calculate_ad_price,
+    first_schedule_start,
+    normalize_ad_geo,
+    schedule_end_at,
+)
+from payments import ensure_default_prices
 
 router = APIRouter(prefix="/api")
 public_router = APIRouter()
@@ -161,7 +171,11 @@ async def create_moderation_report(
     try:
         user = require_user(conn, x_telegram_init_data)
         owner = _report_content_owner(conn, kind, content_id)
-        if not owner or not content_is_public(conn, kind, content_id):
+        if (
+            not owner
+            or not public_owner_allowed(conn, owner[0], owner[1])
+            or not content_is_public(conn, kind, content_id)
+        ):
             raise HTTPException(404, "Ochiq kontent topilmadi.")
         own_business = conn.execute(
             "SELECT id FROM businesses WHERE user_id=?", (int(user["id"]),)
@@ -3870,69 +3884,36 @@ async def clear_media_inbox(x_telegram_init_data: str = Header(default="")):
 # ====================================================================
 # BOSH SAHIFA REKLAMALARI (v1472)
 # ====================================================================
-AD_RATES = {
-    "district": 10_000,   # bitta tuman / 1 kun
-    "region": 30_000,     # bitta viloyat / 1 kun
-    "republic": 100_000,  # butun O'zbekiston / 1 kun
-}
-
-
-def _ad_discount(days):
-    days = int(days or 1)
-    if days >= 30:
-        return 25
-    if days >= 14:
-        return 15
-    if days >= 7:
-        return 10
-    return 0
-
-
-def _clean_ad_targets(raw):
-    if not isinstance(raw, list):
-        raise HTTPException(400, "Reklama hududlarini tanlang.")
-    result = []
-    seen = set()
-    for x in raw[:30]:
-        if not isinstance(x, dict):
-            continue
-        level = str(x.get("level") or "").strip().lower()
-        region = str(x.get("region") or "").strip()
-        district = str(x.get("district") or "").strip()
-        if level not in ("district", "region", "republic"):
-            continue
-        if level == "district" and not (region and district):
-            continue
-        if level == "region" and not region:
-            continue
-        if level == "republic":
-            region = ""
-            district = ""
-        key = (level, region.lower(), district.lower())
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append({"level": level, "region": region, "district": district})
-    if not result:
-        raise HTTPException(400, "Kamida bitta hudud tanlang.")
-    if any(x["level"] == "republic" for x in result) and len(result) > 1:
-        raise HTTPException(400, "Respublika tanlansa boshqa hudud qo'shilmaydi.")
-    return result
-
-
-def _ad_price(targets, days):
-    days = max(1, min(int(days or 1), 90))
-    daily = sum(AD_RATES[t["level"]] for t in targets)
-    subtotal = daily * days
-    discount = _ad_discount(days)
-    total = int(round(subtotal * (100 - discount) / 100))
-    return {"daily": daily, "subtotal": subtotal, "discount": discount, "total": total, "days": days}
-
-
 def _ad_norm(v):
-    v = str(v or "").lower().replace("ʻ", "'").replace("’", "'").strip()
-    v = re.sub(r"\b(viloyati|viloyat|shahri|shahar|tumani|tuman)\b", "", v)
-    return re.sub(r"[^a-z0-9'\u0400-\u04ff]+", "", v)
+    return normalize_ad_geo(v)
+
+
+def _active_ad_hour_rate(conn):
+    ensure_default_prices(conn)
+    row = conn.execute(
+        """
+        SELECT amount_uzs FROM platform_prices
+        WHERE price_code='advertisement_district_hour'
+          AND service_type='advertisement' AND active=1
+        """
+    ).fetchone()
+    if not row:
+        raise HTTPException(400, "Soatlik reklama narxi faol emas.")
+    return int(row["amount_uzs"])
+
+
+def _ad_quote(body, conn):
+    try:
+        return calculate_ad_price(
+            targets=body.get("targets"),
+            duration_days=body.get("duration_days"),
+            daily_all_day=bool(body.get("daily_all_day", True)),
+            daily_start=body.get("daily_start") or "00:00",
+            daily_end=body.get("daily_end") or "00:00",
+            district_hour_rate=_active_ad_hour_rate(conn),
+        )
+    except AdPricingError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 def _ad_matches(targets, user_region, user_district):
@@ -3980,6 +3961,15 @@ def _ad_dict(row):
         "daily_end": str(_row_val(row, "daily_end", "23:59") or "23:59"),
         "start_at": row["start_at"], "end_at": row["end_at"],
         "duration_days": row["duration_days"], "price": row["price"],
+        "district_count": int(_row_val(row, "district_count", 0) or 0),
+        "hours_per_day": int(_row_val(row, "hours_per_day", 0) or 0),
+        "district_hour_rate": int(
+            _row_val(row, "district_hour_rate", 0) or 0
+        ),
+        "billable_district_hours": int(
+            _row_val(row, "billable_district_hours", 0) or 0
+        ),
+        "price_code": str(_row_val(row, "price_code", "") or ""),
         "status": _ad_status(row), "views": row["views"], "clicks": row["clicks"],
         "created_at": row["created_at"],
     }
@@ -4009,24 +3999,43 @@ def _demo_advertisements():
 @router.get("/advertisements/rates")
 async def advertisement_rates(x_telegram_init_data: str = Header(default="")):
     conn = db()
-    require_user(conn, x_telegram_init_data)
-    conn.close()
-    return {
-        "rates": AD_RATES,
-        "discounts": {"7": 10, "14": 15, "30": 25},
-        "currency": "UZS",
-        "note": "Reklama kvitansiya yuborilib, administrator tasdiqlagandan keyin faol bo'ladi.",
-    }
+    try:
+        require_user(conn, x_telegram_init_data)
+        return {
+            "price_code": "advertisement_district_hour",
+            "district_hour_rate": _active_ad_hour_rate(conn),
+            "duration_days": list(VALID_AD_DURATIONS),
+            "currency": "UZS",
+            "note": (
+                "Reklama kvitansiya yuborilib, administrator "
+                "tasdiqlagandan keyin faol bo'ladi."
+            ),
+        }
+    finally:
+        conn.close()
 
 
 @router.post("/advertisements/price")
 async def advertisement_price(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
-    require_user(conn, x_telegram_init_data)
-    conn.close()
-    b = await request.json()
-    targets = _clean_ad_targets(b.get("targets"))
-    return _ad_price(targets, b.get("duration_days"))
+    try:
+        require_user(conn, x_telegram_init_data)
+        body = await request.json()
+        pricing = _ad_quote(body, conn)
+        return {
+            key: pricing[key]
+            for key in (
+                "district_count",
+                "hours_per_day",
+                "duration_days",
+                "district_hour_rate",
+                "billable_district_hours",
+                "total",
+                "currency",
+            )
+        }
+    finally:
+        conn.close()
 
 
 @router.post("/advertisements/image")
@@ -4078,13 +4087,7 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
         crop_x, crop_y, crop_zoom = 50.0, 50.0, 1.0
     daily_all_day = bool(b.get("daily_all_day", True))
     daily_start = str(b.get("daily_start") or "00:00").strip()
-    daily_end = str(b.get("daily_end") or "23:59").strip()
-    if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", daily_start) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", daily_end):
-        conn.close()
-        raise HTTPException(400, "Kunlik reklama vaqtini to'g'ri kiriting.")
-    if not daily_all_day and daily_start == daily_end:
-        conn.close()
-        raise HTTPException(400, "Boshlanish va tugash vaqti bir xil bo'lmasin.")
+    daily_end = str(b.get("daily_end") or "00:00").strip()
     if not title:
         conn.close()
         raise HTTPException(400, "Reklama sarlavhasini kiriting.")
@@ -4094,35 +4097,52 @@ async def create_advertisement(request: Request, x_telegram_init_data: str = Hea
     if mobile_image_file and not mobile_image_file.startswith("/uploads/ads/"):
         conn.close()
         raise HTTPException(400, "Telefon rasmi manzili noto'g'ri.")
-    targets = _clean_ad_targets(b.get("targets"))
     try:
-        start_at = int(b.get("start_at") or 0)
-    except Exception:
-        start_at = 0
+        pricing = _ad_quote(b, conn)
+        start_at = first_schedule_start(
+            start_date=b.get("start_date"),
+            daily_all_day=daily_all_day,
+            daily_start=daily_start,
+        )
+    except AdPricingError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc)) from exc
     now = int(time.time())
-    if start_at < now - 300:
+    uz_tz = timezone(timedelta(hours=5))
+    today_uz = datetime.fromtimestamp(now, uz_tz).date()
+    start_day_uz = datetime.fromtimestamp(start_at, uz_tz).date()
+    if start_day_uz < today_uz:
         conn.close()
-        raise HTTPException(400, "Reklama boshlanish vaqti o'tib ketgan.")
-    if start_at > now + 180 * 86400:
+        raise HTTPException(400, "Reklama boshlanish sanasi o'tib ketgan.")
+    if start_day_uz > today_uz + timedelta(days=180):
         conn.close()
-        raise HTTPException(400, "Boshlanish vaqtini 180 kundan uzoqqa qo'yib bo'lmaydi.")
-    price = _ad_price(targets, b.get("duration_days"))
-    end_at = start_at + price["days"] * 86400
+        raise HTTPException(400, "Boshlanish sanasini 180 kundan uzoqqa qo'yib bo'lmaydi.")
+    end_at = schedule_end_at(
+        actual_start_at=start_at,
+        duration_days=pricing["duration_days"],
+        hours_each_day=pricing["hours_per_day"],
+        daily_all_day=daily_all_day,
+    )
     cur = conn.execute(
         """INSERT INTO advertisements(user_id,business_id,actor_type,title,caption,image_file,mobile_image_file,crop_x,crop_y,crop_zoom,daily_all_day,daily_start,daily_end,
-                                       targets_json,start_at,end_at,duration_days,price,status,
+                                       targets_json,start_at,end_at,duration_days,price,
+                                       district_count,hours_per_day,district_hour_rate,billable_district_hours,price_code,status,
                                        views,clicks,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?)""",
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'payment_pending',0,0,?,?)""",
         (user["id"], actor["business_id"], actor["type"], title[:120], caption[:240], image_file, mobile_image_file, crop_x, crop_y, crop_zoom,
          1 if daily_all_day else 0, daily_start, daily_end,
-         json.dumps(targets, ensure_ascii=False), start_at, end_at, price["days"], price["total"],
-         "payment_pending", now, now),
+         json.dumps(pricing["targets"], ensure_ascii=False), start_at, end_at,
+         pricing["duration_days"], pricing["total"],
+         pricing["district_count"], pricing["hours_per_day"],
+         pricing["district_hour_rate"],
+         pricing["billable_district_hours"],
+         "advertisement_district_hour", now, now),
     )
     conn.commit()
     ad_id = cur.lastrowid
     row = conn.execute("SELECT * FROM advertisements WHERE id=?", (ad_id,)).fetchone()
     out = _ad_dict(row)
-    out["pricing"] = price
+    out["pricing"] = pricing
     conn.close()
     return out
 
@@ -4186,15 +4206,39 @@ async def active_advertisements(x_telegram_init_data: str = Header(default="")):
         if not content_is_public(conn, "advertisement", r["id"]):
             continue
         if not bool(int(_row_val(r, "daily_all_day", 1) or 0)):
-            try:
-                sh, sm = map(int, str(_row_val(r, "daily_start", "00:00")).split(":"))
-                eh, em = map(int, str(_row_val(r, "daily_end", "23:59")).split(":"))
-                start_minute, end_minute = sh * 60 + sm, eh * 60 + em
-                in_window = (start_minute <= minute_now < end_minute) if start_minute < end_minute else (minute_now >= start_minute or minute_now < end_minute)
-                if not in_window:
+            if int(_row_val(r, "hours_per_day", 0) or 0) > 0:
+                try:
+                    start_minute = int(str(r["daily_start"])[:2]) * 60
+                    end_minute = int(str(r["daily_end"])[:2]) * 60
+                except (TypeError, ValueError):
                     continue
-            except Exception:
-                pass
+            else:
+                try:
+                    sh, sm = map(
+                        int,
+                        str(
+                            _row_val(r, "daily_start", "00:00")
+                        ).split(":"),
+                    )
+                    eh, em = map(
+                        int,
+                        str(
+                            _row_val(r, "daily_end", "23:59")
+                        ).split(":"),
+                    )
+                    start_minute, end_minute = (
+                        sh * 60 + sm,
+                        eh * 60 + em,
+                    )
+                except (TypeError, ValueError):
+                    continue
+            in_window = (
+                start_minute <= minute_now < end_minute
+                if start_minute < end_minute
+                else minute_now >= start_minute or minute_now < end_minute
+            )
+            if not in_window:
+                continue
         try:
             targets = json.loads(r["targets_json"] or "[]")
         except Exception:
