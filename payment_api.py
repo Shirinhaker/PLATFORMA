@@ -41,6 +41,12 @@ from notification_delivery import (
     deliver_pending_outbox,
     queue_payment_decision,
 )
+from ad_pricing import (
+    AdPricingError,
+    calculate_ad_price,
+    schedule_end_at,
+    shift_schedule_start,
+)
 
 
 router = APIRouter(prefix="/api/payments")
@@ -163,6 +169,104 @@ def _resolve_price(conn, service_type, price_code, target):
     return row, rule
 
 
+def _owned_pending_advertisement(
+    conn, *, user, business, actor_type, ad_id
+):
+    try:
+        target_id = int(ad_id)
+    except (TypeError, ValueError):
+        raise HTTPException(404, "To'lov kutilayotgan reklama topilmadi.")
+    if actor_type == "business":
+        if business is None:
+            raise HTTPException(404, "To'lov kutilayotgan reklama topilmadi.")
+        row = conn.execute(
+            """
+            SELECT * FROM advertisements
+            WHERE id=? AND user_id=? AND business_id=?
+              AND actor_type='business' AND status='payment_pending'
+            """,
+            (target_id, int(user["id"]), int(business["id"])),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT * FROM advertisements
+            WHERE id=? AND user_id=? AND business_id IS NULL
+              AND actor_type='user' AND status='payment_pending'
+            """,
+            (target_id, int(user["id"])),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "To'lov kutilayotgan reklama topilmadi.")
+    return row
+
+
+def _hourly_ad_payment_target(
+    conn, *, user, business, actor_type, target, price_row
+):
+    ad = _owned_pending_advertisement(
+        conn,
+        user=user,
+        business=business,
+        actor_type=actor_type,
+        ad_id=target.get("target_id"),
+    )
+    if str(ad["price_code"] or "") != "advertisement_district_hour":
+        raise HTTPException(400, "Reklama soatlik tarifga tegishli emas.")
+    try:
+        targets = json.loads(ad["targets_json"] or "[]")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        raise HTTPException(400, "Reklama hududlari buzilgan.")
+    try:
+        pricing = calculate_ad_price(
+            targets=targets,
+            duration_days=int(ad["duration_days"]),
+            daily_all_day=bool(ad["daily_all_day"]),
+            daily_start=str(ad["daily_start"]),
+            daily_end=str(ad["daily_end"]),
+            district_hour_rate=int(price_row["amount_uzs"]),
+        )
+    except AdPricingError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    quantity = int(pricing["billable_district_hours"])
+    conn.execute(
+        """
+        UPDATE advertisements
+        SET targets_json=?,district_count=?,hours_per_day=?,
+            district_hour_rate=?,billable_district_hours=?,price=?,
+            updated_at=?
+        WHERE id=? AND status='payment_pending'
+        """,
+        (
+            json.dumps(pricing["targets"], ensure_ascii=False),
+            int(pricing["district_count"]),
+            int(pricing["hours_per_day"]),
+            int(pricing["district_hour_rate"]),
+            quantity,
+            int(pricing["total"]),
+            int(time.time()),
+            int(ad["id"]),
+        ),
+    )
+    return (
+        {
+            "target_id": int(ad["id"]),
+            "quantity": quantity,
+        },
+        {
+            "district_count": int(pricing["district_count"]),
+            "hours_per_day": int(pricing["hours_per_day"]),
+            "duration_days": int(pricing["duration_days"]),
+            "district_hour_rate": int(pricing["district_hour_rate"]),
+            "billable_district_hours": quantity,
+            "schedule_start": int(ad["start_at"]),
+            "daily_all_day": bool(ad["daily_all_day"]),
+            "daily_start": str(ad["daily_start"]),
+            "daily_end": str(ad["daily_end"]),
+        },
+    )
+
+
 @router.post("/requests", status_code=201)
 async def submit_payment_request(
     request: Request,
@@ -197,6 +301,22 @@ async def submit_payment_request(
             body.get("price_code"),
             target,
         )
+        del rule
+        payment_target = dict(target)
+        target_snapshot = None
+        if service_type == "advertisement":
+            if str(price_row["price_code"]) != "advertisement_district_hour":
+                raise HTTPException(
+                    400, "Yangi reklama uchun soatlik tarifni tanlang."
+                )
+            payment_target, target_snapshot = _hourly_ad_payment_target(
+                conn,
+                user=user,
+                business=business,
+                actor_type=actor_type,
+                target=target,
+                price_row=price_row,
+            )
         method_id = int(body.get("payment_method_id") or 0)
         method = conn.execute(
             "SELECT id FROM payment_methods WHERE id=? AND active=1",
@@ -226,6 +346,8 @@ async def submit_payment_request(
             )
 
         try:
+            if service_type == "advertisement":
+                conn.commit()
             payment = create_payment_request(
                 conn,
                 owner={
@@ -237,10 +359,10 @@ async def submit_payment_request(
                 },
                 service=service_type,
                 target={
-                    **target,
+                    **payment_target,
                     "payment_method_id": method_id,
                     "quantity": (
-                        int(target.get("quantity") or 1)
+                        int(payment_target.get("quantity") or 1)
                         if service_type == "advertisement"
                         else 1
                     ),
@@ -252,6 +374,7 @@ async def submit_payment_request(
                 },
                 receipt=receipt,
                 receipt_claimer=claimer,
+                target_snapshot=target_snapshot,
                 now=int(time.time()),
             )
         except PaymentConflict as exc:
@@ -419,7 +542,11 @@ async def admin_prices(request: Request):
                 "config": json.loads(row["config_json"] or "{}"),
             }
             for row in conn.execute(
-                "SELECT * FROM platform_prices ORDER BY id"
+                """
+                SELECT * FROM platform_prices
+                WHERE price_code!='advertisement_district_day'
+                ORDER BY id
+                """
             ).fetchall()
         ]
     finally:
@@ -712,6 +839,96 @@ async def admin_payment_receipt(payment_id: int, request: Request):
         conn.close()
 
 
+def _activate_legacy_advertisement(conn, payment, now):
+    days = max(1, int(payment["quantity"] or 1))
+    start_at = int(now)
+    end_at = start_at + days * 86_400
+    cursor = conn.execute(
+        """
+        UPDATE advertisements
+        SET status='active',start_at=?,end_at=?,updated_at=?
+        WHERE id=? AND status='payment_pending'
+        """,
+        (
+            start_at,
+            end_at,
+            int(now),
+            int(payment["target_id"] or 0),
+        ),
+    )
+    if cursor.rowcount != 1:
+        raise PaymentValidationError("Kutilayotgan reklama topilmadi.")
+    return {"schedule_start": start_at, "schedule_end": end_at}
+
+
+def _activate_hourly_advertisement(conn, payment, now):
+    try:
+        snapshot = json.loads(payment["target_snapshot_json"] or "{}")
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise PaymentValidationError(
+            "Reklama to'lov jadvali buzilgan."
+        ) from exc
+    if not isinstance(snapshot, dict):
+        raise PaymentValidationError("Reklama to'lov jadvali buzilgan.")
+    ad = conn.execute(
+        "SELECT * FROM advertisements WHERE id=?",
+        (int(payment["target_id"] or 0),),
+    ).fetchone()
+    if not ad or ad["status"] != "payment_pending":
+        raise PaymentValidationError("Kutilayotgan reklama topilmadi.")
+    if (
+        int(ad["user_id"]) != int(payment["user_id"])
+        or str(ad["actor_type"]) != str(payment["actor_type"])
+        or (ad["business_id"] or None) != (payment["business_id"] or None)
+    ):
+        raise PaymentValidationError("Reklama to'lov egasiga tegishli emas.")
+    try:
+        duration_days = int(snapshot.get("duration_days") or 0)
+        hours_each_day = int(snapshot.get("hours_per_day") or 0)
+        requested_start = int(snapshot.get("schedule_start") or 0)
+        daily_all_day = bool(snapshot.get("daily_all_day"))
+        daily_start = str(snapshot.get("daily_start") or "00:00")
+        daily_end = str(snapshot.get("daily_end") or "00:00")
+        if duration_days <= 0 or hours_each_day <= 0 or requested_start <= 0:
+            raise ValueError
+        actual_start = shift_schedule_start(
+            requested_start_at=requested_start,
+            approved_at=int(now),
+            daily_all_day=daily_all_day,
+            daily_start=daily_start,
+        )
+        actual_end = schedule_end_at(
+            actual_start_at=actual_start,
+            duration_days=duration_days,
+            hours_each_day=hours_each_day,
+            daily_all_day=daily_all_day,
+        )
+    except (AdPricingError, TypeError, ValueError) as exc:
+        raise PaymentValidationError(
+            "Reklama to'lov jadvali noto'g'ri."
+        ) from exc
+    cursor = conn.execute(
+        """
+        UPDATE advertisements
+        SET status='active',start_at=?,end_at=?,daily_all_day=?,
+            daily_start=?,daily_end=?,updated_at=?
+        WHERE id=? AND status='payment_pending'
+        """,
+        (
+            actual_start,
+            actual_end,
+            1 if daily_all_day else 0,
+            daily_start,
+            daily_end,
+            int(now),
+            int(ad["id"]),
+        ),
+    )
+    if cursor.rowcount != 1:
+        raise PaymentValidationError("Kutilayotgan reklama topilmadi.")
+    return {"schedule_start": actual_start, "schedule_end": actual_end}
+
+
 def _activate_approved_service(conn, payment, now):
     service_type = payment["service_type"]
     if service_type == "subscription":
@@ -728,23 +945,9 @@ def _activate_approved_service(conn, payment, now):
             raise PaymentValidationError(str(exc)) from exc
         return
     if service_type == "advertisement":
-        days = max(1, int(payment["quantity"] or 1))
-        cursor = conn.execute(
-            """
-            UPDATE advertisements
-            SET status='active',start_at=?,end_at=?,updated_at=?
-            WHERE id=? AND status='payment_pending'
-            """,
-            (
-                int(now),
-                int(now) + days * 86400,
-                int(now),
-                int(payment["target_id"] or 0),
-            ),
-        )
-        if cursor.rowcount != 1:
-            raise PaymentValidationError("Kutilayotgan reklama topilmadi.")
-        return
+        if payment["price_code"] == "advertisement_district_hour":
+            return _activate_hourly_advertisement(conn, payment, now)
+        return _activate_legacy_advertisement(conn, payment, now)
     if service_type == "listing":
         cursor = conn.execute(
             """
