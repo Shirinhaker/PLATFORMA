@@ -2,6 +2,18 @@
   "use strict";
   var state={challengeId:0,page:"dashboard",accountType:"users",decision:null,methods:[]};
   var paymentActionPaths={approve:"/approve",reject:"/reject",cancel:"/cancel"};
+  var PRICE_LABELS={
+    advertisement_district_hour:"Reklama · 1 tuman / 1 soat"
+  };
+  var REPORT_KIND_LABELS={
+    profile:"Oddiy profil",
+    business:"Biznes profil",
+    product:"Mahsulot",
+    service:"Xizmat",
+    advertisement:"Reklama",
+    listing:"E'lon",
+    story:"Istoriya"
+  };
   var $=function(id){return document.getElementById(id);};
   var esc=function(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];});};
   var money=function(value){return new Intl.NumberFormat("uz-UZ").format(Number(value||0))+" so‘m";};
@@ -92,7 +104,7 @@
   function loadPricing(){
     Promise.all([api("/api/admin/prices"),api("/api/admin/payment-methods")]).then(function(values){
       var prices=values[0];state.methods=values[1];
-      $("pricesList").innerHTML=prices.map(function(row){return '<div class="setting-row"><div><strong>'+esc(row.price_code)+'</strong><div class="subtle">'+esc(row.service_type)+'</div></div><input type="number" min="0" value="'+row.amount_uzs+'" data-price-value="'+row.id+'"><button class="secondary compact" data-save-price="'+row.id+'">Saqlash</button></div>';}).join("")||empty("Narx yo‘q.");
+      $("pricesList").innerHTML=prices.map(function(row){return '<div class="setting-row"><div><strong>'+esc(PRICE_LABELS[row.price_code]||row.price_code)+'</strong><div class="subtle">'+esc(row.service_type)+'</div></div><input type="number" min="0" value="'+row.amount_uzs+'" data-price-value="'+row.id+'"><button class="secondary compact" data-save-price="'+row.id+'">Saqlash</button></div>';}).join("")||empty("Narx yo‘q.");
       $("paymentMethodsList").innerHTML=state.methods.map(function(row){return '<div class="setting-row"><div><strong>'+esc(row.name)+'</strong><div class="subtle">'+esc(row.recipient_name)+'</div></div>'+badge(row.active?"active":"inactive")+'<button class="secondary compact" data-edit-method="'+row.id+'">Tahrirlash</button></div>';}).join("")||empty("To‘lov usuli yo‘q.");
     }).catch(function(e){toast(e.message,true);});
   }
@@ -134,7 +146,7 @@
   function loadReports(){
     $("reportsList").innerHTML=empty("Yuklanmoqda…");
     api("/api/admin/reports?status="+encodeURIComponent($("reportStatus").value)).then(function(data){
-      $("reportsList").innerHTML=data.items.length?data.items.map(function(row){var actions="";if(["open","reviewing"].includes(row.status))actions='<button class="secondary compact" data-report-action="assign" data-id="'+row.id+'">Qabul qilish</button><button class="warn compact" data-report-action="resolve" data-id="'+row.id+'">Hal qilish</button><button class="danger compact" data-report-action="dismiss" data-id="'+row.id+'">Rad etish</button>';return '<div class="record-row"><span class="record-main"><strong>'+esc(row.reason_code)+'</strong><small>'+esc(row.content_kind)+" #"+row.content_id+" · "+esc(row.comment)+'</small></span>'+badge(row.status)+'<span>'+date(row.created_at)+'</span><span class="action-row">'+actions+"</span></div>";}).join(""):empty("Shikoyat topilmadi.");
+      $("reportsList").innerHTML=data.items.length?data.items.map(function(row){var actions="";if(["open","reviewing"].includes(row.status))actions='<button class="secondary compact" data-report-action="assign" data-id="'+row.id+'">Qabul qilish</button><button class="warn compact" data-report-action="resolve" data-id="'+row.id+'">Hal qilish</button><button class="danger compact" data-report-action="dismiss" data-id="'+row.id+'">Rad etish</button>';return '<div class="record-row"><span class="record-main"><strong>'+esc(row.reason_code)+'</strong><small>'+esc(REPORT_KIND_LABELS[row.content_kind]||row.content_kind)+" #"+row.content_id+" · "+esc(row.comment)+'</small></span>'+badge(row.status)+'<span>'+date(row.created_at)+'</span><span class="action-row">'+actions+"</span></div>";}).join(""):empty("Shikoyat topilmadi.");
     }).catch(function(e){$("reportsList").innerHTML=empty(e.message);});
   }
   function loadAudit(){
