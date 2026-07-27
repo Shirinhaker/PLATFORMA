@@ -29,6 +29,7 @@ KOPRIK_CSRF_SECRET=alohida openssl rand -hex 32 natijasi
 KOPRIK_OUTBOX_ENCRYPTION_KEY=Fernet.generate_key natijasi
 KOPRIK_AUTH_COOKIE_NAME=koprik_session
 KOPRIK_SESSION_TTL_SECONDS=2592000
+KOPRIK_SESSION_CACHE_TTL_SECONDS=30
 ```
 
 Fernet kalitini lokal terminalda yarating:
@@ -40,6 +41,11 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 `KOPRIK_DATABASE_URL` qiymati `postgresql+asyncpg://` bilan boshlanishi
 kerak. Railway reference oddiy `postgresql://` qaytarsa, faqat protokol
 qismini `postgresql+asyncpg://` ga almashtiring.
+
+`KOPRIK_SESSION_CACHE_TTL_SECONDS` majburiy emas; koddagi standart qiymat
+`30`. API sessiya tokenining o‘zini Redisga yozmaydi: SHA-256 kalit va CSRF
+qiymatisiz qisqa muddatli akkaunt identifikatori saqlanadi. Logout PostgreSQL
+sessiyasini bekor qiladi va Redis keshini atomik ravishda o‘chiradi.
 
 ### worker-staging
 
