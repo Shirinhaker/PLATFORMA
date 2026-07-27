@@ -1,3 +1,4 @@
+import re
 import unittest
 from pathlib import Path
 
@@ -40,6 +41,59 @@ class Phase2OperationalContractTests(unittest.TestCase):
             'http_req_duration: ["p(95)<500"]',
         ):
             self.assertIn(expected, load_script)
+
+    def test_windows_load_gate_reuses_connections_and_protects_report(self):
+        load_script = (ROOT / "scripts/phase2_load.ps1").read_text(
+            encoding="utf-8"
+        )
+
+        for expected in (
+            "$StageConcurrencies = @(100, 500, 1000)",
+            "$P95LimitMs = 500",
+            "$MaxConnectionsPerServer = 1000",
+            "Koprik.LoadRunner]::Run",
+            "ResponseContentRead",
+            "/healthz",
+            "/api/v1/auth/login/start",
+            "/api/v1/auth/login/verify",
+            "/api/v1/me",
+            "/api/v1/auth/logout",
+            "Set-Clipboard -Value \" \"",
+            "warmup",
+            "cold_total_ms",
+            "p50_ms",
+            "p95_ms",
+            "p99_ms",
+            "$errorCount -eq 0",
+            "$p95 -lt $P95LimitMs",
+            "reused_https_connections",
+            "finally",
+        ):
+            self.assertIn(expected, load_script)
+
+        self.assertEqual(
+            load_script.count("New-Object System.Net.Http.HttpClient("),
+            1,
+        )
+        report = re.search(
+            r"\$safeReport\s*=\s*\[ordered\]@\{"
+            r"(?P<body>.*?)"
+            r"\n\s*\}\n\s*\$safeReport\s*\|",
+            load_script,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(report)
+        report_body = report.group("body").lower()
+        for forbidden in (
+            "login",
+            "password",
+            "otp",
+            "session",
+            "cookie",
+            "csrf",
+            "telegram",
+        ):
+            self.assertNotIn(forbidden, report_body)
 
     def test_ci_uses_phase2_verifier_and_fake_test_secrets(self):
         workflow = (
@@ -93,7 +147,6 @@ class Phase2OperationalContractTests(unittest.TestCase):
         ):
             self.assertIn(gate, runbook)
 
-
     def test_staging_runbook_documents_profile_summary_cache_gate(self):
         runbook = (
             ROOT / "docs/deploy-auth-profile-staging.md"
@@ -105,6 +158,24 @@ class Phase2OperationalContractTests(unittest.TestCase):
             "1000 parallel",
             "0 xato",
             "p95 500 ms dan past",
+        ):
+            self.assertIn(expected, runbook)
+
+    def test_staging_runbook_documents_official_windows_warm_gate(self):
+        runbook = (
+            ROOT / "docs/deploy-auth-profile-staging.md"
+        ).read_text(encoding="utf-8")
+
+        for expected in (
+            "scripts\\phase2_load.ps1",
+            "phase2-warm-load-result.json",
+            "cold_total_ms",
+            "warm-up",
+            "qayta ishlatiladigan HTTPS ulanishlari",
+            "har bir bosqichda 0 xato",
+            "har bir bosqichda p95 500 ms dan past",
+            "k6 CI yoki Linux/macOS",
+            "Phase 2 tugagan",
         ):
             self.assertIn(expected, runbook)
 
