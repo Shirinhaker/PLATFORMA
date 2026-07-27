@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     auth_cookie_name: str = "koprik_session"
     session_ttl_seconds: int = 30 * 24 * 60 * 60
     session_cache_ttl_seconds: int = Field(default=30, ge=5, le=300)
+    profile_summary_cache_ttl_seconds: int = Field(
+        default=30,
+        ge=5,
+        le=300,
+    )
     telegram_link_ttl_seconds: int = 10 * 60
     telegram_code_ttl_seconds: int = 5 * 60
     telegram_resend_seconds: int = 60
