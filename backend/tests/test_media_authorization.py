@@ -2,6 +2,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import fakeredis.aioredis
 import httpx
 import pytest
 
@@ -12,6 +13,7 @@ from app.core.config import Settings
 from app.main import create_app
 from app.media.storage import R2Storage
 from app.profiles.model import BusinessProfile, UserProfile
+from app.profiles.summary_service import ProfileSummaryService
 
 
 class FakeAuthService:
@@ -114,9 +116,16 @@ async def media_clients(s3_client):
             expires_at=now + timedelta(days=30),
         ),
     }
+    database = FakeDatabase(profiles)
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
     app = create_app(settings)
     app.state.auth_service = FakeAuthService(identities)
-    app.state.database = FakeDatabase(profiles)
+    app.state.database = database
+    app.state.profile_summary_service = ProfileSummaryService(
+        database.session,
+        redis,
+        settings,
+    )
     app.state.r2 = R2Storage(s3_client, bucket="koprik-test")
 
     async with AsyncExitStack() as stack:
@@ -142,6 +151,7 @@ async def media_clients(s3_client):
                 client.csrf = derive_csrf(token, settings.csrf_secret)
             clients[name] = client
         yield SimpleNamespace(**clients)
+    await redis.aclose()
 
 
 def upload_request(purpose):
