@@ -30,6 +30,7 @@ KOPRIK_OUTBOX_ENCRYPTION_KEY=Fernet.generate_key natijasi
 KOPRIK_AUTH_COOKIE_NAME=koprik_session
 KOPRIK_SESSION_TTL_SECONDS=2592000
 KOPRIK_SESSION_CACHE_TTL_SECONDS=30
+KOPRIK_PROFILE_SUMMARY_CACHE_TTL_SECONDS=30
 ```
 
 Fernet kalitini lokal terminalda yarating:
@@ -46,6 +47,12 @@ qismini `postgresql+asyncpg://` ga almashtiring.
 `30`. API sessiya tokenining o‘zini Redisga yozmaydi: SHA-256 kalit va CSRF
 qiymatisiz qisqa muddatli akkaunt identifikatori saqlanadi. Logout PostgreSQL
 sessiyasini bekor qiladi va Redis keshini atomik ravishda o‘chiradi.
+
+`KOPRIK_PROFILE_SUMMARY_CACHE_TTL_SECONDS` majburiy emas; standart `30`.
+`/api/v1/me` javobining ixcham xulosasi
+`profile:me:v1:{account_type}:{account_id}` kalitida saqlanadi. Profil,
+avatar yoki logo muvaffaqiyatli saqlangach tegishli kalit o‘chiriladi.
+Redis ishlamasa API PostgreSQL fallback orqali ishlashda davom etadi.
 
 ### worker-staging
 
@@ -161,6 +168,9 @@ Gate: HTTP xatolar 1% dan kam va p95 500 ms dan past. Bu 100 → 500 → 1000
 authenticated read o‘lchovi, butun tizim 10 000 concurrent userni ko‘taradi
 degan da’vo emas. 10 000 uchun alohida capacity test, Railway replica
 masshtablash va DB/Redis/R2 metrikalari talab qilinadi.
+
+Phase 2 profil cache gate’i `/api/v1/me` uchun 1000 parallel so‘rovda
+0 xato, barcha javoblar HTTP 200 va p95 500 ms dan past bo‘lganda o‘tadi.
 
 ## 6. Rollback
 
