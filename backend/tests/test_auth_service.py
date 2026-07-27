@@ -1,5 +1,7 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import fakeredis.aioredis
 import pytest
@@ -408,3 +410,161 @@ async def test_session_last_used_at_is_throttled_to_five_minutes(
     await db_session.refresh(stored)
     assert identity is not None
     assert stored.last_used_at == fixed_now + timedelta(minutes=6)
+
+
+async def test_concurrent_session_resolution_is_coalesced_and_cached(
+    fixed_now: datetime,
+    monkeypatch,
+):
+    class RecordingSession:
+        def __init__(self):
+            self.rollbacks = 0
+
+        async def rollback(self):
+            self.rollbacks += 1
+
+        async def commit(self):
+            pass
+
+    session = RecordingSession()
+
+    @asynccontextmanager
+    async def session_factory():
+        yield session
+
+    repository_calls = 0
+    auth_session = SimpleNamespace(
+        expires_at=fixed_now + timedelta(days=1),
+        last_used_at=fixed_now,
+    )
+    account = SimpleNamespace(
+        id=42,
+        account_type=AccountType.USER,
+        login="u_cached",
+    )
+
+    async def resolve_from_database(db_session, raw_token, now):
+        nonlocal repository_calls
+        assert db_session is session
+        assert raw_token == "raw-session-secret"
+        repository_calls += 1
+        await asyncio.sleep(0.01)
+        return auth_session, account
+
+    monkeypatch.setattr(
+        auth_service_module,
+        "resolve_stored_session",
+        resolve_from_database,
+    )
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    service = AuthService(
+        session_factory,
+        redis,
+        Settings(
+            environment="test",
+            csrf_secret="test-csrf-secret",
+        ),
+    )
+    try:
+        identities = await asyncio.gather(
+            *(
+                service.resolve_session("raw-session-secret", fixed_now)
+                for _ in range(50)
+            )
+        )
+        cached = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now + timedelta(seconds=1),
+        )
+        keys = [key async for key in redis.scan_iter("auth:session:*")]
+        values = [await redis.get(key) for key in keys]
+    finally:
+        await redis.aclose()
+
+    assert repository_calls == 1
+    assert session.rollbacks == 1
+    assert all(identity is not None for identity in identities)
+    assert cached is not None
+    assert cached.login == "u_cached"
+    assert keys
+    assert all("raw-session-secret" not in key for key in keys)
+    assert all("raw-session-secret" not in (value or "") for value in values)
+
+
+async def test_revoke_session_invalidates_cached_identity(
+    fixed_now: datetime,
+    monkeypatch,
+):
+    class RecordingSession:
+        async def rollback(self):
+            pass
+
+        async def commit(self):
+            pass
+
+    session = RecordingSession()
+
+    @asynccontextmanager
+    async def session_factory():
+        yield session
+
+    auth_session = SimpleNamespace(
+        expires_at=fixed_now + timedelta(days=1),
+        last_used_at=fixed_now,
+        revoked_at=None,
+    )
+    account = SimpleNamespace(
+        id=42,
+        account_type=AccountType.USER,
+        login="u_cached",
+    )
+    repository_calls = 0
+
+    async def resolve_from_database(db_session, raw_token, now):
+        nonlocal repository_calls
+        repository_calls += 1
+        if auth_session.revoked_at is not None:
+            return None
+        return auth_session, account
+
+    async def lock_stored_session(db_session, raw_token):
+        return auth_session
+
+    monkeypatch.setattr(
+        auth_service_module,
+        "resolve_stored_session",
+        resolve_from_database,
+    )
+    monkeypatch.setattr(
+        auth_service_module,
+        "lock_session",
+        lock_stored_session,
+    )
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    service = AuthService(
+        session_factory,
+        redis,
+        Settings(
+            environment="test",
+            csrf_secret="test-csrf-secret",
+        ),
+    )
+    try:
+        cached = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now,
+        )
+        await service.revoke_session(
+            "raw-session-secret",
+            fixed_now + timedelta(seconds=1),
+        )
+        revoked = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now + timedelta(seconds=2),
+        )
+    finally:
+        await redis.aclose()
+
+    assert cached is not None
+    assert revoked is None
+    assert repository_calls == 1
