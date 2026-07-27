@@ -193,7 +193,10 @@ function Invoke-WarmStage {
         }
     ).Count
     if ($warmupErrors -ne 0) {
-        throw "Warm-up muvaffaqiyatsiz: $warmupErrors xato."
+        Write-Warning (
+            "Warm-upda $warmupErrors xato kuzatildi; " +
+            "o'lchov davom etadi."
+        )
     }
 
     Write-Host "O'lchov boshlandi: $Concurrency parallel GET"
@@ -221,6 +224,7 @@ function Invoke-WarmStage {
     return [pscustomobject][ordered]@{
         concurrency = $Concurrency
         requests = $samples.Count
+        warmup_errors = $warmupErrors
         errors = $errorCount
         p50_ms = $p50
         p95_ms = $p95
