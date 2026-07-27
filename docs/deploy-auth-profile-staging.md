@@ -155,8 +155,38 @@ Bir Telegram akkaunti bilan:
 
 ## 5. Xavfsiz yuklama o‘lchovi
 
-Faqat staging uchun alohida test session yarating. Uni shell historyga
-yozmasdan environment orqali uzating:
+Phase 2 ning rasmiy staging gate’i Windows PowerShell orqali ishlaydi.
+Repository root papkasida quyidagi buyruqni bajaring:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File ".\scripts\phase2_load.ps1" `
+  -OutputPath ".\phase2-warm-load-result.json"
+```
+
+Skript staging loginini so‘raydi. Telegramdagi Koprik parolini clipboardga
+nusxalang va so‘ralganda Enter bosing; skript parolni olgach clipboardni
+darhol tozalaydi. Keyin Telegram bot yuborgan 6 xonali kodni kiriting.
+Login, parol, Telegram kodi va sessiya natija fayliga yozilmaydi.
+
+Skript avval yangi ulanish bilan bitta `/healthz` so‘rovini o‘lchaydi.
+Bu `cold_total_ms` faqat diagnostika bo‘lib, gate natijasiga kirmaydi.
+Asosiy test bir xil qayta ishlatiladigan HTTPS ulanishlari bilan har bir
+bosqichni warm-up qiladi, warm-up natijalarini tashlab yuboradi va keyin
+`/api/v1/me` uchun 100, 500, 1000 parallel so‘rovni o‘lchaydi.
+
+Phase 2 warm-load gate faqat quyidagi holatda o‘tadi:
+
+- har bir bosqichda 0 xato;
+- barcha measured javoblar HTTP 200;
+- har bir bosqichda p95 500 ms dan past.
+
+Natija `phase2-warm-load-result.json` fayliga yoziladi. Faylda secret
+yo‘qligini tekshiring va uni Phase 2 staging dalili sifatida saqlang.
+Skript non-zero exit code qaytarsa, gate o‘tmagan hisoblanadi.
+
+Mavjud `scripts/phase2_load.js` o‘zgarmaydi. k6 CI yoki Linux/macOS
+uchun qo‘shimcha smoke/capacity vositasi bo‘lib qoladi:
 
 ```bash
 KOPRIK_API_BASE_URL=https://platforma-production-f753.up.railway.app \
@@ -164,13 +194,20 @@ KOPRIK_LOAD_SESSION=STAGING_TEST_SESSION \
 k6 run scripts/phase2_load.js
 ```
 
-Gate: HTTP xatolar 1% dan kam va p95 500 ms dan past. Bu 100 → 500 → 1000
-authenticated read o‘lchovi, butun tizim 10 000 concurrent userni ko‘taradi
-degan da’vo emas. 10 000 uchun alohida capacity test, Railway replica
-masshtablash va DB/Redis/R2 metrikalari talab qilinadi.
+k6 natijasi rasmiy Windows warm gate o‘rnini bosmaydi. Ushbu gate butun
+tizim 10 000 concurrent userni ko‘taradi degan da’vo emas. 10 000 uchun
+alohida capacity test, Railway replica masshtablash va DB/Redis/R2
+metrikalari talab qilinadi.
 
-Phase 2 profil cache gate’i `/api/v1/me` uchun 1000 parallel so‘rovda
-0 xato, barcha javoblar HTTP 200 va p95 500 ms dan past bo‘lganda o‘tadi.
+Phase 2 tugagan deb belgilashdan oldin:
+
+1. GitHub CI yashil;
+2. `api-staging`, `worker-staging`, `frontend-staging` healthy;
+3. user va business Telegram login hamda profil/media oqimlari ishlaydi;
+4. Postgres backup olingan;
+5. `phase2-warm-load-result.json` uchala bosqich uchun 0 xato va
+   p95 500 ms dan past natijani ko‘rsatadi;
+6. natija faylida maxfiy qiymat yo‘q.
 
 ## 6. Rollback
 
