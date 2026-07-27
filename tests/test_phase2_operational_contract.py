@@ -95,6 +95,27 @@ class Phase2OperationalContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, report_body)
 
+    def test_windows_load_gate_discards_warmup_errors_before_measurement(self):
+        load_script = (ROOT / "scripts/phase2_load.ps1").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("warmup_errors = $warmupErrors", load_script)
+        self.assertIn("Write-Warning (", load_script)
+        self.assertIn(
+            '"Warm-upda $warmupErrors xato kuzatildi; "',
+            load_script,
+        )
+        self.assertIn('"o\'lchov davom etadi."', load_script)
+        self.assertNotIn(
+            'throw "Warm-up muvaffaqiyatsiz: $warmupErrors xato."',
+            load_script,
+        )
+        self.assertIn(
+            "$passed = ($errorCount -eq 0 -and $p95 -lt $P95LimitMs)",
+            load_script,
+        )
+
     def test_ci_uses_phase2_verifier_and_fake_test_secrets(self):
         workflow = (
             ROOT / ".github/workflows/phase1-ci.yml"
