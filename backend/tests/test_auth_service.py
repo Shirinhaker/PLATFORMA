@@ -491,6 +491,76 @@ async def test_concurrent_session_resolution_is_coalesced_and_cached(
     assert all("raw-session-secret" not in (value or "") for value in values)
 
 
+async def test_cached_session_rechecks_database_after_touch_window(
+    fixed_now: datetime,
+    monkeypatch,
+):
+    class RecordingSession:
+        async def rollback(self):
+            pass
+
+        async def commit(self):
+            pass
+
+    session = RecordingSession()
+
+    @asynccontextmanager
+    async def session_factory():
+        yield session
+
+    auth_session = SimpleNamespace(
+        expires_at=fixed_now + timedelta(days=1),
+        last_used_at=fixed_now,
+    )
+    account = SimpleNamespace(
+        id=42,
+        account_type=AccountType.USER,
+        login="u_cached",
+    )
+    repository_calls = 0
+
+    async def resolve_from_database(db_session, raw_token, now):
+        nonlocal repository_calls
+        repository_calls += 1
+        return auth_session, account
+
+    monkeypatch.setattr(
+        auth_service_module,
+        "resolve_stored_session",
+        resolve_from_database,
+    )
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    service = AuthService(
+        session_factory,
+        redis,
+        Settings(
+            environment="test",
+            csrf_secret="test-csrf-secret",
+        ),
+    )
+    try:
+        first = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now,
+        )
+        within_window = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now + timedelta(minutes=4),
+        )
+        after_window = await service.resolve_session(
+            "raw-session-secret",
+            fixed_now + timedelta(minutes=6),
+        )
+    finally:
+        await redis.aclose()
+
+    assert first is not None
+    assert within_window is not None
+    assert after_window is not None
+    assert repository_calls == 2
+    assert auth_session.last_used_at == fixed_now + timedelta(minutes=6)
+
+
 async def test_revoke_session_invalidates_cached_identity(
     fixed_now: datetime,
     monkeypatch,
