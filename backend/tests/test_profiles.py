@@ -2,6 +2,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import fakeredis.aioredis
 import httpx
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +13,7 @@ from app.auth.security import derive_csrf
 from app.core.config import Settings
 from app.main import create_app
 from app.profiles.model import BusinessProfile, UserProfile
+from app.profiles.summary_service import ProfileSummaryService
 
 
 class FakeProfileSession:
@@ -153,9 +155,16 @@ async def profile_clients():
             expires_at=now + timedelta(days=30),
         ),
     }
+    database = FakeDatabase(profiles)
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
     app = create_app(settings)
-    app.state.database = FakeDatabase(profiles)
+    app.state.database = database
     app.state.auth_service = FakeAuthService(identities)
+    app.state.profile_summary_service = ProfileSummaryService(
+        database.session,
+        redis,
+        settings,
+    )
 
     async with AsyncExitStack() as stack:
         clients = {}
@@ -178,7 +187,10 @@ async def profile_clients():
             )
             client.csrf = derive_csrf(token, settings.csrf_secret)
             clients[name] = client
+        clients["database"] = database
+        clients["redis"] = redis
         yield SimpleNamespace(**clients)
+    await redis.aclose()
 
 
 async def test_user_cannot_read_business_profile(profile_clients):
@@ -242,6 +254,118 @@ async def test_me_returns_exact_role_specific_identity(profile_clients):
         "name": "Koprik Savdo",
         "profile_complete": True,
     }
+
+
+async def test_me_populates_profile_summary_cache(profile_clients):
+    response = await profile_clients.first_user.get("/api/v1/me")
+    cached = await profile_clients.redis.get(
+        "profile:me:v1:user:1"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Ali"
+    assert cached is not None
+
+
+async def test_user_profile_update_invalidates_cached_me(profile_clients):
+    before = await profile_clients.first_user.get("/api/v1/me")
+    assert before.json()["name"] == "Ali"
+    assert await profile_clients.redis.get(
+        "profile:me:v1:user:1"
+    ) is not None
+
+    updated = await profile_clients.first_user.put(
+        "/api/v1/user-profile",
+        headers={"X-CSRF-Token": profile_clients.first_user.csrf},
+        json={"name": "Yangi Ali"},
+    )
+    after = await profile_clients.first_user.get("/api/v1/me")
+
+    assert updated.status_code == 200
+    assert after.status_code == 200
+    assert after.json()["name"] == "Yangi Ali"
+
+
+async def test_failed_profile_update_keeps_existing_me_cache(profile_clients):
+    first = await profile_clients.first_user.put(
+        "/api/v1/user-profile",
+        headers={"X-CSRF-Token": profile_clients.first_user.csrf},
+        json={"public_username": "shared_name"},
+    )
+    assert first.status_code == 200
+
+    cached_second = await profile_clients.second_user.get("/api/v1/me")
+    assert cached_second.status_code == 200
+    cache_key = "profile:me:v1:user:2"
+    cached_before_failure = await profile_clients.redis.get(cache_key)
+    assert cached_before_failure is not None
+
+    duplicate = await profile_clients.second_user.put(
+        "/api/v1/user-profile",
+        headers={"X-CSRF-Token": profile_clients.second_user.csrf},
+        json={"public_username": "shared_name"},
+    )
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["code"] == "username_taken"
+    assert await profile_clients.redis.get(cache_key) == cached_before_failure
+    after = await profile_clients.second_user.get("/api/v1/me")
+    assert after.status_code == 200
+    assert after.json()["name"] == "Vali"
+
+
+async def test_user_avatar_update_invalidates_cached_me(profile_clients):
+    cache_key = "profile:me:v1:user:1"
+    before = await profile_clients.first_user.get("/api/v1/me")
+    assert before.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is not None
+
+    updated = await profile_clients.first_user.put(
+        "/api/v1/user-profile/avatar",
+        headers={"X-CSRF-Token": profile_clients.first_user.csrf},
+        json={
+            "object_key": (
+                "private/user/1/avatar/"
+                "0123456789abcdef0123456789abcdef.webp"
+            ),
+            "x": 50,
+            "y": 50,
+            "zoom": 1,
+        },
+    )
+
+    assert updated.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is None
+    after = await profile_clients.first_user.get("/api/v1/me")
+    assert after.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is not None
+
+
+async def test_business_logo_update_invalidates_cached_me(profile_clients):
+    cache_key = "profile:me:v1:business:3"
+    before = await profile_clients.business.get("/api/v1/me")
+    assert before.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is not None
+
+    updated = await profile_clients.business.put(
+        "/api/v1/business-profile/logo",
+        headers={"X-CSRF-Token": profile_clients.business.csrf},
+        json={
+            "object_key": (
+                "private/business/3/logo/"
+                "0123456789abcdef0123456789abcdef.webp"
+            ),
+            "x": 50,
+            "y": 50,
+            "zoom": 1,
+        },
+    )
+
+    assert updated.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is None
+    after = await profile_clients.business.get("/api/v1/me")
+    assert after.status_code == 200
+    assert await profile_clients.redis.get(cache_key) is not None
 
 
 async def test_profile_update_requires_csrf(profile_clients):
