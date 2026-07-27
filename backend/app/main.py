@@ -16,6 +16,7 @@ from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
 from app.profiles.router import router as profiles_router
+from app.profiles.summary_service import ProfileSummaryService
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -31,6 +32,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.database = database
         app.state.redis = redis_client
         app.state.auth_service = AuthService(
+            database.session,
+            redis_client,
+            resolved,
+        )
+        app.state.profile_summary_service = ProfileSummaryService(
             database.session,
             redis_client,
             resolved,
