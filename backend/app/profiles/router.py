@@ -26,6 +26,7 @@ from app.profiles.schemas import (
     UserProfilePatch,
     UserProfileRead,
 )
+from app.profiles.summary_service import ProfileSummaryService
 
 
 router = APIRouter(prefix="/api/v1", tags=["profiles"])
@@ -41,6 +42,16 @@ async def profile_session(request: Request) -> AsyncIterator[AsyncSession]:
 ProfileSession = Annotated[AsyncSession, Depends(profile_session)]
 
 
+def get_profile_summary_service(request: Request) -> ProfileSummaryService:
+    return request.app.state.profile_summary_service
+
+
+ProfileSummary = Annotated[
+    ProfileSummaryService,
+    Depends(get_profile_summary_service),
+]
+
+
 def require_account_type(
     current: CurrentAccount,
     expected: AccountType,
@@ -51,19 +62,6 @@ def require_account_type(
             "profile_type_forbidden",
             "Bu profil turiga kirish mumkin emas.",
         )
-
-
-def user_profile_complete(profile) -> bool:
-    return bool(profile.name.strip() and profile.phone.strip())
-
-
-def business_profile_complete(profile) -> bool:
-    return bool(
-        profile.name.strip()
-        and profile.phone.strip()
-        and profile.direction.strip()
-        and profile.address.strip()
-    )
 
 
 def require_profile_object_key(
@@ -91,19 +89,11 @@ def require_profile_object_key(
 @router.get("/me", response_model=MeRead)
 async def get_me(
     current: CurrentRead,
-    session: ProfileSession,
+    summaries: ProfileSummary,
 ) -> MeRead:
-    if current.account_type is AccountType.USER:
-        profile = await get_user_profile(session, current.account_id)
-        complete = user_profile_complete(profile)
-    else:
-        profile = await get_business_profile(session, current.account_id)
-        complete = business_profile_complete(profile)
-    return MeRead(
-        account_id=current.account_id,
-        account_type=current.account_type,
-        name=profile.name,
-        profile_complete=complete,
+    return await summaries.resolve(
+        current.account_type,
+        current.account_id,
     )
 
 
@@ -121,12 +111,17 @@ async def update_user_profile(
     body: UserProfilePatch,
     current: CurrentWrite,
     session: ProfileSession,
+    summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.USER)
     try:
         profile = await get_user_profile(session, current.account_id)
         await patch_user_profile(session, profile, body)
         await session.commit()
+        await summaries.invalidate(
+            current.account_type,
+            current.account_id,
+        )
         return profile
     except Exception:
         await session.rollback()
@@ -147,12 +142,17 @@ async def update_business_profile(
     body: BusinessProfilePatch,
     current: CurrentWrite,
     session: ProfileSession,
+    summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
     try:
         profile = await get_business_profile(session, current.account_id)
         await patch_business_profile(session, profile, body)
         await session.commit()
+        await summaries.invalidate(
+            current.account_type,
+            current.account_id,
+        )
         return profile
     except Exception:
         await session.rollback()
@@ -164,6 +164,7 @@ async def attach_user_avatar(
     body: ProfileImageAttachment,
     current: CurrentWrite,
     session: ProfileSession,
+    summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.USER)
     require_profile_object_key(
@@ -180,6 +181,10 @@ async def attach_user_avatar(
         profile.avatar_zoom = body.zoom
         await session.flush()
         await session.commit()
+        await summaries.invalidate(
+            current.account_type,
+            current.account_id,
+        )
         return profile
     except Exception:
         await session.rollback()
@@ -191,6 +196,7 @@ async def attach_business_logo(
     body: ProfileImageAttachment,
     current: CurrentWrite,
     session: ProfileSession,
+    summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
     require_profile_object_key(
@@ -207,6 +213,10 @@ async def attach_business_logo(
         profile.logo_zoom = body.zoom
         await session.flush()
         await session.commit()
+        await summaries.invalidate(
+            current.account_type,
+            current.account_id,
+        )
         return profile
     except Exception:
         await session.rollback()

@@ -94,5 +94,20 @@ class Phase2OperationalContractTests(unittest.TestCase):
             self.assertIn(gate, runbook)
 
 
+    def test_staging_runbook_documents_profile_summary_cache_gate(self):
+        runbook = (
+            ROOT / "docs/deploy-auth-profile-staging.md"
+        ).read_text(encoding="utf-8")
+
+        for expected in (
+            "KOPRIK_PROFILE_SUMMARY_CACHE_TTL_SECONDS=30",
+            "profile:me:v1:",
+            "1000 parallel",
+            "0 xato",
+            "p95 500 ms dan past",
+        ):
+            self.assertIn(expected, runbook)
+
+
 if __name__ == "__main__":
     unittest.main()
