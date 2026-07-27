@@ -12,9 +12,9 @@ Asosiy gate:
 - `100`, `500` va `1000` parallel autentifikatsiyalangan `GET /api/v1/me` so‘rovi;
 - har bir bosqichda transport va HTTP xatolari soni `0`;
 - har bir bosqichda warm trafik uchun `p95 < 500 ms`;
-- barcha javoblar kutilgan `HTTP 200` holatida bo‘lishi.
+- barcha o‘lchanadigan javoblar `HTTP 200` bo‘lishi.
 
-Yangi HTTPS ulanishining DNS/TCP/TLS xarajati alohida diagnostika sifatida o‘lchanadi, ammo warm application gate natijasiga qo‘shilmaydi.
+Yangi HTTPS ulanishining umumiy cold latency qiymati alohida diagnostika sifatida o‘lchanadi, ammo warm application gate natijasiga qo‘shilmaydi.
 
 ## 2. Hozirgi holat va muammo
 
@@ -29,21 +29,20 @@ O‘lchovlar quyidagini ko‘rsatdi:
 - bir xil ulanish havzasi qayta ishlatilgan warm so‘rovlar sezilarli tezroq;
 - Railway metrikalarida API CPU, xotira va Postgres resurslarining to‘lib qolishi kuzatilmagan.
 
-Shuning uchun Phase 2 gate real brauzerga yaqin warm, qayta ishlatiladigan HTTPS ulanishlari bilan o‘lchanadi. Cold connection natijasi yashirilmaydi, lekin alohida ko‘rsatiladi.
+Shuning uchun Phase 2 gate real brauzerga yaqin warm, qayta ishlatiladigan HTTPS ulanishlari bilan o‘lchanadi. Cold connection natijasi alohida ko‘rsatiladi.
 
 ## 3. Tanlangan yondashuv
 
-Repository ichiga rasmiy Windows PowerShell staging yuklama skripti qo‘shiladi. U foydalanuvchini Telegram OTP orqali tizimga kiritadi, sessiyani faqat xotirada saqlaydi va bir xil `HttpClient` hamda connection pool orqali bosqichma-bosqich warm yuklama beradi.
+Repository ichiga rasmiy Windows PowerShell staging yuklama skripti qo‘shiladi. U foydalanuvchini Telegram OTP orqali tizimga kiritadi, sessiyani faqat xotirada saqlaydi va bitta qayta ishlatiladigan HTTP client hamda connection pool orqali bosqichma-bosqich warm yuklama beradi.
 
-k6 skripti CI yoki Linux/macOS muhiti uchun saqlanadi. Windows operatori uchun PowerShell skripti asosiy qo‘lda ishga tushiriladigan staging gate bo‘ladi.
+k6 skripti CI yoki Linux/macOS muhiti uchun o‘zgarishsiz saqlanadi. Windows operatori uchun PowerShell skripti asosiy qo‘lda ishga tushiriladigan staging gate bo‘ladi.
 
-Bu yondashuv tanlanishining sabablari:
+Bu yondashuv:
 
-- foydalanuvchi Windows PowerShell muhitida ishlayapti;
 - qo‘shimcha k6 o‘rnatishni talab qilmaydi;
 - autentifikatsiya va Telegram OTP oqimini bir buyruqda bajaradi;
-- real HTTP ulanishini qayta ishlatishni nazorat qilish imkonini beradi;
-- maxfiy qiymatlarni faylga yozmasdan sinov o‘tkazadi.
+- HTTP ulanishini qayta ishlatishni nazorat qiladi;
+- maxfiy qiymatlarni faylga yozmaydi.
 
 ## 4. Qamrov
 
@@ -51,25 +50,25 @@ O‘zgartiriladigan qismlar:
 
 1. `scripts/phase2_load.ps1` — rasmiy Windows warm-load gate;
 2. `tests/test_phase2_operational_contract.py` — skript shartlari va xavfsizlik kontrakti;
-3. `docs/deploy-auth-profile-staging.md` — Windows ishga tushirish yo‘riqnomasi, cold/warm izohi va Phase 2 yakunlash mezoni;
-4. zarur bo‘lsa mavjud `scripts/phase2_load.js` hujjat izohlari — k6’ning CI/advanced roli aniq ko‘rsatiladi.
+3. `docs/deploy-auth-profile-staging.md` — Windows buyrug‘i, cold/warm izohi va Phase 2 yakunlash mezoni.
 
-Qamrovga kirmaydi:
+O‘zgartirilmaydigan qismlar:
 
-- API endpointlarining biznes logikasini o‘zgartirish;
-- frontend sahifalarini o‘zgartirish;
-- Postgres sxemasi yoki migratsiyasini o‘zgartirish;
-- Redis topologiyasini o‘zgartirish;
-- Railway resurslarini ko‘r-ko‘rona kattalashtirish;
-- production `web` yoki `koprik.uz` xizmatiga o‘zgartirish kiritish.
+- `scripts/phase2_load.js` k6 skripti;
+- API endpointlarining biznes logikasi;
+- frontend sahifalari;
+- Postgres sxemasi va migratsiyalari;
+- Redis topologiyasi;
+- Railway resurs o‘lchamlari;
+- production `web` va `koprik.uz` xizmati.
 
 ## 5. Autentifikatsiya oqimi
 
 Skript quyidagi ketma-ketlikda ishlaydi:
 
-1. API base URL parametr yoki xavfsiz standart qiymatdan olinadi.
+1. API base URL parametrdan olinadi; parametr berilmasa `https://platforma-production-f753.up.railway.app` ishlatiladi.
 2. Staging login operator tomonidan kiritiladi.
-3. Parol clipboard orqali olinadi; format va bo‘sh qiymat tekshiriladi.
+3. Parol clipboard orqali olinadi; bo‘sh qiymat va minimal uzunlik tekshiriladi.
 4. Clipboard darhol tozalanadi.
 5. Login so‘rovi yuboriladi va Telegram OTP jarayoni boshlanadi.
 6. Operator Telegram’dan kelgan 6 xonali kodni kiritadi.
@@ -84,22 +83,26 @@ Login, parol, Telegram kodi, session cookie yoki CSRF qiymati logga va JSON nati
 
 ### 6.1 Cold connection diagnostikasi
 
-Boshlanishida yangi HTTPS ulanishi bilan bitta yoki kichik nazorat o‘lchovi bajariladi. Natija cold DNS/TCP/TLS/application latency sifatida alohida qayd etiladi.
+Skript boshida yangi, qisqa muddatli HTTP client orqali aynan bitta `GET /healthz` so‘rovi yuboriladi. Uning umumiy davomiyligi `cold_total_ms` sifatida qayd etiladi va client darhol dispose qilinadi.
 
-Bu qiymat informatsion bo‘ladi va Phase 2 gate’ni yiqitmaydi.
+Bu qiymat informatsion bo‘ladi va Phase 2 gate’ni yiqitmaydi. Alohida DNS/TCP/TLS bosqichlarini chiqarish bu skript qamroviga kirmaydi.
 
-### 6.2 Warm-up
+### 6.2 Asosiy connection pool
 
-Har bir concurrency bosqichidan oldin o‘sha bosqichda ishlatiladigan bir xil `HttpClient`, cookie container va connection pool bilan warm-up bajariladi.
+Measured oqim uchun bitta uzoq yashovchi HTTP client va cookie container yaratiladi. Bir server uchun maksimal ulanish soni `1000` qilib sozlanadi. Shu client autentifikatsiya, warm-up va barcha measured bosqichlarda qayta ishlatiladi.
+
+### 6.3 Warm-up
+
+Har bir concurrency bosqichidan oldin aynan shu asosiy HTTP client bilan warm-up bajariladi.
 
 Warm-up talablari:
 
 - measured passdan oldin tugashi;
 - warm-up so‘rovlari gate statistikalariga kiritilmasligi;
-- ulanish qayta ishlatilayotganini buzadigan yangi client-per-request naqshidan foydalanilmasligi;
+- yangi client-per-request naqshidan foydalanilmasligi;
 - warm-up xatosi bo‘lsa measured bosqich boshlanmasligi.
 
-### 6.3 Measured bosqichlar
+### 6.4 Measured bosqichlar
 
 Bosqichlar qat’iy tartibda bajariladi:
 
@@ -109,25 +112,25 @@ Bosqichlar qat’iy tartibda bajariladi:
 
 Har bir bosqich:
 
-- aynan o‘sha concurrency miqdorida `GET /api/v1/me` yuboradi;
+- aynan concurrency miqdoricha `GET /api/v1/me` yuboradi;
 - bir xil autentifikatsiyalangan sessiyadan foydalanadi;
-- bir xil qayta ishlatiladigan HTTP connection pooldan foydalanadi;
+- bir xil HTTP connection pooldan foydalanadi;
 - har bir so‘rovning millisekund davomiyligini va statusini yig‘adi;
 - `p50`, `p95`, `p99`, jami davomiylik, status count va error countni hisoblaydi.
 
-Bosqichlar orasida natijalarni aralashtirmaslik uchun statistik kollektor yangilanadi, lekin HTTP connection pool saqlanadi.
+Bosqichlar orasida statistik kollektor yangilanadi, HTTP client va connection pool saqlanadi.
 
 ## 7. Gate qoidalari
 
 Har bir `100`, `500`, `1000` bosqichi uchun:
 
 - `errors == 0`;
-- barcha kutilgan javoblar `HTTP 200`;
+- barcha javoblar `HTTP 200`;
 - `p95_ms < 500`.
 
 Umumiy `passed` faqat uchala bosqich ham o‘tganda `true` bo‘ladi. Bitta bosqich yiqilsa skript non-zero exit code bilan tugaydi.
 
-Cold connection diagnostikasi, birinchi TLS handshake yoki operatorning OTP kiritish vaqti warm p95 hisobiga kirmaydi.
+Cold diagnostika, birinchi TLS handshake, warm-up va operatorning OTP kiritish vaqti warm p95 hisobiga kirmaydi.
 
 ## 8. Natija formati
 
@@ -138,9 +141,9 @@ Hisobot tarkibi:
 - `generated_at`;
 - `api_base_url`;
 - `account_type`;
-- `connection_model` (`reused_https_connections`);
-- max connection sozlamasi;
-- cold diagnostika latency qiymati;
+- `connection_model: reused_https_connections`;
+- `max_connections_per_server: 1000`;
+- `cold_total_ms`;
 - har bir bosqich uchun concurrency, request count, error count, p50/p95/p99, duration va status counts;
 - yakuniy gate booleans va `passed`.
 
@@ -167,7 +170,7 @@ Skript quyidagi holatlarda aniq va xavfsiz xabar bilan to‘xtaydi:
 - measured bosqichda non-200 yoki transport xatosi bor;
 - p95 gate bajarilmaydi.
 
-Agar o‘lchov boshlanganidan keyin xato yuz bersa, mavjud xavfsiz metrikalar imkon qadar hisobotga yoziladi. Maxfiy qiymatlar hech qachon exception matniga qo‘shilmaydi.
+Agar o‘lchov boshlanganidan keyin xato yuz bersa, mavjud xavfsiz metrikalar imkon qadar hisobotga yoziladi. Maxfiy qiymatlar exception matniga qo‘shilmaydi.
 
 ## 10. Test strategiyasi
 
@@ -177,11 +180,11 @@ Operational contract testlari quyidagilarni tekshiradi:
 - `100`, `500`, `1000` bosqichlari mavjud;
 - `GET /api/v1/me` ishlatiladi;
 - warm-up measured statistikadan ajratilgan;
-- bir martalik client-per-request emas, qayta ishlatiladigan HTTP client/connection pool mavjud;
+- qayta ishlatiladigan HTTP client/connection pool mavjud;
 - strict `errors == 0` va `p95 < 500` gate mavjud;
 - non-zero exit code bilan failure signal beriladi;
 - logout/finally cleanup mavjud;
-- JSON hisobotda maxfiy qiymatlar chiqarilmasligi aniq kontrakt bilan himoyalangan;
+- JSON hisobotda maxfiy qiymatlar chiqarilmaydi;
 - mavjud Phase 1 va Phase 2 testlari regressiyasiz o‘tadi.
 
 Qo‘lda staging tasdig‘i:
@@ -196,10 +199,10 @@ Qo‘lda staging tasdig‘i:
 
 ## 11. Rollback
 
-Bu o‘zgarish production biznes logikasiga tegmaydi. Rollback quyidagicha:
+Bu o‘zgarish production biznes logikasiga tegmaydi. Rollback:
 
 - PowerShell skripti va tegishli docs/test commitlarini revert qilish;
-- amaldagi k6 skriptini CI varianti sifatida ishlatishda davom etish;
+- amaldagi k6 skriptidan foydalanishda davom etish;
 - Railway API/frontend/worker deploymentlarini o‘zgartirmaslik.
 
 ## 12. Phase 2 yakunlash mezoni
