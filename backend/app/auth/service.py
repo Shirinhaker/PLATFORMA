@@ -327,18 +327,22 @@ class AuthService:
                 await session.rollback()
                 return None
             auth_session, account = stored
+            identity = SessionIdentity(
+                account_id=account.id,
+                account_type=account.account_type,
+                login=account.login,
+                csrf_token=derive_csrf(
+                    raw_token,
+                    self._settings.csrf_secret,
+                ),
+                expires_at=auth_session.expires_at,
+            )
             if auth_session.last_used_at <= now - timedelta(minutes=5):
                 auth_session.last_used_at = now
                 await session.commit()
             else:
                 await session.rollback()
-            return SessionIdentity(
-                account_id=account.id,
-                account_type=account.account_type,
-                login=account.login,
-                csrf_token=derive_csrf(raw_token, self._settings.csrf_secret),
-                expires_at=auth_session.expires_at,
-            )
+            return identity
 
     async def revoke_session(
         self,
