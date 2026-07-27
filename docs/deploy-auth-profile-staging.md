@@ -174,6 +174,9 @@ Bu `cold_total_ms` faqat diagnostika bo‘lib, gate natijasiga kirmaydi.
 Asosiy test bir xil qayta ishlatiladigan HTTPS ulanishlari bilan har bir
 bosqichni warm-up qiladi, warm-up natijalarini tashlab yuboradi va keyin
 `/api/v1/me` uchun 100, 500, 1000 parallel so‘rovni o‘lchaydi.
+Warm-updagi vaqtinchalik xatolar diagnostika sifatida
+`warmup_errors` maydoniga yoziladi, lekin gate natijasiga kirmaydi.
+O‘lchanadigan bosqichdagi bitta xato ham gate’ni yiqitadi.
 
 Phase 2 warm-load gate faqat quyidagi holatda o‘tadi:
 
