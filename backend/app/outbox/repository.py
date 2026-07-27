@@ -54,10 +54,17 @@ async def claim_events(
     return events
 
 
-async def mark_processed(session: AsyncSession, event_id: int) -> None:
+async def mark_processed(
+    session: AsyncSession,
+    event_id: int,
+    *,
+    sanitized_payload: dict[str, Any] | None = None,
+) -> None:
     event = await session.get(OutboxEvent, event_id, with_for_update=True)
     if event is None:
         raise LookupError(f"Outbox event topilmadi: {event_id}")
+    if sanitized_payload is not None:
+        event.payload = sanitized_payload
     event.status = "processed"
     event.processed_at = datetime.now(UTC)
     event.locked_at = None

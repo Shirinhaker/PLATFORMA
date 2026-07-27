@@ -1,4 +1,4 @@
-name: phase1-foundation
+name: phase2-auth-profiles
 
 on:
   push:
@@ -35,6 +35,10 @@ jobs:
       KOPRIK_DATABASE_URL: postgresql+asyncpg://koprik:koprik@localhost:5432/koprik
       KOPRIK_TEST_DATABASE_URL: postgresql+asyncpg://koprik:koprik@localhost:5432/koprik
       KOPRIK_REDIS_URL: redis://localhost:6379/0
+      KOPRIK_OTP_SECRET: ci-otp-secret
+      KOPRIK_CSRF_SECRET: ci-csrf-secret
+      KOPRIK_TELEGRAM_WEBHOOK_SECRET: ci-webhook-secret
+      KOPRIK_OUTBOX_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,5 +60,5 @@ jobs:
       - name: Apply foundation migration
         working-directory: backend
         run: python -m alembic upgrade head
-      - name: Verify Phase 1
-        run: python scripts/verify_phase1.py
+      - name: Verify Phase 2
+        run: python scripts/verify_phase2.py

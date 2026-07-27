@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Header, HTTPException, Request
-from pydantic import BaseModel, Field
+from typing import Annotated, Literal
 
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.accounts.model import AccountType
+from app.auth.dependencies import CurrentAccount, require_csrf
+from app.core.errors import ApiError
 from app.media.storage import UploadRejected
 
 
@@ -8,6 +13,9 @@ router = APIRouter(prefix="/api/v1/media", tags=["media"])
 
 
 class UploadGrantRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    purpose: Literal["avatar", "logo"]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
     size_bytes: int = Field(ge=1)
@@ -17,26 +25,34 @@ class UploadGrantRequest(BaseModel):
 async def create_upload_grant(
     body: UploadGrantRequest,
     request: Request,
-    x_foundation_actor_id: int | None = Header(default=None),
+    current: Annotated[CurrentAccount, Depends(require_csrf)],
 ):
-    settings = request.app.state.settings
-    if settings.environment not in {"test", "staging"}:
-        raise HTTPException(
-            status_code=503,
-            detail="Media autentifikatsiyasi hali production uchun yoqilmagan.",
-        )
-    if x_foundation_actor_id is None or x_foundation_actor_id < 1:
-        raise HTTPException(
-            status_code=401,
-            detail="Foundation actor identifikatori talab qilinadi.",
+    allowed = (
+        current.account_type is AccountType.USER
+        and body.purpose == "avatar"
+    ) or (
+        current.account_type is AccountType.BUSINESS
+        and body.purpose == "logo"
+    )
+    if not allowed:
+        raise ApiError(
+            403,
+            "media_purpose_forbidden",
+            "Bu rasm turi akkauntga mos emas.",
         )
     try:
         grant = request.app.state.r2.create_upload_grant(
-            actor_id=x_foundation_actor_id,
+            owner_type=current.account_type,
+            owner_id=current.account_id,
+            purpose=body.purpose,
             filename=body.filename,
             content_type=body.content_type,
             size_bytes=body.size_bytes,
         )
     except UploadRejected as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise ApiError(
+            400,
+            "media_upload_rejected",
+            str(exc),
+        ) from None
     return grant

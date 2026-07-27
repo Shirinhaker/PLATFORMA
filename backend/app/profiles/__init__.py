@@ -1,0 +1,1 @@
+"""Koprik profile domain."""

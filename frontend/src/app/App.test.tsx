@@ -5,24 +5,48 @@ import { App } from "./App";
 
 
 describe("App", () => {
-  it("shows the foundation build without replacing v1656 production UI", async () => {
+  it("shows the business cabinet after session restoration", async () => {
     const api = {
-      getBuild: vi.fn().mockResolvedValue({
-        api_version: "v1",
-        foundation: "phase1",
-        legacy_build: "v1656",
-      } as const),
+      getSession: vi.fn().mockResolvedValue({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }),
     };
     render(<App api={api} />);
     expect(screen.getByRole("banner")).toHaveTextContent("Koprik");
     expect(
-      await screen.findByText("Koprik yangi platforma foundation’i tayyor"),
+      await screen.findByRole("heading", { name: "Biznes kabinet" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Eski faol BUILD: v1656")).toBeInTheDocument();
-    expect(screen.getByText("API v1")).toBeInTheDocument();
-    expect(screen.getByText("Phase 1")).toBeInTheDocument();
     expect(
-      screen.getByText(/Mavjud production UI va jarayonlar/),
+      screen.queryByRole("heading", { name: "Oddiy kabinet" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("maps an expired session to guest state", async () => {
+    const api = {
+      getSession: vi.fn().mockRejectedValue(
+        Object.assign(new Error("unauthorized"), { status: 401 }),
+      ),
+    };
+    render(<App api={api} />);
+    expect(
+      await screen.findByRole("heading", { name: "Koprik’ga kirish" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows a retryable Uzbek error for network failures", async () => {
+    const api = {
+      getSession: vi.fn().mockRejectedValue(new TypeError("offline")),
+    };
+    render(<App api={api} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Server bilan bog‘lanib bo‘lmadi.",
+    );
+    expect(screen.getByRole("button", { name: "Qayta urinish" }))
+      .toBeInTheDocument();
   });
 });
