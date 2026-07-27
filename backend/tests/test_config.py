@@ -54,6 +54,7 @@ def test_staging_accepts_complete_auth_and_telegram_secrets():
 
     assert settings.auth_cookie_name == "koprik_session"
     assert settings.session_ttl_seconds == 30 * 24 * 60 * 60
+    assert settings.session_cache_ttl_seconds == 30
 
 
 def test_staging_rejects_invalid_outbox_encryption_key():
