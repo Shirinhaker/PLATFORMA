@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 _CACHE_MISS = object()
 _SESSION_CACHE_PREFIX = "auth:session:v1:"
 _SESSION_REVOKED_PREFIX = "auth:session:revoked:v1:"
+_SESSION_TOUCH_INTERVAL = timedelta(minutes=5)
 _CACHE_SESSION_SCRIPT = """
 if redis.call('EXISTS', KEYS[2]) == 1 then
   return 0
@@ -386,12 +387,17 @@ class AuthService:
                 ),
                 expires_at=auth_session.expires_at,
             )
-            if auth_session.last_used_at <= now - timedelta(minutes=5):
+            if auth_session.last_used_at <= now - _SESSION_TOUCH_INTERVAL:
                 auth_session.last_used_at = now
                 await session.commit()
             else:
                 await session.rollback()
-        await self._cache_session(raw_token, identity, now)
+        await self._cache_session(
+            raw_token,
+            identity,
+            now,
+            last_used_at=auth_session.last_used_at,
+        )
         return identity
 
     async def revoke_session(
@@ -612,6 +618,7 @@ class AuthService:
                 expires_at=authenticated.expires_at,
             ),
             now,
+            last_used_at=now,
         )
 
     async def _read_cached_session(
@@ -638,6 +645,9 @@ class AuthService:
 
         try:
             cached = json.loads(payload)
+            last_used_at = datetime.fromisoformat(
+                cached.pop("last_used_at")
+            )
             cached["csrf_token"] = derive_csrf(
                 raw_token,
                 self._settings.csrf_secret,
@@ -656,6 +666,12 @@ class AuthService:
             except Exception:
                 pass
             return None
+        if last_used_at <= now - _SESSION_TOUCH_INTERVAL:
+            try:
+                await redis.delete(cache_key)
+            except Exception:
+                pass
+            return _CACHE_MISS
         return identity
 
     async def _cache_session(
@@ -663,6 +679,8 @@ class AuthService:
         raw_token: str,
         identity: SessionIdentity,
         now: datetime,
+        *,
+        last_used_at: datetime,
     ) -> None:
         redis = self._redis_connection()
         if redis is None:
@@ -677,11 +695,13 @@ class AuthService:
             self._settings.session_cache_ttl_seconds,
             remaining_seconds,
         )
+        cached = identity.model_dump(
+            mode="json",
+            exclude={"csrf_token"},
+        )
+        cached["last_used_at"] = last_used_at.isoformat()
         payload = json.dumps(
-            identity.model_dump(
-                mode="json",
-                exclude={"csrf_token"},
-            ),
+            cached,
             separators=(",", ":"),
             sort_keys=True,
         )
