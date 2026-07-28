@@ -1,9 +1,23 @@
-import { type CSSProperties, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+import type { ApiClient } from "../../api/client";
+import type {
+  PublicSearchItem,
+  PublicResultType,
+} from "../../api/types";
 import { searchCatalogDirections } from "./catalog-data";
+import type { HomeLocation } from "./location-storage";
+import { PublicSearchResults } from "./PublicSearchResults";
 
 interface CatalogScreenProps {
   initialQuery: string;
+  location?: HomeLocation | null;
+  searchPublic?: ApiClient["searchPublic"];
   onOpenCategory(categoryId: string): void;
 }
 
@@ -17,9 +31,22 @@ const SEARCH_TYPES = [
 ] as const;
 
 const SEARCH_SCOPES = ["Mahalla", "Tuman", "Viloyat", "Respublika"] as const;
+const UNSUPPORTED_SEARCH_TYPES = new Set(["Mahsulot", "Xizmat"]);
+
+function resultType(
+  searchType: (typeof SEARCH_TYPES)[number],
+): PublicResultType {
+  if (searchType === "Biznes") return "business";
+  if (searchType === "Mutaxassis" || searchType === "Foydalanuvchi") {
+    return "user";
+  }
+  return "all";
+}
 
 export function CatalogScreen({
   initialQuery,
+  location = null,
+  searchPublic,
   onOpenCategory,
 }: CatalogScreenProps) {
   const [query, setQuery] = useState(initialQuery);
@@ -27,7 +54,66 @@ export function CatalogScreen({
     "Barchasi",
   );
   const [scope, setScope] = useState<(typeof SEARCH_SCOPES)[number]>("Tuman");
+  const [items, setItems] = useState<PublicSearchItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(Boolean(searchPublic));
+  const [error, setError] = useState(searchPublic
+    ? ""
+    : "Qidiruv xizmati hozircha ulanmagan.");
   const directions = useMemo(() => searchCatalogDirections(query), [query]);
+
+  useEffect(() => {
+    if (!searchPublic || UNSUPPORTED_SEARCH_TYPES.has(searchType)) {
+      setItems([]);
+      setTotal(0);
+      setLoading(false);
+      setError(searchPublic
+        ? "Mahsulot va xizmat e’lonlari keyingi bosqichda ulanadi."
+        : "Qidiruv xizmati hozircha ulanmagan.");
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    setError("");
+    const timer = window.setTimeout(() => {
+      const filters = {
+        q: query.trim(),
+        result_type: resultType(searchType),
+        page: 1,
+        page_size: 20,
+        ...(scope === "Mahalla" && location?.neighborhood
+          ? { mahalla: location.neighborhood }
+          : {}),
+        ...(scope === "Tuman" && location?.district
+          ? { district: location.district }
+          : {}),
+        ...(scope === "Viloyat" && location?.region
+          ? { region: location.region }
+          : {}),
+      };
+      searchPublic(filters)
+        .then((response) => {
+          if (!active) return;
+          setItems(response.items);
+          setTotal(response.total);
+        })
+        .catch(() => {
+          if (!active) return;
+          setItems([]);
+          setTotal(0);
+          setError("Server bilan bog‘lanib bo‘lmadi. Qayta urinib ko‘ring.");
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [location, query, scope, searchPublic, searchType]);
 
   return (
     <main className="public-catalog">
@@ -55,7 +141,11 @@ export function CatalogScreen({
             {SEARCH_TYPES.map((label) => (
               <button
                 aria-pressed={searchType === label}
+                disabled={UNSUPPORTED_SEARCH_TYPES.has(label)}
                 key={label}
+                title={UNSUPPORTED_SEARCH_TYPES.has(label)
+                  ? "E’lonlar Phase 3C bosqichida ulanadi"
+                  : undefined}
                 type="button"
                 onClick={() => setSearchType(label)}
               >
@@ -80,6 +170,19 @@ export function CatalogScreen({
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="public-catalog__profiles" aria-live="polite">
+        <div className="public-catalog__result-heading">
+          <h2>Ochiq profillar</h2>
+          <span>{loading ? "Yuklanmoqda" : `${total} ta natija`}</span>
+        </div>
+        <PublicSearchResults
+          items={items}
+          loading={loading}
+          error={error}
+          emptyLabel="Qidiruv yoki hudud filtrini o‘zgartirib ko‘ring."
+        />
       </section>
 
       <section className="public-catalog__results" aria-live="polite">

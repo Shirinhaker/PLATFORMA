@@ -37,6 +37,11 @@ class Settings(BaseSettings):
         ge=5,
         le=300,
     )
+    public_search_cache_ttl_seconds: int = Field(
+        default=30,
+        ge=5,
+        le=300,
+    )
     telegram_link_ttl_seconds: int = 10 * 60
     telegram_code_ttl_seconds: int = 5 * 60
     telegram_resend_seconds: int = 60

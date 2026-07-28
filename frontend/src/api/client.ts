@@ -10,6 +10,8 @@ import type {
   ChallengeVerification,
   Me,
   ProfileImageAttachment,
+  PublicSearchParams,
+  PublicSearchResponse,
   RegistrationStart,
   SessionIdentity,
   UploadGrant,
@@ -117,6 +119,32 @@ export class ApiClient {
 
   getBuild(): Promise<BuildInfo> {
     return this.request("GET", "/api/v1/build");
+  }
+
+  searchPublic(
+    params: PublicSearchParams = {},
+  ): Promise<PublicSearchResponse> {
+    const query = new URLSearchParams();
+    const textFilters = [
+      ["q", params.q],
+      ["result_type", params.result_type],
+      ["direction", params.direction],
+      ["activity_type", params.activity_type],
+      ["region", params.region],
+      ["district", params.district],
+      ["mahalla", params.mahalla],
+    ] as const;
+    textFilters.forEach(([name, value]) => {
+      if (value) query.set(name, value);
+    });
+    if (params.page !== undefined) {
+      query.set("page", String(params.page));
+    }
+    if (params.page_size !== undefined) {
+      query.set("page_size", String(params.page_size));
+    }
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return this.request("GET", `/api/v1/public/search${suffix}`);
   }
 
   startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {
