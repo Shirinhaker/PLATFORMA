@@ -1,4 +1,3 @@
-import re
 import unittest
 from pathlib import Path
 
@@ -42,86 +41,103 @@ class Phase2OperationalContractTests(unittest.TestCase):
         ):
             self.assertIn(expected, load_script)
 
-    def test_windows_load_gate_reuses_connections_and_protects_report(self):
-        load_script = (ROOT / "scripts/phase2_load.ps1").read_text(
+    def test_windows_load_runner_keeps_credentials_and_session_private(self):
+        runner = (ROOT / "scripts/koprik-phase2-load.ps1").read_text(
             encoding="utf-8"
         )
 
         for expected in (
-            "$StageConcurrencies = @(100, 500, 1000)",
-            "$P95LimitMs = 500",
-            "$MaxConnectionsPerServer = 1000",
-            "Koprik.LoadRunner]::Run",
-            "ResponseContentRead",
-            "/healthz",
+            "Read-Host",
+            "Get-Clipboard -Raw",
+            'Set-Clipboard -Value " "',
+            "^[A-Za-z0-9_-]{16}$",
+            "Clipboard tozalandi",
+            "[System.Net.Http.HttpClient].Assembly.Location",
+            "-ReferencedAssemblies $httpAssemblyPath",
             "/api/v1/auth/login/start",
             "/api/v1/auth/login/verify",
             "/api/v1/me",
-            "/api/v1/auth/logout",
-            "Set-Clipboard -Value \" \"",
-            "warmup",
-            "cold_total_ms",
-            "p50_ms",
+            "100, 500, 1000",
             "p95_ms",
-            "p99_ms",
-            "$errorCount -eq 0",
-            "$p95 -lt $P95LimitMs",
-            "reused_https_connections",
-            "finally",
+            "error_rate",
+            "phase2-load-result.json",
         ):
-            self.assertIn(expected, load_script)
+            self.assertIn(expected, runner)
 
-        self.assertEqual(
-            load_script.count("New-Object System.Net.Http.HttpClient("),
-            1,
-        )
-        report = re.search(
-            r"\$safeReport\s*=\s*\[ordered\]@\{"
-            r"(?P<body>.*?)"
-            r"\n\s*\}\n\s*\$safeReport\s*\|",
-            load_script,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(report)
-        report_body = report.group("body").lower()
-        for forbidden in (
-            "login",
-            "password",
-            "otp",
-            "session",
-            "cookie",
-            "csrf",
-            "telegram",
-        ):
-            self.assertNotIn(forbidden, report_body)
+        self.assertNotIn("-AsSecureString", runner)
+        self.assertNotIn("SecureStringToBSTR", runner)
+        self.assertNotIn("PtrToStringBSTR", runner)
+        self.assertNotIn('Set-Clipboard -Value ""', runner)
+        self.assertNotIn("Write-Host $password", runner)
+        self.assertNotIn("Write-Host $sessionToken", runner)
+        self.assertNotIn("KOPRIK_LOAD_SESSION=", runner)
 
-    def test_windows_load_gate_discards_warmup_errors_before_measurement(self):
-        load_script = (ROOT / "scripts/phase2_load.ps1").read_text(
+    def test_windows_load_runner_scales_client_connections_and_reports_failures(
+        self,
+    ):
+        runner = (ROOT / "scripts/koprik-phase2-load.ps1").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("warmup_errors = $warmupErrors", load_script)
-        self.assertIn("Write-Warning (", load_script)
-        self.assertIn(
-            '"Warm-upda $warmupErrors xato kuzatildi; "',
-            load_script,
-        )
-        self.assertIn('"o\'lchov davom etadi."', load_script)
-        self.assertNotIn(
-            'throw "Warm-up muvaffaqiyatsiz: $warmupErrors xato."',
-            load_script,
-        )
-        self.assertIn(
-            "$passed = ($errorCount -eq 0 -and $p95 -lt $P95LimitMs)",
-            load_script,
-        )
+        for expected in (
+            "$maxConcurrency = [int](($Stages | "
+            "Measure-Object -Maximum).Maximum)",
+            "[System.Net.ServicePointManager]::DefaultConnectionLimit = "
+            "$maxConcurrency",
+            "$handler.MaxConnectionsPerServer = $maxConcurrency",
+            "duration_ms",
+            "status_counts",
+            "error_types",
+            "max_connections_per_server",
+        ):
+            self.assertIn(expected, runner)
 
-    def test_ci_uses_phase2_verifier_and_fake_test_secrets(self):
+    def test_windows_latency_diagnostic_is_layered_and_secret_safe(self):
+        diagnostic = (
+            ROOT / "scripts/koprik-phase2-latency-diagnostic.ps1"
+        ).read_text(encoding="utf-8")
+
+        for expected in (
+            '[int]$Concurrency = 1000',
+            '"healthz_cold"',
+            '"healthz_reused"',
+            '"/healthz"',
+            '"auth_session"',
+            '"/api/v1/auth/session"',
+            '"me"',
+            '"/api/v1/me"',
+            "WarmUp",
+            "p50_ms",
+            "p95_ms",
+            "p99_ms",
+            "duration_ms",
+            "status_counts",
+            "error_types",
+            "phase2-latency-diagnostic-v2-result.json",
+            "$handler.MaxConnectionsPerServer = $Concurrency",
+            "$endpointReports.Count -eq 4",
+        ):
+            self.assertIn(expected, diagnostic)
+
+        for forbidden in (
+            "Write-Host $password",
+            "Write-Host $telegramCode",
+            "Write-Host $sessionToken",
+            "KOPRIK_LOAD_SESSION=",
+            "phase2-load-result.json",
+        ):
+            self.assertNotIn(forbidden, diagnostic)
+
+    def test_ci_uses_phase3a_verifier_and_preserves_phase2_gate(self):
         workflow = (
             ROOT / ".github/workflows/phase1-ci.yml"
         ).read_text(encoding="utf-8")
+        phase3_verifier = (
+            ROOT / "scripts/verify_phase3a.py"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("python scripts/verify_phase2.py", workflow)
+        self.assertIn("python scripts/verify_phase3a.py", workflow)
+        self.assertIn('"scripts/verify_phase2.py"', phase3_verifier)
         self.assertIn("KOPRIK_OTP_SECRET: ci-otp-secret", workflow)
         self.assertIn("KOPRIK_CSRF_SECRET: ci-csrf-secret", workflow)
         self.assertIn(
@@ -162,6 +178,8 @@ class Phase2OperationalContractTests(unittest.TestCase):
             "frontend-staging",
             "Telegram webhook",
             "k6 run scripts/phase2_load.js",
+            "scripts\\koprik-phase2-load.ps1",
+            "phase2-load-result.json",
             "rollback",
             "koprik.uz",
             "hech qachon",
@@ -179,24 +197,6 @@ class Phase2OperationalContractTests(unittest.TestCase):
             "1000 parallel",
             "0 xato",
             "p95 500 ms dan past",
-        ):
-            self.assertIn(expected, runbook)
-
-    def test_staging_runbook_documents_official_windows_warm_gate(self):
-        runbook = (
-            ROOT / "docs/deploy-auth-profile-staging.md"
-        ).read_text(encoding="utf-8")
-
-        for expected in (
-            "scripts\\phase2_load.ps1",
-            "phase2-warm-load-result.json",
-            "cold_total_ms",
-            "warm-up",
-            "qayta ishlatiladigan HTTPS ulanishlari",
-            "har bir bosqichda 0 xato",
-            "har bir bosqichda p95 500 ms dan past",
-            "k6 CI yoki Linux/macOS",
-            "Phase 2 tugagan",
         ):
             self.assertIn(expected, runbook)
 
