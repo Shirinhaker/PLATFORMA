@@ -155,41 +155,83 @@ Bir Telegram akkaunti bilan:
 
 ## 5. Xavfsiz yuklama o‘lchovi
 
-Phase 2 ning rasmiy staging gate’i Windows PowerShell orqali ishlaydi.
-Repository root papkasida quyidagi buyruqni bajaring:
+### Windows — tavsiya etilgan usul
+
+PowerShell oynasini loyiha papkasida ochib quyidagi buyruqni bajaring:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass `
-  -File ".\scripts\phase2_load.ps1" `
-  -OutputPath ".\phase2-warm-load-result.json"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\koprik-phase2-load.ps1
 ```
 
-Skript staging loginini so‘raydi. Telegramdagi Koprik parolini clipboardga
-nusxalang va so‘ralganda Enter bosing; skript parolni olgach clipboardni
-darhol tozalaydi. Keyin Telegram bot yuborgan 6 xonali kodni kiriting.
-Login, parol, Telegram kodi va sessiya natija fayliga yozilmaydi.
+Skript loginni so‘ragach, Telegram bot yuborgan parolning faqat qiymatini
+clipboard’ga nusxalang va PowerShell ko‘rsatmasida Enter bosing. Skript
+clipboard’ni darhol tozalaydi; parol ekranga, faylga va buyruqlar tarixiga
+chiqarilmaydi. Telegram kodi hamda sessiya diska yozilmaydi va ekranga
+chiqarilmaydi. Sinov faqat kabinet ma’lumotini o‘qiydigan
+`GET /api/v1/me` so‘rovlarini 100 → 500 → 1000 parallel bosqichlarda
+yuboradi va oxirida test sessiyasidan chiqadi.
 
-Skript avval yangi ulanish bilan bitta `/healthz` so‘rovini o‘lchaydi.
-Bu `cold_total_ms` faqat diagnostika bo‘lib, gate natijasiga kirmaydi.
-Asosiy test bir xil qayta ishlatiladigan HTTPS ulanishlari bilan har bir
-bosqichni warm-up qiladi, warm-up natijalarini tashlab yuboradi va keyin
-`/api/v1/me` uchun 100, 500, 1000 parallel so‘rovni o‘lchaydi.
-Warm-updagi vaqtinchalik xatolar diagnostika sifatida
-`warmup_errors` maydoniga yoziladi, lekin gate natijasiga kirmaydi.
-O‘lchanadigan bosqichdagi bitta xato ham gate’ni yiqitadi.
+Runner Windows ulanish limitini eng katta bosqichga moslab avtomatik
+`1000` ga o‘rnatadi. `phase2-load-result.json` ichidagi
+`max_connections_per_server` ham `1000` bo‘lishi kerak. Har bosqich
+uchun `duration_ms`, `status_counts` va `error_types` yoziladi. Bu
+diagnostika gate o‘tmasa muammoni klient transporti, HTTP statusi yoki
+API javob vaqtiga ajratishga yordam beradi.
 
-Phase 2 warm-load gate faqat quyidagi holatda o‘tadi:
+Maxfiy bo‘lmagan natija shu papkada `phase2-load-result.json` nomi bilan
+yaratiladi. Gate o‘tishi uchun fayldagi `gate.passed` qiymati `true`,
+`error_rate` 0.01 dan past va `p95_ms` 500 dan past bo‘lishi kerak.
+Hisobot login, parol, Telegram kodi, cookie, session token yoki CSRF
+qiymatini saqlamaydi.
 
-- har bir bosqichda 0 xato;
-- barcha measured javoblar HTTP 200;
-- har bir bosqichda p95 500 ms dan past.
+### p95 sekin bo‘lsa — qatlamlar bo‘yicha diagnostika
 
-Natija `phase2-warm-load-result.json` fayliga yoziladi. Faylda secret
-yo‘qligini tekshiring va uni Phase 2 staging dalili sifatida saqlang.
-Skript non-zero exit code qaytarsa, gate o‘tmagan hisoblanadi.
+Asosiy yuklama sinovida xatolar 1% dan kam, lekin p95 500 ms dan yuqori
+bo‘lsa, Railway sozlamalarini darhol o‘zgartirmang. Avval Windows
+PowerShell’da quyidagi skriptni ishga tushiring:
 
-Mavjud `scripts/phase2_load.js` o‘zgarmaydi. k6 CI yoki Linux/macOS
-uchun qo‘shimcha smoke/capacity vositasi bo‘lib qoladi:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\koprik-phase2-latency-diagnostic.ps1
+```
+
+Skript bitta autentifikatsiyalangan `HttpClient` bilan har bir bosqichni
+avval bir marta qizdiradi, keyin alohida-alohida 1000 parallel `GET`
+so‘rovi yuboradi:
+
+- `healthz_cold` — API va tarmoq, yangi HTTPS ulanishlari bilan;
+- `healthz_reused` — ayni `/healthz`, ochilgan ulanishlarni qayta ishlatib;
+- `/api/v1/auth/session` — sessiya autentifikatsiyasi va uning DB so‘rovi;
+- `/api/v1/me` — sessiya autentifikatsiyasi hamda profil DB so‘rovi.
+
+Natija `phase2-latency-diagnostic-v2-result.json` fayliga yoziladi. Har
+endpoint uchun `p50_ms`, `p95_ms`, `p99_ms`, `duration_ms`,
+`status_counts` va `error_types` ko‘rsatiladi. Hisobotda login, parol,
+Telegram kodi, cookie, session token yoki CSRF qiymati bo‘lmaydi.
+
+Natijani quyidagicha talqin qiling:
+
+- faqat `healthz_cold` sekin bo‘lsa — yangi HTTPS ulanishlarini ochish
+  va internet/Railway yo‘li asosiy gumon;
+- `healthz_reused` ham sekin bo‘lsa — API konteyneri yoki Railway proxy
+  navbati asosiy gumon;
+- `healthz_reused` tez, `/api/v1/auth/session` sekin bo‘lsa — autentifikatsiya
+  DB so‘rovi yoki ulanish navbati asosiy gumon;
+- dastlabki ikkitasi tez, faqat `/api/v1/me` sekin bo‘lsa — profilni
+  yuklash so‘rovi yoki qo‘shimcha DB sessiyasi asosiy gumon;
+- barcha endpointlarda HTTP xatosi bo‘lmasa-yu p95 yuqori bo‘lsa,
+  Railway API va Postgres metrikalarini sinov vaqt oralig‘i bilan
+  solishtiring.
+
+Bu diagnostika kuzatuv rejimida ishlaydi: production `web`, Railway
+replica, DB pool, Redis, Postgres va R2 sozlamalarini o‘zgartirmaydi.
+
+Phase 2 profil cache gate’i `/api/v1/me` uchun 1000 parallel so‘rovda
+0 xato, barcha javoblar HTTP 200 va p95 500 ms dan past bo‘lganda o‘tadi.
+
+### k6 — muqobil usul
+
+Faqat staging uchun alohida test session yarating. Uni shell historyga
+yozmasdan environment orqali uzating:
 
 ```bash
 KOPRIK_API_BASE_URL=https://platforma-production-f753.up.railway.app \
@@ -197,20 +239,10 @@ KOPRIK_LOAD_SESSION=STAGING_TEST_SESSION \
 k6 run scripts/phase2_load.js
 ```
 
-k6 natijasi rasmiy Windows warm gate o‘rnini bosmaydi. Ushbu gate butun
-tizim 10 000 concurrent userni ko‘taradi degan da’vo emas. 10 000 uchun
-alohida capacity test, Railway replica masshtablash va DB/Redis/R2
-metrikalari talab qilinadi.
-
-Phase 2 tugagan deb belgilashdan oldin:
-
-1. GitHub CI yashil;
-2. `api-staging`, `worker-staging`, `frontend-staging` healthy;
-3. user va business Telegram login hamda profil/media oqimlari ishlaydi;
-4. Postgres backup olingan;
-5. `phase2-warm-load-result.json` uchala bosqich uchun 0 xato va
-   p95 500 ms dan past natijani ko‘rsatadi;
-6. natija faylida maxfiy qiymat yo‘q.
+Gate: HTTP xatolar 1% dan kam va p95 500 ms dan past. Bu 100 → 500 → 1000
+authenticated read o‘lchovi, butun tizim 10 000 concurrent userni ko‘taradi
+degan da’vo emas. 10 000 uchun alohida capacity test, Railway replica
+masshtablash va DB/Redis/R2 metrikalari talab qilinadi.
 
 ## 6. Rollback
 

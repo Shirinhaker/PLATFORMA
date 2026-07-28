@@ -34,36 +34,6 @@ select {
   outline: none;
 }
 
-.app-shell__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 68px;
-  padding: 0 clamp(16px, 4vw, 48px);
-  border-bottom: 1px solid var(--koprik-line);
-  background: var(--koprik-card);
-}
-
-.app-shell__brand {
-  color: var(--koprik-ink);
-  font-family: var(--koprik-font-display);
-  font-size: clamp(26px, 2.5vw, 34px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-}
-
-.app-shell__header button {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--koprik-line);
-  border-radius: 12px;
-  color: var(--koprik-primary);
-  background: var(--koprik-card);
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: var(--koprik-shadow);
-}
-
 .session-panel {
   width: min(720px, calc(100% - 40px));
   margin: 0 auto;
@@ -433,10 +403,6 @@ select {
 }
 
 @media (max-width: 640px) {
-  .app-shell__header {
-    min-height: 64px;
-  }
-
   .foundation {
     padding-top: 64px;
   }

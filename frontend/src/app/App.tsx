@@ -1,8 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import type { ApiClient } from "../api/client";
+import type { SessionIdentity } from "../api/types";
 import { AuthFlow, type AuthApi } from "../auth/AuthFlow";
 import type { AppSession } from "../auth/types";
+import { CatalogScreen } from "../legacy/public/CatalogScreen";
+import { CategoryScreen } from "../legacy/public/CategoryScreen";
+import { findCatalogDirection } from "../legacy/public/catalog-data";
+import { HomeScreen } from "../legacy/public/HomeScreen";
+import { LocationScreen } from "../legacy/public/LocationScreen";
+import {
+  readHomeLocation,
+  type HomeLocation,
+} from "../legacy/public/location-storage";
+import {
+  initialPublicNavigationState,
+  publicNavigationReducer,
+} from "../legacy/public/public-navigation";
 import {
   BusinessProfile,
   type BusinessProfileApi,
@@ -69,7 +83,13 @@ export function App({ api }: { api: AppApi }) {
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [navigation, dispatch] = useReducer(
+    publicNavigationReducer,
+    initialPublicNavigationState,
+  );
+  const [homeLocation, setHomeLocation] = useState<HomeLocation | null>(
+    () => readHomeLocation(),
+  );
 
   useEffect(() => {
     let active = true;
@@ -106,21 +126,124 @@ export function App({ api }: { api: AppApi }) {
     session.status === "user" || session.status === "business"
   );
 
-  function focusContent() {
-    contentRef.current?.focus();
+  const category = navigation.categoryId
+    ? findCatalogDirection(navigation.categoryId)
+    : null;
+  const title = {
+    auth: "Kirish",
+    cabinet: "Kabinet",
+    catalog: "Katalog",
+    category: category?.name ?? "Yo‘nalish",
+    home: undefined,
+    location: "Manzil",
+  }[navigation.view];
+
+  function openHome() {
+    dispatch({ type: "GO_HOME" });
+  }
+
+  function completeAuthentication(identity: SessionIdentity) {
+    setSession({
+      status: identity.account_type,
+      identity,
+    });
+    dispatch({ type: "OPEN_CABINET" });
+  }
+
+  function renderAccount() {
+    if (session.status === "guest") {
+      return supportsAuthFlow(api) ? (
+        <AuthFlow api={api} onAuthenticated={completeAuthentication} />
+      ) : (
+        <main className="session-panel">
+          <h1>Koprik’ga kirish</h1>
+        </main>
+      );
+    }
+
+    if (session.status === "loading") {
+      return <SessionStatus state="loading" />;
+    }
+
+    if (supportsProfiles(api)) {
+      const logout = () => {
+        setSession({ status: "guest" });
+        openHome();
+      };
+
+      return session.status === "user" ? (
+        <UserProfile
+          api={api}
+          identity={session.identity}
+          onLogout={logout}
+        />
+      ) : (
+        <BusinessProfile
+          api={api}
+          identity={session.identity}
+          onLogout={logout}
+        />
+      );
+    }
+
+    return <Cabinet kind={session.status} name={session.identity.name} />;
+  }
+
+  function renderPublicContent() {
+    switch (navigation.view) {
+      case "catalog":
+        return (
+          <CatalogScreen
+            initialQuery={navigation.query}
+            onOpenCategory={(categoryId) => dispatch({
+              type: "OPEN_CATEGORY",
+              categoryId,
+            })}
+          />
+        );
+      case "category":
+        return <CategoryScreen categoryId={navigation.categoryId ?? ""} />;
+      case "location":
+        return (
+          <LocationScreen
+            initialLocation={homeLocation}
+            onSaved={(location) => {
+              setHomeLocation(location);
+              openHome();
+            }}
+          />
+        );
+      case "auth":
+      case "cabinet":
+        return renderAccount();
+      case "home":
+        return (
+          <HomeScreen
+            currentDistrict={homeLocation?.district}
+            onSearch={(query) => dispatch({ type: "OPEN_CATALOG", query })}
+            onOpenCatalog={() => dispatch({
+              type: "OPEN_CATALOG",
+              query: "",
+            })}
+            onOpenLocation={() => dispatch({ type: "OPEN_LOCATION" })}
+          />
+        );
+    }
   }
 
   return (
     <AppShell
       authenticated={authenticated}
-      onCabinet={focusContent}
-      onLogin={focusContent}
+      title={title}
+      isHome={navigation.view === "home"}
+      onHome={openHome}
+      onLocation={() => dispatch({ type: "OPEN_LOCATION" })}
+      onAccount={() => dispatch({
+        type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
+      })}
+      onBack={() => dispatch({ type: "BACK" })}
     >
-      <div
-        className="app-shell__content"
-        ref={contentRef}
-        tabIndex={-1}
-      >
+      <div className="app-shell__content" tabIndex={-1}>
         {failed ? (
           <SessionStatus
             state="error"
@@ -128,38 +251,7 @@ export function App({ api }: { api: AppApi }) {
           />
         ) : session.status === "loading" ? (
           <SessionStatus state="loading" />
-        ) : session.status === "guest" ? (
-          supportsAuthFlow(api) ? (
-            <AuthFlow
-              api={api}
-              onAuthenticated={(identity) => setSession({
-                status: identity.account_type,
-                identity,
-              })}
-            />
-          ) : (
-            <main className="session-panel">
-              <h1>Koprik’ga kirish</h1>
-            </main>
-          )
-        ) : supportsProfiles(api) ? (
-          session.status === "user" ? (
-            <UserProfile
-              api={api}
-              identity={session.identity}
-              onLogout={() => setSession({ status: "guest" })}
-            />
-          ) : (
-            <BusinessProfile
-              api={api}
-              identity={session.identity}
-              onLogout={() => setSession({ status: "guest" })}
-            />
-          )
-        ) : (
-          <Cabinet kind={session.status} name={session.identity.name} />
-        )
-        }
+        ) : renderPublicContent()}
       </div>
     </AppShell>
   );

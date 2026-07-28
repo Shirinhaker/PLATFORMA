@@ -1,496 +1,340 @@
 {
   "build": "v1656",
-  "screen_count": 98,
-  "screens": [
-    {
-      "name": "home",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "catalog",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cat-types",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "taxi-call",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "loc",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "login",
-      "group": "auth",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "register",
-      "group": "auth",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "regform",
-      "group": "auth",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "staff-login",
-      "group": "staff",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "listings",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "list",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "business",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "user-page",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "staff-home",
-      "group": "staff",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cabinet",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-profil",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-subscriptions",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-payments",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-reviews",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-items",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-dining",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-dining-order",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-groups",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-group-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-students",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-student-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-student-card",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-student-transfer",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-schedule",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-attendance",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-payment-control",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-teachers",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-teacher-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-enrollments",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-payroll",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-payroll-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-education-statistics",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-medical-doctors",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-medical-doctor-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-medical-queue",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-item-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-elon",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-ad-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-elon-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-orders",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-service-orders",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-qarz",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-ombor",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-kassa",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-kassa-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-xarajat",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-qarz-card",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-stats",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-settings",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-profil",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-elon",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-ad-form",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-elon-form",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "pickloc",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-spec",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-spec-offer-form",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-spec-reviews",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ai-chat",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "biz-cred",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "help",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "person",
-      "group": "public",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "chats",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "chat",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "biz-open",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "notify",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "notify-form",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-subs",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-orders",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-service-orders",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-saved",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-settings",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-stories",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-stories",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-followers",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-following",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "ucab-followers",
-      "group": "user-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-admin",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-my-docs",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-staff",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-tabel",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-docs",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-contractors",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-contractor-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-doc-new",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-doc-in",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-doc-out",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-doc-view",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-doc-inbox",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-staff-form",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cab-report",
-      "group": "business-cabinet",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "taxidrv",
-      "group": "shared",
-      "phase3_status": "legacy"
-    },
-    {
-      "name": "cart",
-      "group": "shared",
-      "phase3_status": "legacy"
-    }
-  ]
+  "database_table_declarations": 86,
+  "frontend_line_count": 14091,
+  "routes": {
+    "admin_api.py": [
+      "GET /audit",
+      "GET /audit/export.csv",
+      "GET /audit/{audit_id}",
+      "GET /auth/me",
+      "GET /businesses",
+      "GET /businesses/{business_id}",
+      "GET /content",
+      "GET /content/{kind}/{content_id}",
+      "GET /dashboard",
+      "GET /reports",
+      "GET /reports/{report_id}",
+      "GET /users",
+      "GET /users/{user_id}",
+      "POST /accounts/{actor_type}/{actor_id}/notes",
+      "POST /accounts/{actor_type}/{actor_id}/restrict",
+      "POST /accounts/{actor_type}/{actor_id}/unrestrict",
+      "POST /auth/logout",
+      "POST /auth/start",
+      "POST /auth/verify",
+      "POST /content/{kind}/{content_id}/hide",
+      "POST /content/{kind}/{content_id}/remove",
+      "POST /content/{kind}/{content_id}/restore",
+      "POST /reports/{report_id}/assign",
+      "POST /reports/{report_id}/dismiss",
+      "POST /reports/{report_id}/resolve"
+    ],
+    "api.py": [
+      "DELETE /advertisements/{ad_id}",
+      "DELETE /contractors/{cid}",
+      "DELETE /dining/places/{place_id}",
+      "DELETE /documents/{doc_id}",
+      "DELETE /education/exams/{exam_id}",
+      "DELETE /education/groups/{group_id}",
+      "DELETE /education/students/{student_id}",
+      "DELETE /education/teacher-payroll/{payment_id}",
+      "DELETE /education/teachers/{teacher_id}",
+      "DELETE /expenses/{expense_id}",
+      "DELETE /item-groups/{group_id}",
+      "DELETE /items/{item_id}",
+      "DELETE /kassa/chek/{chek_no}",
+      "DELETE /kassa/{sale_id}",
+      "DELETE /listings/{listing_id}",
+      "DELETE /media/inbox",
+      "DELETE /messages/{message_id}",
+      "DELETE /notify/filters/{filter_id}",
+      "DELETE /orders/{order_id}/chat/{message_id}",
+      "DELETE /push/devices",
+      "DELETE /reviews",
+      "DELETE /specialist/credentials/{media_id}",
+      "DELETE /specialist/offers/{offer_id}",
+      "DELETE /specialist/portfolio/{media_id}",
+      "DELETE /staff/{staff_id}",
+      "DELETE /stock/moves/{move_id}",
+      "DELETE /stories/{story_id}",
+      "GET /admin/drivers",
+      "GET /advertisements/active",
+      "GET /advertisements/my",
+      "GET /advertisements/rates",
+      "GET /browse",
+      "GET /business/reviews",
+      "GET /business/subscription",
+      "GET /business/{business_id}",
+      "GET /config",
+      "GET /contractors",
+      "GET /dining/orders",
+      "GET /dining/places",
+      "GET /documents",
+      "GET /documents/{doc_id}",
+      "GET /driver",
+      "GET /education/attendance",
+      "GET /education/enrollments",
+      "GET /education/exams",
+      "GET /education/exams/{exam_id}/results",
+      "GET /education/groups",
+      "GET /education/payment-control",
+      "GET /education/payments",
+      "GET /education/statistics",
+      "GET /education/students",
+      "GET /education/students/{student_id}/card",
+      "GET /education/teacher-payroll",
+      "GET /education/teachers",
+      "GET /expense-cats",
+      "GET /expenses",
+      "GET /followers/my",
+      "GET /follows/my",
+      "GET /home/district-offers",
+      "GET /item-groups",
+      "GET /items",
+      "GET /kassa",
+      "GET /listings",
+      "GET /listings/counts",
+      "GET /listings/my",
+      "GET /listings/{listing_id}",
+      "GET /map",
+      "GET /media/inbox",
+      "GET /medical/doctors",
+      "GET /medical/queue",
+      "GET /medical/queue/mine",
+      "GET /medical/queue/options",
+      "GET /medical/queue/slots",
+      "GET /medical/setup",
+      "GET /messages/conversations",
+      "GET /messages/unread_count",
+      "GET /messages/with/{target_id}",
+      "GET /notifications",
+      "GET /notifications/actions",
+      "GET /notify/filters",
+      "GET /orders/inbox",
+      "GET /orders/my",
+      "GET /orders/{order_id}/chat",
+      "GET /person/{user_id}",
+      "GET /pricing",
+      "GET /profile",
+      "GET /push/preferences",
+      "GET /push/status",
+      "GET /qarz/debtors",
+      "GET /qarz/debtors/{debtor_id}",
+      "GET /resolve",
+      "GET /reviews",
+      "GET /rides/my",
+      "GET /rides/pending",
+      "GET /saved",
+      "GET /search",
+      "GET /specialist",
+      "GET /specialist/reviews",
+      "GET /staff",
+      "GET /staff-auth/me",
+      "GET /staff-professions",
+      "GET /stats",
+      "GET /stats/nav",
+      "GET /stock",
+      "GET /stock/moves",
+      "GET /stock/production",
+      "GET /stock/recipe/{ready_item_id}",
+      "GET /stories/feed",
+      "GET /stories/mine",
+      "GET /stories/owner/{owner_type}/{owner_id}",
+      "GET /stories/{story_id}/owner-media",
+      "GET /stories/{story_id}/viewers",
+      "GET /story-media/{story_id}",
+      "GET /story-thumbnail/{story_id}",
+      "GET /tabel",
+      "GET /user/{user_id}",
+      "POST /admin/topup",
+      "POST /advertisements",
+      "POST /advertisements/image",
+      "POST /advertisements/price",
+      "POST /advertisements/views",
+      "POST /advertisements/{ad_id}/click",
+      "POST /business/logo",
+      "POST /business/subscription/demo-activate",
+      "POST /contractors",
+      "POST /dining/orders/{order_id}/cancel",
+      "POST /dining/orders/{order_id}/finalize",
+      "POST /dining/orders/{order_id}/items",
+      "POST /dining/orders/{order_id}/payment",
+      "POST /dining/orders/{order_id}/problem",
+      "POST /dining/orders/{order_id}/problem/resolve",
+      "POST /dining/places",
+      "POST /dining/places/{place_id}/booking",
+      "POST /dining/places/{place_id}/clear",
+      "POST /dining/places/{place_id}/order",
+      "POST /documents",
+      "POST /documents/{doc_id}/respond",
+      "POST /documents/{doc_id}/send",
+      "POST /driver",
+      "POST /education/enrollments",
+      "POST /education/enrollments/{enrollment_id}/accept",
+      "POST /education/enrollments/{enrollment_id}/reject",
+      "POST /education/exams",
+      "POST /education/groups",
+      "POST /education/payments",
+      "POST /education/payments/{payment_id}/void",
+      "POST /education/students",
+      "POST /education/students/{student_id}/transfer",
+      "POST /education/teacher-payroll",
+      "POST /education/teachers",
+      "POST /expense-cats",
+      "POST /expenses",
+      "POST /follow",
+      "POST /home/district-offers/demo-seed",
+      "POST /item-groups",
+      "POST /items",
+      "POST /items/image",
+      "POST /kassa",
+      "POST /kassa/multi",
+      "POST /listings",
+      "POST /listings/media",
+      "POST /medical/doctors",
+      "POST /medical/queue/offline",
+      "POST /medical/queue/public",
+      "POST /medical/queue/{queue_id}/cancel-mine",
+      "POST /medical/queue/{queue_id}/status",
+      "POST /medical/queue/{queue_id}/swap",
+      "POST /messages/image",
+      "POST /messages/send",
+      "POST /notify/filters",
+      "POST /orders",
+      "POST /orders/{order_id}/chat",
+      "POST /orders/{order_id}/chat/image",
+      "POST /orders/{order_id}/handoff",
+      "POST /orders/{order_id}/payment",
+      "POST /orders/{order_id}/payment/submit",
+      "POST /orders/{order_id}/problem",
+      "POST /orders/{order_id}/received",
+      "POST /profile/avatar",
+      "POST /push/devices",
+      "POST /qarz/debtors",
+      "POST /qarz/debtors/{debtor_id}/tx",
+      "POST /reports",
+      "POST /reviews",
+      "POST /rides",
+      "POST /rides/{ride_id}/accept",
+      "POST /rides/{ride_id}/cancel",
+      "POST /rides/{ride_id}/complete",
+      "POST /rides/{ride_id}/progress",
+      "POST /rides/{ride_id}/status",
+      "POST /save",
+      "POST /specialist/credentials/upload",
+      "POST /specialist/offers",
+      "POST /specialist/offers/image",
+      "POST /specialist/portfolio/upload",
+      "POST /staff",
+      "POST /staff-auth",
+      "POST /staff-auth/logout",
+      "POST /staff-professions",
+      "POST /staff/{staff_id}/fire",
+      "POST /staff/{staff_id}/rehire",
+      "POST /stock/move",
+      "POST /stories",
+      "POST /stories/{story_id}/reports",
+      "POST /stories/{story_id}/view",
+      "POST /tabel",
+      "PUT /business",
+      "PUT /business/credentials",
+      "PUT /business/logo-position",
+      "PUT /business/reviews/{review_id}/reply",
+      "PUT /contractors/{cid}",
+      "PUT /dining/orders/{order_id}/cashier-items",
+      "PUT /dining/orders/{order_id}/kitchen",
+      "PUT /dining/places/{place_id}",
+      "PUT /documents/{doc_id}",
+      "PUT /driver/available",
+      "PUT /education/attendance",
+      "PUT /education/exams/{exam_id}",
+      "PUT /education/exams/{exam_id}/results",
+      "PUT /education/groups/{group_id}",
+      "PUT /education/students/{student_id}",
+      "PUT /education/teachers/{teacher_id}",
+      "PUT /item-groups/{group_id}",
+      "PUT /items/{item_id}",
+      "PUT /listings/{listing_id}",
+      "PUT /medical/doctors/{doctor_id}",
+      "PUT /medical/setup",
+      "PUT /messages/{message_id}",
+      "PUT /notifications/read-all/all",
+      "PUT /notifications/{notification_id}/read",
+      "PUT /orders/{order_id}/chat/{message_id}",
+      "PUT /orders/{order_id}/problem/solution",
+      "PUT /orders/{order_id}/seen",
+      "PUT /orders/{order_id}/status",
+      "PUT /profile",
+      "PUT /profile/avatar-position",
+      "PUT /push/preferences",
+      "PUT /sales/{sale_id}/pay",
+      "PUT /specialist",
+      "PUT /specialist/offers/{offer_id}",
+      "PUT /specialist/reviews/{review_id}/reply",
+      "PUT /staff/{staff_id}",
+      "PUT /staff/{staff_id}/access",
+      "PUT /staff/{staff_id}/schedule"
+    ],
+    "main.py": [
+      "GET /",
+      "GET /admin/",
+      "GET /api/_dbinfo",
+      "GET /api/_setup",
+      "GET /api/auth/login/status",
+      "GET /api/build",
+      "GET /api/catalog",
+      "GET /api/features",
+      "GET /api/geocode",
+      "GET /api/map-config",
+      "GET /api/me",
+      "GET /healthz",
+      "GET /media/{file_id}",
+      "GET /profile-media/{owner_kind}/{owner_id}",
+      "GET /readyz",
+      "POST /api/_setup",
+      "POST /api/auth/login",
+      "POST /api/auth/register",
+      "POST /api/business/open",
+      "POST /api/mobile-auth/logout",
+      "POST /api/mobile-auth/register/request-code",
+      "POST /api/mobile-auth/register/verify-code",
+      "POST /api/mobile-auth/request-code",
+      "POST /api/mobile-auth/verify-code",
+      "POST /api/password-auth/login",
+      "POST /api/telegram-auth/login/start",
+      "POST /api/telegram-auth/login/verify",
+      "POST /api/telegram-auth/register/start",
+      "POST /api/telegram-auth/register/verify",
+      "POST /webhook"
+    ],
+    "payment_api.py": [
+      "GET /catalog",
+      "GET /my",
+      "GET /payment-methods",
+      "GET /payments",
+      "GET /payments/{payment_id}",
+      "GET /payments/{payment_id}/receipt",
+      "GET /prices",
+      "GET /{payment_id}/receipt",
+      "POST /payment-methods",
+      "POST /payments/{payment_id}/approve",
+      "POST /payments/{payment_id}/cancel",
+      "POST /payments/{payment_id}/reject",
+      "POST /receipts",
+      "POST /requests",
+      "POST /{payment_id}/resubmit",
+      "PUT /payment-methods/{method_id}",
+      "PUT /prices/{price_id}"
+    ]
+  },
+  "sha256": {
+    "admin/app.js": "f7f99576885652c4c35e66adba8faeb088b3ff30da326b4c030361ed705ed9b1",
+    "admin/index.html": "8aad2f9f7382e917ea7a78904af9e40561b6846eed2d0204fd1840fb8728f2f2",
+    "admin/styles.css": "b3d2b6dfcd334bbe735cbd38ddca72320ea6647b8994a43d864b1bf173affc02",
+    "api.py": "8c007d4582c4437b219bc2733d726580f02b9262ebed17addfeb456bbc0a5c09",
+    "database.py": "71be29b506a4ad5a97b8f88193f03d04349ffd45bde8ad9a7ff103553c48a48e",
+    "main.py": "2caf60bd7467ea111d46e904e515f3ede85c088e10dac9d1caed6cc720090506",
+    "static/index.html": "56569095bb35a521bb1a1c33f77fefec147e50c332a65f14333632f4b0e2f374"
+  }
 }

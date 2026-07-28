@@ -6,32 +6,54 @@ import { AppShell } from "./AppShell";
 
 
 describe("AppShell", () => {
-  it("shows the Koprik brand and a working login action for guests", async () => {
-    const onLogin = vi.fn();
+  it("connects public shell actions for guests", async () => {
+    const onHome = vi.fn();
+    const onLocation = vi.fn();
+    const onAccount = vi.fn();
     render(
-      <AppShell authenticated={false} onLogin={onLogin}>
+      <AppShell
+        authenticated={false}
+        isHome
+        onHome={onHome}
+        onLocation={onLocation}
+        onAccount={onAccount}
+        onBack={vi.fn()}
+      >
         <p>Kontent</p>
       </AppShell>,
     );
 
     expect(screen.getByRole("banner")).toHaveTextContent("Koprik");
+    await userEvent.click(screen.getByRole("button", { name: "Koprik" }));
+    await userEvent.click(screen.getByRole("button", { name: "Manzil" }));
     await userEvent.click(screen.getByRole("button", { name: "Kirish" }));
-    expect(onLogin).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("button", { name: "Kabinet" }))
-      .not.toBeInTheDocument();
+
+    expect(onHome).toHaveBeenCalledOnce();
+    expect(onLocation).toHaveBeenCalledOnce();
+    expect(onAccount).toHaveBeenCalledOnce();
   });
 
-  it("shows the cabinet action only for authenticated sessions", async () => {
-    const onCabinet = vi.fn();
+  it("connects subview back and authenticated cabinet actions", async () => {
+    const onBack = vi.fn();
+    const onAccount = vi.fn();
     render(
-      <AppShell authenticated onCabinet={onCabinet}>
+      <AppShell
+        authenticated
+        isHome={false}
+        title="Katalog"
+        onHome={vi.fn()}
+        onLocation={vi.fn()}
+        onAccount={onAccount}
+        onBack={onBack}
+      >
         <p>Kontent</p>
       </AppShell>,
     );
 
+    await userEvent.click(screen.getByRole("button", { name: "Orqaga" }));
     await userEvent.click(screen.getByRole("button", { name: "Kabinet" }));
-    expect(onCabinet).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("button", { name: "Kirish" }))
-      .not.toBeInTheDocument();
+
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(onAccount).toHaveBeenCalledOnce();
   });
 });
