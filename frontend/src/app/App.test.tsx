@@ -267,15 +267,52 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a retryable Uzbek error for network failures", async () => {
+  it("keeps public location usable when session bootstrap fails", async () => {
+    const user = userEvent.setup();
     const api = {
       getSession: vi.fn().mockRejectedValue(new TypeError("offline")),
     };
+
     render(<App api={api} />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Manzil" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Hududingizni tanlang" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the retryable session error on account views", async () => {
+    const user = userEvent.setup();
+    const api = {
+      getSession: vi.fn()
+        .mockRejectedValueOnce(new TypeError("offline"))
+        .mockResolvedValueOnce(userIdentity),
+    };
+
+    render(<App api={api} />);
+
+    await screen.findByRole("heading", {
+      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+    });
+    await user.click(screen.getByRole("button", { name: "Kirish" }));
+
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Server bilan bog‘lanib bo‘lmadi.",
     );
-    expect(screen.getByRole("button", { name: "Qayta urinish" }))
-      .toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Qayta urinish" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Oddiy kabinet" }),
+    ).toBeInTheDocument();
+    expect(api.getSession).toHaveBeenCalledTimes(2);
   });
 });
