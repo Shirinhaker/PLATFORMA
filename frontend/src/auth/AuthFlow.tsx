@@ -127,7 +127,7 @@ export function AuthFlow({
   }
   return (
     <main className="auth-card auth-choice">
-      <p className="session-panel__eyebrow">Koprik Phase 2</p>
+      <p className="session-panel__eyebrow">Koprik</p>
       <h1>Koprik’ga kirish</h1>
       <p>Telegram orqali xavfsiz kirish yoki ro‘yxatdan o‘tish.</p>
       <button type="button" onClick={() => setStep({ name: "login" })}>
