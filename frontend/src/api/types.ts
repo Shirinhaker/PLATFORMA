@@ -160,3 +160,40 @@ export type ProfileImageAttachment = {
   y: number;
   zoom: number;
 };
+
+export type PublicResultKind = "user" | "business";
+export type PublicResultType = "all" | PublicResultKind;
+
+export type PublicSearchParams = {
+  q?: string;
+  result_type?: PublicResultType;
+  direction?: string;
+  activity_type?: string;
+  region?: string;
+  district?: string;
+  mahalla?: string;
+  page?: number;
+  page_size?: number;
+};
+
+export type PublicSearchItem = {
+  kind: PublicResultKind;
+  public_id: string;
+  name: string;
+  public_username: string;
+  description: string;
+  direction: string;
+  activity_type: string;
+  region: string;
+  district: string;
+  mahalla: string;
+  image_url: string;
+};
+
+export type PublicSearchResponse = {
+  items: PublicSearchItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
+};

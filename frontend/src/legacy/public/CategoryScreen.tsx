@@ -1,14 +1,63 @@
-import { type CSSProperties, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useState,
+} from "react";
 
+import type { ApiClient } from "../../api/client";
+import type { PublicSearchItem } from "../../api/types";
 import { findCatalogDirection } from "./catalog-data";
+import { PublicSearchResults } from "./PublicSearchResults";
 
 interface CategoryScreenProps {
   categoryId: string;
+  searchPublic?: ApiClient["searchPublic"];
 }
 
-export function CategoryScreen({ categoryId }: CategoryScreenProps) {
+export function CategoryScreen({
+  categoryId,
+  searchPublic,
+}: CategoryScreenProps) {
   const direction = findCatalogDirection(categoryId);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
+  const [items, setItems] = useState<PublicSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!direction || !selectedActivity) return;
+    if (!searchPublic) {
+      setError("Qidiruv xizmati hozircha ulanmagan.");
+      return;
+    }
+
+    let active = true;
+    setItems([]);
+    setLoading(true);
+    setError("");
+    searchPublic({
+      result_type: "business",
+      direction: direction.name,
+      activity_type: selectedActivity,
+      page: 1,
+      page_size: 20,
+    })
+      .then((response) => {
+        if (active) setItems(response.items);
+      })
+      .catch(() => {
+        if (active) {
+          setError("Server bilan bog‘lanib bo‘lmadi. Qayta urinib ko‘ring.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [direction, searchPublic, selectedActivity]);
 
   if (!direction) {
     return (
@@ -52,9 +101,18 @@ export function CategoryScreen({ categoryId }: CategoryScreenProps) {
       </section>
 
       {selectedActivity ? (
-        <p className="public-category__notice" role="status">
-          {selectedActivity} natijalari keyingi migratsiya bosqichida ulanadi.
-        </p>
+        <section className="public-category__matches" aria-live="polite">
+          <div className="public-catalog__result-heading">
+            <h2>{selectedActivity}</h2>
+            <span>Ochiq biznes profillari</span>
+          </div>
+          <PublicSearchResults
+            items={items}
+            loading={loading}
+            error={error}
+            emptyLabel="Bu faoliyat turi bo‘yicha ochiq profil topilmadi."
+          />
+        </section>
       ) : null}
     </main>
   );

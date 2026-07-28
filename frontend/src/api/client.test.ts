@@ -124,6 +124,44 @@ describe("ApiClient", () => {
     });
   });
 
+  it("encodes public discovery filters without requiring a session", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({
+      items: [],
+      page: 2,
+      page_size: 12,
+      total: 0,
+      pages: 0,
+    }));
+    const client = new ApiClient(
+      "https://api.example/",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.searchPublic({
+      q: "telefon ta’miri",
+      result_type: "business",
+      direction: "Savdo",
+      district: "Qumqo‘rg‘on",
+      page: 2,
+      page_size: 12,
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/public/search"
+        + "?q=telefon+ta%E2%80%99miri"
+        + "&result_type=business"
+        + "&direction=Savdo"
+        + "&district=Qumqo%E2%80%98rg%E2%80%98on"
+        + "&page=2&page_size=12",
+      expect.objectContaining({
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      }),
+    );
+  });
+
   it("uploads granted bytes without browser credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, {
       status: 200,

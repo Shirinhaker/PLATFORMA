@@ -22,6 +22,7 @@ def main() -> int:
             "-m",
             "unittest",
             "tests.test_phase3_screen_inventory",
+            "tests.test_phase3_public_discovery_contract",
             "-v",
         ]
     )

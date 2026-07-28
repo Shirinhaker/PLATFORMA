@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { SessionIdentity } from "../api/types";
@@ -17,6 +17,7 @@ import {
   initialPublicNavigationState,
   publicNavigationReducer,
 } from "../legacy/public/public-navigation";
+import type { PublicView } from "../legacy/public/public-contract";
 import {
   BusinessProfile,
   type BusinessProfileApi,
@@ -32,7 +33,13 @@ import { SessionStatus } from "./SessionStatus";
 
 type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;
-type AppApi = SessionApi & Partial<AuthApi> & Partial<ProfileApi>;
+type PublicSearchApi = Pick<ApiClient, "searchPublic">;
+type AppApi = (
+  SessionApi
+  & Partial<AuthApi>
+  & Partial<ProfileApi>
+  & Partial<PublicSearchApi>
+);
 
 
 function supportsAuthFlow(api: AppApi): api is SessionApi & AuthApi {
@@ -90,6 +97,11 @@ export function App({ api }: { api: AppApi }) {
   const [homeLocation, setHomeLocation] = useState<HomeLocation | null>(
     () => readHomeLocation(),
   );
+  const searchPublic = useMemo(() => (
+    typeof api.searchPublic === "function"
+      ? api.searchPublic.bind(api)
+      : undefined
+  ), [api]);
 
   useEffect(() => {
     let active = true;
@@ -133,14 +145,15 @@ export function App({ api }: { api: AppApi }) {
   const category = navigation.categoryId
     ? findCatalogDirection(navigation.categoryId)
     : null;
-  const title = {
+  const titles: Record<PublicView, string | undefined> = {
     auth: "Kirish",
     cabinet: "Kabinet",
     catalog: "Katalog",
     category: category?.name ?? "Yo‘nalish",
     home: undefined,
     location: "Manzil",
-  }[navigation.view];
+  };
+  const title = titles[navigation.view];
 
   function openHome() {
     dispatch({ type: "GO_HOME" });
@@ -199,6 +212,8 @@ export function App({ api }: { api: AppApi }) {
         return (
           <CatalogScreen
             initialQuery={navigation.query}
+            location={homeLocation}
+            searchPublic={searchPublic}
             onOpenCategory={(categoryId) => dispatch({
               type: "OPEN_CATEGORY",
               categoryId,
@@ -206,7 +221,12 @@ export function App({ api }: { api: AppApi }) {
           />
         );
       case "category":
-        return <CategoryScreen categoryId={navigation.categoryId ?? ""} />;
+        return (
+          <CategoryScreen
+            categoryId={navigation.categoryId ?? ""}
+            searchPublic={searchPublic}
+          />
+        );
       case "location":
         return (
           <LocationScreen

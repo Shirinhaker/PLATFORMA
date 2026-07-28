@@ -405,6 +405,11 @@
   background: var(--koprik-primary);
 }
 
+.public-catalog__filter-group button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 .public-catalog__result-heading {
   display: flex;
   align-items: end;
@@ -475,6 +480,116 @@
 .public-catalog__card small {
   color: var(--koprik-soft);
   font-size: 13px;
+}
+
+.public-catalog__profiles {
+  margin-bottom: 40px;
+}
+
+.public-search-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.public-search-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 18px;
+  background: var(--koprik-card);
+  box-shadow: 0 8px 28px rgb(5 38 34 / 5%);
+}
+
+.public-search-card__avatar {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--koprik-primary-ink);
+  background: var(--koprik-primary-tint);
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.public-search-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-search-card__body {
+  min-width: 0;
+}
+
+.public-search-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.public-search-card__topline span {
+  color: var(--koprik-primary);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.public-search-card__topline small,
+.public-search-card p {
+  color: var(--koprik-soft);
+}
+
+.public-search-card h3 {
+  margin: 7px 0;
+  font-family: var(--koprik-font-display);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.public-search-card p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.public-search-card__location {
+  font-size: 13px;
+}
+
+.public-search-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+}
+
+.public-search-status {
+  display: grid;
+  gap: 6px;
+  min-height: 100px;
+  padding: 22px;
+  place-content: center;
+  border: 1px dashed var(--koprik-line);
+  border-radius: 18px;
+  color: var(--koprik-soft);
+  text-align: center;
+}
+
+.public-search-status--error {
+  border-color: #efb7af;
+  color: #8c261d;
+  background: #fff2f0;
+}
+
+.public-category__matches {
+  margin-top: 28px;
 }
 
 .public-empty-state {
@@ -661,6 +776,7 @@
 
 @media (max-width: 760px) {
   .public-catalog__grid,
+  .public-search-grid,
   .public-category__types,
   .public-location__form {
     grid-template-columns: 1fr;

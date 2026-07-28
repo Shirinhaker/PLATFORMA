@@ -1,49 +1,53 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CategoryScreen } from "./CategoryScreen";
 
+
 describe("CategoryScreen", () => {
-  it("shows the selected direction and all matching activity types", () => {
-    render(<CategoryScreen categoryId="education" />);
+  it("loads matching businesses after an activity type is selected", async () => {
+    const user = userEvent.setup();
+    const searchPublic = vi.fn().mockResolvedValue({
+      items: [{
+        kind: "business",
+        public_id: "b_shop",
+        name: "Koprik Market",
+        public_username: "",
+        description: "",
+        direction: "Savdo",
+        activity_type: "Oziq-ovqat do‘koni",
+        region: "",
+        district: "",
+        mahalla: "",
+        image_url: "",
+      }],
+      page: 1,
+      page_size: 20,
+      total: 1,
+      pages: 1,
+    });
 
-    expect(
-      screen.getByRole("heading", { name: "Ta’lim faoliyati" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "O‘quv markazi" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Imtihonga tayyorlash" }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("button")).toHaveLength(12);
-  });
-
-  it("leaves Back navigation to the parent shell", () => {
-    render(<CategoryScreen categoryId="education" />);
-
-    expect(screen.queryByRole("button", { name: "Orqaga" }))
-      .not.toBeInTheDocument();
-  });
-
-  it("honestly marks an activity type as not migrated yet", async () => {
-    render(<CategoryScreen categoryId="education" />);
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "O‘quv markazi" }),
+    render(
+      <CategoryScreen
+        categoryId="trade"
+        searchPublic={searchPublic}
+      />,
     );
 
-    expect(
-      screen.getByText(
-        "O‘quv markazi natijalari keyingi migratsiya bosqichida ulanadi.",
-      ),
-    ).toBeInTheDocument();
-  });
+    await user.click(
+      screen.getByRole("button", { name: /Oziq-ovqat do‘koni/ }),
+    );
 
-  it("shows an honest empty state for an unknown direction", () => {
-    render(<CategoryScreen categoryId="unknown" />);
-
-    expect(screen.getByText("Yo‘nalish topilmadi")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(searchPublic).toHaveBeenCalledWith({
+        result_type: "business",
+        direction: "Savdo",
+        activity_type: "Oziq-ovqat do‘koni",
+        page: 1,
+        page_size: 20,
+      });
+    });
+    expect(await screen.findByText("Koprik Market")).toBeInTheDocument();
   });
 });

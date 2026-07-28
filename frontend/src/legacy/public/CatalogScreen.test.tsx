@@ -1,59 +1,76 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { CatalogScreen } from "./CatalogScreen";
 
+
 describe("CatalogScreen", () => {
-  it("shows six search types and four search scopes", () => {
-    render(<CatalogScreen initialQuery="" onOpenCategory={vi.fn()} />);
+  it("loads safe public results and applies the selected account type", async () => {
+    const user = userEvent.setup();
+    const searchPublic = vi.fn().mockResolvedValue({
+      items: [{
+        kind: "business",
+        public_id: "b_safe",
+        name: "Turon Savdo",
+        public_username: "turon",
+        description: "Mahalliy telefon va aksessuarlar",
+        direction: "Savdo",
+        activity_type: "Telefonlar",
+        region: "",
+        district: "",
+        mahalla: "",
+        image_url: "",
+      }],
+      page: 1,
+      page_size: 20,
+      total: 1,
+      pages: 1,
+    });
 
-    for (const label of [
-      "Barchasi",
-      "Mahsulot",
-      "Xizmat",
-      "Biznes",
-      "Mutaxassis",
-      "Foydalanuvchi",
-      "Mahalla",
-      "Tuman",
-      "Viloyat",
-      "Respublika",
-    ]) {
-      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
-    }
-  });
-
-  it("uses the Home query and filters visible directions", () => {
     render(
-      <CatalogScreen initialQuery="telefon ta’miri" onOpenCategory={vi.fn()} />,
+      <CatalogScreen
+        initialQuery="telefon"
+        location={{
+          region: "Surxondaryo",
+          district: "Qumqo‘rg‘on",
+          neighborhood: "",
+        }}
+        searchPublic={searchPublic}
+        onOpenCategory={vi.fn()}
+      />,
     );
 
-    expect(screen.getByDisplayValue("telefon ta’miri")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Xizmat ko‘rsatish/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^Savdo/i }),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Turon Savdo")).toBeInTheDocument();
+    expect(searchPublic).toHaveBeenLastCalledWith(expect.objectContaining({
+      q: "telefon",
+      result_type: "all",
+      district: "Qumqo‘rg‘on",
+      page: 1,
+      page_size: 20,
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Biznes" }));
+
+    await waitFor(() => {
+      expect(searchPublic).toHaveBeenLastCalledWith(expect.objectContaining({
+        result_type: "business",
+      }));
+    });
+    expect(screen.queryByText("Telefon")).not.toBeInTheDocument();
   });
 
-  it("clearing a query restores all directions", async () => {
-    render(<CatalogScreen initialQuery="dorixona" onOpenCategory={vi.fn()} />);
-
-    await userEvent.clear(screen.getByRole("searchbox"));
-
-    expect(screen.getByText("20 ta yo‘nalish")).toBeInTheDocument();
-  });
-
-  it("opens a selected direction", async () => {
-    const onOpenCategory = vi.fn();
-    render(<CatalogScreen initialQuery="" onOpenCategory={onOpenCategory} />);
-
-    await userEvent.click(
-      screen.getByRole("button", { name: /^Ta’lim faoliyati/i }),
+  it("keeps the static direction catalog usable without the discovery API", () => {
+    render(
+      <CatalogScreen
+        initialQuery=""
+        onOpenCategory={vi.fn()}
+      />,
     );
 
-    expect(onOpenCategory).toHaveBeenCalledWith("education");
+    expect(screen.getByRole("button", { name: /^Savdo —/ }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Profil natijalarini yuklab bo‘lmadi"))
+      .toBeInTheDocument();
   });
 });

@@ -17,6 +17,8 @@ from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
+from app.public_discovery.router import router as public_discovery_router
+from app.public_discovery.service import PublicDiscoveryService
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -37,6 +39,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             resolved,
         )
         app.state.profile_summary_service = ProfileSummaryService(
+            database.session,
+            redis_client,
+            resolved,
+        )
+        app.state.public_discovery_service = PublicDiscoveryService(
             database.session,
             redis_client,
             resolved,
@@ -67,6 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(media_router)
     app.include_router(auth_router)
     app.include_router(profiles_router)
+    app.include_router(public_discovery_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
