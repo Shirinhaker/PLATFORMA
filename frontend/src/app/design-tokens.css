@@ -1,0 +1,20 @@
+:root {
+  --koprik-bg: #f4f7f5;
+  --koprik-card: #ffffff;
+  --koprik-ink: #11201b;
+  --koprik-soft: #5c6e66;
+  --koprik-line: #e4ebe7;
+  --koprik-primary: #0e8c84;
+  --koprik-primary-ink: #ffffff;
+  --koprik-primary-tint: #e2f3f1;
+  --koprik-amber: #f0a21b;
+  --koprik-shadow:
+    0 1px 2px rgb(16 40 33 / 4%),
+    0 8px 24px rgb(16 40 33 / 6%);
+  --koprik-radius: 18px;
+  --koprik-font-display:
+    "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+  --koprik-font-body:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
