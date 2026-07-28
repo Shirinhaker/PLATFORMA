@@ -115,6 +115,7 @@ export function App({ api }: { api: AppApi }) {
           setSession({ status: "guest" });
           return;
         }
+        setSession({ status: "guest" });
         setFailed(true);
       });
     return () => {
@@ -124,6 +125,9 @@ export function App({ api }: { api: AppApi }) {
 
   const authenticated = (
     session.status === "user" || session.status === "business"
+  );
+  const accountView = (
+    navigation.view === "auth" || navigation.view === "cabinet"
   );
 
   const category = navigation.categoryId
@@ -244,13 +248,11 @@ export function App({ api }: { api: AppApi }) {
       onBack={() => dispatch({ type: "BACK" })}
     >
       <div className="app-shell__content" tabIndex={-1}>
-        {failed ? (
+        {failed && accountView ? (
           <SessionStatus
             state="error"
             onRetry={() => setAttempt((value) => value + 1)}
           />
-        ) : session.status === "loading" ? (
-          <SessionStatus state="loading" />
         ) : renderPublicContent()}
       </div>
     </AppShell>
