@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import { AuthFlow, type AuthApi } from "../auth/AuthFlow";
@@ -12,6 +12,8 @@ import {
   type UserProfileApi,
 } from "../profiles/UserProfile";
 import "./App.css";
+import { AppShell } from "./AppShell";
+import { SessionStatus } from "./SessionStatus";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -55,7 +57,7 @@ function Cabinet({
   const title = kind === "user" ? "Oddiy kabinet" : "Biznes kabinet";
   return (
     <main className="session-panel">
-      <p className="session-panel__eyebrow">Koprik Phase 2</p>
+      <p className="session-panel__eyebrow">Koprik</p>
       <h1>{title}</h1>
       <p>{name}</p>
     </main>
@@ -67,6 +69,7 @@ export function App({ api }: { api: AppApi }) {
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -99,53 +102,65 @@ export function App({ api }: { api: AppApi }) {
     };
   }, [api, attempt]);
 
+  const authenticated = (
+    session.status === "user" || session.status === "business"
+  );
+
+  function focusContent() {
+    contentRef.current?.focus();
+  }
+
   return (
-    <div className="app-shell">
-      <header className="app-shell__header">
-        <span>Koprik</span>
-      </header>
-      {failed ? (
-        <main className="session-panel session-panel--message" role="alert">
-          <p>Server bilan bog‘lanib bo‘lmadi.</p>
-          <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-            Qayta urinish
-          </button>
-        </main>
-      ) : session.status === "loading" ? (
-        <main className="session-panel session-panel--message">
-          Yuklanmoqda…
-        </main>
-      ) : session.status === "guest" ? (
-        supportsAuthFlow(api) ? (
-          <AuthFlow
-            api={api}
-            onAuthenticated={(identity) => setSession({
-              status: identity.account_type,
-              identity,
-            })}
+    <AppShell
+      authenticated={authenticated}
+      onCabinet={focusContent}
+      onLogin={focusContent}
+    >
+      <div
+        className="app-shell__content"
+        ref={contentRef}
+        tabIndex={-1}
+      >
+        {failed ? (
+          <SessionStatus
+            state="error"
+            onRetry={() => setAttempt((value) => value + 1)}
           />
+        ) : session.status === "loading" ? (
+          <SessionStatus state="loading" />
+        ) : session.status === "guest" ? (
+          supportsAuthFlow(api) ? (
+            <AuthFlow
+              api={api}
+              onAuthenticated={(identity) => setSession({
+                status: identity.account_type,
+                identity,
+              })}
+            />
+          ) : (
+            <main className="session-panel">
+              <h1>Koprik’ga kirish</h1>
+            </main>
+          )
+        ) : supportsProfiles(api) ? (
+          session.status === "user" ? (
+            <UserProfile
+              api={api}
+              identity={session.identity}
+              onLogout={() => setSession({ status: "guest" })}
+            />
+          ) : (
+            <BusinessProfile
+              api={api}
+              identity={session.identity}
+              onLogout={() => setSession({ status: "guest" })}
+            />
+          )
         ) : (
-          <main className="session-panel">
-            <h1>Koprik’ga kirish</h1>
-          </main>
+          <Cabinet kind={session.status} name={session.identity.name} />
         )
-      ) : supportsProfiles(api) ? (
-        session.status === "user" ? (
-          <UserProfile
-            api={api}
-            identity={session.identity}
-            onLogout={() => setSession({ status: "guest" })}
-          />
-        ) : (
-          <BusinessProfile
-            api={api}
-            identity={session.identity}
-            onLogout={() => setSession({ status: "guest" })}
-          />
-        )
-      ) : (
-        <Cabinet kind={session.status} name={session.identity.name} />
-      )}
-    </div>
+        }
+      </div>
+    </AppShell>
   );
 }
