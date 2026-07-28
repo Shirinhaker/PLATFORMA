@@ -42,6 +42,14 @@ class Settings(BaseSettings):
         ge=5,
         le=300,
     )
+    legacy_media_roots: str = ""
+    legacy_media_max_bytes: int = Field(
+        default=100 * 1024 * 1024,
+        ge=1,
+    )
+    legacy_snapshot_root: str = ""
+    listings_enabled: bool = False
+    phase3c_public_enabled: bool = False
     telegram_link_ttl_seconds: int = 10 * 60
     telegram_code_ttl_seconds: int = 5 * 60
     telegram_resend_seconds: int = 60

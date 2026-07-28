@@ -71,6 +71,16 @@ def test_public_search_cache_ttl_defaults_to_thirty_seconds():
     assert settings.public_search_cache_ttl_seconds == 30
 
 
+def test_phase3c_media_settings_are_safe_by_default():
+    settings = Settings(environment="test")
+
+    assert settings.legacy_media_roots == ""
+    assert settings.legacy_media_max_bytes == 100 * 1024 * 1024
+    assert settings.legacy_snapshot_root == ""
+    assert settings.listings_enabled is False
+    assert settings.phase3c_public_enabled is False
+
+
 @pytest.mark.parametrize("value", [4, 301])
 def test_profile_summary_cache_ttl_rejects_values_outside_bounds(value):
     with pytest.raises(ValidationError):
