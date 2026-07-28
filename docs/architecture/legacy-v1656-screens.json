@@ -1,0 +1,496 @@
+{
+  "build": "v1656",
+  "screen_count": 98,
+  "screens": [
+    {
+      "name": "home",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "catalog",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cat-types",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "taxi-call",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "loc",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "login",
+      "group": "auth",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "register",
+      "group": "auth",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "regform",
+      "group": "auth",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "staff-login",
+      "group": "staff",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "listings",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "list",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "business",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "user-page",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "staff-home",
+      "group": "staff",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cabinet",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-profil",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-subscriptions",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-payments",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-reviews",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-items",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-dining",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-dining-order",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-groups",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-group-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-students",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-student-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-student-card",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-student-transfer",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-schedule",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-attendance",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-payment-control",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-teachers",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-teacher-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-enrollments",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-payroll",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-payroll-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-education-statistics",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-medical-doctors",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-medical-doctor-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-medical-queue",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-item-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-elon",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-ad-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-elon-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-orders",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-service-orders",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-qarz",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-ombor",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-kassa",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-kassa-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-xarajat",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-qarz-card",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-stats",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-settings",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-profil",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-elon",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-ad-form",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-elon-form",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "pickloc",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-spec",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-spec-offer-form",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-spec-reviews",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ai-chat",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "biz-cred",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "help",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "person",
+      "group": "public",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "chats",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "chat",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "biz-open",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "notify",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "notify-form",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-subs",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-orders",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-service-orders",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-saved",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-settings",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-stories",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-stories",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-followers",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-following",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "ucab-followers",
+      "group": "user-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-admin",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-my-docs",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-staff",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-tabel",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-docs",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-contractors",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-contractor-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-doc-new",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-doc-in",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-doc-out",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-doc-view",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-doc-inbox",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-staff-form",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cab-report",
+      "group": "business-cabinet",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "taxidrv",
+      "group": "shared",
+      "phase3_status": "legacy"
+    },
+    {
+      "name": "cart",
+      "group": "shared",
+      "phase3_status": "legacy"
+    }
+  ]
+}
