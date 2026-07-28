@@ -35,6 +35,7 @@ from app.auth.schemas import (
     SessionIdentity,
 )
 from app.auth.security import (
+    PasswordVerification,
     derive_csrf,
     derive_otp,
     encrypt_outbox_secret,
@@ -42,7 +43,7 @@ from app.auth.security import (
     generate_password,
     hash_password,
     sha256_token,
-    verify_password,
+    verify_password_with_rehash,
 )
 from app.core.config import Settings
 from app.core.errors import ApiError
@@ -224,12 +225,18 @@ class AuthService:
         async with self._session_factory() as session:
             try:
                 account = await find_account_by_login(session, normalized_login)
-                if (
-                    account is None
-                    or account.status != "active"
-                    or not verify_password(account.password_hash, password)
-                ):
+                password_check = (
+                    verify_password_with_rehash(
+                        account.password_hash,
+                        password,
+                    )
+                    if account is not None and account.status == "active"
+                    else PasswordVerification(False)
+                )
+                if not password_check.valid:
                     raise INVALID_CREDENTIALS
+                if password_check.replacement_hash:
+                    account.password_hash = password_check.replacement_hash
 
                 challenge, raw_start_token = await create_challenge(
                     session,

@@ -1,4 +1,5 @@
 import base64
+from dataclasses import dataclass
 import hashlib
 import hmac
 import json
@@ -9,6 +10,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 from app.accounts.model import AccountType
+from app.legacy_migration.passwords import verify_legacy_pbkdf2
 
 
 try:
@@ -36,7 +38,7 @@ def hash_password(raw: str) -> str:
     return _new_argon2id().derive_phc_encoded(raw.encode("utf-8"))
 
 
-def verify_password(encoded: str, raw: str) -> bool:
+def verify_current_argon2(encoded: str, raw: str) -> bool:
     if _PASSWORDS is not None:
         try:
             return _PASSWORDS.verify(encoded, raw)
@@ -48,6 +50,27 @@ def verify_password(encoded: str, raw: str) -> bool:
     except (InvalidKey, ValueError):
         return False
     return True
+
+
+@dataclass(frozen=True)
+class PasswordVerification:
+    valid: bool
+    replacement_hash: str | None = None
+
+
+def verify_password_with_rehash(
+    encoded: str,
+    raw: str,
+) -> PasswordVerification:
+    if verify_current_argon2(encoded, raw):
+        return PasswordVerification(True)
+    if verify_legacy_pbkdf2(encoded, raw):
+        return PasswordVerification(True, hash_password(raw))
+    return PasswordVerification(False)
+
+
+def verify_password(encoded: str, raw: str) -> bool:
+    return verify_password_with_rehash(encoded, raw).valid
 
 
 def sha256_token(raw: str) -> str:

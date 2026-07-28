@@ -11,7 +11,12 @@ from app.accounts.model import Account, AccountType
 from app.auth import service as auth_service_module
 from app.auth.model import AuthChallenge, AuthSession, PendingRegistration
 from app.auth.schemas import Authenticated, RegistrationStart
-from app.auth.security import derive_otp, hash_password, sha256_token
+from app.auth.security import (
+    derive_otp,
+    hash_password,
+    sha256_token,
+    verify_password,
+)
 from app.auth.service import AuthService
 from app.core.config import Settings
 from app.core.errors import ApiError
@@ -221,6 +226,91 @@ async def test_wrong_password_returns_invalid_credentials(
         await auth_service.start_login("u_demo", "xato", fixed_now)
 
     assert captured.value.code == "invalid_credentials"
+
+
+async def test_first_legacy_login_rehashes_and_second_login_uses_argon2(
+    fixed_now: datetime,
+    monkeypatch,
+):
+    class RecordingSession:
+        def __init__(self):
+            self.commits = 0
+            self.rollbacks = 0
+
+        async def commit(self):
+            self.commits += 1
+
+        async def rollback(self):
+            self.rollbacks += 1
+
+    session = RecordingSession()
+
+    @asynccontextmanager
+    async def session_factory():
+        yield session
+
+    account = Account(
+        id=77,
+        account_type=AccountType.USER,
+        login="u_legacy",
+        password_hash=(
+            "00112233445566778899aabbccddeeff$"
+            "0ba712d93841d92cdc0a7a9149951429107b035040d07fd5bb3829bf79acd927"
+        ),
+        telegram_user_id=None,
+        status="active",
+        created_at=fixed_now,
+        updated_at=fixed_now,
+    )
+    challenge_id = 0
+
+    async def find_account(session_arg, login):
+        assert session_arg is session
+        assert login == "u_legacy"
+        return account
+
+    async def create_login_challenge(session_arg, **kwargs):
+        nonlocal challenge_id
+        assert session_arg is session
+        challenge_id += 1
+        return (
+            SimpleNamespace(id=challenge_id, telegram_user_id=None),
+            f"start-token-{challenge_id}",
+        )
+
+    monkeypatch.setattr(
+        auth_service_module,
+        "find_account_by_login",
+        find_account,
+    )
+    monkeypatch.setattr(
+        auth_service_module,
+        "create_challenge",
+        create_login_challenge,
+    )
+    service = AuthService(
+        session_factory,
+        redis=SimpleNamespace(),
+        settings=Settings(environment="test"),
+    )
+
+    await service.start_login(
+        "u_legacy",
+        "koprik-test-password",
+        fixed_now,
+    )
+    replacement = account.password_hash
+    assert replacement.startswith("$argon2")
+    assert verify_password(replacement, "koprik-test-password") is True
+
+    await service.start_login(
+        "u_legacy",
+        "koprik-test-password",
+        fixed_now,
+    )
+    assert account.password_hash == replacement
+    assert session.commits == 2
+    assert session.rollbacks == 0
 
 
 async def test_old_code_is_invalid_after_resend(
