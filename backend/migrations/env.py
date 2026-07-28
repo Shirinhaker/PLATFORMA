@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.db.base import Base
 from app.accounts import model as accounts_model  # noqa: F401
+from app.advertisements import model as advertisements_model  # noqa: F401
 from app.auth import model as auth_model  # noqa: F401
+from app.catalog import model as catalog_model  # noqa: F401
+from app.legacy_migration import model as legacy_migration_model  # noqa: F401
+from app.listings import model as listings_model  # noqa: F401
 from app.profiles import model as profiles_model  # noqa: F401
 
 
