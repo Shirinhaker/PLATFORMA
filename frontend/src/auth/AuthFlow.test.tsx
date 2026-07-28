@@ -88,6 +88,8 @@ describe("AuthFlow", () => {
     const api = authApi();
     render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
 
+    expect(screen.queryByText("Koprik Phase 2")).not.toBeInTheDocument();
+    expect(screen.getByText("Koprik")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Kirish" }));
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
