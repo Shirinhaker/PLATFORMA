@@ -1,4 +1,4 @@
-name: phase2-auth-profiles
+name: phase3-legacy-ui-integration
 
 on:
   push:
@@ -60,5 +60,5 @@ jobs:
       - name: Apply foundation migration
         working-directory: backend
         run: python -m alembic upgrade head
-      - name: Verify Phase 2
-        run: python scripts/verify_phase2.py
+      - name: Verify Phase 3A
+        run: python scripts/verify_phase3a.py
