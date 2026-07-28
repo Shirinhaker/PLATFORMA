@@ -25,7 +25,7 @@ def test_public_search_item_contains_only_the_public_contract():
         image_url="",
     )
 
-    assert item.model_dump(mode="json") == {
+    assert item.model_dump(mode="json", exclude_none=True) == {
         "kind": "business",
         "public_id": "business:42",
         "name": "Koprik Savdo",
@@ -93,6 +93,33 @@ def test_public_search_params_accept_all_result_types():
         PublicSearchParams(result_type="all").result_type
         is PublicResultType.ALL
     )
+    assert (
+        PublicSearchParams(result_type="product").result_type
+        is PublicResultType.PRODUCT
+    )
+    assert (
+        PublicSearchParams(result_type="service").result_type
+        is PublicResultType.SERVICE
+    )
+
+
+def test_content_search_item_has_capabilities_without_private_ids():
+    item = PublicSearchItem(
+        kind="product",
+        public_id="p_public",
+        name="Mebel",
+        price_text="Kelishiladi",
+        owner_state="unlinked",
+        owner_label="Egasi hali akkauntini bog‘lamagan",
+        can_order=False,
+        can_chat=False,
+    )
+    payload = item.model_dump(mode="json", exclude_none=True)
+
+    assert payload["kind"] == "product"
+    assert payload["can_order"] is False
+    assert "business_account_id" not in payload
+    assert "image_object_key" not in payload
 
 
 def test_public_search_response_has_stable_page_metadata():

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.public_discovery.repository import search_public_profiles
 from app.public_discovery.schemas import PublicSearchParams, PublicSearchResponse
+from app.public_discovery.schemas import PublicResultType
 
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -20,7 +21,7 @@ SearchLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:search:v1:"
+_CACHE_PREFIX = "public:search:v2:"
 
 
 class PublicDiscoveryService:
@@ -30,12 +31,36 @@ class PublicDiscoveryService:
         redis: Any,
         settings: Settings,
         *,
-        search_loader: SearchLoader = search_public_profiles,
+        search_loader: SearchLoader | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis
         self._settings = settings
-        self._search_loader = search_loader
+        if search_loader is None:
+            async def configured_loader(session, params):
+                if (
+                    not settings.phase3c_public_enabled
+                    and params.result_type
+                    in (
+                        PublicResultType.PRODUCT,
+                        PublicResultType.SERVICE,
+                    )
+                ):
+                    return PublicSearchResponse(
+                        items=[],
+                        page=params.page,
+                        page_size=params.page_size,
+                        total=0,
+                    )
+                return await search_public_profiles(
+                    session,
+                    params,
+                    include_content=settings.phase3c_public_enabled,
+                )
+
+            self._search_loader = configured_loader
+        else:
+            self._search_loader = search_loader
         self._search_tasks: dict[str, asyncio.Task[PublicSearchResponse]] = {}
 
     async def search(

@@ -152,3 +152,4 @@ def test_public_search_cache_key_changes_with_filters_and_pagination():
 
     assert len({first, second, third}) == 3
     assert "savdo" not in first
+    assert first.startswith("public:search:v2:")
