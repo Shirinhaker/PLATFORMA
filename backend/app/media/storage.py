@@ -127,6 +127,20 @@ class R2Storage:
             and metadata.get("sha256") == expected_sha256
         )
 
+    def create_download_url(
+        self,
+        object_key: str,
+        *,
+        expires_in: int = 900,
+    ) -> str:
+        if not object_key:
+            return ""
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self.bucket, "Key": object_key},
+            ExpiresIn=expires_in,
+        )
+
     def _presigned_put(
         self,
         object_key: str,
