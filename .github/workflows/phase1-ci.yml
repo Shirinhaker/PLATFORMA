@@ -62,3 +62,5 @@ jobs:
         run: python -m alembic upgrade head
       - name: Verify Phase 3A
         run: python scripts/verify_phase3a.py
+      - name: Verify Phase 3B
+        run: python scripts/verify_phase3b.py

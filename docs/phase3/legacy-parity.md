@@ -18,7 +18,21 @@
 | E’lon → buyurtma → to‘lov | legacy | Phase 3C |
 | Staff va admin oqimlari | legacy | Phase 3E |
 
+## Phase 3B ekran egaligi
+
+| Legacy ekran | Holat | React egasi |
+| --- | --- | --- |
+| `home` | in-progress | `frontend/src/legacy/public/HomeScreen.tsx` |
+| `catalog` | in-progress | `frontend/src/legacy/public/CatalogScreen.tsx` |
+| `cat-types` | in-progress | `frontend/src/legacy/public/CategoryScreen.tsx` |
+| `loc` | in-progress | `frontend/src/legacy/public/LocationScreen.tsx` |
+
 ## Qabul qoidasi
 
 Ekran faqat avtomatik test, desktop/mobil qo‘lda tekshiruv va rollback
 yo‘li tasdiqlangandan keyin `staging-accepted` holatiga o‘tadi.
+
+Phase 3B avtomatik gate’i `python scripts/verify_phase3b.py` orqali,
+qo‘lda qabul va rollback esa `docs/deploy-phase3b-staging.md` bo‘yicha
+bajariladi. Qabul tugamaguncha Phase 3B qatorlari `in-progress` bo‘lib
+qoladi; production `web` va `koprik.uz` o‘zgartirilmaydi.
