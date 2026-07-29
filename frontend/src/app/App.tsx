@@ -66,7 +66,6 @@ function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
     "uploadGrantedFile",
     "attachUserAvatar",
     "attachBusinessLogo",
-    "switchCabinet",
     "logout",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
