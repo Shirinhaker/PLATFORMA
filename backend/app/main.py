@@ -6,7 +6,11 @@ from fastapi.responses import JSONResponse
 
 from app.auth.router import router as auth_router
 from app.auth.service import AuthService
+from app.advertisements.repository import AdvertisementService
+from app.advertisements.router import router as advertisements_router
 from app.cache.client import RedisClient
+from app.catalog.router import router as catalog_router
+from app.catalog.service import CatalogService
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.logging import configure_logging
@@ -15,6 +19,7 @@ from app.db.session import Database
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
+from app.listings.router import router as listings_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
@@ -48,6 +53,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             redis_client,
             resolved,
         )
+        app.state.catalog_service = CatalogService(
+            database.session,
+            redis_client,
+            resolved,
+            app.state.r2.create_download_url,
+        )
+        app.state.advertisement_service = AdvertisementService(
+            database.session,
+            app.state.r2.create_download_url,
+        )
         try:
             yield
         finally:
@@ -75,6 +90,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(profiles_router)
     app.include_router(public_discovery_router)
+    app.include_router(catalog_router)
+    app.include_router(advertisements_router)
+    app.include_router(listings_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

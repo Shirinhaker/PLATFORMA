@@ -64,3 +64,39 @@ def test_business_only_search_excludes_user_profile_table():
 
     assert "business_profiles" in sql
     assert "user_profiles" not in sql
+
+
+def test_all_search_keeps_profiles_and_adds_content():
+    data, _ = build_public_search_statements(
+        PublicSearchParams(q="mebel", result_type="all")
+    )
+    sql = compile_sql(data)
+
+    assert "user_profiles" in sql
+    assert "business_profiles" in sql
+    assert "catalog_items" in sql
+    assert "review_state" in sql
+
+
+def test_product_search_excludes_profile_tables():
+    data, _ = build_public_search_statements(
+        PublicSearchParams(q="mebel", result_type="product")
+    )
+    sql = compile_sql(data)
+
+    assert "catalog_items" in sql
+    assert "catalog_items.kind = 'product'" in sql
+    assert "user_profiles" not in sql
+    assert "business_profiles" not in sql
+
+
+def test_content_search_can_be_disabled_without_removing_profiles():
+    data, _ = build_public_search_statements(
+        PublicSearchParams(result_type="all"),
+        include_content=False,
+    )
+    sql = compile_sql(data)
+
+    assert "user_profiles" in sql
+    assert "business_profiles" in sql
+    assert "catalog_items" not in sql

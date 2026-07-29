@@ -64,3 +64,5 @@ jobs:
         run: python scripts/verify_phase3a.py
       - name: Verify Phase 3B
         run: python scripts/verify_phase3b.py
+      - name: Verify Phase 3C
+        run: python scripts/verify_phase3c.py

@@ -10,6 +10,11 @@ import type {
   ChallengeVerification,
   Me,
   ProfileImageAttachment,
+  PublicAdvertisement,
+  PublicAdvertisementParams,
+  PublicCatalogItem,
+  PublicCatalogParams,
+  PublicCatalogResponse,
   PublicSearchParams,
   PublicSearchResponse,
   RegistrationStart,
@@ -145,6 +150,58 @@ export class ApiClient {
     }
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/search${suffix}`);
+  }
+
+  getCatalogItems(
+    params: PublicCatalogParams = {},
+  ): Promise<PublicCatalogResponse> {
+    const query = new URLSearchParams();
+    const textFilters = [
+      ["kind", params.kind],
+      ["q", params.q],
+      ["direction", params.direction],
+      ["activity_type", params.activity_type],
+      ["region", params.region],
+      ["district", params.district],
+      ["mahalla", params.mahalla],
+    ] as const;
+    textFilters.forEach(([name, value]) => {
+      if (value) query.set(name, value);
+    });
+    if (params.page !== undefined) query.set("page", String(params.page));
+    if (params.page_size !== undefined) {
+      query.set("page_size", String(params.page_size));
+    }
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return this.request(
+      "GET",
+      `/api/v1/public/catalog/items${suffix}`,
+    );
+  }
+
+  getCatalogItem(publicId: string): Promise<PublicCatalogItem> {
+    return this.request(
+      "GET",
+      `/api/v1/public/catalog/items/${encodeURIComponent(publicId)}`,
+    );
+  }
+
+  getAdvertisements(
+    params: PublicAdvertisementParams = {},
+  ): Promise<PublicAdvertisement[]> {
+    const query = new URLSearchParams();
+    for (const [name, value] of [
+      ["placement", params.placement],
+      ["region", params.region],
+      ["district", params.district],
+    ] as const) {
+      if (value) query.set(name, value);
+    }
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return this.request(
+      "GET",
+      `/api/v1/public/advertisements${suffix}`,
+    );
   }
 
   startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {

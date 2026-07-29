@@ -1,0 +1,1 @@
+"""Koprik advertisements domain."""

@@ -774,8 +774,139 @@
   outline-offset: 2px;
 }
 
+.public-catalog__items,
+.public-home-ads {
+  margin-top: 32px;
+}
+
+.public-catalog-items-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.public-catalog-item {
+  overflow: hidden;
+  border: 1px solid var(--koprik-line);
+  border-radius: 18px;
+  background: var(--koprik-card);
+  box-shadow: var(--koprik-shadow);
+  content-visibility: auto;
+}
+
+.public-catalog-item__image {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--koprik-primary-tint);
+}
+
+.public-catalog-item__body {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.public-catalog-item__kind {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--koprik-primary);
+  background: var(--koprik-primary-tint);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.public-catalog-item h3,
+.public-catalog-item p {
+  margin: 0;
+}
+
+.public-catalog-item__warning,
+.public-search-card__warning {
+  color: #8a4f08;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.public-catalog-item__owner {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  color: var(--koprik-primary);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.public-catalog-item__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.public-catalog-item__actions button,
+.public-ad-status button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--koprik-primary);
+  border-radius: 10px;
+  color: var(--koprik-primary-ink);
+  background: var(--koprik-primary);
+  font-weight: 750;
+}
+
+.public-catalog-item__actions button:disabled {
+  border-color: var(--koprik-line);
+  color: var(--koprik-soft);
+  background: #edf1f0;
+  cursor: not-allowed;
+}
+
+.public-home-ads {
+  display: grid;
+  gap: 16px;
+}
+
+.public-home-ad {
+  position: relative;
+  min-height: clamp(180px, 28vw, 320px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: #dcebe7;
+}
+
+.public-home-ad img {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.public-home-ad > div {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  color: white;
+  background: rgb(9 39 34 / 78%);
+  backdrop-filter: blur(8px);
+}
+
+.public-ad-status {
+  margin-top: 28px;
+  padding: 18px;
+  border: 1px dashed var(--koprik-line);
+  border-radius: 14px;
+  color: var(--koprik-soft);
+}
+
 @media (max-width: 760px) {
   .public-catalog__grid,
+  .public-catalog-items-grid,
   .public-search-grid,
   .public-category__types,
   .public-location__form {

@@ -1,7 +1,8 @@
 import pytest
+from io import BytesIO
 
 from app.accounts.model import AccountType
-from app.media.storage import R2Storage, UploadRejected
+from app.media.storage import R2Storage, StoredObject, UploadRejected
 
 
 def test_upload_grant_uses_private_profile_prefix(s3_client):
@@ -58,3 +59,56 @@ def test_user_cannot_create_logo_grant(s3_client):
             content_type="image/gif",
             size_bytes=1024,
         )
+
+
+def test_migration_upload_sets_checksum_metadata_and_verifies_head():
+    class RecordingClient:
+        def __init__(self):
+            self.upload = None
+
+        def upload_fileobj(self, stream, bucket, key, ExtraArgs):
+            self.upload = {
+                "bytes": stream.read(),
+                "bucket": bucket,
+                "key": key,
+                "extra": ExtraArgs,
+            }
+
+        def head_object(self, *, Bucket, Key):
+            assert Bucket == "koprik-test"
+            assert Key == self.upload["key"]
+            return {
+                "ContentLength": len(self.upload["bytes"]),
+                "ContentType": "image/png",
+                "Metadata": {"sha256": "a" * 64},
+            }
+
+    client = RecordingClient()
+    storage = R2Storage(client, bucket="koprik-test")
+
+    stored = storage.put_migration_object(
+        stream=BytesIO(b"png-bytes"),
+        run_id=42,
+        entity_type="catalog_item",
+        legacy_id=8,
+        slot="primary",
+        sha256="a" * 64,
+        content_type="image/png",
+        size_bytes=9,
+        suffix=".png",
+    )
+
+    assert isinstance(stored, StoredObject)
+    assert stored.object_key == (
+        "migration/42/catalog_item/8/primary/" + "a" * 64 + ".png"
+    )
+    assert client.upload["extra"] == {
+        "ContentType": "image/png",
+        "Metadata": {"sha256": "a" * 64},
+    }
+    assert storage.verify_object(
+        stored.object_key,
+        expected_size=9,
+        expected_sha256="a" * 64,
+        expected_content_type="image/png",
+    ) is True

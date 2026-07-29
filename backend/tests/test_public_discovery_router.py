@@ -9,20 +9,36 @@ from app.public_discovery.schemas import (
 
 
 class FakePublicDiscoveryService:
-    def __init__(self):
+    def __init__(self, *, content=False):
         self.params = None
+        self.content = content
 
     async def search(self, params):
         self.params = params
-        return PublicSearchResponse(
-            items=[
+        if self.content:
+            items = [
+                PublicSearchItem(
+                    kind="product",
+                    public_id="p_public",
+                    name="Mebel",
+                    price_text="Kelishiladi",
+                    owner_state="unlinked",
+                    owner_label="Egasi hali akkauntini bog‘lamagan",
+                    can_order=False,
+                    can_chat=False,
+                )
+            ]
+        else:
+            items = [
                 PublicSearchItem(
                     kind="business",
                     public_id="b_public",
                     name="Koprik Savdo",
                     direction="Savdo",
                 )
-            ],
+            ]
+        return PublicSearchResponse(
+            items=items,
             page=params.page,
             page_size=params.page_size,
             total=1,
@@ -80,3 +96,22 @@ def test_public_search_rejects_oversized_pages():
     )
 
     assert response.status_code == 422
+
+
+def test_product_search_returns_only_content_capability_fields():
+    app = create_app(Settings(environment="test"))
+    app.state.public_discovery_service = FakePublicDiscoveryService(
+        content=True
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/public/search",
+        params={"result_type": "product"},
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["kind"] == "product"
+    assert item["owner_state"] == "unlinked"
+    assert item["can_order"] is False
+    assert "business_account_id" not in item

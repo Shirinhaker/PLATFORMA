@@ -1,0 +1,595 @@
+from collections import defaultdict
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
+import hashlib
+import json
+import sqlite3
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.accounts.model import Account, AccountType
+from app.legacy_migration.model import (
+    LegacyIdMap,
+    MigrationIssue,
+    MigrationRun,
+)
+from app.profiles.model import BusinessProfile, UserProfile
+
+
+@dataclass(frozen=True)
+class StageResult:
+    created: int = 0
+    reused: int = 0
+    updated: int = 0
+    quarantined: int = 0
+    issues: int = 0
+
+
+def source_row_hash(
+    entity_type: str,
+    row: Mapping[str, object],
+) -> str:
+    payload = {
+        "entity_type": entity_type,
+        "row": {key: row[key] for key in sorted(row)},
+    }
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+async def reconcile_accounts(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    run: MigrationRun,
+) -> StageResult:
+    users = _source_rows(source, "users")
+    businesses = {
+        int(row["user_id"]): row
+        for row in _source_rows(source, "businesses")
+        if row.get("user_id") is not None
+    }
+    records = [
+        _account_record(user, businesses.get(int(user["id"])))
+        for user in users
+    ]
+    conflicts = _identity_conflicts(records)
+    counters = {
+        "created": 0,
+        "reused": 0,
+        "updated": 0,
+        "quarantined": 0,
+        "issues": 0,
+    }
+
+    for record in records:
+        legacy_id = int(record["legacy_id"])
+        conflict_codes = conflicts.get(legacy_id, [])
+        if not record["login"]:
+            conflict_codes = [*conflict_codes, "identity.login_missing"]
+        if conflict_codes:
+            counters["quarantined"] += 1
+            for code in sorted(set(conflict_codes)):
+                counters["issues"] += await _ensure_issue(
+                    session,
+                    run,
+                    entity_type="user_account",
+                    legacy_id=legacy_id,
+                    issue_code=code,
+                )
+            await _upsert_mapping(
+                session,
+                entity_type="user_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=source_row_hash("user_account", record),
+                mapping_status="quarantined",
+                review_reason=sorted(set(conflict_codes))[0],
+                run=run,
+            )
+            continue
+
+        row_hash = source_row_hash("user_account", record)
+        existing_mapping = await _find_mapping(
+            session,
+            "user_account",
+            legacy_id,
+        )
+        if (
+            existing_mapping is not None
+            and existing_mapping.target_id is not None
+        ):
+            mapped = await session.get(Account, existing_mapping.target_id)
+            if mapped is not None:
+                await _ensure_user_profile(session, mapped, record)
+                if existing_mapping.source_row_hash == row_hash:
+                    counters["reused"] += 1
+                else:
+                    mapped.status = str(record["status"])
+                    mapped.updated_at = datetime.now(UTC)
+                    existing_mapping.source_row_hash = row_hash
+                    existing_mapping.mapping_status = "mapped"
+                    existing_mapping.review_reason = ""
+                    existing_mapping.last_run_id = run.id
+                    counters["updated"] += 1
+                continue
+
+        account_type = AccountType(str(record["account_type"]))
+        by_login = await _account_by_login(session, str(record["login"]))
+        if by_login is not None and by_login.account_type is not account_type:
+            counters["quarantined"] += 1
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="user_account",
+                legacy_id=legacy_id,
+                issue_code="identity.account_type_mismatch",
+            )
+            await _upsert_mapping(
+                session,
+                entity_type="user_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason="identity.account_type_mismatch",
+                run=run,
+            )
+            continue
+
+        by_telegram = None
+        if record["telegram_user_id"] is not None:
+            by_telegram = await _account_by_telegram(
+                session,
+                int(record["telegram_user_id"]),
+                account_type,
+            )
+        if (
+            by_login is not None
+            and by_telegram is not None
+            and by_login.id != by_telegram.id
+        ):
+            counters["quarantined"] += 1
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="user_account",
+                legacy_id=legacy_id,
+                issue_code="identity.identifiers_disagree",
+            )
+            await _upsert_mapping(
+                session,
+                entity_type="user_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason="identity.identifiers_disagree",
+                run=run,
+            )
+            continue
+
+        account = by_login or by_telegram
+        if account is None:
+            created_at = _unix_datetime(record.get("created_at"))
+            account = Account(
+                account_type=account_type,
+                login=str(record["login"]),
+                password_hash=str(record["password_hash"]),
+                telegram_user_id=_optional_int(
+                    record.get("telegram_user_id")
+                ),
+                status=str(record["status"]),
+                created_at=created_at,
+                updated_at=created_at,
+            )
+            session.add(account)
+            await session.flush()
+            counters["created"] += 1
+        else:
+            counters["reused"] += 1
+
+        await _ensure_user_profile(session, account, record)
+        await _upsert_mapping(
+            session,
+            entity_type="user_account",
+            legacy_id=legacy_id,
+            target_id=account.id,
+            row_hash=row_hash,
+            mapping_status="mapped",
+            review_reason="",
+            run=run,
+        )
+
+    await session.flush()
+    return StageResult(**counters)
+
+
+async def reconcile_businesses(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    run: MigrationRun,
+) -> StageResult:
+    counters = {
+        "created": 0,
+        "reused": 0,
+        "updated": 0,
+        "quarantined": 0,
+        "issues": 0,
+    }
+    for row in _source_rows(source, "businesses"):
+        legacy_id = int(row["id"])
+        row_hash = source_row_hash("business_account", row)
+        owner_mapping = await _find_mapping(
+            session,
+            "user_account",
+            int(row.get("user_id") or 0),
+        )
+        owner = (
+            await session.get(Account, owner_mapping.target_id)
+            if owner_mapping is not None
+            and owner_mapping.target_id is not None
+            else None
+        )
+        if owner is None or owner.account_type is not AccountType.BUSINESS:
+            counters["quarantined"] += 1
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                issue_code="identity.business_owner_unresolved",
+            )
+            await _upsert_mapping(
+                session,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason="identity.business_owner_unresolved",
+                run=run,
+            )
+            continue
+
+        existing_mapping = await _find_mapping(
+            session,
+            "business_account",
+            legacy_id,
+        )
+        profile = await session.get(BusinessProfile, owner.id)
+        if profile is None:
+            profile = BusinessProfile(
+                account_id=owner.id,
+                **_business_profile_values(row),
+            )
+            session.add(profile)
+            counters["created"] += 1
+        elif (
+            existing_mapping is not None
+            and existing_mapping.target_id == owner.id
+            and existing_mapping.source_row_hash == row_hash
+        ):
+            counters["reused"] += 1
+        else:
+            for field, value in _business_profile_values(row).items():
+                setattr(profile, field, value)
+            counters["updated"] += 1
+
+        owner.status = _text(row.get("status")) or owner.status
+        await _upsert_mapping(
+            session,
+            entity_type="business_account",
+            legacy_id=legacy_id,
+            target_id=owner.id,
+            row_hash=row_hash,
+            mapping_status="mapped",
+            review_reason="",
+            run=run,
+        )
+
+    await session.flush()
+    return StageResult(**counters)
+
+
+def _source_rows(
+    source: sqlite3.Connection,
+    table: str,
+) -> list[dict[str, object]]:
+    cursor = source.execute(f'SELECT * FROM "{table}" ORDER BY id')
+    names = [description[0] for description in cursor.description]
+    return [
+        {name: row[index] for index, name in enumerate(names)}
+        for row in cursor.fetchall()
+    ]
+
+
+def _account_record(
+    user: Mapping[str, object],
+    business: Mapping[str, object] | None,
+) -> dict[str, object]:
+    account_type = (
+        AccountType.BUSINESS
+        if _text(user.get("role")).casefold() == "business"
+        else AccountType.USER
+    )
+    business_login = _text((business or {}).get("biz_login"))
+    business_hash = _text((business or {}).get("biz_pass_hash"))
+    login = (
+        business_login
+        if account_type is AccountType.BUSINESS and business_login
+        else _text(user.get("login"))
+    ).casefold()
+    password_hash = (
+        business_hash
+        if account_type is AccountType.BUSINESS and business_hash
+        else _text(user.get("pass_hash"))
+    )
+    phone = _text(user.get("phone")) or _text((business or {}).get("phone"))
+    return {
+        **dict(user),
+        "legacy_id": int(user["id"]),
+        "account_type": account_type.value,
+        "login": login,
+        "password_hash": password_hash,
+        "telegram_user_id": _optional_int(user.get("tg_id")),
+        "normalized_phone": _normalize_phone(phone),
+        "status": _text(user.get("status")) or "active",
+    }
+
+
+def _identity_conflicts(
+    records: list[dict[str, object]],
+) -> dict[int, list[str]]:
+    indexes: dict[str, dict[object, list[int]]] = {
+        "identity.login_duplicate": defaultdict(list),
+        "identity.telegram_duplicate": defaultdict(list),
+        "identity.phone_duplicate": defaultdict(list),
+    }
+    for record in records:
+        legacy_id = int(record["legacy_id"])
+        account_type = str(record["account_type"])
+        login = str(record["login"])
+        if login:
+            indexes["identity.login_duplicate"][login].append(legacy_id)
+        telegram = record.get("telegram_user_id")
+        if telegram is not None:
+            indexes["identity.telegram_duplicate"][
+                (account_type, int(telegram))
+            ].append(legacy_id)
+        phone = str(record.get("normalized_phone") or "")
+        if phone:
+            indexes["identity.phone_duplicate"][
+                (account_type, phone)
+            ].append(legacy_id)
+
+    conflicts: dict[int, list[str]] = defaultdict(list)
+    for code, values in indexes.items():
+        for legacy_ids in values.values():
+            if len(legacy_ids) <= 1:
+                continue
+            for legacy_id in legacy_ids:
+                conflicts[legacy_id].append(code)
+    return conflicts
+
+
+async def _account_by_login(
+    session: AsyncSession,
+    login: str,
+) -> Account | None:
+    return (
+        await session.scalars(
+            select(Account).where(func.lower(Account.login) == login)
+        )
+    ).one_or_none()
+
+
+async def _account_by_telegram(
+    session: AsyncSession,
+    telegram_user_id: int,
+    account_type: AccountType,
+) -> Account | None:
+    return (
+        await session.scalars(
+            select(Account).where(
+                Account.telegram_user_id == telegram_user_id,
+                Account.account_type == account_type,
+            )
+        )
+    ).one_or_none()
+
+
+async def _find_mapping(
+    session: AsyncSession,
+    entity_type: str,
+    legacy_id: int,
+) -> LegacyIdMap | None:
+    return (
+        await session.scalars(
+            select(LegacyIdMap).where(
+                LegacyIdMap.entity_type == entity_type,
+                LegacyIdMap.legacy_id == legacy_id,
+            )
+        )
+    ).one_or_none()
+
+
+async def _upsert_mapping(
+    session: AsyncSession,
+    *,
+    entity_type: str,
+    legacy_id: int,
+    target_id: int | None,
+    row_hash: str,
+    mapping_status: str,
+    review_reason: str,
+    run: MigrationRun,
+) -> LegacyIdMap:
+    mapping = await _find_mapping(session, entity_type, legacy_id)
+    if mapping is None:
+        mapping = LegacyIdMap(
+            entity_type=entity_type,
+            legacy_id=legacy_id,
+            target_id=target_id,
+            source_row_hash=row_hash,
+            mapping_status=mapping_status,
+            review_reason=review_reason,
+            last_run_id=run.id,
+        )
+        session.add(mapping)
+    else:
+        mapping.target_id = target_id
+        mapping.source_row_hash = row_hash
+        mapping.mapping_status = mapping_status
+        mapping.review_reason = review_reason
+        mapping.last_run_id = run.id
+    await session.flush()
+    return mapping
+
+
+async def _ensure_issue(
+    session: AsyncSession,
+    run: MigrationRun,
+    *,
+    entity_type: str,
+    legacy_id: int,
+    issue_code: str,
+) -> int:
+    existing = (
+        await session.scalars(
+            select(MigrationIssue).where(
+                MigrationIssue.migration_run_id == run.id,
+                MigrationIssue.entity_type == entity_type,
+                MigrationIssue.legacy_id == legacy_id,
+                MigrationIssue.issue_code == issue_code,
+            )
+        )
+    ).one_or_none()
+    if existing is not None:
+        return 0
+    session.add(
+        MigrationIssue(
+            migration_run_id=run.id,
+            entity_type=entity_type,
+            legacy_id=legacy_id,
+            issue_code=issue_code,
+            details_json={},
+            resolved=False,
+            created_at=datetime.now(UTC),
+        )
+    )
+    await session.flush()
+    return 1
+
+
+async def _ensure_user_profile(
+    session: AsyncSession,
+    account: Account,
+    record: Mapping[str, object],
+) -> None:
+    if account.account_type is not AccountType.USER:
+        return
+    profile = await session.get(UserProfile, account.id)
+    values = {
+        "name": _text(record.get("name")),
+        "phone": _text(record.get("phone")),
+        "public_username": _text(record.get("username")).lstrip("@"),
+        "region": _text(record.get("region")),
+        "district": _text(record.get("district")),
+        "mahalla": _text(record.get("mahalla")),
+        "latitude": _optional_float(record.get("lat")),
+        "longitude": _optional_float(record.get("lng")),
+        "location_exact": bool(record.get("location_exact") or False),
+        "avatar_object_key": "",
+        "avatar_x": _float_or(record.get("avatar_x"), 50.0),
+        "avatar_y": _float_or(record.get("avatar_y"), 50.0),
+        "avatar_zoom": _float_or(record.get("avatar_zoom"), 1.0),
+    }
+    if profile is None:
+        session.add(UserProfile(account_id=account.id, **values))
+    else:
+        for field, value in values.items():
+            setattr(profile, field, value)
+    await session.flush()
+
+
+def _business_profile_values(
+    row: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        "name": _text(row.get("name")),
+        "phone": _text(row.get("phone")),
+        "description": _text(row.get("descr")),
+        "public_username": _text(row.get("username")).lstrip("@"),
+        "direction": _text(row.get("yon")),
+        "activity_type": _text(row.get("tur")),
+        "address": _text(row.get("address")),
+        "latitude": _optional_float(row.get("lat")),
+        "longitude": _optional_float(row.get("lng")),
+        "work_hours": _parse_work_hours(row.get("work_hours")),
+        "pay_card": _text(row.get("pay_card")),
+        "pay_holder": _text(row.get("pay_holder")),
+        "pay_qr_object_key": "",
+        "director": _text(row.get("director")),
+        "tax_id": _text(row.get("inn")),
+        "logo_object_key": "",
+        "logo_x": _float_or(row.get("logo_x"), 50.0),
+        "logo_y": _float_or(row.get("logo_y"), 50.0),
+        "logo_zoom": _float_or(row.get("logo_zoom"), 1.0),
+    }
+
+
+def _parse_work_hours(value: object) -> dict[str, object]:
+    text = _text(value)
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {"raw": text}
+    return parsed if isinstance(parsed, dict) else {"raw": text}
+
+
+def _normalize_phone(value: str) -> str:
+    return "".join(character for character in value if character.isdigit())
+
+
+def _text(value: object) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def _optional_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_float(value: object) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_or(value: object, default: float) -> float:
+    parsed = _optional_float(value)
+    return default if parsed is None else parsed
+
+
+def _unix_datetime(value: object) -> datetime:
+    timestamp = _optional_int(value)
+    if timestamp is None:
+        return datetime.now(UTC)
+    return datetime.fromtimestamp(timestamp, tz=UTC)

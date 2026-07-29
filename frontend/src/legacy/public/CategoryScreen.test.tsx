@@ -50,4 +50,34 @@ describe("CategoryScreen", () => {
     });
     expect(await screen.findByText("Koprik Market")).toBeInTheDocument();
   });
+
+  it("loads matching catalog items for the selected activity", async () => {
+    const user = userEvent.setup();
+    const getCatalogItems = vi.fn().mockResolvedValue({
+      items: [],
+      page: 1,
+      page_size: 20,
+      total: 0,
+      pages: 0,
+    });
+    render(
+      <CategoryScreen
+        categoryId="trade"
+        getCatalogItems={getCatalogItems}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /Oziq-ovqat do‘koni/ }),
+    );
+
+    await waitFor(() => {
+      expect(getCatalogItems).toHaveBeenCalledWith({
+        direction: "Savdo",
+        activity_type: "Oziq-ovqat do‘koni",
+        page: 1,
+        page_size: 20,
+      });
+    });
+  });
 });

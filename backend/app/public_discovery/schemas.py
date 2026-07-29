@@ -13,12 +13,16 @@ from pydantic import (
 class PublicResultKind(str, Enum):
     USER = "user"
     BUSINESS = "business"
+    PRODUCT = "product"
+    SERVICE = "service"
 
 
 class PublicResultType(str, Enum):
     ALL = "all"
     USER = "user"
     BUSINESS = "business"
+    PRODUCT = "product"
+    SERVICE = "service"
 
 
 class PublicSearchParams(BaseModel):
@@ -67,6 +71,11 @@ class PublicSearchItem(BaseModel):
     district: str = Field(default="", max_length=120)
     mahalla: str = Field(default="", max_length=160)
     image_url: str = Field(default="", max_length=2048)
+    price_text: str | None = Field(default=None, max_length=120)
+    owner_state: str | None = Field(default=None, pattern="^(linked|unlinked)$")
+    owner_label: str | None = Field(default=None, max_length=200)
+    can_order: bool | None = None
+    can_chat: bool | None = None
 
 
 class PublicSearchResponse(BaseModel):

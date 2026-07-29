@@ -30,6 +30,14 @@ class UploadGrant:
     expires_in_seconds: int
 
 
+@dataclass(frozen=True)
+class StoredObject:
+    object_key: str
+    size_bytes: int
+    sha256: str
+    content_type: str
+
+
 class R2Storage:
     def __init__(self, client, *, bucket: str) -> None:
         self.client = client
@@ -65,6 +73,72 @@ class R2Storage:
             object_key,
             content_type,
             expires_in=900,
+        )
+
+    def put_migration_object(
+        self,
+        *,
+        stream,
+        run_id: int,
+        entity_type: str,
+        legacy_id: int,
+        slot: str,
+        sha256: str,
+        content_type: str,
+        size_bytes: int,
+        suffix: str,
+    ) -> StoredObject:
+        object_key = (
+            f"migration/{run_id}/{entity_type}/{legacy_id}/{slot}/"
+            f"{sha256}{suffix}"
+        )
+        self.client.upload_fileobj(
+            stream,
+            self.bucket,
+            object_key,
+            ExtraArgs={
+                "ContentType": content_type,
+                "Metadata": {"sha256": sha256},
+            },
+        )
+        return StoredObject(
+            object_key=object_key,
+            size_bytes=size_bytes,
+            sha256=sha256,
+            content_type=content_type,
+        )
+
+    def verify_object(
+        self,
+        object_key: str,
+        *,
+        expected_size: int,
+        expected_sha256: str,
+        expected_content_type: str,
+    ) -> bool:
+        response = self.client.head_object(
+            Bucket=self.bucket,
+            Key=object_key,
+        )
+        metadata = response.get("Metadata") or {}
+        return (
+            response.get("ContentLength") == expected_size
+            and response.get("ContentType") == expected_content_type
+            and metadata.get("sha256") == expected_sha256
+        )
+
+    def create_download_url(
+        self,
+        object_key: str,
+        *,
+        expires_in: int = 900,
+    ) -> str:
+        if not object_key:
+            return ""
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self.bucket, "Key": object_key},
+            ExpiresIn=expires_in,
         )
 
     def _presigned_put(
