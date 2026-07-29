@@ -371,10 +371,9 @@ async def test_complete_cabinet_migration_preserves_only_real_data(db_session):
     assert user_payload["orders"][0]["items"][0]["item_name"] == "Muhr"
     assert "pass_hash" not in user_payload["orders"][0]["items"][0]
     assert "secret" not in user_payload["orders"][0]["messages"][0]
-    assert {row["title"] for row in user_payload["listings"]} == {
-        "Uy sotiladi",
-        "Biznes e’loni",
-    }
+    assert [row["title"] for row in user_payload["listings"]] == [
+        "Uy sotiladi"
+    ]
     assert user_payload["listings"][0]["media"][0]["tg_file_id"] == "real-photo"
     assert [row["caption"] for row in user_payload["stories"]] == [
         "Haqiqiy user istoriya"
