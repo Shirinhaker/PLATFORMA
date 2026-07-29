@@ -769,6 +769,174 @@ async def test_rerun_splits_user_mapping_from_existing_business_account(store):
 
 
 @pytest.mark.asyncio
+async def test_rerun_rehomes_business_account_occupying_owner_user_login(store):
+    db, run = store
+    existing_business = seed_account(
+        db,
+        account_id=72,
+        account_type=AccountType.BUSINESS,
+        login="u_owner",
+        telegram_user_id=9072,
+    )
+    db.sync.add(
+        BusinessProfile(
+            account_id=existing_business.id,
+            name="Eski biznes profil",
+            phone="",
+            description="",
+            public_username="",
+            direction="",
+            activity_type="",
+            address="",
+            latitude=None,
+            longitude=None,
+            work_hours={},
+            pay_card="",
+            pay_holder="",
+            pay_qr_object_key="",
+            director="",
+            tax_id="",
+            logo_object_key="",
+            logo_x=50.0,
+            logo_y=50.0,
+            logo_zoom=1.0,
+        )
+    )
+    db.sync.commit()
+    source = legacy_source(
+        [
+            {
+                "id": 18,
+                "role": "business",
+                "login": "u_owner",
+                "pass_hash": "user-hash",
+                "tg_id": 9072,
+                "name": "Oddiy profil",
+            }
+        ],
+        [
+            {
+                "id": 24,
+                "user_id": 18,
+                "name": "Biznes profil",
+                "biz_login": "b_owner",
+                "biz_pass_hash": "business-hash",
+            }
+        ],
+    )
+
+    accounts = await reconcile_accounts(db, source, run)
+    businesses = await reconcile_businesses(db, source, run)
+    user_mapping = await mapping(db, "user_account", 18)
+    business_mapping = await mapping(db, "business_account", 24)
+    user_account = await db.get(Account, user_mapping.target_id)
+    business_account = await db.get(Account, business_mapping.target_id)
+
+    assert accounts.created == 1
+    assert accounts.quarantined == 0
+    assert businesses.quarantined == 0
+    assert user_account.account_type is AccountType.USER
+    assert user_account.login == "u_owner"
+    assert business_mapping.target_id == existing_business.id
+    assert business_account.account_type is AccountType.BUSINESS
+    assert business_account.login == "b_owner"
+    assert business_account.password_hash == "business-hash"
+    assert await issue_codes(db) == []
+
+
+@pytest.mark.asyncio
+async def test_business_rehome_waits_for_user_identifier_agreement(store):
+    db, run = store
+    existing_business = seed_account(
+        db,
+        account_id=73,
+        account_type=AccountType.BUSINESS,
+        login="u_owner",
+        telegram_user_id=9073,
+    )
+    mapped_user = seed_account(
+        db,
+        account_id=74,
+        account_type=AccountType.USER,
+        login="mapped_user",
+        telegram_user_id=9074,
+    )
+    seed_account(
+        db,
+        account_id=75,
+        account_type=AccountType.USER,
+        login="telegram_user",
+        telegram_user_id=9073,
+    )
+    db.sync.add_all(
+        [
+            BusinessProfile(
+                account_id=existing_business.id,
+                name="Eski biznes profil",
+                phone="",
+                description="",
+                public_username="",
+                direction="",
+                activity_type="",
+                address="",
+                latitude=None,
+                longitude=None,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50.0,
+                logo_y=50.0,
+                logo_zoom=1.0,
+            ),
+            LegacyIdMap(
+                id=103,
+                entity_type="user_account",
+                legacy_id=19,
+                target_id=mapped_user.id,
+                source_row_hash="old-user-hash",
+                mapping_status="mapped",
+                review_reason="",
+                last_run_id=run.id,
+            ),
+        ]
+    )
+    db.sync.commit()
+    original_hash = existing_business.password_hash
+    source = legacy_source(
+        [
+            {
+                "id": 19,
+                "role": "business",
+                "login": "u_owner",
+                "pass_hash": "user-hash",
+                "tg_id": 9073,
+                "name": "Oddiy profil",
+            }
+        ],
+        [
+            {
+                "id": 25,
+                "user_id": 19,
+                "name": "Biznes profil",
+                "biz_login": "b_owner",
+                "biz_pass_hash": "business-hash",
+            }
+        ],
+    )
+
+    result = await reconcile_accounts(db, source, run)
+
+    assert result.quarantined == 1
+    assert "identity.identifiers_disagree" in await issue_codes(db)
+    assert existing_business.login == "u_owner"
+    assert existing_business.password_hash == original_hash
+
+
+@pytest.mark.asyncio
 async def test_existing_user_account_restores_legacy_login_and_password(store):
     db, run = store
     existing = seed_account(
