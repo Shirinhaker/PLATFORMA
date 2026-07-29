@@ -66,6 +66,15 @@ export type ChallengeResent = {
   resend_after: number;
 };
 
+export type CabinetActivity = {
+  id: number;
+  kind: string;
+  title: string;
+  status: string;
+  amount: number;
+  created_at: number;
+};
+
 export type UserProfile = {
   account_id: number;
   name: string;
@@ -81,6 +90,12 @@ export type UserProfile = {
   avatar_x: number;
   avatar_y: number;
   avatar_zoom: number;
+  followers_count: number;
+  following_count: number;
+  has_business: boolean;
+  dashboard_snapshot: Record<string, number>;
+  recent_activity: CabinetActivity[];
+  specialist_profile: Record<string, unknown>;
 };
 
 export type UserProfilePatch = Partial<Pick<
@@ -94,6 +109,7 @@ export type UserProfilePatch = Partial<Pick<
   | "latitude"
   | "longitude"
   | "location_exact"
+  | "specialist_profile"
 >>;
 
 export type BusinessProfile = {
@@ -117,6 +133,13 @@ export type BusinessProfile = {
   logo_x: number;
   logo_y: number;
   logo_zoom: number;
+  followers_count: number;
+  following_count: number;
+  rating_sum: number;
+  rating_count: number;
+  map_visible: boolean;
+  dashboard_snapshot: Record<string, number>;
+  recent_activity: CabinetActivity[];
 };
 
 export type BusinessProfilePatch = Partial<Pick<
@@ -135,7 +158,16 @@ export type BusinessProfilePatch = Partial<Pick<
   | "pay_holder"
   | "director"
   | "tax_id"
+  | "map_visible"
 >>;
+
+export type CabinetSwitch = {
+  account_id: number;
+  account_type: AccountType;
+  login: string;
+  csrf_token: string;
+  expires_at: string;
+};
 
 export type MediaPurpose = "avatar" | "logo";
 
