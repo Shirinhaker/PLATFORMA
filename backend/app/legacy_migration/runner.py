@@ -129,9 +129,11 @@ class MigrationRunner:
             run.counters_json = counters
             run.stage = MigrationStage.SNAPSHOT
             run.finished_at = None
-        run.status = MigrationStatus.RUNNING
 
         definitions = self._remaining_stages(run)
+        if run.status is MigrationStatus.FAILED:
+            run.finished_at = None
+        run.status = MigrationStatus.RUNNING
         for definition in definitions:
             handler = self.stage_handlers.get(definition.stage)
             if handler is None:
@@ -175,7 +177,7 @@ class MigrationRunner:
                     else MigrationStatus.FAILED
                 )
                 run.finished_at = datetime.now(UTC)
-                if idempotency_mode:
+                if idempotency_mode and passed:
                     counters.pop("idempotency_in_progress", None)
                     run.counters_json = counters
             run = await _await_if_needed(self.save(run))
@@ -232,6 +234,11 @@ class MigrationRunner:
         self,
         run: MigrationRun,
     ) -> tuple[StageDefinition, ...]:
+        if (
+            run.status is MigrationStatus.FAILED
+            and run.stage is MigrationStage.VERIFY
+        ):
+            return STAGES[-2:]
         if run.stage is MigrationStage.SNAPSHOT:
             return STAGES
         for index, definition in enumerate(STAGES):
