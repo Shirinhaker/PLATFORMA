@@ -66,18 +66,13 @@ function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
     "uploadGrantedFile",
     "attachUserAvatar",
     "attachBusinessLogo",
+    "switchCabinet",
     "logout",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
 
 
-function Cabinet({
-  kind,
-  name,
-}: {
-  kind: "user" | "business";
-  name: string;
-}) {
+function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
   const title = kind === "user" ? "Oddiy kabinet" : "Biznes kabinet";
   return (
     <main className="session-panel">
@@ -123,10 +118,7 @@ export function App({ api }: { api: AppApi }) {
     api.getSession()
       .then((identity) => {
         if (!active) return;
-        setSession({
-          status: identity.account_type,
-          identity,
-        });
+        setSession({ status: identity.account_type, identity });
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -136,25 +128,14 @@ export function App({ api }: { api: AppApi }) {
           && "status" in error
           && typeof error.status === "number"
         ) ? error.status : 0;
-        if (status === 401) {
-          setSession({ status: "guest" });
-          return;
-        }
         setSession({ status: "guest" });
-        setFailed(true);
+        if (status !== 401) setFailed(true);
       });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [api, attempt]);
 
-  const authenticated = (
-    session.status === "user" || session.status === "business"
-  );
-  const accountView = (
-    navigation.view === "auth" || navigation.view === "cabinet"
-  );
-
+  const authenticated = session.status === "user" || session.status === "business";
+  const accountView = navigation.view === "auth" || navigation.view === "cabinet";
   const category = navigation.categoryId
     ? findCatalogDirection(navigation.categoryId)
     : null;
@@ -173,10 +154,7 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function completeAuthentication(identity: SessionIdentity) {
-    setSession({
-      status: identity.account_type,
-      identity,
-    });
+    setSession({ status: identity.account_type, identity });
     dispatch({ type: "OPEN_CABINET" });
   }
 
@@ -185,42 +163,36 @@ export function App({ api }: { api: AppApi }) {
       return supportsAuthFlow(api) ? (
         <AuthFlow api={api} onAuthenticated={completeAuthentication} />
       ) : (
-        <main className="session-panel">
-          <h1>Koprik’ga kirish</h1>
-        </main>
+        <main className="session-panel"><h1>Koprik’ga kirish</h1></main>
       );
     }
-
-    if (session.status === "loading") {
-      return <SessionStatus state="loading" />;
-    }
+    if (session.status === "loading") return <SessionStatus state="loading" />;
 
     if (supportsProfiles(api)) {
       const logout = () => {
         setSession({ status: "guest" });
         openHome();
       };
-      const switchBusiness = () => {
-        setSession({ status: "guest" });
-        dispatch({ type: "OPEN_AUTH" });
+      const switched = (identity: SessionIdentity) => {
+        setSession({ status: identity.account_type, identity });
+        dispatch({ type: "OPEN_CABINET" });
       };
-
       return session.status === "user" ? (
         <UserProfile
           api={api}
           identity={session.identity}
           onLogout={logout}
-          onSwitchBusiness={switchBusiness}
+          onSwitched={switched}
         />
       ) : (
         <BusinessProfile
           api={api}
           identity={session.identity}
           onLogout={logout}
+          onSwitched={switched}
         />
       );
     }
-
     return <Cabinet kind={session.status} name={session.identity.name} />;
   }
 
@@ -267,10 +239,7 @@ export function App({ api }: { api: AppApi }) {
             getAdvertisements={getAdvertisements}
             location={homeLocation}
             onSearch={(query) => dispatch({ type: "OPEN_CATALOG", query })}
-            onOpenCatalog={() => dispatch({
-              type: "OPEN_CATALOG",
-              query: "",
-            })}
+            onOpenCatalog={() => dispatch({ type: "OPEN_CATALOG", query: "" })}
             onOpenLocation={() => dispatch({ type: "OPEN_LOCATION" })}
           />
         );
