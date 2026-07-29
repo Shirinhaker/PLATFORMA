@@ -46,7 +46,7 @@ class SnapshotFingerprintError(RuntimeError):
     pass
 
 
-MIGRATION_SCHEMA_VERSION = "0003_phase3c_dual_accounts_v2"
+MIGRATION_SCHEMA_VERSION = "0003_phase3c_dual_accounts_v3"
 
 
 @dataclass(frozen=True)
