@@ -26,9 +26,9 @@ const userProfile = {
   account_id: 5,
   name: "Ali",
   phone: "",
-  public_username: "",
-  region: "",
-  district: "",
+  public_username: "ali",
+  region: "Surxondaryo",
+  district: "Qumqo‘rg‘on",
   mahalla: "",
   latitude: null,
   longitude: null,
@@ -77,8 +77,14 @@ function profileApi() {
 }
 
 
+async function openUserProfileForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: "Profilim" }));
+  return screen.findByLabelText("Ism");
+}
+
+
 describe("profile cabinets", () => {
-  it("never renders business fields in the user cabinet", async () => {
+  it("opens the real user cabinet dashboard before the edit form", async () => {
     const api = profileApi();
     render(
       <UserProfile
@@ -87,8 +93,53 @@ describe("profile cabinets", () => {
         onLogout={vi.fn()}
       />,
     );
-    expect(await screen.findByLabelText("Ism")).toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "Ali" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("@ali")).toBeInTheDocument();
+    expect(screen.getByText("● Qumqo‘rg‘on, Surxondaryo"))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Profilim" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Biznes kabinetga o‘tish/ }))
+      .toBeInTheDocument();
+    expect(screen.queryByLabelText("Ism")).not.toBeInTheDocument();
+  });
+
+  it("never renders business fields in the user cabinet", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    render(
+      <UserProfile
+        api={api}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+      />,
+    );
+    expect(await openUserProfileForm(user)).toBeInTheDocument();
     expect(screen.queryByLabelText("STIR")).not.toBeInTheDocument();
+  });
+
+  it("logs out and opens business switching flow", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    const onSwitchBusiness = vi.fn();
+    render(
+      <UserProfile
+        api={api}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitchBusiness={onSwitchBusiness}
+      />,
+    );
+
+    await user.click(await screen.findByRole(
+      "button",
+      { name: /Biznes kabinetga o‘tish/ },
+    ));
+
+    expect(api.logout).toHaveBeenCalledTimes(1);
+    expect(onSwitchBusiness).toHaveBeenCalledTimes(1);
   });
 
   it("never renders user fields in the business cabinet", async () => {
@@ -162,7 +213,7 @@ describe("profile cabinets", () => {
       />,
     );
 
-    const name = await screen.findByLabelText("Ism");
+    const name = await openUserProfileForm(user);
     await user.clear(name);
     await user.type(name, "Yangi ism");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
