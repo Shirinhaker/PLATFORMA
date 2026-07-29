@@ -139,7 +139,8 @@ async def verify_migration(
     mapped_rows = int(
         await session.scalar(
             select(func.count(LegacyIdMap.id)).where(
-                LegacyIdMap.entity_type.in_(entity_types)
+                LegacyIdMap.entity_type.in_(entity_types),
+                LegacyIdMap.last_run_id == run.id,
             )
         )
         or 0
@@ -163,6 +164,7 @@ async def verify_migration(
     identity_conflicts = int(
         await session.scalar(
             select(func.count(MigrationIssue.id)).where(
+                MigrationIssue.migration_run_id == run.id,
                 MigrationIssue.resolved.is_(False),
                 MigrationIssue.issue_code.like("identity.%"),
             )
@@ -176,13 +178,16 @@ async def verify_migration(
                 select(
                     MediaMigration.state,
                     func.count(MediaMigration.id),
-                ).group_by(MediaMigration.state)
+                )
+                .where(MediaMigration.migration_run_id == run.id)
+                .group_by(MediaMigration.state)
             )
         ).all()
     }
     copied_unverified = int(
         await session.scalar(
             select(func.count(MediaMigration.id)).where(
+                MediaMigration.migration_run_id == run.id,
                 MediaMigration.state == MediaMigrationState.COPIED,
                 (
                     (MediaMigration.destination_object_key == "")
@@ -209,6 +214,7 @@ async def verify_migration(
         broken_foreign_keys=await _broken_mappings(
             session,
             entity_types,
+            run.id,
         ),
         identity_conflicts=identity_conflicts,
         source_media_references=_source_media_references(source),
@@ -239,11 +245,13 @@ async def _count_for_run(session, model, run_id: int) -> int:
 async def _broken_mappings(
     session: AsyncSession,
     entity_types: tuple[str, ...],
+    run_id: int,
 ) -> int:
     mappings = (
         await session.scalars(
             select(LegacyIdMap).where(
                 LegacyIdMap.entity_type.in_(entity_types),
+                LegacyIdMap.last_run_id == run_id,
                 LegacyIdMap.target_id.is_not(None),
             )
         )

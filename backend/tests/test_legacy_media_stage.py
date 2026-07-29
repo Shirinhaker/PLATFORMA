@@ -343,6 +343,36 @@ async def test_checksum_verification_failure_blocks_media(store):
 
 
 @pytest.mark.asyncio
+async def test_copied_media_is_reverified_before_reuse(store):
+    db, run = store
+    media = db.sync.get(MediaMigration, 1)
+    media.destination_object_key = "migration/old/catalog_item/8/image.png"
+    media.sha256 = "e" * 64
+    media.content_type = "image/png"
+    media.size_bytes = len(PNG_BYTES)
+    media.state = MediaMigrationState.COPIED
+    db.sync.commit()
+    storage = FakeStorage(verifies=False)
+
+    result = await migrate_media(
+        db,
+        legacy_source(),
+        storage,
+        Settings(environment="test"),
+        run,
+        local_resolver=StaticResolver(resolved_png()),
+        telegram_resolver=StaticResolver(resolved_png()),
+    )
+
+    assert result.reused == 0
+    assert result.updated == 1
+    assert storage.verified == [media.destination_object_key]
+    assert storage.uploaded == []
+    assert media.state is MediaMigrationState.FAILED
+    assert media.last_error_code == "media.r2_verification_failed"
+
+
+@pytest.mark.asyncio
 async def test_path_escape_is_invalid_not_read(tmp_path):
     uploads = tmp_path / "uploads"
     uploads.mkdir()

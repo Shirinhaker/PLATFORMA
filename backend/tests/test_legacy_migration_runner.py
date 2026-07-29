@@ -14,6 +14,7 @@ from app.legacy_migration.runner import (
     ProductionApproval,
     ProductionGateError,
     STAGES,
+    build_database_runner,
 )
 from app.legacy_migration.source import SnapshotInfo
 from app.legacy_migration.verify import VerificationReport
@@ -47,6 +48,61 @@ def migration_run(info: SnapshotInfo, environment="staging"):
         error_count=0,
         started_at=datetime.now(UTC),
     )
+
+
+class FakeSessionContext:
+    def __init__(self, session):
+        self.session = session
+
+    async def __aenter__(self):
+        return self.session
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class ExistingRunSession:
+    def __init__(self, existing):
+        self.existing = existing
+        self.added = []
+
+    def begin(self):
+        return FakeSessionContext(self)
+
+    async def scalar(self, statement):
+        return self.existing
+
+    def add(self, value):
+        self.added.append(value)
+
+    async def flush(self):
+        for index, value in enumerate(self.added, start=10):
+            if value.id is None:
+                value.id = index
+
+
+class ExistingRunDatabase:
+    def __init__(self, existing):
+        self.session_value = ExistingRunSession(existing)
+
+    def session(self):
+        return FakeSessionContext(self.session_value)
+
+
+@pytest.mark.asyncio
+async def test_dual_account_migration_does_not_reuse_old_schema_run(tmp_path):
+    info = snapshot(tmp_path)
+    old_run = migration_run(info)
+    old_run.stage = MigrationStage.VERIFY
+    old_run.status = MigrationStatus.COMPLETED
+    database = ExistingRunDatabase(old_run)
+    runner = build_database_runner(database, object(), object())
+
+    current = await runner.load_or_create(info, "staging", None)
+
+    assert current is not old_run
+    assert current.schema_version == "0003_phase3c_dual_accounts_v2"
+    assert database.session_value.added == [current]
 
 
 @pytest.mark.asyncio

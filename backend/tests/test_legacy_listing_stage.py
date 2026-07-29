@@ -319,3 +319,90 @@ async def test_rerun_is_idempotent_and_changed_status_updates(store):
     assert third.updated == 1
     assert listing.status == "deleted"
     assert await db.scalar(select(func.count()).select_from(Listing)) == 1
+
+
+@pytest.mark.asyncio
+async def test_reused_listing_targets_move_to_current_migration_run(store):
+    db, first_run = store
+    source = source_with({}, [{"mtype": "photo", "pos": 1}])
+    await import_listings(db, source, first_run)
+    current_run = MigrationRun(
+        id=2,
+        source_database_sha256="a" * 64,
+        media_manifest_sha256="b" * 64,
+        schema_version="0003_phase3c_dual_accounts_v2",
+        environment=MigrationEnvironment.STAGING,
+        stage=MigrationStage.LISTINGS,
+        status=MigrationStatus.RUNNING,
+        counters_json={},
+        error_count=0,
+        started_at=NOW,
+    )
+    db.sync.add(current_run)
+    db.sync.commit()
+
+    result = await import_listings(db, source, current_run)
+    listing = (await db.scalars(select(Listing))).one()
+    media = (await db.scalars(select(ListingMedia))).one()
+    media_migration = (await db.scalars(select(MediaMigration))).one()
+
+    assert result.created == 0
+    assert result.reused == 2
+    assert listing.migration_run_id == current_run.id
+    assert media.migration_run_id == current_run.id
+    assert media_migration.migration_run_id == current_run.id
+
+
+@pytest.mark.asyncio
+async def test_reused_listing_refreshes_owner_after_account_split(store):
+    db, first_run = store
+    seed_mapping(
+        db,
+        first_run,
+        entity_type="user_account",
+        legacy_id=7,
+        target_id=30,
+        account_type=AccountType.BUSINESS,
+    )
+    source = source_with({})
+    await import_listings(db, source, first_run)
+    mapping = db.sync.scalar(
+        select(LegacyIdMap).where(
+            LegacyIdMap.entity_type == "user_account",
+            LegacyIdMap.legacy_id == 7,
+        )
+    )
+    db.sync.add(
+        Account(
+            id=70,
+            account_type=AccountType.USER,
+            login="user_70",
+            password_hash="hash",
+            telegram_user_id=None,
+            status="active",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    mapping.target_id = 70
+    current_run = MigrationRun(
+        id=2,
+        source_database_sha256="a" * 64,
+        media_manifest_sha256="b" * 64,
+        schema_version="0003_phase3c_dual_accounts_v2",
+        environment=MigrationEnvironment.STAGING,
+        stage=MigrationStage.LISTINGS,
+        status=MigrationStatus.RUNNING,
+        counters_json={},
+        error_count=0,
+        started_at=NOW,
+    )
+    db.sync.add(current_run)
+    db.sync.commit()
+
+    result = await import_listings(db, source, current_run)
+    listing = (await db.scalars(select(Listing))).one()
+
+    assert result.updated == 1
+    assert listing.owner_user_account_id == 70
+    assert listing.migration_run_id == current_run.id

@@ -236,6 +236,8 @@ async def ensure_media_mapping(
         media.attempts = 0
         media.last_error_code = ""
         media.updated_at = now
+    else:
+        media.migration_run_id = run.id
     await session.flush()
     return media
 
@@ -264,7 +266,18 @@ async def _upsert_catalog_target(
         await session.flush()
         counters["created"] += 1
     elif mapping is not None and mapping.source_row_hash == row_hash:
-        counters["reused"] += 1
+        changed = False
+        dependency_fields = {
+            "business_account_id",
+            "catalog_group_id",
+        }
+        for field in dependency_fields.intersection(values):
+            value = values[field]
+            if getattr(target, field) != value:
+                setattr(target, field, value)
+                changed = True
+        target.migration_run_id = run.id
+        counters["updated" if changed else "reused"] += 1
     else:
         for field, value in values.items():
             if field == "created_at":

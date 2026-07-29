@@ -345,3 +345,35 @@ async def test_changed_source_updates_and_identical_rerun_creates_zero(store):
     assert (
         await db.scalar(select(func.count()).select_from(CatalogItem))
     ) == 1
+
+
+@pytest.mark.asyncio
+async def test_reused_catalog_targets_move_to_current_migration_run(store):
+    db, first_run = store
+    source = source_with(group={}, item={})
+    await import_catalog(db, source, first_run)
+    current_run = MigrationRun(
+        id=2,
+        source_database_sha256="a" * 64,
+        media_manifest_sha256="b" * 64,
+        schema_version="0003_phase3c_dual_accounts_v2",
+        environment=MigrationEnvironment.STAGING,
+        stage=MigrationStage.CATALOG,
+        status=MigrationStatus.RUNNING,
+        counters_json={},
+        error_count=0,
+        started_at=NOW,
+    )
+    db.sync.add(current_run)
+    db.sync.commit()
+
+    result = await import_catalog(db, source, current_run)
+    group = (await db.scalars(select(CatalogGroup))).one()
+    item = (await db.scalars(select(CatalogItem))).one()
+    media = (await db.scalars(select(MediaMigration))).one()
+
+    assert result.created == 0
+    assert result.reused == 2
+    assert group.migration_run_id == current_run.id
+    assert item.migration_run_id == current_run.id
+    assert media.migration_run_id == current_run.id

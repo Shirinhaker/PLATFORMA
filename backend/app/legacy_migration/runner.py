@@ -46,6 +46,9 @@ class SnapshotFingerprintError(RuntimeError):
     pass
 
 
+MIGRATION_SCHEMA_VERSION = "0003_phase3c_dual_accounts_v2"
+
+
 @dataclass(frozen=True)
 class ProductionApproval:
     typed_environment: str
@@ -280,16 +283,21 @@ def build_database_runner(
                         MigrationRun.media_manifest_sha256
                         == snapshot.manifest_sha256,
                         MigrationRun.environment == target_environment,
+                        MigrationRun.schema_version
+                        == MIGRATION_SCHEMA_VERSION,
                     )
                     .order_by(MigrationRun.id.desc())
                     .limit(1)
                 )
-                if existing is not None:
+                if (
+                    existing is not None
+                    and existing.schema_version == MIGRATION_SCHEMA_VERSION
+                ):
                     return existing
                 run = MigrationRun(
                     source_database_sha256=snapshot.database_sha256,
                     media_manifest_sha256=snapshot.manifest_sha256,
-                    schema_version="0003_phase3c_content",
+                    schema_version=MIGRATION_SCHEMA_VERSION,
                     environment=target_environment,
                     stage=MigrationStage.SNAPSHOT,
                     status=MigrationStatus.RUNNING,
@@ -324,7 +332,7 @@ def build_database_runner(
                 and run.environment is MigrationEnvironment.STAGING
                 and run.status is MigrationStatus.COMPLETED
                 and run.stage is MigrationStage.VERIFY
-                and run.schema_version == "0003_phase3c_content"
+                and run.schema_version == MIGRATION_SCHEMA_VERSION
                 and run.source_database_sha256 == snapshot.database_sha256
                 and run.media_manifest_sha256 == snapshot.manifest_sha256
                 and (run.counters_json.get("verify") or {}).get("passed")

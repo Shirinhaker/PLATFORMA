@@ -183,7 +183,19 @@ async def _upsert_target(
         await session.flush()
         counters["created"] += 1
     elif mapping is not None and mapping.source_row_hash == row_hash:
-        counters["reused"] += 1
+        changed = False
+        dependency_fields = {
+            "owner_user_account_id",
+            "owner_business_account_id",
+            "listing_id",
+        }
+        for field in dependency_fields.intersection(values):
+            value = values[field]
+            if getattr(target, field) != value:
+                setattr(target, field, value)
+                changed = True
+        target.migration_run_id = run.id
+        counters["updated" if changed else "reused"] += 1
     else:
         for field, value in values.items():
             if field == "created_at":
