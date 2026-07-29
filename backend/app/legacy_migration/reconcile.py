@@ -181,7 +181,13 @@ async def reconcile_accounts(
         else:
             account_changed = _apply_account_record(account, record)
 
-        await _ensure_user_profile(session, account, record)
+        counters["issues"] += await _ensure_user_profile(
+            session,
+            account,
+            record,
+            run=run,
+            legacy_id=legacy_id,
+        )
         await _upsert_mapping(
             session,
             entity_type="user_account",
@@ -395,10 +401,26 @@ async def reconcile_businesses(
             _apply_account_record(account, record)
 
         profile = await session.get(BusinessProfile, account.id)
+        profile_values = _business_profile_values(row)
+        conflicting_account_id = await _profile_username_owner(
+            session,
+            BusinessProfile,
+            account_id=account.id,
+            public_username=str(profile_values["public_username"]),
+        )
+        if conflicting_account_id is not None:
+            profile_values["public_username"] = ""
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="business_profile",
+                legacy_id=legacy_id,
+                issue_code="profile.public_username_conflict",
+            )
         if profile is None:
             profile = BusinessProfile(
                 account_id=account.id,
-                **_business_profile_values(row),
+                **profile_values,
             )
             session.add(profile)
             counters["created"] += 1
@@ -410,7 +432,7 @@ async def reconcile_businesses(
         ):
             counters["reused"] += 1
         else:
-            for field, value in _business_profile_values(row).items():
+            for field, value in profile_values.items():
                 setattr(profile, field, value)
             counters["updated"] += 1
 
@@ -645,9 +667,12 @@ async def _ensure_user_profile(
     session: AsyncSession,
     account: Account,
     record: Mapping[str, object],
-) -> None:
+    *,
+    run: MigrationRun,
+    legacy_id: int,
+) -> int:
     if account.account_type is not AccountType.USER:
-        return
+        return 0
     profile = await session.get(UserProfile, account.id)
     values = {
         "name": _text(record.get("name")),
@@ -664,12 +689,49 @@ async def _ensure_user_profile(
         "avatar_y": _float_or(record.get("avatar_y"), 50.0),
         "avatar_zoom": _float_or(record.get("avatar_zoom"), 1.0),
     }
+    issues = 0
+    conflicting_account_id = await _profile_username_owner(
+        session,
+        UserProfile,
+        account_id=account.id,
+        public_username=str(values["public_username"]),
+    )
+    if conflicting_account_id is not None:
+        values["public_username"] = ""
+        issues += await _ensure_issue(
+            session,
+            run,
+            entity_type="user_profile",
+            legacy_id=legacy_id,
+            issue_code="profile.public_username_conflict",
+        )
     if profile is None:
         session.add(UserProfile(account_id=account.id, **values))
     else:
         for field, value in values.items():
             setattr(profile, field, value)
     await session.flush()
+    return issues
+
+
+async def _profile_username_owner(
+    session: AsyncSession,
+    model,
+    *,
+    account_id: int,
+    public_username: str,
+) -> int | None:
+    normalized = public_username.lower()
+    if not normalized:
+        return None
+    return await session.scalar(
+        select(model.account_id)
+        .where(
+            func.lower(model.public_username) == normalized,
+            model.account_id != account_id,
+        )
+        .limit(1)
+    )
 
 
 def _business_profile_values(
