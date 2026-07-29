@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
+from types import SimpleNamespace
 
 import fakeredis.aioredis
 import httpx
@@ -91,7 +92,7 @@ async def test_user_switches_to_linked_business_without_new_login(
         expires_at=fixed_now + timedelta(days=30),
     )
     auth_service = FakeAuthService(identity)
-    app.state.database = type("Database", (), {"session": session_factory})()
+    app.state.database = SimpleNamespace(session=session_factory)
     app.state.auth_service = auth_service
     app.state.redis = redis
     app.state.profile_summary_service = ProfileSummaryService(
