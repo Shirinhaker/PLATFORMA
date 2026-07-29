@@ -29,19 +29,32 @@ type Props = {
 };
 
 type CabinetView = "dashboard" | "profile" | "specialist" | string;
+type PayloadSource = string | readonly string[];
 
 type Section = {
   icon: string;
   label: string;
   view: string;
-  payload?: string;
+  payload?: PayloadSource;
 };
 
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const EDITABLE_FIELDS = [
-  "name", "phone", "public_username", "region", "district", "mahalla",
-  "latitude", "longitude", "location_exact",
+  "name",
+  "phone",
+  "public_username",
+  "region",
+  "district",
+  "mahalla",
+  "latitude",
+  "longitude",
+  "location_exact",
 ] as const;
 
 const SPECIALIST_FIELDS: ReadonlyArray<readonly [string, string]> = [
@@ -61,13 +74,46 @@ const SECTIONS: Section[] = [
   { icon: "📢", label: "E’lonlarim", view: "listings", payload: "listings" },
   { icon: "🎞️", label: "Istoriyalarim", view: "stories", payload: "stories" },
   { icon: "💎", label: "Obunalarim", view: "follows", payload: "follows" },
+  { icon: "👥", label: "Obunachilarim", view: "followers", payload: "followers" },
   { icon: "💳", label: "To‘lovlarim", view: "payments", payload: "payments" },
-  { icon: "🔔", label: "Bildirishnomalarim", view: "notifications", payload: "notifications" },
-  { icon: "🪪", label: "Mutaxassisligim va xizmatlarim", view: "specialist" },
+  {
+    icon: "🔔",
+    label: "Bildirishnomalarim",
+    view: "notifications",
+    payload: "notifications",
+  },
+  {
+    icon: "🪪",
+    label: "Mutaxassisligim va xizmatlarim",
+    view: "specialist",
+  },
   { icon: "📦", label: "Buyurtmalarim", view: "orders", payload: "orders" },
-  { icon: "🧰", label: "Xizmat buyurtmalarim", view: "service-orders", payload: "orders" },
+  {
+    icon: "🧰",
+    label: "Xizmat buyurtmalarim",
+    view: "service-orders",
+    payload: "orders",
+  },
   { icon: "🔖", label: "Saqlanganlar", view: "saved", payload: "saved" },
   { icon: "💬", label: "Suhbatlar", view: "messages", payload: "messages" },
+  {
+    icon: "🎯",
+    label: "Bildirishnoma filtrlari",
+    view: "notify-filters",
+    payload: "notify_filters",
+  },
+  {
+    icon: "🚘",
+    label: "Haydovchilik profilim",
+    view: "drivers",
+    payload: "drivers",
+  },
+  {
+    icon: "🚕",
+    label: "Taxi va dostavka buyurtmalarim",
+    view: "rides",
+    payload: "rides",
+  },
   { icon: "⚙️", label: "Sozlamalar", view: "settings" },
 ];
 
@@ -87,6 +133,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
+
 function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   return words.length
@@ -94,21 +141,36 @@ function initials(name: string) {
     : "U";
 }
 
+
 function money(value: number) {
   return value > 0 ? `${value.toLocaleString("uz-UZ")} so‘m` : "";
 }
+
 
 function activityDate(value: number) {
   if (!value) return "Vaqt ko‘rsatilmagan";
   return new Date(value * 1000).toLocaleString("uz-UZ");
 }
 
+
 function isServiceOrder(row: unknown) {
   if (!row || typeof row !== "object") return false;
   const value = row as Record<string, unknown>;
   return ["booking", "service", "queue", "medical"].includes(
-    String(value.order_type ?? value.kind ?? ""),
+    String(value.order_type ?? value.kind ?? value.order_category ?? ""),
   );
+}
+
+
+function payloadRows(
+  payload: Record<string, unknown>,
+  source: PayloadSource,
+): unknown[] {
+  const keys = typeof source === "string" ? [source] : source;
+  return keys.flatMap((key) => {
+    const value = payload[key];
+    return Array.isArray(value) ? value : [];
+  });
 }
 
 
@@ -134,25 +196,35 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
   useEffect(() => {
     let active = true;
     api.getUserProfile()
-      .then((value) => { if (active) applyLoaded(value); })
-      .catch((reason) => { if (active) setError(message(reason)); });
-    return () => { active = false; };
+      .then((value) => {
+        if (active) applyLoaded(value);
+      })
+      .catch((reason) => {
+        if (active) setError(message(reason));
+      });
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   const payload = profile?.cabinet_payload ?? {};
   const selectedSection = SECTIONS.find((section) => section.view === view);
   const selectedRows = useMemo(() => {
     if (!selectedSection?.payload) return [];
-    const raw = payload[selectedSection.payload];
-    if (!Array.isArray(raw)) return [];
-    if (view === "service-orders") return raw.filter(isServiceOrder);
-    if (view === "orders") return raw.filter((row) => !isServiceOrder(row));
-    return raw;
+    const rows = payloadRows(payload, selectedSection.payload);
+    if (view === "service-orders") return rows.filter(isServiceOrder);
+    if (view === "orders") return rows.filter((row) => !isServiceOrder(row));
+    return rows;
   }, [payload, selectedSection, view]);
 
-  function setField<K extends keyof UserProfileData>(field: K, value: UserProfileData[K]) {
+  function setField<K extends keyof UserProfileData>(
+    field: K,
+    value: UserProfileData[K],
+  ) {
     setSaved(false);
-    setProfile((current) => current ? { ...current, [field]: value } : current);
+    setProfile((current) => (
+      current ? { ...current, [field]: value } : current
+    ));
   }
 
   async function save(event: React.FormEvent) {
@@ -199,7 +271,9 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
     setError("");
     setSaved(false);
     try {
-      applyLoaded(await api.updateUserProfile({ specialist_profile: specialist }));
+      applyLoaded(await api.updateUserProfile({
+        specialist_profile: specialist,
+      }));
       setSaved(true);
     } catch (reason) {
       setError(message(reason));
@@ -267,24 +341,72 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
   }
 
   if (!profile) {
-    return <main className="profile-shell">{error ? <p role="alert">{error}</p> : "Profil yuklanmoqda…"}</main>;
+    return (
+      <main className="profile-shell">
+        {error ? <p role="alert">{error}</p> : "Profil yuklanmoqda…"}
+      </main>
+    );
   }
 
   if (selectedSection?.payload) {
-    return <CabinetDataView title={selectedSection.label} rows={selectedRows} onBack={() => setView("dashboard")} />;
+    return (
+      <CabinetDataView
+        title={selectedSection.label}
+        rows={selectedRows}
+        onBack={() => setView("dashboard")}
+      />
+    );
   }
 
   if (view === "specialist") {
     const field = (name: string) => String(specialist[name] ?? "");
     return (
       <main className="profile-shell">
-        <header className="profile-heading"><h1>Mutaxassisligim va xizmatlarim</h1><button type="button" className="button-secondary" onClick={() => setView("dashboard")}>Kabinetga qaytish</button></header>
+        <header className="profile-heading">
+          <h1>Mutaxassisligim va xizmatlarim</h1>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setView("dashboard")}
+          >
+            Kabinetga qaytish
+          </button>
+        </header>
         <form className="profile-form" onSubmit={saveSpecialist}>
           {SPECIALIST_FIELDS.map(([key, label]) => (
-            <label key={key}>{label}<input value={field(key)} onChange={(event) => setSpecialist((current) => ({ ...current, [key]: event.currentTarget.value }))} /></label>
+            <label key={key}>
+              {label}
+              <input
+                value={field(key)}
+                onChange={(event) => setSpecialist((current) => ({
+                  ...current,
+                  [key]: event.currentTarget.value,
+                }))}
+              />
+            </label>
           ))}
-          <label className="checkbox-field"><input type="checkbox" checked={Boolean(specialist.visible)} onChange={(event) => setSpecialist((current) => ({ ...current, visible: event.currentTarget.checked }))} />Qidiruvda ko‘rinish</label>
-          <label className="checkbox-field"><input type="checkbox" checked={specialist.available !== false} onChange={(event) => setSpecialist((current) => ({ ...current, available: event.currentTarget.checked }))} />Xizmat uchun bo‘shman</label>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={Boolean(specialist.visible)}
+              onChange={(event) => setSpecialist((current) => ({
+                ...current,
+                visible: event.currentTarget.checked,
+              }))}
+            />
+            Qidiruvda ko‘rinish
+          </label>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={specialist.available !== false}
+              onChange={(event) => setSpecialist((current) => ({
+                ...current,
+                available: event.currentTarget.checked,
+              }))}
+            />
+            Xizmat uchun bo‘shman
+          </label>
           {error && <p className="form-error" role="alert">{error}</p>}
           {saved && <p className="form-success" role="status">Saqlandi</p>}
           <button type="submit" disabled={busy}>Saqlash</button>
@@ -296,7 +418,19 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
   if (view === "profile" || view === "settings") {
     return (
       <main className="profile-shell">
-        <header className="profile-heading"><div><p className="session-panel__eyebrow">{identity.login}</p><h1>{view === "settings" ? "Sozlamalar" : "Profilim"}</h1></div><button type="button" className="button-secondary" onClick={() => setView("dashboard")}>Kabinetga qaytish</button></header>
+        <header className="profile-heading">
+          <div>
+            <p className="session-panel__eyebrow">{identity.login}</p>
+            <h1>{view === "settings" ? "Sozlamalar" : "Profilim"}</h1>
+          </div>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => setView("dashboard")}
+          >
+            Kabinetga qaytish
+          </button>
+        </header>
         <form className="profile-form" onSubmit={save}>
           <label>Ism<input required value={profile.name} onChange={(event) => setField("name", event.currentTarget.value)} /></label>
           <label>Telefon<input type="tel" value={profile.phone} onChange={(event) => setField("phone", event.currentTarget.value)} /></label>
@@ -324,18 +458,38 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
   const username = profile.public_username
     ? `@${profile.public_username.replace(/^@/, "")}`
     : identity.login;
-  const location = [profile.district, profile.region].filter(Boolean).join(", ");
+  const location = [profile.district, profile.region]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <main className="user-cabinet">
       <section className="user-cabinet__panel">
         <header className="user-cabinet__identity">
-          <div className="user-cabinet__avatar" aria-hidden="true">{initials(profile.name)}</div>
-          <div className="user-cabinet__identity-copy">
-            <h1>{profile.name}</h1><p>{username}</p>{location && <span>● {location}</span>}
-            <div className="cabinet-follow-chips"><button type="button" onClick={() => setView("followers")}>{followersCount} obunachi</button><button type="button" onClick={() => setView("follows")}>{followingCount} obuna</button></div>
+          <div className="user-cabinet__avatar" aria-hidden="true">
+            {initials(profile.name)}
           </div>
-          <button type="button" className="user-cabinet__logout" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          <div className="user-cabinet__identity-copy">
+            <h1>{profile.name}</h1>
+            <p>{username}</p>
+            {location && <span>● {location}</span>}
+            <div className="cabinet-follow-chips">
+              <button type="button" onClick={() => setView("followers")}>
+                {followersCount} obunachi
+              </button>
+              <button type="button" onClick={() => setView("follows")}>
+                {followingCount} obuna
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="user-cabinet__logout"
+            disabled={busy}
+            onClick={() => void logout()}
+          >
+            Chiqish
+          </button>
         </header>
 
         <div className="user-cabinet__stats" aria-label="Kabinet statistikasi">
@@ -345,27 +499,84 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
             ["Saqlanganlar", snapshot.saved ?? 0, "E’lon va bizneslar", "saved"],
             ["Bildirishnomalar", snapshot.unread ?? 0, "O‘qilmagan xabarlar", "notifications"],
           ].map(([label, value, sub, target], index) => (
-            <button type="button" key={String(label)} className={`user-cabinet__stat${index === 0 ? " user-cabinet__stat--active" : ""}`} onClick={() => setView(String(target))}>
-              <span>{label}</span><strong>{String(value)}</strong><small>{sub}</small>
+            <button
+              type="button"
+              key={String(label)}
+              className={`user-cabinet__stat${index === 0 ? " user-cabinet__stat--active" : ""}`}
+              onClick={() => setView(String(target))}
+            >
+              <span>{label}</span>
+              <strong>{String(value)}</strong>
+              <small>{sub}</small>
             </button>
           ))}
         </div>
 
         <div className="user-cabinet__content">
           <section className="user-cabinet__sections">
-            <div className="user-cabinet__section-heading"><h2>Mening bo‘limlarim</h2><span>Profil va faoliyatlar</span></div>
-            <div className="user-cabinet__grid">
-              {SECTIONS.map((section) => <button type="button" key={section.view} onClick={() => setView(section.view)}><span aria-hidden="true">{section.icon}</span><strong>{section.label}</strong></button>)}
+            <div className="user-cabinet__section-heading">
+              <h2>Mening bo‘limlarim</h2>
+              <span>Profil va barcha faoliyatlar</span>
             </div>
-            {(profile.has_business ?? false) && <button type="button" className="user-cabinet__switch" disabled={busy} onClick={() => void switchBusiness()}>🏢 Biznes kabinetga o‘tish</button>}
+            <div className="user-cabinet__grid">
+              {SECTIONS.map((section) => (
+                <button
+                  type="button"
+                  key={section.view}
+                  onClick={() => setView(section.view)}
+                >
+                  <span aria-hidden="true">{section.icon}</span>
+                  <strong>{section.label}</strong>
+                </button>
+              ))}
+            </div>
+            {(profile.has_business ?? false) && (
+              <button
+                type="button"
+                className="user-cabinet__switch"
+                disabled={busy}
+                onClick={() => void switchBusiness()}
+              >
+                🏢 Biznes kabinetga o‘tish
+              </button>
+            )}
             {error && <p className="user-cabinet__notice" role="alert">{error}</p>}
           </section>
 
           <aside className="user-cabinet__activity">
-            <div className="user-cabinet__section-heading"><h2>So‘nggi faoliyat</h2><span>{recentActivity.length} ta</span></div>
-            {!recentActivity.length ? <div className="user-cabinet__empty"><span>◎</span><strong>Hozircha faollik yo‘q</strong><p>Yangi buyurtma yoki xizmat paydo bo‘lsa, shu yerda ko‘rinadi.</p></div> : (
+            <div className="user-cabinet__section-heading">
+              <h2>So‘nggi faoliyat</h2>
+              <span>{recentActivity.length} ta</span>
+            </div>
+            {!recentActivity.length ? (
+              <div className="user-cabinet__empty">
+                <span>◎</span>
+                <strong>Hozircha faollik yo‘q</strong>
+                <p>Yangi buyurtma yoki xizmat paydo bo‘lsa, shu yerda ko‘rinadi.</p>
+              </div>
+            ) : (
               <div className="cabinet-activity-list">
-                {recentActivity.map((activity) => <button type="button" key={`${activity.kind}-${activity.id}`} onClick={() => setView(activity.kind === "service" ? "service-orders" : "orders")}><span className="cabinet-activity-icon">{activity.kind === "service" ? "X" : "B"}</span><span><b>Buyurtma #{activity.id} — {activity.title}</b><small>{activityDate(activity.created_at)}</small></span><span><b>{money(activity.amount) || (STATUS_LABELS[activity.status] ?? activity.status)}</b><small>{STATUS_LABELS[activity.status] ?? activity.status}</small></span></button>)}
+                {recentActivity.map((activity) => (
+                  <button
+                    type="button"
+                    key={`${activity.kind}-${activity.id}`}
+                    onClick={() => setView(
+                      activity.kind === "service" ? "service-orders" : "orders"
+                    )}
+                  >
+                    <span className="cabinet-activity-icon">
+                      {activity.kind === "service" ? "X" : "B"}
+                    </span>
+                    <span>
+                      <b>Buyurtma #{activity.id} — {activity.title}</b>
+                      <small>{activityDate(activity.created_at)}</small>
+                    </span>
+                    <span>
+                      <b>{money(activity.amount) || (STATUS_LABELS[activity.status] ?? activity.status)}</b>
+                      <small>{STATUS_LABELS[activity.status] ?? activity.status}</small>
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
           </aside>
