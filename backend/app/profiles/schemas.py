@@ -70,6 +70,31 @@ class UserProfileRead(BaseModel):
     specialist_profile: dict[str, Any] = Field(default_factory=dict)
     cabinet_payload: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("followers_count", "following_count", mode="before")
+    @classmethod
+    def normalize_counts(cls, value):
+        return 0 if value is None else value
+
+    @field_validator("has_business", mode="before")
+    @classmethod
+    def normalize_has_business(cls, value):
+        return False if value is None else value
+
+    @field_validator(
+        "dashboard_snapshot",
+        "specialist_profile",
+        "cabinet_payload",
+        mode="before",
+    )
+    @classmethod
+    def normalize_objects(cls, value):
+        return {} if value is None else value
+
+    @field_validator("recent_activity", mode="before")
+    @classmethod
+    def normalize_activity(cls, value):
+        return [] if value is None else value
+
 
 class UserProfilePatch(ProfilePatch):
     name: str | None = Field(default=None, min_length=2, max_length=120)
@@ -120,6 +145,32 @@ class BusinessProfileRead(BaseModel):
     dashboard_snapshot: dict[str, Any] = Field(default_factory=dict)
     recent_activity: list[CabinetActivity] = Field(default_factory=list)
     cabinet_payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(
+        "followers_count",
+        "following_count",
+        "rating_sum",
+        "rating_count",
+        mode="before",
+    )
+    @classmethod
+    def normalize_counts(cls, value):
+        return 0 if value is None else value
+
+    @field_validator("map_visible", mode="before")
+    @classmethod
+    def normalize_map_visible(cls, value):
+        return False if value is None else value
+
+    @field_validator("dashboard_snapshot", "cabinet_payload", mode="before")
+    @classmethod
+    def normalize_objects(cls, value):
+        return {} if value is None else value
+
+    @field_validator("recent_activity", mode="before")
+    @classmethod
+    def normalize_activity(cls, value):
+        return [] if value is None else value
 
 
 class BusinessProfilePatch(ProfilePatch):
