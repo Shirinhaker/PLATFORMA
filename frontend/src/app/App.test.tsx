@@ -38,6 +38,13 @@ const userProfile = {
   avatar_x: 50,
   avatar_y: 50,
   avatar_zoom: 1,
+  followers_count: 0,
+  following_count: 0,
+  has_business: false,
+  dashboard_snapshot: {},
+  recent_activity: [],
+  specialist_profile: {},
+  cabinet_payload: {},
 };
 
 const businessProfile = {
@@ -61,6 +68,14 @@ const businessProfile = {
   logo_x: 50,
   logo_y: 50,
   logo_zoom: 1,
+  followers_count: 0,
+  following_count: 0,
+  rating_sum: 0,
+  rating_count: 0,
+  map_visible: false,
+  dashboard_snapshot: {},
+  recent_activity: [],
+  cabinet_payload: {},
 };
 
 function unauthorized() {
@@ -89,6 +104,7 @@ function profileApi(identity = userIdentity) {
     uploadGrantedFile: vi.fn(),
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
+    switchCabinet: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -189,7 +205,7 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
-  it("returns to the public home after profile logout", async () => {
+  it("returns to the public home after cabinet logout", async () => {
     const user = userEvent.setup();
     const api = profileApi();
     render(<App api={api} />);
@@ -198,7 +214,7 @@ describe("App", () => {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
-    await screen.findByLabelText("Ism");
+    await screen.findByRole("heading", { name: "Ali" });
     await user.click(screen.getByRole("button", { name: "Chiqish" }));
 
     expect(api.logout).toHaveBeenCalledOnce();
