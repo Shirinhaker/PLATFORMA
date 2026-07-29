@@ -75,6 +75,8 @@ export type CabinetActivity = {
   created_at: number;
 };
 
+export type CabinetPayload = Record<string, unknown>;
+
 export type UserProfile = {
   account_id: number;
   name: string;
@@ -96,6 +98,7 @@ export type UserProfile = {
   dashboard_snapshot: Record<string, number>;
   recent_activity: CabinetActivity[];
   specialist_profile: Record<string, unknown>;
+  cabinet_payload: CabinetPayload;
 };
 
 export type UserProfilePatch = Partial<Pick<
@@ -140,6 +143,7 @@ export type BusinessProfile = {
   map_visible: boolean;
   dashboard_snapshot: Record<string, number>;
   recent_activity: CabinetActivity[];
+  cabinet_payload: CabinetPayload;
 };
 
 export type BusinessProfilePatch = Partial<Pick<
