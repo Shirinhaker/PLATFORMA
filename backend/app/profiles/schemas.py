@@ -68,6 +68,7 @@ class UserProfileRead(BaseModel):
     dashboard_snapshot: dict[str, Any] = Field(default_factory=dict)
     recent_activity: list[CabinetActivity] = Field(default_factory=list)
     specialist_profile: dict[str, Any] = Field(default_factory=dict)
+    cabinet_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class UserProfilePatch(ProfilePatch):
@@ -118,6 +119,7 @@ class BusinessProfileRead(BaseModel):
     map_visible: bool = False
     dashboard_snapshot: dict[str, Any] = Field(default_factory=dict)
     recent_activity: list[CabinetActivity] = Field(default_factory=list)
+    cabinet_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class BusinessProfilePatch(ProfilePatch):
