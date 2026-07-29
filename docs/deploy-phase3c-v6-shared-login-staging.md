@@ -21,29 +21,51 @@ Read-only diagnostika dalili:
 - `BUILD v1656` va `static/index.html` o‘zgartirilmaydi.
 - CI yashil bo‘lmasdan migratsiyani ishga tushirmang.
 - Noaniq identity yozuvlarini avtomatik birlashtirmang.
+- V6 yozuvlari yaratilgach `alembic downgrade`ni rollback sifatida ishlatmang.
 
 ## Old shartlar
 
 1. PR #18 CI to‘liq yashil.
-2. `api-staging` PR #18 kodi bilan muvaffaqiyatli deploy qilingan.
-3. Alembic head: `0004_shared_login_cabinets`.
-4. Immutable snapshot va `media-manifest.json` V5 bilan bir xil fingerprintga ega.
-5. `KOPRIK_ENVIRONMENT=staging`.
-6. Database URL staging PostgreSQL’ga tegishli ekanligi tekshirilgan.
+2. PR #18 foydalanuvchi tasdig‘i bilan merge qilingan.
+3. `api-staging` PR #18 kodi bilan muvaffaqiyatli deploy qilingan.
+4. Staging PostgreSQL snapshot/backup V6 yozuvchi run’dan oldin olingan.
+5. Alembic head: `0004_shared_login_cabinets`.
+6. Immutable snapshot va `media-manifest.json` V5 bilan bir xil fingerprintga ega.
+7. `KOPRIK_ENVIRONMENT=staging`.
+8. Database URL staging PostgreSQL’ga tegishli ekanligi tekshirilgan.
 
-## Dry-run tekshiruvlari
+## Rasmiy Windows skripti
 
-Quyidagi narsalar yozmasdan tekshiriladi:
+Skript default holatda faqat dry-run qiladi:
 
-- V5 `run_id=4` statusi `failed` va stage `verify`;
-- V6 schema version `0004_phase3c_shared_login_v1`;
-- source snapshotda 20 ta shared-login nomzod;
-- nomzodlarning har birida bitta owner va bitta business;
-- mavjud target business account va business profile mavjud;
-- explicit demo/test marker `0`;
-- noaniq nomzod `0`.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  .\scripts\Koprik-Phase3C-Shared-Login-Staging-V6.ps1
+```
 
-Bitta shart mos kelmasa rollout to‘xtaydi.
+Dry-run quyidagilarni tasdiqlaydi va bazaga yozmaydi:
+
+- staging muhiti;
+- public Phase 3C flag o‘chiq;
+- V6 kod va CLI deploy qilingan;
+- V5 `run_id=4` statusi `failed`, stage `verify`;
+- V5 schema `0003_phase3c_dual_accounts_v4`;
+- aynan 20 ta `identity.account_type_mismatch`;
+- aynan 20 ta `identity.business_owner_unresolved`;
+- lokal backup SHA-256 mosligi.
+
+Dry-run yakuni:
+
+```text
+DRY_RUN_COMPLETE DATABASE_WRITES=0 FILE_UPLOADS=0
+```
+
+Faqat old shartlar to‘liq bajarilgach yozuvchi run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  .\scripts\Koprik-Phase3C-Shared-Login-Staging-V6.ps1 -Execute
+```
 
 ## Staging migratsiyasi
 
@@ -87,6 +109,7 @@ Birinchi run yakunida status `completed`, stage `verify` bo‘lishi kerak.
 
 Xuddi shu V6 CLI yana bir marta ishga tushiriladi. Ikkinchi run/replay natijasida:
 
+- o‘sha V6 run ID qayta ishlatiladi;
 - `idempotency_created=0`;
 - yangi akkaunt, profil, katalog, e’lon, reklama yoki media yozuvi yaratilmaydi;
 - mavjud mappinglar V6 run’ga bog‘langan holda saqlanadi.
@@ -105,14 +128,24 @@ Bitta tasdiqlangan shared-login juftlikda:
 
 ## Rollback
 
-Verify yoki smoke test muvaffaqiyatsiz bo‘lsa:
+### V6 yozuvchi run boshlanmasidan oldin
 
-- feature/deploy V6 branchdan oldingi staging revisionga qaytariladi;
-- V6 run production approval sifatida ishlatilmaydi;
-- V5 `run_id=4`ga tegilmaydi;
-- snapshot o‘zgartirilmaydi;
-- sabab read-only diagnostika bilan tekshiriladi;
-- production migratsiyasi boshlanmaydi.
+- deployni avvalgi staging revisionga qaytarish mumkin;
+- Alembic `0004` hali shared-login yozuvlar yaratmagan bo‘lsa, schema rollback alohida tekshiruv bilan ko‘rib chiqilishi mumkin.
+
+### V6 yozuvchi run boshlanganidan keyin
+
+`user` va `business` uchun bir xil loginlar paydo bo‘ladi. Eski global `accounts.login` UNIQUE chekloviga oddiy downgrade qilish mumkin emas. Shu sabab:
+
+1. `api-staging` trafik va workerlar to‘xtatiladi;
+2. V6 run’dan oldin olingan staging PostgreSQL snapshot/backup tiklanadi;
+3. avvalgi staging deploy revision qaytariladi;
+4. R2’da V6 run yaratgan yangi obyektlar bo‘lsa, V6 report/manifest bo‘yicha alohida tozalanadi;
+5. V5 `run_id=4` va immutable source snapshotga tegilmaydi;
+6. sabab read-only diagnostika bilan tekshiriladi;
+7. production migratsiyasi boshlanmaydi.
+
+V6 run muvaffaqiyatsiz bo‘lsa uni production approval sifatida ishlatish qat’iyan taqiqlanadi.
 
 ## Production gate
 
