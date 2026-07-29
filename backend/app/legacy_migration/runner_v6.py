@@ -5,11 +5,11 @@ from app.legacy_migration.reconcile_v6 import (
 )
 
 
-MIGRATION_SCHEMA_VERSION = "0004_phase3c_shared_login_v1"
+MIGRATION_SCHEMA_VERSION = "0005_phase3c_profile_cabinet_parity_v1"
 
 
 def build_database_runner(database, settings, storage):
-    """Build the Phase 3C V6 runner without mutating package imports."""
+    """Build the profile-complete migration runner without package import side effects."""
     base_runner.MIGRATION_SCHEMA_VERSION = MIGRATION_SCHEMA_VERSION
     base_runner.reconcile_accounts = reconcile_accounts
     base_runner.reconcile_businesses = reconcile_businesses
