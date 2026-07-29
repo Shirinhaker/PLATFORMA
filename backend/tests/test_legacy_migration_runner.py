@@ -93,6 +93,7 @@ class ExistingRunDatabase:
 async def test_dual_account_migration_does_not_reuse_old_schema_run(tmp_path):
     info = snapshot(tmp_path)
     old_run = migration_run(info)
+    old_run.schema_version = "0003_phase3c_dual_accounts_v2"
     old_run.stage = MigrationStage.VERIFY
     old_run.status = MigrationStatus.COMPLETED
     database = ExistingRunDatabase(old_run)
@@ -101,7 +102,7 @@ async def test_dual_account_migration_does_not_reuse_old_schema_run(tmp_path):
     current = await runner.load_or_create(info, "staging", None)
 
     assert current is not old_run
-    assert current.schema_version == "0003_phase3c_dual_accounts_v2"
+    assert current.schema_version == "0003_phase3c_dual_accounts_v3"
     assert database.session_value.added == [current]
 
 
