@@ -11,7 +11,7 @@ from app.legacy_migration.model import (
     MigrationStage,
     MigrationStatus,
 )
-from app.legacy_migration.reconcile_v6 import (
+from app.legacy_migration.profile_parity_v7 import (
     reconcile_accounts,
     reconcile_businesses,
 )
@@ -48,6 +48,14 @@ def source_snapshot() -> sqlite3.Connection:
             title TEXT, status TEXT, total_amount INTEGER, created_at INTEGER,
             updated_at INTEGER, problem_open INTEGER
         );
+        CREATE TABLE order_items (
+            id INTEGER PRIMARY KEY, order_id INTEGER, item_name TEXT,
+            qty INTEGER, line_total INTEGER, pass_hash TEXT
+        );
+        CREATE TABLE order_messages (
+            id INTEGER PRIMARY KEY, order_id INTEGER, text TEXT,
+            is_deleted INTEGER, created_at INTEGER, secret TEXT
+        );
         CREATE TABLE saved (
             id INTEGER PRIMARY KEY, user_id INTEGER, target_kind TEXT,
             target_id INTEGER, created_at INTEGER
@@ -75,6 +83,39 @@ def source_snapshot() -> sqlite3.Connection:
             id INTEGER PRIMARY KEY, business_id INTEGER, target_kind TEXT,
             target_id INTEGER
         );
+        CREATE TABLE listings (
+            id INTEGER PRIMARY KEY, user_id INTEGER, business_id INTEGER,
+            title TEXT, status TEXT, is_demo INTEGER
+        );
+        CREATE TABLE listing_media (
+            id INTEGER PRIMARY KEY, listing_id INTEGER, mtype TEXT,
+            tg_file_id TEXT, pos INTEGER, is_demo INTEGER
+        );
+        CREATE TABLE stories (
+            id INTEGER PRIMARY KEY, owner_type TEXT, owner_id INTEGER,
+            caption TEXT, status TEXT, is_demo INTEGER
+        );
+        CREATE TABLE payment_requests (
+            id INTEGER PRIMARY KEY, actor_type TEXT, user_id INTEGER,
+            business_id INTEGER, status TEXT, amount_snapshot INTEGER,
+            is_demo INTEGER
+        );
+        CREATE TABLE payment_attempts (
+            id INTEGER PRIMARY KEY, payment_request_id INTEGER,
+            attempt_no INTEGER, review_status TEXT, secret TEXT
+        );
+        CREATE TABLE payment_events (
+            id INTEGER PRIMARY KEY, payment_request_id INTEGER,
+            from_status TEXT, to_status TEXT, created_at INTEGER
+        );
+        CREATE TABLE staff (
+            id INTEGER PRIMARY KEY, business_id INTEGER, name TEXT,
+            pass_hash TEXT, is_demo INTEGER
+        );
+        CREATE TABLE documents (
+            id INTEGER PRIMARY KEY, business_id INTEGER, title TEXT,
+            status TEXT, is_demo INTEGER
+        );
         """
     )
     source.execute(
@@ -100,29 +141,108 @@ def source_snapshot() -> sqlite3.Connection:
     source.executemany(
         "INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [
-            (46, "user", 5, "business", 4, "product", "Muhr", "new", 350000, 1722211200, 1722211200, 0),
-            (47, "user", 9, "business", 4, "service", "Dizayn", "accepted", 15000, 1722211300, 1722211300, 0),
+            (
+                46, "user", 5, "business", 4, "product", "Muhr", "new",
+                350000, 1722211200, 1722211200, 0,
+            ),
+            (
+                47, "user", 9, "business", 4, "service", "Dizayn",
+                "accepted", 15000, 1722211300, 1722211300, 0,
+            ),
         ],
     )
+    source.executemany(
+        "INSERT INTO order_items VALUES (?,?,?,?,?,?)",
+        [
+            (1, 46, "Muhr", 2, 350000, "must-not-leak"),
+            (2, 47, "Dizayn", 1, 15000, "must-not-leak"),
+        ],
+    )
+    source.execute(
+        "INSERT INTO order_messages VALUES (1,46,'Tayyor bo‘ldimi?',0,1722211210,'must-not-leak')"
+    )
     source.execute("INSERT INTO saved VALUES (1,5,'business',4,1722211200)")
-    source.execute("INSERT INTO notifications VALUES (1,5,'user',5,'Yangi xabar',0,1722211200)")
+    source.execute(
+        "INSERT INTO notifications VALUES (1,5,'user',5,'Yangi xabar',0,1722211200)"
+    )
     source.executemany(
         "INSERT INTO follows VALUES (?,?,?,?,?)",
-        [(1,5,'business',4,1722211200), (2,9,'user',5,1722211200), (3,8,'business',4,1722211200)],
+        [
+            (1, 5, "business", 4, 1722211200),
+            (2, 9, "user", 5, 1722211200),
+            (3, 8, "business", 4, 1722211200),
+        ],
     )
-    source.execute("INSERT INTO specialists VALUES (1,5,'Dizayner','Tajriba','100000','Qumqo‘rg‘on',1,1)")
+    source.execute(
+        "INSERT INTO specialists VALUES (1,5,'Dizayner','Tajriba','100000','Qumqo‘rg‘on',1,1)"
+    )
     source.execute("INSERT INTO items VALUES (1,4,'Muhr','15000',1,2,1)")
     source.execute("INSERT INTO debtors VALUES (1,4,'Vali',100000)")
     source.execute("INSERT INTO business_follows VALUES (1,4,'business',8)")
+    source.executemany(
+        "INSERT INTO listings VALUES (?,?,?,?,?,?)",
+        [
+            (3, 5, None, "Uy sotiladi", "active", 0),
+            (4, 5, 4, "Biznes e’loni", "active", 0),
+            (5, 5, 4, "Demo e’lon", "active", 1),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO listing_media VALUES (?,?,?,?,?,?)",
+        [
+            (1, 3, "photo", "real-photo", 0, 0),
+            (2, 5, "photo", "demo-photo", 0, 1),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO stories VALUES (?,?,?,?,?,?)",
+        [
+            (1, "user", 5, "Haqiqiy user istoriya", "active", 0),
+            (2, "business", 4, "Haqiqiy biznes istoriya", "active", 0),
+            (3, "business", 4, "Demo istoriya", "active", 1),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO payment_requests VALUES (?,?,?,?,?,?,?)",
+        [
+            (1, "user", 5, None, "approved", 10000, 0),
+            (2, "business", 5, 4, "approved", 149000, 0),
+            (3, "business", 5, 4, "approved", 99000, 1),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO payment_attempts VALUES (?,?,?,?,?)",
+        [
+            (1, 1, 1, "approved", "must-not-leak"),
+            (2, 2, 1, "approved", "must-not-leak"),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO payment_events VALUES (?,?,?,?,?)",
+        [
+            (1, 1, "pending", "approved", 1722211220),
+            (2, 2, "pending", "approved", 1722211230),
+        ],
+    )
+    source.executemany(
+        "INSERT INTO staff VALUES (?,?,?,?,?)",
+        [
+            (1, 4, "Haqiqiy xodim", "must-not-leak", 0),
+            (2, 4, "Demo xodim", "must-not-leak", 1),
+        ],
+    )
+    source.execute(
+        "INSERT INTO documents VALUES (1,4,'Shartnoma','active',0)"
+    )
     source.commit()
     return source
 
 
-async def test_v6_migrates_shared_login_and_complete_profile_cabinets(db_session):
+async def test_complete_cabinet_migration_preserves_only_real_data(db_session):
     old_run = MigrationRun(
         source_database_sha256="a" * 64,
         media_manifest_sha256="b" * 64,
-        schema_version="0004_phase3c_shared_login_v1",
+        schema_version="0005_phase3c_profile_cabinet_parity_v1",
         environment=MigrationEnvironment.STAGING,
         stage=MigrationStage.VERIFY,
         status=MigrationStatus.COMPLETED,
@@ -195,7 +315,7 @@ async def test_v6_migrates_shared_login_and_complete_profile_cabinets(db_session
     run = MigrationRun(
         source_database_sha256="a" * 64,
         media_manifest_sha256="b" * 64,
-        schema_version="0005_phase3c_profile_cabinet_parity_v1",
+        schema_version="0006_phase3c_complete_cabinet_v1",
         environment=MigrationEnvironment.STAGING,
         stage=MigrationStage.ACCOUNTS,
         status=MigrationStatus.RUNNING,
@@ -246,7 +366,21 @@ async def test_v6_migrates_shared_login_and_complete_profile_cabinets(db_session
     assert user_profile.dashboard_snapshot["saved"] == 1
     assert user_profile.dashboard_snapshot["unread"] == 1
     assert user_profile.specialist_profile["kasb"] == "Dizayner"
-    assert user_profile.cabinet_payload["orders"][0]["title"] == "Muhr"
+    user_payload = user_profile.cabinet_payload
+    assert user_payload["orders"][0]["title"] == "Muhr"
+    assert user_payload["orders"][0]["items"][0]["item_name"] == "Muhr"
+    assert "pass_hash" not in user_payload["orders"][0]["items"][0]
+    assert "secret" not in user_payload["orders"][0]["messages"][0]
+    assert {row["title"] for row in user_payload["listings"]} == {
+        "Uy sotiladi",
+        "Biznes e’loni",
+    }
+    assert user_payload["listings"][0]["media"][0]["tg_file_id"] == "real-photo"
+    assert [row["caption"] for row in user_payload["stories"]] == [
+        "Haqiqiy user istoriya"
+    ]
+    assert len(user_payload["payments"]) == 1
+    assert "secret" not in user_payload["payments"][0]["attempts"][0]
 
     assert business_profile.followers_count == 2
     assert business_profile.following_count == 1
@@ -256,5 +390,22 @@ async def test_v6_migrates_shared_login_and_complete_profile_cabinets(db_session
     assert business_profile.dashboard_snapshot["new_orders"] == 1
     assert business_profile.dashboard_snapshot["low_stock"] == 1
     assert business_profile.dashboard_snapshot["debt_total"] == 100000
-    assert len(business_profile.cabinet_payload["orders"]) == 2
-    assert business_profile.cabinet_payload["items"][0]["name"] == "Muhr"
+    business_payload = business_profile.cabinet_payload
+    assert len(business_payload["orders"]) == 2
+    assert business_payload["orders"][0]["items"][0]["item_name"] == "Muhr"
+    assert business_payload["items"][0]["name"] == "Muhr"
+    assert [row["title"] for row in business_payload["listings"]] == [
+        "Biznes e’loni"
+    ]
+    assert [row["caption"] for row in business_payload["stories"]] == [
+        "Haqiqiy biznes istoriya"
+    ]
+    assert len(business_payload["payment_requests"]) == 1
+    assert len(business_payload["subscription_payments"]) == 1
+    assert [row["name"] for row in business_payload["staff"]] == [
+        "Haqiqiy xodim"
+    ]
+    assert "pass_hash" not in business_payload["staff"][0]
+    assert [row["title"] for row in business_payload["documents"]] == [
+        "Shartnoma"
+    ]
