@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.auth.router import router as auth_router
-from app.auth.service import AuthService
+from app.auth.shared_login import SharedLoginAuthService
+from app.auth.shared_login_router import router as shared_login_router
 from app.advertisements.repository import AdvertisementService
 from app.advertisements.router import router as advertisements_router
 from app.cache.client import RedisClient
@@ -26,6 +27,17 @@ from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
 
 
+def _remove_legacy_login_start_route() -> None:
+    auth_router.routes[:] = [
+        route
+        for route in auth_router.routes
+        if not (
+            getattr(route, "path", "") == "/api/v1/auth/login/start"
+            and "POST" in (getattr(route, "methods", set()) or set())
+        )
+    ]
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
     configure_logging(resolved.service_name, resolved.environment)
@@ -38,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await redis_client.start()
         app.state.database = database
         app.state.redis = redis_client
-        app.state.auth_service = AuthService(
+        app.state.auth_service = SharedLoginAuthService(
             database.session,
             redis_client,
             resolved,
@@ -87,6 +99,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.r2 = build_r2_storage(resolved)
     app.include_router(platform_router)
     app.include_router(media_router)
+    _remove_legacy_login_start_route()
+    app.include_router(shared_login_router)
     app.include_router(auth_router)
     app.include_router(profiles_router)
     app.include_router(public_discovery_router)

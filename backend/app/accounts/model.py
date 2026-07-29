@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import BigInteger, DateTime, Enum as SqlEnum, Identity, Index, String, text
+from sqlalchemy import BigInteger, DateTime, Enum as SqlEnum, Identity, Index, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -37,7 +37,7 @@ class Account(Base):
         ACCOUNT_TYPE_ENUM,
         nullable=False,
     )
-    login: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    login: Mapped[str] = mapped_column(String(80), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -49,3 +49,11 @@ class Account(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+
+
+Index(
+    "uq_accounts_login_type_lower",
+    func.lower(Account.login),
+    Account.account_type,
+    unique=True,
+)
