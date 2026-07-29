@@ -96,5 +96,7 @@ describe("HomeScreen", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /takliflar/i }))
       .not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /e’lonlar/i }))
+      .not.toBeInTheDocument();
   });
 });

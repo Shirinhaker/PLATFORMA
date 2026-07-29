@@ -5,28 +5,32 @@ import {
 } from "react";
 
 import type { ApiClient } from "../../api/client";
-import type { PublicSearchItem } from "../../api/types";
+import type { PublicCatalogItem, PublicSearchItem } from "../../api/types";
+import { CatalogItemCard } from "./CatalogItemCard";
 import { findCatalogDirection } from "./catalog-data";
 import { PublicSearchResults } from "./PublicSearchResults";
 
 interface CategoryScreenProps {
   categoryId: string;
   searchPublic?: ApiClient["searchPublic"];
+  getCatalogItems?: ApiClient["getCatalogItems"];
 }
 
 export function CategoryScreen({
   categoryId,
   searchPublic,
+  getCatalogItems,
 }: CategoryScreenProps) {
   const direction = findCatalogDirection(categoryId);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const [items, setItems] = useState<PublicSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [catalogItems, setCatalogItems] = useState<PublicCatalogItem[]>([]);
 
   useEffect(() => {
     if (!direction || !selectedActivity) return;
-    if (!searchPublic) {
+    if (!searchPublic && !getCatalogItems) {
       setError("Qidiruv xizmati hozircha ulanmagan.");
       return;
     }
@@ -35,15 +39,28 @@ export function CategoryScreen({
     setItems([]);
     setLoading(true);
     setError("");
-    searchPublic({
-      result_type: "business",
-      direction: direction.name,
-      activity_type: selectedActivity,
-      page: 1,
-      page_size: 20,
-    })
-      .then((response) => {
-        if (active) setItems(response.items);
+    const profiles = searchPublic
+      ? searchPublic({
+        result_type: "business",
+        direction: direction.name,
+        activity_type: selectedActivity,
+        page: 1,
+        page_size: 20,
+      })
+      : Promise.resolve(null);
+    const catalog = getCatalogItems
+      ? getCatalogItems({
+        direction: direction.name,
+        activity_type: selectedActivity,
+        page: 1,
+        page_size: 20,
+      })
+      : Promise.resolve(null);
+    Promise.all([profiles, catalog])
+      .then(([profileResponse, catalogResponse]) => {
+        if (!active) return;
+        setItems(profileResponse?.items ?? []);
+        setCatalogItems(catalogResponse?.items ?? []);
       })
       .catch(() => {
         if (active) {
@@ -57,7 +74,7 @@ export function CategoryScreen({
     return () => {
       active = false;
     };
-  }, [direction, searchPublic, selectedActivity]);
+  }, [direction, getCatalogItems, searchPublic, selectedActivity]);
 
   if (!direction) {
     return (
@@ -112,6 +129,13 @@ export function CategoryScreen({
             error={error}
             emptyLabel="Bu faoliyat turi bo‘yicha ochiq profil topilmadi."
           />
+          {catalogItems.length ? (
+            <div className="public-catalog-items-grid">
+              {catalogItems.map((item) => (
+                <CatalogItemCard item={item} key={item.public_id} />
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
     </main>

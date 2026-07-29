@@ -162,6 +162,71 @@ describe("ApiClient", () => {
     );
   });
 
+  it("serializes catalog filters without auth or CSRF", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({
+      items: [],
+      page: 2,
+      page_size: 20,
+      total: 0,
+      pages: 0,
+    }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getCatalogItems({
+      kind: "service",
+      district: "Qumqo‘rg‘on",
+      page: 2,
+      page_size: 20,
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/public/catalog/items"
+        + "?kind=service"
+        + "&district=Qumqo%E2%80%98rg%E2%80%98on"
+        + "&page=2&page_size=20",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
+    expect(fetcher.mock.calls[0]?.[1]?.headers).not.toHaveProperty(
+      "X-CSRF-Token",
+    );
+  });
+
+  it("serializes public advertisement location without CSRF", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse([]));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getAdvertisements({
+      placement: "home",
+      region: "Surxondaryo",
+      district: "Qumqo‘rg‘on",
+    });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/public/advertisements"
+        + "?placement=home"
+        + "&region=Surxondaryo"
+        + "&district=Qumqo%E2%80%98rg%E2%80%98on",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
+    expect(fetcher.mock.calls[0]?.[1]?.headers).not.toHaveProperty(
+      "X-CSRF-Token",
+    );
+  });
+
   it("uploads granted bytes without browser credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, {
       status: 200,

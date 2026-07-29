@@ -1,7 +1,12 @@
 import { type FormEvent, useState } from "react";
+import type { ApiClient } from "../../api/client";
+import { HomeAdvertisements } from "./HomeAdvertisements";
+import type { HomeLocation } from "./location-storage";
 
 interface HomeScreenProps {
   currentDistrict?: string;
+  getAdvertisements?: ApiClient["getAdvertisements"];
+  location?: HomeLocation | null;
   onSearch(query: string): void;
   onOpenCatalog(): void;
   onOpenLocation(): void;
@@ -33,6 +38,8 @@ function LocationArtwork() {
 
 export function HomeScreen({
   currentDistrict,
+  getAdvertisements,
+  location = null,
   onSearch,
   onOpenCatalog,
   onOpenLocation,
@@ -103,6 +110,13 @@ export function HomeScreen({
           </div>
         </aside>
       </section>
+
+      {getAdvertisements ? (
+        <HomeAdvertisements
+          getAdvertisements={getAdvertisements}
+          location={location}
+        />
+      ) : null}
 
       <section className="public-home__trust" aria-label="Koprik afzalliklari">
         <div>

@@ -7,10 +7,12 @@ import {
 
 import type { ApiClient } from "../../api/client";
 import type {
+  PublicCatalogItem,
   PublicSearchItem,
   PublicResultType,
 } from "../../api/types";
 import { searchCatalogDirections } from "./catalog-data";
+import { CatalogItemCard } from "./CatalogItemCard";
 import type { HomeLocation } from "./location-storage";
 import { PublicSearchResults } from "./PublicSearchResults";
 
@@ -18,6 +20,7 @@ interface CatalogScreenProps {
   initialQuery: string;
   location?: HomeLocation | null;
   searchPublic?: ApiClient["searchPublic"];
+  getCatalogItems?: ApiClient["getCatalogItems"];
   onOpenCategory(categoryId: string): void;
 }
 
@@ -31,12 +34,12 @@ const SEARCH_TYPES = [
 ] as const;
 
 const SEARCH_SCOPES = ["Mahalla", "Tuman", "Viloyat", "Respublika"] as const;
-const UNSUPPORTED_SEARCH_TYPES = new Set(["Mahsulot", "Xizmat"]);
-
 function resultType(
   searchType: (typeof SEARCH_TYPES)[number],
 ): PublicResultType {
   if (searchType === "Biznes") return "business";
+  if (searchType === "Mahsulot") return "product";
+  if (searchType === "Xizmat") return "service";
   if (searchType === "Mutaxassis" || searchType === "Foydalanuvchi") {
     return "user";
   }
@@ -47,6 +50,7 @@ export function CatalogScreen({
   initialQuery,
   location = null,
   searchPublic,
+  getCatalogItems,
   onOpenCategory,
 }: CatalogScreenProps) {
   const [query, setQuery] = useState(initialQuery);
@@ -61,15 +65,16 @@ export function CatalogScreen({
     ? ""
     : "Qidiruv xizmati hozircha ulanmagan.");
   const directions = useMemo(() => searchCatalogDirections(query), [query]);
+  const [catalogItems, setCatalogItems] = useState<PublicCatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(Boolean(getCatalogItems));
+  const [catalogError, setCatalogError] = useState("");
 
   useEffect(() => {
-    if (!searchPublic || UNSUPPORTED_SEARCH_TYPES.has(searchType)) {
+    if (!searchPublic) {
       setItems([]);
       setTotal(0);
       setLoading(false);
-      setError(searchPublic
-        ? "Mahsulot va xizmat e’lonlari keyingi bosqichda ulanadi."
-        : "Qidiruv xizmati hozircha ulanmagan.");
+      setError("Qidiruv xizmati hozircha ulanmagan.");
       return;
     }
 
@@ -115,6 +120,44 @@ export function CatalogScreen({
     };
   }, [location, query, scope, searchPublic, searchType]);
 
+  useEffect(() => {
+    if (!getCatalogItems) {
+      setCatalogLoading(false);
+      return;
+    }
+    let active = true;
+    setCatalogLoading(true);
+    setCatalogError("");
+    getCatalogItems({
+      q: query.trim(),
+      ...(searchType === "Mahsulot" ? { kind: "product" as const } : {}),
+      ...(searchType === "Xizmat" ? { kind: "service" as const } : {}),
+      ...(scope === "Mahalla" && location?.neighborhood
+        ? { mahalla: location.neighborhood }
+        : {}),
+      ...(scope === "Tuman" && location?.district
+        ? { district: location.district }
+        : {}),
+      ...(scope === "Viloyat" && location?.region
+        ? { region: location.region }
+        : {}),
+      page: 1,
+      page_size: 20,
+    })
+      .then((response) => {
+        if (active) setCatalogItems(response.items);
+      })
+      .catch(() => {
+        if (active) setCatalogError("Katalogni yuklab bo‘lmadi.");
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [getCatalogItems, location, query, scope, searchType]);
+
   return (
     <main className="public-catalog">
       <section className="public-catalog__heading">
@@ -141,11 +184,7 @@ export function CatalogScreen({
             {SEARCH_TYPES.map((label) => (
               <button
                 aria-pressed={searchType === label}
-                disabled={UNSUPPORTED_SEARCH_TYPES.has(label)}
                 key={label}
-                title={UNSUPPORTED_SEARCH_TYPES.has(label)
-                  ? "E’lonlar Phase 3C bosqichida ulanadi"
-                  : undefined}
                 type="button"
                 onClick={() => setSearchType(label)}
               >
@@ -171,6 +210,26 @@ export function CatalogScreen({
           </div>
         </div>
       </section>
+
+      {getCatalogItems ? (
+        <section className="public-catalog__items" aria-live="polite">
+          <div className="public-catalog__result-heading">
+            <h2>Mahsulot va xizmatlar</h2>
+            <span>{catalogLoading ? "Yuklanmoqda" : `${catalogItems.length} ta`}</span>
+          </div>
+          {catalogError ? (
+            <div className="public-search-status" role="alert">
+              {catalogError}
+            </div>
+          ) : (
+            <div className="public-catalog-items-grid">
+              {catalogItems.map((item) => (
+                <CatalogItemCard item={item} key={item.public_id} />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="public-catalog__profiles" aria-live="polite">
         <div className="public-catalog__result-heading">

@@ -161,7 +161,7 @@ export type ProfileImageAttachment = {
   zoom: number;
 };
 
-export type PublicResultKind = "user" | "business";
+export type PublicResultKind = "user" | "business" | "product" | "service";
 export type PublicResultType = "all" | PublicResultKind;
 
 export type PublicSearchParams = {
@@ -188,6 +188,11 @@ export type PublicSearchItem = {
   district: string;
   mahalla: string;
   image_url: string;
+  price_text?: string;
+  owner_state?: "linked" | "unlinked";
+  owner_label?: string;
+  can_order?: boolean;
+  can_chat?: boolean;
 };
 
 export type PublicSearchResponse = {
@@ -196,4 +201,62 @@ export type PublicSearchResponse = {
   page_size: number;
   total: number;
   pages: number;
+};
+
+export type PublicCatalogParams = {
+  kind?: "product" | "service";
+  q?: string;
+  direction?: string;
+  activity_type?: string;
+  region?: string;
+  district?: string;
+  mahalla?: string;
+  page?: number;
+  page_size?: number;
+};
+
+export type PublicCatalogItem = {
+  kind: "product" | "service";
+  public_id: string;
+  name: string;
+  price_text: string;
+  note: string;
+  owner_state: "linked" | "unlinked";
+  owner_public_id: string;
+  owner_name: string;
+  owner_label: string;
+  direction: string;
+  activity_type: string;
+  region: string;
+  district: string;
+  mahalla: string;
+  image_url: string;
+  can_order: boolean;
+  can_chat: boolean;
+};
+
+export type PublicCatalogResponse = {
+  items: PublicCatalogItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
+};
+
+export type PublicAdvertisementParams = {
+  placement?: string;
+  region?: string;
+  district?: string;
+};
+
+export type PublicAdvertisement = {
+  public_id: string;
+  title: string;
+  caption: string;
+  owner_public_id: string;
+  desktop_image_url: string;
+  mobile_image_url: string;
+  crop_x: number;
+  crop_y: number;
+  crop_zoom: number;
 };

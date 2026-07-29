@@ -49,10 +49,11 @@ export function PublicSearchResults({
   return (
     <div className="public-search-grid">
       {items.map((item) => {
+        const content = item.kind === "product" || item.kind === "service";
         const location = resultLocation(item);
         const secondary = item.kind === "business"
           ? [item.direction, item.activity_type].filter(Boolean).join(" · ")
-          : location;
+          : content ? item.price_text || "" : location;
 
         return (
           <article className="public-search-card" key={item.public_id}>
@@ -65,7 +66,13 @@ export function PublicSearchResults({
             <div className="public-search-card__body">
               <div className="public-search-card__topline">
                 <span>
-                  {item.kind === "business" ? "Biznes" : "Foydalanuvchi"}
+                  {item.kind === "business"
+                    ? "Biznes"
+                    : item.kind === "product"
+                      ? "Mahsulot"
+                      : item.kind === "service"
+                        ? "Xizmat"
+                        : "Foydalanuvchi"}
                 </span>
                 {item.public_username ? (
                   <small>@{item.public_username}</small>
@@ -79,6 +86,14 @@ export function PublicSearchResults({
               {item.description ? (
                 <p className="public-search-card__description">
                   {item.description}
+                </p>
+              ) : null}
+              {content && item.owner_label ? (
+                <p className={item.owner_state === "unlinked"
+                  ? "public-search-card__warning"
+                  : undefined}
+                >
+                  {item.owner_label}
                 </p>
               ) : null}
             </div>

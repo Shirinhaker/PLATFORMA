@@ -73,4 +73,59 @@ describe("CatalogScreen", () => {
     expect(screen.getByText("Profil natijalarini yuklab bo‘lmadi"))
       .toBeInTheDocument();
   });
+
+  it("enables product search and loads public catalog cards", async () => {
+    const user = userEvent.setup();
+    const searchPublic = vi.fn().mockResolvedValue({
+      items: [],
+      page: 1,
+      page_size: 20,
+      total: 0,
+      pages: 0,
+    });
+    const getCatalogItems = vi.fn().mockResolvedValue({
+      items: [{
+        kind: "product",
+        public_id: "p_public",
+        name: "Mebel",
+        price_text: "Kelishiladi",
+        note: "",
+        owner_state: "unlinked",
+        owner_public_id: "",
+        owner_name: "Turon Savdo",
+        owner_label: "Egasi hali akkauntini bog‘lamagan",
+        direction: "",
+        activity_type: "",
+        region: "",
+        district: "Qumqo‘rg‘on",
+        mahalla: "",
+        image_url: "",
+        can_order: false,
+        can_chat: false,
+      }],
+      page: 1,
+      page_size: 20,
+      total: 1,
+      pages: 1,
+    });
+
+    render(
+      <CatalogScreen
+        initialQuery=""
+        searchPublic={searchPublic}
+        getCatalogItems={getCatalogItems}
+        onOpenCategory={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Mebel")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Mahsulot" }));
+    await waitFor(() => {
+      expect(searchPublic).toHaveBeenLastCalledWith(
+        expect.objectContaining({ result_type: "product" }),
+      );
+    });
+    expect(screen.getByRole("button", { name: "Mahsulot" }))
+      .not.toBeDisabled();
+  });
 });

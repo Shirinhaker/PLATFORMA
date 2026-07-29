@@ -33,7 +33,10 @@ import { SessionStatus } from "./SessionStatus";
 
 type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;
-type PublicSearchApi = Pick<ApiClient, "searchPublic">;
+type PublicSearchApi = Pick<
+  ApiClient,
+  "searchPublic" | "getCatalogItems" | "getAdvertisements"
+>;
 type AppApi = (
   SessionApi
   & Partial<AuthApi>
@@ -100,6 +103,16 @@ export function App({ api }: { api: AppApi }) {
   const searchPublic = useMemo(() => (
     typeof api.searchPublic === "function"
       ? api.searchPublic.bind(api)
+      : undefined
+  ), [api]);
+  const getCatalogItems = useMemo(() => (
+    typeof api.getCatalogItems === "function"
+      ? api.getCatalogItems.bind(api)
+      : undefined
+  ), [api]);
+  const getAdvertisements = useMemo(() => (
+    typeof api.getAdvertisements === "function"
+      ? api.getAdvertisements.bind(api)
       : undefined
   ), [api]);
 
@@ -214,6 +227,7 @@ export function App({ api }: { api: AppApi }) {
             initialQuery={navigation.query}
             location={homeLocation}
             searchPublic={searchPublic}
+            getCatalogItems={getCatalogItems}
             onOpenCategory={(categoryId) => dispatch({
               type: "OPEN_CATEGORY",
               categoryId,
@@ -225,6 +239,7 @@ export function App({ api }: { api: AppApi }) {
           <CategoryScreen
             categoryId={navigation.categoryId ?? ""}
             searchPublic={searchPublic}
+            getCatalogItems={getCatalogItems}
           />
         );
       case "location":
@@ -244,6 +259,8 @@ export function App({ api }: { api: AppApi }) {
         return (
           <HomeScreen
             currentDistrict={homeLocation?.district}
+            getAdvertisements={getAdvertisements}
+            location={homeLocation}
             onSearch={(query) => dispatch({ type: "OPEN_CATALOG", query })}
             onOpenCatalog={() => dispatch({
               type: "OPEN_CATALOG",
