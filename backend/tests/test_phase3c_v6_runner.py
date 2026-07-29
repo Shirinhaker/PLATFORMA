@@ -69,13 +69,15 @@ class Database:
 
 
 @pytest.mark.asyncio
-async def test_profile_parity_runner_does_not_reuse_shared_login_run(tmp_path):
+async def test_complete_cabinet_runner_does_not_reuse_profile_parity_run(
+    tmp_path,
+):
     info = snapshot(tmp_path)
     previous = MigrationRun(
         id=5,
         source_database_sha256=info.database_sha256,
         media_manifest_sha256=info.manifest_sha256,
-        schema_version="0004_phase3c_shared_login_v1",
+        schema_version="0005_phase3c_profile_cabinet_parity_v1",
         environment=MigrationEnvironment.STAGING,
         stage=MigrationStage.VERIFY,
         status=MigrationStatus.COMPLETED,
@@ -89,7 +91,7 @@ async def test_profile_parity_runner_does_not_reuse_shared_login_run(tmp_path):
 
     current = await runner.load_or_create(info, "staging", None)
 
-    assert MIGRATION_SCHEMA_VERSION == "0005_phase3c_profile_cabinet_parity_v1"
+    assert MIGRATION_SCHEMA_VERSION == "0006_phase3c_complete_cabinet_v1"
     assert current is not previous
     assert current.schema_version == MIGRATION_SCHEMA_VERSION
     assert current.stage is MigrationStage.SNAPSHOT
