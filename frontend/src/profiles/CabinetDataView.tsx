@@ -9,15 +9,34 @@ const FIELD_LABELS: Record<string, string> = {
   item_name: "Mahsulot/xizmat",
   status: "Holati",
   phone: "Telefon",
+  role: "Vazifasi",
   price: "Narxi",
   price_text: "Narxi",
+  total: "Jami",
   total_amount: "Jami",
   amount: "Summa",
+  amount_snapshot: "Summa",
+  balance: "Qoldiq",
   qty: "Miqdor",
+  stock_qty: "Ombordagi qoldiq",
+  min_qty: "Minimal qoldiq",
   note: "Izoh",
   descr: "Tavsif",
   description: "Tavsif",
+  caption: "Izoh",
+  text: "Xabar",
   address: "Manzil",
+  from_addr: "Qayerdan",
+  to_addr: "Qayerga",
+  region: "Viloyat",
+  district: "Tuman",
+  mahalla: "Mahalla",
+  car_model: "Avtomobil",
+  car_plate: "Davlat raqami",
+  target_kind: "Obyekt turi",
+  target_id: "Obyekt ID",
+  actor_type: "Profil turi",
+  order_type: "Buyurtma turi",
   cat: "Toifa",
   kind: "Turi",
   created_at: "Yaratilgan",
@@ -35,7 +54,14 @@ function present(value: unknown): string {
 
 
 function headingEntry(row: RecordValue, index: number) {
-  for (const key of ["title", "name", "item_name"] as const) {
+  for (const key of [
+    "title",
+    "name",
+    "item_name",
+    "caption",
+    "to_addr",
+    "car_model",
+  ] as const) {
     const value = row[key];
     if (value !== null && value !== undefined && value !== "") {
       return { key, value };
@@ -49,14 +75,16 @@ function usefulEntries(row: RecordValue, headingKey: string) {
   const preferred = Object.keys(FIELD_LABELS)
     .filter((key) => key !== headingKey && key in row)
     .map((key) => [key, row[key]] as const);
-  if (preferred.length) return preferred.slice(0, 7);
+  if (preferred.length) return preferred.slice(0, 10);
   return Object.entries(row)
     .filter(([key]) => (
       key !== headingKey
       && !key.includes("hash")
       && !key.includes("token")
+      && !key.includes("secret")
+      && key !== "content"
     ))
-    .slice(0, 7);
+    .slice(0, 10);
 }
 
 
