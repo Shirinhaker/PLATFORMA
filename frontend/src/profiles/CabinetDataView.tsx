@@ -86,7 +86,7 @@ export function CabinetDataView({
       ) : (
         <div className="cabinet-data-view__list">
           {list.map((item, index) => {
-            const row = item && typeof item === "object"
+            const row: RecordValue = item && typeof item === "object"
               ? item as RecordValue
               : { value: item };
             const heading = headingEntry(row, index);
