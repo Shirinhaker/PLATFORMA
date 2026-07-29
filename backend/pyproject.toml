@@ -31,6 +31,7 @@ test = [
 [project.scripts]
 koprik-worker = "app.outbox.worker:main"
 koprik-migrate-legacy = "app.legacy_migration.cli_v6:main"
+koprik-migrate-complete-cabinets = "app.legacy_migration.cli_v6:main"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
