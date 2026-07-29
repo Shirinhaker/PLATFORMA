@@ -96,6 +96,102 @@ async def test_runner_executes_fixed_order_and_resumes(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_failed_verify_run_resumes_from_media_with_same_run_id(
+    tmp_path,
+):
+    info = snapshot(tmp_path)
+    run = migration_run(info)
+    run.stage = MigrationStage.VERIFY
+    run.status = MigrationStatus.FAILED
+    run.finished_at = datetime.now(UTC)
+    run.counters_json = {
+        "catalog": {"created": 3},
+        "media": {"created": 0},
+        "verify": {"passed": False},
+    }
+    calls = []
+
+    async def load_or_create(snapshot_info, environment, approval):
+        return run
+
+    async def save(value):
+        return value
+
+    def handler(stage):
+        async def execute(snapshot_info, value):
+            calls.append(stage.value)
+            if stage is MigrationStage.VERIFY:
+                return VerificationReport(passed=True, gates=[])
+            return {"created": 0, "reused": 2}
+
+        return execute
+
+    runner = MigrationRunner(
+        load_or_create=load_or_create,
+        save=save,
+        stage_handlers={
+            MigrationStage.MEDIA: handler(MigrationStage.MEDIA),
+            MigrationStage.VERIFY: handler(MigrationStage.VERIFY),
+        },
+    )
+
+    resumed = await runner.run(info, "staging")
+
+    assert resumed.id == 1
+    assert calls == ["media", "verify"]
+    assert resumed.status is MigrationStatus.COMPLETED
+    assert resumed.counters_json["catalog"] == {"created": 3}
+    assert resumed.counters_json["media"] == {
+        "created": 0,
+        "reused": 2,
+    }
+    assert resumed.counters_json["verify"]["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_failed_verify_resume_clears_finished_at_before_media_save(
+    tmp_path,
+):
+    info = snapshot(tmp_path)
+    run = migration_run(info)
+    run.stage = MigrationStage.VERIFY
+    run.status = MigrationStatus.FAILED
+    run.finished_at = datetime.now(UTC)
+    saved = []
+
+    async def load_or_create(snapshot_info, environment, approval):
+        return run
+
+    async def save(value):
+        saved.append(
+            (value.stage, value.status, value.finished_at)
+        )
+        return value
+
+    async def media_handler(snapshot_info, value):
+        return {"created": 0, "reused": 1}
+
+    runner = MigrationRunner(
+        load_or_create=load_or_create,
+        save=save,
+        stage_handlers={MigrationStage.MEDIA: media_handler},
+    )
+
+    resumed = await runner.run(
+        info,
+        "staging",
+        until_stage="media",
+    )
+
+    assert resumed.stage is MigrationStage.MEDIA
+    assert resumed.status is MigrationStatus.RUNNING
+    assert resumed.finished_at is None
+    assert saved == [
+        (MigrationStage.MEDIA, MigrationStatus.RUNNING, None)
+    ]
+
+
+@pytest.mark.asyncio
 async def test_completed_run_rechecks_idempotency_without_losing_first_pass(
     tmp_path,
 ):
@@ -148,6 +244,78 @@ async def test_completed_run_rechecks_idempotency_without_losing_first_pass(
         "reused": 1,
     }
     assert checked.counters_json["idempotency"]["verify"]["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_failed_idempotency_verify_resumes_without_overwriting_first_pass(
+    tmp_path,
+):
+    info = snapshot(tmp_path)
+    run = migration_run(info)
+    run.stage = MigrationStage.VERIFY
+    run.status = MigrationStatus.COMPLETED
+    run.finished_at = datetime.now(UTC)
+    run.counters_json = {
+        "catalog": {"created": 3},
+        "media": {"created": 2},
+        "verify": {"passed": True},
+    }
+    calls = []
+    verify_attempts = 0
+
+    async def load_or_create(snapshot_info, environment, approval):
+        return run
+
+    async def save(value):
+        return value
+
+    def handler(stage):
+        async def execute(snapshot_info, value):
+            nonlocal verify_attempts
+            calls.append(stage.value)
+            if stage is MigrationStage.VERIFY:
+                verify_attempts += 1
+                return VerificationReport(
+                    passed=verify_attempts == 2,
+                    gates=[],
+                )
+            return {"created": 0, "reused": 1}
+
+        return execute
+
+    runner = MigrationRunner(
+        load_or_create=load_or_create,
+        save=save,
+        stage_handlers={
+            definition.stage: handler(definition.stage)
+            for definition in STAGES
+        },
+    )
+
+    failed_check = await runner.run(info, "staging")
+    assert failed_check.status is MigrationStatus.FAILED
+
+    resumed_check = await runner.run(info, "staging")
+
+    assert calls == [
+        *[definition.stage.value for definition in STAGES],
+        "media",
+        "verify",
+    ]
+    assert resumed_check.status is MigrationStatus.COMPLETED
+    assert resumed_check.counters_json["catalog"] == {"created": 3}
+    assert resumed_check.counters_json["media"] == {"created": 2}
+    assert resumed_check.counters_json["verify"] == {"passed": True}
+    assert resumed_check.counters_json["idempotency_created"] == 0
+    assert resumed_check.counters_json["idempotency"]["media"] == {
+        "created": 0,
+        "reused": 1,
+    }
+    assert (
+        resumed_check.counters_json["idempotency"]["verify"]["passed"]
+        is True
+    )
+    assert "idempotency_in_progress" not in resumed_check.counters_json
 
 
 @pytest.mark.asyncio
