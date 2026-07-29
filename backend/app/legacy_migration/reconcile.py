@@ -51,6 +51,11 @@ async def reconcile_accounts(
     run: MigrationRun,
 ) -> StageResult:
     users = _source_rows(source, "users")
+    businesses_by_owner: dict[int, list[dict[str, object]]] = defaultdict(list)
+    for business in _source_rows(source, "businesses"):
+        owner_id = _optional_int(business.get("user_id"))
+        if owner_id is not None:
+            businesses_by_owner[owner_id].append(business)
     records = [_account_record(user) for user in users]
     conflicts = _identity_conflicts(records)
     counters = {
@@ -104,27 +109,38 @@ async def reconcile_accounts(
         if mapped is not None and mapped.account_type is not account_type:
             mapped = None
 
+        business_rehome: tuple[Account, dict[str, object]] | None = None
         by_login = await _account_by_login(session, str(record["login"]))
         if by_login is not None and by_login.account_type is not account_type:
-            counters["quarantined"] += 1
-            counters["issues"] += await _ensure_issue(
+            rehome_record = await _legacy_business_rehome_record(
                 session,
-                run,
-                entity_type="user_account",
-                legacy_id=legacy_id,
-                issue_code="identity.account_type_mismatch",
+                occupied=by_login,
+                user_record=record,
+                source_businesses=businesses_by_owner.get(legacy_id, []),
             )
-            await _upsert_mapping(
-                session,
-                entity_type="user_account",
-                legacy_id=legacy_id,
-                target_id=None,
-                row_hash=row_hash,
-                mapping_status="quarantined",
-                review_reason="identity.account_type_mismatch",
-                run=run,
-            )
-            continue
+            if rehome_record is not None:
+                business_rehome = (by_login, rehome_record)
+                by_login = None
+            else:
+                counters["quarantined"] += 1
+                counters["issues"] += await _ensure_issue(
+                    session,
+                    run,
+                    entity_type="user_account",
+                    legacy_id=legacy_id,
+                    issue_code="identity.account_type_mismatch",
+                )
+                await _upsert_mapping(
+                    session,
+                    entity_type="user_account",
+                    legacy_id=legacy_id,
+                    target_id=None,
+                    row_hash=row_hash,
+                    mapping_status="quarantined",
+                    review_reason="identity.account_type_mismatch",
+                    run=run,
+                )
+                continue
 
         by_telegram = None
         if record["telegram_user_id"] is not None:
@@ -158,6 +174,11 @@ async def reconcile_accounts(
                 run=run,
             )
             continue
+
+        if business_rehome is not None:
+            occupied, business_record = business_rehome
+            _apply_account_record(occupied, business_record)
+            await session.flush()
 
         account = next(iter(candidates.values()), None)
         account_created = account is None
@@ -563,6 +584,41 @@ async def _account_by_login(
             select(Account).where(func.lower(Account.login) == login)
         )
     ).one_or_none()
+
+
+async def _legacy_business_rehome_record(
+    session: AsyncSession,
+    *,
+    occupied: Account,
+    user_record: Mapping[str, object],
+    source_businesses: list[dict[str, object]],
+) -> dict[str, object] | None:
+    telegram_user_id = _optional_int(user_record.get("telegram_user_id"))
+    if (
+        occupied.account_type is not AccountType.BUSINESS
+        or telegram_user_id is None
+        or occupied.telegram_user_id != telegram_user_id
+        or len(source_businesses) != 1
+        or await session.get(BusinessProfile, occupied.id) is None
+    ):
+        return None
+
+    business_record = _business_account_record(
+        source_businesses[0],
+        user_record,
+    )
+    business_login = str(business_record["login"])
+    if (
+        not business_login
+        or business_login == str(user_record["login"])
+    ):
+        return None
+
+    login_owner = await _account_by_login(session, business_login)
+    if login_owner is not None and login_owner.id != occupied.id:
+        return None
+
+    return business_record
 
 
 async def _account_by_telegram(
