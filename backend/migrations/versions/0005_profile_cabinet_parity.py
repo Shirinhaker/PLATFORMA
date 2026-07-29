@@ -8,60 +8,32 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade() -> None:
-    op.add_column(
-        "user_profiles",
-        sa.Column("followers_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "user_profiles",
-        sa.Column("following_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "user_profiles",
-        sa.Column("has_business", sa.Boolean(), nullable=False, server_default=sa.false()),
-    )
-    op.add_column(
-        "user_profiles",
-        sa.Column("dashboard_snapshot", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
-    )
-    op.add_column(
-        "user_profiles",
-        sa.Column("recent_activity", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),
-    )
-    op.add_column(
-        "user_profiles",
-        sa.Column("specialist_profile", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
+def json_column(name: str, default: str):
+    return sa.Column(
+        name,
+        sa.JSON(),
+        nullable=False,
+        server_default=sa.text(f"'{default}'::json"),
     )
 
-    op.add_column(
-        "business_profiles",
-        sa.Column("followers_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("following_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("rating_sum", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("rating_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("map_visible", sa.Boolean(), nullable=False, server_default=sa.false()),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("dashboard_snapshot", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
-    )
-    op.add_column(
-        "business_profiles",
-        sa.Column("recent_activity", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),
-    )
+
+def upgrade() -> None:
+    op.add_column("user_profiles", sa.Column("followers_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("user_profiles", sa.Column("following_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("user_profiles", sa.Column("has_business", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column("user_profiles", json_column("dashboard_snapshot", "{}"))
+    op.add_column("user_profiles", json_column("recent_activity", "[]"))
+    op.add_column("user_profiles", json_column("specialist_profile", "{}"))
+    op.add_column("user_profiles", json_column("cabinet_payload", "{}"))
+
+    op.add_column("business_profiles", sa.Column("followers_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("business_profiles", sa.Column("following_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("business_profiles", sa.Column("rating_sum", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("business_profiles", sa.Column("rating_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("business_profiles", sa.Column("map_visible", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column("business_profiles", json_column("dashboard_snapshot", "{}"))
+    op.add_column("business_profiles", json_column("recent_activity", "[]"))
+    op.add_column("business_profiles", json_column("cabinet_payload", "{}"))
 
     op.create_table(
         "profile_links",
@@ -85,6 +57,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("profile_links")
     for column in (
+        "cabinet_payload",
         "recent_activity",
         "dashboard_snapshot",
         "map_visible",
@@ -95,6 +68,7 @@ def downgrade() -> None:
     ):
         op.drop_column("business_profiles", column)
     for column in (
+        "cabinet_payload",
         "specialist_profile",
         "recent_activity",
         "dashboard_snapshot",
