@@ -44,6 +44,18 @@ const EDITABLE_FIELDS = [
   "latitude", "longitude", "location_exact",
 ] as const;
 
+const SPECIALIST_FIELDS: ReadonlyArray<readonly [string, string]> = [
+  ["kasb", "Kasb/mutaxassislik"],
+  ["descr", "Tavsif"],
+  ["narx", "Narx"],
+  ["hudud", "Xizmat hududi"],
+  ["org", "Tashkilot"],
+  ["dept", "Bo‘lim"],
+  ["lavozim", "Lavozim"],
+  ["work_hours", "Ish vaqti"],
+  ["after_hours", "Ishdan tashqari vaqt"],
+];
+
 const SECTIONS: Section[] = [
   { icon: "👤", label: "Profilim", view: "profile" },
   { icon: "📢", label: "E’lonlarim", view: "listings", payload: "listings" },
@@ -112,7 +124,7 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
   function applyLoaded(value: UserProfileData) {
     setProfile(value);
     setBaseline(value);
-    setSpecialist({ ...value.specialist_profile });
+    setSpecialist({ ...(value.specialist_profile ?? {}) });
   }
 
   async function load() {
@@ -268,13 +280,7 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
       <main className="profile-shell">
         <header className="profile-heading"><h1>Mutaxassisligim va xizmatlarim</h1><button type="button" className="button-secondary" onClick={() => setView("dashboard")}>Kabinetga qaytish</button></header>
         <form className="profile-form" onSubmit={saveSpecialist}>
-          {[
-            ["kasb", "Kasb/mutaxassislik"], ["descr", "Tavsif"],
-            ["narx", "Narx"], ["hudud", "Xizmat hududi"],
-            ["org", "Tashkilot"], ["dept", "Bo‘lim"],
-            ["lavozim", "Lavozim"], ["work_hours", "Ish vaqti"],
-            ["after_hours", "Ishdan tashqari vaqt"],
-          ].map(([key, label]) => (
+          {SPECIALIST_FIELDS.map(([key, label]) => (
             <label key={key}>{label}<input value={field(key)} onChange={(event) => setSpecialist((current) => ({ ...current, [key]: event.currentTarget.value }))} /></label>
           ))}
           <label className="checkbox-field"><input type="checkbox" checked={Boolean(specialist.visible)} onChange={(event) => setSpecialist((current) => ({ ...current, visible: event.currentTarget.checked }))} />Qidiruvda ko‘rinish</label>
@@ -311,7 +317,10 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
     );
   }
 
-  const snapshot = profile.dashboard_snapshot;
+  const snapshot = profile.dashboard_snapshot ?? {};
+  const recentActivity = profile.recent_activity ?? [];
+  const followersCount = profile.followers_count ?? 0;
+  const followingCount = profile.following_count ?? 0;
   const username = profile.public_username
     ? `@${profile.public_username.replace(/^@/, "")}`
     : identity.login;
@@ -324,7 +333,7 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
           <div className="user-cabinet__avatar" aria-hidden="true">{initials(profile.name)}</div>
           <div className="user-cabinet__identity-copy">
             <h1>{profile.name}</h1><p>{username}</p>{location && <span>● {location}</span>}
-            <div className="cabinet-follow-chips"><button type="button" onClick={() => setView("followers")}>{profile.followers_count} obunachi</button><button type="button" onClick={() => setView("follows")}>{profile.following_count} obuna</button></div>
+            <div className="cabinet-follow-chips"><button type="button" onClick={() => setView("followers")}>{followersCount} obunachi</button><button type="button" onClick={() => setView("follows")}>{followingCount} obuna</button></div>
           </div>
           <button type="button" className="user-cabinet__logout" disabled={busy} onClick={() => void logout()}>Chiqish</button>
         </header>
@@ -332,7 +341,7 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
         <div className="user-cabinet__stats" aria-label="Kabinet statistikasi">
           {[
             ["Faol buyurtmalar", snapshot.active_orders ?? 0, "Joriy buyurtmalar", "orders"],
-            ["Obunalar", snapshot.following ?? profile.following_count, "Kuzatilayotgan profillar", "follows"],
+            ["Obunalar", snapshot.following ?? followingCount, "Kuzatilayotgan profillar", "follows"],
             ["Saqlanganlar", snapshot.saved ?? 0, "E’lon va bizneslar", "saved"],
             ["Bildirishnomalar", snapshot.unread ?? 0, "O‘qilmagan xabarlar", "notifications"],
           ].map(([label, value, sub, target], index) => (
@@ -348,15 +357,15 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
             <div className="user-cabinet__grid">
               {SECTIONS.map((section) => <button type="button" key={section.view} onClick={() => setView(section.view)}><span aria-hidden="true">{section.icon}</span><strong>{section.label}</strong></button>)}
             </div>
-            {profile.has_business && <button type="button" className="user-cabinet__switch" disabled={busy} onClick={() => void switchBusiness()}>🏢 Biznes kabinetga o‘tish</button>}
+            {(profile.has_business ?? false) && <button type="button" className="user-cabinet__switch" disabled={busy} onClick={() => void switchBusiness()}>🏢 Biznes kabinetga o‘tish</button>}
             {error && <p className="user-cabinet__notice" role="alert">{error}</p>}
           </section>
 
           <aside className="user-cabinet__activity">
-            <div className="user-cabinet__section-heading"><h2>So‘nggi faoliyat</h2><span>{profile.recent_activity.length} ta</span></div>
-            {!profile.recent_activity.length ? <div className="user-cabinet__empty"><span>◎</span><strong>Hozircha faollik yo‘q</strong><p>Yangi buyurtma yoki xizmat paydo bo‘lsa, shu yerda ko‘rinadi.</p></div> : (
+            <div className="user-cabinet__section-heading"><h2>So‘nggi faoliyat</h2><span>{recentActivity.length} ta</span></div>
+            {!recentActivity.length ? <div className="user-cabinet__empty"><span>◎</span><strong>Hozircha faollik yo‘q</strong><p>Yangi buyurtma yoki xizmat paydo bo‘lsa, shu yerda ko‘rinadi.</p></div> : (
               <div className="cabinet-activity-list">
-                {profile.recent_activity.map((activity) => <button type="button" key={`${activity.kind}-${activity.id}`} onClick={() => setView(activity.kind === "service" ? "service-orders" : "orders")}><span className="cabinet-activity-icon">{activity.kind === "service" ? "X" : "B"}</span><span><b>Buyurtma #{activity.id} — {activity.title}</b><small>{activityDate(activity.created_at)}</small></span><span><b>{money(activity.amount) || (STATUS_LABELS[activity.status] ?? activity.status)}</b><small>{STATUS_LABELS[activity.status] ?? activity.status}</small></span></button>)}
+                {recentActivity.map((activity) => <button type="button" key={`${activity.kind}-${activity.id}`} onClick={() => setView(activity.kind === "service" ? "service-orders" : "orders")}><span className="cabinet-activity-icon">{activity.kind === "service" ? "X" : "B"}</span><span><b>Buyurtma #{activity.id} — {activity.title}</b><small>{activityDate(activity.created_at)}</small></span><span><b>{money(activity.amount) || (STATUS_LABELS[activity.status] ?? activity.status)}</b><small>{STATUS_LABELS[activity.status] ?? activity.status}</small></span></button>)}
               </div>
             )}
           </aside>
