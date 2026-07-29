@@ -1,11 +1,14 @@
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    DateTime,
     Float,
     ForeignKey,
     Index,
+    Integer,
     JSON,
     String,
     func,
@@ -49,6 +52,24 @@ class UserProfile(Base):
     avatar_x: Mapped[float] = mapped_column(Float, nullable=False, default=50.0)
     avatar_y: Mapped[float] = mapped_column(Float, nullable=False, default=50.0)
     avatar_zoom: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    followers_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    following_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    has_business: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    dashboard_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    recent_activity: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+    specialist_profile: Mapped[dict[str, Any]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
 
 
 Index(
@@ -122,6 +143,21 @@ class BusinessProfile(Base):
     logo_x: Mapped[float] = mapped_column(Float, nullable=False, default=50.0)
     logo_y: Mapped[float] = mapped_column(Float, nullable=False, default=50.0)
     logo_zoom: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    followers_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    following_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rating_sum: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rating_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    map_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    dashboard_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+    recent_activity: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
 
 
 Index(
@@ -130,3 +166,23 @@ Index(
     unique=True,
     postgresql_where=text("public_username <> ''"),
 )
+
+
+class ProfileLink(Base):
+    __tablename__ = "profile_links"
+
+    user_account_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    business_account_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
