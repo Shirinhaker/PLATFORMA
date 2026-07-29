@@ -58,9 +58,16 @@ const userProfile = {
   cabinet_payload: {
     orders: [{ id: 46, title: "Muhr", status: "new" }],
     listings: [{ id: 3, title: "Uy sotiladi", status: "active" }],
+    stories: [{ id: 7, caption: "Bugungi ish", status: "active" }],
     notifications: [{ id: 8, title: "Yangi xabar", is_read: 0 }],
     saved: [{ id: 4, target_kind: "business", target_id: 7 }],
     follows: [{ id: 2, target_kind: "business", target_id: 7 }],
+    followers: [{ id: 9, name: "Vali" }],
+    payments: [{ id: 12, status: "approved", amount_snapshot: 10000 }],
+    messages: [{ id: 13, text: "Assalomu alaykum" }],
+    notify_filters: [{ id: 14, cat: "uy", district: "Qumqo‘rg‘on" }],
+    drivers: [{ id: 15, car_model: "Cobalt", car_plate: "75 A 777 AA" }],
+    rides: [{ id: 16, from_addr: "Uy", to_addr: "Bozor", status: "completed" }],
   },
 };
 const businessProfile = {
@@ -106,9 +113,25 @@ const businessProfile = {
   }],
   cabinet_payload: {
     orders: [{ id: 44, title: "Muhr", status: "accepted" }],
+    item_groups: [{ id: 1, name: "Tayyor mahsulotlar", kind: "product" }],
     items: [{ id: 2, name: "Muhr", price: "15000" }],
+    listings: [{ id: 5, title: "Biznes e’loni", status: "active" }],
     debtors: [{ id: 3, name: "Vali", balance: 100000 }],
+    qarz_transactions: [{ id: 4, type: "debt", amount: 100000 }],
     notifications: [],
+    followers: [{ id: 8, name: "Sardor" }],
+    following: [{ id: 9, name: "Hamkor biznes" }],
+    subscription_payments: [{ id: 10, status: "approved", amount_snapshot: 149000 }],
+    staff: [{ id: 11, name: "Haqiqiy xodim", role: "kassir" }],
+    documents: [{ id: 12, title: "Shartnoma", status: "active" }],
+    incoming_documents: [{ id: 13, title: "Kiruvchi xat" }],
+    outgoing_documents: [{ id: 14, title: "Chiquvchi xat" }],
+    internal_documents: [{ id: 15, title: "Ichki buyruq" }],
+    counterparties: [{ id: 16, name: "Ta’minotchi" }],
+    warehouse_items: [{ id: 17, name: "Qog‘oz", stock_qty: 20 }],
+    warehouse_tx: [{ id: 18, item_name: "Qog‘oz", qty: 10 }],
+    sales: [{ id: 19, total: 500000 }],
+    cash_transactions: [{ id: 20, amount: 500000, kind: "income" }],
   },
 };
 
@@ -141,8 +164,12 @@ async function openUserProfileForm(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByLabelText("Ism");
 }
 
+
 async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: /Profil \/ Mening sahifam/ }));
+  await user.click(await screen.findByRole(
+    "button",
+    { name: /Profil \/ Mening sahifam/ },
+  ));
   return screen.findByLabelText("Biznes nomi");
 }
 
@@ -160,12 +187,43 @@ describe("profile cabinets", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Ali" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ali" }))
+      .toBeInTheDocument();
     expect(screen.getByText("3 obunachi")).toBeInTheDocument();
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "E’lonlarim" }));
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
     expect(screen.getByText("1 ta haqiqiy yozuv")).toBeInTheDocument();
+  });
+
+  it("opens migrated driver, ride and notification-filter data", async () => {
+    const user = userEvent.setup();
+    render(
+      <UserProfile
+        api={profileApi()}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole(
+      "button",
+      { name: "Haydovchilik profilim" },
+    ));
+    expect(await screen.findByText("Cobalt")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    await user.click(screen.getByRole(
+      "button",
+      { name: "Taxi va dostavka buyurtmalarim" },
+    ));
+    expect(await screen.findByText("Bozor")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    await user.click(screen.getByRole(
+      "button",
+      { name: "Bildirishnoma filtrlari" },
+    ));
+    expect(await screen.findByText("Qumqo‘rg‘on")).toBeInTheDocument();
   });
 
   it("edits user profile without business fields", async () => {
@@ -205,29 +263,61 @@ describe("profile cabinets", () => {
         onSwitched={onSwitched}
       />,
     );
-    await user.click(await screen.findByRole("button", { name: /Biznes kabinetga o‘tish/ }));
+    await user.click(await screen.findByRole(
+      "button",
+      { name: /Biznes kabinetga o‘tish/ },
+    ));
     expect(api.switchCabinet).toHaveBeenCalledWith("business");
     expect(api.logout).not.toHaveBeenCalled();
     expect(onSwitched).toHaveBeenCalledWith(businessIdentity);
   });
 
-  it("renders migrated business dashboard and opens real items", async () => {
+  it("renders migrated business dashboard and merged real items", async () => {
     const user = userEvent.setup();
-    const api = profileApi();
     render(
       <BusinessProfile
-        api={api}
+        api={profileApi()}
         identity={businessIdentity}
         onLogout={vi.fn()}
         onSwitched={vi.fn()}
       />,
     );
-    expect(await screen.findByRole("heading", { name: "Turon" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Turon" }))
+      .toBeInTheDocument();
     expect(screen.getByText("500 000 so‘m")).toBeInTheDocument();
     expect(screen.getByText("Onlaynlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Tizimlashtirish")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Mahsulot va xizmatlar/ }));
+    expect(screen.getByText("Ma’muriyat")).toBeInTheDocument();
+    await user.click(screen.getByRole(
+      "button",
+      { name: /Mahsulot va xizmatlar/ },
+    ));
     expect(await screen.findByText("Muhr")).toBeInTheDocument();
+    expect(screen.getByText("Tayyor mahsulotlar")).toBeInTheDocument();
+  });
+
+  it("opens migrated staff, documents and combined warehouse data", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={profileApi()}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
+    expect(await screen.findByText("Haqiqiy xodim")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    await user.click(screen.getByRole(
+      "button",
+      { name: /Mening hujjatlarim/ },
+    ));
+    expect(await screen.findByText("Shartnoma")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    await user.click(screen.getByRole("button", { name: /Ombor/ }));
+    expect(await screen.findByText("Qog‘oz")).toBeInTheDocument();
   });
 
   it("edits business profile and uploads logo", async () => {
@@ -254,7 +344,9 @@ describe("profile cabinets", () => {
     expect(screen.queryByLabelText("Mahalla")).not.toBeInTheDocument();
     await user.upload(screen.getByLabelText("Logotip"), file);
     expect(api.attachBusinessLogo).toHaveBeenCalledWith(
-      expect.objectContaining({ object_key: "private/business/7/logo/abc.png" }),
+      expect.objectContaining({
+        object_key: "private/business/7/logo/abc.png",
+      }),
     );
   });
 });
