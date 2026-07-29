@@ -96,6 +96,61 @@ async def test_runner_executes_fixed_order_and_resumes(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_completed_run_rechecks_idempotency_without_losing_first_pass(
+    tmp_path,
+):
+    info = snapshot(tmp_path)
+    run = migration_run(info)
+    run.stage = MigrationStage.VERIFY
+    run.status = MigrationStatus.COMPLETED
+    run.finished_at = datetime.now(UTC)
+    run.counters_json = {
+        "catalog": {"created": 3},
+        "verify": {"passed": True},
+    }
+    calls = []
+
+    async def load_or_create(snapshot_info, environment, approval):
+        return run
+
+    async def save(value):
+        return value
+
+    def handler(stage):
+        async def execute(snapshot_info, value):
+            calls.append(stage.value)
+            if stage is MigrationStage.VERIFY:
+                return VerificationReport(
+                    passed=value.counters_json["idempotency_created"] == 0,
+                    gates=[],
+                )
+            return {"created": 0, "reused": 1}
+
+        return execute
+
+    runner = MigrationRunner(
+        load_or_create=load_or_create,
+        save=save,
+        stage_handlers={
+            definition.stage: handler(definition.stage)
+            for definition in STAGES
+        },
+    )
+
+    checked = await runner.run(info, "staging")
+
+    assert calls == [definition.stage.value for definition in STAGES]
+    assert checked.status is MigrationStatus.COMPLETED
+    assert checked.counters_json["catalog"]["created"] == 3
+    assert checked.counters_json["idempotency_created"] == 0
+    assert checked.counters_json["idempotency"]["catalog"] == {
+        "created": 0,
+        "reused": 1,
+    }
+    assert checked.counters_json["idempotency"]["verify"]["passed"] is True
+
+
+@pytest.mark.asyncio
 async def test_production_requires_explicit_confirmation(tmp_path):
     info = snapshot(tmp_path)
     run = migration_run(info, "production")
@@ -141,4 +196,3 @@ async def test_production_approval_must_match_snapshot(tmp_path):
         match="production_snapshot_confirmation_mismatch",
     ):
         await runner.run(info, "production", approval=approval)
-

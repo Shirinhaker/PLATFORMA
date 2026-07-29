@@ -114,11 +114,21 @@ class MigrationRunner:
         self._validate_snapshot(snapshot)
         await self._validate_production(snapshot, environment, approval)
         run = await self.load_or_create(snapshot, environment, approval)
-        if (
+        completed_run = (
             run.status is MigrationStatus.COMPLETED
             and run.stage is MigrationStage.VERIFY
-        ):
-            return run
+        )
+        idempotency_mode = completed_run or bool(
+            run.counters_json.get("idempotency_in_progress")
+        )
+        if completed_run:
+            counters = dict(run.counters_json)
+            counters["idempotency"] = {}
+            counters["idempotency_created"] = 0
+            counters["idempotency_in_progress"] = True
+            run.counters_json = counters
+            run.stage = MigrationStage.SNAPSHOT
+            run.finished_at = None
         run.status = MigrationStatus.RUNNING
 
         definitions = self._remaining_stages(run)
@@ -139,14 +149,25 @@ class MigrationRunner:
 
             run.stage = definition.stage
             counters = dict(run.counters_json)
-            counters[definition.stage.value] = _result_payload(result)
+            payload = _result_payload(result)
+            if idempotency_mode:
+                idempotency = dict(counters.get("idempotency") or {})
+                idempotency[definition.stage.value] = payload
+                counters["idempotency"] = idempotency
+                counters["idempotency_created"] = sum(
+                    int(stage_result.get("created", 0))
+                    for stage, stage_result in idempotency.items()
+                    if stage != MigrationStage.VERIFY.value
+                )
+            else:
+                counters[definition.stage.value] = payload
             run.counters_json = counters
             if definition.stage is MigrationStage.VERIFY:
                 verification = result
                 passed = (
                     verification.passed
                     if isinstance(verification, VerificationReport)
-                    else bool(counters["verify"].get("passed"))
+                    else bool(payload.get("passed"))
                 )
                 run.status = (
                     MigrationStatus.COMPLETED
@@ -154,6 +175,9 @@ class MigrationRunner:
                     else MigrationStatus.FAILED
                 )
                 run.finished_at = datetime.now(UTC)
+                if idempotency_mode:
+                    counters.pop("idempotency_in_progress", None)
+                    run.counters_json = counters
             run = await _await_if_needed(self.save(run))
             if until_stage == definition.stage.value:
                 break

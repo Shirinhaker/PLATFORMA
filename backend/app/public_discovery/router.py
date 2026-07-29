@@ -11,11 +11,7 @@ from app.public_discovery.schemas import (
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
 
-@router.get(
-    "/search",
-    response_model=PublicSearchResponse,
-    response_model_exclude_none=True,
-)
+@router.get("/search", response_model=PublicSearchResponse, response_model_exclude_none=True)
 async def search_public_profiles(
     request: Request,
     params: Annotated[PublicSearchParams, Query()],

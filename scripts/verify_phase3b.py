@@ -25,7 +25,7 @@ def main() -> int:
             sys.executable,
             "-m",
             "pytest",
-            "tests/test_phase3b_public_shell.py",
+            "tests/test_phase3_public_discovery_contract.py",
             "-q",
         ]
     )
