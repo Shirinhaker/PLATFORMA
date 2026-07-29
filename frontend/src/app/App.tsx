@@ -160,7 +160,7 @@ export function App({ api }: { api: AppApi }) {
     : null;
   const titles: Record<PublicView, string | undefined> = {
     auth: "Kirish",
-    cabinet: "Kabinet",
+    cabinet: "Mening kabinetim",
     catalog: "Katalog",
     category: category?.name ?? "Yo‘nalish",
     home: undefined,
@@ -200,12 +200,17 @@ export function App({ api }: { api: AppApi }) {
         setSession({ status: "guest" });
         openHome();
       };
+      const switchBusiness = () => {
+        setSession({ status: "guest" });
+        dispatch({ type: "OPEN_AUTH" });
+      };
 
       return session.status === "user" ? (
         <UserProfile
           api={api}
           identity={session.identity}
           onLogout={logout}
+          onSwitchBusiness={switchBusiness}
         />
       ) : (
         <BusinessProfile
