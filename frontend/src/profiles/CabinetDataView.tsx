@@ -34,13 +34,28 @@ function present(value: unknown): string {
 }
 
 
-function usefulEntries(row: RecordValue) {
+function headingEntry(row: RecordValue, index: number) {
+  for (const key of ["title", "name", "item_name"] as const) {
+    const value = row[key];
+    if (value !== null && value !== undefined && value !== "") {
+      return { key, value };
+    }
+  }
+  return { key: "", value: `#${row.id ?? index + 1}` };
+}
+
+
+function usefulEntries(row: RecordValue, headingKey: string) {
   const preferred = Object.keys(FIELD_LABELS)
-    .filter((key) => key in row)
+    .filter((key) => key !== headingKey && key in row)
     .map((key) => [key, row[key]] as const);
   if (preferred.length) return preferred.slice(0, 7);
   return Object.entries(row)
-    .filter(([key]) => !key.includes("hash") && !key.includes("token"))
+    .filter(([key]) => (
+      key !== headingKey
+      && !key.includes("hash")
+      && !key.includes("token")
+    ))
     .slice(0, 7);
 }
 
@@ -74,11 +89,12 @@ export function CabinetDataView({
             const row = item && typeof item === "object"
               ? item as RecordValue
               : { value: item };
+            const heading = headingEntry(row, index);
             return (
               <article key={String(row.id ?? index)}>
-                <strong>{present(row.title ?? row.name ?? row.item_name ?? `#${row.id ?? index + 1}`)}</strong>
+                <strong>{present(heading.value)}</strong>
                 <dl>
-                  {usefulEntries(row).map(([key, value]) => (
+                  {usefulEntries(row, heading.key).map(([key, value]) => (
                     <div key={key}>
                       <dt>{FIELD_LABELS[key] ?? key}</dt>
                       <dd>{present(value)}</dd>
