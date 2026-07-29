@@ -22,7 +22,10 @@ type Props = {
   api: UserProfileApi;
   identity: SessionIdentity;
   onLogout: () => void;
+  onSwitchBusiness?: () => void;
 };
+
+type CabinetView = "dashboard" | "profile";
 
 const IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -43,18 +46,44 @@ const EDITABLE_FIELDS = [
   "location_exact",
 ] as const;
 
+const CABINET_SECTIONS = [
+  { icon: "👤", label: "Profilim", action: "profile" },
+  { icon: "💳", label: "To‘lovlarim" },
+  { icon: "📣", label: "Reklamalarim" },
+  { icon: "🔔", label: "Bildirishnomalarim" },
+  { icon: "🪪", label: "Mutaxassisligim va xizmatlarim" },
+  { icon: "📦", label: "Buyurtmalarim" },
+  { icon: "🧰", label: "Xizmat buyurtmalarim" },
+  { icon: "🔖", label: "Saqlanganlar" },
+  { icon: "⚙️", label: "Sozlamalar" },
+] as const;
+
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
 
-export function UserProfile({ api, identity, onLogout }: Props) {
+function initials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "U";
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+}
+
+
+export function UserProfile({
+  api,
+  identity,
+  onLogout,
+  onSwitchBusiness,
+}: Props) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [baseline, setBaseline] = useState<UserProfileData | null>(null);
+  const [view, setView] = useState<CabinetView>("dashboard");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function load() {
     const value = await api.getUserProfile();
@@ -161,16 +190,29 @@ export function UserProfile({ api, identity, onLogout }: Props) {
     }
   }
 
-  async function logout() {
+  async function logout(next?: "business") {
     setBusy(true);
     setError("");
     try {
       await api.logout();
-      onLogout();
+      if (next === "business" && onSwitchBusiness) {
+        onSwitchBusiness();
+      } else {
+        onLogout();
+      }
     } catch (reason) {
       setError(message(reason));
       setBusy(false);
     }
+  }
+
+  function openSection(action?: string) {
+    setNotice("");
+    if (action === "profile") {
+      setView("profile");
+      return;
+    }
+    setNotice("Bu bo‘lim haqiqiy ma’lumotlari ko‘chirilgandan keyin ochiladi.");
   }
 
   if (!profile) {
@@ -181,15 +223,124 @@ export function UserProfile({ api, identity, onLogout }: Props) {
     );
   }
 
+  if (view === "dashboard") {
+    const username = profile.public_username
+      ? `@${profile.public_username.replace(/^@/, "")}`
+      : identity.login;
+    const location = [profile.district, profile.region]
+      .filter(Boolean)
+      .join(", ");
+
+    return (
+      <main className="user-cabinet">
+        <section className="user-cabinet__panel">
+          <header className="user-cabinet__identity">
+            <div className="user-cabinet__avatar" aria-hidden="true">
+              {initials(profile.name)}
+            </div>
+            <div className="user-cabinet__identity-copy">
+              <h1>{profile.name}</h1>
+              <p>{username}</p>
+              {location && <span>● {location}</span>}
+            </div>
+            <button
+              type="button"
+              className="user-cabinet__logout"
+              disabled={busy}
+              onClick={() => void logout()}
+            >
+              Chiqish
+            </button>
+          </header>
+
+          <div className="user-cabinet__stats" aria-label="Kabinet statistikasi">
+            <article className="user-cabinet__stat user-cabinet__stat--active">
+              <span>Faol buyurtmalar</span>
+              <strong>0</strong>
+              <small>Joriy buyurtmalar</small>
+            </article>
+            <article className="user-cabinet__stat">
+              <span>Obunalar</span>
+              <strong>0</strong>
+              <small>Kuzatilayotgan profillar</small>
+            </article>
+            <article className="user-cabinet__stat">
+              <span>Saqlanganlar</span>
+              <strong>0</strong>
+              <small>E’lon va bizneslar</small>
+            </article>
+            <article className="user-cabinet__stat">
+              <span>Bildirishnomalar</span>
+              <strong>0</strong>
+              <small>O‘qilmagan xabarlar</small>
+            </article>
+          </div>
+
+          <div className="user-cabinet__content">
+            <section className="user-cabinet__sections">
+              <div className="user-cabinet__section-heading">
+                <h2>Mening bo‘limlarim</h2>
+                <span>Profil va faoliyatlar</span>
+              </div>
+              <div className="user-cabinet__grid">
+                {CABINET_SECTIONS.map((section) => (
+                  <button
+                    type="button"
+                    key={section.label}
+                    onClick={() => openSection("action" in section
+                      ? section.action
+                      : undefined)}
+                  >
+                    <span aria-hidden="true">{section.icon}</span>
+                    <strong>{section.label}</strong>
+                  </button>
+                ))}
+              </div>
+              {notice && <p className="user-cabinet__notice" role="status">{notice}</p>}
+              <button
+                type="button"
+                className="user-cabinet__switch"
+                disabled={busy}
+                onClick={() => void logout("business")}
+              >
+                🏢 Biznes kabinetga o‘tish
+              </button>
+            </section>
+
+            <aside className="user-cabinet__activity">
+              <div className="user-cabinet__section-heading">
+                <h2>So‘nggi faoliyat</h2>
+                <span>0 ta</span>
+              </div>
+              <div className="user-cabinet__empty">
+                <span aria-hidden="true">◎</span>
+                <strong>Hozircha faoliyat yo‘q</strong>
+                <p>Haqiqiy buyurtma va harakatlar shu yerda ko‘rinadi.</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="profile-shell">
       <header className="profile-heading">
         <div>
           <p className="session-panel__eyebrow">{identity.login}</p>
-          <h1>Oddiy kabinet</h1>
+          <h1>Profilim</h1>
         </div>
-        <button type="button" className="button-secondary" onClick={logout}>
-          Chiqish
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => {
+            setView("dashboard");
+            setError("");
+            setSaved(false);
+          }}
+        >
+          Kabinetga qaytish
         </button>
       </header>
       <form className="profile-form" onSubmit={save}>
