@@ -1,3 +1,6 @@
+import "./Cabinet.css";
+
+
 type RecordValue = Record<string, unknown>;
 
 const FIELD_LABELS: Record<string, string> = {
