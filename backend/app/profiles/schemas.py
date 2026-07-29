@@ -36,6 +36,15 @@ class ProfilePatch(BaseModel):
         return self
 
 
+class CabinetActivity(BaseModel):
+    id: int
+    kind: str
+    title: str
+    status: str
+    amount: int = 0
+    created_at: int = 0
+
+
 class UserProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,6 +62,12 @@ class UserProfileRead(BaseModel):
     avatar_x: float
     avatar_y: float
     avatar_zoom: float
+    followers_count: int = 0
+    following_count: int = 0
+    has_business: bool = False
+    dashboard_snapshot: dict[str, Any] = Field(default_factory=dict)
+    recent_activity: list[CabinetActivity] = Field(default_factory=list)
+    specialist_profile: dict[str, Any] = Field(default_factory=dict)
 
 
 class UserProfilePatch(ProfilePatch):
@@ -65,6 +80,7 @@ class UserProfilePatch(ProfilePatch):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_exact: bool | None = None
+    specialist_profile: dict[str, Any] | None = None
 
     @field_validator("public_username", mode="before")
     @classmethod
@@ -95,6 +111,13 @@ class BusinessProfileRead(BaseModel):
     logo_x: float
     logo_y: float
     logo_zoom: float
+    followers_count: int = 0
+    following_count: int = 0
+    rating_sum: int = 0
+    rating_count: int = 0
+    map_visible: bool = False
+    dashboard_snapshot: dict[str, Any] = Field(default_factory=dict)
+    recent_activity: list[CabinetActivity] = Field(default_factory=list)
 
 
 class BusinessProfilePatch(ProfilePatch):
@@ -112,6 +135,7 @@ class BusinessProfilePatch(ProfilePatch):
     pay_holder: str | None = Field(default=None, max_length=160)
     director: str | None = Field(default=None, max_length=160)
     tax_id: str | None = Field(default=None, max_length=32)
+    map_visible: bool | None = None
 
     @field_validator("public_username", mode="before")
     @classmethod
@@ -133,3 +157,17 @@ class ProfileImageAttachment(BaseModel):
     x: float = Field(ge=0, le=100)
     y: float = Field(ge=0, le=100)
     zoom: float = Field(ge=1, le=5)
+
+
+class CabinetSwitchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_type: AccountType
+
+
+class CabinetSwitchRead(BaseModel):
+    account_id: int
+    account_type: AccountType
+    login: str
+    csrf_token: str
+    expires_at: str
