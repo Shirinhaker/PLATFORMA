@@ -287,6 +287,41 @@ async def test_missing_media_keeps_content_and_marks_missing(store):
 
 
 @pytest.mark.asyncio
+async def test_missing_local_listing_video_is_not_sent_to_telegram(
+    store,
+    tmp_path,
+):
+    db, run = store
+    uploads = tmp_path / "uploads"
+    uploads.mkdir()
+    source = legacy_source()
+    source.execute(
+        "INSERT INTO listing_media(id, tg_file_id) VALUES (?, ?)",
+        (8, "/uploads/listings/missing-video.mp4"),
+    )
+    source.commit()
+    media = db.sync.get(MediaMigration, 1)
+    media.entity_type = "listing_media"
+    telegram = StaticResolver(
+        MediaResolution(None, "media.telegram_failed")
+    )
+
+    await migrate_media(
+        db,
+        source,
+        FakeStorage(),
+        Settings(environment="test"),
+        run,
+        local_resolver=LocalMediaResolver((uploads,)),
+        telegram_resolver=telegram,
+    )
+
+    assert media.state is MediaMigrationState.MISSING
+    assert media.last_error_code == "media.missing"
+    assert telegram.references == []
+
+
+@pytest.mark.asyncio
 async def test_checksum_verification_failure_blocks_media(store):
     db, run = store
     resolver = StaticResolver(resolved_png())

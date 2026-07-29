@@ -238,7 +238,12 @@ async def migrate_media(
         if not reference:
             _mark_failure(record, MediaMigrationState.MISSING, "media.missing")
             continue
-        resolver = telegram if record.entity_type == "listing_media" else local
+        resolver = _resolver_for_reference(
+            record,
+            reference,
+            local=local,
+            telegram=telegram,
+        )
         resolution = await resolver.resolve(reference)
         if resolution.media is None:
             state = (
@@ -370,6 +375,21 @@ def _source_reference(
         return ""
     value = row[0]
     return str(value).strip() if value is not None else ""
+
+
+def _resolver_for_reference(
+    record: MediaMigration,
+    reference: str,
+    *,
+    local,
+    telegram,
+):
+    if record.entity_type != "listing_media":
+        return local
+    normalized = reference.replace("\\", "/")
+    if normalized.startswith("/") or "/" in normalized:
+        return local
+    return telegram
 
 
 def _media_roots(value: str) -> tuple[Path, ...]:
