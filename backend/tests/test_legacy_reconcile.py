@@ -441,6 +441,78 @@ async def test_new_account_is_created_once_with_user_profile(store):
 
 
 @pytest.mark.asyncio
+async def test_taken_user_public_username_does_not_block_account_migration(
+    store,
+):
+    db, run = store
+    existing = seed_account(
+        db,
+        account_id=201,
+        account_type=AccountType.USER,
+        login="existing_user",
+        telegram_user_id=9201,
+    )
+    db.sync.add(
+        UserProfile(
+            account_id=existing.id,
+            name="Mavjud profil",
+            phone="",
+            public_username="Choriyeva73",
+            region="",
+            district="",
+            mahalla="",
+            latitude=None,
+            longitude=None,
+            location_exact=False,
+            avatar_object_key="",
+            avatar_x=50.0,
+            avatar_y=50.0,
+            avatar_zoom=1.0,
+        )
+    )
+    db.sync.commit()
+    source = legacy_source(
+        [
+            {
+                "id": 41,
+                "login": "incoming_user",
+                "tg_id": 9202,
+                "username": "choriyeva73",
+                "name": "Muhabbat",
+            }
+        ]
+    )
+
+    result = await reconcile_accounts(db, source, run)
+    rerun = await reconcile_accounts(db, source, run)
+    linked = await mapping(db, "user_account", 41)
+    migrated = await db.get(UserProfile, linked.target_id)
+
+    assert result.created == 1
+    assert result.quarantined == 0
+    assert result.issues == 1
+    assert rerun.created == 0
+    assert rerun.reused == 1
+    assert rerun.issues == 0
+    assert linked.target_id != existing.id
+    assert migrated.name == "Muhabbat"
+    assert migrated.public_username == ""
+    assert (
+        await db.get(UserProfile, existing.id)
+    ).public_username == "Choriyeva73"
+    assert "profile.public_username_conflict" in await issue_codes(db)
+    assert (
+        await db.scalar(select(func.count()).select_from(Account))
+    ) == 2
+    assert (
+        await db.scalar(select(func.count()).select_from(UserProfile))
+    ) == 2
+    assert (
+        await db.scalar(select(func.count()).select_from(MigrationIssue))
+    ) == 1
+
+
+@pytest.mark.asyncio
 async def test_business_profile_is_linked_to_separate_business_account(store):
     db, run = store
     source = legacy_source(
@@ -475,6 +547,92 @@ async def test_business_profile_is_linked_to_separate_business_account(store):
     assert (
         await db.scalar(select(func.count()).select_from(Account))
     ) == 2
+
+
+@pytest.mark.asyncio
+async def test_taken_business_public_username_does_not_block_migration(
+    store,
+):
+    db, run = store
+    existing = seed_account(
+        db,
+        account_id=301,
+        account_type=AccountType.BUSINESS,
+        login="existing_business",
+        telegram_user_id=9301,
+    )
+    db.sync.add(
+        BusinessProfile(
+            account_id=existing.id,
+            name="Mavjud biznes",
+            phone="",
+            description="",
+            public_username="Turon_Savdo",
+            direction="",
+            activity_type="",
+            address="",
+            latitude=None,
+            longitude=None,
+            work_hours={},
+            pay_card="",
+            pay_holder="",
+            pay_qr_object_key="",
+            director="",
+            tax_id="",
+            logo_object_key="",
+            logo_x=50.0,
+            logo_y=50.0,
+            logo_zoom=1.0,
+        )
+    )
+    db.sync.commit()
+    source = legacy_source(
+        [
+            {
+                "id": 51,
+                "login": "incoming_owner",
+                "tg_id": 9302,
+            }
+        ],
+        [
+            {
+                "id": 61,
+                "user_id": 51,
+                "name": "Yangi Turon",
+                "biz_login": "incoming_business",
+                "username": "turon_savdo",
+            }
+        ],
+    )
+    await reconcile_accounts(db, source, run)
+
+    result = await reconcile_businesses(db, source, run)
+    rerun = await reconcile_businesses(db, source, run)
+    linked = await mapping(db, "business_account", 61)
+    migrated = await db.get(BusinessProfile, linked.target_id)
+
+    assert result.created == 1
+    assert result.quarantined == 0
+    assert result.issues == 1
+    assert rerun.created == 0
+    assert rerun.reused == 1
+    assert rerun.issues == 0
+    assert linked.target_id != existing.id
+    assert migrated.name == "Yangi Turon"
+    assert migrated.public_username == ""
+    assert (
+        await db.get(BusinessProfile, existing.id)
+    ).public_username == "Turon_Savdo"
+    assert "profile.public_username_conflict" in await issue_codes(db)
+    assert (
+        await db.scalar(select(func.count()).select_from(Account))
+    ) == 3
+    assert (
+        await db.scalar(select(func.count()).select_from(BusinessProfile))
+    ) == 2
+    assert (
+        await db.scalar(select(func.count()).select_from(MigrationIssue))
+    ) == 1
 
 
 @pytest.mark.asyncio
