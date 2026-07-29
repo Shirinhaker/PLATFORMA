@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { ChallengeStarted } from "../api/types";
+import type { AccountType, ChallengeStarted } from "../api/types";
 import type { AuthApi } from "./AuthFlow";
 
 
@@ -19,6 +19,7 @@ function errorMessage(error: unknown) {
 export function LoginForm({ api, onStarted, onBack }: Props) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [cabinetType, setCabinetType] = useState<"" | AccountType>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -27,7 +28,12 @@ export function LoginForm({ api, onStarted, onBack }: Props) {
     setBusy(true);
     setError("");
     try {
-      onStarted(await api.startLogin({ login, password }));
+      const payload = {
+        login,
+        password,
+        ...(cabinetType ? { cabinet_type: cabinetType } : {}),
+      };
+      onStarted(await api.startLogin(payload));
     } catch (reason) {
       setError(errorMessage(reason));
     } finally {
@@ -40,8 +46,23 @@ export function LoginForm({ api, onStarted, onBack }: Props) {
       <div>
         <p className="session-panel__eyebrow">Koprik</p>
         <h1>Kirish</h1>
-        <p>Akkaunt turi login orqali avtomatik aniqlanadi.</p>
+        <p>
+          Bitta login ikkala kabinetga tegishli bo‘lsa, kabinet turini tanlang.
+        </p>
       </div>
+      <label>
+        Kabinet turi
+        <select
+          value={cabinetType}
+          onChange={(event) => setCabinetType(
+            event.currentTarget.value as "" | AccountType,
+          )}
+        >
+          <option value="">Avtomatik aniqlash</option>
+          <option value="user">Oddiy kabinet</option>
+          <option value="business">Biznes kabinet</option>
+        </select>
+      </label>
       <label>
         Login
         <input
