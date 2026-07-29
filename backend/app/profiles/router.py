@@ -1,17 +1,22 @@
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.accounts.model import AccountType
+from app.accounts.model import Account, AccountType
 from app.auth.dependencies import (
     CurrentAccount,
     require_csrf,
     require_current_account,
 )
+from app.auth.repository import create_session, lock_session
+from app.auth.router import _set_session_cookie
+from app.auth.security import derive_csrf
 from app.core.errors import ApiError
+from app.profiles.model import ProfileLink
 from app.profiles.repository import (
     get_business_profile,
     get_user_profile,
@@ -21,6 +26,8 @@ from app.profiles.repository import (
 from app.profiles.schemas import (
     BusinessProfilePatch,
     BusinessProfileRead,
+    CabinetSwitchRead,
+    CabinetSwitchRequest,
     MeRead,
     ProfileImageAttachment,
     UserProfilePatch,
@@ -71,9 +78,7 @@ def require_profile_object_key(
     account_id: int,
     purpose: str,
 ) -> None:
-    prefix = (
-        f"private/{account_type.value}/{account_id}/{purpose}/"
-    )
+    prefix = f"private/{account_type.value}/{account_id}/{purpose}/"
     allowed = re.fullmatch(
         re.escape(prefix) + r"[0-9a-f]{32}\.(?:jpg|png|webp|gif)",
         object_key,
@@ -91,17 +96,11 @@ async def get_me(
     current: CurrentRead,
     summaries: ProfileSummary,
 ) -> MeRead:
-    return await summaries.resolve(
-        current.account_type,
-        current.account_id,
-    )
+    return await summaries.resolve(current.account_type, current.account_id)
 
 
 @router.get("/user-profile", response_model=UserProfileRead)
-async def read_user_profile(
-    current: CurrentRead,
-    session: ProfileSession,
-):
+async def read_user_profile(current: CurrentRead, session: ProfileSession):
     require_account_type(current, AccountType.USER)
     return await get_user_profile(session, current.account_id)
 
@@ -118,10 +117,7 @@ async def update_user_profile(
         profile = await get_user_profile(session, current.account_id)
         await patch_user_profile(session, profile, body)
         await session.commit()
-        await summaries.invalidate(
-            current.account_type,
-            current.account_id,
-        )
+        await summaries.invalidate(current.account_type, current.account_id)
         return profile
     except Exception:
         await session.rollback()
@@ -129,10 +125,7 @@ async def update_user_profile(
 
 
 @router.get("/business-profile", response_model=BusinessProfileRead)
-async def read_business_profile(
-    current: CurrentRead,
-    session: ProfileSession,
-):
+async def read_business_profile(current: CurrentRead, session: ProfileSession):
     require_account_type(current, AccountType.BUSINESS)
     return await get_business_profile(session, current.account_id)
 
@@ -149,14 +142,76 @@ async def update_business_profile(
         profile = await get_business_profile(session, current.account_id)
         await patch_business_profile(session, profile, body)
         await session.commit()
-        await summaries.invalidate(
-            current.account_type,
-            current.account_id,
-        )
+        await summaries.invalidate(current.account_type, current.account_id)
         return profile
     except Exception:
         await session.rollback()
         raise
+
+
+@router.post("/cabinet/switch", response_model=CabinetSwitchRead)
+async def switch_cabinet(
+    body: CabinetSwitchRequest,
+    request: Request,
+    response: Response,
+    current: CurrentWrite,
+    session: ProfileSession,
+):
+    if body.target_type is current.account_type:
+        raise ApiError(409, "cabinet_already_active", "Tanlangan kabinet allaqachon ochiq.")
+
+    link = (
+        await session.get(ProfileLink, current.account_id)
+        if current.account_type is AccountType.USER
+        else None
+    )
+    if current.account_type is AccountType.BUSINESS:
+        from sqlalchemy import select
+
+        link = await session.scalar(
+            select(ProfileLink).where(
+                ProfileLink.business_account_id == current.account_id
+            )
+        )
+    if link is None:
+        raise ApiError(404, "linked_cabinet_not_found", "Bog‘langan kabinet topilmadi.")
+
+    target_id = (
+        link.business_account_id
+        if body.target_type is AccountType.BUSINESS
+        else link.user_account_id
+    )
+    target = await session.get(Account, target_id)
+    if target is None or target.status != "active" or target.account_type is not body.target_type:
+        raise ApiError(404, "linked_cabinet_not_found", "Bog‘langan kabinet topilmadi.")
+
+    now = datetime.now(UTC)
+    expires_at = now + timedelta(seconds=request.app.state.settings.session_ttl_seconds)
+    try:
+        old_session = await lock_session(session, current.session_token)
+        if old_session is not None and old_session.revoked_at is None:
+            old_session.revoked_at = now
+        _, raw_token = await create_session(
+            session,
+            account_id=target.id,
+            device_name="cabinet-switch",
+            now=now,
+            expires_at=expires_at,
+        )
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+
+    await request.app.state.auth_service._revoke_cached_session(current.session_token)
+    _set_session_cookie(response, request, raw_token)
+    return CabinetSwitchRead(
+        account_id=target.id,
+        account_type=target.account_type,
+        login=target.login,
+        csrf_token=derive_csrf(raw_token, request.app.state.settings.csrf_secret),
+        expires_at=expires_at.isoformat(),
+    )
 
 
 @router.put("/user-profile/avatar", response_model=UserProfileRead)
@@ -181,10 +236,7 @@ async def attach_user_avatar(
         profile.avatar_zoom = body.zoom
         await session.flush()
         await session.commit()
-        await summaries.invalidate(
-            current.account_type,
-            current.account_id,
-        )
+        await summaries.invalidate(current.account_type, current.account_id)
         return profile
     except Exception:
         await session.rollback()
@@ -213,10 +265,7 @@ async def attach_business_logo(
         profile.logo_zoom = body.zoom
         await session.flush()
         await session.commit()
-        await summaries.invalidate(
-            current.account_type,
-            current.account_id,
-        )
+        await summaries.invalidate(current.account_type, current.account_id)
         return profile
     except Exception:
         await session.rollback()

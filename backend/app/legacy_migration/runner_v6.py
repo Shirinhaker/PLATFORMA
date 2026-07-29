@@ -1,18 +1,20 @@
 from app.legacy_migration import runner as base_runner
-from app.legacy_migration.reconcile_v6 import (
+from app.legacy_migration.profile_parity_v7 import (
     reconcile_accounts,
     reconcile_businesses,
 )
+from app.legacy_migration.real_source_v7 import open_real_snapshot
 
 
-MIGRATION_SCHEMA_VERSION = "0004_phase3c_shared_login_v1"
+MIGRATION_SCHEMA_VERSION = "0006_phase3c_complete_cabinet_v1"
 
 
 def build_database_runner(database, settings, storage):
-    """Build the Phase 3C V6 runner without mutating package imports."""
+    """Build the complete v1656 cabinet migration runner safely."""
     base_runner.MIGRATION_SCHEMA_VERSION = MIGRATION_SCHEMA_VERSION
     base_runner.reconcile_accounts = reconcile_accounts
     base_runner.reconcile_businesses = reconcile_businesses
+    base_runner.open_immutable = open_real_snapshot
     return base_runner.build_database_runner(database, settings, storage)
 
 

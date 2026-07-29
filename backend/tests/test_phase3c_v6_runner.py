@@ -69,28 +69,30 @@ class Database:
 
 
 @pytest.mark.asyncio
-async def test_v6_does_not_reuse_failed_v5_run(tmp_path):
+async def test_complete_cabinet_runner_does_not_reuse_profile_parity_run(
+    tmp_path,
+):
     info = snapshot(tmp_path)
-    v5 = MigrationRun(
-        id=4,
+    previous = MigrationRun(
+        id=5,
         source_database_sha256=info.database_sha256,
         media_manifest_sha256=info.manifest_sha256,
-        schema_version="0003_phase3c_dual_accounts_v4",
+        schema_version="0005_phase3c_profile_cabinet_parity_v1",
         environment=MigrationEnvironment.STAGING,
         stage=MigrationStage.VERIFY,
-        status=MigrationStatus.FAILED,
-        counters_json={"verify": {"passed": False}},
+        status=MigrationStatus.COMPLETED,
+        counters_json={"verify": {"passed": True}},
         error_count=0,
         started_at=datetime.now(UTC),
         finished_at=datetime.now(UTC),
     )
-    database = Database(v5)
+    database = Database(previous)
     runner = build_database_runner(database, object(), object())
 
     current = await runner.load_or_create(info, "staging", None)
 
-    assert MIGRATION_SCHEMA_VERSION == "0004_phase3c_shared_login_v1"
-    assert current is not v5
+    assert MIGRATION_SCHEMA_VERSION == "0006_phase3c_complete_cabinet_v1"
+    assert current is not previous
     assert current.schema_version == MIGRATION_SCHEMA_VERSION
     assert current.stage is MigrationStage.SNAPSHOT
     assert current.status is MigrationStatus.RUNNING
