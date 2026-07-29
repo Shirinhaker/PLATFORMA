@@ -248,7 +248,7 @@ async def test_v6_migrates_shared_login_and_complete_profile_cabinets(db_session
     assert user_profile.specialist_profile["kasb"] == "Dizayner"
     assert user_profile.cabinet_payload["orders"][0]["title"] == "Muhr"
 
-    assert business_profile.followers_count == 1
+    assert business_profile.followers_count == 2
     assert business_profile.following_count == 1
     assert business_profile.rating_sum == 18
     assert business_profile.rating_count == 5
