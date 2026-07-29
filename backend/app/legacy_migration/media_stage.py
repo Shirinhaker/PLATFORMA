@@ -225,12 +225,35 @@ async def migrate_media(
     counters = {"created": 0, "reused": 0, "updated": 0}
     records = (
         await session.scalars(
-            select(MediaMigration).order_by(MediaMigration.id)
+            select(MediaMigration)
+            .where(MediaMigration.migration_run_id == run.id)
+            .order_by(MediaMigration.id)
         )
     ).all()
     for record in records:
         if record.state is MediaMigrationState.COPIED:
-            counters["reused"] += 1
+            verified = storage.verify_object(
+                record.destination_object_key,
+                expected_size=record.size_bytes,
+                expected_sha256=record.sha256,
+                expected_content_type=record.content_type,
+            )
+            if verified:
+                await _set_target_object_key(
+                    session,
+                    record,
+                    record.destination_object_key,
+                )
+                counters["reused"] += 1
+                continue
+            record.attempts += 1
+            record.updated_at = datetime.now(UTC)
+            _mark_failure(
+                record,
+                MediaMigrationState.FAILED,
+                "media.r2_verification_failed",
+            )
+            counters["updated"] += 1
             continue
         record.attempts += 1
         record.updated_at = datetime.now(UTC)
