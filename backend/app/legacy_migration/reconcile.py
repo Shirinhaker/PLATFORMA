@@ -51,15 +51,7 @@ async def reconcile_accounts(
     run: MigrationRun,
 ) -> StageResult:
     users = _source_rows(source, "users")
-    businesses = {
-        int(row["user_id"]): row
-        for row in _source_rows(source, "businesses")
-        if row.get("user_id") is not None
-    }
-    records = [
-        _account_record(user, businesses.get(int(user["id"])))
-        for user in users
-    ]
+    records = [_account_record(user) for user in users]
     conflicts = _identity_conflicts(records)
     counters = {
         "created": 0,
@@ -97,31 +89,21 @@ async def reconcile_accounts(
             continue
 
         row_hash = source_row_hash("user_account", record)
+        account_type = AccountType(str(record["account_type"]))
         existing_mapping = await _find_mapping(
             session,
             "user_account",
             legacy_id,
         )
-        if (
-            existing_mapping is not None
+        mapped = (
+            await session.get(Account, existing_mapping.target_id)
+            if existing_mapping is not None
             and existing_mapping.target_id is not None
-        ):
-            mapped = await session.get(Account, existing_mapping.target_id)
-            if mapped is not None:
-                await _ensure_user_profile(session, mapped, record)
-                if existing_mapping.source_row_hash == row_hash:
-                    counters["reused"] += 1
-                else:
-                    mapped.status = str(record["status"])
-                    mapped.updated_at = datetime.now(UTC)
-                    existing_mapping.source_row_hash = row_hash
-                    existing_mapping.mapping_status = "mapped"
-                    existing_mapping.review_reason = ""
-                    existing_mapping.last_run_id = run.id
-                    counters["updated"] += 1
-                continue
+            else None
+        )
+        if mapped is not None and mapped.account_type is not account_type:
+            mapped = None
 
-        account_type = AccountType(str(record["account_type"]))
         by_login = await _account_by_login(session, str(record["login"]))
         if by_login is not None and by_login.account_type is not account_type:
             counters["quarantined"] += 1
@@ -151,11 +133,12 @@ async def reconcile_accounts(
                 int(record["telegram_user_id"]),
                 account_type,
             )
-        if (
-            by_login is not None
-            and by_telegram is not None
-            and by_login.id != by_telegram.id
-        ):
+        candidates = {
+            candidate.id: candidate
+            for candidate in (mapped, by_login, by_telegram)
+            if candidate is not None
+        }
+        if len(candidates) > 1:
             counters["quarantined"] += 1
             counters["issues"] += await _ensure_issue(
                 session,
@@ -176,7 +159,9 @@ async def reconcile_accounts(
             )
             continue
 
-        account = by_login or by_telegram
+        account = next(iter(candidates.values()), None)
+        account_created = account is None
+        account_changed = False
         if account is None:
             created_at = _unix_datetime(record.get("created_at"))
             account = Account(
@@ -194,7 +179,7 @@ async def reconcile_accounts(
             await session.flush()
             counters["created"] += 1
         else:
-            counters["reused"] += 1
+            account_changed = _apply_account_record(account, record)
 
         await _ensure_user_profile(session, account, record)
         await _upsert_mapping(
@@ -207,6 +192,16 @@ async def reconcile_accounts(
             review_reason="",
             run=run,
         )
+        if not account_created:
+            if (
+                account_changed
+                or existing_mapping is None
+                or existing_mapping.target_id != account.id
+                or existing_mapping.source_row_hash != row_hash
+            ):
+                counters["updated"] += 1
+            else:
+                counters["reused"] += 1
 
     await session.flush()
     return StageResult(**counters)
@@ -217,6 +212,23 @@ async def reconcile_businesses(
     source: sqlite3.Connection,
     run: MigrationRun,
 ) -> StageResult:
+    users = {
+        int(row["id"]): row
+        for row in _source_rows(source, "users")
+    }
+    business_records = [
+        (
+            row,
+            _business_account_record(
+                row,
+                users.get(int(row.get("user_id") or 0)),
+            ),
+        )
+        for row in _source_rows(source, "businesses")
+    ]
+    conflicts = _identity_conflicts(
+        [record for _, record in business_records]
+    )
     counters = {
         "created": 0,
         "reused": 0,
@@ -224,21 +236,27 @@ async def reconcile_businesses(
         "quarantined": 0,
         "issues": 0,
     }
-    for row in _source_rows(source, "businesses"):
+    for row, record in business_records:
         legacy_id = int(row["id"])
-        row_hash = source_row_hash("business_account", row)
+        owner_legacy_id = int(row.get("user_id") or 0)
+        source_owner = users.get(owner_legacy_id)
+        row_hash = source_row_hash("business_account", record)
         owner_mapping = await _find_mapping(
             session,
             "user_account",
-            int(row.get("user_id") or 0),
+            owner_legacy_id,
         )
-        owner = (
+        user_account = (
             await session.get(Account, owner_mapping.target_id)
             if owner_mapping is not None
             and owner_mapping.target_id is not None
             else None
         )
-        if owner is None or owner.account_type is not AccountType.BUSINESS:
+        if (
+            source_owner is None
+            or user_account is None
+            or user_account.account_type is not AccountType.USER
+        ):
             counters["quarantined"] += 1
             counters["issues"] += await _ensure_issue(
                 session,
@@ -259,22 +277,135 @@ async def reconcile_businesses(
             )
             continue
 
+        conflict_codes = conflicts.get(legacy_id, [])
+        if not record["login"]:
+            conflict_codes = [*conflict_codes, "identity.login_missing"]
+        if conflict_codes:
+            counters["quarantined"] += 1
+            for code in sorted(set(conflict_codes)):
+                counters["issues"] += await _ensure_issue(
+                    session,
+                    run,
+                    entity_type="business_account",
+                    legacy_id=legacy_id,
+                    issue_code=code,
+                )
+            await _upsert_mapping(
+                session,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason=sorted(set(conflict_codes))[0],
+                run=run,
+            )
+            continue
+
         existing_mapping = await _find_mapping(
             session,
             "business_account",
             legacy_id,
         )
-        profile = await session.get(BusinessProfile, owner.id)
+        mapped = (
+            await session.get(Account, existing_mapping.target_id)
+            if existing_mapping is not None
+            and existing_mapping.target_id is not None
+            else None
+        )
+        if mapped is not None and mapped.account_type is not AccountType.BUSINESS:
+            mapped = None
+
+        by_login = await _account_by_login(session, str(record["login"]))
+        if (
+            by_login is not None
+            and by_login.account_type is not AccountType.BUSINESS
+        ):
+            counters["quarantined"] += 1
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                issue_code="identity.account_type_mismatch",
+            )
+            await _upsert_mapping(
+                session,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason="identity.account_type_mismatch",
+                run=run,
+            )
+            continue
+
+        by_telegram = None
+        if record["telegram_user_id"] is not None:
+            by_telegram = await _account_by_telegram(
+                session,
+                int(record["telegram_user_id"]),
+                AccountType.BUSINESS,
+            )
+        candidates = {
+            candidate.id: candidate
+            for candidate in (mapped, by_login, by_telegram)
+            if candidate is not None
+        }
+        if len(candidates) > 1:
+            counters["quarantined"] += 1
+            counters["issues"] += await _ensure_issue(
+                session,
+                run,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                issue_code="identity.identifiers_disagree",
+            )
+            await _upsert_mapping(
+                session,
+                entity_type="business_account",
+                legacy_id=legacy_id,
+                target_id=None,
+                row_hash=row_hash,
+                mapping_status="quarantined",
+                review_reason="identity.identifiers_disagree",
+                run=run,
+            )
+            continue
+
+        account = next(iter(candidates.values()), None)
+        account_created = account is None
+        if account is None:
+            created_at = _unix_datetime(record.get("created_at"))
+            account = Account(
+                account_type=AccountType.BUSINESS,
+                login=str(record["login"]),
+                password_hash=str(record["password_hash"]),
+                telegram_user_id=_optional_int(
+                    record.get("telegram_user_id")
+                ),
+                status=str(record["status"]),
+                created_at=created_at,
+                updated_at=created_at,
+            )
+            session.add(account)
+            await session.flush()
+        else:
+            _apply_account_record(account, record)
+
+        profile = await session.get(BusinessProfile, account.id)
         if profile is None:
             profile = BusinessProfile(
-                account_id=owner.id,
+                account_id=account.id,
                 **_business_profile_values(row),
             )
             session.add(profile)
             counters["created"] += 1
         elif (
-            existing_mapping is not None
-            and existing_mapping.target_id == owner.id
+            not account_created
+            and existing_mapping is not None
+            and existing_mapping.target_id == account.id
             and existing_mapping.source_row_hash == row_hash
         ):
             counters["reused"] += 1
@@ -283,12 +414,11 @@ async def reconcile_businesses(
                 setattr(profile, field, value)
             counters["updated"] += 1
 
-        owner.status = _text(row.get("status")) or owner.status
         await _upsert_mapping(
             session,
             entity_type="business_account",
             legacy_id=legacy_id,
-            target_id=owner.id,
+            target_id=account.id,
             row_hash=row_hash,
             mapping_status="mapped",
             review_reason="",
@@ -313,36 +443,58 @@ def _source_rows(
 
 def _account_record(
     user: Mapping[str, object],
-    business: Mapping[str, object] | None,
 ) -> dict[str, object]:
-    account_type = (
-        AccountType.BUSINESS
-        if _text(user.get("role")).casefold() == "business"
-        else AccountType.USER
-    )
-    business_login = _text((business or {}).get("biz_login"))
-    business_hash = _text((business or {}).get("biz_pass_hash"))
-    login = (
-        business_login
-        if account_type is AccountType.BUSINESS and business_login
-        else _text(user.get("login"))
-    ).casefold()
-    password_hash = (
-        business_hash
-        if account_type is AccountType.BUSINESS and business_hash
-        else _text(user.get("pass_hash"))
-    )
-    phone = _text(user.get("phone")) or _text((business or {}).get("phone"))
+    phone = _text(user.get("phone"))
     return {
         **dict(user),
         "legacy_id": int(user["id"]),
-        "account_type": account_type.value,
-        "login": login,
-        "password_hash": password_hash,
+        "account_type": AccountType.USER.value,
+        "login": _text(user.get("login")).casefold(),
+        "password_hash": _text(user.get("pass_hash")),
         "telegram_user_id": _optional_int(user.get("tg_id")),
         "normalized_phone": _normalize_phone(phone),
         "status": _text(user.get("status")) or "active",
     }
+
+
+def _business_account_record(
+    business: Mapping[str, object],
+    owner: Mapping[str, object] | None,
+) -> dict[str, object]:
+    phone = _text(business.get("phone")) or _text((owner or {}).get("phone"))
+    return {
+        **dict(business),
+        "legacy_id": int(business["id"]),
+        "account_type": AccountType.BUSINESS.value,
+        "login": _text(business.get("biz_login")).casefold(),
+        "password_hash": _text(business.get("biz_pass_hash")),
+        "telegram_user_id": _optional_int((owner or {}).get("tg_id")),
+        "normalized_phone": _normalize_phone(phone),
+        "status": _text(business.get("status")) or "active",
+    }
+
+
+def _apply_account_record(
+    account: Account,
+    record: Mapping[str, object],
+) -> bool:
+    values = {
+        "login": str(record["login"]),
+        "telegram_user_id": _optional_int(record.get("telegram_user_id")),
+        "status": str(record["status"]),
+    }
+    password_hash = str(record["password_hash"])
+    if password_hash:
+        values["password_hash"] = password_hash
+    changed = False
+    for field, value in values.items():
+        if getattr(account, field) == value:
+            continue
+        setattr(account, field, value)
+        changed = True
+    if changed:
+        account.updated_at = datetime.now(UTC)
+    return changed
 
 
 def _identity_conflicts(
