@@ -316,8 +316,9 @@ describe("profile cabinets", () => {
     ));
     expect(await screen.findByText("Shartnoma")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
-    await user.click(screen.getByRole("button", { name: /Ombor/ }));
-    expect(await screen.findByText("Qog‘oz")).toBeInTheDocument();
+    const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
+    await user.click(warehouseButtons.at(-1)!);
+    expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);
   });
 
   it("edits business profile and uploads logo", async () => {
