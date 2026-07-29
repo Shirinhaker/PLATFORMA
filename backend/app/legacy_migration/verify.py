@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,28 @@ from app.legacy_migration.model import (
 )
 from app.legacy_migration.source import inventory_source
 from app.listings.model import Listing
+from app.profiles.model import BusinessProfile, UserProfile
+
+
+EXPLICIT_DEMO_FLAGS = (
+    "is_demo",
+    "demo",
+    "is_test",
+    "test_mode",
+    "demo_mode",
+)
+SENSITIVE_CABINET_KEYS = {
+    "pass_hash",
+    "password_hash",
+    "biz_pass_hash",
+    "token_hash",
+    "start_token",
+    "start_token_hash",
+    "code_hash",
+    "secret",
+    "private_key",
+    "content",
+}
 
 
 @dataclass(frozen=True)
@@ -52,6 +75,8 @@ class VerificationInput:
     copied_media_unverified: int
     idempotency_created: int
     forbidden_public_fields: tuple[str, ...]
+    cabinet_demo_rows: int = 0
+    cabinet_sensitive_fields: int = 0
 
 
 def evaluate_gates(values: VerificationInput) -> VerificationReport:
@@ -83,6 +108,11 @@ def evaluate_gates(values: VerificationInput) -> VerificationReport:
         ),
         _zero("broken_foreign_keys", values.broken_foreign_keys),
         _zero("identity_conflicts", values.identity_conflicts),
+        _zero("cabinet_demo_rows", values.cabinet_demo_rows),
+        _zero(
+            "cabinet_sensitive_fields",
+            values.cabinet_sensitive_fields,
+        ),
         _zero("media_failed", values.media_failed),
         _equal(
             "media_terminal_count",
@@ -199,6 +229,9 @@ async def verify_migration(
         )
         or 0
     )
+    cabinet_demo_rows, cabinet_sensitive_fields = (
+        await _cabinet_payload_violations(session, run.id)
+    )
     values = VerificationInput(
         source_rows=source_rows,
         mapped_rows=mapped_rows,
@@ -227,8 +260,125 @@ async def verify_migration(
             run.counters_json.get("idempotency_created", 0)
         ),
         forbidden_public_fields=forbidden_public_fields,
+        cabinet_demo_rows=cabinet_demo_rows,
+        cabinet_sensitive_fields=cabinet_sensitive_fields,
     )
     return evaluate_gates(values)
+
+
+async def _cabinet_payload_violations(
+    session: AsyncSession,
+    run_id: int,
+) -> tuple[int, int]:
+    mappings = (
+        await session.scalars(
+            select(LegacyIdMap).where(
+                LegacyIdMap.entity_type.in_(
+                    ("user_account", "business_account")
+                ),
+                LegacyIdMap.last_run_id == run_id,
+                LegacyIdMap.target_id.is_not(None),
+            )
+        )
+    ).all()
+    user_ids = {
+        int(mapping.target_id)
+        for mapping in mappings
+        if mapping.entity_type == "user_account"
+        and mapping.target_id is not None
+    }
+    business_ids = {
+        int(mapping.target_id)
+        for mapping in mappings
+        if mapping.entity_type == "business_account"
+        and mapping.target_id is not None
+    }
+
+    payloads: list[object] = []
+    if user_ids:
+        payloads.extend(
+            profile.cabinet_payload
+            for profile in (
+                await session.scalars(
+                    select(UserProfile).where(
+                        UserProfile.account_id.in_(user_ids)
+                    )
+                )
+            ).all()
+        )
+    if business_ids:
+        payloads.extend(
+            profile.cabinet_payload
+            for profile in (
+                await session.scalars(
+                    select(BusinessProfile).where(
+                        BusinessProfile.account_id.in_(business_ids)
+                    )
+                )
+            ).all()
+        )
+
+    demo_rows = 0
+    sensitive_fields = 0
+    for payload in payloads:
+        found_demo, found_sensitive = _inspect_cabinet_value(payload)
+        demo_rows += found_demo
+        sensitive_fields += found_sensitive
+    return demo_rows, sensitive_fields
+
+
+def _inspect_cabinet_value(value: object) -> tuple[int, int]:
+    if isinstance(value, dict):
+        demo_rows = int(_is_explicit_demo(value))
+        sensitive_fields = 0
+        for key, item in value.items():
+            if _is_sensitive_key(str(key)):
+                sensitive_fields += 1
+                continue
+            child_demo, child_sensitive = _inspect_cabinet_value(item)
+            demo_rows += child_demo
+            sensitive_fields += child_sensitive
+        return demo_rows, sensitive_fields
+    if isinstance(value, list):
+        demo_rows = 0
+        sensitive_fields = 0
+        for item in value:
+            child_demo, child_sensitive = _inspect_cabinet_value(item)
+            demo_rows += child_demo
+            sensitive_fields += child_sensitive
+        return demo_rows, sensitive_fields
+    return 0, 0
+
+
+def _is_explicit_demo(row: dict[str, Any]) -> bool:
+    return any(
+        _truthy(row.get(key))
+        for key in EXPLICIT_DEMO_FLAGS
+        if key in row
+    )
+
+
+def _truthy(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "demo",
+        "test",
+    }
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.casefold()
+    return (
+        normalized in SENSITIVE_CABINET_KEYS
+        or normalized.endswith("_password")
+        or normalized.endswith("_secret")
+    )
 
 
 async def _count_for_run(session, model, run_id: int) -> int:
