@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.auth.router import router as auth_router
-from app.auth.service import AuthService
+from app.auth.shared_login import SharedLoginAuthService
 from app.advertisements.repository import AdvertisementService
 from app.advertisements.router import router as advertisements_router
 from app.cache.client import RedisClient
@@ -38,7 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await redis_client.start()
         app.state.database = database
         app.state.redis = redis_client
-        app.state.auth_service = AuthService(
+        app.state.auth_service = SharedLoginAuthService(
             database.session,
             redis_client,
             resolved,
