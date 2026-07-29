@@ -66,6 +66,7 @@ function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
     "uploadGrantedFile",
     "attachUserAvatar",
     "attachBusinessLogo",
+    "switchCabinet",
     "logout",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
@@ -130,11 +131,17 @@ export function App({ api }: { api: AppApi }) {
         setSession({ status: "guest" });
         if (status !== 401) setFailed(true);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, attempt]);
 
-  const authenticated = session.status === "user" || session.status === "business";
-  const accountView = navigation.view === "auth" || navigation.view === "cabinet";
+  const authenticated = (
+    session.status === "user" || session.status === "business"
+  );
+  const accountView = (
+    navigation.view === "auth" || navigation.view === "cabinet"
+  );
   const category = navigation.categoryId
     ? findCatalogDirection(navigation.categoryId)
     : null;
@@ -165,7 +172,9 @@ export function App({ api }: { api: AppApi }) {
         <main className="session-panel"><h1>Koprik’ga kirish</h1></main>
       );
     }
-    if (session.status === "loading") return <SessionStatus state="loading" />;
+    if (session.status === "loading") {
+      return <SessionStatus state="loading" />;
+    }
 
     if (supportsProfiles(api)) {
       const logout = () => {
