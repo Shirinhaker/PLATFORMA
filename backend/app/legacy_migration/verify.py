@@ -29,16 +29,29 @@ EXPLICIT_DEMO_FLAGS = (
 )
 SENSITIVE_CABINET_KEYS = {
     "pass_hash",
+    "pass_plain",
+    "password",
     "password_hash",
     "biz_pass_hash",
+    "token",
     "token_hash",
     "start_token",
     "start_token_hash",
     "code_hash",
+    "otp",
+    "otp_hash",
     "secret",
     "private_key",
-    "content",
 }
+SENSITIVE_CABINET_SUFFIXES = (
+    "_password",
+    "_secret",
+    "_token",
+    "pass_hash",
+    "password_hash",
+    "token_hash",
+    "code_hash",
+)
 
 
 @dataclass(frozen=True)
@@ -86,11 +99,7 @@ def evaluate_gates(values: VerificationInput) -> VerificationReport:
         + values.media_invalid
     )
     gates = [
-        _equal(
-            "mapping_coverage",
-            values.mapped_rows,
-            values.source_rows,
-        ),
+        _equal("mapping_coverage", values.mapped_rows, values.source_rows),
         _equal(
             "catalog_kind_count",
             values.target_catalog_kinds,
@@ -189,8 +198,6 @@ async def verify_migration(
         kind: int(inventory["items"].get(kind, 0))
         for kind in ("product", "service")
     }
-    target_listings = await _count_for_run(session, Listing, run.id)
-    target_ads = await _count_for_run(session, Advertisement, run.id)
     identity_conflicts = int(
         await session.scalar(
             select(func.count(MigrationIssue.id)).where(
@@ -241,9 +248,13 @@ async def verify_migration(
             for kind in ("product", "service")
         },
         source_listings=inventory["listings"]["total"],
-        target_listings=target_listings,
+        target_listings=await _count_for_run(session, Listing, run.id),
         source_advertisements=inventory["advertisements"]["total"],
-        target_advertisements=target_ads,
+        target_advertisements=await _count_for_run(
+            session,
+            Advertisement,
+            run.id,
+        ),
         broken_foreign_keys=await _broken_mappings(
             session,
             entity_types,
@@ -339,7 +350,7 @@ def _inspect_cabinet_value(value: object) -> tuple[int, int]:
             demo_rows += child_demo
             sensitive_fields += child_sensitive
         return demo_rows, sensitive_fields
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         demo_rows = 0
         sensitive_fields = 0
         for item in value:
@@ -376,8 +387,10 @@ def _is_sensitive_key(key: str) -> bool:
     normalized = key.casefold()
     return (
         normalized in SENSITIVE_CABINET_KEYS
-        or normalized.endswith("_password")
-        or normalized.endswith("_secret")
+        or any(
+            normalized.endswith(suffix)
+            for suffix in SENSITIVE_CABINET_SUFFIXES
+        )
     )
 
 
