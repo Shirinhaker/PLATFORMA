@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -79,19 +79,26 @@ describe("v1656 business header follow counts", () => {
 
     await screen.findByRole("heading", { name: "Muhr" });
 
-    const followers = screen.getByRole("button", { name: "3 obunachi" });
-    const following = screen.getByRole("button", { name: "1 obuna" });
-    expect(followers).toBeInTheDocument();
-    expect(following).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Obunachilar/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Biznes obunalari/ })).not.toBeInTheDocument();
+    const followers = screen.getByText("3 obunachi").closest("button");
+    const following = screen.getByText("1 obuna").closest("button");
+    expect(followers).not.toBeNull();
+    expect(following).not.toBeNull();
 
-    await user.click(followers);
+    const onlineSection = screen
+      .getByRole("heading", { name: "Onlaynlashtirish" })
+      .closest("section");
+    expect(onlineSection).not.toBeNull();
+    expect(within(onlineSection!).queryByRole("button", { name: /Obunachilar/ }))
+      .not.toBeInTheDocument();
+    expect(within(onlineSection!).queryByRole("button", { name: /Biznes obunalari/ }))
+      .not.toBeInTheDocument();
+
+    await user.click(followers!);
     expect(await screen.findByRole("heading", { name: "Obunachilar" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
     await screen.findByRole("heading", { name: "Muhr" });
-    await user.click(screen.getByRole("button", { name: "1 obuna" }));
+    await user.click(screen.getByText("1 obuna").closest("button")!);
     expect(await screen.findByRole("heading", { name: "Biznes obunalari" })).toBeInTheDocument();
   });
 });
