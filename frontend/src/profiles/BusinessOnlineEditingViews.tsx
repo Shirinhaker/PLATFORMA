@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import type {
   BusinessOnlineRecord,
@@ -108,6 +108,132 @@ function EditorForm({
   );
 }
 
+function itemKind(row: BusinessOnlineRecord): "product" | "service" {
+  const raw = recordText(row, "kind", "item_type", "type").toLowerCase();
+  return ["service", "xizmat", "queue", "booking", "medical"].includes(raw)
+    ? "service"
+    : "product";
+}
+
+function groupValue(row: BusinessOnlineRecord): unknown {
+  return row.group_id ?? row.item_group_id ?? row.group;
+}
+
+function itemImage(row: BusinessOnlineRecord): string {
+  const value = recordText(
+    row,
+    "image_url",
+    "photo_url",
+    "media_url",
+    "image",
+    "photo_file",
+  );
+  return /^(https?:|data:|blob:|\/)/i.test(value) ? value : "";
+}
+
+function ActionMenu({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="business-items__menu">
+      <button
+        type="button"
+        className="business-items__menu-trigger"
+        aria-label={`${label} amallari`}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        •••
+      </button>
+      {open && <div className="business-items__menu-panel">{children}</div>}
+    </div>
+  );
+}
+
+function AddItemTile({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="business-items__add-tile"
+      aria-label="Tovar qo‘shish"
+      onClick={onClick}
+    >
+      <span>+</span>
+      <b>Tovar</b>
+    </button>
+  );
+}
+
+function ProductCard({
+  row,
+  index,
+  busy,
+  menuOpen,
+  onMenuToggle,
+  onEdit,
+  onToggleActive,
+  onRemove,
+}: {
+  row: BusinessOnlineRecord;
+  index: number;
+  busy: boolean;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  onEdit: () => void;
+  onToggleActive: () => void;
+  onRemove: () => void;
+}) {
+  const name = recordText(row, "name", "title") || "Nomsiz";
+  const description = recordText(row, "description", "descr", "note") || "Izoh yo‘q";
+  const price = recordNumber(row, "price", "price_amount");
+  const kind = itemKind(row);
+  const image = itemImage(row);
+  const active = Boolean(row.is_active ?? true);
+
+  return (
+    <article className="business-items__card">
+      {image && (
+        <div className="business-items__card-image">
+          <img
+            src={image}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.parentElement?.remove();
+            }}
+          />
+        </div>
+      )}
+      <ActionMenu
+        label={name}
+        open={menuOpen}
+        onToggle={onMenuToggle}
+      >
+        <button type="button" onClick={onEdit}>Tahrirlash</button>
+        <button type="button" disabled={busy} onClick={onToggleActive}>
+          {active ? "Yashirish" : "Ko‘rsatish"}
+        </button>
+        <button type="button" disabled={busy} onClick={onRemove}>O‘chirish</button>
+      </ActionMenu>
+      <h3>{name}</h3>
+      <strong className={price > 0 ? "" : "negotiable"}>
+        {price > 0 ? money(price) : "Narx kelishiladi"}
+      </strong>
+      <p>{description}</p>
+      <span className="business-items__kind">
+        {kind === "service" ? "Xizmat" : "Mahsulot"}
+      </span>
+    </article>
+  );
+}
+
 
 export function ItemsEditorView({
   rows,
@@ -125,8 +251,9 @@ export function ItemsEditorView({
   kind: string;
   setKind: (value: string) => void;
 }) {
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const filtered = useMemo(() => rows.filter((row) => {
-    const rowKind = recordText(row, "kind", "item_type", "type") || "product";
+    const rowKind = itemKind(row);
     const haystack = `${recordText(row, "name", "title")} ${recordText(
       row,
       "description",
@@ -141,6 +268,30 @@ export function ItemsEditorView({
   const itemNew = formId("items", "new");
   const itemEdit = formId("items", "edit");
   const editingId = actions.draft.id;
+
+  const sections = useMemo(() => groups.map((group, index) => {
+    const id = recordId(group, index);
+    const items = filtered.filter((row) => {
+      const value = groupValue(row);
+      return value !== null
+        && value !== undefined
+        && value !== ""
+        && String(value) === String(id);
+    });
+    return { group, id, items, index };
+  }), [groups, filtered]);
+
+  const knownGroupIds = useMemo(
+    () => new Set(groups.map((group, index) => String(recordId(group, index)))),
+    [groups],
+  );
+  const ungrouped = useMemo(() => filtered.filter((row) => {
+    const value = groupValue(row);
+    return value === null
+      || value === undefined
+      || value === ""
+      || !knownGroupIds.has(String(value));
+  }), [filtered, knownGroupIds]);
 
   async function saveGroup() {
     if (actions.form === groupEdit && editingId !== undefined) {
@@ -162,50 +313,46 @@ export function ItemsEditorView({
     actions.setDraft({});
   }
 
+  function startNewItem(groupId: number | string | null) {
+    actions.setDraft({ kind: "product", group_id: groupId });
+    actions.setForm(itemNew);
+  }
+
   return (
-    <section>
-      <div className="business-online__toolbar business-online__toolbar--wrap">
-        <div className="business-online__search">
-          <span>🔍</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.currentTarget.value)}
-            placeholder="Tovar qidirish..."
-          />
-        </div>
-        <div className="business-online__filters">
-          {ITEM_FILTERS.map(([filterKey, label]) => (
-            <button
-              type="button"
-              className={kind === filterKey ? "active" : ""}
-              key={filterKey}
-              onClick={() => setKind(filterKey)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="business-online__actions">
-          <button
-            type="button"
-            onClick={() => {
-              actions.setDraft({ kind: "product" });
-              actions.setForm(groupNew);
-            }}
-          >
-            + Guruh
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              actions.setDraft({ kind: "product" });
-              actions.setForm(itemNew);
-            }}
-          >
-            + Mahsulot/xizmat
-          </button>
-        </div>
+    <section className="business-items">
+      <p className="business-items__intro">
+        Guruhlar pastga, tovarlar esa o‘ng-chapga suriladigan kartochka ko‘rinishida chiqadi.
+      </p>
+      <div className="business-online__search business-items__search">
+        <span>🔍</span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+          placeholder="Tovar qidirish..."
+        />
       </div>
+      <div className="business-online__filters business-items__filters">
+        {ITEM_FILTERS.map(([filterKey, label]) => (
+          <button
+            type="button"
+            className={kind === filterKey ? "active" : ""}
+            key={filterKey}
+            onClick={() => setKind(filterKey)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="business-items__add-group"
+        onClick={() => {
+          actions.setDraft({ kind: "product" });
+          actions.setForm(groupNew);
+        }}
+      >
+        + Guruh qo‘shish
+      </button>
 
       {[groupNew, groupEdit].includes(actions.form ?? "") && (
         <EditorForm
@@ -232,77 +379,118 @@ export function ItemsEditorView({
         />
       )}
 
-      <div className="business-online__groups business-online__groups--editable">
-        {groups.map((group, index) => (
-          <article key={String(recordId(group, index))}>
-            <b>{recordText(group, "name", "title") || "Guruh"}</b>
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  actions.setDraft({ ...group });
-                  actions.setForm(groupEdit);
-                }}
-              >
-                Tahrirlash
-              </button>
-              <button
-                type="button"
-                disabled={actions.busy}
-                onClick={() => void actions.remove(
-                  "item_groups",
-                  recordId(group, index),
-                )}
-              >
-                O‘chirish
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      <div className="business-items__sections">
+        {sections.map(({ group, id, items: groupItems, index }) => {
+          const groupName = recordText(group, "name", "title") || "Guruh";
+          const groupKind = itemKind(group) === "service"
+            ? "Xizmat guruhi"
+            : "Mahsulot guruhi";
+          const menuKey = `group:${String(id)}`;
+          return (
+            <section className="business-items__section" key={String(id)}>
+              <header className="business-items__section-heading">
+                <div>
+                  <h2>{groupName}</h2>
+                  <p>{groupKind} · {groupItems.length} ta</p>
+                </div>
+                <ActionMenu
+                  label={groupName}
+                  open={openMenu === menuKey}
+                  onToggle={() => setOpenMenu((current) => (
+                    current === menuKey ? null : menuKey
+                  ))}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      actions.setDraft({ ...group });
+                      actions.setForm(groupEdit);
+                      setOpenMenu(null);
+                    }}
+                  >
+                    Tahrirlash
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actions.busy}
+                    onClick={() => void actions.remove("item_groups", id)}
+                  >
+                    O‘chirish
+                  </button>
+                </ActionMenu>
+              </header>
+              <div className="business-items__rail">
+                {groupItems.map((row, itemIndex) => {
+                  const itemId = recordId(row, itemIndex);
+                  const itemMenu = `item:${String(itemId)}`;
+                  return (
+                    <ProductCard
+                      key={String(itemId)}
+                      row={row}
+                      index={itemIndex}
+                      busy={actions.busy}
+                      menuOpen={openMenu === itemMenu}
+                      onMenuToggle={() => setOpenMenu((current) => (
+                        current === itemMenu ? null : itemMenu
+                      ))}
+                      onEdit={() => {
+                        actions.setDraft({ ...row });
+                        actions.setForm(itemEdit);
+                        setOpenMenu(null);
+                      }}
+                      onToggleActive={() => void actions.patch(
+                        "items",
+                        itemId,
+                        { is_active: !Boolean(row.is_active ?? true) },
+                      )}
+                      onRemove={() => void actions.remove("items", itemId)}
+                    />
+                  );
+                })}
+                <AddItemTile onClick={() => startNewItem(id)} />
+              </div>
+            </section>
+          );
+        })}
 
-      <div className="business-online__product-grid">
-        {filtered.length ? filtered.map((row, index) => (
-          <article key={String(recordId(row, index))}>
-            <div className="business-online__product-image">
-              {recordText(row, "image_url", "photo_file")
-                ? <img src={recordText(row, "image_url", "photo_file")} alt="" />
-                : "🛍️"}
+        <section className="business-items__section">
+          <header className="business-items__section-heading">
+            <div>
+              <h2>Guruhsiz</h2>
+              <p>Guruhlanmagan · {ungrouped.length} ta</p>
             </div>
-            <h3>{recordText(row, "name", "title") || "Nomsiz"}</h3>
-            <p>{recordText(row, "description", "descr", "note")}</p>
-            <strong>{money(recordNumber(row, "price", "price_amount"))}</strong>
-            <div className="business-online__card-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  actions.setDraft({ ...row });
-                  actions.setForm(itemEdit);
-                }}
-              >
-                Tahrirlash
-              </button>
-              <button
-                type="button"
-                disabled={actions.busy}
-                onClick={() => void actions.patch(
-                  "items",
-                  recordId(row, index),
-                  { is_active: !Boolean(row.is_active ?? true) },
-                )}
-              >
-                {Boolean(row.is_active ?? true) ? "Yashirish" : "Ko‘rsatish"}
-              </button>
-              <button
-                type="button"
-                disabled={actions.busy}
-                onClick={() => void actions.remove("items", recordId(row, index))}
-              >
-                O‘chirish
-              </button>
-            </div>
-          </article>
-        )) : <Empty>Mos mahsulot yoki xizmat topilmadi.</Empty>}
+          </header>
+          <div className="business-items__rail">
+            {ungrouped.map((row, itemIndex) => {
+              const itemId = recordId(row, itemIndex);
+              const itemMenu = `item:${String(itemId)}`;
+              return (
+                <ProductCard
+                  key={String(itemId)}
+                  row={row}
+                  index={itemIndex}
+                  busy={actions.busy}
+                  menuOpen={openMenu === itemMenu}
+                  onMenuToggle={() => setOpenMenu((current) => (
+                    current === itemMenu ? null : itemMenu
+                  ))}
+                  onEdit={() => {
+                    actions.setDraft({ ...row });
+                    actions.setForm(itemEdit);
+                    setOpenMenu(null);
+                  }}
+                  onToggleActive={() => void actions.patch(
+                    "items",
+                    itemId,
+                    { is_active: !Boolean(row.is_active ?? true) },
+                  )}
+                  onRemove={() => void actions.remove("items", itemId)}
+                />
+              );
+            })}
+            <AddItemTile onClick={() => startNewItem(null)} />
+          </div>
+        </section>
       </div>
     </section>
   );
