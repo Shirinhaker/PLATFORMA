@@ -22,6 +22,7 @@ from app.business_online.service import (
     sanitize_mapping,
     unix_now,
 )
+from app.cabinet_records.dual_write import sync_json_fallback
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile
@@ -31,7 +32,7 @@ SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 
 
 class BusinessOnlineService:
-    """Relational primary store with a pre-backfill JSON read fallback."""
+    """Relational primary store with temporary synchronized JSON fallback."""
 
     def __init__(
         self,
@@ -55,12 +56,13 @@ class BusinessOnlineService:
                     "business_profile_not_found",
                     "Biznes profil topilmadi.",
                 )
-            return await self._resource_rows(
+            rows = await self._resource_rows(
                 session,
                 profile=profile,
                 account_id=account_id,
                 resource=resource,
             )
+            return [row for row in rows if isinstance(row, dict)]
 
     async def create_record(
         self,
@@ -86,6 +88,7 @@ class BusinessOnlineService:
             rows.append(clean)
             payload[resource] = rows
             await self._persist_resources(session, account_id, payload, {resource})
+            sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             return deepcopy(clean), deepcopy(rows)
@@ -115,6 +118,7 @@ class BusinessOnlineService:
             item["updated_at"] = unix_now()
             payload[resource] = rows
             await self._persist_resources(session, account_id, payload, {resource})
+            sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             return deepcopy(item), deepcopy(rows)
@@ -136,6 +140,7 @@ class BusinessOnlineService:
             rows.pop(find_record_index(rows, record_id))
             payload[resource] = rows
             await self._persist_resources(session, account_id, payload, {resource})
+            sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             return deepcopy(rows)
@@ -174,6 +179,7 @@ class BusinessOnlineService:
             if not changed:
                 changed.add(resource)
             await self._persist_resources(session, account_id, payload, changed)
+            sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             return deepcopy(item), resource_rows(payload, resource)
@@ -185,7 +191,7 @@ class BusinessOnlineService:
         profile: BusinessProfile,
         account_id: int,
         resource: str,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Any]:
         if await self._repository.has_resource(
             session,
             account_id=account_id,
