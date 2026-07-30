@@ -33,6 +33,17 @@ function storage() {
   };
 }
 
+function missingConfigRequest() {
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce(response(404, "missing"))
+    .mockResolvedValueOnce(response(404, "missing"));
+  return loadApiBaseUrl(
+    fetcher as unknown as typeof fetch,
+    location(),
+    storage(),
+  );
+}
+
 
 describe("loadApiBaseUrl", () => {
   it("uses an HTTPS query only as a non-persistent debug override", async () => {
@@ -126,21 +137,10 @@ describe("loadApiBaseUrl", () => {
   });
 
   it("fails clearly instead of guessing a Railway API domain", async () => {
-    const fetcher = vi.fn()
-      .mockResolvedValueOnce(response(404, "missing"))
-      .mockResolvedValueOnce(response(404, "missing"));
-
-    await expect(loadApiBaseUrl(
-      fetcher as unknown as typeof fetch,
-      location(),
-      storage(),
-    )).rejects.toEqual(expect.any(ApiConfigurationError));
-
-    await expect(loadApiBaseUrl(
-      fetcher as unknown as typeof fetch,
-      location(),
-      storage(),
-    )).rejects.toMatchObject({
+    await expect(missingConfigRequest()).rejects.toEqual(
+      expect.any(ApiConfigurationError),
+    );
+    await expect(missingConfigRequest()).rejects.toMatchObject({
       code: "api_runtime_configuration_missing",
     });
   });
