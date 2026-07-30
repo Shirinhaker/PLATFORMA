@@ -8,6 +8,7 @@ import {
 } from "./api/runtime-base-url";
 import { App } from "./app/App";
 import { resolveAuthContext } from "./auth/adapter";
+import "./profiles/BusinessOnlineEditingViews.css";
 import "./profiles/BusinessProfileV2.css";
 
 
