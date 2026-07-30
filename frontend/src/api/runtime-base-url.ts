@@ -1,7 +1,7 @@
-const LEGACY_STORAGE_KEYS = (
+const LEGACY_STORAGE_KEYS = [
   "koprik_api_base_url",
   "koprik_api_base_url_source",
-) as const;
+] as const;
 
 
 type RuntimeLocation = Pick<Location, "origin" | "search">;
