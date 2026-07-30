@@ -49,7 +49,7 @@ describe("resolveApiBaseUrl", () => {
     );
   });
 
-  it("uses stored API URL only on a non-Railway custom domain", () => {
+  it("uses stored API URL on a custom domain", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
       setItem: vi.fn(),
@@ -65,7 +65,7 @@ describe("resolveApiBaseUrl", () => {
     )).toBe("https://stored-api.up.railway.app");
   });
 
-  it("automatically routes a Railway web deployment to api-staging", () => {
+  it("automatically routes a new Railway web deployment to api-staging", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
@@ -85,9 +85,9 @@ describe("resolveApiBaseUrl", () => {
     );
   });
 
-  it("replaces a stale stored API URL on Railway web", () => {
+  it("keeps the working query-persisted API after Railway page refresh", () => {
     const storage = {
-      getItem: vi.fn().mockReturnValue("https://old-api.up.railway.app"),
+      getItem: vi.fn().mockReturnValue("https://actual-api.up.railway.app"),
       setItem: vi.fn(),
     };
 
@@ -98,11 +98,8 @@ describe("resolveApiBaseUrl", () => {
         search: "",
       } as Location,
       storage,
-    )).toBe(RAILWAY_STAGING_API);
-    expect(storage.setItem).toHaveBeenCalledWith(
-      "koprik_api_base_url",
-      RAILWAY_STAGING_API,
-    );
+    )).toBe("https://actual-api.up.railway.app");
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
 
   it("rejects insecure query configuration on a custom domain", () => {
