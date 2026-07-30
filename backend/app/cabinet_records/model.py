@@ -20,22 +20,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class CabinetRecord(Base):
-    __tablename__ = "cabinet_records"
+class CabinetResource(Base):
+    __tablename__ = "cabinet_resources"
     __table_args__ = (
         UniqueConstraint(
             "account_id",
             "account_type",
             "resource",
-            "source_key",
-            name="uq_cabinet_records_owner_resource_source",
+            name="uq_cabinet_resources_owner_resource",
         ),
         Index(
-            "ix_cabinet_records_owner_resource_ordinal",
+            "ix_cabinet_resources_owner",
             "account_id",
             "account_type",
-            "resource",
-            "ordinal",
         ),
     )
 
@@ -47,6 +44,43 @@ class CabinetRecord(Base):
     )
     account_type: Mapped[str] = mapped_column(String(16), nullable=False)
     resource: Mapped[str] = mapped_column(String(96), nullable=False)
+    value_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="list")
+    record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class CabinetRecord(Base):
+    __tablename__ = "cabinet_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "resource_id",
+            "source_key",
+            name="uq_cabinet_records_resource_source",
+        ),
+        Index(
+            "ix_cabinet_records_resource_ordinal",
+            "resource_id",
+            "ordinal",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    resource_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("cabinet_resources.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     source_key: Mapped[str] = mapped_column(String(160), nullable=False)
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
