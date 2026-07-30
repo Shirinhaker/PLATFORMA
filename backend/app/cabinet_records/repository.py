@@ -25,6 +25,8 @@ class CabinetRecordRepository:
         account_type: str,
         resource: str,
     ) -> bool:
+        if not hasattr(session, "scalar"):
+            return False
         record_id = await session.scalar(
             select(CabinetRecord.id)
             .where(
@@ -44,6 +46,8 @@ class CabinetRecordRepository:
         account_type: str,
         resource: str,
     ) -> list[dict[str, Any]]:
+        if not hasattr(session, "scalars"):
+            return []
         records = list(
             (
                 await session.scalars(
@@ -101,6 +105,8 @@ class CabinetRecordRepository:
         account_id: int,
         account_type: str,
     ) -> dict[str, list[dict[str, Any]]]:
+        if not hasattr(session, "scalars"):
+            return {}
         resources = list(
             (
                 await session.scalars(
