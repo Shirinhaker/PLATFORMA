@@ -173,9 +173,11 @@ class BusinessProfileRead(BaseModel):
     pay_card: str
     pay_holder: str
     pay_qr_object_key: str
+    pay_qr_url: str = ""
     director: str
     tax_id: str
     logo_object_key: str
+    logo_url: str = ""
     logo_x: float
     logo_y: float
     logo_zoom: float
@@ -248,6 +250,7 @@ class BusinessProfilePatch(ProfilePatch):
     work_hours: dict[str, Any] | None = None
     pay_card: str | None = Field(default=None, max_length=64)
     pay_holder: str | None = Field(default=None, max_length=160)
+    pay_qr_object_key: str | None = Field(default=None, max_length=1024)
     director: str | None = Field(default=None, max_length=160)
     tax_id: str | None = Field(default=None, max_length=32)
     map_visible: bool | None = None
@@ -272,6 +275,12 @@ class ProfileImageAttachment(BaseModel):
     x: float = Field(ge=0, le=100)
     y: float = Field(ge=0, le=100)
     zoom: float = Field(ge=1, le=5)
+
+
+class BusinessPaymentQrAttachment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    object_key: str = Field(default="", max_length=1024)
 
 
 class CabinetSwitchRequest(BaseModel):
