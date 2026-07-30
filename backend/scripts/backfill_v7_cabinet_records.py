@@ -5,6 +5,7 @@ import asyncio
 
 from app.cabinet_records.backfill import backfill_all_profiles
 from app.cabinet_records.batch_runner import execute_backfill_batches
+from app.cabinet_records.lock import normalization_lock
 from app.cabinet_records.verify_existing import verify_existing_normalization
 from app.core.config import get_settings
 from app.db.session import Database
@@ -20,50 +21,67 @@ async def run(
     database = Database(settings.database_url)
     await database.start()
     try:
-        if verify_only:
-            async with database.session() as session:
-                summary = await verify_existing_normalization(session)
-                await session.rollback()
-            print_summary(
-                mode="VERIFY_ONLY",
-                run_id=0,
-                summary=summary,
-                batches_committed=0,
-            )
-            print(f"MARKER_MISMATCHES={summary.marker_mismatches}")
-            print(f"VERIFY_OK={int(summary.ok)}")
-            print("DATABASE_WRITES=0")
-            return 0 if summary.ok else 2
+        async with database.session() as lock_session:
+            async with normalization_lock(lock_session):
+                return await run_locked(
+                    database,
+                    execute=execute,
+                    verify_only=verify_only,
+                    batch_size=batch_size,
+                )
+    finally:
+        await database.stop()
 
-        if execute:
-            summary = await execute_backfill_batches(
-                database.session,
-                batch_size=batch_size,
-            )
-            print_summary(
-                mode="EXECUTE_BATCHED",
-                run_id=summary.run_id,
-                summary=summary,
-                batches_committed=summary.batches_committed,
-            )
-            print("VERIFY_OK=1")
-            print("DATABASE_WRITES=RELATIONAL_ONLY")
-            return 0
 
+async def run_locked(
+    database: Database,
+    *,
+    execute: bool,
+    verify_only: bool,
+    batch_size: int,
+) -> int:
+    if verify_only:
         async with database.session() as session:
-            summary = await backfill_all_profiles(session)
+            summary = await verify_existing_normalization(session)
             await session.rollback()
         print_summary(
-            mode="DRY_RUN",
-            run_id=summary.run_id,
+            mode="VERIFY_ONLY",
+            run_id=0,
             summary=summary,
             batches_committed=0,
         )
-        print("VERIFY_OK=1")
+        print(f"MARKER_MISMATCHES={summary.marker_mismatches}")
+        print(f"VERIFY_OK={int(summary.ok)}")
         print("DATABASE_WRITES=0")
+        return 0 if summary.ok else 2
+
+    if execute:
+        summary = await execute_backfill_batches(
+            database.session,
+            batch_size=batch_size,
+        )
+        print_summary(
+            mode="EXECUTE_BATCHED",
+            run_id=summary.run_id,
+            summary=summary,
+            batches_committed=summary.batches_committed,
+        )
+        print("VERIFY_OK=1")
+        print("DATABASE_WRITES=RELATIONAL_AND_SYNCED_FALLBACK")
         return 0
-    finally:
-        await database.stop()
+
+    async with database.session() as session:
+        summary = await backfill_all_profiles(session)
+        await session.rollback()
+    print_summary(
+        mode="DRY_RUN",
+        run_id=summary.run_id,
+        summary=summary,
+        batches_committed=0,
+    )
+    print("VERIFY_OK=1")
+    print("DATABASE_WRITES=0")
+    return 0
 
 
 def print_summary(*, mode: str, run_id: int, summary, batches_committed: int) -> None:
