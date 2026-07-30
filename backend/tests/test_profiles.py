@@ -205,6 +205,58 @@ async def test_business_cannot_read_user_profile(profile_clients):
     assert response.status_code == 403
 
 
+async def test_profile_reads_normalize_non_finite_legacy_values(profile_clients):
+    user = profile_clients.database.profiles[UserProfile][1]
+    user.latitude = float("nan")
+    user.longitude = float("inf")
+    user.avatar_x = float("-inf")
+    user.avatar_y = float("nan")
+    user.avatar_zoom = float("inf")
+    user.dashboard_snapshot = {"broken": float("nan")}
+    user.specialist_profile = {"price": float("inf")}
+    user.cabinet_payload = {
+        "items": [{"price": float("-inf")}],
+    }
+
+    user_response = await profile_clients.first_user.get(
+        "/api/v1/user-profile"
+    )
+
+    assert user_response.status_code == 200, user_response.text
+    user_body = user_response.json()
+    assert user_body["latitude"] is None
+    assert user_body["longitude"] is None
+    assert user_body["avatar_x"] == 50.0
+    assert user_body["avatar_y"] == 50.0
+    assert user_body["avatar_zoom"] == 1.0
+    assert user_body["dashboard_snapshot"]["broken"] is None
+    assert user_body["specialist_profile"]["price"] is None
+    assert user_body["cabinet_payload"]["items"][0]["price"] is None
+
+    business = profile_clients.database.profiles[BusinessProfile][3]
+    business.latitude = float("nan")
+    business.longitude = float("-inf")
+    business.logo_x = float("inf")
+    business.logo_y = float("nan")
+    business.logo_zoom = float("-inf")
+    business.work_hours = {"monday": float("nan")}
+    business.cabinet_payload = {"sales": [{"total": float("inf")}]}
+
+    business_response = await profile_clients.business.get(
+        "/api/v1/business-profile"
+    )
+
+    assert business_response.status_code == 200, business_response.text
+    business_body = business_response.json()
+    assert business_body["latitude"] is None
+    assert business_body["longitude"] is None
+    assert business_body["logo_x"] == 50.0
+    assert business_body["logo_y"] == 50.0
+    assert business_body["logo_zoom"] == 1.0
+    assert business_body["work_hours"]["monday"] is None
+    assert business_body["cabinet_payload"]["sales"][0]["total"] is None
+
+
 async def test_partial_profile_update_preserves_unsent_fields(profile_clients):
     before = (
         await profile_clients.first_user.get("/api/v1/user-profile")
