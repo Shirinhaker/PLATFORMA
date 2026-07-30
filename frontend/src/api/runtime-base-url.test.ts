@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { resolveApiBaseUrl } from "./runtime-base-url";
+import {
+  RAILWAY_STAGING_API,
+  resolveApiBaseUrl,
+} from "./runtime-base-url";
 
 
 describe("resolveApiBaseUrl", () => {
@@ -26,7 +29,7 @@ describe("resolveApiBaseUrl", () => {
     );
   });
 
-  it("prefers a configured build URL over stored and same-origin values", () => {
+  it("prefers a configured build URL over stored and Railway values", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
       setItem: vi.fn(),
@@ -58,7 +61,7 @@ describe("resolveApiBaseUrl", () => {
     )).toBe("https://stored-api.up.railway.app");
   });
 
-  it("rejects insecure query configuration and falls back to same origin", () => {
+  it("automatically routes a Railway web deployment to api-staging", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue(null),
       setItem: vi.fn(),
@@ -67,11 +70,31 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl(
       undefined,
       {
-        origin: "https://web-production.up.railway.app",
+        origin: "https://web-production-aed95.up.railway.app",
+        search: "",
+      } as Location,
+      storage,
+    )).toBe(RAILWAY_STAGING_API);
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "koprik_api_base_url",
+      RAILWAY_STAGING_API,
+    );
+  });
+
+  it("rejects insecure query configuration on a custom domain", () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+    };
+
+    expect(resolveApiBaseUrl(
+      undefined,
+      {
+        origin: "https://koprik.uz",
         search: "?api=http%3A%2F%2Finsecure.local",
       } as Location,
       storage,
-    )).toBe("https://web-production.up.railway.app");
+    )).toBe("https://koprik.uz");
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 });
