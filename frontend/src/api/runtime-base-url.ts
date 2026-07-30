@@ -41,16 +41,22 @@ export function resolveApiBaseUrl(
   }
 
   const fromBuild = safeHttps(clean(configured));
-  if (fromBuild) return fromBuild;
+  if (fromBuild) {
+    storage.setItem(API_STORAGE_KEY, fromBuild);
+    return fromBuild;
+  }
 
-  const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
-  if (fromStorage) return fromStorage;
-
+  // Railway web deploylarda oldingi noto‘g‘ri URL localStorage’da qolgan
+  // bo‘lishi mumkin. Ma’lum staging API manzili har doim eski browser
+  // xotirasidan ustun turadi va uni avtomatik yangilaydi.
   const fromRailway = railwayDefault(clean(location.origin));
   if (fromRailway) {
     storage.setItem(API_STORAGE_KEY, fromRailway);
     return fromRailway;
   }
+
+  const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
+  if (fromStorage) return fromStorage;
 
   return clean(location.origin);
 }
