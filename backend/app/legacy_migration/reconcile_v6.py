@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from math import isfinite
 import sqlite3
 
 from sqlalchemy import func, select
@@ -605,7 +606,9 @@ def _json_safe(value):
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
-    if isinstance(value, (str, int, float, bool)) or value is None:
+    if isinstance(value, float):
+        return value if isfinite(value) else None
+    if isinstance(value, (str, int, bool)) or value is None:
         return value
     return str(value)
 
@@ -619,9 +622,10 @@ def _as_int(value) -> int:
 
 def _as_float(value) -> float:
     try:
-        return float(value or 0)
+        parsed = float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+    return parsed if isfinite(parsed) else 0.0
 
 
 def _counters() -> dict[str, int]:
