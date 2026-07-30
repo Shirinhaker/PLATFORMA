@@ -1,0 +1,57 @@
+.business-online__form textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 9px 11px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 9px;
+  color: var(--koprik-ink);
+  background: var(--koprik-bg);
+  resize: vertical;
+}
+
+.business-online__groups--editable {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: visible;
+}
+
+.business-online__groups--editable article {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 13px;
+  background: var(--koprik-card);
+}
+
+.business-online__groups--editable article > b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.business-online__groups--editable article > div {
+  display: flex;
+  gap: 6px;
+}
+
+.business-online__groups--editable article button {
+  min-height: 34px;
+  padding: 6px 9px;
+  color: var(--koprik-primary);
+  background: var(--koprik-primary-tint);
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .business-online__groups--editable {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .business-online__groups--editable {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
