@@ -10,10 +10,11 @@ import { App } from "./app/App";
 import { resolveAuthContext } from "./auth/adapter";
 
 
-const root = document.getElementById("root");
-if (root === null) {
+const rootElement = document.getElementById("root");
+if (rootElement === null) {
   throw new Error("Frontend root elementi topilmadi.");
 }
+const root = rootElement;
 
 
 function renderConfigurationError(error: unknown) {
