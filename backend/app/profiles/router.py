@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 import re
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.auth.dependencies import (
 from app.auth.repository import create_session, lock_session
 from app.auth.router import _set_session_cookie
 from app.auth.security import derive_csrf
+from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
@@ -40,6 +41,7 @@ from app.profiles.summary_service import ProfileSummaryService
 router = APIRouter(prefix="/api/v1", tags=["profiles"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
+_cabinet_records = CabinetRecordRepository()
 
 
 async def profile_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -92,17 +94,66 @@ def require_profile_object_key(
         )
 
 
-def business_profile_read(request: Request, profile) -> BusinessProfileRead:
-    return BusinessProfileRead.model_validate(profile).model_copy(
-        update={
-            "logo_url": request.app.state.r2.create_download_url(
-                profile.logo_object_key
-            ),
-            "pay_qr_url": request.app.state.r2.create_download_url(
-                profile.pay_qr_object_key
-            ),
-        }
+async def assembled_cabinet_payload(
+    session: AsyncSession,
+    *,
+    account_id: int,
+    account_type: AccountType,
+    fallback: object,
+) -> dict[str, Any]:
+    result = dict(fallback) if isinstance(fallback, dict) else {}
+    relational = await _cabinet_records.read_payload(
+        session,
+        account_id=account_id,
+        account_type=account_type.value,
     )
+    result.update(relational)
+    return result
+
+
+def business_profile_read(
+    request: Request,
+    profile,
+    *,
+    cabinet_payload: dict[str, Any] | None = None,
+) -> BusinessProfileRead:
+    updates: dict[str, Any] = {
+        "logo_url": request.app.state.r2.create_download_url(
+            profile.logo_object_key
+        ),
+        "pay_qr_url": request.app.state.r2.create_download_url(
+            profile.pay_qr_object_key
+        ),
+    }
+    if cabinet_payload is not None:
+        updates["cabinet_payload"] = cabinet_payload
+    return BusinessProfileRead.model_validate(profile).model_copy(update=updates)
+
+
+async def user_profile_read(session: AsyncSession, profile) -> UserProfileRead:
+    payload = await assembled_cabinet_payload(
+        session,
+        account_id=profile.account_id,
+        account_type=AccountType.USER,
+        fallback=profile.cabinet_payload,
+    )
+    return UserProfileRead.model_validate(profile).model_copy(
+        update={"cabinet_payload": payload}
+    )
+
+
+async def business_profile_response(
+    request: Request,
+    session: AsyncSession,
+    profile,
+) -> BusinessProfileRead:
+    payload = await assembled_cabinet_payload(
+        session,
+        account_id=profile.account_id,
+        account_type=AccountType.BUSINESS,
+        fallback=profile.cabinet_payload,
+    )
+    return business_profile_read(request, profile, cabinet_payload=payload)
 
 
 @router.get("/me", response_model=MeRead)
@@ -116,7 +167,8 @@ async def get_me(
 @router.get("/user-profile", response_model=UserProfileRead)
 async def read_user_profile(current: CurrentRead, session: ProfileSession):
     require_account_type(current, AccountType.USER)
-    return await get_user_profile(session, current.account_id)
+    profile = await get_user_profile(session, current.account_id)
+    return await user_profile_read(session, profile)
 
 
 @router.put("/user-profile", response_model=UserProfileRead)
@@ -132,7 +184,7 @@ async def update_user_profile(
         await patch_user_profile(session, profile, body)
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return profile
+        return await user_profile_read(session, profile)
     except Exception:
         await session.rollback()
         raise
@@ -146,7 +198,7 @@ async def read_business_profile(
 ):
     require_account_type(current, AccountType.BUSINESS)
     profile = await get_business_profile(session, current.account_id)
-    return business_profile_read(request, profile)
+    return await business_profile_response(request, session, profile)
 
 
 @router.put("/business-profile", response_model=BusinessProfileRead)
@@ -173,7 +225,7 @@ async def update_business_profile(
         await patch_business_profile(session, profile, body)
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return business_profile_read(request, profile)
+        return await business_profile_response(request, session, profile)
     except Exception:
         await session.rollback()
         raise
@@ -267,7 +319,7 @@ async def attach_user_avatar(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return profile
+        return await user_profile_read(session, profile)
     except Exception:
         await session.rollback()
         raise
@@ -297,7 +349,7 @@ async def attach_business_logo(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return business_profile_read(request, profile)
+        return await business_profile_response(request, session, profile)
     except Exception:
         await session.rollback()
         raise
@@ -325,7 +377,7 @@ async def attach_business_payment_qr(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return business_profile_read(request, profile)
+        return await business_profile_response(request, session, profile)
     except Exception:
         await session.rollback()
         raise
