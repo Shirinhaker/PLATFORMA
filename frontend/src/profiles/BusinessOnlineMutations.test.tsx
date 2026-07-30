@@ -2,7 +2,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { BusinessOnlineResource } from "../api/business-online-types";
+import type {
+  BusinessOnlineActionInput,
+  BusinessOnlineRecord,
+  BusinessOnlineResource,
+} from "../api/business-online-types";
 import { BusinessProfile } from "./BusinessProfile";
 
 
@@ -15,7 +19,7 @@ const identity = {
   expires_at: "2026-08-30T08:00:00Z",
 };
 
-const payload = {
+const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   business_subscriptions: [],
   subscription_payments: [],
   item_groups: [],
@@ -74,15 +78,16 @@ function api() {
     resource: BusinessOnlineResource,
   ) => ({
     resource,
-    items: payload[resource] ?? [],
+    items: payload[resource],
   }));
   const applyBusinessOnlineAction = vi.fn(async (
     resource: BusinessOnlineResource,
     _action: string,
+    _body: BusinessOnlineActionInput,
   ) => ({
     resource,
     item: null,
-    items: payload[resource] ?? [],
+    items: payload[resource],
   }));
   return {
     getSession: vi.fn().mockResolvedValue(identity),
