@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { BusinessProfileV2 } from "./BusinessProfileV2";
+import { BusinessProfile } from "./BusinessProfile";
 
 
 const identity = {
@@ -44,7 +44,7 @@ const profile = {
   map_visible: true,
   dashboard_snapshot: {
     revenue: 0,
-    new_orders: 1,
+    new_orders: 2,
     debt_total: 214500,
     low_stock: 0,
   },
@@ -66,7 +66,7 @@ const profile = {
     }, {
       id: 45,
       title: "Xizmat",
-      status: "accepted",
+      status: "new",
       order_type: "service",
       total_amount: 40000,
       items: [],
@@ -99,7 +99,7 @@ function api() {
 async function renderCabinet() {
   const user = userEvent.setup();
   render(
-    <BusinessProfileV2
+    <BusinessProfile
       api={api()}
       identity={identity}
       onLogout={vi.fn()}
