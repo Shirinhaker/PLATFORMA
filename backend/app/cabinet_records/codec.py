@@ -5,6 +5,10 @@ import hashlib
 from typing import Any, Iterable
 
 
+MIN_BIGINT = -(2**63)
+MAX_BIGINT = 2**63 - 1
+
+
 @dataclass(frozen=True)
 class FlatRecord:
     account_id: int
@@ -12,6 +16,7 @@ class FlatRecord:
     resource: str
     source_key: str
     ordinal: int
+    value_kind: str = "object"
 
     @property
     def payload_json(self) -> None:
@@ -54,6 +59,7 @@ def flatten_records(
                 resource=resource,
                 source_key=source_key,
                 ordinal=ordinal,
+                value_kind=_record_value_kind(raw_row),
             )
         )
         for key, value in row.items():
@@ -70,14 +76,14 @@ def flatten_records(
 def inflate_records(
     records: Iterable[object],
     fields: Iterable[object],
-) -> list[dict[str, Any]]:
+) -> list[Any]:
     ordered_records = sorted(records, key=lambda record: int(getattr(record, "ordinal")))
     fields_by_key: dict[str, list[object]] = {}
     for field in fields:
         key = str(getattr(field, "record_source_key"))
         fields_by_key.setdefault(key, []).append(field)
 
-    result: list[dict[str, Any]] = []
+    result: list[Any] = []
     for record in ordered_records:
         source_key = str(getattr(record, "source_key"))
         root: dict[str, Any] = {}
@@ -94,20 +100,35 @@ def inflate_records(
                 root,
                 segments,
                 _field_value(field),
-                str(getattr(field, "value_type")),
             )
-        result.append(root)
+        value_kind = str(getattr(record, "value_kind", "object"))
+        if value_kind == "object":
+            result.append(root)
+        elif value_kind == "null":
+            result.append(None)
+        else:
+            result.append(root.get("value"))
     return result
 
 
-def normalize_payload_rows(value: object) -> list[dict[str, Any]]:
+def normalize_payload_rows(value: object) -> list[object]:
     if isinstance(value, list):
-        return [item if isinstance(item, dict) else {"value": item} for item in value]
+        return list(value)
     if isinstance(value, dict):
         return [value]
     if value is None:
         return []
-    return [{"value": value}]
+    return [value]
+
+
+def _record_value_kind(value: object) -> str:
+    if isinstance(value, dict):
+        return "object"
+    if isinstance(value, list):
+        return "list"
+    if value is None:
+        return "null"
+    return "scalar"
 
 
 def _source_key(row: dict[str, Any], ordinal: int, used_keys: set[str]) -> str:
@@ -188,14 +209,24 @@ def _flatten_value(
             )
         )
     elif isinstance(value, int):
-        fields.append(
-            FlatField(
-                record_source_key=record_source_key,
-                path=encoded,
-                value_type="integer",
-                value_integer=value,
+        if MIN_BIGINT <= value <= MAX_BIGINT:
+            fields.append(
+                FlatField(
+                    record_source_key=record_source_key,
+                    path=encoded,
+                    value_type="integer",
+                    value_integer=value,
+                )
             )
-        )
+        else:
+            fields.append(
+                FlatField(
+                    record_source_key=record_source_key,
+                    path=encoded,
+                    value_type="big_integer",
+                    value_text=str(value),
+                )
+            )
     elif isinstance(value, float):
         fields.append(
             FlatField(
@@ -228,6 +259,8 @@ def _field_value(field: object) -> object:
         return bool(getattr(field, "value_boolean"))
     if value_type == "integer":
         return int(getattr(field, "value_integer"))
+    if value_type == "big_integer":
+        return int(str(getattr(field, "value_text")))
     if value_type == "float":
         return float(getattr(field, "value_float"))
     return str(getattr(field, "value_text"))
@@ -237,7 +270,6 @@ def _assign(
     root: dict[str, Any],
     segments: tuple[str, ...],
     value: object,
-    value_type: str,
 ) -> None:
     if not segments:
         return
