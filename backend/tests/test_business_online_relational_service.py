@@ -114,9 +114,9 @@ def profile() -> BusinessProfile:
 
 
 @pytest.mark.asyncio
-async def test_create_uses_relational_primary_store_without_mutating_profile_json():
+async def test_create_uses_relational_primary_store_and_syncs_json_fallback():
     business = profile()
-    original_json = deepcopy(business.cabinet_payload)
+    original_orders = deepcopy(business.cabinet_payload["orders"])
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
     service = BusinessOnlineService(database.session, repository)
@@ -129,14 +129,15 @@ async def test_create_uses_relational_primary_store_without_mutating_profile_jso
 
     assert item["id"] == 5
     assert [row["name"] for row in rows] == ["Eski mahsulot", "Yangi mahsulot"]
-    assert business.cabinet_payload == original_json
+    assert business.cabinet_payload["items"] == rows
+    assert business.cabinet_payload["orders"] == original_orders
     assert repository.replacements == ["items"]
     assert await service.read_resource(7, "items") == rows
     assert database.session_value.commits == 1
 
 
 @pytest.mark.asyncio
-async def test_action_persists_every_changed_related_resource():
+async def test_action_persists_every_changed_resource_in_both_stores():
     business = profile()
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
@@ -159,13 +160,13 @@ async def test_action_persists_every_changed_related_resource():
     }
     payments = await service.read_resource(7, "subscription_payments")
     assert payments[0]["amount_snapshot"] == 149000
-    assert business.cabinet_payload["business_subscriptions"] == []
+    assert business.cabinet_payload["business_subscriptions"] == rows
+    assert business.cabinet_payload["subscription_payments"] == payments
 
 
 @pytest.mark.asyncio
-async def test_relational_action_updates_derived_counts_without_json_write():
+async def test_relational_action_updates_derived_counts_and_json_fallback():
     business = profile()
-    original_json = deepcopy(business.cabinet_payload)
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
     service = BusinessOnlineService(database.session, repository)
@@ -181,4 +182,4 @@ async def test_relational_action_updates_derived_counts_without_json_write():
     notifications = await service.read_resource(7, "notifications")
     assert notifications[0]["is_read"] == 1
     assert business.dashboard_snapshot["unread"] == 0
-    assert business.cabinet_payload == original_json
+    assert business.cabinet_payload["notifications"] == notifications
