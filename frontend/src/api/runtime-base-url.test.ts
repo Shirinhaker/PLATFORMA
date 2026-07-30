@@ -29,7 +29,7 @@ describe("resolveApiBaseUrl", () => {
     );
   });
 
-  it("prefers a configured build URL over stored and Railway values", () => {
+  it("prefers and stores a configured build URL", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
       setItem: vi.fn(),
@@ -43,9 +43,13 @@ describe("resolveApiBaseUrl", () => {
       } as Location,
       storage,
     )).toBe("https://configured-api.up.railway.app");
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "koprik_api_base_url",
+      "https://configured-api.up.railway.app",
+    );
   });
 
-  it("uses the stored API URL when the build variable is missing", () => {
+  it("uses stored API URL only on a non-Railway custom domain", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
       setItem: vi.fn(),
@@ -54,7 +58,7 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl(
       undefined,
       {
-        origin: "https://web-production.up.railway.app",
+        origin: "https://koprik.uz",
         search: "",
       } as Location,
       storage,
@@ -64,6 +68,26 @@ describe("resolveApiBaseUrl", () => {
   it("automatically routes a Railway web deployment to api-staging", () => {
     const storage = {
       getItem: vi.fn().mockReturnValue(null),
+      setItem: vi.fn(),
+    };
+
+    expect(resolveApiBaseUrl(
+      undefined,
+      {
+        origin: "https://web-production-aed95.up.railway.app",
+        search: "",
+      } as Location,
+      storage,
+    )).toBe(RAILWAY_STAGING_API);
+    expect(storage.setItem).toHaveBeenCalledWith(
+      "koprik_api_base_url",
+      RAILWAY_STAGING_API,
+    );
+  });
+
+  it("replaces a stale stored API URL on Railway web", () => {
+    const storage = {
+      getItem: vi.fn().mockReturnValue("https://old-api.up.railway.app"),
       setItem: vi.fn(),
     };
 
