@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import fakeredis.aioredis
 
 from app.accounts.model import AccountType
-from app.auth import service as auth_service_module
-from app.auth.service import AuthService
+from app.auth import shared_login as shared_login_module
+from app.auth.shared_login import SharedLoginAuthService
 from app.core.config import Settings
 
 
@@ -51,13 +51,13 @@ async def test_session_resolution_does_not_read_rolled_back_orm_instance(
         return auth_session, account
 
     monkeypatch.setattr(
-        auth_service_module,
+        shared_login_module,
         "resolve_stored_session",
         resolve_from_database,
     )
 
     redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    service = AuthService(
+    service = SharedLoginAuthService(
         session_factory,
         redis,
         Settings(
