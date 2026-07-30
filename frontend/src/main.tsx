@@ -2,22 +2,52 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { ApiClient } from "./api/client";
-import { resolveApiBaseUrl } from "./api/runtime-base-url";
+import {
+  ApiConfigurationError,
+  loadApiBaseUrl,
+} from "./api/runtime-base-url";
 import { App } from "./app/App";
 import { resolveAuthContext } from "./auth/adapter";
 
 
-const api = new ApiClient(
-  resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
-  window.fetch.bind(window),
-  resolveAuthContext(),
-);
 const root = document.getElementById("root");
 if (root === null) {
   throw new Error("Frontend root elementi topilmadi.");
 }
-createRoot(root).render(
-  <StrictMode>
-    <App api={api} />
-  </StrictMode>,
-);
+
+
+function renderConfigurationError(error: unknown) {
+  const code = error instanceof ApiConfigurationError
+    ? error.code
+    : "api_bootstrap_failed";
+  createRoot(root).render(
+    <StrictMode>
+      <main className="session-panel session-panel--message" role="alert">
+        <p>API konfiguratsiyasi topilmadi.</p>
+        <small>Xato kodi: {code}</small>
+      </main>
+    </StrictMode>,
+  );
+}
+
+
+async function bootstrap() {
+  try {
+    const apiBaseUrl = await loadApiBaseUrl();
+    const api = new ApiClient(
+      apiBaseUrl,
+      window.fetch.bind(window),
+      resolveAuthContext(),
+    );
+    createRoot(root).render(
+      <StrictMode>
+        <App api={api} />
+      </StrictMode>,
+    );
+  } catch (error) {
+    renderConfigurationError(error);
+  }
+}
+
+
+void bootstrap();
