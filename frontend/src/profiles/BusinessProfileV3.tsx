@@ -24,6 +24,7 @@ import {
 } from "./business-profile-config";
 import { CabinetDataView } from "./CabinetDataView";
 import "./Cabinet.css";
+import "./BusinessFollowCounts.css";
 
 
 export type BusinessProfileApiV3 = Pick<
@@ -56,6 +57,7 @@ type Props = {
 type DataView = { title: string; rows: unknown[] };
 type Screen = "cabinet" | "profile" | "data" | "online";
 
+const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
@@ -99,7 +101,6 @@ function visibleMenus(profile: BusinessProfileData | null, menus: Menu[]) {
 function isOnlineMenu(menu: Menu) {
   return ONLINE_MENUS.some((candidate) => candidate.view === menu.view);
 }
-
 
 export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props) {
   const [profile, setProfile] = useState<BusinessProfileData | null>(null);
@@ -156,6 +157,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
       />
     );
   }
+
   if (screen === "online" && onlineMenu) {
     return (
       <BusinessOnlineScreen
@@ -167,8 +169,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           try {
             setProfile(await api.getBusinessProfile());
           } catch {
-            // Dedicated ekrandagi saqlangan yozuvlar yo‘qolmaydi; dashboard keyingi
-            // normal refreshda yangilanadi.
+            // Saqlangan dedicated yozuvlar yo‘qolmaydi; keyingi refresh yangilaydi.
           }
           setOnlineMenu(null);
           setScreen("cabinet");
@@ -176,6 +177,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
       />
     );
   }
+
   if (screen === "data") {
     return (
       <CabinetDataView
@@ -194,6 +196,9 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     followers: loadedProfile.followers_count,
   };
   const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS);
+  const onlineMenuCards = onlineMenus.filter((menu) => !HEADER_ONLINE_VIEWS.has(menu.view));
+  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
+  const followingMenu = onlineMenus.find((menu) => menu.view === "following");
   const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS);
   const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS);
   const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS);
@@ -318,6 +323,24 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
             <h1>{loadedProfile.name}</h1>
             <p>{loadedProfile.direction || "Yo‘nalish tanlanmagan"}</p>
             <span>{loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}</span>
+            <div className="business-cabinet__identity-chips">
+              <button
+                type="button"
+                aria-label="Obunachilar"
+                disabled={!followersMenu}
+                onClick={() => followersMenu && openMenu(followersMenu)}
+              >
+                {loadedProfile.followers_count} obunachi
+              </button>
+              <button
+                type="button"
+                aria-label="Biznes obunalari"
+                disabled={!followingMenu}
+                onClick={() => followingMenu && openMenu(followingMenu)}
+              >
+                {loadedProfile.following_count} obuna
+              </button>
+            </div>
           </div>
           <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
         </header>
@@ -326,7 +349,9 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           {metrics.map((metric, index) => (
             <button
               type="button"
-              className={index === 0 ? "business-cabinet__stat business-cabinet__stat--active" : "business-cabinet__stat"}
+              className={index === 0
+                ? "business-cabinet__stat business-cabinet__stat--active"
+                : "business-cabinet__stat"}
               key={metric.key}
               onClick={() => {
                 const menu = [...onlineMenus, ...systemMenus, ...directionMenus]
@@ -335,7 +360,9 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
               }}
             >
               <span>{metric.label}</span>
-              <strong>{metric.money ? money(summary[metric.key] ?? 0) : String(summary[metric.key] ?? 0)}</strong>
+              <strong>{metric.money
+                ? money(summary[metric.key] ?? 0)
+                : String(summary[metric.key] ?? 0)}</strong>
               <small>{metric.sub}</small>
             </button>
           ))}
@@ -345,7 +372,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
 
         <div className="business-cabinet__content">
           <div>
-            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenus)}
+            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}
             {group("Tizimlashtirish", "Hisob-kitob, ombor va boshqaruv", systemMenus)}
             {group("Ma’muriyat", "Xodimlar, hujjatlar va hamkorlar", adminMenus)}
             {directionMenus.length > 0 && group(
@@ -384,7 +411,9 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
                   if (menu) openMenu(menu);
                 }}
               >
-                <span className="business-cabinet__activity-icon">{activity.kind === "order" ? "B" : "X"}</span>
+                <span className="business-cabinet__activity-icon">
+                  {activity.kind === "order" ? "B" : "X"}
+                </span>
                 <span className="business-cabinet__activity-copy">
                   <b>{activityLabel(activity)}</b>
                   <small>{activityDate(activity.created_at)}</small>
