@@ -3,8 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-import pytest
-
 from app.cabinet_records.codec import flatten_records, inflate_records
 from app.cabinet_records.verify import payload_digest, verify_payload_parity
 
@@ -47,6 +45,7 @@ def test_nested_cabinet_records_round_trip_without_json_blob() -> None:
     assert len(records) == 1
     assert records[0].resource == "orders"
     assert records[0].source_key == "44"
+    assert records[0].value_kind == "object"
     assert records[0].payload_json is None
     assert fields
     assert all(field.value_json is None for field in fields)
@@ -54,6 +53,28 @@ def test_nested_cabinet_records_round_trip_without_json_blob() -> None:
     restored = inflate_records(records, fields)
     assert canonical(restored) == canonical(rows)
     assert payload_digest(restored) == payload_digest(rows)
+
+
+def test_scalar_list_rows_and_oversized_integers_round_trip_exactly() -> None:
+    huge = 10**80
+    rows = [1, "x", None, [True, huge], {"0": "numeric dict key", "huge": huge}]
+
+    records, fields = flatten_records(
+        account_id=7,
+        account_type="business",
+        resource="legacy_values",
+        rows=rows,
+    )
+
+    assert [record.value_kind for record in records] == [
+        "scalar",
+        "scalar",
+        "null",
+        "list",
+        "object",
+    ]
+    assert any(field.value_type == "big_integer" for field in fields)
+    assert inflate_records(records, fields) == rows
 
 
 def test_resource_and_account_boundaries_are_not_mixed() -> None:
@@ -80,22 +101,28 @@ def test_resource_and_account_boundaries_are_not_mixed() -> None:
     assert business_records[0].resource != user_records[0].resource
 
 
-def test_verify_requires_exact_count_and_digest_parity() -> None:
+def test_verify_requires_exact_count_digest_and_empty_resource_parity() -> None:
     source = {
         "orders": [{"id": 1, "status": "new"}],
         "items": [{"id": 2, "name": "Mahsulot"}],
+        "empty": [],
+        "setting": {"enabled": True},
+        "nullable": None,
     }
     target = {
         "orders": [{"id": 1, "status": "new"}],
         "items": [{"id": 2, "name": "Mahsulot"}],
+        "empty": [],
+        "setting": {"enabled": True},
+        "nullable": None,
     }
 
     result = verify_payload_parity(source, target)
     assert result.ok is True
-    assert result.source_resources == 2
-    assert result.target_resources == 2
-    assert result.source_records == 2
-    assert result.target_records == 2
+    assert result.source_resources == 5
+    assert result.target_resources == 5
+    assert result.source_records == 3
+    assert result.target_records == 3
     assert result.source_digest == result.target_digest
 
     broken = verify_payload_parity(
