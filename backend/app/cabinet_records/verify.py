@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Any, Mapping
+from typing import Mapping
 
 
 @dataclass(frozen=True)
@@ -31,12 +31,12 @@ def verify_payload_parity(
     source: Mapping[str, object],
     target: Mapping[str, object],
 ) -> PayloadParity:
-    normalized_source = _normalized_payload(source)
-    normalized_target = _normalized_payload(target)
+    normalized_source = _canonical_payload(source)
+    normalized_target = _canonical_payload(target)
     source_digest = payload_digest(normalized_source)
     target_digest = payload_digest(normalized_target)
-    source_records = sum(len(rows) for rows in normalized_source.values())
-    target_records = sum(len(rows) for rows in normalized_target.values())
+    source_records = sum(_record_count(value) for value in normalized_source.values())
+    target_records = sum(_record_count(value) for value in normalized_target.values())
     return PayloadParity(
         ok=(
             len(normalized_source) == len(normalized_target)
@@ -52,17 +52,19 @@ def verify_payload_parity(
     )
 
 
-def _normalized_payload(payload: Mapping[str, object]) -> dict[str, list[dict[str, Any]]]:
-    result: dict[str, list[dict[str, Any]]] = {}
-    for resource, value in sorted(payload.items()):
-        if isinstance(value, list):
-            rows = [item if isinstance(item, dict) else {"value": item} for item in value]
-        elif isinstance(value, dict):
-            rows = [value]
-        elif value is None:
-            rows = []
-        else:
-            rows = [{"value": value}]
-        if rows:
-            result[str(resource)] = rows
-    return result
+def aggregate_profile_digest(entries: list[tuple[str, str]]) -> str:
+    """Stable digest for sorted ``account_type:account_id`` profile digests."""
+    ordered = sorted(entries, key=lambda entry: entry[0])
+    return payload_digest([{"profile": key, "digest": digest} for key, digest in ordered])
+
+
+def _canonical_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    return {str(resource): value for resource, value in sorted(payload.items())}
+
+
+def _record_count(value: object) -> int:
+    if isinstance(value, list):
+        return len(value)
+    if value is None:
+        return 0
+    return 1
