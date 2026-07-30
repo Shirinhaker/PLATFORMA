@@ -89,6 +89,7 @@ def upgrade() -> None:
         ),
         sa.Column("source_key", sa.String(length=160), nullable=False),
         sa.Column("ordinal", sa.Integer(), nullable=False),
+        sa.Column("value_kind", sa.String(length=16), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
