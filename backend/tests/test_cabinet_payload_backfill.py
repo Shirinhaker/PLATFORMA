@@ -39,6 +39,10 @@ async def test_backfill_all_profiles_is_lossless_and_idempotent(db_session):
             "items": [{"id": 10, "name": "Non", "qty": 2}],
         }],
         "notifications": [{"id": 2, "is_read": 0}],
+        "specialist": {"bio": "Usta", "offers": []},
+        "saved": [],
+        "legacy_enabled": True,
+        "legacy_note": None,
     }
     business_payload = {
         "items": [{"id": 4, "name": "Mahsulot", "price": 15000}],
@@ -48,6 +52,8 @@ async def test_backfill_all_profiles_is_lossless_and_idempotent(db_session):
             "views": [{"id": 6, "viewer_id": 1}],
             "reports": [],
         }],
+        "messages": [],
+        "settings": {"show_map": True},
     }
     user_profile = UserProfile(
         account_id=user.id,
