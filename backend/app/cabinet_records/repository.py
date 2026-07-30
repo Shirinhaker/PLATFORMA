@@ -50,7 +50,7 @@ class CabinetRecordRepository:
         account_id: int,
         account_type: str,
         resource: str,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Any]:
         if not hasattr(session, "scalars"):
             return []
         marker = await session.scalar(
@@ -133,7 +133,7 @@ class CabinetRecordRepository:
         account_id: int,
         account_type: str,
         resource: str,
-        rows: list[dict[str, Any]],
+        rows: list[Any],
         value_kind: str = "list",
     ) -> None:
         marker = await session.scalar(
@@ -228,7 +228,7 @@ class CabinetRecordRepository:
         account_id: int,
         account_type: str,
         resource: str,
-        rows: list[dict[str, Any]],
+        rows: list[Any],
     ) -> None:
         flat_records, flat_fields = flatten_records(
             account_id=account_id,
@@ -245,6 +245,7 @@ class CabinetRecordRepository:
                 resource_id=marker.id,
                 source_key=flat_record.source_key,
                 ordinal=flat_record.ordinal,
+                value_kind=flat_record.value_kind,
             )
             session.add(record)
             await session.flush()
@@ -275,14 +276,14 @@ def resource_value_kind(value: object) -> str:
 
 def restore_resource_value(
     value_kind: str,
-    rows: list[dict[str, Any]],
+    rows: list[Any],
 ) -> object:
     if value_kind == "object":
         return rows[0] if rows else {}
     if value_kind == "null":
         return None
     if value_kind == "scalar":
-        return rows[0].get("value") if rows else None
+        return rows[0] if rows else None
     return rows
 
 
@@ -290,7 +291,7 @@ def _inflate_rows(
     marker: CabinetResource,
     records: list[CabinetRecord],
     fields: list[CabinetRecordField],
-) -> list[dict[str, Any]]:
+) -> list[Any]:
     if not records:
         return []
     record_ids = {record.id for record in records}
@@ -302,6 +303,7 @@ def _inflate_rows(
             resource=marker.resource,
             source_key=record.source_key,
             ordinal=record.ordinal,
+            value_kind=record.value_kind,
         )
         for record in records
     ]
