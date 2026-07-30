@@ -1,5 +1,12 @@
 import type { AuthContext } from "../auth/adapter";
 import type {
+  BusinessOnlineActionInput,
+  BusinessOnlineMutationRead,
+  BusinessOnlineRecord,
+  BusinessOnlineResource,
+  BusinessOnlineResourceRead,
+} from "./business-online-types";
+import type {
   AccountType,
   ApiErrorBody,
   Authenticated,
@@ -214,6 +221,67 @@ export class ApiClient {
 
   updateBusinessProfile(body: BusinessProfilePatch): Promise<BusinessProfile> {
     return this.request("PUT", "/api/v1/business-profile", body, true);
+  }
+
+  getBusinessOnlineResource(
+    resource: BusinessOnlineResource,
+  ): Promise<BusinessOnlineResourceRead> {
+    return this.request(
+      "GET",
+      `/api/v1/business-online/${encodeURIComponent(resource)}`,
+      undefined,
+      true,
+    );
+  }
+
+  createBusinessOnlineRecord(
+    resource: BusinessOnlineResource,
+    record: BusinessOnlineRecord,
+  ): Promise<BusinessOnlineMutationRead> {
+    return this.request(
+      "POST",
+      `/api/v1/business-online/${encodeURIComponent(resource)}`,
+      { record },
+      true,
+    );
+  }
+
+  patchBusinessOnlineRecord(
+    resource: BusinessOnlineResource,
+    recordId: number | string,
+    patch: BusinessOnlineRecord,
+  ): Promise<BusinessOnlineMutationRead> {
+    return this.request(
+      "PUT",
+      `/api/v1/business-online/${encodeURIComponent(resource)}/${encodeURIComponent(String(recordId))}`,
+      { patch },
+      true,
+    );
+  }
+
+  deleteBusinessOnlineRecord(
+    resource: BusinessOnlineResource,
+    recordId: number | string,
+  ): Promise<BusinessOnlineMutationRead> {
+    return this.request(
+      "DELETE",
+      `/api/v1/business-online/${encodeURIComponent(resource)}/${encodeURIComponent(String(recordId))}`,
+      undefined,
+      true,
+    );
+  }
+
+  applyBusinessOnlineAction(
+    resource: BusinessOnlineResource,
+    action: string,
+    body: BusinessOnlineActionInput = {},
+  ): Promise<BusinessOnlineMutationRead> {
+    return this.request(
+      "POST",
+      `/api/v1/business-online/${encodeURIComponent(resource)}/actions/${encodeURIComponent(action)}`,
+      { record_id: body.record_id, payload: body.payload ?? {} },
+      true,
+    );
   }
 
   switchCabinet(targetType: AccountType): Promise<CabinetSwitch> {
