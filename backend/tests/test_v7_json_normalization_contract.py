@@ -5,9 +5,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_business_online_service_stops_using_profile_json_as_primary_store():
-    source = (ROOT / "app" / "business_online" / "service.py").read_text()
+    source = (
+        ROOT / "app" / "business_online" / "service_relational.py"
+    ).read_text()
+    main = (ROOT / "app" / "main.py").read_text()
     assert "CabinetRecordRepository" in source
     assert "profile.cabinet_payload = payload" not in source
+    assert "service_relational import BusinessOnlineService" in main
 
 
 def test_v7_normalization_migration_and_verify_exist():
