@@ -1,6 +1,6 @@
 export {
-  BusinessProfileV2 as BusinessProfile,
-} from "./BusinessProfileV2";
+  BusinessProfileV3 as BusinessProfile,
+} from "./BusinessProfileV3";
 export type {
-  BusinessProfileApiV2 as BusinessProfileApi,
-} from "./BusinessProfileV2";
+  BusinessProfileApiV3 as BusinessProfileApi,
+} from "./BusinessProfileV3";
