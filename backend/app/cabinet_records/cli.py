@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 
+# Standalone CLI FastAPI app import zanjiridan tashqarida ishlaydi. Foreign key
+# metadata resolve bo‘lishi uchun parent account jadvali birinchi ro‘yxatdan o‘tadi.
+from app.accounts.model import Account as _Account  # noqa: F401
 from app.cabinet_records.backfill import backfill_all_profiles
 from app.cabinet_records.batch_runner import execute_backfill_batches
 from app.cabinet_records.lock import normalization_lock
