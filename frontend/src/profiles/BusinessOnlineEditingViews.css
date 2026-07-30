@@ -9,49 +9,281 @@
   resize: vertical;
 }
 
-.business-online__groups--editable {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: visible;
+.business-items__intro {
+  margin: 0 2px 12px;
+  color: var(--koprik-soft);
+  font-size: 12px;
 }
 
-.business-online__groups--editable article {
-  display: grid;
-  gap: 9px;
-  min-width: 0;
-  padding: 11px;
-  border: 1px solid var(--koprik-line);
-  border-radius: 13px;
+.business-items__search {
+  width: 100%;
+  margin-bottom: 10px;
   background: var(--koprik-card);
 }
 
-.business-online__groups--editable article > b {
+.business-items__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.business-items__filters button {
+  width: 100%;
+  min-height: 38px;
+  border-radius: 11px;
+}
+
+.business-items__add-group {
+  width: 100%;
+  min-height: 52px !important;
+  margin-bottom: 12px;
+  border: 1px dashed var(--koprik-primary) !important;
+  border-radius: 15px !important;
+  color: var(--koprik-primary) !important;
+  background: var(--koprik-primary-tint) !important;
+  font-size: 16px;
+}
+
+.business-items .business-online__form {
+  margin-top: 2px;
+}
+
+.business-items__sections {
+  display: grid;
+  gap: 24px;
+}
+
+.business-items__section {
+  min-width: 0;
+}
+
+.business-items__section-heading {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 8px;
+}
+
+.business-items__section-heading h2,
+.business-items__section-heading p {
+  margin: 0;
+}
+
+.business-items__section-heading h2 {
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.business-items__section-heading p {
+  margin-top: 2px;
+  color: var(--koprik-soft);
+  font-size: 12px;
+}
+
+.business-items__rail {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  padding: 2px 2px 16px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline proximity;
+  scrollbar-width: thin;
+}
+
+.business-items__card {
+  position: relative;
+  flex: 0 0 152px;
+  min-height: 132px;
+  padding: 12px;
+  overflow: visible;
+  border: 1px solid var(--koprik-line);
+  border-radius: 16px;
+  background: var(--koprik-card);
+  box-shadow: var(--koprik-shadow);
+  scroll-snap-align: start;
+}
+
+.business-items__card-image {
+  height: 94px;
+  margin: -12px -12px 10px;
   overflow: hidden;
+  border-radius: 16px 16px 0 0;
+  background: var(--koprik-primary-tint);
+}
+
+.business-items__card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.business-items__card h3,
+.business-items__card p,
+.business-items__card strong {
+  margin: 0;
+}
+
+.business-items__card h3 {
+  min-height: 20px;
+  margin-right: 28px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.business-online__groups--editable article > div {
-  display: flex;
-  gap: 6px;
+.business-items__card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--koprik-primary);
+  font-size: 13px;
+  line-height: 1.3;
 }
 
-.business-online__groups--editable article button {
-  min-height: 34px;
-  padding: 6px 9px;
+.business-items__card strong.negotiable {
+  font-size: 12px;
+}
+
+.business-items__card p {
+  min-height: 17px;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--koprik-soft);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.business-items__kind {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 4px 9px;
+  border-radius: 999px;
   color: var(--koprik-primary);
   background: var(--koprik-primary-tint);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.business-items__add-tile {
+  display: grid !important;
+  flex: 0 0 116px;
+  place-content: center;
+  place-items: center;
+  gap: 8px;
+  min-height: 132px !important;
+  padding: 12px !important;
+  border: 1px dashed var(--koprik-primary) !important;
+  border-radius: 16px !important;
+  color: var(--koprik-primary) !important;
+  background: var(--koprik-primary-tint) !important;
+  scroll-snap-align: start;
+}
+
+.business-items__add-tile span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--koprik-card);
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 8%);
+}
+
+.business-items__add-tile b {
+  font-size: 12px;
+}
+
+.business-items__menu {
+  position: relative;
+  z-index: 4;
+}
+
+.business-items__card > .business-items__menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.business-items__menu-trigger {
+  display: grid !important;
+  place-items: center;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border: 1px solid var(--koprik-line) !important;
+  border-radius: 11px !important;
+  color: var(--koprik-ink) !important;
+  background: var(--koprik-card) !important;
+  font-size: 13px;
+  letter-spacing: -0.18em;
+  box-shadow: 0 5px 16px rgb(0 0 0 / 9%);
+}
+
+.business-items__menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  min-width: 132px;
+  padding: 5px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 12px;
+  background: var(--koprik-card);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 16%);
+}
+
+.business-items__menu-panel button {
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border-radius: 8px !important;
+  color: var(--koprik-ink) !important;
+  background: transparent !important;
+  text-align: left;
   font-size: 11px;
 }
 
-@media (max-width: 720px) {
-  .business-online__groups--editable {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.business-items__menu-panel button:hover,
+.business-items__menu-panel button:focus-visible {
+  background: var(--koprik-primary-tint) !important;
 }
 
-@media (max-width: 460px) {
-  .business-online__groups--editable {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 620px) {
+  .business-items__intro {
+    font-size: 11px;
+  }
+
+  .business-items__filters {
+    gap: 5px;
+  }
+
+  .business-items__filters button {
+    min-height: 36px;
+    padding: 7px 5px;
+    font-size: 11px;
+  }
+
+  .business-items__sections {
+    gap: 20px;
+  }
+
+  .business-items__card {
+    flex-basis: 142px;
+  }
+
+  .business-items__add-tile {
+    flex-basis: 106px;
   }
 }
