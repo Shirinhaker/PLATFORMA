@@ -39,7 +39,7 @@ def upgrade() -> None:
     )
 
     op.create_table(
-        "cabinet_records",
+        "cabinet_resources",
         sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
         sa.Column(
             "account_id",
@@ -49,8 +49,9 @@ def upgrade() -> None:
         ),
         sa.Column("account_type", sa.String(length=16), nullable=False),
         sa.Column("resource", sa.String(length=96), nullable=False),
-        sa.Column("source_key", sa.String(length=160), nullable=False),
-        sa.Column("ordinal", sa.Integer(), nullable=False),
+        sa.Column("value_kind", sa.String(length=16), nullable=False),
+        sa.Column("record_count", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("digest", sa.String(length=64), nullable=False, server_default=""),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -67,14 +68,49 @@ def upgrade() -> None:
             "account_id",
             "account_type",
             "resource",
-            "source_key",
-            name="uq_cabinet_records_owner_resource_source",
+            name="uq_cabinet_resources_owner_resource",
         ),
     )
     op.create_index(
-        "ix_cabinet_records_owner_resource_ordinal",
+        "ix_cabinet_resources_owner",
+        "cabinet_resources",
+        ["account_id", "account_type"],
+        unique=False,
+    )
+
+    op.create_table(
         "cabinet_records",
-        ["account_id", "account_type", "resource", "ordinal"],
+        sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+        sa.Column(
+            "resource_id",
+            sa.BigInteger(),
+            sa.ForeignKey("cabinet_resources.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        sa.Column("source_key", sa.String(length=160), nullable=False),
+        sa.Column("ordinal", sa.Integer(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.UniqueConstraint(
+            "resource_id",
+            "source_key",
+            name="uq_cabinet_records_resource_source",
+        ),
+    )
+    op.create_index(
+        "ix_cabinet_records_resource_ordinal",
+        "cabinet_records",
+        ["resource_id", "ordinal"],
         unique=False,
     )
 
@@ -110,9 +146,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_cabinet_record_fields_record", table_name="cabinet_record_fields")
     op.drop_table("cabinet_record_fields")
-    op.drop_index(
-        "ix_cabinet_records_owner_resource_ordinal",
-        table_name="cabinet_records",
-    )
+    op.drop_index("ix_cabinet_records_resource_ordinal", table_name="cabinet_records")
     op.drop_table("cabinet_records")
+    op.drop_index("ix_cabinet_resources_owner", table_name="cabinet_resources")
+    op.drop_table("cabinet_resources")
     op.drop_table("cabinet_normalization_runs")
