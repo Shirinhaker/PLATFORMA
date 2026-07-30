@@ -83,6 +83,7 @@ class CabinetRecord(Base):
     )
     source_key: Mapped[str] = mapped_column(String(160), nullable=False)
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    value_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="object")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
