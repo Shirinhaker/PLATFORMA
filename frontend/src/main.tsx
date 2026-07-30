@@ -8,6 +8,7 @@ import {
 } from "./api/runtime-base-url";
 import { App } from "./app/App";
 import { resolveAuthContext } from "./auth/adapter";
+import "./profiles/BusinessProfileV2.css";
 
 
 const rootElement = document.getElementById("root");
