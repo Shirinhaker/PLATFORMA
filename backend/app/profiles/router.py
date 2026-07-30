@@ -24,6 +24,7 @@ from app.profiles.repository import (
     patch_user_profile,
 )
 from app.profiles.schemas import (
+    BusinessPaymentQrAttachment,
     BusinessProfilePatch,
     BusinessProfileRead,
     CabinetSwitchRead,
@@ -91,6 +92,19 @@ def require_profile_object_key(
         )
 
 
+def business_profile_read(request: Request, profile) -> BusinessProfileRead:
+    return BusinessProfileRead.model_validate(profile).model_copy(
+        update={
+            "logo_url": request.app.state.r2.create_download_url(
+                profile.logo_object_key
+            ),
+            "pay_qr_url": request.app.state.r2.create_download_url(
+                profile.pay_qr_object_key
+            ),
+        }
+    )
+
+
 @router.get("/me", response_model=MeRead)
 async def get_me(
     current: CurrentRead,
@@ -125,25 +139,41 @@ async def update_user_profile(
 
 
 @router.get("/business-profile", response_model=BusinessProfileRead)
-async def read_business_profile(current: CurrentRead, session: ProfileSession):
+async def read_business_profile(
+    request: Request,
+    current: CurrentRead,
+    session: ProfileSession,
+):
     require_account_type(current, AccountType.BUSINESS)
-    return await get_business_profile(session, current.account_id)
+    profile = await get_business_profile(session, current.account_id)
+    return business_profile_read(request, profile)
 
 
 @router.put("/business-profile", response_model=BusinessProfileRead)
 async def update_business_profile(
     body: BusinessProfilePatch,
+    request: Request,
     current: CurrentWrite,
     session: ProfileSession,
     summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
+    if (
+        "pay_qr_object_key" in body.model_fields_set
+        and body.pay_qr_object_key
+    ):
+        require_profile_object_key(
+            body.pay_qr_object_key,
+            account_type=AccountType.BUSINESS,
+            account_id=current.account_id,
+            purpose="payment_qr",
+        )
     try:
         profile = await get_business_profile(session, current.account_id)
         await patch_business_profile(session, profile, body)
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return profile
+        return business_profile_read(request, profile)
     except Exception:
         await session.rollback()
         raise
@@ -246,6 +276,7 @@ async def attach_user_avatar(
 @router.put("/business-profile/logo", response_model=BusinessProfileRead)
 async def attach_business_logo(
     body: ProfileImageAttachment,
+    request: Request,
     current: CurrentWrite,
     session: ProfileSession,
     summaries: ProfileSummary,
@@ -266,7 +297,35 @@ async def attach_business_logo(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return profile
+        return business_profile_read(request, profile)
+    except Exception:
+        await session.rollback()
+        raise
+
+
+@router.put("/business-profile/payment-qr", response_model=BusinessProfileRead)
+async def attach_business_payment_qr(
+    body: BusinessPaymentQrAttachment,
+    request: Request,
+    current: CurrentWrite,
+    session: ProfileSession,
+    summaries: ProfileSummary,
+):
+    require_account_type(current, AccountType.BUSINESS)
+    if body.object_key:
+        require_profile_object_key(
+            body.object_key,
+            account_type=AccountType.BUSINESS,
+            account_id=current.account_id,
+            purpose="payment_qr",
+        )
+    try:
+        profile = await get_business_profile(session, current.account_id)
+        profile.pay_qr_object_key = body.object_key
+        await session.flush()
+        await session.commit()
+        await summaries.invalidate(current.account_type, current.account_id)
+        return business_profile_read(request, profile)
     except Exception:
         await session.rollback()
         raise

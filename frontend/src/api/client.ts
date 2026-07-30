@@ -246,6 +246,10 @@ export class ApiClient {
   attachBusinessLogo(body: ProfileImageAttachment): Promise<BusinessProfile> {
     return this.request("PUT", "/api/v1/business-profile/logo", body, true);
   }
+
+  attachBusinessPaymentQr(body: { object_key: string }): Promise<BusinessProfile> {
+    return this.request("PUT", "/api/v1/business-profile/payment-qr", body, true);
+  }
 }
 
 export type { BuildInfo } from "./types";

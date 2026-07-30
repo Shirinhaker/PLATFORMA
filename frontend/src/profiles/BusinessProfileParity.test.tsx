@@ -1,0 +1,164 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import { BusinessProfile } from "./BusinessProfile";
+
+
+const identity = {
+  account_id: 7,
+  account_type: "business" as const,
+  name: "Muhr",
+  login: "b_muhr",
+  csrf_token: "csrf",
+  expires_at: "2026-08-30T00:00:00Z",
+};
+
+const profile = {
+  account_id: 7,
+  name: "Muhr",
+  phone: "912377784",
+  description: "",
+  public_username: "muhr1",
+  direction: "Savdo",
+  activity_type: "Oziq-ovqat do'koni",
+  address: "Beruniy ko‘chasi, Qumqo‘rg‘on tumani",
+  latitude: 37.838933493659454,
+  longitude: 67.58345251326438,
+  work_hours: { raw: "09:00-20:00" },
+  pay_card: "5614681918687751",
+  pay_holder: "BUNYOD ASHUROV",
+  pay_qr_object_key: "private/business/7/payment_qr/qr.png",
+  pay_qr_url: "https://media.example/qr.png",
+  director: "",
+  tax_id: "",
+  logo_object_key: "private/business/7/logo/logo.png",
+  logo_url: "https://media.example/logo.png",
+  logo_x: 46.97,
+  logo_y: 41.47,
+  logo_zoom: 1.8,
+  followers_count: 0,
+  following_count: 1,
+  rating_sum: 0,
+  rating_count: 0,
+  map_visible: true,
+  dashboard_snapshot: {},
+  recent_activity: [],
+  cabinet_payload: {},
+};
+
+function api() {
+  return {
+    getSession: vi.fn().mockResolvedValue(identity),
+    getBusinessProfile: vi.fn().mockResolvedValue(profile),
+    updateBusinessProfile: vi.fn().mockImplementation(async (patch) => ({
+      ...profile,
+      ...patch,
+    })),
+    createUploadGrant: vi.fn(),
+    uploadGrantedFile: vi.fn(),
+    attachBusinessLogo: vi.fn().mockResolvedValue(profile),
+    attachBusinessPaymentQr: vi.fn().mockResolvedValue(profile),
+    switchCabinet: vi.fn(),
+    logout: vi.fn(),
+  };
+}
+
+async function openEditor(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole(
+    "button",
+    { name: /Profil \/ Mening sahifam/ },
+  ));
+  return screen.findByRole("heading", { name: "Profil / Mening sahifam" });
+}
+
+
+describe("v1656 business profile parity", () => {
+  it("renders the customer-facing profile editor instead of technical fields", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await openEditor(user);
+
+    expect(screen.getByText("Muhr")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Biznes rasmini yuklash" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Do‘kon havolasi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nusxa" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Faoliyat yo‘nalishi")).toHaveValue("Savdo");
+    expect(screen.getByLabelText("Faoliyat turi"))
+      .toHaveValue("Oziq-ovqat do'koni");
+    expect(screen.getByRole("button", { name: /Xaritada joy belgilash/ }))
+      .toBeInTheDocument();
+    expect(screen.getByText("To‘lov ma’lumotlari")).toBeInTheDocument();
+    expect(screen.getByLabelText("Ish boshlanish vaqti")).toHaveValue("09:00");
+    expect(screen.getByLabelText("Ish tugash vaqti")).toHaveValue("20:00");
+
+    expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Uzunlik")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Ish vaqti (JSON)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Rahbar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("STIR")).not.toBeInTheDocument();
+  });
+
+  it("saves simple start and finish times without exposing JSON", async () => {
+    const user = userEvent.setup();
+    const client = api();
+    render(
+      <BusinessProfile
+        api={client}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await openEditor(user);
+    const start = screen.getByLabelText("Ish boshlanish vaqti");
+    const finish = screen.getByLabelText("Ish tugash vaqti");
+    await user.clear(start);
+    await user.type(start, "08:30");
+    await user.clear(finish);
+    await user.type(finish, "19:15");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(client.updateBusinessProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        work_hours: expect.objectContaining({
+          from: "08:30",
+          to: "19:15",
+          raw: "08:30-19:15",
+        }),
+      }),
+    );
+  });
+
+  it("updates activity choices when the business direction changes", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await openEditor(user);
+    await user.selectOptions(
+      screen.getByLabelText("Faoliyat yo‘nalishi"),
+      "Tibbiy xizmatlar",
+    );
+
+    expect(screen.getByRole("option", { name: "Klinika" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Stomatologiya" }))
+      .toBeInTheDocument();
+  });
+});

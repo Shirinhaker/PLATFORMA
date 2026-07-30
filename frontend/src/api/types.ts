@@ -130,9 +130,11 @@ export type BusinessProfile = {
   pay_card: string;
   pay_holder: string;
   pay_qr_object_key: string;
+  pay_qr_url: string;
   director: string;
   tax_id: string;
   logo_object_key: string;
+  logo_url: string;
   logo_x: number;
   logo_y: number;
   logo_zoom: number;
@@ -160,6 +162,7 @@ export type BusinessProfilePatch = Partial<Pick<
   | "work_hours"
   | "pay_card"
   | "pay_holder"
+  | "pay_qr_object_key"
   | "director"
   | "tax_id"
   | "map_visible"
@@ -173,7 +176,7 @@ export type CabinetSwitch = {
   expires_at: string;
 };
 
-export type MediaPurpose = "avatar" | "logo";
+export type MediaPurpose = "avatar" | "logo" | "payment_qr";
 
 export type UploadGrantRequest = {
   purpose: MediaPurpose;

@@ -48,7 +48,7 @@ class R2Storage:
         *,
         owner_type: AccountType,
         owner_id: int,
-        purpose: Literal["avatar", "logo"],
+        purpose: Literal["avatar", "logo", "payment_qr"],
         filename: str,
         content_type: str,
         size_bytes: int,
@@ -56,7 +56,8 @@ class R2Storage:
         allowed_purpose = (
             owner_type is AccountType.USER and purpose == "avatar"
         ) or (
-            owner_type is AccountType.BUSINESS and purpose == "logo"
+            owner_type is AccountType.BUSINESS
+            and purpose in {"logo", "payment_qr"}
         )
         if not allowed_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")

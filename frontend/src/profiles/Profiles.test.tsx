@@ -77,7 +77,7 @@ const businessProfile = {
   description: "",
   public_username: "turon",
   direction: "Savdo",
-  activity_type: "Do‘kon",
+  activity_type: "Oziq-ovqat do'koni",
   address: "Qumqo‘rg‘on",
   latitude: null,
   longitude: null,
@@ -85,9 +85,11 @@ const businessProfile = {
   pay_card: "",
   pay_holder: "",
   pay_qr_object_key: "",
+  pay_qr_url: "",
   director: "",
   tax_id: "",
   logo_object_key: "",
+  logo_url: "",
   logo_x: 50,
   logo_y: 50,
   logo_zoom: 1,
@@ -144,9 +146,10 @@ function profileApi() {
     getBusinessProfile: vi.fn().mockResolvedValue(businessProfile),
     updateBusinessProfile: vi.fn().mockResolvedValue(businessProfile),
     createUploadGrant: vi.fn(),
-    uploadGrantedFile: vi.fn(),
+    uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
+    attachBusinessPaymentQr: vi.fn().mockResolvedValue(businessProfile),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -158,12 +161,10 @@ function profileApi() {
   };
 }
 
-
 async function openUserProfileForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: "Profilim" }));
   return screen.findByLabelText("Ism");
 }
-
 
 async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole(
@@ -177,10 +178,9 @@ async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>)
 describe("profile cabinets", () => {
   it("renders migrated user counts, activity and real section data", async () => {
     const user = userEvent.setup();
-    const api = profileApi();
     render(
       <UserProfile
-        api={api}
+        api={profileApi()}
         identity={userIdentity}
         onLogout={vi.fn()}
         onSwitched={vi.fn()}
@@ -321,18 +321,18 @@ describe("profile cabinets", () => {
     expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);
   });
 
-  it("edits business profile and uploads logo", async () => {
+  it("opens the v1656 editor and uploads the business logo", async () => {
     const user = userEvent.setup();
     const api = profileApi();
     const file = new File(["image"], "logo.png", { type: "image/png" });
     api.createUploadGrant.mockResolvedValue({
-      object_key: "private/business/7/logo/abc.png",
+      object_key: "private/business/7/logo/0123456789abcdef0123456789abcdef.png",
       upload_url: "https://r2.example/upload",
       method: "PUT",
       headers: { "Content-Type": "image/png" },
       expires_in_seconds: 900,
     });
-    render(
+    const rendered = render(
       <BusinessProfile
         api={api}
         identity={businessIdentity}
@@ -340,13 +340,18 @@ describe("profile cabinets", () => {
         onSwitched={vi.fn()}
       />,
     );
+
     expect(await openBusinessProfileForm(user)).toBeInTheDocument();
-    expect(screen.getByLabelText("STIR")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Mahalla")).not.toBeInTheDocument();
-    await user.upload(screen.getByLabelText("Logotip"), file);
+    expect(screen.queryByLabelText("STIR")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
+    const logoInput = rendered.container.querySelector(
+      'input[type="file"][accept*="image/jpeg"]',
+    );
+    expect(logoInput).toBeInstanceOf(HTMLInputElement);
+    await user.upload(logoInput as HTMLInputElement, file);
     expect(api.attachBusinessLogo).toHaveBeenCalledWith(
       expect.objectContaining({
-        object_key: "private/business/7/logo/abc.png",
+        object_key: "private/business/7/logo/0123456789abcdef0123456789abcdef.png",
       }),
     );
   });
