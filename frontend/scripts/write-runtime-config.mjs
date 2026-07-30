@@ -12,6 +12,11 @@ const rawValue = (
   || process.env.API_BASE_URL
   || ""
 ).trim();
+const railwayBuild = Boolean(
+  process.env.RAILWAY_SERVICE_NAME
+  || process.env.RAILWAY_ENVIRONMENT_NAME
+  || process.env.RAILWAY_PROJECT_ID,
+);
 
 
 function normalizeHttpsOrigin(value) {
@@ -28,6 +33,12 @@ function normalizeHttpsOrigin(value) {
 
 
 const apiBaseUrl = normalizeHttpsOrigin(rawValue);
+if (railwayBuild && !apiBaseUrl) {
+  throw new Error(
+    "KOPRIK_API_BASE_URL is required for Railway frontend deployment",
+  );
+}
+
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(
   outputPath,
