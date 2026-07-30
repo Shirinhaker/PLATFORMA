@@ -18,6 +18,8 @@ def test_v7_normalization_migration_and_verify_exist():
     migration = ROOT / "migrations" / "versions" / "0006_v7_normalized_cabinet_records.py"
     assert migration.exists()
     text = migration.read_text()
+    assert "cabinet_resources" in text
+    assert "value_kind" in text
     assert "cabinet_records" in text
     assert "cabinet_record_fields" in text
     assert "cabinet_normalization_runs" in text
