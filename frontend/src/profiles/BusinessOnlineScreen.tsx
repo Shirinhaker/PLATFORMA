@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
@@ -24,7 +24,7 @@ type Props = {
   profile: BusinessProfile;
   view: string;
   title: string;
-  onBack: () => void;
+  onBack: () => void | Promise<void>;
 };
 
 type ResourceState = Partial<Record<BusinessOnlineResource, BusinessOnlineRecord[]>>;
@@ -52,36 +52,41 @@ const TERMINAL = new Set([
 ]);
 const SERVICE_TYPES = new Set(["booking", "service", "queue", "medical"]);
 
-
 function rowsFromProfile(
   profile: BusinessProfile,
   resource: BusinessOnlineResource,
 ): BusinessOnlineRecord[] {
   const value = profile.cabinet_payload[resource];
   return Array.isArray(value)
-    ? value.filter((row): row is BusinessOnlineRecord => Boolean(row && typeof row === "object"))
+    ? value.filter((row): row is BusinessOnlineRecord => Boolean(
+      row && typeof row === "object",
+    ))
     : [];
 }
 
 function text(row: BusinessOnlineRecord, ...keys: string[]): string {
   for (const key of keys) {
     const value = row[key];
-    if (value !== null && value !== undefined && value !== "") return String(value);
+    if (value !== null && value !== undefined && value !== "") {
+      return String(value);
+    }
   }
   return "";
 }
 
-function amount(row: BusinessOnlineRecord, ...keys: string[]): number {
+function numeric(row: BusinessOnlineRecord, ...keys: string[]): number {
   for (const key of keys) {
-    const parsed = Number(row[key] ?? 0);
-    if (Number.isFinite(parsed) && parsed !== 0) return parsed;
+    const value = Number(row[key] ?? 0);
+    if (Number.isFinite(value) && value !== 0) return value;
   }
   return 0;
 }
 
 function rowId(row: BusinessOnlineRecord, index = 0): number | string {
   const value = row.id;
-  return typeof value === "number" || typeof value === "string" ? value : index + 1;
+  return typeof value === "number" || typeof value === "string"
+    ? value
+    : index + 1;
 }
 
 function isService(row: BusinessOnlineRecord): boolean {
@@ -109,16 +114,17 @@ function statusLabel(value: unknown): string {
     rejected: "Rad etilgan",
     draft: "Qoralama",
   };
-  return labels[status] ?? status || "Holat ko‘rsatilmagan";
+  return (labels[status] ?? status) || "Holat ko‘rsatilmagan";
 }
 
 function dateLabel(value: unknown): string {
-  const numeric = Number(value ?? 0);
-  if (!numeric) return "Vaqt ko‘rsatilmagan";
-  return new Date(numeric * 1000).toLocaleString("uz-UZ");
+  const timestamp = Number(value ?? 0);
+  return timestamp
+    ? new Date(timestamp * 1000).toLocaleString("uz-UZ")
+    : "Vaqt ko‘rsatilmagan";
 }
 
-function nextLocalId(rows: BusinessOnlineRecord[]) {
+function nextLocalId(rows: BusinessOnlineRecord[]): number {
   return Math.max(
     0,
     ...rows.map((row) => Number(row.id ?? 0)).filter(Number.isFinite),
@@ -130,7 +136,9 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
   const primary = VIEW_RESOURCE[view];
   const [resources, setResources] = useState<ResourceState>(() => ({
     ...(primary ? { [primary]: rowsFromProfile(profile, primary) } : {}),
-    ...(view === "items" ? { item_groups: rowsFromProfile(profile, "item_groups") } : {}),
+    ...(view === "items"
+      ? { item_groups: rowsFromProfile(profile, "item_groups") }
+      : {}),
   }));
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -150,7 +158,7 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
   const groups = resources.item_groups ?? [];
 
   async function refresh(...names: BusinessOnlineResource[]) {
-    if (!api.getBusinessOnlineResource || !names.length) return;
+    if (!api.getBusinessOnlineResource || names.length === 0) return;
     setLoading(true);
     setError("");
     try {
@@ -159,9 +167,9 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
       );
       setResources((current) => {
         const next = { ...current };
-        responses.forEach((response) => {
+        for (const response of responses) {
           next[response.resource] = response.items;
-        });
+        }
         return next;
       });
     } catch (reason) {
@@ -172,17 +180,26 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
   }
 
   useEffect(() => {
-    if (!primary) return;
-    void refresh(primary, ...(view === "items" ? ["item_groups" as const] : []));
-    // API va profil obyektlari App davomida barqaror; view o‘zgarganda qayta yuklaymiz.
+    if (!primary || !api.getBusinessOnlineResource) return;
+    const resourcesToLoad: BusinessOnlineResource[] = view === "items"
+      ? [primary, "item_groups"]
+      : [primary];
+    void refresh(...resourcesToLoad);
+    // API instance App davomida barqaror; view o‘zgarganda serverdan yangilanadi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, primary]);
+  }, [view, primary, api.getBusinessOnlineResource]);
 
-  function setResource(resource: BusinessOnlineResource, rows: BusinessOnlineRecord[]) {
+  function setResource(
+    resource: BusinessOnlineResource,
+    rows: BusinessOnlineRecord[],
+  ) {
     setResources((current) => ({ ...current, [resource]: rows }));
   }
 
-  async function create(resource: BusinessOnlineResource, record: BusinessOnlineRecord) {
+  async function create(
+    resource: BusinessOnlineResource,
+    record: BusinessOnlineRecord,
+  ) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -194,7 +211,11 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
         const current = resources[resource] ?? [];
         setResource(resource, [
           ...current,
-          { ...record, id: nextLocalId(current), created_at: Math.floor(Date.now() / 1000) },
+          {
+            ...record,
+            id: nextLocalId(current),
+            created_at: Math.floor(Date.now() / 1000),
+          },
         ]);
       }
       setForm(null);
@@ -231,7 +252,10 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
     }
   }
 
-  async function remove(resource: BusinessOnlineResource, id: number | string) {
+  async function remove(
+    resource: BusinessOnlineResource,
+    id: number | string,
+  ) {
     setBusy(true);
     setError("");
     try {
@@ -269,11 +293,19 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
         setResource(resource, result.items);
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
-      } else if (resource === "following" && name === "unfollow" && recordId !== undefined) {
+      } else if (
+        resource === "following"
+        && name === "unfollow"
+        && recordId !== undefined
+      ) {
         setResource(resource, items.filter(
           (row, index) => String(rowId(row, index)) !== String(recordId),
         ));
-      } else if (resource === "business_reviews" && name === "reply" && recordId !== undefined) {
+      } else if (
+        resource === "business_reviews"
+        && name === "reply"
+        && recordId !== undefined
+      ) {
         setResource(resource, items.map((row, index) => (
           String(rowId(row, index)) === String(recordId)
             ? { ...row, business_reply: payload.reply }
@@ -294,174 +326,186 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
     }
   }
 
-  const heading = (
-    <header className="business-online__heading">
-      <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-      <div>
-        <h1>{title}</h1>
-        <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
-      </div>
-      {primary && api.getBusinessOnlineResource && (
-        <button type="button" onClick={() => void refresh(primary)} disabled={loading}>
-          Yangilash
-        </button>
-      )}
-    </header>
-  );
+  const shared: SharedActions = {
+    busy,
+    form,
+    draft,
+    setForm,
+    setDraft,
+    create,
+    patch,
+    remove,
+    action,
+  };
 
-  let content: React.ReactNode;
+  let content: ReactNode;
   switch (view) {
     case "subscriptions":
-      content = subscriptionScreen(items, duration, setDuration, busy, (plan) => (
-        action("business_subscriptions", "request_plan", undefined, {
-          plan,
-          duration_months: duration,
-        })
-      ));
+      content = (
+        <Subscriptions
+          rows={items}
+          duration={duration}
+          setDuration={setDuration}
+          busy={busy}
+          requestPlan={(plan) => action(
+            "business_subscriptions",
+            "request_plan",
+            undefined,
+            { plan, duration_months: duration },
+          )}
+        />
+      );
       break;
     case "payments":
-      content = paymentScreen(items, loading, () => void refresh("subscription_payments"));
+      content = (
+        <Payments
+          rows={items}
+          loading={loading}
+          refresh={() => void refresh("subscription_payments")}
+        />
+      );
       break;
     case "items":
-      content = itemScreen({
-        items,
-        groups,
-        query,
-        kind,
-        form,
-        draft,
-        busy,
-        setQuery,
-        setKind,
-        setForm,
-        setDraft,
-        create,
-        patch,
-        remove,
-      });
+      content = (
+        <Items
+          {...shared}
+          rows={items}
+          groups={groups}
+          query={query}
+          setQuery={setQuery}
+          kind={kind}
+          setKind={setKind}
+        />
+      );
       break;
     case "listings":
-      content = simpleCrudScreen({
-        resource: "listings",
-        rows: items,
-        addLabel: "+ E’lon",
-        empty: "Hozircha e’lon yo‘q.",
-        form,
-        draft,
-        busy,
-        setForm,
-        setDraft,
-        create,
-        patch,
-        remove,
-        fields: ["title", "description", "price", "category"],
-      });
+      content = (
+        <CrudCards
+          {...shared}
+          resource="listings"
+          rows={items}
+          addLabel="+ E’lon"
+          empty="Hozircha e’lon yo‘q."
+          fields={["title", "description", "price", "category"]}
+        />
+      );
       break;
     case "orders":
     case "service-orders":
-      content = orderScreen(
-        items.filter((row) => isService(row) === (view === "service-orders")),
-        orderFilter,
-        setOrderFilter,
-        busy,
-        (id, status) => action("orders", "set_status", id, { status }),
+      content = (
+        <Orders
+          rows={items.filter((row) => (
+            isService(row) === (view === "service-orders")
+          ))}
+          filter={orderFilter}
+          setFilter={setOrderFilter}
+          busy={busy}
+          setStatus={(id, status) => action(
+            "orders", "set_status", id, { status },
+          )}
+        />
       );
       break;
     case "messages":
-      content = messageScreen(
-        items,
-        messageText,
-        setMessageText,
-        busy,
-        async () => {
-          const value = messageText.trim();
-          if (!value) return;
-          if (api.applyBusinessOnlineAction) {
-            await action("messages", "send", undefined, { text: value });
-          } else {
-            await create("messages", { text: value, sender_kind: "business" });
-          }
-          setMessageText("");
-        },
+      content = (
+        <Messages
+          rows={items}
+          value={messageText}
+          setValue={setMessageText}
+          busy={busy}
+          send={async () => {
+            const value = messageText.trim();
+            if (!value) return;
+            if (api.applyBusinessOnlineAction) {
+              await action("messages", "send", undefined, { text: value });
+            } else {
+              await create("messages", {
+                text: value,
+                sender_kind: "business",
+              });
+            }
+            setMessageText("");
+          }}
+        />
       );
       break;
     case "reviews":
-      content = reviewScreen(
-        items,
-        profile.rating_sum,
-        profile.rating_count,
-        replyId,
-        replyText,
-        setReplyId,
-        setReplyText,
-        busy,
-        async (id) => {
-          await action("business_reviews", "reply", id, { reply: replyText });
-          setReplyId(null);
-          setReplyText("");
-        },
+      content = (
+        <Reviews
+          rows={items}
+          ratingSum={profile.rating_sum}
+          ratingCount={profile.rating_count}
+          replyId={replyId}
+          reply={replyText}
+          setReplyId={setReplyId}
+          setReply={setReplyText}
+          busy={busy}
+          save={async (id) => {
+            await action("business_reviews", "reply", id, {
+              reply: replyText,
+            });
+            setReplyId(null);
+            setReplyText("");
+          }}
+        />
       );
       break;
     case "advertisements":
-      content = simpleCrudScreen({
-        resource: "advertisements",
-        rows: items,
-        addLabel: "+ Reklama",
-        empty: "Hozircha reklama yo‘q.",
-        form,
-        draft,
-        busy,
-        setForm,
-        setDraft,
-        create,
-        patch,
-        remove,
-        fields: ["title", "caption", "placement", "region", "district"],
-      });
+      content = (
+        <CrudCards
+          {...shared}
+          resource="advertisements"
+          rows={items}
+          addLabel="+ Reklama"
+          empty="Hozircha reklama yo‘q."
+          fields={["title", "caption", "placement", "region", "district"]}
+        />
+      );
       break;
     case "stories":
-      content = simpleCrudScreen({
-        resource: "stories",
-        rows: items,
-        addLabel: "+ Istoriya",
-        empty: "Hozircha istoriya yo‘q.",
-        form,
-        draft,
-        busy,
-        setForm,
-        setDraft,
-        create,
-        patch,
-        remove,
-        fields: ["caption", "media_type", "media_url"],
-        extraAction: (row, index) => (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void action("stories", "archive", rowId(row, index))}
-          >
-            Arxivlash
-          </button>
-        ),
-      });
+      content = (
+        <CrudCards
+          {...shared}
+          resource="stories"
+          rows={items}
+          addLabel="+ Istoriya"
+          empty="Hozircha istoriya yo‘q."
+          fields={["caption", "media_type", "media_url"]}
+          extraAction={(row, index) => (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void action(
+                "stories", "archive", rowId(row, index),
+              )}
+            >
+              Arxivlash
+            </button>
+          )}
+        />
+      );
       break;
     case "notifications":
-      content = notificationScreen(
-        items,
-        busy,
-        () => action("notifications", "mark_all_read"),
-        (id) => action("notifications", "mark_read", id),
+      content = (
+        <Notifications
+          rows={items}
+          busy={busy}
+          markAll={() => action("notifications", "mark_all_read")}
+          markOne={(id) => action("notifications", "mark_read", id)}
+        />
       );
       break;
     case "followers":
-      content = peopleScreen(items, false, busy, () => Promise.resolve());
+      content = <People rows={items} busy={busy} />;
       break;
     case "following":
-      content = peopleScreen(
-        items,
-        true,
-        busy,
-        (id) => action("following", "unfollow", id),
+      content = (
+        <People
+          rows={items}
+          busy={busy}
+          canUnfollow
+          unfollow={(id) => action("following", "unfollow", id)}
+        />
       );
       break;
     default:
@@ -470,7 +514,24 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
 
   return (
     <main className="business-online">
-      {heading}
+      <header className="business-online__heading">
+        <button type="button" onClick={() => void onBack()}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>{title}</h1>
+          <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
+        </div>
+        {primary && api.getBusinessOnlineResource && (
+          <button
+            type="button"
+            onClick={() => void refresh(primary)}
+            disabled={loading}
+          >
+            Yangilash
+          </button>
+        )}
+      </header>
       {error && <p className="business-online__error" role="alert">{error}</p>}
       {notice && <p className="business-online__notice" role="status">{notice}</p>}
       {loading && <div className="business-online__loading">Yuklanmoqda…</div>}
@@ -480,115 +541,403 @@ export function BusinessOnlineScreen({ api, profile, view, title, onBack }: Prop
 }
 
 
-function subscriptionScreen(
-  rows: BusinessOnlineRecord[],
-  duration: number,
-  setDuration: (value: number) => void,
-  busy: boolean,
-  requestPlan: (plan: string) => Promise<void>,
-) {
+type SharedActions = {
+  busy: boolean;
+  form: string | null;
+  draft: BusinessOnlineRecord;
+  setForm: (value: string | null) => void;
+  setDraft: (value: BusinessOnlineRecord) => void;
+  create: (
+    resource: BusinessOnlineResource,
+    record: BusinessOnlineRecord,
+  ) => Promise<void>;
+  patch: (
+    resource: BusinessOnlineResource,
+    id: number | string,
+    patch: BusinessOnlineRecord,
+  ) => Promise<void>;
+  remove: (
+    resource: BusinessOnlineResource,
+    id: number | string,
+  ) => Promise<void>;
+  action: (
+    resource: BusinessOnlineResource,
+    name: string,
+    id?: number | string,
+    payload?: BusinessOnlineRecord,
+  ) => Promise<void>;
+};
+
+function Subscriptions({
+  rows,
+  duration,
+  setDuration,
+  busy,
+  requestPlan,
+}: {
+  rows: BusinessOnlineRecord[];
+  duration: number;
+  setDuration: (value: number) => void;
+  busy: boolean;
+  requestPlan: (plan: string) => Promise<void>;
+}) {
   const current = [...rows].reverse().find((row) => (
     ["active", "approved"].includes(text(row, "status"))
   ));
   const currentPlan = text(current ?? {}, "plan", "tariff", "name") || "free";
   const plans = [
-    { key: "free", icon: "🌱", name: "Bepul", caption: "Asosiy biznes profil uchun", benefits: ["Biznes profilidan foydalanish", "Mahsulot va xizmatlarni cheksiz joylash"] },
-    { key: "plus", icon: "✨", name: "Plus", caption: "Yaqin mijozlarga ko‘rinish", benefits: ["Bepul tarifdagi barcha imkoniyatlar", "“Sizga yaqin” bo‘limiga chiqarish huquqi"] },
-    { key: "pro", icon: "💎", name: "Pro", caption: "Hudud bo‘yicha keng ko‘rinish", benefits: ["Plus tarifdagi barcha imkoniyatlar", "Biznes metkasini xaritada ko‘rsatish huquqi"] },
+    {
+      key: "free",
+      icon: "🌱",
+      name: "Bepul",
+      caption: "Asosiy biznes profil uchun",
+      benefits: [
+        "Biznes profilidan foydalanish",
+        "Mahsulot va xizmatlarni cheksiz joylash",
+      ],
+    },
+    {
+      key: "plus",
+      icon: "✨",
+      name: "Plus",
+      caption: "Yaqin mijozlarga ko‘rinish",
+      benefits: [
+        "Bepul tarifdagi barcha imkoniyatlar",
+        "“Sizga yaqin” bo‘limiga chiqarish huquqi",
+      ],
+    },
+    {
+      key: "pro",
+      icon: "💎",
+      name: "Pro",
+      caption: "Hudud bo‘yicha keng ko‘rinish",
+      benefits: [
+        "Plus tarifdagi barcha imkoniyatlar",
+        "Biznes metkasini xaritada ko‘rsatish huquqi",
+      ],
+    },
   ];
   return (
     <section className="subscription-screen">
-      <div className="subscription-screen__note"><span>🧾</span><div><b>To‘lov tartibi</b><p>Plus yoki Pro tarifini tanlang. Tarif administrator tasdiqlagandan keyin faollashadi.</p></div></div>
-      <div className="subscription-screen__current"><small>Joriy tarif</small><strong>{currentPlan.toUpperCase()}</strong><span>{current ? statusLabel(current.status) : "Bepul tarif"}</span></div>
-      <div className="business-online__section-title"><h2>Muddatni tanlang</h2><span>Plus va Pro uchun</span></div>
+      <div className="subscription-screen__note">
+        <span>🧾</span>
+        <div>
+          <b>To‘lov tartibi</b>
+          <p>Plus yoki Pro tarifini tanlang. Tarif administrator tasdiqlagandan keyin faollashadi.</p>
+        </div>
+      </div>
+      <div className="subscription-screen__current">
+        <small>Joriy tarif</small>
+        <strong>{currentPlan.toUpperCase()}</strong>
+        <span>{current ? statusLabel(current.status) : "Bepul tarif"}</span>
+      </div>
+      <SectionTitle title="Muddatni tanlang" note="Plus va Pro uchun" />
       <div className="subscription-screen__duration" role="group" aria-label="Obuna muddati">
         {[1, 3, 12].map((month) => (
-          <button type="button" key={month} className={duration === month ? "active" : ""} onClick={() => setDuration(month)}>{month} oy</button>
+          <button
+            type="button"
+            key={month}
+            className={duration === month ? "active" : ""}
+            onClick={() => setDuration(month)}
+          >
+            {month} oy
+          </button>
         ))}
       </div>
-      <div className="business-online__section-title"><h2>Tariflar</h2><span>Mahsulot va xizmatlarni joylash cheksiz</span></div>
+      <SectionTitle title="Tariflar" note="Mahsulot va xizmatlarni joylash cheksiz" />
       <div className="subscription-screen__plans">
         {plans.map((plan) => (
           <article key={plan.key}>
-            <header><span>{plan.icon}</span><div><h3>{plan.name}</h3><p>{plan.caption}</p></div>{currentPlan === plan.key && <em>Joriy</em>}</header>
+            <header>
+              <span>{plan.icon}</span>
+              <div><h3>{plan.name}</h3><p>{plan.caption}</p></div>
+              {currentPlan === plan.key && <em>Joriy</em>}
+            </header>
             <ul>{plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}</ul>
-            <button type="button" disabled={busy || currentPlan === plan.key} onClick={() => void requestPlan(plan.key)}>{currentPlan === plan.key ? "Joriy tarif" : plan.key === "free" ? "Bepul tarifga o‘tish" : `${plan.name} uchun to‘lov qilish`}</button>
+            <button
+              type="button"
+              disabled={busy || currentPlan === plan.key}
+              onClick={() => void requestPlan(plan.key)}
+            >
+              {currentPlan === plan.key
+                ? "Joriy tarif"
+                : plan.key === "free"
+                  ? "Bepul tarifga o‘tish"
+                  : `${plan.name} uchun to‘lov qilish`}
+            </button>
           </article>
         ))}
       </div>
-      <div className="business-online__section-title"><h2>Obuna tarixi</h2><span>{rows.length} ta yozuv</span></div>
-      <div className="business-online__list">{rows.length ? rows.map((row, index) => <article key={String(rowId(row, index))}><b>{text(row, "plan", "tariff", "name") || "Tarif"}</b><span>{statusLabel(row.status)}</span><small>{dateLabel(row.created_at)}</small></article>) : <div className="business-online__empty">Obuna tarixi yo‘q.</div>}</div>
+      <SectionTitle title="Obuna tarixi" note={`${rows.length} ta yozuv`} />
+      <div className="business-online__list">
+        {rows.length ? rows.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <b>{text(row, "plan", "tariff", "name") || "Tarif"}</b>
+            <span>{statusLabel(row.status)}</span>
+            <small>{dateLabel(row.created_at)}</small>
+          </article>
+        )) : <Empty>Obuna tarixi yo‘q.</Empty>}
+      </div>
     </section>
   );
 }
 
-function paymentScreen(rows: BusinessOnlineRecord[], loading: boolean, refresh: () => void) {
+function Payments({
+  rows,
+  loading,
+  refresh,
+}: {
+  rows: BusinessOnlineRecord[];
+  loading: boolean;
+  refresh: () => void;
+}) {
   return (
     <section>
-      <div className="business-online__toolbar"><p>Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.</p><button type="button" onClick={refresh} disabled={loading}>Yangilash</button></div>
-      <div className="business-online__cards">{rows.length ? rows.map((row, index) => <article key={String(rowId(row, index))}><header><b>{text(row, "service", "plan", "purpose") || "To‘lov"}</b><span>{statusLabel(row.status)}</span></header><strong>{money(amount(row, "amount_snapshot", "amount", "total"))}</strong><small>{dateLabel(row.created_at)}</small>{Array.isArray(row.events) && row.events.length > 0 && <p>{row.events.length} ta holat hodisasi</p>}</article>) : <div className="business-online__empty">To‘lovlar hozircha yo‘q.</div>}</div>
+      <div className="business-online__toolbar">
+        <p>Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.</p>
+        <button type="button" onClick={refresh} disabled={loading}>Yangilash</button>
+      </div>
+      <div className="business-online__cards">
+        {rows.length ? rows.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <header>
+              <b>{text(row, "service", "plan", "purpose") || "To‘lov"}</b>
+              <span>{statusLabel(row.status)}</span>
+            </header>
+            <strong>{money(numeric(row, "amount_snapshot", "amount", "total"))}</strong>
+            <small>{dateLabel(row.created_at)}</small>
+            {Array.isArray(row.events) && row.events.length > 0 && (
+              <p>{row.events.length} ta holat hodisasi</p>
+            )}
+          </article>
+        )) : <Empty>To‘lovlar hozircha yo‘q.</Empty>}
+      </div>
     </section>
   );
 }
 
-function itemScreen(props: {
-  items: BusinessOnlineRecord[];
+function Items({
+  rows,
+  groups,
+  query,
+  setQuery,
+  kind,
+  setKind,
+  ...actions
+}: SharedActions & {
+  rows: BusinessOnlineRecord[];
   groups: BusinessOnlineRecord[];
   query: string;
-  kind: string;
-  form: string | null;
-  draft: BusinessOnlineRecord;
-  busy: boolean;
   setQuery: (value: string) => void;
+  kind: string;
   setKind: (value: string) => void;
-  setForm: (value: string | null) => void;
-  setDraft: (value: BusinessOnlineRecord) => void;
-  create: (resource: BusinessOnlineResource, row: BusinessOnlineRecord) => Promise<void>;
-  patch: (resource: BusinessOnlineResource, id: number | string, row: BusinessOnlineRecord) => Promise<void>;
-  remove: (resource: BusinessOnlineResource, id: number | string) => Promise<void>;
 }) {
-  const filtered = props.items.filter((row) => {
+  const filtered = useMemo(() => rows.filter((row) => {
     const rowKind = text(row, "kind", "item_type", "type") || "product";
-    const matchesKind = props.kind === "all" || rowKind === props.kind;
-    const haystack = `${text(row, "name", "title")} ${text(row, "description", "descr")}`.toLocaleLowerCase("uz");
-    return matchesKind && haystack.includes(props.query.toLocaleLowerCase("uz"));
-  });
+    const haystack = `${text(row, "name", "title")} ${text(
+      row, "description", "descr",
+    )}`.toLocaleLowerCase("uz");
+    return (kind === "all" || kind === rowKind)
+      && haystack.includes(query.toLocaleLowerCase("uz"));
+  }), [rows, kind, query]);
+
   return (
     <section>
-      <div className="business-online__toolbar business-online__toolbar--wrap"><div className="business-online__search"><span>🔍</span><input value={props.query} onChange={(event) => props.setQuery(event.currentTarget.value)} placeholder="Tovar qidirish..." /></div><div className="business-online__filters">{[["all", "Barchasi"], ["product", "Mahsulotlar"], ["service", "Xizmatlar"]].map(([key, label]) => <button type="button" className={props.kind === key ? "active" : ""} key={key} onClick={() => props.setKind(key)}>{label}</button>)}</div><div className="business-online__actions"><button type="button" onClick={() => { props.setDraft({ kind: "product" }); props.setForm("group"); }}>+ Guruh</button><button type="button" onClick={() => { props.setDraft({ kind: "product" }); props.setForm("item"); }}>+ Mahsulot/xizmat</button></div></div>
-      {props.form && <InlineForm title={props.form === "group" ? "Yangi guruh" : "Yangi mahsulot yoki xizmat"} fields={props.form === "group" ? ["name", "kind"] : ["name", "kind", "group_id", "price", "description"]} draft={props.draft} setDraft={props.setDraft} busy={props.busy} onCancel={() => props.setForm(null)} onSave={() => props.create(props.form === "group" ? "item_groups" : "items", props.draft)} />}
-      <div className="business-online__groups">{props.groups.map((group, index) => <span key={String(rowId(group, index))}>{text(group, "name", "title") || "Guruh"}</span>)}</div>
-      <div className="business-online__product-grid">{filtered.length ? filtered.map((row, index) => <article key={String(rowId(row, index))}><div className="business-online__product-image">{text(row, "image_url", "photo_file") ? <img src={text(row, "image_url", "photo_file")} alt="" /> : "🛍️"}</div><h3>{text(row, "name", "title") || "Nomsiz"}</h3><p>{text(row, "description", "descr", "note")}</p><strong>{money(amount(row, "price", "price_amount"))}</strong><div><button type="button" disabled={props.busy} onClick={() => void props.patch("items", rowId(row, index), { is_active: !Boolean(row.is_active ?? true) })}>{Boolean(row.is_active ?? true) ? "Yashirish" : "Ko‘rsatish"}</button><button type="button" disabled={props.busy} onClick={() => void props.remove("items", rowId(row, index))}>O‘chirish</button></div></article>) : <div className="business-online__empty">Mos mahsulot yoki xizmat topilmadi.</div>}</div>
+      <div className="business-online__toolbar business-online__toolbar--wrap">
+        <div className="business-online__search">
+          <span>🔍</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.currentTarget.value)}
+            placeholder="Tovar qidirish..."
+          />
+        </div>
+        <div className="business-online__filters">
+          {[["all", "Barchasi"], ["product", "Mahsulotlar"], ["service", "Xizmatlar"]].map(
+            ([key, label]) => (
+              <button
+                type="button"
+                className={kind === key ? "active" : ""}
+                key={key}
+                onClick={() => setKind(key)}
+              >
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+        <div className="business-online__actions">
+          <button
+            type="button"
+            onClick={() => {
+              actions.setDraft({ kind: "product" });
+              actions.setForm("group");
+            }}
+          >
+            + Guruh
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              actions.setDraft({ kind: "product" });
+              actions.setForm("item");
+            }}
+          >
+            + Mahsulot/xizmat
+          </button>
+        </div>
+      </div>
+      {actions.form && (
+        <InlineForm
+          title={actions.form === "group" ? "Yangi guruh" : "Yangi mahsulot yoki xizmat"}
+          fields={actions.form === "group"
+            ? ["name", "kind"]
+            : ["name", "kind", "group_id", "price", "description"]}
+          draft={actions.draft}
+          setDraft={actions.setDraft}
+          busy={actions.busy}
+          onCancel={() => actions.setForm(null)}
+          onSave={() => actions.create(
+            actions.form === "group" ? "item_groups" : "items",
+            actions.draft,
+          )}
+        />
+      )}
+      <div className="business-online__groups">
+        {groups.map((group, index) => (
+          <span key={String(rowId(group, index))}>
+            {text(group, "name", "title") || "Guruh"}
+          </span>
+        ))}
+      </div>
+      <div className="business-online__product-grid">
+        {filtered.length ? filtered.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <div className="business-online__product-image">
+              {text(row, "image_url", "photo_file")
+                ? <img src={text(row, "image_url", "photo_file")} alt="" />
+                : "🛍️"}
+            </div>
+            <h3>{text(row, "name", "title") || "Nomsiz"}</h3>
+            <p>{text(row, "description", "descr", "note")}</p>
+            <strong>{money(numeric(row, "price", "price_amount"))}</strong>
+            <div>
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => void actions.patch(
+                  "items",
+                  rowId(row, index),
+                  { is_active: !Boolean(row.is_active ?? true) },
+                )}
+              >
+                {Boolean(row.is_active ?? true) ? "Yashirish" : "Ko‘rsatish"}
+              </button>
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => void actions.remove("items", rowId(row, index))}
+              >
+                O‘chirish
+              </button>
+            </div>
+          </article>
+        )) : <Empty>Mos mahsulot yoki xizmat topilmadi.</Empty>}
+      </div>
     </section>
   );
 }
 
-function simpleCrudScreen(props: {
+function CrudCards({
+  resource,
+  rows,
+  addLabel,
+  empty,
+  fields,
+  extraAction,
+  ...actions
+}: SharedActions & {
   resource: BusinessOnlineResource;
   rows: BusinessOnlineRecord[];
   addLabel: string;
   empty: string;
-  form: string | null;
-  draft: BusinessOnlineRecord;
-  busy: boolean;
-  setForm: (value: string | null) => void;
-  setDraft: (value: BusinessOnlineRecord) => void;
-  create: (resource: BusinessOnlineResource, row: BusinessOnlineRecord) => Promise<void>;
-  patch: (resource: BusinessOnlineResource, id: number | string, row: BusinessOnlineRecord) => Promise<void>;
-  remove: (resource: BusinessOnlineResource, id: number | string) => Promise<void>;
   fields: string[];
-  extraAction?: (row: BusinessOnlineRecord, index: number) => React.ReactNode;
+  extraAction?: (row: BusinessOnlineRecord, index: number) => ReactNode;
 }) {
   return (
     <section>
-      <div className="business-online__toolbar"><p>{props.rows.length} ta yozuv</p><button type="button" onClick={() => { props.setDraft({ status: "active" }); props.setForm(props.resource); }}>{props.addLabel}</button></div>
-      {props.form === props.resource && <InlineForm title={props.addLabel.replace(/^\+\s*/, "Yangi ")} fields={props.fields} draft={props.draft} setDraft={props.setDraft} busy={props.busy} onCancel={() => props.setForm(null)} onSave={() => props.create(props.resource, props.draft)} />}
-      <div className="business-online__cards">{props.rows.length ? props.rows.map((row, index) => <article key={String(rowId(row, index))}><header><b>{text(row, "title", "name", "caption") || `#${rowId(row, index)}`}</b><span>{statusLabel(row.status)}</span></header><p>{text(row, "description", "descr", "caption", "note")}</p>{amount(row, "price", "amount", "budget") > 0 && <strong>{money(amount(row, "price", "amount", "budget"))}</strong>}<small>{dateLabel(row.created_at)}</small><div className="business-online__card-actions">{props.extraAction?.(row, index)}<button type="button" disabled={props.busy} onClick={() => void props.patch(props.resource, rowId(row, index), { status: text(row, "status") === "active" ? "paused" : "active" })}>{text(row, "status") === "active" ? "To‘xtatish" : "Faollashtirish"}</button><button type="button" disabled={props.busy} onClick={() => void props.remove(props.resource, rowId(row, index))}>O‘chirish</button></div></article>) : <div className="business-online__empty">{props.empty}</div>}</div>
+      <div className="business-online__toolbar">
+        <p>{rows.length} ta yozuv</p>
+        <button
+          type="button"
+          onClick={() => {
+            actions.setDraft({ status: "active" });
+            actions.setForm(resource);
+          }}
+        >
+          {addLabel}
+        </button>
+      </div>
+      {actions.form === resource && (
+        <InlineForm
+          title={addLabel.replace(/^\+\s*/, "Yangi ")}
+          fields={fields}
+          draft={actions.draft}
+          setDraft={actions.setDraft}
+          busy={actions.busy}
+          onCancel={() => actions.setForm(null)}
+          onSave={() => actions.create(resource, actions.draft)}
+        />
+      )}
+      <div className="business-online__cards">
+        {rows.length ? rows.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <header>
+              <b>{text(row, "title", "name", "caption") || `#${rowId(row, index)}`}</b>
+              <span>{statusLabel(row.status)}</span>
+            </header>
+            <p>{text(row, "description", "descr", "caption", "note")}</p>
+            {numeric(row, "price", "amount", "budget") > 0 && (
+              <strong>{money(numeric(row, "price", "amount", "budget"))}</strong>
+            )}
+            <small>{dateLabel(row.created_at)}</small>
+            <div className="business-online__card-actions">
+              {extraAction?.(row, index)}
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => void actions.patch(
+                  resource,
+                  rowId(row, index),
+                  { status: text(row, "status") === "active" ? "paused" : "active" },
+                )}
+              >
+                {text(row, "status") === "active" ? "To‘xtatish" : "Faollashtirish"}
+              </button>
+              <button
+                type="button"
+                disabled={actions.busy}
+                onClick={() => void actions.remove(resource, rowId(row, index))}
+              >
+                O‘chirish
+              </button>
+            </div>
+          </article>
+        )) : <Empty>{empty}</Empty>}
+      </div>
     </section>
   );
 }
 
-function InlineForm(props: {
+function InlineForm({
+  title,
+  fields,
+  draft,
+  setDraft,
+  busy,
+  onCancel,
+  onSave,
+}: {
   title: string;
   fields: string[];
   draft: BusinessOnlineRecord;
@@ -597,35 +946,334 @@ function InlineForm(props: {
   onCancel: () => void;
   onSave: () => Promise<void>;
 }) {
-  const labels: Record<string, string> = { name: "Nomi", title: "Sarlavha", kind: "Turi", group_id: "Guruh ID", price: "Narxi", description: "Tavsif", caption: "Qisqa matn", placement: "Joylashuvi", region: "Viloyat", district: "Tuman", category: "Toifa", media_type: "Media turi", media_url: "Media manzili" };
+  const labels: Record<string, string> = {
+    name: "Nomi",
+    title: "Sarlavha",
+    kind: "Turi",
+    group_id: "Guruh ID",
+    price: "Narxi",
+    description: "Tavsif",
+    caption: "Qisqa matn",
+    placement: "Joylashuvi",
+    region: "Viloyat",
+    district: "Tuman",
+    category: "Toifa",
+    media_type: "Media turi",
+    media_url: "Media manzili",
+  };
   return (
-    <div className="business-online__form"><h2>{props.title}</h2>{props.fields.map((field) => <label key={field}>{labels[field] ?? field}<input value={String(props.draft[field] ?? "")} onChange={(event) => props.setDraft({ ...props.draft, [field]: event.currentTarget.value })} /></label>)}<div><button type="button" onClick={props.onCancel}>Bekor qilish</button><button type="button" disabled={props.busy} onClick={() => void props.onSave()}>Saqlash</button></div></div>
+    <div className="business-online__form">
+      <h2>{title}</h2>
+      {fields.map((field) => (
+        <label key={field}>
+          {labels[field] ?? field}
+          <input
+            value={String(draft[field] ?? "")}
+            onChange={(event) => setDraft({
+              ...draft,
+              [field]: event.currentTarget.value,
+            })}
+          />
+        </label>
+      ))}
+      <div>
+        <button type="button" onClick={onCancel}>Bekor qilish</button>
+        <button type="button" disabled={busy} onClick={() => void onSave()}>
+          Saqlash
+        </button>
+      </div>
+    </div>
   );
 }
 
-function orderScreen(rows: BusinessOnlineRecord[], filter: OrderFilter, setFilter: (value: OrderFilter) => void, busy: boolean, setStatus: (id: number | string, status: string) => Promise<void>) {
+function Orders({
+  rows,
+  filter,
+  setFilter,
+  busy,
+  setStatus,
+}: {
+  rows: BusinessOnlineRecord[];
+  filter: OrderFilter;
+  setFilter: (value: OrderFilter) => void;
+  busy: boolean;
+  setStatus: (id: number | string, status: string) => Promise<void>;
+}) {
   const visible = rows.filter((row) => {
     const status = text(row, "status");
     if (filter === "new") return status === "new";
     if (filter === "terminal") return TERMINAL.has(status);
     return status !== "new" && !TERMINAL.has(status);
   });
-  return <section><div className="business-online__filters business-online__filters--wide"><button type="button" className={filter === "new" ? "active" : ""} onClick={() => setFilter("new")}>Yangi</button><button type="button" className={filter === "active" ? "active" : ""} onClick={() => setFilter("active")}>Jarayondagi</button><button type="button" className={filter === "terminal" ? "active" : ""} onClick={() => setFilter("terminal")}>Yakunlangan</button></div><div className="business-online__orders">{visible.length ? visible.map((row, index) => <article key={String(rowId(row, index))}><header><div><h3>Buyurtma #{rowId(row, index)} — {text(row, "title", "name") || "Buyurtma"}</h3><p>{dateLabel(row.created_at)}</p></div><span>{statusLabel(row.status)}</span></header><div className="business-online__order-lines">{Array.isArray(row.items) && row.items.map((item, itemIndex) => { const line = item as BusinessOnlineRecord; return <span key={String(rowId(line, itemIndex))}>{text(line, "name", "title", "item_name") || "Mahsulot"} × {text(line, "qty", "quantity") || "1"}</span>; })}</div><strong>{money(amount(row, "total_amount", "total"))}</strong>{!TERMINAL.has(text(row, "status")) && <select disabled={busy} value={text(row, "status") || "new"} onChange={(event) => void setStatus(rowId(row, index), event.currentTarget.value)}><option value="new">Yangi</option><option value="accepted">Qabul qilish</option><option value="payment_waiting">To‘lov kutilmoqda</option><option value="payment_confirmed">To‘lov tasdiqlandi</option><option value="preparing">Tayyorlanmoqda</option><option value="ready">Tayyor</option><option value="in_delivery">Yetkazilmoqda</option><option value="done">Yakunlash</option><option value="rejected">Rad etish</option></select>}</article>) : <div className="business-online__empty">Bu holatda buyurtma yo‘q.</div>}</div></section>;
+  return (
+    <section>
+      <div className="business-online__filters business-online__filters--wide">
+        <button type="button" className={filter === "new" ? "active" : ""} onClick={() => setFilter("new")}>Yangi</button>
+        <button type="button" className={filter === "active" ? "active" : ""} onClick={() => setFilter("active")}>Jarayondagi</button>
+        <button type="button" className={filter === "terminal" ? "active" : ""} onClick={() => setFilter("terminal")}>Yakunlangan</button>
+      </div>
+      <div className="business-online__orders">
+        {visible.length ? visible.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <header>
+              <div>
+                <h3>Buyurtma #{rowId(row, index)} — {text(row, "title", "name") || "Buyurtma"}</h3>
+                <p>{dateLabel(row.created_at)}</p>
+              </div>
+              <span>{statusLabel(row.status)}</span>
+            </header>
+            <div className="business-online__order-lines">
+              {Array.isArray(row.items) && row.items.map((item, itemIndex) => {
+                const line = item as BusinessOnlineRecord;
+                return (
+                  <span key={String(rowId(line, itemIndex))}>
+                    {text(line, "name", "title", "item_name") || "Mahsulot"}
+                    {" × "}{text(line, "qty", "quantity") || "1"}
+                  </span>
+                );
+              })}
+            </div>
+            <strong>{money(numeric(row, "total_amount", "total"))}</strong>
+            {!TERMINAL.has(text(row, "status")) && (
+              <select
+                disabled={busy}
+                value={text(row, "status") || "new"}
+                onChange={(event) => void setStatus(
+                  rowId(row, index),
+                  event.currentTarget.value,
+                )}
+              >
+                <option value="new">Yangi</option>
+                <option value="accepted">Qabul qilish</option>
+                <option value="payment_waiting">To‘lov kutilmoqda</option>
+                <option value="payment_confirmed">To‘lov tasdiqlandi</option>
+                <option value="preparing">Tayyorlanmoqda</option>
+                <option value="ready">Tayyor</option>
+                <option value="in_delivery">Yetkazilmoqda</option>
+                <option value="done">Yakunlash</option>
+                <option value="rejected">Rad etish</option>
+              </select>
+            )}
+          </article>
+        )) : <Empty>Bu holatda buyurtma yo‘q.</Empty>}
+      </div>
+    </section>
+  );
 }
 
-function messageScreen(rows: BusinessOnlineRecord[], value: string, setValue: (value: string) => void, busy: boolean, send: () => Promise<void>) {
-  return <section className="business-online__conversation"><div className="business-online__messages">{rows.length ? rows.map((row, index) => <article className={text(row, "sender_kind") === "business" ? "mine" : ""} key={String(rowId(row, index))}><p>{text(row, "text", "message", "body") || "Xabar"}</p><small>{dateLabel(row.created_at)}</small></article>) : <div className="business-online__empty">Suhbatlar hozircha yo‘q.</div>}</div><div className="business-online__composer"><input value={value} onChange={(event) => setValue(event.currentTarget.value)} placeholder="Xabar yozing..." /><button type="button" disabled={busy || !value.trim()} onClick={() => void send()}>Yuborish</button></div></section>;
+function Messages({
+  rows,
+  value,
+  setValue,
+  busy,
+  send,
+}: {
+  rows: BusinessOnlineRecord[];
+  value: string;
+  setValue: (value: string) => void;
+  busy: boolean;
+  send: () => Promise<void>;
+}) {
+  return (
+    <section className="business-online__conversation">
+      <div className="business-online__messages">
+        {rows.length ? rows.map((row, index) => (
+          <article
+            className={text(row, "sender_kind") === "business" ? "mine" : ""}
+            key={String(rowId(row, index))}
+          >
+            <p>{text(row, "text", "message", "body") || "Xabar"}</p>
+            <small>{dateLabel(row.created_at)}</small>
+          </article>
+        )) : <Empty>Suhbatlar hozircha yo‘q.</Empty>}
+      </div>
+      <div className="business-online__composer">
+        <input
+          value={value}
+          onChange={(event) => setValue(event.currentTarget.value)}
+          placeholder="Xabar yozing..."
+        />
+        <button
+          type="button"
+          disabled={busy || !value.trim()}
+          onClick={() => void send()}
+        >
+          Yuborish
+        </button>
+      </div>
+    </section>
+  );
 }
 
-function reviewScreen(rows: BusinessOnlineRecord[], ratingSum: number, ratingCount: number, replyId: number | string | null, reply: string, setReplyId: (id: number | string | null) => void, setReply: (value: string) => void, busy: boolean, save: (id: number | string) => Promise<void>) {
+function Reviews({
+  rows,
+  ratingSum,
+  ratingCount,
+  replyId,
+  reply,
+  setReplyId,
+  setReply,
+  busy,
+  save,
+}: {
+  rows: BusinessOnlineRecord[];
+  ratingSum: number;
+  ratingCount: number;
+  replyId: number | string | null;
+  reply: string;
+  setReplyId: (id: number | string | null) => void;
+  setReply: (value: string) => void;
+  busy: boolean;
+  save: (id: number | string) => Promise<void>;
+}) {
   const average = ratingCount ? (ratingSum / ratingCount).toFixed(1) : "0";
-  return <section><div className="business-online__rating"><div><small>O‘rtacha baho</small><strong>{average} ★</strong></div><div><small>Jami fikr</small><strong>{rows.length}</strong></div></div><p className="business-online__hint">Mijoz fikrini o‘chirib bo‘lmaydi. Har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.</p><div className="business-online__reviews">{rows.length ? rows.map((row, index) => { const id = rowId(row, index); return <article key={String(id)}><header><b>{text(row, "reviewer_name", "user_name", "name") || "Mijoz"}</b><span>{text(row, "rating", "stars") || "0"} ★</span></header><p>{text(row, "text", "comment", "review") || "Fikr matni yo‘q"}</p>{text(row, "business_reply", "reply") && <blockquote>{text(row, "business_reply", "reply")}</blockquote>}{replyId === id ? <div className="business-online__reply"><textarea value={reply} onChange={(event) => setReply(event.currentTarget.value)} /><button type="button" disabled={busy || !reply.trim()} onClick={() => void save(id)}>Javobni saqlash</button></div> : <button type="button" onClick={() => { setReplyId(id); setReply(text(row, "business_reply", "reply")); }}>Javob berish</button>}</article>; }) : <div className="business-online__empty">Mijoz fikrlari yo‘q.</div>}</div></section>;
+  return (
+    <section>
+      <div className="business-online__rating">
+        <div><small>O‘rtacha baho</small><strong>{average} ★</strong></div>
+        <div><small>Jami fikr</small><strong>{rows.length}</strong></div>
+      </div>
+      <p className="business-online__hint">
+        Mijoz fikrini o‘chirib bo‘lmaydi. Har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.
+      </p>
+      <div className="business-online__reviews">
+        {rows.length ? rows.map((row, index) => {
+          const id = rowId(row, index);
+          return (
+            <article key={String(id)}>
+              <header>
+                <b>{text(row, "reviewer_name", "user_name", "name") || "Mijoz"}</b>
+                <span>{text(row, "rating", "stars") || "0"} ★</span>
+              </header>
+              <p>{text(row, "text", "comment", "review") || "Fikr matni yo‘q"}</p>
+              {text(row, "business_reply", "reply") && (
+                <blockquote>{text(row, "business_reply", "reply")}</blockquote>
+              )}
+              {replyId === id ? (
+                <div className="business-online__reply">
+                  <textarea value={reply} onChange={(event) => setReply(event.currentTarget.value)} />
+                  <button
+                    type="button"
+                    disabled={busy || !reply.trim()}
+                    onClick={() => void save(id)}
+                  >
+                    Javobni saqlash
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyId(id);
+                    setReply(text(row, "business_reply", "reply"));
+                  }}
+                >
+                  Javob berish
+                </button>
+              )}
+            </article>
+          );
+        }) : <Empty>Mijoz fikrlari yo‘q.</Empty>}
+      </div>
+    </section>
+  );
 }
 
-function notificationScreen(rows: BusinessOnlineRecord[], busy: boolean, markAll: () => Promise<void>, markOne: (id: number | string) => Promise<void>) {
-  return <section><div className="business-online__toolbar"><p>{rows.filter((row) => !Boolean(Number(row.is_read ?? 0))).length} ta o‘qilmagan xabar</p><button type="button" disabled={busy} onClick={() => void markAll()}>Barchasini o‘qilgan qilish</button></div><div className="business-online__notifications">{rows.length ? rows.map((row, index) => <button type="button" className={Boolean(Number(row.is_read ?? 0)) ? "read" : ""} key={String(rowId(row, index))} disabled={busy} onClick={() => void markOne(rowId(row, index))}><span>{Boolean(Number(row.is_read ?? 0)) ? "✓" : "●"}</span><span><b>{text(row, "title", "name") || "Bildirishnoma"}</b><small>{text(row, "message", "text", "body")}</small></span><time>{dateLabel(row.created_at)}</time></button>) : <div className="business-online__empty">Bildirishnomalar yo‘q.</div>}</div></section>;
+function Notifications({
+  rows,
+  busy,
+  markAll,
+  markOne,
+}: {
+  rows: BusinessOnlineRecord[];
+  busy: boolean;
+  markAll: () => Promise<void>;
+  markOne: (id: number | string) => Promise<void>;
+}) {
+  const unread = rows.filter((row) => !Boolean(Number(row.is_read ?? 0))).length;
+  return (
+    <section>
+      <div className="business-online__toolbar">
+        <p>{unread} ta o‘qilmagan xabar</p>
+        <button type="button" disabled={busy} onClick={() => void markAll()}>
+          Barchasini o‘qilgan qilish
+        </button>
+      </div>
+      <div className="business-online__notifications">
+        {rows.length ? rows.map((row, index) => {
+          const read = Boolean(Number(row.is_read ?? 0));
+          return (
+            <button
+              type="button"
+              className={read ? "read" : ""}
+              key={String(rowId(row, index))}
+              disabled={busy}
+              onClick={() => void markOne(rowId(row, index))}
+            >
+              <span>{read ? "✓" : "●"}</span>
+              <span>
+                <b>{text(row, "title", "name") || "Bildirishnoma"}</b>
+                <small>{text(row, "message", "text", "body")}</small>
+              </span>
+              <time>{dateLabel(row.created_at)}</time>
+            </button>
+          );
+        }) : <Empty>Bildirishnomalar yo‘q.</Empty>}
+      </div>
+    </section>
+  );
 }
 
-function peopleScreen(rows: BusinessOnlineRecord[], canUnfollow: boolean, busy: boolean, unfollow: (id: number | string) => Promise<void>) {
-  return <section><div className="business-online__people">{rows.length ? rows.map((row, index) => <article key={String(rowId(row, index))}><div>{text(row, "avatar", "image_url") ? <img src={text(row, "avatar", "image_url")} alt="" /> : "👤"}</div><span><b>{text(row, "name", "target_name", "business_name") || "Profil"}</b><small>{text(row, "username", "public_username", "target_kind")}</small></span>{canUnfollow && <button type="button" disabled={busy} onClick={() => void unfollow(rowId(row, index))}>Obunani bekor qilish</button>}</article>) : <div className="business-online__empty">Ro‘yxat hozircha bo‘sh.</div>}</div></section>;
+function People({
+  rows,
+  busy,
+  canUnfollow = false,
+  unfollow = async () => undefined,
+}: {
+  rows: BusinessOnlineRecord[];
+  busy: boolean;
+  canUnfollow?: boolean;
+  unfollow?: (id: number | string) => Promise<void>;
+}) {
+  return (
+    <section>
+      <div className="business-online__people">
+        {rows.length ? rows.map((row, index) => (
+          <article key={String(rowId(row, index))}>
+            <div>
+              {text(row, "avatar", "image_url")
+                ? <img src={text(row, "avatar", "image_url")} alt="" />
+                : "👤"}
+            </div>
+            <span>
+              <b>{text(row, "name", "target_name", "business_name") || "Profil"}</b>
+              <small>{text(row, "username", "public_username", "target_kind")}</small>
+            </span>
+            {canUnfollow && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void unfollow(rowId(row, index))}
+              >
+                Obunani bekor qilish
+              </button>
+            )}
+          </article>
+        )) : <Empty>Ro‘yxat hozircha bo‘sh.</Empty>}
+      </div>
+    </section>
+  );
+}
+
+function SectionTitle({ title, note }: { title: string; note: string }) {
+  return (
+    <div className="business-online__section-title">
+      <h2>{title}</h2>
+      <span>{note}</span>
+    </div>
+  );
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return <div className="business-online__empty">{children}</div>;
 }
