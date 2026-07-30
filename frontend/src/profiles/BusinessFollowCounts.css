@@ -1,0 +1,41 @@
+.business-cabinet__identity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.business-cabinet__identity-chips button {
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid #2d655b;
+  border-radius: 999px;
+  color: #d9f8f1;
+  background: #10382f;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.business-cabinet__identity-chips button:hover,
+.business-cabinet__identity-chips button:focus-visible {
+  border-color: #3ecfba;
+  background: #17473d;
+}
+
+.business-cabinet__identity-chips button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+  .business-cabinet__identity-chips {
+    gap: 6px;
+  }
+
+  .business-cabinet__identity-chips button {
+    min-height: 28px;
+    padding: 4px 9px;
+    font-size: 11px;
+  }
+}
