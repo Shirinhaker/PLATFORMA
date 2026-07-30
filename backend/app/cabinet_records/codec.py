@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from typing import Any, Iterable
 
 
@@ -111,13 +112,20 @@ def normalize_payload_rows(value: object) -> list[dict[str, Any]]:
 
 def _source_key(row: dict[str, Any], ordinal: int, used_keys: set[str]) -> str:
     candidate = str(row.get("id") if row.get("id") is not None else f"ordinal:{ordinal}")
-    key = candidate
     suffix = 1
+    key = _bounded_key(candidate)
     while key in used_keys:
         suffix += 1
-        key = f"{candidate}#{suffix}"
+        key = _bounded_key(f"{candidate}#{suffix}")
     used_keys.add(key)
     return key
+
+
+def _bounded_key(value: str) -> str:
+    if len(value) <= 160:
+        return value
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:40]
+    return f"{value[:119]}:{digest}"
 
 
 def _flatten_value(
