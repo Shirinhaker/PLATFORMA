@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,6 @@ from app.cabinet_records.repository import CabinetRecordRepository
 from app.cabinet_records.security import assert_payload_safe
 from app.cabinet_records.verify import (
     aggregate_profile_digest,
-    payload_digest,
     verify_payload_parity,
 )
 from app.profiles.model import BusinessProfile, UserProfile
@@ -88,7 +87,7 @@ async def execute_backfill_batches(
                     raise BatchNormalizationError("cabinet_normalization_run_missing")
 
                 for ref in batch:
-                    profile = await load_profile(session, ref)
+                    profile = await load_profile(session, ref, lock=True)
                     source_payload = profile_payload(profile.cabinet_payload)
                     assert_payload_safe(source_payload)
                     await repo.replace_payload(
@@ -200,9 +199,21 @@ async def profile_refs(session: AsyncSession) -> list[ProfileRef]:
     ]
 
 
-async def load_profile(session: AsyncSession, ref: ProfileRef):
+async def load_profile(
+    session: AsyncSession,
+    ref: ProfileRef,
+    *,
+    lock: bool = False,
+):
     model = UserProfile if ref.account_type == "user" else BusinessProfile
-    profile = await session.get(model, ref.account_id)
+    if lock:
+        profile = await session.scalar(
+            select(model)
+            .where(model.account_id == ref.account_id)
+            .with_for_update()
+        )
+    else:
+        profile = await session.get(model, ref.account_id)
     if profile is None:
         raise BatchNormalizationError(
             f"cabinet_normalization_profile_missing:{ref.account_type}:{ref.account_id}"
