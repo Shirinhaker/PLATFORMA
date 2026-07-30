@@ -1,4 +1,5 @@
 const API_STORAGE_KEY = "koprik_api_base_url";
+const RAILWAY_STAGING_API = "https://platforma-production-f753.up.railway.app";
 
 function clean(value: string | null | undefined): string {
   return String(value ?? "").trim().replace(/\/+$/, "");
@@ -10,6 +11,18 @@ function safeHttps(value: string): string {
     const parsed = new URL(value);
     if (parsed.protocol !== "https:") return "";
     return parsed.origin;
+  } catch {
+    return "";
+  }
+}
+
+function railwayDefault(origin: string): string {
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "https:") return "";
+    if (!parsed.hostname.endsWith(".up.railway.app")) return "";
+    if (parsed.origin === RAILWAY_STAGING_API) return parsed.origin;
+    return RAILWAY_STAGING_API;
   } catch {
     return "";
   }
@@ -33,5 +46,13 @@ export function resolveApiBaseUrl(
   const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
   if (fromStorage) return fromStorage;
 
+  const fromRailway = railwayDefault(clean(location.origin));
+  if (fromRailway) {
+    storage.setItem(API_STORAGE_KEY, fromRailway);
+    return fromRailway;
+  }
+
   return clean(location.origin);
 }
+
+export { RAILWAY_STAGING_API };
