@@ -1,6 +1,6 @@
 """V7 normalized cabinet records.
 
-Revision ID: 0006_v7_normalized_cabinet_records
+Revision ID: 0006_v7_cabinet_records
 Revises: 0005_profile_cabinet_parity
 """
 
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0006_v7_normalized_cabinet_records"
+revision = "0006_v7_cabinet_records"
 down_revision = "0005_profile_cabinet_parity"
 branch_labels = None
 depends_on = None
