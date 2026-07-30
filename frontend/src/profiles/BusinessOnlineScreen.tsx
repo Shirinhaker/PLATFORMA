@@ -7,9 +7,11 @@ import type {
 } from "../api/business-online-types";
 import type { BusinessProfile } from "../api/types";
 import {
-  CrudCardsView,
+  CrudEditorView,
+  ItemsEditorView,
+} from "./BusinessOnlineEditingViews";
+import {
   isServiceOrder,
-  ItemsView,
   MessagesView,
   NotificationsView,
   type OrderFilter,
@@ -422,7 +424,7 @@ function renderContent(context: RenderContext): ReactNode {
       );
     case "items":
       return (
-        <ItemsView
+        <ItemsEditorView
           {...shared}
           rows={items}
           groups={groups}
@@ -434,7 +436,7 @@ function renderContent(context: RenderContext): ReactNode {
       );
     case "listings":
       return (
-        <CrudCardsView
+        <CrudEditorView
           {...shared}
           resource="listings"
           rows={items}
@@ -507,18 +509,26 @@ function renderContent(context: RenderContext): ReactNode {
       );
     case "advertisements":
       return (
-        <CrudCardsView
+        <CrudEditorView
           {...shared}
           resource="advertisements"
           rows={items}
           addLabel="+ Reklama"
           empty="Hozircha reklama yo‘q."
-          fields={["title", "caption", "placement", "region", "district"]}
+          fields={[
+            "title",
+            "caption",
+            "placement",
+            "region",
+            "district",
+            "start_at",
+            "end_at",
+          ]}
         />
       );
     case "stories":
       return (
-        <CrudCardsView
+        <CrudEditorView
           {...shared}
           resource="stories"
           rows={items}
