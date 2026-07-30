@@ -4,11 +4,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.advertisements.repository import AdvertisementService
+from app.advertisements.router import router as advertisements_router
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
-from app.advertisements.repository import AdvertisementService
-from app.advertisements.router import router as advertisements_router
+from app.business_online.router import router as business_online_router
+from app.business_online.service import BusinessOnlineService
 from app.cache.client import RedisClient
 from app.catalog.router import router as catalog_router
 from app.catalog.service import CatalogService
@@ -17,10 +19,10 @@ from app.core.errors import ApiError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
+from app.listings.router import router as listings_router
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
-from app.listings.router import router as listings_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
@@ -72,6 +74,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             redis_client,
             resolved,
         )
+        app.state.business_online_service = BusinessOnlineService(
+            database.session,
+        )
         app.state.public_discovery_service = PublicDiscoveryService(
             database.session,
             redis_client,
@@ -115,6 +120,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(shared_login_router)
     app.include_router(auth_router)
     app.include_router(profiles_router)
+    app.include_router(business_online_router)
     app.include_router(public_discovery_router)
     app.include_router(catalog_router)
     app.include_router(advertisements_router)
