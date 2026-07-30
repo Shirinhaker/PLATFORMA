@@ -12,7 +12,7 @@ $SshTarget = "koprik-api-staging"
 $ExpectedSchema = "0006_v7_cabinet_records"
 
 Write-Host "SCRIPT=KOPRIK_V7_NORMALIZE_CABINET_JSON_STAGING"
-Write-Host "SCRIPT_VERSION=1"
+Write-Host "SCRIPT_VERSION=2"
 Write-Host "TARGET=$SshTarget"
 Write-Host "MODE=$Mode"
 Write-Host "BATCH_SIZE=$BatchSize"
@@ -54,6 +54,7 @@ function Invoke-RemoteBash {
         } else {
             @()
         }
+
         $Output | ForEach-Object { Write-Host $_ }
         $Errors | ForEach-Object { Write-Error $_ -ErrorAction Continue }
         if ($Process.ExitCode -ne 0) {
@@ -113,6 +114,9 @@ PY
 test "`$DEPLOYED_SCHEMA" = "$ExpectedSchema" \
   || fail "normalization_code_not_deployed"
 
+python -c 'import app.cabinet_records.cli' \
+  || fail "normalization_cli_not_deployed"
+
 ALEMBIC_CURRENT="`$(python -m alembic current)"
 printf '%s\n' "`$ALEMBIC_CURRENT"
 printf '%s' "`$ALEMBIC_CURRENT" | grep -q "$ExpectedSchema" \
@@ -120,13 +124,13 @@ printf '%s' "`$ALEMBIC_CURRENT" | grep -q "$ExpectedSchema" \
 
 case "$RemoteMode" in
   dry-run)
-    python scripts/backfill_v7_cabinet_records.py
+    python -m app.cabinet_records.cli
     ;;
   execute)
-    python scripts/backfill_v7_cabinet_records.py --execute --batch-size $BatchSize
+    python -m app.cabinet_records.cli --execute --batch-size $BatchSize
     ;;
   verify)
-    python scripts/backfill_v7_cabinet_records.py --verify-only
+    python -m app.cabinet_records.cli --verify-only
     ;;
   *)
     fail "invalid_mode"
