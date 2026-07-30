@@ -1,80 +1,142 @@
-const API_STORAGE_KEY = "koprik_api_base_url";
-const API_STORAGE_SOURCE_KEY = "koprik_api_base_url_source";
-const RAILWAY_STAGING_API = "https://platforma-production-f753.up.railway.app";
+const LEGACY_STORAGE_KEYS = [
+  "koprik_api_base_url",
+  "koprik_api_base_url_source",
+] as const;
 
-function clean(value: string | null | undefined): string {
+
+type RuntimeLocation = Pick<Location, "origin" | "search">;
+type LegacyStorage = Pick<Storage, "removeItem">;
+
+
+type RuntimeConfig = {
+  apiBaseUrl?: unknown;
+};
+
+
+export class ApiConfigurationError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+    this.name = "ApiConfigurationError";
+  }
+}
+
+
+function clean(value: unknown): string {
   return String(value ?? "").trim().replace(/\/+$/, "");
 }
 
-function safeHttps(value: string): string {
-  if (!value) return "";
+
+function safeHttpsOrigin(value: unknown): string {
+  const text = clean(value);
+  if (!text) return "";
   try {
-    const parsed = new URL(value);
+    const parsed = new URL(text);
     if (parsed.protocol !== "https:") return "";
+    if (parsed.pathname !== "/" || parsed.search || parsed.hash) return "";
     return parsed.origin;
   } catch {
     return "";
   }
 }
 
-function railwayDefault(origin: string): string {
+
+function removeLegacyStorage(storage: LegacyStorage): void {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      storage.removeItem(key);
+    } catch {
+      // Storage can be blocked by privacy settings. It is no longer required.
+    }
+  }
+}
+
+
+async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text();
   try {
-    const parsed = new URL(origin);
-    if (parsed.protocol !== "https:") return "";
-    if (!parsed.hostname.endsWith(".up.railway.app")) return "";
-    if (parsed.origin === RAILWAY_STAGING_API) return parsed.origin;
-    return RAILWAY_STAGING_API;
+    const parsed = JSON.parse(text) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
   } catch {
-    return "";
+    // The Railway SPA server can return index.html with status 200.
+  }
+  throw new ApiConfigurationError("runtime_config_not_json");
+}
+
+
+async function sameOriginProxyAvailable(
+  fetcher: typeof fetch,
+  origin: string,
+): Promise<boolean> {
+  try {
+    const response = await fetcher(`${origin}/api/v1/build`, {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return false;
+    const payload = await readJsonObject(response);
+    return (
+      typeof payload.api_version === "string"
+      && typeof payload.foundation === "string"
+    );
+  } catch {
+    return false;
   }
 }
 
-export function resolveApiBaseUrl(
-  configured: string | undefined,
-  location: Pick<Location, "origin" | "search"> = window.location,
-  storage: Pick<Storage, "getItem" | "setItem"> = window.localStorage,
-): string {
+
+export async function loadApiBaseUrl(
+  fetcher: typeof fetch = window.fetch.bind(window),
+  location: RuntimeLocation = window.location,
+  storage: LegacyStorage = window.localStorage,
+): Promise<string> {
+  removeLegacyStorage(storage);
+
   const query = new URLSearchParams(location.search).get("api");
-  const fromQuery = safeHttps(clean(query));
-  if (fromQuery) {
-    storage.setItem(API_STORAGE_KEY, fromQuery);
-    storage.setItem(API_STORAGE_SOURCE_KEY, "query");
-    return fromQuery;
+  if (query !== null) {
+    const debugOrigin = safeHttpsOrigin(query);
+    if (!debugOrigin) {
+      throw new ApiConfigurationError("api_debug_origin_invalid");
+    }
+    return debugOrigin;
   }
 
-  const fromBuild = safeHttps(clean(configured));
-  if (fromBuild) {
-    storage.setItem(API_STORAGE_KEY, fromBuild);
-    storage.setItem(API_STORAGE_SOURCE_KEY, "build");
-    return fromBuild;
+  const origin = safeHttpsOrigin(location.origin);
+  if (!origin) {
+    throw new ApiConfigurationError("frontend_origin_invalid");
   }
 
-  const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
-  const storageSource = storage.getItem(API_STORAGE_SOURCE_KEY);
-  const fromRailway = railwayDefault(clean(location.origin));
-
-  // Query yoki build orqali aniq tasdiqlangan manzil refreshdan keyin saqlanadi.
-  // Eski versiyalar qoldirgan belgisiz va noto‘g‘ri Railway URL esa ma’lum
-  // staging API manzilini bosib ketmasligi kerak.
-  if (
-    fromStorage
-    && (
-      !fromRailway
-      || fromStorage === fromRailway
-      || storageSource === "query"
-      || storageSource === "build"
-    )
-  ) {
-    return fromStorage;
+  const configUrl = `${origin}/runtime-config.json`;
+  let runtimeConfigFailure = "api_runtime_configuration_missing";
+  try {
+    const response = await fetcher(configUrl, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const payload = await readJsonObject(response) as RuntimeConfig;
+      const runtimeOrigin = safeHttpsOrigin(payload.apiBaseUrl);
+      if (runtimeOrigin) return runtimeOrigin;
+      runtimeConfigFailure = "runtime_config_api_origin_invalid";
+    } else if (response.status !== 404) {
+      runtimeConfigFailure = `runtime_config_http_${response.status}`;
+    }
+  } catch (error) {
+    if (error instanceof ApiConfigurationError) {
+      runtimeConfigFailure = error.code;
+    } else {
+      runtimeConfigFailure = "runtime_config_unreachable";
+    }
   }
 
-  if (fromRailway) {
-    storage.setItem(API_STORAGE_KEY, fromRailway);
-    storage.setItem(API_STORAGE_SOURCE_KEY, "railway");
-    return fromRailway;
+  if (await sameOriginProxyAvailable(fetcher, origin)) {
+    return origin;
   }
 
-  return fromStorage || clean(location.origin);
+  throw new ApiConfigurationError(runtimeConfigFailure);
 }
-
-export { RAILWAY_STAGING_API };

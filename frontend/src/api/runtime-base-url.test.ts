@@ -1,157 +1,155 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  RAILWAY_STAGING_API,
-  resolveApiBaseUrl,
+  ApiConfigurationError,
+  loadApiBaseUrl,
 } from "./runtime-base-url";
 
 
-describe("resolveApiBaseUrl", () => {
-  it("uses and stores an HTTPS api query parameter", () => {
-    const storage = {
-      getItem: vi.fn().mockReturnValue(null),
-      setItem: vi.fn(),
-    };
+type FetchResponse = {
+  status: number;
+  ok: boolean;
+  text: () => Promise<string>;
+};
 
-    const result = resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://web-production.up.railway.app",
-        search: "?api=https%3A%2F%2Fapi-staging.up.railway.app%2F",
-      } as Location,
-      storage,
+function response(status: number, body: string): FetchResponse {
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    text: async () => body,
+  };
+}
+
+function location(search = "") {
+  return {
+    origin: "https://frontend-staging-production-6c41.up.railway.app",
+    search,
+  } as Location;
+}
+
+function storage() {
+  return {
+    removeItem: vi.fn(),
+  };
+}
+
+function missingConfigRequest() {
+  const fetcher = vi.fn()
+    .mockResolvedValueOnce(response(404, "missing"))
+    .mockResolvedValueOnce(response(404, "missing"));
+  return loadApiBaseUrl(
+    fetcher as unknown as typeof fetch,
+    location(),
+    storage(),
+  );
+}
+
+
+describe("loadApiBaseUrl", () => {
+  it("uses an HTTPS query only as a non-persistent debug override", async () => {
+    const fetcher = vi.fn();
+    const legacyStorage = storage();
+
+    const result = await loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location("?api=https%3A%2F%2Fdebug-api.example%2F"),
+      legacyStorage,
     );
 
-    expect(result).toBe("https://api-staging.up.railway.app");
-    expect(storage.setItem).toHaveBeenCalledWith(
+    expect(result).toBe("https://debug-api.example");
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(legacyStorage.removeItem).toHaveBeenCalledWith(
       "koprik_api_base_url",
-      "https://api-staging.up.railway.app",
     );
-    expect(storage.setItem).toHaveBeenCalledWith(
+    expect(legacyStorage.removeItem).toHaveBeenCalledWith(
       "koprik_api_base_url_source",
-      "query",
     );
   });
 
-  it("prefers and stores a configured build URL", () => {
-    const storage = {
-      getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
-      setItem: vi.fn(),
-    };
+  it("loads the API origin from runtime-config.json", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response(
+      200,
+      JSON.stringify({ apiBaseUrl: "https://api-staging.example/" }),
+    ));
 
-    expect(resolveApiBaseUrl(
-      "https://configured-api.up.railway.app/",
-      {
-        origin: "https://web-production.up.railway.app",
-        search: "",
-      } as Location,
-      storage,
-    )).toBe("https://configured-api.up.railway.app");
-    expect(storage.setItem).toHaveBeenCalledWith(
-      "koprik_api_base_url",
-      "https://configured-api.up.railway.app",
+    await expect(loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    )).resolves.toBe("https://api-staging.example");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://frontend-staging-production-6c41.up.railway.app/runtime-config.json",
+      expect.objectContaining({ cache: "no-store" }),
     );
   });
 
-  it("uses stored API URL on a custom domain", () => {
-    const storage = {
-      getItem: vi.fn().mockReturnValue("https://stored-api.up.railway.app"),
-      setItem: vi.fn(),
-    };
+  it("uses the same runtime config in a fresh tab or incognito session", async () => {
+    const fetcher = vi.fn().mockResolvedValue(response(
+      200,
+      JSON.stringify({ apiBaseUrl: "https://api-staging.example" }),
+    ));
 
-    expect(resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://koprik.uz",
-        search: "",
-      } as Location,
-      storage,
-    )).toBe("https://stored-api.up.railway.app");
+    const first = await loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    );
+    const second = await loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    );
+
+    expect(first).toBe("https://api-staging.example");
+    expect(second).toBe(first);
   });
 
-  it("automatically routes a new Railway web deployment to api-staging", () => {
-    const storage = {
-      getItem: vi.fn().mockReturnValue(null),
-      setItem: vi.fn(),
-    };
+  it("accepts same-origin only when /api/v1/build proves a proxy exists", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(404, "not found"))
+      .mockResolvedValueOnce(response(
+        200,
+        JSON.stringify({ api_version: "v1", foundation: "phase1" }),
+      ));
 
-    expect(resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://web-production-aed95.up.railway.app",
-        search: "",
-      } as Location,
-      storage,
-    )).toBe(RAILWAY_STAGING_API);
-    expect(storage.setItem).toHaveBeenCalledWith(
-      "koprik_api_base_url",
-      RAILWAY_STAGING_API,
+    await expect(loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    )).resolves.toBe(
+      "https://frontend-staging-production-6c41.up.railway.app",
     );
   });
 
-  it("keeps the working query-persisted API after Railway page refresh", () => {
-    const storage = {
-      getItem: vi.fn((key: string) => (
-        key === "koprik_api_base_url"
-          ? "https://actual-api.up.railway.app"
-          : "query"
-      )),
-      setItem: vi.fn(),
-    };
+  it("rejects the SPA index fallback returned as runtime-config.json", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(200, "<!doctype html><div id='root'></div>"))
+      .mockResolvedValueOnce(response(200, "<!doctype html>"));
 
-    expect(resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://web-production-aed95.up.railway.app",
-        search: "",
-      } as Location,
-      storage,
-    )).toBe("https://actual-api.up.railway.app");
-    expect(storage.setItem).not.toHaveBeenCalled();
+    await expect(loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    )).rejects.toMatchObject({
+      code: "runtime_config_not_json",
+    });
   });
 
-  it("replaces an unmarked stale Railway API after page refresh", () => {
-    const storage = {
-      getItem: vi.fn((key: string) => (
-        key === "koprik_api_base_url"
-          ? "https://old-api.up.railway.app"
-          : null
-      )),
-      setItem: vi.fn(),
-    };
-
-    expect(resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://frontend-staging-production-6c41.up.railway.app",
-        search: "",
-      } as Location,
-      storage,
-    )).toBe(RAILWAY_STAGING_API);
-    expect(storage.setItem).toHaveBeenCalledWith(
-      "koprik_api_base_url",
-      RAILWAY_STAGING_API,
+  it("fails clearly instead of guessing a Railway API domain", async () => {
+    await expect(missingConfigRequest()).rejects.toEqual(
+      expect.any(ApiConfigurationError),
     );
-    expect(storage.setItem).toHaveBeenCalledWith(
-      "koprik_api_base_url_source",
-      "railway",
-    );
+    await expect(missingConfigRequest()).rejects.toMatchObject({
+      code: "api_runtime_configuration_missing",
+    });
   });
 
-  it("rejects insecure query configuration on a custom domain", () => {
-    const storage = {
-      getItem: vi.fn().mockReturnValue(null),
-      setItem: vi.fn(),
-    };
-
-    expect(resolveApiBaseUrl(
-      undefined,
-      {
-        origin: "https://koprik.uz",
-        search: "?api=http%3A%2F%2Finsecure.local",
-      } as Location,
-      storage,
-    )).toBe("https://koprik.uz");
-    expect(storage.setItem).not.toHaveBeenCalled();
+  it("rejects an insecure debug API origin", async () => {
+    await expect(loadApiBaseUrl(
+      vi.fn() as unknown as typeof fetch,
+      location("?api=http%3A%2F%2Finsecure.local"),
+      storage(),
+    )).rejects.toMatchObject({ code: "api_debug_origin_invalid" });
   });
 });

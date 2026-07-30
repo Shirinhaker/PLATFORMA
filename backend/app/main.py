@@ -27,16 +27,15 @@ from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
 
 
-STAGING_RAILWAY_ORIGIN_REGEX = (
-    r"^https://[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.up\.railway\.app$"
-)
+DEPLOYED_ENVIRONMENTS = {"staging", "production"}
 
 
-def _cors_origin_regex(settings: Settings) -> str | None:
-    """Allow credentialed Railway preview/staging frontends only in staging."""
-    if settings.environment == "staging":
-        return STAGING_RAILWAY_ORIGIN_REGEX
-    return None
+def _validate_cors_configuration(settings: Settings) -> None:
+    if (
+        settings.environment in DEPLOYED_ENVIRONMENTS
+        and not settings.cors_origin_list
+    ):
+        raise RuntimeError("cors_origins_required_for_deployed_environment")
 
 
 def _remove_legacy_login_start_route() -> None:
@@ -52,6 +51,7 @@ def _remove_legacy_login_start_route() -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
+    _validate_cors_configuration(resolved)
     configure_logging(resolved.service_name, resolved.environment)
 
     @asynccontextmanager
@@ -98,12 +98,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
-    cors_origin_regex = _cors_origin_regex(resolved)
-    if resolved.cors_origin_list or cors_origin_regex:
+    if resolved.cors_origin_list:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=resolved.cors_origin_list,
-            allow_origin_regex=cors_origin_regex,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
