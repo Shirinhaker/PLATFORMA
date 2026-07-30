@@ -111,7 +111,7 @@ async def test_create_item_preserves_existing_payload_and_assigns_next_id():
     "field",
     ["password", "password_hash", "telegram_user_id", "api_token"],
 )
-async def test_create_rejects_sensitive_and_identity_fields(field):
+async def test_create_rejects_sensitive_identity_fields(field):
     service = BusinessOnlineService(FakeDatabase(business_profile()).session)
 
     with pytest.raises(ApiError) as error:
@@ -121,11 +121,7 @@ async def test_create_rejects_sensitive_and_identity_fields(field):
             {"name": "Mahsulot", field: "secret"},
         )
 
-    if field == "telegram_user_id":
-        # Ownership maydoni yozuvdan jim olib tashlanadi, ammo qolgan yozuv xavfsiz.
-        assert error.value.code != "sensitive_record_field"
-    else:
-        assert error.value.code == "sensitive_record_field"
+    assert error.value.code == "sensitive_record_field"
 
 
 @pytest.mark.asyncio
