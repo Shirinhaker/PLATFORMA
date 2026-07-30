@@ -46,17 +46,18 @@ export function resolveApiBaseUrl(
     return fromBuild;
   }
 
-  // Railway web deploylarda oldingi noto‘g‘ri URL localStorage’da qolgan
-  // bo‘lishi mumkin. Ma’lum staging API manzili har doim eski browser
-  // xotirasidan ustun turadi va uni avtomatik yangilaydi.
+  // Query orqali tekshirilgan ishlaydigan API manzili localStorage’da
+  // saqlanadi. Sahifa yangilanganda shu qiymat Railway fallbackdan oldin
+  // olinishi shart; aks holda refresh to‘g‘ri manzilni yana eskisiga almashtiradi.
+  const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
+  if (fromStorage) return fromStorage;
+
+  // Faqat yangi brauzerda hali saqlangan qiymat bo‘lmasa staging fallback.
   const fromRailway = railwayDefault(clean(location.origin));
   if (fromRailway) {
     storage.setItem(API_STORAGE_KEY, fromRailway);
     return fromRailway;
   }
-
-  const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
-  if (fromStorage) return fromStorage;
 
   return clean(location.origin);
 }
