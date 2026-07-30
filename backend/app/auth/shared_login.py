@@ -2,10 +2,21 @@ from datetime import datetime, timedelta
 
 from app.accounts.model import AccountType
 from app.accounts.repository import find_accounts_by_login
-from app.auth.repository import create_challenge
-from app.auth.schemas import LoginStarted
-from app.auth.security import PasswordVerification, verify_password_with_rehash
-from app.auth.service import AuthService, INVALID_CREDENTIALS
+from app.auth.repository import (
+    create_challenge,
+    resolve_session as resolve_stored_session,
+)
+from app.auth.schemas import LoginStarted, SessionIdentity
+from app.auth.security import (
+    PasswordVerification,
+    derive_csrf,
+    verify_password_with_rehash,
+)
+from app.auth.service import (
+    AuthService,
+    INVALID_CREDENTIALS,
+    _SESSION_TOUCH_INTERVAL,
+)
 from app.core.errors import ApiError
 
 
@@ -90,3 +101,41 @@ class SharedLoginAuthService(AuthService):
             ),
             resend_after=self._settings.telegram_resend_seconds,
         )
+
+    async def _resolve_session_from_database(
+        self,
+        raw_token: str,
+        now: datetime,
+    ) -> SessionIdentity | None:
+        async with self._session_factory() as session:
+            stored = await resolve_stored_session(session, raw_token, now)
+            if stored is None:
+                await session.rollback()
+                return None
+
+            auth_session, account = stored
+            last_used_at = auth_session.last_used_at
+            identity = SessionIdentity(
+                account_id=account.id,
+                account_type=account.account_type,
+                login=account.login,
+                csrf_token=derive_csrf(
+                    raw_token,
+                    self._settings.csrf_secret,
+                ),
+                expires_at=auth_session.expires_at,
+            )
+            if last_used_at <= now - _SESSION_TOUCH_INTERVAL:
+                last_used_at = now
+                auth_session.last_used_at = last_used_at
+                await session.commit()
+            else:
+                await session.rollback()
+
+        await self._cache_session(
+            raw_token,
+            identity,
+            now,
+            last_used_at=last_used_at,
+        )
+        return identity
