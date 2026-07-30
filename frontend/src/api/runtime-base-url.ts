@@ -1,4 +1,5 @@
 const API_STORAGE_KEY = "koprik_api_base_url";
+const API_STORAGE_SOURCE_KEY = "koprik_api_base_url_source";
 const RAILWAY_STAGING_API = "https://platforma-production-f753.up.railway.app";
 
 function clean(value: string | null | undefined): string {
@@ -37,29 +38,43 @@ export function resolveApiBaseUrl(
   const fromQuery = safeHttps(clean(query));
   if (fromQuery) {
     storage.setItem(API_STORAGE_KEY, fromQuery);
+    storage.setItem(API_STORAGE_SOURCE_KEY, "query");
     return fromQuery;
   }
 
   const fromBuild = safeHttps(clean(configured));
   if (fromBuild) {
     storage.setItem(API_STORAGE_KEY, fromBuild);
+    storage.setItem(API_STORAGE_SOURCE_KEY, "build");
     return fromBuild;
   }
 
-  // Query orqali tekshirilgan ishlaydigan API manzili localStorage’da
-  // saqlanadi. Sahifa yangilanganda shu qiymat Railway fallbackdan oldin
-  // olinishi shart; aks holda refresh to‘g‘ri manzilni yana eskisiga almashtiradi.
   const fromStorage = safeHttps(clean(storage.getItem(API_STORAGE_KEY)));
-  if (fromStorage) return fromStorage;
-
-  // Faqat yangi brauzerda hali saqlangan qiymat bo‘lmasa staging fallback.
+  const storageSource = storage.getItem(API_STORAGE_SOURCE_KEY);
   const fromRailway = railwayDefault(clean(location.origin));
+
+  // Query yoki build orqali aniq tasdiqlangan manzil refreshdan keyin saqlanadi.
+  // Eski versiyalar qoldirgan belgisiz va noto‘g‘ri Railway URL esa ma’lum
+  // staging API manzilini bosib ketmasligi kerak.
+  if (
+    fromStorage
+    && (
+      !fromRailway
+      || fromStorage === fromRailway
+      || storageSource === "query"
+      || storageSource === "build"
+    )
+  ) {
+    return fromStorage;
+  }
+
   if (fromRailway) {
     storage.setItem(API_STORAGE_KEY, fromRailway);
+    storage.setItem(API_STORAGE_SOURCE_KEY, "railway");
     return fromRailway;
   }
 
-  return clean(location.origin);
+  return fromStorage || clean(location.origin);
 }
 
 export { RAILWAY_STAGING_API };
