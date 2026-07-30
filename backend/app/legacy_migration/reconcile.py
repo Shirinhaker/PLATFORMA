@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
+from math import isfinite
 import json
 import sqlite3
 
@@ -848,9 +849,10 @@ def _optional_float(value: object) -> float | None:
     if value in (None, ""):
         return None
     try:
-        return float(value)
+        parsed = float(value)
     except (TypeError, ValueError):
         return None
+    return parsed if isfinite(parsed) else None
 
 
 def _float_or(value: object, default: float) -> float:

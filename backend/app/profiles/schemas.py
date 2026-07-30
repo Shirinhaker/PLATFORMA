@@ -1,3 +1,4 @@
+from math import isfinite
 import re
 from typing import Any
 
@@ -23,6 +24,32 @@ def normalize_username(value: str) -> str:
     if normalized and not USERNAME.fullmatch(normalized):
         raise ValueError(USERNAME_MESSAGE)
     return normalized
+
+
+def normalize_finite_float(value: Any, default: float | None) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if isfinite(parsed) else default
+
+
+def normalize_json_value(value: Any) -> Any:
+    if isinstance(value, float):
+        return value if isfinite(value) else None
+    if isinstance(value, dict):
+        return {
+            str(key): normalize_json_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [normalize_json_value(item) for item in value]
+    return value
+
+
+def normalize_json_object(value: Any) -> dict[str, Any]:
+    normalized = normalize_json_value(value)
+    return normalized if isinstance(normalized, dict) else {}
 
 
 class ProfilePatch(BaseModel):
@@ -70,6 +97,21 @@ class UserProfileRead(BaseModel):
     specialist_profile: dict[str, Any] = Field(default_factory=dict)
     cabinet_payload: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("latitude", "longitude", mode="before")
+    @classmethod
+    def normalize_coordinates(cls, value):
+        return normalize_finite_float(value, None)
+
+    @field_validator("avatar_x", "avatar_y", mode="before")
+    @classmethod
+    def normalize_avatar_position(cls, value):
+        return normalize_finite_float(value, 50.0)
+
+    @field_validator("avatar_zoom", mode="before")
+    @classmethod
+    def normalize_avatar_zoom(cls, value):
+        return normalize_finite_float(value, 1.0)
+
     @field_validator("followers_count", "following_count", mode="before")
     @classmethod
     def normalize_counts(cls, value):
@@ -88,7 +130,7 @@ class UserProfileRead(BaseModel):
     )
     @classmethod
     def normalize_objects(cls, value):
-        return {} if value is None else value
+        return normalize_json_object(value)
 
     @field_validator("recent_activity", mode="before")
     @classmethod
@@ -146,6 +188,21 @@ class BusinessProfileRead(BaseModel):
     recent_activity: list[CabinetActivity] = Field(default_factory=list)
     cabinet_payload: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("latitude", "longitude", mode="before")
+    @classmethod
+    def normalize_coordinates(cls, value):
+        return normalize_finite_float(value, None)
+
+    @field_validator("logo_x", "logo_y", mode="before")
+    @classmethod
+    def normalize_logo_position(cls, value):
+        return normalize_finite_float(value, 50.0)
+
+    @field_validator("logo_zoom", mode="before")
+    @classmethod
+    def normalize_logo_zoom(cls, value):
+        return normalize_finite_float(value, 1.0)
+
     @field_validator(
         "followers_count",
         "following_count",
@@ -162,10 +219,15 @@ class BusinessProfileRead(BaseModel):
     def normalize_map_visible(cls, value):
         return False if value is None else value
 
-    @field_validator("dashboard_snapshot", "cabinet_payload", mode="before")
+    @field_validator(
+        "work_hours",
+        "dashboard_snapshot",
+        "cabinet_payload",
+        mode="before",
+    )
     @classmethod
     def normalize_objects(cls, value):
-        return {} if value is None else value
+        return normalize_json_object(value)
 
     @field_validator("recent_activity", mode="before")
     @classmethod
