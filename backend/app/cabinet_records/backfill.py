@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cabinet_records.contract import NORMALIZATION_SCHEMA_VERSION
 from app.cabinet_records.model import CabinetNormalizationRun
 from app.cabinet_records.repository import CabinetRecordRepository
+from app.cabinet_records.security import assert_payload_safe
 from app.cabinet_records.verify import PayloadParity, payload_digest, verify_payload_parity
 from app.profiles.model import BusinessProfile, UserProfile
 
@@ -72,6 +73,7 @@ async def backfill_all_profiles(
             for profile in profiles:
                 profiles_total += 1
                 source_payload = _payload(profile.cabinet_payload)
+                assert_payload_safe(source_payload)
                 await repo.replace_payload(
                     session,
                     account_id=profile.account_id,
