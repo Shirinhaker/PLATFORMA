@@ -24,7 +24,6 @@ SENSITIVE_SUFFIXES = (
     "_password",
     "_secret",
     "_token",
-    "_hash",
 )
 
 
