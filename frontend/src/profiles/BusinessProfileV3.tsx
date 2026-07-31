@@ -41,6 +41,7 @@ export type BusinessProfileApiV3 = Pick<
 > & Partial<Pick<
   ApiClient,
   | "attachBusinessPaymentQr"
+  | "reverseGeocode"
   | "getBusinessOnlineResource"
   | "createBusinessOnlineRecord"
   | "patchBusinessOnlineRecord"

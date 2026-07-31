@@ -168,6 +168,12 @@ export type BusinessProfilePatch = Partial<Pick<
   | "map_visible"
 >>;
 
+export type ReverseGeocodeResult = {
+  address?: string;
+  region?: string;
+  district?: string;
+};
+
 export type CabinetSwitch = {
   account_id: number;
   account_type: AccountType;

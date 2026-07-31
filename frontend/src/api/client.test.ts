@@ -227,6 +227,28 @@ describe("ApiClient", () => {
     );
   });
 
+  it("reverse geocodes the exact confirmed map center", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({
+      address: "Beruniy ko‘chasi, Qumqo‘rg‘on tumani",
+    }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.reverseGeocode(37.838933493659454, 67.58345251326438);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/geocode"
+        + "?lat=37.838933493659454&lng=67.58345251326438",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
+  });
+
   it("uploads granted bytes without browser credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, {
       status: 200,
