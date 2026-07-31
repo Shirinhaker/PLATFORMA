@@ -18,41 +18,49 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 15"
+          claude_args: "--max-turns 80"
           prompt: |
             Bu PR'ni ko'rib chiq va natijani O'ZBEK TILIDA yoz.
 
             Loyiha konteksti:
             - PLATFORMA — FastAPI (Python) backend + React/TypeScript/Vite frontend.
-            - Frontend testlari: vitest (frontend papkasida `npm test`).
-            - Hozirgi asosiy maqsad: eski ishlab turgan monolit sayt (v1656) bilan
-              yangi modullar orasida TO'LIQ PARITET (aynan bir xillik) saqlash.
+            - Frontend testlari: vitest (`cd frontend && npm test`).
+            - Maqsad: eski ishlab turgan monolit (static/index.html, v1656) bilan
+              yangi React modullari orasida TO'LIQ PARITET saqlash.
 
-            Quyidagilarni tekshir va faqat ishonchli, aniq muammolarni yoz:
+            MUHIM — samarali ishla, qadamlarni tejab:
+            - `static/index.html` 14 ming qatordan iborat. UNI TO'LIQ O'QIMA.
+              Faqat kerakli qismini o'qi:
+              `sed -n '8140,8390p' static/index.html`
+              yoki `grep -n "cab-dining" static/index.html` bilan qatorni top.
+            - PR tavsifida ko'rsatilgan qator oraliqlaridan foydalan.
+            - Avval `git diff` bilan o'zgargan fayllarni ko'r, keyin faqat
+              o'sha fayllarga tegishli etalon qismlarini tekshir.
+            - Testlarni o'zing ishga tushirma — faqat kodni va test fayllarini o'qi.
 
-            1. PARITET: o'zgarish v1656 monolitdagi xatti-harakat, matn, tugma
-               nomlari va CSS klasslaridan chetga chiqmaganmi? Farq bo'lsa,
-               aniq fayl va qatorni ko'rsat.
-            2. TESTLAR: birorta test o'chirilgan, skip qilingan yoki asserti
-               zaiflashtirilganmi? Qoplama toraygan bo'lsa, qaysi ekran
-               testsiz qolganini ayt.
-            3. XAVFSIZLIK: o'chirish/tahrirlash amallarida tasdiqlash bormi,
-               validatsiya yetarlimi, maxfiy ma'lumot sizib chiqmayaptimi.
-            4. REGRESSIYA: mavjud API shartnomalari, maydon nomlari va
-               migratsiya (V7 normalizatsiya) mantig'i buzilmaganmi.
-            5. Tugmalar ishlaydimi — faqat ko'rinish uchun qo'yilgan, hech
-               narsa qilmaydigan element bormi.
+            Quyidagilarni tekshir, faqat aniq muammolarni yoz:
 
-            Muhim: mayda uslub e'tirozlarini yozma. Har bir kamchilikni
-            "jiddiy / o'rtacha / kichik" deb belgila va tuzatish yo'lini ko'rsat.
-            Agar hammasi joyida bo'lsa, qisqa tasdiq yoz.
+            1. PARITET: matn, tugma nomlari, CSS klasslar, bo'sh holat
+               xabarlari, tasdiqlash oynalari monolit bilan aynan bir xilmi?
+               Farq bo'lsa fayl va qatorni ko'rsat.
+            2. TESTLAR: test skip/o'chirilganmi, assert zaiflashtirilganmi,
+               qoplama toraymaganmi?
+            3. XAVFSIZLIK: o'chirish/tahrirlashda tasdiqlash bormi,
+               validatsiya yetarlimi.
+            4. REGRESSIYA: API shartnomalari, maydon nomlari, V7
+               normalizatsiya mantig'i buzilmaganmi.
+            5. Yo'nalishga moslashuv (CAB_PLANS / applyCabinetLayout) to'g'rimi.
+
+            Mayda uslub e'tirozlarini yozma. Har kamchilikni
+            "jiddiy / o'rtacha / kichik" deb belgila va tuzatish yo'lini ayt.
+            Hammasi joyida bo'lsa, qisqa tasdiq yoz.
 
   # 2-VAZIFA: PR yoki issue ichida "@claude" deb yozilganda javob beradi
   mention:
@@ -66,11 +74,11 @@ jobs:
       issues: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 15"
+          claude_args: "--max-turns 80"
