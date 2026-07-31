@@ -53,13 +53,12 @@ function groupIdOf(row: BusinessOnlineRecord): string {
 
 function matches(row: BusinessOnlineRecord, query: string): boolean {
   if (!query) return true;
-  const text = `${recordText(row, "name", "title")} ${recordText(
+  return `${recordText(row, "name", "title")} ${recordText(
     row,
     "note",
     "description",
     "descr",
-  )}`.toLocaleLowerCase("uz");
-  return text.includes(query);
+  )}`.toLocaleLowerCase("uz").includes(query);
 }
 
 function priceText(row: BusinessOnlineRecord): string {
@@ -114,7 +113,6 @@ function ItemCard({
   open,
   onToggle,
   onEdit,
-  onMove,
   onDelete,
 }: {
   row: BusinessOnlineRecord;
@@ -123,7 +121,6 @@ function ItemCard({
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;
-  onMove: () => void;
   onDelete: () => void;
 }) {
   const name = recordText(row, "name", "title") || "Nomsiz";
@@ -153,7 +150,7 @@ function ItemCard({
       {open && (
         <div className="item-menu on">
           <button type="button" onClick={onEdit}>Tahrirlash</button>
-          <button type="button" onClick={onMove}>Guruhini o'zgartirish</button>
+          <button type="button" onClick={onEdit}>Guruhini o'zgartirish</button>
           <button
             type="button"
             className="danger"
@@ -183,34 +180,20 @@ function AddCard({ onClick }: { onClick: () => void }) {
 }
 
 function EmptyState({ query, kind }: { query: string; kind: string }) {
-  if (query.trim()) {
-    return (
-      <div className="empty item-empty">
-        <h3>Hech narsa topilmadi</h3>
-        <p>«{query.trim()}» bo'yicha tovar topilmadi.</p>
-      </div>
-    );
-  }
-  if (kind === "service") {
-    return (
-      <div className="empty item-empty">
-        <h3>Xizmat yo'q</h3>
-        <p>Bu turda hozircha tovar yo'q.</p>
-      </div>
-    );
-  }
-  if (kind === "product") {
-    return (
-      <div className="empty item-empty">
-        <h3>Mahsulot yo'q</h3>
-        <p>Bu turda hozircha tovar yo'q.</p>
-      </div>
-    );
-  }
+  const state = query.trim()
+    ? ["Hech narsa topilmadi", `«${query.trim()}» bo'yicha tovar topilmadi.`]
+    : kind === "service"
+      ? ["Xizmat yo'q", "Bu turda hozircha tovar yo'q."]
+      : kind === "product"
+        ? ["Mahsulot yo'q", "Bu turda hozircha tovar yo'q."]
+        : [
+          "Hozircha tovar yo'q",
+          "Avval guruh qo'shing yoki Guruhsiz bo'limidagi + Tovar orqali boshlang.",
+        ];
   return (
     <div className="empty item-empty">
-      <h3>Hozircha tovar yo'q</h3>
-      <p>Avval guruh qo'shing yoki Guruhsiz bo'limidagi + Tovar orqali boshlang.</p>
+      <h3>{state[0]}</h3>
+      <p>{state[1]}</p>
     </div>
   );
 }
@@ -243,12 +226,12 @@ export function ItemsEditorView({
     groups.forEach((group, index) => {
       if (kind !== "all" && itemKind(group) !== kind) return;
       const id = recordId(group, index);
-      let groupRows = rows.filter((row) => groupIdOf(row) === String(id));
+      let grouped = rows.filter((row) => groupIdOf(row) === String(id));
       if (searchActive) {
-        groupRows = groupRows.filter((row) => matches(row, normalizedQuery));
-        if (groupRows.length === 0) return;
+        grouped = grouped.filter((row) => matches(row, normalizedQuery));
+        if (!grouped.length) return;
       }
-      result.push({ group, id, rows: groupRows });
+      result.push({ group, id, rows: grouped });
     });
 
     let ungrouped = rows.filter((row) => {
@@ -261,10 +244,10 @@ export function ItemsEditorView({
     if (searchActive) {
       ungrouped = ungrouped.filter((row) => matches(row, normalizedQuery));
     }
-    const showEmptyUngrouped = !searchActive
-      && kind === "all"
-      && groups.length === 0;
-    if (ungrouped.length > 0 || showEmptyUngrouped) {
+    if (
+      ungrouped.length
+      || (!searchActive && kind === "all" && groups.length === 0)
+    ) {
       result.push({ group: null, id: null, rows: ungrouped });
     }
     return result;
@@ -379,11 +362,12 @@ export function ItemsEditorView({
 
       <div className="items-list">
         {blocks.map((block) => {
-          const groupName = block.group
-            ? recordText(block.group, "name", "title") || "Guruh"
+          const group = block.group;
+          const groupName = group
+            ? recordText(group, "name", "title") || "Guruh"
             : "Guruhsiz";
-          const subtitle = block.group
-            ? `${kindText(block.group.kind)} guruhi · ${block.rows.length} ta`
+          const subtitle = group
+            ? `${kindText(group.kind)} guruhi · ${block.rows.length} ta`
             : `Guruh tanlanmagan · ${block.rows.length} ta`;
           const groupMenu = `group:${String(block.id ?? "none")}`;
           return (
@@ -397,7 +381,7 @@ export function ItemsEditorView({
                   <h3>{groupName}</h3>
                   <p>{subtitle}</p>
                 </div>
-                {block.group && block.id !== null && (
+                {group && block.id !== null && (
                   <CatalogMenu
                     label={groupName}
                     open={openMenu === groupMenu}
@@ -408,7 +392,7 @@ export function ItemsEditorView({
                     <button
                       type="button"
                       onClick={() => {
-                        actions.setDraft({ ...block.group });
+                        actions.setDraft({ ...group });
                         actions.setForm(groupEdit);
                         setOpenMenu(null);
                       }}
@@ -444,7 +428,6 @@ export function ItemsEditorView({
                         openMenu === menu ? null : menu,
                       )}
                       onEdit={() => editItem(row)}
-                      onMove={() => editItem(row)}
                       onDelete={() => void actions.remove("items", id)}
                     />
                   );
@@ -453,9 +436,7 @@ export function ItemsEditorView({
                   <AddCard
                     onClick={() => {
                       actions.setDraft({
-                        kind: block.group
-                          ? itemKind(block.group)
-                          : "product",
+                        kind: group ? itemKind(group) : "product",
                         group_id: block.id,
                         unit: "dona",
                         track_stock: 0,
@@ -468,7 +449,7 @@ export function ItemsEditorView({
             </section>
           );
         })}
-        {blocks.length === 0 && <EmptyState query={query} kind={kind} />}
+        {!blocks.length && <EmptyState query={query} kind={kind} />}
       </div>
     </section>
   );
