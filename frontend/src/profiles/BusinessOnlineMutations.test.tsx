@@ -40,6 +40,11 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   following: [{ id: 9, name: "Hamkor biznes" }],
   dining_places: [],
   dining_orders: [],
+  medical_staff: [],
+  medical_doctors: [],
+  medical_doctor_services: [],
+  medical_queue: [],
+  medical_queue_history: [],
 };
 
 const profile = {

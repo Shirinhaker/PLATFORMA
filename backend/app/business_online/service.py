@@ -3,15 +3,16 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from math import isfinite
+import re
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.profiles.model import BusinessProfile
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
@@ -40,6 +41,11 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
     "following": ResourceSpec(delete=True),
     "dining_places": ResourceSpec(create=True, update=True, delete=True),
     "dining_orders": ResourceSpec(),
+    "medical_staff": ResourceSpec(),
+    "medical_doctors": ResourceSpec(create=True, update=True),
+    "medical_doctor_services": ResourceSpec(),
+    "medical_queue": ResourceSpec(),
+    "medical_queue_history": ResourceSpec(),
 }
 
 SENSITIVE_NAMES = {
@@ -106,6 +112,39 @@ TERMINAL_ORDER_STATUSES = {
     "cancelled",
     "canceled",
 }
+QUEUE_DIRECTIONS = {
+    "Transport va logistika",
+    "Xizmat ko'rsatish",
+    "Maishiy xizmatlar",
+    "Qurilish",
+    "Tibbiy xizmatlar",
+    "Ko'chmas mulk",
+    "Axborot texnologiyalari",
+    "Konsalting va professional",
+    "Madaniyat, sport, ko'ngilochar",
+    "Turizm va mehmonxona",
+    "Reklama va marketing",
+    "Poligrafiya va nashriyot",
+    "Moliyaviy faoliyat",
+    "Import-eksport",
+}
+MEDICAL_RESOURCES = {
+    "medical_staff",
+    "medical_doctors",
+    "medical_doctor_services",
+    "medical_queue",
+    "medical_queue_history",
+}
+MEDICAL_QUEUE_STATUSES = {
+    "waiting",
+    "called",
+    "in_service",
+    "done",
+    "no_show",
+    "cancelled",
+    "skipped",
+}
+MEDICAL_QUEUE_TERMINAL = {"done", "cancelled", "no_show"}
 
 
 class BusinessOnlineService:
@@ -129,7 +168,7 @@ class BusinessOnlineService:
             ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             sync_dining_place_activity(payload)
-            return resource_rows(payload, resource)
+            return display_resource_rows(payload, resource)
 
     async def create_record(
         self,
@@ -149,17 +188,21 @@ class BusinessOnlineService:
             ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             rows = resource_rows(payload, resource)
-            prepare_record_for_create(resource, clean, rows)
+            prepare_record_for_create(resource, clean, rows, payload=payload)
             now = unix_now()
             clean["id"] = next_record_id(rows)
             clean.setdefault("created_at", now)
             clean["updated_at"] = now
             rows.append(clean)
             payload[resource] = rows
+            if resource == "medical_doctors":
+                sync_medical_doctor_links(payload, clean, account_id)
             refresh_derived(profile, payload)
             profile.cabinet_payload = payload
             await session.commit()
-            return deepcopy(clean), deepcopy(rows)
+            displayed = display_resource_rows(payload, resource)
+            item = find_record(displayed, clean["id"])
+            return deepcopy(item), deepcopy(displayed)
 
     async def patch_record(
         self,
@@ -183,14 +226,18 @@ class BusinessOnlineService:
             payload = normalized_payload(profile.cabinet_payload)
             rows = resource_rows(payload, resource)
             item = find_resource_record(rows, record_id, resource)
-            prepare_patch_for_resource(resource, item, clean)
+            prepare_patch_for_resource(resource, item, clean, payload=payload)
             item.update(clean)
             item["updated_at"] = unix_now()
             payload[resource] = rows
+            if resource == "medical_doctors":
+                sync_medical_doctor_links(payload, item, account_id)
             refresh_derived(profile, payload)
             profile.cabinet_payload = payload
             await session.commit()
-            return deepcopy(item), deepcopy(rows)
+            displayed = display_resource_rows(payload, resource)
+            saved = find_record(displayed, record_id)
+            return deepcopy(saved), deepcopy(displayed)
 
     async def delete_record(
         self,
@@ -232,6 +279,7 @@ class BusinessOnlineService:
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
+            notification_events: list[dict[str, Any]] = []
             item = apply_action(
                 payload,
                 resource,
@@ -239,11 +287,14 @@ class BusinessOnlineService:
                 record_id=record_id,
                 data=clean,
                 actor_name=str(profile.name or "").strip() or "Rahbar",
+                direction=str(profile.direction or "").strip(),
+                notification_events=notification_events,
             )
+            await persist_user_notifications(session, notification_events)
             refresh_derived(profile, payload)
             profile.cabinet_payload = payload
             await session.commit()
-            return deepcopy(item), resource_rows(payload, resource)
+            return deepcopy(item), display_resource_rows(payload, resource)
 
 
 def resource_spec(resource: str) -> ResourceSpec:
@@ -275,13 +326,27 @@ def ensure_resource_direction(profile: BusinessProfile, resource: str) -> None:
             "dining_direction_required",
             "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun.",
         )
+    if (
+        resource in MEDICAL_RESOURCES
+        and str(profile.direction or "").strip() not in QUEUE_DIRECTIONS
+    ):
+        raise ApiError(
+            403,
+            "queue_direction_required",
+            "Bu yo'nalishda navbat tizimi ishlamaydi.",
+        )
 
 
 def prepare_record_for_create(
     resource: str,
     clean: dict[str, Any],
     rows: list[dict[str, Any]],
+    *,
+    payload: dict[str, Any] | None = None,
 ) -> None:
+    if resource == "medical_doctors":
+        prepare_medical_doctor(payload or {}, clean)
+        return
     if resource != "dining_places":
         return
     kind = str(clean.get("kind") or "").strip()
@@ -312,7 +377,13 @@ def prepare_patch_for_resource(
     resource: str,
     item: dict[str, Any],
     clean: dict[str, Any],
+    *,
+    payload: dict[str, Any] | None = None,
 ) -> None:
+    if resource == "medical_doctors":
+        clean.pop("staff_id", None)
+        prepare_medical_doctor(payload or {}, clean, current=item)
+        return
     if resource != "dining_places":
         return
     prepared: dict[str, Any] = {}
@@ -375,12 +446,215 @@ def normalized_payload(value: Any) -> dict[str, Any]:
 
 def resource_rows(payload: Any, resource: str) -> list[dict[str, Any]]:
     resource_spec(resource)
+    return raw_payload_rows(payload, resource)
+
+
+def raw_payload_rows(payload: Any, resource: str) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
     value = payload.get(resource)
     if not isinstance(value, list):
         return []
     return [deepcopy(row) for row in value if isinstance(row, dict)]
+
+
+def display_resource_rows(
+    payload: dict[str, Any],
+    resource: str,
+) -> list[dict[str, Any]]:
+    if resource == "medical_staff":
+        return medical_staff_rows(payload)
+    if resource == "medical_doctors":
+        return medical_doctor_rows(payload)
+    if resource == "medical_queue":
+        return medical_queue_rows(payload)
+    return resource_rows(payload, resource)
+
+
+def medical_staff_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    source: list[dict[str, Any]] = []
+    for resource in ("staff", "business_staff", "employees"):
+        source = raw_payload_rows(payload, resource)
+        if source:
+            break
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in source:
+        identifier = integer(row.get("id"))
+        if not identifier or str(identifier) in seen:
+            continue
+        status = str(row.get("status") or "active")
+        if status != "active":
+            continue
+        seen.add(str(identifier))
+        result.append({
+            "id": identifier,
+            "name": str(row.get("name") or "")[:120],
+            "profession": str(row.get("profession") or "Xodim")[:120],
+            "status": "active",
+        })
+    result.sort(key=lambda row: str(row.get("name") or ""))
+    return result
+
+
+def medical_doctor_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    staff = {
+        str(row.get("id")): row
+        for row in medical_staff_rows(payload)
+    }
+    links = raw_payload_rows(payload, "medical_doctor_services")
+    result = []
+    for source in raw_payload_rows(payload, "medical_doctors"):
+        row = deepcopy(source)
+        staff_row = staff.get(str(row.get("staff_id")), {})
+        row["name"] = str(row.get("name") or staff_row.get("name") or "")
+        row["profession"] = str(
+            row.get("profession") or staff_row.get("profession") or "Xodim"
+        )
+        linked_ids = [
+            integer(link.get("item_id"))
+            for link in links
+            if str(link.get("staff_id")) == str(row.get("staff_id"))
+            and bool(integer_or_default(link.get("active"), 1))
+        ]
+        inline_ids = normalized_integer_list(row.get("item_ids"))
+        row["item_ids"] = linked_ids if linked_ids else inline_ids
+        result.append(row)
+    result.sort(key=lambda row: (
+        str(row.get("status") or ""),
+        str(row.get("name") or ""),
+    ))
+    return result
+
+
+def medical_queue_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    items = {
+        str(row.get("id")): row
+        for row in raw_payload_rows(payload, "items")
+    }
+    staff = {
+        str(row.get("id")): row
+        for row in medical_staff_rows(payload)
+    }
+    result = []
+    for source in raw_payload_rows(payload, "medical_queue"):
+        row = deepcopy(source)
+        item = items.get(str(row.get("item_id")), {})
+        provider = staff.get(str(row.get("staff_id")), {})
+        row["service_name"] = str(
+            row.get("service_name") or item.get("name") or ""
+        )
+        row["doctor_name"] = str(
+            row.get("doctor_name") or provider.get("name") or ""
+        )
+        result.append(row)
+    result.sort(key=lambda row: (
+        integer(row.get("staff_id")),
+        integer(row.get("item_id")),
+        integer(row.get("queue_no")),
+    ))
+    return result
+
+
+def normalized_integer_list(value: Any) -> list[int]:
+    if not isinstance(value, list):
+        return []
+    result: list[int] = []
+    for item in value:
+        identifier = integer(item)
+        if identifier and identifier not in result:
+            result.append(identifier)
+    return result
+
+
+def prepare_medical_doctor(
+    payload: dict[str, Any],
+    clean: dict[str, Any],
+    *,
+    current: dict[str, Any] | None = None,
+) -> None:
+    source = {**(current or {}), **clean}
+    staff_id = integer(source.get("staff_id"))
+    staff = next(
+        (
+            row
+            for row in medical_staff_rows(payload)
+            if integer(row.get("id")) == staff_id
+        ),
+        None,
+    )
+    if staff is None:
+        raise ApiError(400, "active_medical_staff_required", "Faol xodimni tanlang.")
+
+    item_ids = normalized_integer_list(source.get("item_ids"))
+    queue_items = {
+        integer(row.get("id"))
+        for row in raw_payload_rows(payload, "items")
+        if str(row.get("kind") or "") == "service"
+        and queue_enabled(row.get("queue_enabled"))
+    }
+    if not item_ids or any(item_id not in queue_items for item_id in item_ids):
+        raise ApiError(
+            400,
+            "queue_enabled_service_required",
+            "Navbat yoqilgan xizmatni tanlang.",
+        )
+
+    prepared = {
+        "staff_id": staff_id,
+        "specialty": str(source.get("specialty") or "").strip()[:100],
+        "experience_years": max(0, integer(source.get("experience_years"))),
+        "qualification": str(source.get("qualification") or "").strip()[:100],
+        "work_days": str(source.get("work_days") or "1,2,3,4,5,6")[:30],
+        "work_start": str(source.get("work_start") or "08:00")[:5],
+        "work_end": str(source.get("work_end") or "17:00")[:5],
+        "avg_minutes": max(5, min(240, integer_or_default(
+            source.get("avg_minutes"), 20
+        ))),
+        "room": str(source.get("room") or "").strip()[:50],
+        "bio": str(source.get("bio") or "").strip()[:500],
+        "status": "inactive" if source.get("status") == "inactive" else "active",
+        "mode": "slot" if source.get("mode") == "slot" else "live",
+        "item_ids": item_ids,
+        "name": str(staff.get("name") or "")[:120],
+        "profession": str(staff.get("profession") or "Xodim")[:120],
+    }
+    if current is None:
+        clean.clear()
+        clean.update(prepared)
+        return
+    clean.clear()
+    clean.update({
+        key: value
+        for key, value in prepared.items()
+        if key not in {"staff_id", "name", "profession"}
+    })
+
+
+def sync_medical_doctor_links(
+    payload: dict[str, Any],
+    doctor: dict[str, Any],
+    business_id: int,
+) -> None:
+    staff_id = integer(doctor.get("staff_id"))
+    links = [
+        row
+        for row in raw_payload_rows(payload, "medical_doctor_services")
+        if str(row.get("staff_id")) != str(staff_id)
+    ]
+    minutes = max(5, min(240, integer_or_default(doctor.get("avg_minutes"), 20)))
+    links.extend({
+        "business_id": business_id,
+        "staff_id": staff_id,
+        "item_id": item_id,
+        "active": 1,
+        "duration_minutes": minutes,
+    } for item_id in normalized_integer_list(doctor.get("item_ids")))
+    payload["medical_doctor_services"] = links
+
+
+def queue_enabled(value: Any) -> bool:
+    return value is True or str(value).strip().casefold() in {"1", "true", "on"}
 
 
 def sanitize_mapping(value: dict[str, Any], *, allow_id: bool) -> dict[str, Any]:
@@ -481,6 +755,18 @@ def find_resource_record_index(
                 "dining_place_not_found",
                 "Stol yoki xona topilmadi.",
             ) from None
+        if resource == "medical_doctors":
+            raise ApiError(
+                404,
+                "medical_provider_not_found",
+                "Xizmat ko'rsatuvchi topilmadi.",
+            ) from None
+        if resource == "medical_queue":
+            raise ApiError(
+                404,
+                "medical_queue_not_found",
+                "Navbat topilmadi.",
+            ) from None
         raise
 
 
@@ -492,6 +778,8 @@ def apply_action(
     record_id: int | str | None,
     data: dict[str, Any],
     actor_name: str,
+    direction: str = "",
+    notification_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     rows = resource_rows(payload, resource)
     now = unix_now()
@@ -683,6 +971,19 @@ def apply_action(
         sync_dining_place_activity(payload)
         return item
 
+    if resource == "medical_queue":
+        return apply_medical_queue_action(
+            payload,
+            action,
+            record_id=record_id,
+            data=data,
+            direction=direction,
+            notification_events=(
+                notification_events if notification_events is not None else []
+            ),
+            now=now,
+        )
+
     if resource == "notifications" and action == "mark_all_read":
         for row in rows:
             row["is_read"] = 1
@@ -795,6 +1096,450 @@ def action_forbidden() -> ApiError:
         "business_online_action_forbidden",
         "Bu bo‘limda tanlangan amal ruxsat etilmagan.",
     )
+
+
+def apply_medical_queue_action(
+    payload: dict[str, Any],
+    action: str,
+    *,
+    record_id: int | str | None,
+    data: dict[str, Any],
+    direction: str,
+    notification_events: list[dict[str, Any]],
+    now: int,
+) -> dict[str, Any] | None:
+    rows = raw_payload_rows(payload, "medical_queue")
+    if action == "offline_add":
+        item_id = integer(data.get("item_id"))
+        staff_id = integer(data.get("staff_id"))
+        service, provider = medical_queue_provider(
+            payload,
+            item_id=item_id,
+            staff_id=staff_id,
+        )
+        queue_date = str(data.get("queue_date") or "")[:10]
+        today = (datetime.now(UTC) + timedelta(hours=5)).strftime("%Y-%m-%d")
+        if queue_date < today:
+            raise ApiError(
+                400,
+                "past_medical_queue_date",
+                "O'tgan sanaga navbat olib bo'lmaydi.",
+            )
+        slot_time = str(data.get("slot_time") or "").strip()
+        mode = str(provider.get("mode") or "live")
+        if mode == "slot":
+            if not re.fullmatch(r"\d{2}:\d{2}", slot_time):
+                raise ApiError(
+                    400,
+                    "medical_slot_required",
+                    "Qabul vaqtini tanlang.",
+                )
+            slots = generated_medical_slots(
+                str(provider.get("work_start") or "08:00"),
+                str(provider.get("work_end") or "17:00"),
+                integer_or_default(provider.get("avg_minutes"), 20),
+            )
+            if slot_time not in slots:
+                raise ApiError(
+                    400,
+                    "medical_slot_outside_schedule",
+                    "Bu vaqt qabul jadvalida yo'q.",
+                )
+            if any(
+                str(row.get("item_id")) == str(item_id)
+                and str(row.get("staff_id")) == str(staff_id)
+                and str(row.get("queue_date")) == queue_date
+                and str(row.get("slot_time")) == slot_time
+                and str(row.get("status")) in {
+                    "waiting", "called", "in_service", "done"
+                }
+                for row in rows
+            ):
+                raise ApiError(
+                    409,
+                    "medical_slot_taken",
+                    "Bu vaqt band qilindi. Boshqa vaqt tanlang.",
+                )
+            queue_no = slot_minutes(slot_time) or 0
+            queue_code = f"{medical_code(service.get('name'))}-{slot_time.replace(':', '')}"
+        else:
+            queue_no = max(
+                [
+                    integer(row.get("queue_no"))
+                    for row in rows
+                    if str(row.get("item_id")) == str(item_id)
+                    and str(row.get("staff_id")) == str(staff_id)
+                    and str(row.get("queue_date")) == queue_date
+                    and not str(row.get("slot_time") or "")
+                ],
+                default=0,
+            ) + 1
+            queue_code = f"{medical_code(service.get('name'))}-{queue_no:03d}"
+        item = {
+            "id": next_record_id(rows),
+            "item_id": item_id,
+            "staff_id": staff_id,
+            "user_id": None,
+            "patient_name": str(data.get("patient_name") or "").strip()[:120],
+            "phone": str(data.get("phone") or "")[:32],
+            "queue_date": queue_date,
+            "queue_no": queue_no,
+            "queue_code": queue_code,
+            "source": "offline",
+            "status": "waiting",
+            "note": str(data.get("note") or "")[:200],
+            "slot_time": slot_time,
+            "created_at": now,
+            "updated_at": now,
+        }
+        rows.append(item)
+        payload["medical_queue"] = rows
+        return find_record(medical_queue_rows(payload), item["id"])
+
+    if record_id is None:
+        raise missing_record_id()
+    item = find_resource_record(rows, record_id, "medical_queue")
+
+    if action == "set_status":
+        status = str(data.get("status") or "")
+        if status not in MEDICAL_QUEUE_STATUSES:
+            raise ApiError(
+                400,
+                "invalid_medical_queue_status",
+                "Navbat holati noto'g'ri.",
+            )
+        old_status = str(item.get("status") or "")
+        if old_status in MEDICAL_QUEUE_TERMINAL and status in {
+            "waiting", "called", "in_service"
+        }:
+            raise ApiError(
+                400,
+                "completed_medical_queue",
+                "Yakunlangan navbatni qayta faollashtirib bo'lmaydi.",
+            )
+        item["status"] = status
+        item["updated_at"] = now
+        payload["medical_queue"] = rows
+        append_medical_queue_history(
+            payload,
+            item,
+            action="status",
+            old_value=old_status,
+            new_value=status,
+            now=now,
+        )
+        if status == "called":
+            labels = medical_queue_labels(direction)
+            queue_notification_event(
+                notification_events,
+                item,
+                event="called",
+                title="Navbatingiz keldi",
+                body=(
+                    f"{item.get('queue_code')} navbat {labels['called_by']} "
+                    "tomonidan chaqirildi."
+                ),
+                action_type="medical_queue_called",
+            )
+            next_row = next_waiting_medical_queue(rows, item)
+            if next_row is not None:
+                queue_notification_event(
+                    notification_events,
+                    next_row,
+                    event=f"soon:{item.get('queue_no')}",
+                    title="Navbatingiz yaqinlashdi",
+                    body=(
+                        f"Tayyorlaning — {next_row.get('queue_code')} "
+                        "navbatgacha 1 kishi qoldi."
+                    ),
+                    action_type="medical_queue_soon",
+                )
+        elif status == "cancelled":
+            queue_notification_event(
+                notification_events,
+                item,
+                event="cancelled",
+                title="Navbat bekor qilindi",
+                body=(
+                    f"{item.get('queue_code')} navbat muassasa tomonidan "
+                    "bekor qilindi."
+                ),
+                action_type="medical_queue_cancelled",
+            )
+        return find_record(medical_queue_rows(payload), record_id)
+
+    if action == "swap":
+        other_id = integer(data.get("other_queue_id"))
+        try:
+            other = find_record(rows, other_id)
+        except ApiError:
+            other = None
+        same_queue = other is not None and other is not item and (
+            str(item.get("queue_date")),
+            str(item.get("staff_id")),
+            str(item.get("item_id")),
+        ) == (
+            str(other.get("queue_date")),
+            str(other.get("staff_id")),
+            str(other.get("item_id")),
+        )
+        if not same_queue or other is None:
+            provider = medical_queue_labels(direction)["provider"].lower()
+            raise ApiError(
+                400,
+                "medical_queue_swap_mismatch",
+                f"Faqat bir xil xizmat va {provider}ning ikkita navbati "
+                "almashtiriladi.",
+            )
+        service = next(
+            (
+                row
+                for row in raw_payload_rows(payload, "items")
+                if str(row.get("id")) == str(item.get("item_id"))
+            ),
+            {},
+        )
+        prefix = medical_code(service.get("name"))
+        first_number = integer(item.get("queue_no"))
+        second_number = integer(other.get("queue_no"))
+        item["queue_no"] = second_number
+        item["queue_code"] = f"{prefix}-{second_number:03d}"
+        item["updated_at"] = now
+        other["queue_no"] = first_number
+        other["queue_code"] = f"{prefix}-{first_number:03d}"
+        other["updated_at"] = now
+        payload["medical_queue"] = rows
+        append_medical_queue_history(
+            payload,
+            item,
+            action="swap",
+            old_value=str(first_number),
+            new_value=str(second_number),
+            now=now,
+        )
+        queue_notification_event(
+            notification_events,
+            item,
+            event=f"changed:{item.get('queue_no')}:{now}",
+            title="Navbat raqami o‘zgardi",
+            body=f"Yangi navbat raqamingiz: {item.get('queue_code')}.",
+            action_type="medical_queue_changed",
+        )
+        queue_notification_event(
+            notification_events,
+            other,
+            event=f"changed:{other.get('queue_no')}:{now}",
+            title="Navbat raqami o‘zgardi",
+            body=f"Yangi navbat raqamingiz: {other.get('queue_code')}.",
+            action_type="medical_queue_changed",
+        )
+        return find_record(medical_queue_rows(payload), record_id)
+
+    raise action_forbidden()
+
+
+def medical_queue_provider(
+    payload: dict[str, Any],
+    *,
+    item_id: int,
+    staff_id: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    service = next(
+        (
+            row
+            for row in raw_payload_rows(payload, "items")
+            if integer(row.get("id")) == item_id
+            and str(row.get("kind") or "") == "service"
+            and queue_enabled(row.get("queue_enabled"))
+        ),
+        None,
+    )
+    if service is None:
+        raise ApiError(
+            400,
+            "medical_queue_service_disabled",
+            "Bu xizmat uchun navbat yoqilmagan.",
+        )
+    linked = any(
+        integer(row.get("staff_id")) == staff_id
+        and integer(row.get("item_id")) == item_id
+        and bool(integer_or_default(row.get("active"), 1))
+        for row in raw_payload_rows(payload, "medical_doctor_services")
+    )
+    provider = next(
+        (
+            row
+            for row in raw_payload_rows(payload, "medical_doctors")
+            if integer(row.get("staff_id")) == staff_id
+            and str(row.get("status") or "active") == "active"
+        ),
+        None,
+    )
+    active_staff = any(
+        integer(row.get("id")) == staff_id
+        for row in medical_staff_rows(payload)
+    )
+    if not linked or provider is None or not active_staff:
+        raise ApiError(
+            400,
+            "medical_provider_not_assigned",
+            "Xizmat ko'rsatuvchi hali biriktirilmagan.",
+        )
+    return service, provider
+
+
+def medical_code(name: Any) -> str:
+    letters = "".join(
+        character
+        for character in str(name or "").upper()
+        if character.isalnum()
+    )[:3]
+    return letters or "NAV"
+
+
+def slot_minutes(value: Any) -> int | None:
+    try:
+        hour, minute = str(value).split(":")
+        return int(hour) * 60 + int(minute)
+    except (TypeError, ValueError):
+        return None
+
+
+def generated_medical_slots(start: str, end: str, step: int) -> list[str]:
+    first = slot_minutes(start)
+    last = slot_minutes(end)
+    interval = max(5, integer_or_default(step, 20))
+    if first is None or last is None or first >= last:
+        return []
+    result = []
+    current = first
+    while current + interval <= last:
+        result.append(f"{current // 60:02d}:{current % 60:02d}")
+        current += interval
+    return result
+
+
+def medical_queue_labels(direction: str) -> dict[str, str]:
+    if str(direction or "").strip() == "Tibbiy xizmatlar":
+        return {
+            "provider": "Shifokor",
+            "customer": "Bemor",
+            "called_by": "shifokor",
+        }
+    return {
+        "provider": "Xizmat ko'rsatuvchi",
+        "customer": "Mijoz",
+        "called_by": "xizmat ko'rsatuvchi",
+    }
+
+
+def append_medical_queue_history(
+    payload: dict[str, Any],
+    queue: dict[str, Any],
+    *,
+    action: str,
+    old_value: str,
+    new_value: str,
+    now: int,
+) -> None:
+    rows = raw_payload_rows(payload, "medical_queue_history")
+    rows.append({
+        "id": next_record_id(rows),
+        "queue_id": queue.get("id"),
+        "action": action,
+        "old_value": old_value,
+        "new_value": new_value,
+        "created_at": now,
+    })
+    payload["medical_queue_history"] = rows
+
+
+def next_waiting_medical_queue(
+    rows: list[dict[str, Any]],
+    current: dict[str, Any],
+) -> dict[str, Any] | None:
+    candidates = [
+        row
+        for row in rows
+        if str(row.get("item_id")) == str(current.get("item_id"))
+        and str(row.get("staff_id")) == str(current.get("staff_id"))
+        and str(row.get("queue_date")) == str(current.get("queue_date"))
+        and str(row.get("status")) == "waiting"
+        and integer(row.get("queue_no")) > integer(current.get("queue_no"))
+    ]
+    return min(candidates, key=lambda row: integer(row.get("queue_no"))) if candidates else None
+
+
+def queue_notification_event(
+    events: list[dict[str, Any]],
+    queue: dict[str, Any],
+    *,
+    event: str,
+    title: str,
+    body: str,
+    action_type: str,
+) -> None:
+    user_id = integer(queue.get("user_id"))
+    queue_id = integer(queue.get("id"))
+    if not user_id or not queue_id:
+        return
+    events.append({
+        "user_id": user_id,
+        "event_key": f"medical_queue:{queue_id}:{event}",
+        "title": title,
+        "body": body,
+        "action_type": action_type,
+        "medical_queue_id": queue_id,
+    })
+
+
+async def persist_user_notifications(
+    session: AsyncSession,
+    events: list[dict[str, Any]],
+) -> None:
+    for event in events:
+        user_id = integer(event.get("user_id"))
+        if not user_id:
+            continue
+        profile = await session.get(UserProfile, user_id)
+        if profile is None:
+            continue
+        payload = normalized_payload(profile.cabinet_payload)
+        append_medical_user_notification(payload, event)
+        notifications = raw_payload_rows(payload, "notifications")
+        snapshot = deepcopy(profile.dashboard_snapshot or {})
+        snapshot["unread"] = sum(
+            not bool(integer(row.get("is_read")))
+            for row in notifications
+        )
+        profile.dashboard_snapshot = snapshot
+        profile.cabinet_payload = payload
+
+
+def append_medical_user_notification(
+    payload: dict[str, Any],
+    event: dict[str, Any],
+) -> None:
+    notifications = raw_payload_rows(payload, "notifications")
+    event_key = str(event.get("event_key") or "")
+    if any(str(row.get("event_key") or "") == event_key for row in notifications):
+        return
+    now = unix_now()
+    notifications.append({
+        "id": next_record_id(notifications),
+        "actor_kind": "user",
+        "actor_id": integer(event.get("user_id")),
+        "event_key": event_key,
+        "title": str(event.get("title") or ""),
+        "body": str(event.get("body") or ""),
+        "medical_queue_id": integer(event.get("medical_queue_id")),
+        "requires_action": 1,
+        "action_type": str(event.get("action_type") or ""),
+        "is_read": 0,
+        "created_at": now,
+        "updated_at": now,
+    })
+    payload["notifications"] = notifications
 
 
 def dining_prepared_items(
@@ -935,6 +1680,10 @@ def refresh_derived(profile: BusinessProfile, payload: dict[str, Any]) -> None:
     snapshot["occupied_places"] = sum(
         bool(row.get("active_id"))
         for row in resource_rows(payload, "dining_places")
+    )
+    snapshot["service_active"] = sum(
+        str(row.get("status") or "") in {"waiting", "called", "in_service"}
+        for row in raw_payload_rows(payload, "medical_queue")
     )
     profile.dashboard_snapshot = snapshot
 

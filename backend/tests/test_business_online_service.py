@@ -4,12 +4,17 @@ import pytest
 
 from app.business_online.service import BusinessOnlineService
 from app.core.errors import ApiError
-from app.profiles.model import BusinessProfile
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 class FakeSession:
-    def __init__(self, profile: BusinessProfile):
+    def __init__(
+        self,
+        profile: BusinessProfile,
+        users: dict[int, UserProfile] | None = None,
+    ):
         self.profile = profile
+        self.users = users or {}
         self.commits = 0
 
     async def scalar(self, statement):
@@ -18,6 +23,8 @@ class FakeSession:
     async def get(self, model, account_id):
         if model is BusinessProfile and account_id == self.profile.account_id:
             return self.profile
+        if model is UserProfile:
+            return self.users.get(account_id)
         return None
 
     async def commit(self):
@@ -28,8 +35,12 @@ class FakeSession:
 
 
 class FakeDatabase:
-    def __init__(self, profile: BusinessProfile):
-        self.session_value = FakeSession(profile)
+    def __init__(
+        self,
+        profile: BusinessProfile,
+        users: dict[int, UserProfile] | None = None,
+    ):
+        self.session_value = FakeSession(profile, users)
 
     @asynccontextmanager
     async def session(self):
@@ -85,6 +96,32 @@ def business_profile() -> BusinessProfile:
             "subscription_payments": [],
             "item_groups": [],
         },
+    )
+
+
+def user_profile(account_id: int, name: str) -> UserProfile:
+    return UserProfile(
+        account_id=account_id,
+        name=name,
+        phone="",
+        public_username=f"user{account_id}",
+        region="",
+        district="",
+        mahalla="",
+        latitude=None,
+        longitude=None,
+        location_exact=False,
+        avatar_object_key="",
+        avatar_x=50,
+        avatar_y=50,
+        avatar_zoom=1,
+        followers_count=0,
+        following_count=0,
+        has_business=False,
+        dashboard_snapshot={},
+        recent_activity=[],
+        specialist_profile={},
+        cabinet_payload={"notifications": []},
     )
 
 
@@ -407,3 +444,349 @@ async def test_dining_direction_clear_guard_and_delete_cascade_match_v1656():
 
     assert await service.delete_record(7, "dining_places", 5) == []
     assert profile.cabinet_payload["dining_orders"] == []
+
+
+@pytest.mark.asyncio
+async def test_medical_provider_create_update_and_safe_setup_match_v1656():
+    profile = business_profile()
+    profile.direction = "Tibbiy xizmatlar"
+    profile.cabinet_payload.update({
+        "staff": [
+            {
+                "id": 11,
+                "name": "Ali Valiyev",
+                "profession": "Terapevt",
+                "status": "active",
+                "password_hash": "sir",
+            },
+            {
+                "id": 12,
+                "name": "Nofaol",
+                "profession": "Hamshira",
+                "status": "inactive",
+            },
+        ],
+        "items": [
+            {
+                "id": 31,
+                "name": "Qabul",
+                "kind": "service",
+                "queue_enabled": 1,
+            },
+            {
+                "id": 32,
+                "name": "Navbatsiz",
+                "kind": "service",
+                "queue_enabled": 0,
+            },
+        ],
+        "medical_doctors": [],
+        "medical_doctor_services": [],
+        "medical_queue": [],
+        "medical_queue_history": [],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    assert await service.read_resource(7, "medical_staff") == [{
+        "id": 11,
+        "name": "Ali Valiyev",
+        "profession": "Terapevt",
+        "status": "active",
+    }]
+
+    doctor, rows = await service.create_record(
+        7,
+        "medical_doctors",
+        {
+            "staff_id": 11,
+            "specialty": "Kardiolog",
+            "experience_years": 8,
+            "qualification": "Oliy toifa",
+            "work_days": "1,2,3,4,5,6",
+            "work_start": "08:00",
+            "work_end": "17:00",
+            "avg_minutes": 20,
+            "room": "12-xona",
+            "bio": "Tajribali",
+            "status": "active",
+            "mode": "slot",
+            "item_ids": [31],
+        },
+    )
+
+    assert doctor["id"] == 1
+    assert doctor["staff_id"] == 11
+    assert doctor["item_ids"] == [31]
+    assert doctor["name"] == "Ali Valiyev"
+    assert rows == [doctor]
+    assert profile.cabinet_payload["medical_doctor_services"] == [{
+        "business_id": 7,
+        "staff_id": 11,
+        "item_id": 31,
+        "active": 1,
+        "duration_minutes": 20,
+    }]
+
+    updated, rows = await service.patch_record(
+        7,
+        "medical_doctors",
+        1,
+        {
+            "staff_id": 999,
+            "room": "15-xona",
+            "avg_minutes": 30,
+            "item_ids": [31],
+        },
+    )
+    assert updated["staff_id"] == 11
+    assert updated["room"] == "15-xona"
+    assert updated["avg_minutes"] == 30
+    assert rows[0]["item_ids"] == [31]
+    assert profile.cabinet_payload["medical_doctor_services"][0][
+        "duration_minutes"
+    ] == 30
+
+    with pytest.raises(ApiError) as invalid_item:
+        await service.patch_record(
+            7,
+            "medical_doctors",
+            1,
+            {"item_ids": [32]},
+        )
+    assert invalid_item.value.message == "Navbat yoqilgan xizmatni tanlang."
+
+
+@pytest.mark.asyncio
+async def test_medical_lists_keep_the_v1656_database_order():
+    profile = business_profile()
+    profile.direction = "Tibbiy xizmatlar"
+    profile.cabinet_payload.update({
+        "staff": [
+            {"id": 12, "name": "Zafar", "status": "active"},
+            {"id": 11, "name": "Ali", "status": "active"},
+        ],
+        "items": [
+            {"id": 32, "name": "UZI", "kind": "service", "queue_enabled": 1},
+            {"id": 31, "name": "Qabul", "kind": "service", "queue_enabled": 1},
+        ],
+        "medical_doctors": [
+            {"id": 2, "staff_id": 12, "status": "inactive"},
+            {"id": 1, "staff_id": 11, "status": "active"},
+        ],
+        "medical_doctor_services": [],
+        "medical_queue": [
+            {
+                "id": 43,
+                "staff_id": 12,
+                "item_id": 32,
+                "queue_no": 1,
+                "queue_date": "2026-08-01",
+            },
+            {
+                "id": 42,
+                "staff_id": 11,
+                "item_id": 31,
+                "queue_no": 2,
+                "queue_date": "2026-08-01",
+            },
+            {
+                "id": 41,
+                "staff_id": 11,
+                "item_id": 31,
+                "queue_no": 1,
+                "queue_date": "2026-08-01",
+            },
+        ],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    staff = await service.read_resource(7, "medical_staff")
+    doctors = await service.read_resource(7, "medical_doctors")
+    queue = await service.read_resource(7, "medical_queue")
+
+    assert [row["id"] for row in staff] == [11, 12]
+    assert [row["id"] for row in doctors] == [1, 2]
+    assert [row["id"] for row in queue] == [41, 42, 43]
+
+
+@pytest.mark.asyncio
+async def test_medical_direction_guard_matches_all_fourteen_v1656_directions():
+    profile = business_profile()
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    with pytest.raises(ApiError) as forbidden:
+        await service.read_resource(7, "medical_queue")
+    assert forbidden.value.status_code == 403
+    assert forbidden.value.message == "Bu yo'nalishda navbat tizimi ishlamaydi."
+
+    for direction in (
+        "Transport va logistika",
+        "Xizmat ko'rsatish",
+        "Maishiy xizmatlar",
+        "Qurilish",
+        "Tibbiy xizmatlar",
+        "Ko'chmas mulk",
+        "Axborot texnologiyalari",
+        "Konsalting va professional",
+        "Madaniyat, sport, ko'ngilochar",
+        "Turizm va mehmonxona",
+        "Reklama va marketing",
+        "Poligrafiya va nashriyot",
+        "Moliyaviy faoliyat",
+        "Import-eksport",
+    ):
+        profile.direction = direction
+        assert await service.read_resource(7, "medical_queue") == []
+
+
+@pytest.mark.asyncio
+async def test_medical_offline_status_notifications_and_swap_match_v1656():
+    profile = business_profile()
+    profile.direction = "Tibbiy xizmatlar"
+    profile.cabinet_payload.update({
+        "staff": [{
+            "id": 11,
+            "name": "Ali Valiyev",
+            "profession": "Terapevt",
+            "status": "active",
+        }],
+        "items": [{
+            "id": 31,
+            "name": "Qabul",
+            "kind": "service",
+            "queue_enabled": 1,
+        }],
+        "medical_doctors": [{
+            "id": 5,
+            "staff_id": 11,
+            "status": "active",
+            "mode": "live",
+            "work_days": "1,2,3,4,5,6",
+            "work_start": "08:00",
+            "work_end": "17:00",
+            "avg_minutes": 20,
+        }],
+        "medical_doctor_services": [{
+            "business_id": 7,
+            "staff_id": 11,
+            "item_id": 31,
+            "active": 1,
+            "duration_minutes": 20,
+        }],
+        "medical_queue": [
+            {
+                "id": 41,
+                "item_id": 31,
+                "staff_id": 11,
+                "user_id": 70,
+                "patient_name": "Vali",
+                "queue_date": "2026-08-01",
+                "queue_no": 1,
+                "queue_code": "QAB-001",
+                "source": "online",
+                "status": "waiting",
+                "slot_time": "",
+            },
+            {
+                "id": 42,
+                "item_id": 31,
+                "staff_id": 11,
+                "user_id": 71,
+                "patient_name": "Hasan",
+                "queue_date": "2026-08-01",
+                "queue_no": 2,
+                "queue_code": "QAB-002",
+                "source": "online",
+                "status": "waiting",
+                "slot_time": "",
+            },
+        ],
+        "medical_queue_history": [],
+    })
+    users = {
+        70: user_profile(70, "Vali"),
+        71: user_profile(71, "Hasan"),
+    }
+    service = BusinessOnlineService(FakeDatabase(profile, users).session)
+
+    offline, rows = await service.apply_action(
+        7,
+        "medical_queue",
+        "offline_add",
+        record_id=None,
+        data={
+            "item_id": 31,
+            "staff_id": 11,
+            "patient_name": "Olim",
+            "phone": "901234567",
+            "queue_date": "2026-08-01",
+        },
+    )
+    assert offline is not None
+    assert offline["queue_no"] == 3
+    assert offline["queue_code"] == "QAB-003"
+    assert offline["source"] == "offline"
+    assert rows[-1]["service_name"] == "Qabul"
+    assert rows[-1]["doctor_name"] == "Ali Valiyev"
+
+    called, _ = await service.apply_action(
+        7,
+        "medical_queue",
+        "set_status",
+        record_id=41,
+        data={"status": "called"},
+    )
+    assert called is not None
+    assert called["status"] == "called"
+    assert profile.cabinet_payload["medical_queue_history"][-1]["action"] == "status"
+    first_notification = users[70].cabinet_payload["notifications"][0]
+    assert {
+        key: first_notification[key]
+        for key in (
+            "title",
+            "body",
+            "medical_queue_id",
+            "action_type",
+            "is_read",
+        )
+    } == {
+        "title": "Navbatingiz keldi",
+        "body": "QAB-001 navbat shifokor tomonidan chaqirildi.",
+        "medical_queue_id": 41,
+        "action_type": "medical_queue_called",
+        "is_read": 0,
+    }
+    assert users[71].cabinet_payload["notifications"][0]["title"] == (
+        "Navbatingiz yaqinlashdi"
+    )
+
+    await service.apply_action(
+        7,
+        "medical_queue",
+        "set_status",
+        record_id=41,
+        data={"status": "cancelled"},
+    )
+    assert users[70].cabinet_payload["notifications"][-1]["body"] == (
+        "QAB-001 navbat muassasa tomonidan bekor qilindi."
+    )
+
+    swapped, rows = await service.apply_action(
+        7,
+        "medical_queue",
+        "swap",
+        record_id=41,
+        data={"other_queue_id": 42},
+    )
+    assert swapped is not None
+    assert swapped["queue_no"] == 2
+    assert swapped["queue_code"] == "QAB-002"
+    second = next(row for row in rows if row["id"] == 42)
+    assert second["queue_no"] == 1
+    assert second["queue_code"] == "QAB-001"
+    assert users[70].cabinet_payload["notifications"][-1]["title"] == (
+        "Navbat raqami o‘zgardi"
+    )
+    assert users[71].cabinet_payload["notifications"][-1]["body"] == (
+        "Yangi navbat raqamingiz: QAB-001."
+    )

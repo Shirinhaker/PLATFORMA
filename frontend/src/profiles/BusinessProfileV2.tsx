@@ -9,6 +9,7 @@ import type {
 import { BusinessProfileEditor } from "./BusinessProfileEditor";
 import {
   ADMIN_MENUS,
+  adaptMenuForDirection,
   activityDate,
   DEFAULT_METRICS,
   DIRECTION_MENUS,
@@ -81,9 +82,11 @@ function menuRows(profile: BusinessProfileData | null, menu: Menu): unknown[] {
 
 function visibleMenus(profile: BusinessProfileData | null, menus: Menu[]) {
   if (!profile) return [];
-  return menus.filter((menu) => (
-    !menu.directions || menu.directions.includes(profile.direction)
-  ));
+  return menus
+    .filter((menu) => (
+      !menu.directions || menu.directions.includes(profile.direction)
+    ))
+    .map((menu) => adaptMenuForDirection(menu, profile.direction));
 }
 
 

@@ -21,8 +21,8 @@ Holatlar:
 - `missing` — monolit ekrani uchun maxsus React View va
   `BusinessOnlineScreen.tsx` case mavjud emas.
 
-Joriy React qamrovi: **16/20 ekran mavjud**. Qat'iy paritet holati:
-**12 migrated, 4 partial, 4 missing**.
+Joriy React qamrovi: **19/20 ekran mavjud**. Qat'iy paritet holati:
+**15 migrated, 4 partial, 1 missing**.
 
 ## 20 ekran inventari
 
@@ -34,9 +34,9 @@ Joriy React qamrovi: **16/20 ekran mavjud**. Qat'iy paritet holati:
 | 4 | Mahsulot/Xizmatlar va guruhlar — `cab-items`, `cab-item-form` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessItemsV1656View.tsx`; `frontend/src/profiles/BusinessItemsV1656Forms.tsx` | `static/index.html:1956–1968, 2111–2139, 12716–13108` | `frontend/src/profiles/BusinessItemsV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineEditing.test.tsx` |
 | 5 | Stollar va xonalar — `cab-dining` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` | `static/index.html:1970–1976, 11531–11616` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
 | 6 | Stol/xona zakazi — `cab-dining-order` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` (`DiningOrderView`) | `static/index.html:1978–1980, 11617–11632` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
-| 7 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | missing | **Yo'q**; hozirgi `medical-queues` kartasi maxsus View ochmaydi | `static/index.html:2107, 11637–11641` | **Yo'q** — Blok 2 |
-| 8 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | missing | **Yo'q**; `BusinessOnlineScreen.tsx` case mavjud emas | `static/index.html:2108, 11638–11641` | **Yo'q** — Blok 2 |
-| 9 | Navbat — `cab-medical-queue` | missing | **Yo'q**; hozirgi `medical-queues` kartasi umumiy `CabinetDataView`ga tushadi | `static/index.html:2109, 11642–11669` | **Yo'q** — Blok 2 |
+| 7 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalProvidersV1656View`) | `static/index.html:2107, 11637–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
+| 8 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | migrated | `frontend/src/profiles/BusinessMedicalV1656View.tsx` (xizmat ko'rsatuvchi formasi) | `static/index.html:2108, 11638–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
+| 9 | Navbat — `cab-medical-queue` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalQueueV1656View`) | `static/index.html:2109, 11642–11669` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
 | 10 | Kursga yozilishlar — `cab-education-enrollments` | missing | **Yo'q**; React menyu va `BusinessOnlineScreen.tsx` case mavjud emas | `static/index.html:2086, 9138–9141` | **Yo'q** — Blok 3 |
 | 11 | Buyurtmalar — `cab-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2222–2230, 6964–7053` | `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
 | 12 | Xizmat buyurtmalari — `cab-service-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2231–2233, 6964–7053` | `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
@@ -88,13 +88,12 @@ Reactdagi joriy holat:
   kartasini ham qamraydi; u faqat `Umumiy ovqatlanish` yo'nalishida
   Onlaynlashtirish ichida ko'rinadi:
   `frontend/src/profiles/business-profile-config.ts:245–261`;
-- tibbiyot kartalari hali `DIRECTION_MENUS` ichida, kursga yozilishlar esa
-  umuman yo'q:
-  `frontend/src/profiles/business-profile-config.ts:281–287`;
-- `BusinessProfileV3.tsx` faqat `ONLINE_MENUS` elementlarini maxsus
-  `BusinessOnlineScreen`ga yo'naltiradi; `DIRECTION_MENUS` elementlari
-  umumiy `CabinetDataView`ga tushadi:
-  `frontend/src/profiles/BusinessProfileV3.tsx:94–103, 198–245`;
+- xizmat ko'rsatuvchilar va navbat kartalari `ONLINE_MENUS` ichida va faqat
+  monolitdagi 14 navbatli yo'nalishda ko'rinadi; tibbiy yo'nalishda
+  `Shifokor/Bemor`, qolganlarida `Xizmat ko‘rsatuvchi/Mijoz` matnlari
+  qo'llanadi. Eski tibbiyot kartalari `DIRECTION_MENUS`dan olib tashlandi;
+- `BusinessProfileV3.tsx` ushbu kartalarni maxsus `BusinessOnlineScreen`ga,
+  u esa uchta v1656 React ekraniga yo'naltiradi;
 - `CAB_PLANS.labels` va `CAB_PLANS.hide`ning to'liq React ekvivalenti hali
   mavjud emas; Blok 1dagi ovqatlanish kartasi to'g'ri guruhga ko'chirildi,
   qolgan yo'nalishga xos kartalar esa hozircha alohida

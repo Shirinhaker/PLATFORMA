@@ -23,6 +23,43 @@ export type BusinessDirection = {
   activities: readonly string[];
 };
 
+export const QUEUE_DIRECTIONS = [
+  "Transport va logistika",
+  "Xizmat ko'rsatish",
+  "Maishiy xizmatlar",
+  "Qurilish",
+  "Tibbiy xizmatlar",
+  "Ko'chmas mulk",
+  "Axborot texnologiyalari",
+  "Konsalting va professional",
+  "Madaniyat, sport, ko'ngilochar",
+  "Turizm va mehmonxona",
+  "Reklama va marketing",
+  "Poligrafiya va nashriyot",
+  "Moliyaviy faoliyat",
+  "Import-eksport",
+] as const;
+
+export function queueUiLabels(direction: string) {
+  const medical = direction === "Tibbiy xizmatlar";
+  return {
+    medical,
+    provider: medical ? "Shifokor" : "Xizmat ko‘rsatuvchi",
+    providers: medical ? "Shifokorlar" : "Xizmat ko‘rsatuvchilar",
+    customer: medical ? "Bemor" : "Mijoz",
+  };
+}
+
+export function adaptMenuForDirection(menu: Menu, direction: string): Menu {
+  if (menu.view !== "medical-providers") return menu;
+  const labels = queueUiLabels(direction);
+  return {
+    ...menu,
+    label: labels.providers,
+    caption: `${labels.provider} kartasi, xizmat va ish jadvali`,
+  };
+}
+
 export const BUSINESS_DIRECTIONS: readonly BusinessDirection[] = [
   {
     name: "Savdo",
@@ -248,6 +285,8 @@ export const ONLINE_MENUS: Menu[] = [
   { icon: "💳", label: "To‘lovlarim", caption: "Yuborilgan to‘lovlar va tarix", view: "payments", payload: "subscription_payments" },
   { icon: "🛍️", label: "Mahsulot va xizmatlar", caption: "Guruhlar va katalog yozuvlari", view: "items", payload: ["item_groups", "items"] },
   { icon: "🍽️", label: "Stollar va xonalar", caption: "Zal rejasini joylashtirish", view: "dining-places", payload: "dining_places", directions: ["Umumiy ovqatlanish"] },
+  { icon: "🧑‍💼", label: "Xizmat ko‘rsatuvchilar", caption: "Xizmat ko‘rsatuvchi kartasi, xizmat va ish jadvali", view: "medical-providers", payload: "medical_doctors", directions: QUEUE_DIRECTIONS },
+  { icon: "🏥", label: "Navbat boshqaruvi", caption: "Onlayn va oflayn yagona navbat", view: "medical-queue", payload: "medical_queue", directions: QUEUE_DIRECTIONS },
   { icon: "📢", label: "E’lonlarim", caption: "Biznes nomidan joylangan e’lonlar", view: "listings", payload: "listings" },
   { icon: "📦", label: "Buyurtmalar", caption: "Mahsulot buyurtmalari", view: "orders", payload: "orders" },
   { icon: "🧰", label: "Xizmat buyurtmalari", caption: "Xizmat va navbatlar", view: "service-orders", payload: "orders" },
@@ -282,8 +321,6 @@ export const DIRECTION_MENUS: Menu[] = [
   { icon: "👨‍🏫", label: "Ta’lim guruhlari", caption: "Guruh va dars ma’lumotlari", view: "education-groups", payload: "education_groups", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🎓", label: "O‘quvchilar", caption: "O‘quvchi va to‘lov holatlari", view: "education-students", payload: "education_students", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🧑‍🏫", label: "O‘qituvchilar", caption: "O‘qituvchi ma’lumotlari", view: "education-teachers", payload: "education_teachers", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
-  { icon: "🏥", label: "Tibbiy navbat", caption: "Kutayotgan va qabuldagi bemorlar", view: "medical-queues", payload: "medical_queues", directions: ["Tibbiy xizmatlar"] },
-  { icon: "🩺", label: "Tibbiy qabullar", caption: "Yozilish va qabul ma’lumotlari", view: "medical-appointments", payload: "medical_appointments", directions: ["Tibbiy xizmatlar"] },
 ];
 
 export const TERMINAL_STATUSES = new Set([

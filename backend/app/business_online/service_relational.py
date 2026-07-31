@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business_online.service import (
     IMMUTABLE_FIELDS,
+    MEDICAL_RESOURCES,
     RESOURCE_SPECS,
+    append_medical_user_notification,
     apply_action as apply_payload_action,
     cascade_after_delete,
+    display_resource_rows,
     ensure_resource_direction,
     find_resource_record,
     find_resource_record_index,
@@ -25,12 +28,13 @@ from app.business_online.service import (
     resource_spec,
     sanitize_mapping,
     sync_dining_place_activity,
+    sync_medical_doctor_links,
     unix_now,
 )
 from app.cabinet_records.dual_write import sync_json_fallback
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
-from app.profiles.model import BusinessProfile
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
@@ -62,10 +66,10 @@ class BusinessOnlineService:
                     "Biznes profil topilmadi.",
                 )
             ensure_resource_direction(profile, resource)
-            if resource == "dining_places":
+            if resource == "dining_places" or resource in MEDICAL_RESOURCES:
                 payload = await self._hybrid_payload(session, profile)
                 sync_dining_place_activity(payload)
-                return resource_rows(payload, resource)
+                return display_resource_rows(payload, resource)
             rows = await self._resource_rows(
                 session,
                 profile=profile,
@@ -92,18 +96,26 @@ class BusinessOnlineService:
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
-            prepare_record_for_create(resource, clean, rows)
+            prepare_record_for_create(resource, clean, rows, payload=payload)
             now = unix_now()
             clean["id"] = next_record_id(rows)
             clean.setdefault("created_at", now)
             clean["updated_at"] = now
             rows.append(clean)
             payload[resource] = rows
-            await self._persist_resources(session, account_id, payload, {resource})
+            changed = {resource}
+            if resource == "medical_doctors":
+                sync_medical_doctor_links(payload, clean, account_id)
+                changed.add("medical_doctor_services")
+            await self._persist_resources(session, account_id, payload, changed)
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
-            return deepcopy(clean), deepcopy(rows)
+            displayed = display_resource_rows(payload, resource)
+            item = next(
+                row for row in displayed if str(row.get("id")) == str(clean["id"])
+            )
+            return deepcopy(item), deepcopy(displayed)
 
     async def patch_record(
         self,
@@ -127,15 +139,23 @@ class BusinessOnlineService:
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
             item = find_resource_record(rows, record_id, resource)
-            prepare_patch_for_resource(resource, item, clean)
+            prepare_patch_for_resource(resource, item, clean, payload=payload)
             item.update(clean)
             item["updated_at"] = unix_now()
             payload[resource] = rows
-            await self._persist_resources(session, account_id, payload, {resource})
+            changed = {resource}
+            if resource == "medical_doctors":
+                sync_medical_doctor_links(payload, item, account_id)
+                changed.add("medical_doctor_services")
+            await self._persist_resources(session, account_id, payload, changed)
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
-            return deepcopy(item), deepcopy(rows)
+            displayed = display_resource_rows(payload, resource)
+            saved = next(
+                row for row in displayed if str(row.get("id")) == str(record_id)
+            )
+            return deepcopy(saved), deepcopy(displayed)
 
     async def delete_record(
         self,
@@ -185,6 +205,7 @@ class BusinessOnlineService:
                 name: deepcopy(resource_rows(payload, name))
                 for name in RESOURCE_SPECS
             }
+            notification_events: list[dict[str, Any]] = []
             item = apply_payload_action(
                 payload,
                 resource,
@@ -192,6 +213,8 @@ class BusinessOnlineService:
                 record_id=record_id,
                 data=clean,
                 actor_name=str(profile.name or "").strip() or "Rahbar",
+                direction=str(profile.direction or "").strip(),
+                notification_events=notification_events,
             )
             changed = {
                 name
@@ -201,10 +224,53 @@ class BusinessOnlineService:
             if not changed:
                 changed.add(resource)
             await self._persist_resources(session, account_id, payload, changed)
+            await self._persist_user_notifications(session, notification_events)
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
-            return deepcopy(item), resource_rows(payload, resource)
+            return deepcopy(item), display_resource_rows(payload, resource)
+
+    async def _persist_user_notifications(
+        self,
+        session: AsyncSession,
+        events: list[dict[str, Any]],
+    ) -> None:
+        by_user: dict[int, list[dict[str, Any]]] = {}
+        for event in events:
+            try:
+                user_id = int(event.get("user_id") or 0)
+            except (TypeError, ValueError):
+                continue
+            if user_id:
+                by_user.setdefault(user_id, []).append(event)
+
+        for user_id, user_events in by_user.items():
+            profile = await session.get(UserProfile, user_id)
+            if profile is None:
+                continue
+            payload = normalized_payload(profile.cabinet_payload)
+            payload.update(await self._repository.read_payload(
+                session,
+                account_id=user_id,
+                account_type="user",
+            ))
+            for event in user_events:
+                append_medical_user_notification(payload, event)
+            notifications = resource_rows(payload, "notifications")
+            await self._repository.replace_resource(
+                session,
+                account_id=user_id,
+                account_type="user",
+                resource="notifications",
+                rows=notifications,
+            )
+            sync_json_fallback(profile, payload)
+            snapshot = deepcopy(profile.dashboard_snapshot or {})
+            snapshot["unread"] = sum(
+                not bool(int(row.get("is_read") or 0))
+                for row in notifications
+            )
+            profile.dashboard_snapshot = snapshot
 
     async def _resource_rows(
         self,

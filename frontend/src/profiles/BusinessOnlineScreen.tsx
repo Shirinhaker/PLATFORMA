@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
@@ -7,6 +7,10 @@ import type {
 } from "../api/business-online-types";
 import type { BusinessProfile } from "../api/types";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
+import {
+  BusinessMedicalProvidersV1656View,
+  BusinessMedicalQueueV1656View,
+} from "./BusinessMedicalV1656View";
 import {
   CrudEditorView,
   ItemsEditorView,
@@ -64,6 +68,8 @@ const VIEW_RESOURCE: Record<string, BusinessOnlineResource> = {
   followers: "followers",
   following: "following",
   "dining-places": "dining_places",
+  "medical-providers": "medical_doctors",
+  "medical-queue": "medical_queue",
 };
 
 function viewResources(
@@ -74,6 +80,12 @@ function viewResources(
   if (view === "items") return [primary, "item_groups"];
   if (view === "dining-places") {
     return [primary, "dining_orders", "items", "item_groups"];
+  }
+  if (view === "medical-providers") {
+    return [primary, "medical_staff", "items"];
+  }
+  if (view === "medical-queue") {
+    return [primary, "medical_doctors", "medical_staff", "items"];
   }
   return [primary];
 }
@@ -128,6 +140,7 @@ export function BusinessOnlineScreen({
   const [replyId, setReplyId] = useState<number | string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [subscreenBack, setSubscreenBack] = useState<(() => void) | null>(null);
+  const [subscreenTitle, setSubscreenTitle] = useState("");
 
   const items = primary ? resources[primary] ?? [] : [];
   const groups = resources.item_groups ?? [];
@@ -163,14 +176,26 @@ export function BusinessOnlineScreen({
   }, [view, primary, api.getBusinessOnlineResource]);
 
   useEffect(() => {
-    if (view !== "dining-places" || !error) return;
+    if (
+      !["dining-places", "medical-providers", "medical-queue"].includes(view)
+      || !error
+    ) return;
     const timeout = window.setTimeout(() => setError(""), 2600);
     return () => window.clearTimeout(timeout);
   }, [error, view]);
 
   useEffect(() => {
     setSubscreenBack(null);
+    setSubscreenTitle("");
   }, [view]);
+
+  const handleSubscreenBack = useCallback((
+    handler: (() => void) | null,
+    nextTitle = "Zakaz qilish",
+  ) => {
+    setSubscreenBack(handler ? () => handler : null);
+    setSubscreenTitle(handler ? nextTitle : "");
+  }, []);
 
   function setResource(
     resource: BusinessOnlineResource,
@@ -203,7 +228,9 @@ export function BusinessOnlineScreen({
       }
       setForm(null);
       setDraft({});
-      if (resource !== "dining_places") setNotice("Saqlandi");
+      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+        setNotice("Saqlandi");
+      }
       return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv saqlanmadi.");
@@ -231,7 +258,9 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      if (resource !== "dining_places") setNotice("Yangilandi");
+      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+        setNotice("Yangilandi");
+      }
       return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv yangilanmadi.");
@@ -256,7 +285,9 @@ export function BusinessOnlineScreen({
           (row, index) => String(recordId(row, index)) !== String(id),
         ));
       }
-      if (resource !== "dining_places") setNotice("O‘chirildi");
+      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+        setNotice("O‘chirildi");
+      }
       return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv o‘chirilmadi.");
@@ -282,7 +313,9 @@ export function BusinessOnlineScreen({
           payload,
         });
         setResource(resource, result.items);
-        if (!resource.startsWith("dining_")) setNotice("Amal bajarildi");
+        if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+          setNotice("Amal bajarildi");
+        }
         return result.item;
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
@@ -323,7 +356,9 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      if (!resource.startsWith("dining_")) setNotice("Amal bajarildi");
+      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+        setNotice("Amal bajarildi");
+      }
       return {};
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
@@ -381,10 +416,9 @@ export function BusinessOnlineScreen({
     patch,
     remove,
     action,
-    setSubscreenBack: (handler) => {
-      setSubscreenBack(handler ? () => handler : null);
-    },
+    setSubscreenBack: handleSubscreenBack,
   });
+  const medicalV1656 = view === "medical-providers" || view === "medical-queue";
 
   return (
     <main className="business-online">
@@ -399,10 +433,12 @@ export function BusinessOnlineScreen({
           {subscreenBack ? "← Orqaga" : "← Kabinetga qaytish"}
         </button>
         <div>
-          <h1>{subscreenBack ? "Zakaz qilish" : title}</h1>
-          <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
+          <h1>{subscreenBack ? subscreenTitle : title}</h1>
+          {!medicalV1656 ? (
+            <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
+          ) : null}
         </div>
-        {primary && api.getBusinessOnlineResource && (
+        {primary && api.getBusinessOnlineResource && !medicalV1656 && (
           <button
             type="button"
             onClick={() => void refresh(...viewResources(view, primary))}
@@ -412,8 +448,8 @@ export function BusinessOnlineScreen({
           </button>
         )}
       </header>
-      {error && (view === "dining-places" ? (
-        <div className="business-dining-v1656">
+      {error && (["dining-places", "medical-providers", "medical-queue"].includes(view) ? (
+        <div className={view === "dining-places" ? "business-dining-v1656" : "business-medical-v1656"}>
           <div className="app-toast on" role="alert">{error}</div>
         </div>
       ) : (
@@ -470,7 +506,10 @@ type RenderContext = {
     id?: number | string,
     payload?: BusinessOnlineRecord,
   ) => Promise<BusinessOnlineRecord | null>;
-  setSubscreenBack: (handler: (() => void) | null) => void;
+  setSubscreenBack: (
+    handler: (() => void) | null,
+    title?: string,
+  ) => void;
 };
 
 function renderContent(context: RenderContext): ReactNode {
@@ -528,6 +567,35 @@ function renderContent(context: RenderContext): ReactNode {
           createPlace={(record) => context.create("dining_places", record)}
           patchPlace={(id, patch) => context.patch("dining_places", id, patch)}
           removePlace={(id) => context.remove("dining_places", id)}
+          action={context.action}
+          refresh={context.refresh}
+          onBackHandlerChange={context.setSubscreenBack}
+        />
+      );
+    case "medical-providers":
+      return (
+        <BusinessMedicalProvidersV1656View
+          direction={profile.direction}
+          doctors={context.resources.medical_doctors ?? []}
+          staff={context.resources.medical_staff ?? []}
+          items={context.resources.items ?? []}
+          busy={shared.busy}
+          createDoctor={(record) => context.create("medical_doctors", record)}
+          patchDoctor={(id, patch) => context.patch("medical_doctors", id, patch)}
+          onBackHandlerChange={context.setSubscreenBack}
+        />
+      );
+    case "medical-queue":
+      return (
+        <BusinessMedicalQueueV1656View
+          direction={profile.direction}
+          rows={context.resources.medical_queue ?? []}
+          doctors={context.resources.medical_doctors ?? []}
+          staff={context.resources.medical_staff ?? []}
+          items={context.resources.items ?? []}
+          busy={shared.busy}
+          createDoctor={(record) => context.create("medical_doctors", record)}
+          patchDoctor={(id, patch) => context.patch("medical_doctors", id, patch)}
           action={context.action}
           refresh={context.refresh}
           onBackHandlerChange={context.setSubscreenBack}
