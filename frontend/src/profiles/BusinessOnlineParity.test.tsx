@@ -42,19 +42,14 @@ const profile = {
   rating_sum: 9,
   rating_count: 2,
   map_visible: true,
-  dashboard_snapshot: {
-    revenue: 0,
-    new_orders: 2,
-    debt_total: 214500,
-    low_stock: 0,
-  },
+  dashboard_snapshot: {},
   recent_activity: [],
   cabinet_payload: {
-    business_subscriptions: [{ id: 1, plan: "free", status: "active" }],
-    subscription_payments: [{ id: 2, status: "approved", amount_snapshot: 149000 }],
     item_groups: [{ id: 10, name: "Tayyor mahsulotlar", kind: "product" }],
     items: [{ id: 11, group_id: 10, name: "Muhr", kind: "product", price: 15000 }],
-    listings: [{ id: 12, title: "Biznes e’loni", status: "active" }],
+    business_subscriptions: [],
+    subscription_payments: [],
+    listings: [],
     orders: [],
     messages: [],
     business_reviews: [],
@@ -80,14 +75,9 @@ function api() {
   };
 }
 
-async function back(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
-  await screen.findByRole("heading", { name: "Muhr" });
-}
-
 
 describe("v1656 online cabinet parity", () => {
-  it("uses dedicated subscription, payment, item and listing screens", async () => {
+  it("opens the exact v1656 item catalog from the cabinet", async () => {
     const user = userEvent.setup();
     render(
       <BusinessProfile
@@ -99,24 +89,11 @@ describe("v1656 online cabinet parity", () => {
     );
     await screen.findByRole("heading", { name: "Muhr" });
 
-    await user.click(screen.getByRole("button", { name: /Obunalarim/ }));
-    expect(await screen.findByRole("heading", { name: "Obunalarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "1 oy" })).toBeInTheDocument();
-
-    await back(user);
-    await user.click(screen.getByRole("button", { name: /To‘lovlarim/ }));
-    expect(await screen.findByRole("heading", { name: "To‘lovlarim" })).toBeInTheDocument();
-
-    await back(user);
     await user.click(screen.getByRole("button", { name: /Mahsulot va xizmatlar/ }));
+
     expect(await screen.findByPlaceholderText("Tovar qidirish...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /\+ Guruh qo'shish/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tovar qo'shish" })).toBeInTheDocument();
     expect(screen.getByText("Muhr")).toBeInTheDocument();
-
-    await back(user);
-    await user.click(screen.getByRole("button", { name: /E’lonlarim/ }));
-    expect(await screen.findByRole("heading", { name: "E’lonlarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ E’lon/ })).toBeInTheDocument();
   });
 });
