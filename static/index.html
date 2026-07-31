@@ -13630,8 +13630,7 @@
   /* ---------- E'LON JOYINI XARITADA TANLASH ---------- */
   var PMAP = null;
   var pickedLatLng = { be:null, ue:null, bp:null };   // har forma uchun tanlangan koordinata
-  var pickTarget = null;                       // 'be' yoki 'ue'
-  var pickSizeTimer = null;
+  var pickTarget = null, pickSizeTimer = null; // 'be', 'ue' yoki 'bp'
 
   function safeNum(v){
     var n = Number(v);
@@ -13668,27 +13667,7 @@
       return normalizeLatLng(o.lat, o.lng);
     }catch(e){ return null; }
   }
-  function syncPickerSize(){
-    if(!PMAP || current!=="pickloc") return;
-    if(pickSizeTimer) clearTimeout(pickSizeTimer);
-    pickSizeTimer = setTimeout(function(){
-      try{
-        // Marker uchi konteyner markazida. O'lcham yangilanganda shu geografik
-        // markazni saqlab, xaritani marker ostiga qayta tekislaymiz.
-        var center = PMAP.getCenter();
-        var zoom = PMAP.getZoom();
-        PMAP.invalidateSize({pan:false});
-        PMAP.setView(center, zoom, {animate:false});
-      }catch(e){}
-    }, 40);
-  }
-  var pickScreen = document.querySelector('[data-screen="pickloc"]');
-  if(pickScreen) pickScreen.addEventListener("animationend", syncPickerSize);
-  window.addEventListener("resize", syncPickerSize);
-  window.addEventListener("orientationchange", syncPickerSize);
-  if(window.visualViewport) window.visualViewport.addEventListener("resize", syncPickerSize);
-
-  function openPicker(prefix){
+  function syncPickerSize(){ if(!PMAP || current!=="pickloc") return; if(pickSizeTimer) clearTimeout(pickSizeTimer); pickSizeTimer=setTimeout(function(){ try{ var center=PMAP.getCenter(), zoom=PMAP.getZoom(); PMAP.invalidateSize({pan:false}); PMAP.setView(center,zoom,{animate:false}); }catch(e){} },40); } var pickScreen=document.querySelector('[data-screen="pickloc"]'); if(pickScreen) pickScreen.addEventListener("animationend", syncPickerSize); window.addEventListener("resize", syncPickerSize); window.addEventListener("orientationchange", syncPickerSize); if(window.visualViewport) window.visualViewport.addEventListener("resize", syncPickerSize); function openPicker(prefix){
     pickTarget = prefix;
     if(typeof L === "undefined"){ showMsg("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
 
@@ -13709,9 +13688,7 @@
       } else {
         PMAP.setView(startC, 14);
       }
-      // .screen fade 220ms davom etadi; animationend asosiy signal, bu esa
-      // animatsiya o'chirilgan brauzerlar uchun xavfsiz zaxira.
-      setTimeout(syncPickerSize, 240);
+      setTimeout(syncPickerSize, 240); // 220ms fade tugagach xavfsiz zaxira
     }, 60);
   }
   function setPicked(prefix, lat, lng){
