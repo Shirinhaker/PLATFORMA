@@ -7,6 +7,7 @@ import type {
 } from "../api/business-online-types";
 import type { BusinessProfile } from "../api/types";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
+import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsV1656View";
 import {
   BusinessMedicalProvidersV1656View,
   BusinessMedicalQueueV1656View,
@@ -70,6 +71,7 @@ const VIEW_RESOURCE: Record<string, BusinessOnlineResource> = {
   "dining-places": "dining_places",
   "medical-providers": "medical_doctors",
   "medical-queue": "medical_queue",
+  "education-enrollments": "education_enrollments",
 };
 
 function viewResources(
@@ -86,6 +88,9 @@ function viewResources(
   }
   if (view === "medical-queue") {
     return [primary, "medical_doctors", "medical_staff", "items"];
+  }
+  if (view === "education-enrollments") {
+    return [primary, "education_groups"];
   }
   return [primary];
 }
@@ -177,7 +182,12 @@ export function BusinessOnlineScreen({
 
   useEffect(() => {
     if (
-      !["dining-places", "medical-providers", "medical-queue"].includes(view)
+      ![
+        "dining-places",
+        "medical-providers",
+        "medical-queue",
+        "education-enrollments",
+      ].includes(view)
       || !error
     ) return;
     const timeout = window.setTimeout(() => setError(""), 2600);
@@ -228,7 +238,11 @@ export function BusinessOnlineScreen({
       }
       setForm(null);
       setDraft({});
-      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+      if (
+        !resource.startsWith("dining_")
+        && !resource.startsWith("medical_")
+        && !resource.startsWith("education_")
+      ) {
         setNotice("Saqlandi");
       }
       return true;
@@ -258,7 +272,11 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+      if (
+        !resource.startsWith("dining_")
+        && !resource.startsWith("medical_")
+        && !resource.startsWith("education_")
+      ) {
         setNotice("Yangilandi");
       }
       return true;
@@ -285,7 +303,11 @@ export function BusinessOnlineScreen({
           (row, index) => String(recordId(row, index)) !== String(id),
         ));
       }
-      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+      if (
+        !resource.startsWith("dining_")
+        && !resource.startsWith("medical_")
+        && !resource.startsWith("education_")
+      ) {
         setNotice("O‘chirildi");
       }
       return true;
@@ -313,7 +335,11 @@ export function BusinessOnlineScreen({
           payload,
         });
         setResource(resource, result.items);
-        if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+        if (
+          !resource.startsWith("dining_")
+          && !resource.startsWith("medical_")
+          && !resource.startsWith("education_")
+        ) {
           setNotice("Amal bajarildi");
         }
         return result.item;
@@ -356,7 +382,11 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      if (!resource.startsWith("dining_") && !resource.startsWith("medical_")) {
+      if (
+        !resource.startsWith("dining_")
+        && !resource.startsWith("medical_")
+        && !resource.startsWith("education_")
+      ) {
         setNotice("Amal bajarildi");
       }
       return {};
@@ -418,7 +448,11 @@ export function BusinessOnlineScreen({
     action,
     setSubscreenBack: handleSubscreenBack,
   });
-  const medicalV1656 = view === "medical-providers" || view === "medical-queue";
+  const exactV1656 = [
+    "medical-providers",
+    "medical-queue",
+    "education-enrollments",
+  ].includes(view);
 
   return (
     <main className="business-online">
@@ -434,11 +468,11 @@ export function BusinessOnlineScreen({
         </button>
         <div>
           <h1>{subscreenBack ? subscreenTitle : title}</h1>
-          {!medicalV1656 ? (
+          {!exactV1656 ? (
             <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
           ) : null}
         </div>
-        {primary && api.getBusinessOnlineResource && !medicalV1656 && (
+        {primary && api.getBusinessOnlineResource && !exactV1656 && (
           <button
             type="button"
             onClick={() => void refresh(...viewResources(view, primary))}
@@ -448,15 +482,28 @@ export function BusinessOnlineScreen({
           </button>
         )}
       </header>
-      {error && (["dining-places", "medical-providers", "medical-queue"].includes(view) ? (
-        <div className={view === "dining-places" ? "business-dining-v1656" : "business-medical-v1656"}>
+      {error && ([
+        "dining-places",
+        "medical-providers",
+        "medical-queue",
+        "education-enrollments",
+      ].includes(view) ? (
+        <div className={
+          view === "dining-places"
+            ? "business-dining-v1656"
+            : view === "education-enrollments"
+              ? "business-education-enrollments-v1656"
+              : "business-medical-v1656"
+        }>
           <div className="app-toast on" role="alert">{error}</div>
         </div>
       ) : (
         <p className="business-online__error" role="alert">{error}</p>
       ))}
       {notice && <p className="business-online__notice" role="status">{notice}</p>}
-      {loading && <div className="business-online__loading">Yuklanmoqda…</div>}
+      {loading && view !== "education-enrollments" && (
+        <div className="business-online__loading">Yuklanmoqda…</div>
+      )}
       {content}
     </main>
   );
@@ -599,6 +646,17 @@ function renderContent(context: RenderContext): ReactNode {
           action={context.action}
           refresh={context.refresh}
           onBackHandlerChange={context.setSubscreenBack}
+        />
+      );
+    case "education-enrollments":
+      return (
+        <BusinessEducationEnrollmentsV1656View
+          rows={context.resources.education_enrollments ?? []}
+          groups={context.resources.education_groups ?? []}
+          busy={shared.busy}
+          loading={context.loading}
+          action={context.action}
+          refresh={context.refresh}
         />
       );
     case "listings":

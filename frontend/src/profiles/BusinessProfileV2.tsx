@@ -77,6 +77,9 @@ function menuRows(profile: BusinessProfileData | null, menu: Menu): unknown[] {
   const rows = payloadRows(profile.cabinet_payload, menu.payload);
   if (menu.view === "service-orders") return rows.filter(isService);
   if (menu.view === "orders") return rows.filter((row) => !isService(row));
+  if (menu.view === "education-enrollments") {
+    return rows.filter((row) => String(record(row).status ?? "") === "new");
+  }
   return rows;
 }
 
@@ -245,14 +248,27 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
               <button
                 type="button"
                 key={`${title}-${menu.view}`}
+                className={
+                  menu.view === "education-enrollments" ? "menu-card" : undefined
+                }
                 onClick={() => openMenu(menu)}
               >
-                <span>{menu.icon}</span>
-                <span>
+                <span className={
+                  menu.view === "education-enrollments" ? "menu-ic" : undefined
+                }>{menu.icon}</span>
+                <span className={
+                  menu.view === "education-enrollments" ? "menu-main" : undefined
+                }>
                   <b>{menu.label}</b>
                   <small>{menu.caption}</small>
                 </span>
-                {count > 0 && <em>{count}</em>}
+                {count > 0 && (
+                  <em className={
+                    menu.view === "education-enrollments"
+                      ? "order-badge"
+                      : undefined
+                  }>{count}</em>
+                )}
               </button>
             );
           })}

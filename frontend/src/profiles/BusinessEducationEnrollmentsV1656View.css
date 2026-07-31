@@ -1,0 +1,230 @@
+.business-education-enrollments-v1656 .form-wrap {
+  padding-top: 6px;
+}
+
+.business-education-enrollments-v1656 .panel-card {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 18px;
+  background: var(--koprik-card);
+  box-shadow: var(--koprik-shadow);
+}
+
+.business-education-enrollments-v1656 .idesc {
+  margin-top: 2px;
+  color: var(--koprik-soft);
+  font-size: 12px;
+}
+
+.business-education-enrollments-v1656 .ad-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 6px 0 14px;
+}
+
+.business-education-enrollments-v1656 .ad-tab {
+  height: 44px;
+  border: 1.5px solid var(--koprik-line);
+  border-radius: 13px;
+  background: var(--koprik-card);
+  color: var(--koprik-ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.business-education-enrollments-v1656 .ad-tab.on {
+  border-color: var(--koprik-primary);
+  background: var(--koprik-primary);
+  color: var(--koprik-primary-ink);
+}
+
+.business-education-enrollments-v1656 .sort-chip {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid var(--koprik-line);
+  border-radius: 10px;
+  background: var(--koprik-card);
+  color: var(--koprik-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.business-education-enrollments-v1656 .input {
+  width: 100%;
+  height: 50px;
+  padding: 0 14px;
+  border: 1.5px solid var(--koprik-line);
+  border-radius: 13px;
+  outline: none;
+  background: var(--koprik-card);
+  color: var(--koprik-ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.business-education-enrollments-v1656 .input:focus {
+  border-color: var(--koprik-primary);
+}
+
+.business-education-enrollments-v1656 .btn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  gap: 8px;
+  border: none;
+  border-radius: 14px;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.business-education-enrollments-v1656 .btn:active {
+  transform: scale(0.98);
+}
+
+.business-education-enrollments-v1656 .btn-primary {
+  background: var(--koprik-primary);
+  box-shadow: 0 6px 16px rgba(14, 140, 132, 0.3);
+  color: var(--koprik-primary-ink);
+}
+
+.business-education-enrollments-v1656 .btn-outline {
+  border: 1.5px solid var(--koprik-line);
+  background: var(--koprik-card);
+  color: var(--koprik-ink);
+}
+
+.business-education-enrollments-v1656 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.business-education-enrollments-v1656 .empty h3 {
+  margin-bottom: 6px;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.business-education-enrollments-v1656 .empty p {
+  max-width: 240px;
+  color: var(--koprik-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.business-education-enrollments-v1656 .app-toast {
+  position: fixed;
+  z-index: 6000;
+  bottom: 26px;
+  left: 50%;
+  width: calc(100% - 48px);
+  max-width: 360px;
+  padding: 12px 16px;
+  border-radius: 13px;
+  background: var(--koprik-ink);
+  box-shadow: 0 12px 40px rgba(16, 40, 33, 0.16);
+  color: var(--koprik-bg);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(16px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.business-education-enrollments-v1656 .app-toast.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.business-education-enrollments-v1656 .app-modal-back {
+  position: fixed;
+  z-index: 5200;
+  inset: 0;
+  display: none;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.business-education-enrollments-v1656 .app-modal-back.on {
+  display: block;
+}
+
+.business-education-enrollments-v1656 .app-confirm {
+  position: fixed;
+  z-index: 5201;
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 56px);
+  max-width: 340px;
+  padding: 18px;
+  border: 1px solid var(--koprik-line);
+  border-radius: 18px;
+  background: var(--koprik-bg);
+  box-shadow: 0 12px 40px rgba(16, 40, 33, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.business-education-enrollments-v1656 .app-confirm.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.business-education-enrollments-v1656 .acf-text {
+  margin-bottom: 16px;
+  color: var(--koprik-ink);
+  font-size: 14.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.business-education-enrollments-v1656 .acf-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.business-education-enrollments-v1656 .acf-btns button {
+  flex: 1;
+  height: 46px;
+  border: 1.5px solid var(--koprik-line);
+  border-radius: 13px;
+  background: var(--koprik-card);
+  color: var(--koprik-ink);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.business-education-enrollments-v1656 .acf-btns .acf-ok {
+  border-color: var(--koprik-primary);
+  background: var(--koprik-primary);
+  color: #fff;
+}
+
+.business-education-enrollments-v1656 .acf-btns .acf-ok.danger {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #fff;
+}

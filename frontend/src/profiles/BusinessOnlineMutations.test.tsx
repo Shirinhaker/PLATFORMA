@@ -45,6 +45,9 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   medical_doctor_services: [],
   medical_queue: [],
   medical_queue_history: [],
+  education_groups: [],
+  education_students: [],
+  education_enrollments: [],
 };
 
 const profile = {

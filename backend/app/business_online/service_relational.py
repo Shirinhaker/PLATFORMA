@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.business_online.service import (
+    EDUCATION_RESOURCES,
     IMMUTABLE_FIELDS,
     MEDICAL_RESOURCES,
     RESOURCE_SPECS,
@@ -66,7 +67,11 @@ class BusinessOnlineService:
                     "Biznes profil topilmadi.",
                 )
             ensure_resource_direction(profile, resource)
-            if resource == "dining_places" or resource in MEDICAL_RESOURCES:
+            if (
+                resource == "dining_places"
+                or resource in MEDICAL_RESOURCES
+                or resource in EDUCATION_RESOURCES
+            ):
                 payload = await self._hybrid_payload(session, profile)
                 sync_dining_place_activity(payload)
                 return display_resource_rows(payload, resource)
