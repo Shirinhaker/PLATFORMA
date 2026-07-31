@@ -69,7 +69,7 @@ const profile = {
 };
 
 
-describe.skip("business online editing", () => {
+describe("business online editing", () => {
   it("edits a migrated item through the typed patch endpoint", async () => {
     const user = userEvent.setup();
     const patchBusinessOnlineRecord = vi.fn().mockResolvedValue({
