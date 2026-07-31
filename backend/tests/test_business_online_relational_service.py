@@ -352,3 +352,54 @@ async def test_medical_relational_flow_persists_links_history_and_user_notificat
         "action_type"
     ] == "medical_queue_called"
     assert user.cabinet_payload["notifications"][0]["medical_queue_id"] == 41
+
+
+@pytest.mark.asyncio
+async def test_education_accept_persists_enrollment_and_student_in_both_stores():
+    business = profile()
+    business.direction = "Ta'lim faoliyati"
+    business.cabinet_payload.update({
+        "items": [{"id": 51, "name": "Ingliz tili"}],
+        "education_groups": [
+            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
+        ],
+        "education_students": [],
+        "education_enrollments": [{
+            "id": 71,
+            "course_item_id": 51,
+            "user_id": 70,
+            "customer_name": "Ali Valiyev",
+            "phone": "+998901234567",
+            "note": "Kechki guruh",
+            "status": "new",
+        }],
+    })
+    database = FakeDatabase(business)
+    repository = FakeCabinetRecordRepository()
+    service = BusinessOnlineService(database.session, repository)
+
+    accepted, rows = await service.apply_action(
+        7,
+        "education_enrollments",
+        "accept",
+        record_id=71,
+        data={"group_id": 61},
+    )
+
+    assert accepted is not None
+    assert accepted["status"] == "accepted"
+    assert accepted["group_name"] == "English A1"
+    assert set(repository.replacements) == {
+        "education_enrollments",
+        "education_students",
+    }
+    stored_enrollment = repository.payload[(7, "business")][
+        "education_enrollments"
+    ][0]
+    assert stored_enrollment["id"] == rows[0]["id"]
+    assert stored_enrollment["status"] == "accepted"
+    assert stored_enrollment["group_id"] == 61
+    student = repository.payload[(7, "business")]["education_students"][0]
+    assert student["full_name"] == "Ali Valiyev"
+    assert student["group_id"] == 61
+    assert business.cabinet_payload["education_students"] == [student]

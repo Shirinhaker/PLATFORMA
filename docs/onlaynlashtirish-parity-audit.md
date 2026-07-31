@@ -21,8 +21,8 @@ Holatlar:
 - `missing` — monolit ekrani uchun maxsus React View va
   `BusinessOnlineScreen.tsx` case mavjud emas.
 
-Joriy React qamrovi: **19/20 ekran mavjud**. Qat'iy paritet holati:
-**15 migrated, 4 partial, 1 missing**.
+Joriy React qamrovi: **20/20 ekran mavjud**. Qat'iy paritet holati:
+**16 migrated, 4 partial, 0 missing**.
 
 ## 20 ekran inventari
 
@@ -37,7 +37,7 @@ Joriy React qamrovi: **19/20 ekran mavjud**. Qat'iy paritet holati:
 | 7 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalProvidersV1656View`) | `static/index.html:2107, 11637–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
 | 8 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | migrated | `frontend/src/profiles/BusinessMedicalV1656View.tsx` (xizmat ko'rsatuvchi formasi) | `static/index.html:2108, 11638–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
 | 9 | Navbat — `cab-medical-queue` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalQueueV1656View`) | `static/index.html:2109, 11642–11669` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
-| 10 | Kursga yozilishlar — `cab-education-enrollments` | missing | **Yo'q**; React menyu va `BusinessOnlineScreen.tsx` case mavjud emas | `static/index.html:2086, 9138–9141` | **Yo'q** — Blok 3 |
+| 10 | Kursga yozilishlar — `cab-education-enrollments` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessEducationEnrollmentsV1656View.tsx` | `static/index.html:1770, 2086, 5425, 9138–9141, 12005, 12140–12158, 12318`; `api.py:2675–2687, 3406–3438` | `frontend/src/profiles/BusinessEducationEnrollmentsV1656Parity.test.tsx`; `backend/tests/test_business_online_service.py`; `backend/tests/test_business_online_relational_service.py` |
 | 11 | Buyurtmalar — `cab-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2222–2230, 6964–7053` | `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
 | 12 | Xizmat buyurtmalari — `cab-service-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2231–2233, 6964–7053` | `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
 | 13 | Suhbatlar — `chats`, `chat` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`MessagesView`) | `static/index.html:2630–2648, 7272–7489` | `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
@@ -92,6 +92,9 @@ Reactdagi joriy holat:
   monolitdagi 14 navbatli yo'nalishda ko'rinadi; tibbiy yo'nalishda
   `Shifokor/Bemor`, qolganlarida `Xizmat ko‘rsatuvchi/Mijoz` matnlari
   qo'llanadi. Eski tibbiyot kartalari `DIRECTION_MENUS`dan olib tashlandi;
+- `Kursga yozilishlar` kartasi `ONLINE_MENUS` ichida faqat
+  `Ta'lim faoliyati` yo'nalishida ko'rinadi va qizil badge faqat yangi
+  arizalar sonini ko'rsatadi;
 - `BusinessProfileV3.tsx` ushbu kartalarni maxsus `BusinessOnlineScreen`ga,
   u esa uchta v1656 React ekraniga yo'naltiradi;
 - `CAB_PLANS.labels` va `CAB_PLANS.hide`ning to'liq React ekvivalenti hali

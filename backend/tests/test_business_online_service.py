@@ -790,3 +790,129 @@ async def test_medical_offline_status_notifications_and_swap_match_v1656():
     assert users[71].cabinet_payload["notifications"][-1]["body"] == (
         "Yangi navbat raqamingiz: QAB-001."
     )
+
+
+@pytest.mark.asyncio
+async def test_education_enrollments_are_guarded_enriched_and_sorted_like_v1656():
+    profile = business_profile()
+    profile.cabinet_payload.update({
+        "items": [
+            {"id": 51, "name": "Ingliz tili"},
+            {"id": 52, "name": "Matematika"},
+        ],
+        "education_groups": [
+            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
+            {"id": 62, "name": "O'chirilgan", "course_item_id": 51, "status": "deleted"},
+        ],
+        "education_students": [],
+        "education_enrollments": [
+            {"id": 72, "course_item_id": 52, "status": "accepted", "group_id": None},
+            {"id": 71, "course_item_id": 51, "status": "new", "group_id": 61},
+            {"id": 73, "course_item_id": 51, "status": "new", "group_id": None},
+        ],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    with pytest.raises(ApiError) as forbidden:
+        await service.read_resource(7, "education_enrollments")
+    assert forbidden.value.status_code == 403
+    assert forbidden.value.message == (
+        "Bu bo'lim faqat Ta'lim faoliyati yo'nalishi uchun."
+    )
+
+    profile.direction = "Ta'lim faoliyati"
+    groups = await service.read_resource(7, "education_groups")
+    enrollments = await service.read_resource(7, "education_enrollments")
+
+    assert [row["id"] for row in groups] == [61]
+    assert [row["id"] for row in enrollments] == [73, 71, 72]
+    assert enrollments[1]["course_name"] == "Ingliz tili"
+    assert enrollments[1]["group_name"] == "English A1"
+    assert enrollments[2]["course_name"] == "Matematika"
+
+
+@pytest.mark.asyncio
+async def test_education_enrollment_accept_and_reject_match_v1656_student_flow():
+    profile = business_profile()
+    profile.direction = "Ta'lim faoliyati"
+    profile.cabinet_payload.update({
+        "items": [{"id": 51, "name": "Ingliz tili"}],
+        "education_groups": [
+            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
+            {"id": 62, "name": "Boshqa kurs", "course_item_id": 52, "status": "active"},
+        ],
+        "education_students": [],
+        "education_enrollments": [
+            {
+                "id": 71,
+                "course_item_id": 51,
+                "user_id": 70,
+                "customer_name": "Ali Valiyev",
+                "phone": "+998901234567",
+                "note": "Kechki guruh",
+                "status": "new",
+            },
+            {
+                "id": 72,
+                "course_item_id": 51,
+                "user_id": 71,
+                "customer_name": "Vali",
+                "phone": "+998909876543",
+                "note": "",
+                "status": "new",
+            },
+        ],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    with pytest.raises(ApiError) as mismatch:
+        await service.apply_action(
+            7,
+            "education_enrollments",
+            "accept",
+            record_id=71,
+            data={"group_id": 62},
+        )
+    assert mismatch.value.message == "Tanlangan guruh boshqa kursga tegishli."
+
+    accepted, rows = await service.apply_action(
+        7,
+        "education_enrollments",
+        "accept",
+        record_id=71,
+        data={"group_id": 61},
+    )
+    assert accepted is not None
+    assert accepted["status"] == "accepted"
+    assert accepted["group_name"] == "English A1"
+    student = profile.cabinet_payload["education_students"][0]
+    assert student["user_id"] == 70
+    assert student["full_name"] == "Ali Valiyev"
+    assert student["phone"] == "+998901234567"
+    assert student["group_id"] == 61
+    assert student["joined_date"]
+    assert student["note"] == "Kurs arizasi: Kechki guruh"
+    assert student["monthly_fee"] == 0
+    assert student["status"] == "active"
+    assert rows[0]["id"] == 72
+
+    rejected, _ = await service.apply_action(
+        7,
+        "education_enrollments",
+        "reject",
+        record_id=72,
+        data={},
+    )
+    assert rejected is not None
+    assert rejected["status"] == "rejected"
+
+    with pytest.raises(ApiError) as not_new:
+        await service.apply_action(
+            7,
+            "education_enrollments",
+            "reject",
+            record_id=72,
+            data={},
+        )
+    assert not_new.value.status_code == 404
+    assert not_new.value.message == "Yangi ariza topilmadi."

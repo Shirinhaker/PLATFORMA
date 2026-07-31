@@ -18,7 +18,10 @@ export type BusinessOnlineResource =
   | "medical_doctors"
   | "medical_doctor_services"
   | "medical_queue"
-  | "medical_queue_history";
+  | "medical_queue_history"
+  | "education_groups"
+  | "education_students"
+  | "education_enrollments";
 
 export type BusinessOnlineRecord = Record<string, unknown>;
 
