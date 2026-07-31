@@ -273,6 +273,7 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
     order_id = ordered["active_id"]
     orders = profile.cabinet_payload["dining_orders"]
     assert orders[1]["id"] == order_id
+    assert orders[1]["waiter_name"] == "Muhr"
     assert orders[1]["items"] == [{
         "item_id": 21,
         "name": "Tuxum barak",
@@ -300,6 +301,44 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
         "Ichki zakaz hisobi yangilandi",
     ]
     assert profile.dashboard_snapshot["occupied_places"] == 1
+
+
+@pytest.mark.asyncio
+async def test_dining_price_snapshot_matches_v1656_twelve_digit_cap():
+    profile = business_profile()
+    profile.direction = "Umumiy ovqatlanish"
+    profile.cabinet_payload.update({
+        "items": [{
+            "id": 21,
+            "name": "Etalon narx",
+            "price": "1 234 567 890 123 so'm",
+            "stock_type": "ready_food",
+        }],
+        "dining_places": [{
+            "id": 5,
+            "kind": "table",
+            "name": "Stol 1",
+            "seats": 4,
+            "x": 4,
+            "y": 4,
+            "locked": 1,
+        }],
+        "dining_orders": [],
+        "notifications": [],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    ordered, _ = await service.apply_action(
+        7,
+        "dining_places",
+        "create_order",
+        record_id=5,
+        data={"items": [{"item_id": 21, "qty": 1}]},
+    )
+
+    assert ordered is not None
+    assert ordered["total"] == 123456789012
+    assert profile.cabinet_payload["dining_orders"][0]["waiter_name"] == "Muhr"
 
 
 @pytest.mark.asyncio

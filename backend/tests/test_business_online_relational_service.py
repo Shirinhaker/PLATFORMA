@@ -231,6 +231,7 @@ async def test_dining_action_and_delete_persist_all_relational_resources():
     }
     assert business.cabinet_payload["dining_places"] == places
     assert business.cabinet_payload["dining_orders"][0]["total"] == 20000
+    assert business.cabinet_payload["dining_orders"][0]["waiter_name"] == "Muhr"
     assert len(business.cabinet_payload["notifications"]) == 2
 
     repository.replacements.clear()

@@ -89,6 +89,7 @@ export function BusinessDiningV1656View({
 
   function closeOrder() {
     setOrderPlace(null);
+    setPositions({});
     onBackHandlerChange(null);
   }
 

@@ -238,6 +238,7 @@ class BusinessOnlineService:
                 action,
                 record_id=record_id,
                 data=clean,
+                actor_name=str(profile.name or "").strip() or "Rahbar",
             )
             refresh_derived(profile, payload)
             profile.cabinet_payload = payload
@@ -490,6 +491,7 @@ def apply_action(
     *,
     record_id: int | str | None,
     data: dict[str, Any],
+    actor_name: str,
 ) -> dict[str, Any] | None:
     rows = resource_rows(payload, resource)
     now = unix_now()
@@ -547,7 +549,7 @@ def apply_action(
                 "note": str(data.get("note") or "").strip()[:300],
                 "total": total,
                 "waiter_staff_id": None,
-                "waiter_name": "Rahbar",
+                "waiter_name": str(actor_name or "Rahbar")[:80],
                 "problem_open": 0,
                 "kitchen_status": "preparing",
                 "payment_status": "open",
@@ -976,7 +978,7 @@ def integer_or_default(value: Any, default: int) -> int:
 
 def parse_price_amount(value: Any) -> int:
     digits = "".join(character for character in str(value or "") if character.isdigit())
-    return int(digits) if digits else 0
+    return int(digits[:12]) if digits else 0
 
 
 def unix_now() -> int:

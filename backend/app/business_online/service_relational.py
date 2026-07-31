@@ -191,6 +191,7 @@ class BusinessOnlineService:
                 action,
                 record_id=record_id,
                 data=clean,
+                actor_name=str(profile.name or "").strip() or "Rahbar",
             )
             changed = {
                 name

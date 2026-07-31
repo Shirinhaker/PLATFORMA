@@ -355,12 +355,61 @@ describe("v1656 stollar va xonalar pariteti", () => {
       .toHaveBeenCalledWith("items"));
 
     await user.click(screen.getByRole("button", { name: "Menyu" }));
+    await user.click(screen.getByRole("button", { name: "✥ Harakatlantirish" }));
+    const plan = document.querySelector(".dining-plan");
+    const place = document.querySelector(".dining-place");
+    if (!(plan instanceof HTMLElement) || !(place instanceof HTMLElement)) {
+      throw new Error("Zal rejasi yoki stol belgisi topilmadi.");
+    }
+    vi.spyOn(plan, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 500,
+      bottom: 500,
+      left: 0,
+      width: 500,
+      height: 500,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(place, "getBoundingClientRect").mockReturnValue({
+      x: 20,
+      y: 20,
+      top: 20,
+      right: 98,
+      bottom: 78,
+      left: 20,
+      width: 78,
+      height: 58,
+      toJSON: () => ({}),
+    });
+    Object.defineProperty(place, "offsetWidth", { value: 78 });
+    Object.defineProperty(place, "offsetHeight", { value: 58 });
+    const pointerDown = new MouseEvent("pointerdown", {
+      bubbles: true,
+      clientX: 24,
+      clientY: 24,
+    });
+    Object.defineProperty(pointerDown, "pointerId", { value: 1 });
+    fireEvent(place, pointerDown);
+    const pointerMove = new MouseEvent("pointermove", {
+      bubbles: true,
+      clientX: 204,
+      clientY: 204,
+    });
+    Object.defineProperty(pointerMove, "pointerId", { value: 1 });
+    fireEvent(place, pointerMove);
+    expect(place.style.left).toBe("40%");
+
+    await user.click(screen.getByRole("button", { name: "Menyu" }));
     await user.click(screen.getByRole("button", { name: "🛒 Zakaz qilish" }));
 
     expect(screen.getByRole("heading", { name: "Zakaz qilish" }))
       .toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "← Orqaga" }));
     expect(screen.getByText("Zal rejasi")).toBeInTheDocument();
+    expect(document.querySelector<HTMLElement>(".dining-place")?.style.left)
+      .toBe("4%");
     await user.click(screen.getByRole("button", { name: "Menyu" }));
     await user.click(screen.getByRole("button", { name: "🛒 Zakaz qilish" }));
     expect(screen.getByText("Stol 1 — yangi zakaz")).toBeInTheDocument();
