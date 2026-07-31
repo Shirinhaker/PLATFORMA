@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,17 +11,11 @@ import { BusinessProfile } from "./BusinessProfile";
 
 
 const leaflet = vi.hoisted(() => {
-  const listeners = new Map<string, Array<() => void>>();
   const state = { center: { lat: 41.311, lng: 69.28 }, zoom: 14 };
   const map = {
     getCenter: vi.fn(() => ({ ...state.center })),
     getZoom: vi.fn(() => state.zoom),
     invalidateSize: vi.fn(),
-    on: vi.fn((event: string, callback: () => void) => {
-      listeners.set(event, [...(listeners.get(event) ?? []), callback]);
-      return map;
-    }),
-    off: vi.fn(),
     remove: vi.fn(),
     setView: vi.fn((
       point: [number, number] | { lat: number; lng: number },
@@ -36,7 +30,6 @@ const leaflet = vi.hoisted(() => {
   };
   const tileLayer = { addTo: vi.fn() };
   return {
-    listeners,
     map,
     mapFactory: vi.fn(() => map),
     state,
@@ -55,7 +48,6 @@ vi.mock("leaflet", () => ({
 
 beforeEach(() => {
   localStorage.clear();
-  leaflet.listeners.clear();
   leaflet.state.center = { lat: 41.311, lng: 69.28 };
   leaflet.state.zoom = 14;
   vi.clearAllMocks();
@@ -94,10 +86,7 @@ describe("v1656 pickloc parity", () => {
       top: pin?.style.top,
       transform: pin?.style.transform,
     };
-    act(() => {
-      leaflet.state.center = { lat: 37.8389334, lng: 67.5834525 };
-      for (const listener of leaflet.listeners.get("move") ?? []) listener();
-    });
+    leaflet.state.center = { lat: 37.8389334, lng: 67.5834525 };
     expect({
       left: pin?.style.left,
       top: pin?.style.top,

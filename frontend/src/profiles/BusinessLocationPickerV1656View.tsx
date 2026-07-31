@@ -132,7 +132,6 @@ export function BusinessLocationPickerV1656View({
     let disposed = false;
     let sizeTimer: number | undefined;
     let animationFallback: number | undefined;
-    let observer: ResizeObserver | null = null;
     let map: LeafletMap | null = null;
     const syncMapSize = () => {
       window.clearTimeout(sizeTimer);
@@ -161,10 +160,6 @@ export function BusinessLocationPickerV1656View({
       window.addEventListener("resize", syncMapSize);
       window.addEventListener("orientationchange", syncMapSize);
       window.visualViewport?.addEventListener("resize", syncMapSize);
-      observer = typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(syncMapSize);
-      observer?.observe(node);
       animationFallback = window.setTimeout(syncMapSize, 240);
     }).catch(() => {
       if (!disposed) {
@@ -176,7 +171,6 @@ export function BusinessLocationPickerV1656View({
       disposed = true;
       window.clearTimeout(sizeTimer);
       window.clearTimeout(animationFallback);
-      observer?.disconnect();
       screenNode.removeEventListener("animationend", syncMapSize);
       window.removeEventListener("resize", syncMapSize);
       window.removeEventListener("orientationchange", syncMapSize);

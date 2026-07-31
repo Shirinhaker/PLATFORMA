@@ -8,7 +8,6 @@ import {
   initials,
 } from "./business-profile-config";
 import {
-  buildAddrText,
   BusinessLocationPickerV1656View,
   type PicklocPoint,
 } from "./BusinessLocationPickerV1656View";
@@ -322,12 +321,7 @@ export function BusinessProfileEditorV2({ api, profile, onBack, onProfile }: Pro
             next.latitude,
             next.longitude,
           );
-          address = (
-            geocode.address
-            || geocode.display_name
-            || buildAddrText(geocode.address_data ?? {})
-            || address
-          );
+          address = geocode.address || address;
         } catch {
           // Monolit kabi geokodlash ishlamasa ham koordinata saqlanadi.
         }

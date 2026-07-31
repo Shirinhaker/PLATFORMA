@@ -170,8 +170,8 @@ export type BusinessProfilePatch = Partial<Pick<
 
 export type ReverseGeocodeResult = {
   address?: string;
-  display_name?: string;
-  address_data?: Record<string, unknown>;
+  region?: string;
+  district?: string;
 };
 
 export type CabinetSwitch = {
