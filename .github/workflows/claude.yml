@@ -1,0 +1,76 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  # 1-VAZIFA: har bir PR ochilganda yoki yangilanganda avtomatik tekshiruv
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 15"
+          prompt: |
+            Bu PR'ni ko'rib chiq va natijani O'ZBEK TILIDA yoz.
+
+            Loyiha konteksti:
+            - PLATFORMA — FastAPI (Python) backend + React/TypeScript/Vite frontend.
+            - Frontend testlari: vitest (frontend papkasida `npm test`).
+            - Hozirgi asosiy maqsad: eski ishlab turgan monolit sayt (v1656) bilan
+              yangi modullar orasida TO'LIQ PARITET (aynan bir xillik) saqlash.
+
+            Quyidagilarni tekshir va faqat ishonchli, aniq muammolarni yoz:
+
+            1. PARITET: o'zgarish v1656 monolitdagi xatti-harakat, matn, tugma
+               nomlari va CSS klasslaridan chetga chiqmaganmi? Farq bo'lsa,
+               aniq fayl va qatorni ko'rsat.
+            2. TESTLAR: birorta test o'chirilgan, skip qilingan yoki asserti
+               zaiflashtirilganmi? Qoplama toraygan bo'lsa, qaysi ekran
+               testsiz qolganini ayt.
+            3. XAVFSIZLIK: o'chirish/tahrirlash amallarida tasdiqlash bormi,
+               validatsiya yetarlimi, maxfiy ma'lumot sizib chiqmayaptimi.
+            4. REGRESSIYA: mavjud API shartnomalari, maydon nomlari va
+               migratsiya (V7 normalizatsiya) mantig'i buzilmaganmi.
+            5. Tugmalar ishlaydimi — faqat ko'rinish uchun qo'yilgan, hech
+               narsa qilmaydigan element bormi.
+
+            Muhim: mayda uslub e'tirozlarini yozma. Har bir kamchilikni
+            "jiddiy / o'rtacha / kichik" deb belgila va tuzatish yo'lini ko'rsat.
+            Agar hammasi joyida bo'lsa, qisqa tasdiq yoz.
+
+  # 2-VAZIFA: PR yoki issue ichida "@claude" deb yozilganda javob beradi
+  mention:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: "--max-turns 15"
