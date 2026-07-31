@@ -159,12 +159,14 @@ function ActionMenu({
       >
         ⋯
       </button>
-      <div
-        className={open ? "item-menu on" : "item-menu"}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </div>
+      {open && (
+        <div
+          className="item-menu on"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
