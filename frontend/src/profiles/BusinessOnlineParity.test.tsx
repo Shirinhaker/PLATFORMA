@@ -116,7 +116,7 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
 }
 
 
-describe.skip("v1656 online cabinet parity", () => {
+describe("v1656 online cabinet parity", () => {
   it("uses dedicated subscription, payment, item and listing screens", async () => {
     const user = await renderCabinet();
 
