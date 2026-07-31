@@ -6,12 +6,17 @@ from copy import deepcopy
 import pytest
 
 from app.business_online.service_relational import BusinessOnlineService
-from app.profiles.model import BusinessProfile
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 class FakeSession:
-    def __init__(self, profile: BusinessProfile):
+    def __init__(
+        self,
+        profile: BusinessProfile,
+        users: dict[int, UserProfile] | None = None,
+    ):
         self.profile = profile
+        self.users = users or {}
         self.commits = 0
 
     async def scalar(self, statement):
@@ -20,6 +25,8 @@ class FakeSession:
     async def get(self, model, account_id):
         if model is BusinessProfile and account_id == self.profile.account_id:
             return self.profile
+        if model is UserProfile:
+            return self.users.get(account_id)
         return None
 
     async def commit(self):
@@ -30,8 +37,12 @@ class FakeSession:
 
 
 class FakeDatabase:
-    def __init__(self, profile: BusinessProfile):
-        self.session_value = FakeSession(profile)
+    def __init__(
+        self,
+        profile: BusinessProfile,
+        users: dict[int, UserProfile] | None = None,
+    ):
+        self.session_value = FakeSession(profile, users)
 
     @asynccontextmanager
     async def session(self):
@@ -110,6 +121,32 @@ def profile() -> BusinessProfile:
             "following": [{"id": 10, "name": "Hamkor"}],
             "business_reviews": [{"id": 8, "rating": 5}],
         },
+    )
+
+
+def user_profile(account_id: int, name: str) -> UserProfile:
+    return UserProfile(
+        account_id=account_id,
+        name=name,
+        phone="",
+        public_username=f"user{account_id}",
+        region="",
+        district="",
+        mahalla="",
+        latitude=None,
+        longitude=None,
+        location_exact=False,
+        avatar_object_key="",
+        avatar_x=50,
+        avatar_y=50,
+        avatar_zoom=1,
+        followers_count=0,
+        following_count=0,
+        has_business=False,
+        dashboard_snapshot={},
+        recent_activity=[],
+        specialist_profile={},
+        cabinet_payload={"notifications": []},
     )
 
 
@@ -238,3 +275,80 @@ async def test_dining_action_and_delete_persist_all_relational_resources():
     assert await service.delete_record(7, "dining_places", 5) == []
     assert set(repository.replacements) == {"dining_places", "dining_orders"}
     assert business.cabinet_payload["dining_orders"] == []
+
+
+@pytest.mark.asyncio
+async def test_medical_relational_flow_persists_links_history_and_user_notification():
+    business = profile()
+    business.direction = "Tibbiy xizmatlar"
+    business.cabinet_payload.update({
+        "staff": [{
+            "id": 11,
+            "name": "Ali Valiyev",
+            "profession": "Terapevt",
+            "status": "active",
+        }],
+        "items": [{
+            "id": 31,
+            "name": "Qabul",
+            "kind": "service",
+            "queue_enabled": 1,
+        }],
+        "medical_doctors": [],
+        "medical_doctor_services": [],
+        "medical_queue": [{
+            "id": 41,
+            "item_id": 31,
+            "staff_id": 11,
+            "user_id": 70,
+            "patient_name": "Vali",
+            "queue_date": "2026-08-01",
+            "queue_no": 1,
+            "queue_code": "QAB-001",
+            "source": "online",
+            "status": "waiting",
+            "slot_time": "",
+        }],
+        "medical_queue_history": [],
+    })
+    user = user_profile(70, "Vali")
+    database = FakeDatabase(business, {70: user})
+    repository = FakeCabinetRecordRepository()
+    service = BusinessOnlineService(database.session, repository)
+
+    doctor, _ = await service.create_record(
+        7,
+        "medical_doctors",
+        {
+            "staff_id": 11,
+            "item_ids": [31],
+            "specialty": "Kardiolog",
+            "avg_minutes": 20,
+        },
+    )
+    assert doctor["item_ids"] == [31]
+    assert set(repository.replacements) == {
+        "medical_doctors",
+        "medical_doctor_services",
+    }
+    assert business.cabinet_payload["medical_doctor_services"][0]["item_id"] == 31
+
+    repository.replacements.clear()
+    called, _ = await service.apply_action(
+        7,
+        "medical_queue",
+        "set_status",
+        record_id=41,
+        data={"status": "called"},
+    )
+    assert called is not None
+    assert called["status"] == "called"
+    assert set(repository.replacements) == {
+        "medical_queue",
+        "medical_queue_history",
+        "notifications",
+    }
+    assert repository.payload[(70, "user")]["notifications"][0][
+        "action_type"
+    ] == "medical_queue_called"
+    assert user.cabinet_payload["notifications"][0]["medical_queue_id"] == 41

@@ -13,7 +13,12 @@ export type BusinessOnlineResource =
   | "followers"
   | "following"
   | "dining_places"
-  | "dining_orders";
+  | "dining_orders"
+  | "medical_staff"
+  | "medical_doctors"
+  | "medical_doctor_services"
+  | "medical_queue"
+  | "medical_queue_history";
 
 export type BusinessOnlineRecord = Record<string, unknown>;
 
