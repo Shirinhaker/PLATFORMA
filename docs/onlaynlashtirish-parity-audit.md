@@ -68,6 +68,33 @@ holati, kartasi va bo'sh holatini tekshiradigan alohida parity testlari
 Bularning barchasi `BusinessItemsV1656Parity.test.tsx`da qizil testdan
 boshlab tasdiqlangan.
 
+## Claude qayta reviewidan keyingi paritet yopilishlari
+
+Commit `0541a6a` qayta reviewida oldingi 6 ta jiddiy topilmaning barchasi
+yopilgani tasdiqlandi. Qolgan 3 ta o'rtacha va 3 ta kichik topilma ham keyingi
+TDD siklida tuzatildi:
+
+- reklama narxi `static/index.html:13420–13429`dagi kabi hududlar, kunlik
+  soatlar va davomiylik o'zgarganda backend orqali qayta hisoblanadi;
+  v1656 tarifi — bir tuman/soat uchun `20 000 so'm` — serverda qayta
+  hisoblanib, yaratilgan reklama snapshotiga ham yoziladi;
+- reklama viloyat va tuman maydonlari v1656 `UZ_REGIONS` katalogidan olingan
+  bog'langan `<select>`lar bilan almashtirildi;
+- push holati ekran ochilganda `push_preferences` resursidan yuklanadi va
+  checkbox o'zgarganda `set_push_preferences` server amaliga saqlanadi;
+- `Muammoli` buyurtma kartasi `problem_reason` va `problem_note`ni
+  `⚠️ To'lov aniqlashtirilmoqda` bloki ichida monolit matnlari bilan
+  ko'rsatadi;
+- tovar formasi sarlavhalari `Yangi tovar` va `Tovarni tahrirlash`ga aynan
+  moslashtirildi;
+- `Guruhini o'zgartirish` oqimi nafaqat to'liq formani ochishi, balki yangi
+  `group_id` bilan saqlash amalini yuborishi ham test bilan qoplandi.
+
+Bu bandlar `BusinessOnlineClaudeReviewParity.test.tsx`,
+`BusinessItemsV1656Parity.test.tsx`, `BusinessOnlineMutations.test.tsx` va
+`backend/tests/test_business_online_service.py`da tekshiriladi. Qabul qilingan
+yoki hujjatlashtirilgan paritet chekinishi qolmagan.
+
 ## Yo'nalishga moslashuv auditi
 
 Monolit etaloni:

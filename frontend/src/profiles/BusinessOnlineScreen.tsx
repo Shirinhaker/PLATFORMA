@@ -94,7 +94,9 @@ function viewResources(
   if (view === "education-enrollments") {
     return [primary, "education_groups"];
   }
-  if (view === "notifications") return [primary, "notify_filters"];
+  if (view === "notifications") {
+    return [primary, "notify_filters", "push_preferences"];
+  }
   return [primary];
 }
 
@@ -337,17 +339,53 @@ export function BusinessOnlineScreen({
           record_id: recordIdValue,
           payload,
         });
+        if (resource === "advertisements" && name === "calculate_price") {
+          return result.item;
+        }
         setResource(resource, result.items);
+        if (
+          resource === "notifications"
+          && name === "set_push_preferences"
+          && result.item
+        ) {
+          setResource("push_preferences", [result.item]);
+        }
         if (
           !resource.startsWith("dining_")
           && !resource.startsWith("medical_")
           && !resource.startsWith("education_")
         ) {
-          setNotice("Amal bajarildi");
+          setNotice(
+            resource === "notifications" && name === "set_push_preferences"
+              ? payload.enabled
+                ? "Push notification yoqildi ✅"
+                : "Push notification o'chirildi"
+              : "Amal bajarildi",
+          );
         }
         return result.item;
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
+      } else if (
+        resource === "notifications"
+        && name === "set_push_preferences"
+      ) {
+        const preference = {
+          id: 1,
+          enabled: payload.enabled ? 1 : 0,
+          orders_enabled: payload.orders_enabled ? 1 : 0,
+        };
+        setResource("push_preferences", [preference]);
+        if (
+          !resource.startsWith("dining_")
+          && !resource.startsWith("medical_")
+          && !resource.startsWith("education_")
+        ) {
+          setNotice(payload.enabled
+            ? "Push notification yoqildi ✅"
+            : "Push notification o'chirildi");
+        }
+        return preference;
       } else if (
         resource === "subscription_payments"
         && name === "resubmit"
@@ -445,7 +483,13 @@ export function BusinessOnlineScreen({
         && !resource.startsWith("medical_")
         && !resource.startsWith("education_")
       ) {
-        setNotice("Amal bajarildi");
+        setNotice(
+          resource === "notifications" && name === "set_push_preferences"
+            ? payload.enabled
+              ? "Push notification yoqildi ✅"
+              : "Push notification o'chirildi"
+            : "Amal bajarildi",
+        );
       }
       return {};
     } catch (reason) {
@@ -824,6 +868,14 @@ function renderContent(context: RenderContext): ReactNode {
             "start_at",
             "end_at",
           ]}
+          quoteAdvertisement={context.hasActionApi
+            ? (request) => context.action(
+              "advertisements",
+              "calculate_price",
+              undefined,
+              request,
+            )
+            : undefined}
         />
       );
     case "stories":
@@ -855,6 +907,7 @@ function renderContent(context: RenderContext): ReactNode {
         <NotificationsView
           rows={items}
           filters={context.resources.notify_filters ?? []}
+          pushPreference={(context.resources.push_preferences ?? [])[0]}
           busy={shared.busy}
           markAll={() => shared.action(
             "notifications",
@@ -867,6 +920,14 @@ function renderContent(context: RenderContext): ReactNode {
           )}
           createFilter={(record) => shared.create("notify_filters", record)}
           removeFilter={(id) => shared.remove("notify_filters", id)}
+          savePushPreference={async (enabled) => {
+            await context.action(
+              "notifications",
+              "set_push_preferences",
+              undefined,
+              { enabled, orders_enabled: enabled },
+            );
+          }}
         />
       );
     case "followers":

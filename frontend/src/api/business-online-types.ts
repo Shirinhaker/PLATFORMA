@@ -11,6 +11,7 @@ export type BusinessOnlineResource =
   | "stories"
   | "notifications"
   | "notify_filters"
+  | "push_preferences"
   | "followers"
   | "following"
   | "dining_places"

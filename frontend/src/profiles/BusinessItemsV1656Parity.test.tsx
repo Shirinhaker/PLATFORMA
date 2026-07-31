@@ -159,7 +159,7 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
       />,
     );
 
-    expect(screen.getByText("Yangi mahsulot yoki xizmat").closest("section"))
+    expect(screen.getByText("Yangi tovar").closest("section"))
       .toHaveClass("form-wrap");
     expect(screen.getByLabelText("Nomi")).toHaveClass("input");
     expect(screen.getByLabelText("Narxi"))
@@ -236,11 +236,27 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.click(screen.getByRole("button", { name: "banan amallari" }));
     await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
 
-    expect(screen.getByRole("heading", { name: "Mahsulot yoki xizmatni tahrirlash" }))
+    expect(screen.getByRole("heading", { name: "Tovarni tahrirlash" }))
       .toBeInTheDocument();
     expect(screen.getByLabelText("Nomi")).toHaveValue("banan");
     expect(screen.getByLabelText("Narxi")).toHaveValue("25000");
     expect(screen.getByLabelText("Guruh")).toHaveValue("");
+  });
+
+  it("Guruhini o'zgartirish formasidan yangi guruhni saqlaydi", async () => {
+    const user = userEvent.setup();
+    const patch = vi.fn().mockResolvedValue(undefined);
+    render(<StatefulItemsView actions={{ patch }} />);
+
+    await user.click(screen.getByRole("button", { name: "banan amallari" }));
+    await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
+    await user.selectOptions(screen.getByLabelText("Guruh"), "1");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(patch).toHaveBeenCalledWith("items", "12", expect.objectContaining({
+      name: "banan",
+      group_id: "1",
+    }));
   });
 
   it("guruh o'chirish matnini monolitdagi acf-text klassi bilan ko'rsatadi", async () => {

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -275,6 +275,54 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     expect(action).toHaveBeenCalledWith(45, "handoff");
   });
 
+  it("muammoli buyurtmada sabab va izohni monolit matni bilan ko'rsatadi", async () => {
+    render(
+      <OrdersView
+        rows={[{
+          id: 46,
+          title: "Muammoli buyurtma",
+          status: "accepted",
+          problem_open: 1,
+          problem_reason: "receipt_unreadable",
+          problem_note: "Rasm juda xira",
+        }]}
+        filter="active"
+        setFilter={vi.fn()}
+        busy={false}
+        setStatus={vi.fn().mockResolvedValue(undefined)}
+        action={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText("⚠️ To'lov aniqlashtirilmoqda"))
+      .toBeInTheDocument();
+    expect(screen.getByText("Chek rasmi o'qilmaydi"))
+      .toBeInTheDocument();
+    expect(screen.getByText("Izoh: Rasm juda xira"))
+      .toBeInTheDocument();
+  });
+
+  it("push sozlamasini server holatidan ko'rsatadi va o'zgarishni saqlaydi", async () => {
+    const user = userEvent.setup();
+    const savePushPreference = vi.fn().mockResolvedValue(undefined);
+    render(
+      <NotificationsView
+        rows={[]}
+        filters={[]}
+        pushPreference={{ enabled: 0, orders_enabled: 0 }}
+        busy={false}
+        markAll={vi.fn().mockResolvedValue(undefined)}
+        markOne={vi.fn().mockResolvedValue(undefined)}
+        savePushPreference={savePushPreference}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Yoqilgan" });
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    expect(savePushPreference).toHaveBeenCalledWith(true);
+  });
+
   it("e'lon joylashuvini va reklamaning majburiy maydonlarini tekshiradi", async () => {
     const user = userEvent.setup();
     const listing = actions();
@@ -337,6 +385,49 @@ describe("Claude review v1656 interaktiv pariteti", () => {
         targets: [{ level: "republic", region: "", district: "" }],
       }),
     );
+  });
+
+  it("reklama hududlarini katalogdan tanlaydi va narxni backend orqali jonli hisoblaydi", async () => {
+    const user = userEvent.setup();
+    const advertisement = actions();
+    const quoteAdvertisement = vi.fn().mockResolvedValue({
+      district_count: 172,
+      hours_per_day: 24,
+      duration_days: 1,
+      district_hour_rate: 20_000,
+      billable_district_hours: 4_128,
+      total: 82_560_000,
+      currency: "UZS",
+    });
+    render(
+      <CrudEditorView
+        {...advertisement}
+        resource="advertisements"
+        rows={[]}
+        addLabel="+ Reklama"
+        empty="Hozircha reklama yo‘q."
+        fields={["title", "caption"]}
+        quoteAdvertisement={quoteAdvertisement}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "+ Reklama joylashtirish" }));
+    expect(screen.getByLabelText("Reklama viloyati").tagName).toBe("SELECT");
+    expect(screen.getByLabelText("Reklama tumani").tagName).toBe("SELECT");
+    await user.selectOptions(screen.getByLabelText("Hudud darajasi"), "republic");
+    await user.click(screen.getByRole("button", { name: "+ Hududni qo'shish" }));
+
+    await waitFor(() => expect(quoteAdvertisement).toHaveBeenCalledWith({
+      targets: [{ level: "republic", region: "", district: "" }],
+      duration_days: 1,
+      daily_all_day: true,
+      daily_start: "19:00",
+      daily_end: "21:00",
+    }));
+    expect(await screen.findByText(/82[\s\u00a0]560[\s\u00a0]000 so'm/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/172 tuman × 24 soat × 1 kun ×/))
+      .toBeInTheDocument();
   });
 
   it("mijoz reytingini monolit kabi doim beshta yulduz bilan ko'rsatadi", () => {

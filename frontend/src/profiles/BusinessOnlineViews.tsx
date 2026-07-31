@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   BusinessOnlineRecord,
@@ -903,6 +903,19 @@ export function OrdersView({
     } as Record<string, string>)[type] ?? type ?? "—";
   }
 
+  function problemReasonText(value: unknown) {
+    const reasons: Record<string, string> = {
+      not_received: "Pul hisobga tushmadi",
+      amount_short: "To'langan summa kam",
+      receipt_mismatch: "Chek ma'lumoti mos kelmadi",
+      receipt_unreadable: "Chek rasmi o'qilmaydi",
+      wrong_receipt: "Noto'g'ri chek yuborilgan",
+      other: "Boshqa to'lov muammosi",
+    };
+    const key = String(value ?? "");
+    return reasons[key] ?? key;
+  }
+
   return (
     <section>
       <div className="order-tabs-v1656">
@@ -968,6 +981,22 @@ export function OrdersView({
                 )}
                 {recordText(row, "note") && (
                   <div className="idesc">{recordText(row, "note")}</div>
+                )}
+                {Boolean(row.problem_open) && (
+                  <div style={{
+                    marginTop: 9,
+                    padding: 9,
+                    borderRadius: 10,
+                    background: "#FFF7ED",
+                    color: "#9A3412",
+                    fontSize: 12.5,
+                  }}>
+                    <b>⚠️ To'lov aniqlashtirilmoqda</b>
+                    <div>{problemReasonText(row.problem_reason)}</div>
+                    {recordText(row, "problem_note") && (
+                      <div>Izoh: {recordText(row, "problem_note")}</div>
+                    )}
+                  </div>
                 )}
               </div>
               <span className={`tx-amt ${orderStatusClass(status)}`.trim()}>
@@ -1597,21 +1626,28 @@ export function ReviewsView({
 export function NotificationsView({
   rows,
   filters = [],
+  pushPreference,
   busy,
   markAll,
   markOne,
   createFilter,
   removeFilter,
+  savePushPreference,
 }: {
   rows: BusinessOnlineRecord[];
   filters?: BusinessOnlineRecord[];
+  pushPreference?: BusinessOnlineRecord;
   busy: boolean;
   markAll: () => Promise<void>;
   markOne: (id: number | string) => Promise<void>;
   createFilter?: (record: BusinessOnlineRecord) => Promise<void>;
   removeFilter?: (id: number | string) => Promise<void>;
+  savePushPreference?: (enabled: boolean) => Promise<void>;
 }) {
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const serverPushEnabled = pushPreference
+    ? Boolean(pushPreference.enabled) && Boolean(pushPreference.orders_enabled)
+    : true;
+  const [pushEnabled, setPushEnabled] = useState(serverPushEnabled);
   const [formOpen, setFormOpen] = useState(false);
   const [filterDraft, setFilterDraft] = useState<BusinessOnlineRecord>({ cat: "uy" });
   const [deleteFilter, setDeleteFilter] = useState<number | string | null>(null);
@@ -1623,6 +1659,10 @@ export function NotificationsView({
     texnika: ["📱", "Texnika"],
     boshqa: ["📦", "Boshqalar"],
   };
+
+  useEffect(() => {
+    setPushEnabled(serverPushEnabled);
+  }, [serverPushEnabled]);
 
   if (formOpen) {
     return (
@@ -1720,7 +1760,12 @@ export function NotificationsView({
           <input
             type="checkbox"
             checked={pushEnabled}
-            onChange={(event) => setPushEnabled(event.currentTarget.checked)}
+            disabled={busy}
+            onChange={(event) => {
+              const enabled = event.currentTarget.checked;
+              setPushEnabled(enabled);
+              void savePushPreference?.(enabled);
+            }}
           /> Yoqilgan
         </label>
       </div>

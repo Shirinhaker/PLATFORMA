@@ -308,6 +308,75 @@ async def test_notification_filters_can_be_created_and_deleted():
 
 
 @pytest.mark.asyncio
+async def test_advertisement_quote_and_create_use_v1656_hourly_tariff():
+    profile = business_profile()
+    profile.cabinet_payload["advertisements"] = []
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+    request = {
+        "targets": [{"level": "republic", "region": "", "district": ""}],
+        "duration_days": 1,
+        "daily_all_day": True,
+        "daily_start": "19:00",
+        "daily_end": "21:00",
+    }
+
+    quote, rows = await service.apply_action(
+        7,
+        "advertisements",
+        "calculate_price",
+        record_id=None,
+        data=request,
+    )
+    assert rows == []
+    assert quote == {
+        "district_count": 172,
+        "hours_per_day": 24,
+        "duration_days": 1,
+        "district_hour_rate": 20_000,
+        "billable_district_hours": 4_128,
+        "total": 82_560_000,
+        "currency": "UZS",
+    }
+
+    created, _ = await service.create_record(
+        7,
+        "advertisements",
+        {**request, "title": "Aksiya", "image_file": "banner.webp", "price": 1},
+    )
+    assert created["price"] == 82_560_000
+    assert created["district_count"] == 172
+    assert created["district_hour_rate"] == 20_000
+
+
+@pytest.mark.asyncio
+async def test_push_preferences_are_loaded_and_persisted():
+    profile = business_profile()
+    profile.cabinet_payload["push_preferences"] = [{
+        "id": 1,
+        "enabled": 0,
+        "orders_enabled": 0,
+    }]
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    assert await service.read_resource(7, "push_preferences") == [{
+        "id": 1,
+        "enabled": 0,
+        "orders_enabled": 0,
+    }]
+    preference, _ = await service.apply_action(
+        7,
+        "notifications",
+        "set_push_preferences",
+        record_id=None,
+        data={"enabled": True, "orders_enabled": True},
+    )
+    assert preference is not None
+    assert preference["enabled"] == 1
+    assert preference["orders_enabled"] == 1
+    assert profile.cabinet_payload["push_preferences"][0]["enabled"] == 1
+
+
+@pytest.mark.asyncio
 async def test_readonly_resources_cannot_be_created_or_deleted():
     service = BusinessOnlineService(FakeDatabase(business_profile()).session)
 

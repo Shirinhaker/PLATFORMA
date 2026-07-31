@@ -37,6 +37,7 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   stories: [],
   notifications: [{ id: 7, title: "Yangi xabar", is_read: 0 }],
   notify_filters: [],
+  push_preferences: [{ id: 1, enabled: 0, orders_enabled: 0 }],
   followers: [],
   following: [{ id: 9, name: "Hamkor biznes" }],
   dining_places: [],
@@ -147,6 +148,19 @@ describe("business online server mutations", () => {
     await screen.findByRole("heading", { name: "Bildirishnomalarim" });
     await waitFor(() => expect(client.getBusinessOnlineResource)
       .toHaveBeenCalledWith("notifications"));
+    expect(client.getBusinessOnlineResource)
+      .toHaveBeenCalledWith("push_preferences");
+    const pushCheckbox = screen.getByRole("checkbox", { name: "Yoqilgan" });
+    expect(pushCheckbox).not.toBeChecked();
+    await user.click(pushCheckbox);
+    expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
+      "notifications",
+      "set_push_preferences",
+      {
+        record_id: undefined,
+        payload: { enabled: true, orders_enabled: true },
+      },
+    );
     await user.click(screen.getByRole("button", {
       name: "Barchasini o'qish",
     }));

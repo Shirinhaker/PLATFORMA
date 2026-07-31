@@ -130,8 +130,8 @@ export function ItemForm({
     <section className="item-form-card form-wrap">
       <h2>
         {editing
-          ? "Mahsulot yoki xizmatni tahrirlash"
-          : "Yangi mahsulot yoki xizmat"}
+          ? "Tovarni tahrirlash"
+          : "Yangi tovar"}
       </h2>
       <div className="field">
         <label>Rasm — ixtiyoriy</label>

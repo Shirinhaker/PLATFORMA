@@ -107,7 +107,7 @@ describe("business online editing", () => {
     await user.click(screen.getByRole("button", { name: "Eski nom amallari" }));
     await user.click(screen.getByRole("button", { name: "Tahrirlash" }));
     expect(await screen.findByRole("heading", {
-      name: "Mahsulot yoki xizmatni tahrirlash",
+      name: "Tovarni tahrirlash",
     })).toBeInTheDocument();
 
     const name = screen.getByLabelText("Nomi");

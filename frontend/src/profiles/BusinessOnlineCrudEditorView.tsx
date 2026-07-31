@@ -4,6 +4,7 @@ import type {
   BusinessOnlineRecord,
   BusinessOnlineResource,
 } from "../api/business-online-types";
+import { UZBEKISTAN_REGIONS } from "../legacy/public/location-data";
 import {
   recordId,
   recordNumber,
@@ -129,6 +130,7 @@ export function CrudEditorView({
   empty,
   fields,
   extraAction,
+  quoteAdvertisement,
   ...actions
 }: SharedActions & {
   resource: BusinessOnlineResource;
@@ -137,6 +139,9 @@ export function CrudEditorView({
   empty: string;
   fields: string[];
   extraAction?: (row: BusinessOnlineRecord, index: number) => ReactNode;
+  quoteAdvertisement?: (
+    request: BusinessOnlineRecord,
+  ) => Promise<BusinessOnlineRecord | null | void>;
 }) {
   const [openForm, setOpenForm] = useState(false);
   const [draft, setDraft] = useState<BusinessOnlineRecord>({});
@@ -548,7 +553,7 @@ export function CrudEditorView({
               type="button"
               className="btn btn-primary btn-block"
               onClick={() => begin({
-                status: "pending",
+                status: "payment_pending",
                 daily_all_day: 1,
                 daily_start: "19:00",
                 daily_end: "21:00",
@@ -629,6 +634,7 @@ export function CrudEditorView({
             setDraft={setDraft}
             busy={actions.busy}
             error={validationError}
+            quoteAdvertisement={quoteAdvertisement}
             save={saveDraft}
             cancel={() => setOpenForm(false)}
           />
@@ -841,6 +847,7 @@ function AdvertisementForm({
   setDraft,
   busy,
   error,
+  quoteAdvertisement,
   save,
   cancel,
 }: {
@@ -848,21 +855,72 @@ function AdvertisementForm({
   setDraft: (row: BusinessOnlineRecord) => void;
   busy: boolean;
   error: string;
+  quoteAdvertisement?: (
+    request: BusinessOnlineRecord,
+  ) => Promise<BusinessOnlineRecord | null | void>;
   save: () => Promise<void>;
   cancel: () => void;
 }) {
   const desktopInput = useRef<HTMLInputElement | null>(null);
   const mobileInput = useRef<HTMLInputElement | null>(null);
   const [fileError, setFileError] = useState("");
+  const [quoteError, setQuoteError] = useState("");
+  const [quote, setQuote] = useState<BusinessOnlineRecord | null>(null);
+  const quoteAdvertisementRef = useRef(quoteAdvertisement);
+  quoteAdvertisementRef.current = quoteAdvertisement;
   const targets = Array.isArray(draft.targets)
     ? draft.targets.filter((target): target is BusinessOnlineRecord => (
       Boolean(target && typeof target === "object")
     ))
     : [];
   const level = recordText(draft, "target_level") || "district";
+  const selectedRegion = recordText(draft, "target_region")
+    || UZBEKISTAN_REGIONS[0]?.name
+    || "";
+  const districts = UZBEKISTAN_REGIONS.find(
+    (region) => region.name === selectedRegion,
+  )?.districts ?? [];
+  const selectedDistrict = districts.includes(recordText(draft, "target_district"))
+    ? recordText(draft, "target_district")
+    : districts[0] ?? "";
   const hours = Array.from({ length: 24 }, (_, hour) => (
     String(hour).padStart(2, "0") + ":00"
   ));
+  const targetsKey = JSON.stringify(targets);
+  const durationDays = Number(draft.duration_days ?? 1);
+  const dailyAllDay = Boolean(draft.daily_all_day);
+  const dailyStart = recordText(draft, "daily_start") || "00:00";
+  const dailyEnd = recordText(draft, "daily_end") || "00:00";
+
+  useEffect(() => {
+    let current = true;
+    if (!targets.length || !quoteAdvertisementRef.current) {
+      setQuote(null);
+      setQuoteError("");
+      return () => { current = false; };
+    }
+    setQuoteError("");
+    void quoteAdvertisementRef.current({
+      targets,
+      duration_days: durationDays,
+      daily_all_day: dailyAllDay,
+      daily_start: dailyStart,
+      daily_end: dailyEnd,
+    }).then((value) => {
+      if (current && value) setQuote(value);
+    }).catch((reason: unknown) => {
+      if (!current) return;
+      setQuote(null);
+      setQuoteError(reason instanceof Error ? reason.message : "Reklama narxi hisoblanmadi.");
+    });
+    return () => { current = false; };
+  }, [
+    targetsKey,
+    durationDays,
+    dailyAllDay,
+    dailyStart,
+    dailyEnd,
+  ]);
 
   function selectImage(file: File | undefined, key: "image_file" | "mobile_image_file") {
     if (!file) return;
@@ -939,29 +997,50 @@ function AdvertisementForm({
           className="input full"
           aria-label="Hudud darajasi"
           value={level}
-          onChange={(event) => setDraft({ ...draft, target_level: event.currentTarget.value })}
+          onChange={(event) => setDraft({
+            ...draft,
+            target_level: event.currentTarget.value,
+            target_region: selectedRegion,
+            target_district: selectedDistrict,
+          })}
         >
           <option value="district">Tuman kesimida</option>
           <option value="region">Viloyat kesimida</option>
           <option value="republic">Respublika bo'ylab</option>
         </select>
         {level !== "republic" && (
-          <input
+          <select
             className="input"
             aria-label="Reklama viloyati"
-            placeholder="Viloyat"
-            value={recordText(draft, "target_region")}
-            onChange={(event) => setDraft({ ...draft, target_region: event.currentTarget.value })}
-          />
+            value={selectedRegion}
+            onChange={(event) => {
+              const region = event.currentTarget.value;
+              const district = UZBEKISTAN_REGIONS.find(
+                (item) => item.name === region,
+              )?.districts[0] ?? "";
+              setDraft({
+                ...draft,
+                target_region: region,
+                target_district: district,
+              });
+            }}
+          >
+            {UZBEKISTAN_REGIONS.map((region) => (
+              <option value={region.name} key={region.name}>{region.name}</option>
+            ))}
+          </select>
         )}
         {level === "district" && (
-          <input
+          <select
             className="input"
             aria-label="Reklama tumani"
-            placeholder="Tuman"
-            value={recordText(draft, "target_district")}
+            value={selectedDistrict}
             onChange={(event) => setDraft({ ...draft, target_district: event.currentTarget.value })}
-          />
+          >
+            {districts.map((district) => (
+              <option value={district} key={district}>{district}</option>
+            ))}
+          </select>
         )}
         <button
           type="button"
@@ -969,8 +1048,8 @@ function AdvertisementForm({
           onClick={() => {
             const target = {
               level,
-              region: level === "republic" ? "" : recordText(draft, "target_region").trim(),
-              district: level === "district" ? recordText(draft, "target_district").trim() : "",
+              region: level === "republic" ? "" : selectedRegion,
+              district: level === "district" ? selectedDistrict : "",
             };
             if (level !== "republic" && !target.region) return;
             if (level === "district" && !target.district) return;
@@ -1037,8 +1116,12 @@ function AdvertisementForm({
       </label>
       <div className="ad-price-box">
         <div className="idesc">Hisoblangan reklama narxi</div>
-        <div className="price">{v1656Money(recordNumber(draft, "price"))}</div>
-        <div className="idesc">{targets.length ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun` : "Hududni tanlang."}</div>
+        <div className="price">{v1656Money(recordNumber(quote ?? draft, "total", "price"))}</div>
+        <div className="idesc">{quoteError || (quote
+          ? `${Number(quote.district_count ?? 0)} tuman × ${Number(quote.hours_per_day ?? 0)} soat × ${Number(quote.duration_days ?? 1)} kun × ${v1656Money(Number(quote.district_hour_rate ?? 0))}`
+          : targets.length
+            ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun`
+            : "Hududni tanlang.")}</div>
       </div>
       <div className="ad-info">Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama tasdiqlangandan keyin jadval bo'yicha ko'rinadi.</div>
       {fileError && <div className="app-toast on" role="alert">{fileError}</div>}
