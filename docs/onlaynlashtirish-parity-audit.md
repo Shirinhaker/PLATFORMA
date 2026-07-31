@@ -49,6 +49,13 @@ Joriy React qamrovi: **14/20 ekran mavjud**. Qat'iy paritet holati:
 | 19 | Obunachilar — `cab-followers` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`PeopleView`) | `static/index.html:2756–2759, 12054–12060` | `frontend/src/profiles/BusinessOnlineParity.test.tsx`; `frontend/src/profiles/BusinessHeaderFollowCounts.test.tsx` |
 | 20 | Kuzatilayotganlar — `cab-following` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`PeopleView`) | `static/index.html:2761–2764, 12047–12053` | `frontend/src/profiles/BusinessOnlineParity.test.tsx`; `frontend/src/profiles/BusinessOnlineMutations.test.tsx` |
 
+## Obunalar va to'lovlar test qoplamasi
+
+Blok 4 ma'lum kamchiligi №5: `cab-subscriptions` (`Obunalarim`) va
+`cab-payments` (`To'lovlarim`) React Viewlari mavjud, lekin ularning
+monolit paritetini alohida tekshiradigan test qoplamasi qaytarilmagan.
+Blok 4da ikkala ekran uchun avval qizil parity testlari yoziladi.
+
 ## Mahsulot/Xizmatlardagi tasdiqlangan paritet nuqsonlari
 
 `cab-items` React View mavjud, lekin quyidagi to'rtta sabab bilan `partial`:
