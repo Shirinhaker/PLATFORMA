@@ -10,16 +10,21 @@ from app.business_online.service import (
     IMMUTABLE_FIELDS,
     RESOURCE_SPECS,
     apply_action as apply_payload_action,
-    find_record,
-    find_record_index,
+    cascade_after_delete,
+    ensure_resource_direction,
+    find_resource_record,
+    find_resource_record_index,
     locked_profile,
     next_record_id,
     normalized_payload,
     operation_forbidden,
+    prepare_patch_for_resource,
+    prepare_record_for_create,
     refresh_derived,
     resource_rows,
     resource_spec,
     sanitize_mapping,
+    sync_dining_place_activity,
     unix_now,
 )
 from app.cabinet_records.dual_write import sync_json_fallback
@@ -56,6 +61,11 @@ class BusinessOnlineService:
                     "business_profile_not_found",
                     "Biznes profil topilmadi.",
                 )
+            ensure_resource_direction(profile, resource)
+            if resource == "dining_places":
+                payload = await self._hybrid_payload(session, profile)
+                sync_dining_place_activity(payload)
+                return resource_rows(payload, resource)
             rows = await self._resource_rows(
                 session,
                 profile=profile,
@@ -79,8 +89,10 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
+            prepare_record_for_create(resource, clean, rows)
             now = unix_now()
             clean["id"] = next_record_id(rows)
             clean.setdefault("created_at", now)
@@ -111,9 +123,11 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
-            item = find_record(rows, record_id)
+            item = find_resource_record(rows, record_id, resource)
+            prepare_patch_for_resource(resource, item, clean)
             item.update(clean)
             item["updated_at"] = unix_now()
             payload[resource] = rows
@@ -135,11 +149,17 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
-            rows.pop(find_record_index(rows, record_id))
+            deleted = rows.pop(find_resource_record_index(
+                rows,
+                record_id,
+                resource,
+            ))
             payload[resource] = rows
-            await self._persist_resources(session, account_id, payload, {resource})
+            changed = cascade_after_delete(payload, resource, deleted)
+            await self._persist_resources(session, account_id, payload, changed)
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
@@ -159,6 +179,7 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             before = {
                 name: deepcopy(resource_rows(payload, name))
@@ -170,6 +191,7 @@ class BusinessOnlineService:
                 action,
                 record_id=record_id,
                 data=clean,
+                actor_name=str(profile.name or "").strip() or "Rahbar",
             )
             changed = {
                 name

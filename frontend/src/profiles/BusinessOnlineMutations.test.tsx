@@ -38,6 +38,8 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   notifications: [{ id: 7, title: "Yangi xabar", is_read: 0 }],
   followers: [],
   following: [{ id: 9, name: "Hamkor biznes" }],
+  dining_places: [],
+  dining_orders: [],
 };
 
 const profile = {

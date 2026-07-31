@@ -183,3 +183,58 @@ async def test_relational_action_updates_derived_counts_and_json_fallback():
     assert notifications[0]["is_read"] == 1
     assert business.dashboard_snapshot["unread"] == 0
     assert business.cabinet_payload["notifications"] == notifications
+
+
+@pytest.mark.asyncio
+async def test_dining_action_and_delete_persist_all_relational_resources():
+    business = profile()
+    business.direction = "Umumiy ovqatlanish"
+    business.cabinet_payload.update({
+        "items": [{
+            "id": 21,
+            "name": "Tuxum barak",
+            "price": 20000,
+            "unit": "dona",
+            "stock_type": "ready_food",
+        }],
+        "dining_places": [{
+            "id": 5,
+            "kind": "table",
+            "name": "Stol 1",
+            "seats": 4,
+            "x": 4,
+            "y": 4,
+            "locked": 1,
+        }],
+        "dining_orders": [],
+        "notifications": [],
+    })
+    database = FakeDatabase(business)
+    repository = FakeCabinetRecordRepository()
+    service = BusinessOnlineService(database.session, repository)
+
+    place, places = await service.apply_action(
+        7,
+        "dining_places",
+        "create_order",
+        record_id=5,
+        data={"items": [{"item_id": 21, "qty": 1}]},
+    )
+
+    assert place is not None
+    assert place["active_kind"] == "order"
+    assert places[0]["total"] == 20000
+    assert set(repository.replacements) == {
+        "dining_places",
+        "dining_orders",
+        "notifications",
+    }
+    assert business.cabinet_payload["dining_places"] == places
+    assert business.cabinet_payload["dining_orders"][0]["total"] == 20000
+    assert business.cabinet_payload["dining_orders"][0]["waiter_name"] == "Muhr"
+    assert len(business.cabinet_payload["notifications"]) == 2
+
+    repository.replacements.clear()
+    assert await service.delete_record(7, "dining_places", 5) == []
+    assert set(repository.replacements) == {"dining_places", "dining_orders"}
+    assert business.cabinet_payload["dining_orders"] == []

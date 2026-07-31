@@ -21,8 +21,8 @@ Holatlar:
 - `missing` — monolit ekrani uchun maxsus React View va
   `BusinessOnlineScreen.tsx` case mavjud emas.
 
-Joriy React qamrovi: **14/20 ekran mavjud**. Qat'iy paritet holati:
-**10 migrated, 4 partial, 6 missing**.
+Joriy React qamrovi: **16/20 ekran mavjud**. Qat'iy paritet holati:
+**12 migrated, 4 partial, 4 missing**.
 
 ## 20 ekran inventari
 
@@ -32,8 +32,8 @@ Joriy React qamrovi: **14/20 ekran mavjud**. Qat'iy paritet holati:
 | 2 | Obunalar — `cab-subscriptions` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`SubscriptionsView`) | `static/index.html:1894–1934, 11907–11978` | **Yo'q** — Blok 4 ma'lum kamchiligi №5 |
 | 3 | To'lovlar — `cab-payments` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`PaymentsView`) | `static/index.html:1936–1944, 11731–11868` | **Yo'q** — Blok 4 ma'lum kamchiligi №5 |
 | 4 | Mahsulot/Xizmatlar va guruhlar — `cab-items`, `cab-item-form` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessItemsV1656View.tsx`; `frontend/src/profiles/BusinessItemsV1656Forms.tsx` | `static/index.html:1956–1968, 2111–2139, 12716–13108` | `frontend/src/profiles/BusinessItemsV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineEditing.test.tsx` |
-| 5 | Stollar va xonalar — `cab-dining` | missing | **Yo'q**; hozir `DIRECTION_MENUS` kartasi umumiy `CabinetDataView`ga tushadi | `static/index.html:1970–1976, 11531–11616` | **Yo'q** — Blok 1 |
-| 6 | Stol/xona zakazi — `cab-dining-order` | missing | **Yo'q**; `BusinessOnlineScreen.tsx` case mavjud emas | `static/index.html:1978–1980, 11617–11632` | **Yo'q** — Blok 1 |
+| 5 | Stollar va xonalar — `cab-dining` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` | `static/index.html:1970–1976, 11531–11616` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
+| 6 | Stol/xona zakazi — `cab-dining-order` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` (`DiningOrderView`) | `static/index.html:1978–1980, 11617–11632` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
 | 7 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | missing | **Yo'q**; hozirgi `medical-queues` kartasi maxsus View ochmaydi | `static/index.html:2107, 11637–11641` | **Yo'q** — Blok 2 |
 | 8 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | missing | **Yo'q**; `BusinessOnlineScreen.tsx` case mavjud emas | `static/index.html:2108, 11638–11641` | **Yo'q** — Blok 2 |
 | 9 | Navbat — `cab-medical-queue` | missing | **Yo'q**; hozirgi `medical-queues` kartasi umumiy `CabinetDataView`ga tushadi | `static/index.html:2109, 11642–11669` | **Yo'q** — Blok 2 |
@@ -84,18 +84,21 @@ Monolit etaloni:
 
 Reactdagi joriy holat:
 
-- `ONLINE_MENUS` faqat mavjud 14 ekranni qamraydi:
-  `frontend/src/profiles/business-profile-config.ts:245–260`;
-- ovqatlanish va tibbiyot kartalari `DIRECTION_MENUS` ichida, kursga
-  yozilishlar esa umuman yo'q:
-  `frontend/src/profiles/business-profile-config.ts:280–288`;
+- `ONLINE_MENUS` Blok 1dan keyin ovqatlanishning `Stollar va xonalar`
+  kartasini ham qamraydi; u faqat `Umumiy ovqatlanish` yo'nalishida
+  Onlaynlashtirish ichida ko'rinadi:
+  `frontend/src/profiles/business-profile-config.ts:245–261`;
+- tibbiyot kartalari hali `DIRECTION_MENUS` ichida, kursga yozilishlar esa
+  umuman yo'q:
+  `frontend/src/profiles/business-profile-config.ts:281–287`;
 - `BusinessProfileV3.tsx` faqat `ONLINE_MENUS` elementlarini maxsus
   `BusinessOnlineScreen`ga yo'naltiradi; `DIRECTION_MENUS` elementlari
   umumiy `CabinetDataView`ga tushadi:
   `frontend/src/profiles/BusinessProfileV3.tsx:94–103, 198–245`;
-- `CAB_PLANS.labels` va `CAB_PLANS.hide`ning React ekvivalenti mavjud emas;
-  yo'nalishga xos kartalar monolitdagidek Onlaynlashtirish ichida emas,
-  alohida `Yo'nalishga xos bo'limlar` guruhida chiqadi:
+- `CAB_PLANS.labels` va `CAB_PLANS.hide`ning to'liq React ekvivalenti hali
+  mavjud emas; Blok 1dagi ovqatlanish kartasi to'g'ri guruhga ko'chirildi,
+  qolgan yo'nalishga xos kartalar esa hozircha alohida
+  `Yo'nalishga xos bo'limlar` guruhida chiqadi:
   `frontend/src/profiles/BusinessProfileV3.tsx:373–382`.
 
 Shuning uchun Blok 1–3 ekran Viewlarini ko'chirish bilan birga ularning aynan
