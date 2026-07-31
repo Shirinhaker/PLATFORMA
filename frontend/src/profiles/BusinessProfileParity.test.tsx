@@ -87,20 +87,32 @@ describe("v1656 business profile parity", () => {
 
     await openEditor(user);
 
-    expect(screen.getByText("Muhr")).toBeInTheDocument();
+    expect(screen.getByText("Muhr").closest("section"))
+      .toHaveClass("user-profile-card", "koprik-profile-surface");
     expect(screen.getByRole("button", { name: "Biznes rasmini yuklash" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Do‘kon havolasi")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nusxa" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Faoliyat yo‘nalishi")).toHaveValue("Savdo");
+      .toHaveClass("user-avatar-camera");
+    expect(screen.getByText("Do'kon havolasi")).toBeInTheDocument();
+    expect(screen.getByText(
+      "Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.",
+    )).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nusxa" })).toHaveClass("mini-btn");
+    expect(screen.getByText(/3–20 belgi/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Faoliyat yo'nalishi")).toHaveValue("Savdo");
     expect(screen.getByLabelText("Faoliyat turi"))
       .toHaveValue("Oziq-ovqat do'koni");
     expect(screen.getByRole("button", { name: /Xaritada joy belgilash/ }))
-      .toBeInTheDocument();
-    expect(screen.getByText("To‘lov ma’lumotlari")).toBeInTheDocument();
+      .toHaveClass("btn", "btn-outline", "btn-block");
+    expect(screen.getByText("✅ Joy belgilangan")).toBeInTheDocument();
+    expect(screen.getByText("To'lov ma'lumotlari")).toBeInTheDocument();
+    expect(screen.getByText(
+      "Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.",
+    )).toBeInTheDocument();
     expect(screen.getByLabelText("Ish boshlanish vaqti")).toHaveValue("09:00");
     expect(screen.getByLabelText("Ish tugash vaqti")).toHaveValue("20:00");
+    expect(screen.getByRole("button", { name: "Saqlash" }))
+      .toHaveClass("btn", "btn-primary", "btn-block");
 
+    expect(screen.queryByLabelText("Manzil")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Uzunlik")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Ish vaqti (JSON)")).not.toBeInTheDocument();
@@ -134,7 +146,7 @@ describe("v1656 business profile parity", () => {
         work_hours: expect.objectContaining({
           from: "08:30",
           to: "19:15",
-          raw: "08:30-19:15",
+          raw: "08:30–19:15",
         }),
       }),
     );
@@ -153,12 +165,31 @@ describe("v1656 business profile parity", () => {
 
     await openEditor(user);
     await user.selectOptions(
-      screen.getByLabelText("Faoliyat yo‘nalishi"),
+      screen.getByLabelText("Faoliyat yo'nalishi"),
       "Tibbiy xizmatlar",
     );
 
     expect(screen.getByRole("option", { name: "Klinika" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Stomatologiya" }))
       .toBeInTheDocument();
+  });
+
+  it("shows the exact v1656 validation message for an empty business name", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await openEditor(user);
+    await user.clear(screen.getByLabelText("Biznes nomi"));
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(await screen.findByRole("alert"))
+      .toHaveTextContent("Biznes nomini kiriting.");
   });
 });

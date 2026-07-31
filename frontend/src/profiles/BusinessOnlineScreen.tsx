@@ -30,6 +30,7 @@ import {
   SubscriptionsView,
 } from "./BusinessOnlineViews";
 import "./BusinessOnlineScreen.css";
+import "./BusinessExistingOnlineV1656.css";
 
 
 type OnlineApi = Partial<Pick<
@@ -448,11 +449,7 @@ export function BusinessOnlineScreen({
     action,
     setSubscreenBack: handleSubscreenBack,
   });
-  const exactV1656 = [
-    "medical-providers",
-    "medical-queue",
-    "education-enrollments",
-  ].includes(view);
+  const exactV1656 = Boolean(primary);
 
   return (
     <main className="business-online">
@@ -695,17 +692,19 @@ function renderContent(context: RenderContext): ReactNode {
           value={context.messageText}
           setValue={context.setMessageText}
           busy={shared.busy}
-          send={async () => {
-            const value = context.messageText.trim();
-            if (!value) return;
+          send={async (peer, value) => {
             if (context.hasActionApi) {
               await shared.action("messages", "send", undefined, {
                 text: value,
+                receiver_id: Number(peer.id),
+                receiver_kind: peer.kind,
               });
             } else {
               await shared.create("messages", {
                 text: value,
                 sender_kind: "business",
+                receiver_id: Number(peer.id),
+                receiver_kind: peer.kind,
               });
             }
             context.setMessageText("");
@@ -723,9 +722,9 @@ function renderContent(context: RenderContext): ReactNode {
           setReplyId={context.setReplyId}
           setReply={context.setReplyText}
           busy={shared.busy}
-          save={async (id) => {
+          save={async (id, reply) => {
             await shared.action("business_reviews", "reply", id, {
-              reply: context.replyText,
+              reply,
             });
             context.setReplyId(null);
             context.setReplyText("");
@@ -792,14 +791,13 @@ function renderContent(context: RenderContext): ReactNode {
         />
       );
     case "followers":
-      return <PeopleView rows={items} busy={shared.busy} />;
+      return <PeopleView kind="followers" rows={items} busy={shared.busy} />;
     case "following":
       return (
         <PeopleView
+          kind="following"
           rows={items}
           busy={shared.busy}
-          canUnfollow
-          unfollow={(id) => shared.action("following", "unfollow", id)}
         />
       );
     default:

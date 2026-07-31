@@ -63,8 +63,9 @@ function matches(row: BusinessOnlineRecord, query: string): boolean {
 
 function priceText(row: BusinessOnlineRecord): string {
   const raw = row.price ?? row.price_amount ?? "";
-  const numeric = Number(raw || 0);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "Narx kelishiladi";
+  if (raw === null || raw === undefined || String(raw).trim() === "" || raw === 0) {
+    return "Narx kelishiladi";
+  }
   const unit = recordText(row, "unit");
   return `${String(raw)}${unit && unit !== "dona" ? ` / ${unit}` : ""}`;
 }
@@ -113,6 +114,7 @@ function ItemCard({
   open,
   onToggle,
   onEdit,
+  onMove,
   onDelete,
 }: {
   row: BusinessOnlineRecord;
@@ -121,6 +123,7 @@ function ItemCard({
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onMove: () => void;
   onDelete: () => void;
 }) {
   const name = recordText(row, "name", "title") || "Nomsiz";
@@ -150,7 +153,7 @@ function ItemCard({
       {open && (
         <div className="item-menu on">
           <button type="button" onClick={onEdit}>Tahrirlash</button>
-          <button type="button" onClick={onEdit}>Guruhini o'zgartirish</button>
+          <button type="button" onClick={onMove}>Guruhini o'zgartirish</button>
           <button
             type="button"
             className="danger"
@@ -208,6 +211,15 @@ export function ItemsEditorView({
   ...actions
 }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<{
+    resource: "items" | "item_groups";
+    id: number | string;
+    title: string;
+    text: string;
+  } | null>(null);
+  const [moveItem, setMoveItem] = useState<BusinessOnlineRecord | null>(null);
+  const [moveGroupId, setMoveGroupId] = useState("");
   const normalizedQuery = query.trim().toLocaleLowerCase("uz");
   const searchActive = normalizedQuery.length > 0;
   const showAdd = !searchActive;
@@ -261,7 +273,11 @@ export function ItemsEditorView({
 
   async function saveGroup() {
     const name = recordText(actions.draft, "name").trim();
-    if (!name) return;
+    if (!name) {
+      setValidationError("Guruh nomi kiritilishi shart.");
+      return;
+    }
+    setValidationError("");
     const payload = cleanItemDraft({
       ...actions.draft,
       name,
@@ -278,7 +294,11 @@ export function ItemsEditorView({
 
   async function saveItem() {
     const name = recordText(actions.draft, "name").trim();
-    if (!name) return;
+    if (!name) {
+      setValidationError("Nomi kiritilishi shart.");
+      return;
+    }
+    setValidationError("");
     const payload = cleanItemDraft({
       ...actions.draft,
       name,
@@ -298,6 +318,9 @@ export function ItemsEditorView({
 
   return (
     <section className="business-items">
+      {validationError && (
+        <div className="app-toast on" role="alert">{validationError}</div>
+      )}
       <div className="elon-hint item-intro">
         Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida chiqadi.
       </div>
@@ -330,6 +353,7 @@ export function ItemsEditorView({
           type="button"
           className="item-group-add-btn"
           onClick={() => {
+            setValidationError("");
             actions.setDraft({ kind: "product" });
             actions.setForm(groupNew);
           }}
@@ -392,6 +416,7 @@ export function ItemsEditorView({
                     <button
                       type="button"
                       onClick={() => {
+                        setValidationError("");
                         actions.setDraft({ ...group });
                         actions.setForm(groupEdit);
                         setOpenMenu(null);
@@ -403,10 +428,15 @@ export function ItemsEditorView({
                       type="button"
                       className="danger"
                       disabled={actions.busy}
-                      onClick={() => void actions.remove(
-                        "item_groups",
-                        block.id as number | string,
-                      )}
+                      onClick={() => {
+                        setOpenMenu(null);
+                        setConfirmDelete({
+                          resource: "item_groups",
+                          id: block.id as number | string,
+                          title: "Guruhni o'chirish",
+                          text: `'${groupName}' guruhi o'chirilsinmi?\n\nIchidagi tovarlar o'chmaydi, Guruhsiz bo'limiga o'tadi.`,
+                        });
+                      }}
                     >
                       O'chirish
                     </button>
@@ -428,7 +458,20 @@ export function ItemsEditorView({
                         openMenu === menu ? null : menu,
                       )}
                       onEdit={() => editItem(row)}
-                      onDelete={() => void actions.remove("items", id)}
+                      onMove={() => {
+                        setOpenMenu(null);
+                        setMoveItem(row);
+                        setMoveGroupId(groupIdOf(row));
+                      }}
+                      onDelete={() => {
+                        setOpenMenu(null);
+                        setConfirmDelete({
+                          resource: "items",
+                          id,
+                          title: "Tovarni o'chirish",
+                          text: "Bu tovar o'chirilsinmi?",
+                        });
+                      }}
                     />
                   );
                 })}
@@ -451,6 +494,84 @@ export function ItemsEditorView({
         })}
         {!blocks.length && <EmptyState query={query} kind={kind} />}
       </div>
+      {moveItem && (
+        <>
+          <div className="app-modal-back on" aria-hidden="true" />
+          <div className="app-confirm on" role="dialog" aria-modal="true">
+            <div className="acf-title">Guruhini o'zgartirish</div>
+            <label>
+              Guruh
+              <select
+                className="input"
+                aria-label="Guruh"
+                value={moveGroupId}
+                onChange={(event) => setMoveGroupId(event.currentTarget.value)}
+              >
+                <option value="">Guruhsiz</option>
+                {groups.map((group, index) => {
+                  const id = recordId(group, index);
+                  return (
+                    <option key={String(id)} value={String(id)}>
+                      {recordText(group, "name", "title") || "Guruh"}
+                      {" — "}
+                      {itemKind(group) === "service" ? "Xizmat" : "Mahsulot"}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setMoveItem(null)}>
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                className="acf-ok"
+                disabled={actions.busy}
+                onClick={() => {
+                  const id = recordId(moveItem);
+                  void actions.patch("items", id, {
+                    group_id: moveGroupId ? Number(moveGroupId) : null,
+                  }).then(() => setMoveItem(null));
+                }}
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      {confirmDelete && (
+        <>
+          <button
+            type="button"
+            className="app-modal-back on"
+            aria-label="Bekor qilish"
+            onClick={() => setConfirmDelete(null)}
+          />
+          <div className="app-confirm on" role="dialog" aria-modal="true">
+            <div className="acf-title">{confirmDelete.title}</div>
+            <p>{confirmDelete.text}</p>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setConfirmDelete(null)}>
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                className="acf-ok danger"
+                disabled={actions.busy}
+                onClick={() => {
+                  const pending = confirmDelete;
+                  void actions.remove(pending.resource, pending.id)
+                    .then(() => setConfirmDelete(null));
+                }}
+              >
+                O'chirish
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

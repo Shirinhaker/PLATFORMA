@@ -288,9 +288,10 @@ describe("profile cabinets", () => {
     expect(screen.getByText("Onlaynlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Tizimlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Ma’muriyat")).toBeInTheDocument();
+    expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
     await user.click(screen.getByRole(
       "button",
-      { name: /Mahsulot va xizmatlar/ },
+      { name: /Mahsulotlar/ },
     ));
     expect(await screen.findByText("Muhr")).toBeInTheDocument();
     expect(screen.getByText("Tayyor mahsulotlar")).toBeInTheDocument();
