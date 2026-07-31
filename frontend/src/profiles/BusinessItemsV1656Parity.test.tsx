@@ -62,7 +62,7 @@ function renderView(overrides: Partial<Parameters<typeof ItemsEditorView>[0]> = 
 }
 
 
-describe.skip("v1656 mahsulot va xizmatlar pariteti", () => {
+describe("v1656 mahsulot va xizmatlar pariteti", () => {
   it("guruhlar va Guruhsiz yozuvlarni aynan monolit sectionlarida ko'rsatadi", async () => {
     const user = userEvent.setup();
     renderView();
