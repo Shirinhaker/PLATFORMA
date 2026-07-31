@@ -33,6 +33,7 @@ const rows = [
     kind: "product",
     group_id: null,
     price: 25000,
+    unit: "kg",
     description: "",
   },
   {
@@ -62,7 +63,7 @@ function renderView(overrides: Partial<Parameters<typeof ItemsEditorView>[0]> = 
 
 
 describe("v1656 mahsulot va xizmatlar pariteti", () => {
-  it("guruhlar va Guruhsiz yozuvlarni aynan monolit sectionlarida ko‘rsatadi", async () => {
+  it("guruhlar va Guruhsiz yozuvlarni aynan monolit sectionlarida ko'rsatadi", async () => {
     const user = userEvent.setup();
     renderView();
 
@@ -70,31 +71,32 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     expect(screen.getByText("Mahsulot guruhi · 1 ta")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Guruhsiz" })).toBeInTheDocument();
     expect(screen.getByText("Guruh tanlanmagan · 2 ta")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Tovar qo‘shish" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Tovar qo'shish" })).toHaveLength(2);
+    expect(screen.getByText("25000 / kg")).toBeInTheDocument();
     expect(screen.getByText("Narx kelishiladi")).toBeInTheDocument();
     expect(screen.getAllByText("Xizmat")).toHaveLength(2);
-    expect(screen.getAllByText("Izoh yo‘q")).toHaveLength(3);
+    expect(screen.getAllByText("Izoh yo'q")).toHaveLength(3);
 
     await user.click(screen.getByRole("button", { name: "stomatolog amallari" }));
     expect(screen.getByRole("button", { name: "Tahrirlash" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Guruhini o‘zgartirish" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "O‘chirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guruhini o'zgartirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
   });
 
-  it("guruh menyusida monolitdagi nomlarni ko‘rsatadi", async () => {
+  it("guruh menyusida monolitdagi nomlarni ko'rsatadi", async () => {
     const user = userEvent.setup();
     renderView();
 
     await user.click(screen.getByRole("button", { name: "gighi amallari" }));
-    expect(screen.getByRole("button", { name: "Nomini o‘zgartirish" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "O‘chirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nomini o'zgartirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
   });
 
-  it("qidiruv paytida monolit kabi qo‘shish tugmalarini yashiradi", () => {
+  it("qidiruv paytida monolit kabi qo'shish tugmalarini yashiradi", () => {
     renderView({ query: "stomatolog" });
 
-    expect(screen.queryByRole("button", { name: "+ Guruh qo‘shish" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Tovar qo‘shish" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Guruh qo'shish" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tovar qo'shish" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "gighi" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Guruhsiz" })).toBeInTheDocument();
     expect(screen.getByText("Guruh tanlanmagan · 1 ta")).toBeInTheDocument();
