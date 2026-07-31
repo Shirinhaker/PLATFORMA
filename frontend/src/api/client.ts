@@ -27,6 +27,7 @@ import type {
   PublicSearchParams,
   PublicSearchResponse,
   RegistrationStart,
+  ReverseGeocodeResult,
   SessionIdentity,
   UploadGrant,
   UploadGrantRequest,
@@ -221,6 +222,17 @@ export class ApiClient {
 
   updateBusinessProfile(body: BusinessProfilePatch): Promise<BusinessProfile> {
     return this.request("PUT", "/api/v1/business-profile", body, true);
+  }
+
+  reverseGeocode(
+    latitude: number,
+    longitude: number,
+  ): Promise<ReverseGeocodeResult> {
+    const query = new URLSearchParams({
+      lat: String(latitude),
+      lng: String(longitude),
+    });
+    return this.request("GET", `/api/geocode?${query.toString()}`);
   }
 
   getBusinessOnlineResource(

@@ -221,8 +221,7 @@
 .business-profile-form input,
 .business-profile-form textarea,
 .business-profile-form select,
-.business-payment-section input,
-.business-map-modal input {
+.business-payment-section input {
   width: 100%;
   min-height: 44px;
   padding: 9px 11px;
@@ -419,107 +418,6 @@
   width: 100%;
 }
 
-.business-map-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 5000;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: rgb(3 15 12 / 65%);
-}
-
-.business-map-modal__card {
-  width: min(720px, 100%);
-  max-height: calc(100vh - 32px);
-  padding: 16px;
-  overflow: auto;
-  border-radius: 20px;
-  background: var(--koprik-card);
-  box-shadow: 0 20px 70px rgb(0 0 0 / 30%);
-}
-
-.business-map-modal__card > header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.business-map-modal__card h2,
-.business-map-modal__card p {
-  margin: 0;
-}
-
-.business-map-modal__card h2 {
-  font-size: 21px;
-}
-
-.business-map-modal__card header p {
-  margin-top: 4px;
-  color: var(--koprik-soft);
-  font-size: 12px;
-}
-
-.business-map-modal__card header > button {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 50%;
-  color: var(--koprik-ink);
-  background: var(--koprik-primary-tint);
-  font-size: 20px;
-}
-
-.business-map-modal__map {
-  height: min(52vh, 410px);
-  margin-top: 14px;
-  border-radius: 14px;
-  background: #e9efeb;
-}
-
-.business-map-modal__fallback {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-  margin-top: 12px;
-}
-
-.business-map-modal__fallback label {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.business-map-modal__coordinates {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 11px;
-  color: var(--koprik-soft);
-  font-size: 12px;
-}
-
-.business-map-modal__coordinates button {
-  min-height: 38px;
-  padding: 8px 12px;
-  color: var(--koprik-primary);
-  background: var(--koprik-primary-tint);
-}
-
-.business-map-modal__card footer {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.business-map-modal__card footer button {
-  min-height: 44px;
-}
-
 .business-logo-lightbox {
   position: fixed;
   inset: 0;
@@ -593,13 +491,4 @@
     text-align: center;
   }
 
-  .business-map-modal__fallback,
-  .business-map-modal__card footer {
-    grid-template-columns: 1fr;
-  }
-
-  .business-map-modal__coordinates {
-    align-items: stretch;
-    flex-direction: column;
-  }
 }

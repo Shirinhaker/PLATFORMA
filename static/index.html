@@ -2510,8 +2510,8 @@
       <!-- XARITADA JOY TANLASH -->
       <section class="screen" data-screen="pickloc">
         <div style="position:relative">
-          <div id="pickMap" style="width:100%;height:calc(100vh - 180px);min-height:340px;background:var(--map-land)"></div>
-          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none">📍</div>
+          <div id="pickMap" style="width:100%;height:calc(100vh - 180px);height:calc(100dvh - 180px);min-height:340px;background:var(--map-land)"></div>
+          <div id="pickPin" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;font-size:40px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));pointer-events:none">📍</div>
           <div style="position:absolute;left:0;right:0;top:12px;text-align:center;z-index:500;pointer-events:none">
             <span style="background:var(--card);color:var(--ink);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:var(--shadow)">Xaritani suring — markerni joyga to'g'rilang</span>
           </div>
@@ -13631,6 +13631,7 @@
   var PMAP = null;
   var pickedLatLng = { be:null, ue:null, bp:null };   // har forma uchun tanlangan koordinata
   var pickTarget = null;                       // 'be' yoki 'ue'
+  var pickSizeTimer = null;
 
   function safeNum(v){
     var n = Number(v);
@@ -13667,6 +13668,26 @@
       return normalizeLatLng(o.lat, o.lng);
     }catch(e){ return null; }
   }
+  function syncPickerSize(){
+    if(!PMAP || current!=="pickloc") return;
+    if(pickSizeTimer) clearTimeout(pickSizeTimer);
+    pickSizeTimer = setTimeout(function(){
+      try{
+        // Marker uchi konteyner markazida. O'lcham yangilanganda shu geografik
+        // markazni saqlab, xaritani marker ostiga qayta tekislaymiz.
+        var center = PMAP.getCenter();
+        var zoom = PMAP.getZoom();
+        PMAP.invalidateSize({pan:false});
+        PMAP.setView(center, zoom, {animate:false});
+      }catch(e){}
+    }, 40);
+  }
+  var pickScreen = document.querySelector('[data-screen="pickloc"]');
+  if(pickScreen) pickScreen.addEventListener("animationend", syncPickerSize);
+  window.addEventListener("resize", syncPickerSize);
+  window.addEventListener("orientationchange", syncPickerSize);
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", syncPickerSize);
+
   function openPicker(prefix){
     pickTarget = prefix;
     if(typeof L === "undefined"){ showMsg("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring."); return; }
@@ -13688,7 +13709,9 @@
       } else {
         PMAP.setView(startC, 14);
       }
-      setTimeout(function(){ try{ PMAP.invalidateSize(); }catch(e){} }, 150);
+      // .screen fade 220ms davom etadi; animationend asosiy signal, bu esa
+      // animatsiya o'chirilgan brauzerlar uchun xavfsiz zaxira.
+      setTimeout(syncPickerSize, 240);
     }, 60);
   }
   function setPicked(prefix, lat, lng){
