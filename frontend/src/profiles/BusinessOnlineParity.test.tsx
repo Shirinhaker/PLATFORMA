@@ -136,8 +136,8 @@ describe("v1656 online cabinet parity", () => {
     await back(user);
     await user.click(screen.getByRole("button", { name: /Mahsulot va xizmatlar/ }));
     expect(await screen.findByPlaceholderText("Tovar qidirish...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Guruh/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Mahsulot\/xizmat/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /\+ Guruh qo‘shish/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tovar qo‘shish" })).toBeInTheDocument();
     expect(screen.getByText("Muhr")).toBeInTheDocument();
 
     await back(user);
