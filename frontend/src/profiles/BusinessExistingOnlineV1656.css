@@ -153,6 +153,9 @@
 .msg { position: relative; max-width: 82%; padding: 10px 38px 7px 11px; border-radius: 15px; background: var(--koprik-card); box-shadow: var(--koprik-shadow); }
 .msg.me { justify-self: end; color: #fff; background: var(--koprik-primary); }
 .msg-time { display: block; margin-top: 5px; font-size: 10px; opacity: .72; }
+.order-chat-reply-preview { padding: 7px 9px; margin-bottom: 6px; border-left: 3px solid currentcolor; border-radius: 8px; background: rgb(255 255 255 / 16%); font-size: 11px; }
+.order-chat-reply-preview b { display: block; margin-bottom: 2px; }
+.order-chat-deleted { font-style: italic; opacity: .75; }
 .business-online .order-msg-menu-btn { position: absolute; top: 5px; right: 6px; width: 27px; min-height: 27px; padding: 0; border-radius: 50%; color: inherit; background: rgb(0 0 0 / 7%); }
 .chat-compose { position: sticky; bottom: 0; z-index: 20; padding: 9px 0 10px; border-top: 1px solid var(--koprik-line); background: var(--koprik-card); }
 .chat-attach-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 38px; margin-bottom: 8px; border: 1.5px dashed var(--koprik-primary); border-radius: 13px; color: var(--koprik-primary); background: var(--koprik-primary-tint); font-size: 13px; font-weight: 800; }
@@ -161,6 +164,16 @@
 .chat-input { min-width: 0; flex: 1; padding: 11px 16px; border: 1px solid var(--koprik-line); border-radius: 22px; color: var(--koprik-ink); background: var(--koprik-bg); }
 .business-online .chat-send { display: grid; place-items: center; flex: none; width: 46px; height: 46px; padding: 0; border-radius: 50%; }
 .chat-send svg { width: 20px; height: 20px; fill: none; stroke: currentcolor; stroke-width: 2.2; }
+.order-chat-state { display: none; position: relative; padding: 9px 38px 9px 11px; margin-top: 9px; border: 1px solid var(--koprik-line); border-radius: 13px; color: var(--koprik-primary); background: var(--koprik-primary-tint); font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+.order-chat-state.on { display: block; }
+.order-chat-state.edit { color: #8a5a06; background: var(--koprik-amber-tint); }
+.order-chat-state small { display: block; overflow: hidden; margin-top: 2px; color: var(--koprik-soft); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.order-chat-state button { position: absolute; top: 50%; right: 7px; width: 26px; min-height: 26px; padding: 0; border: 0; border-radius: 50%; color: inherit; background: rgb(0 0 0 / 10%); transform: translateY(-50%); }
+.order-chat-action-menu { display: none; position: fixed; bottom: 16px; left: 50%; z-index: 4900; width: calc(100% - 32px); max-width: 388px; padding: 8px; border: 1px solid var(--koprik-line); border-radius: 18px; background: var(--koprik-card); box-shadow: var(--koprik-shadow); transform: translateX(-50%); }
+.order-chat-action-menu.on { display: block; }
+.business-online .order-chat-action-menu button { width: 100%; height: 44px; border: 0; color: var(--koprik-ink); background: transparent; font-weight: 700; text-align: left; }
+.business-online .order-chat-action-menu button.danger { color: #dc2626; }
+.business-online .acf-text { margin-bottom: 16px; color: var(--koprik-ink); font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; }
 
 .business-review-summary { align-items: center; margin-bottom: 12px; }
 .business-review-average { font-size: 28px; font-weight: 850; }
@@ -189,6 +202,10 @@
 .notify-divider { height: 1px; margin: 18px 0; background: var(--koprik-line); }
 .notify-filter-title { font-size: 18px; }
 .notify-filter-empty { margin-top: 14px; }
+.notify-filter-form { position: relative; z-index: 1; }
+.notify-filter-prices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; }
+.notify-filter-list { display: grid; gap: 9px; }
+.notify-filter-list .panel-x { margin-left: auto; color: #dc2626; background: transparent; }
 .list-sub { margin: 8px 0 10px; color: var(--koprik-soft); font-size: 12px; }
 
 .my-stories-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -204,6 +221,31 @@
 .my-story-actions { display: flex; gap: 6px; margin-top: 10px; }
 .my-story-actions button { min-height: 34px; padding: 6px 9px; }
 .my-story-actions .danger { color: #dc2626; background: #fee2e2; }
+.story-layer,
+.story-viewer { display: none; position: fixed; inset: 0; z-index: 5000; padding: 18px; background: rgb(2 6 23 / 72%); }
+.story-layer.on,
+.story-viewer.on { display: grid; place-items: center; }
+.story-sheet { width: min(100%, 440px); max-height: calc(100vh - 36px); overflow: auto; padding: 16px; border-radius: 20px; color: var(--koprik-ink); background: var(--koprik-card); }
+.story-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.story-sheet-title { font-size: 18px; font-weight: 850; }
+.story-text-btn { color: var(--koprik-primary); background: transparent; }
+.story-source-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.story-source-btn { min-height: 90px; color: var(--koprik-primary); background: var(--koprik-primary-tint); }
+.story-source-btn small { display: block; margin-top: 5px; color: var(--koprik-soft); }
+.story-compose-fields { display: none; margin-top: 12px; }
+.story-compose-fields.on { display: block; }
+.story-upload-error { display: none; margin: 10px 0; color: #dc2626; }
+.story-upload-error.on { display: block; }
+.story-stage { position: relative; width: min(100%, 440px); min-height: 480px; overflow: hidden; border-radius: 20px; color: #fff; background: #020617; }
+.story-viewer-media img,
+.story-viewer-media video { width: 100%; min-height: 480px; max-height: 80vh; object-fit: contain; }
+.story-viewer-close { position: absolute; top: 12px; right: 12px; z-index: 1; width: 38px; min-height: 38px; padding: 0; border-radius: 50%; color: #fff; background: rgb(0 0 0 / 45%); }
+.story-viewer-caption { position: absolute; right: 16px; bottom: 16px; left: 16px; text-shadow: 0 1px 4px #000; }
+.ad-targets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ad-target-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border-radius: 999px; color: var(--koprik-primary); background: var(--koprik-primary-tint); font-size: 12px; }
+.ad-target-chip button { min-height: 22px; padding: 0 4px; color: inherit; background: transparent; }
+.ad-all-day { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border: 1px solid var(--koprik-line); border-radius: 13px; background: var(--koprik-card); }
+.ad-daily-times { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
 
 @media (max-width: 760px) {
   .subscription-plan-grid,

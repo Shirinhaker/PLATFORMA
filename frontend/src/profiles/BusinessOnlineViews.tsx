@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   BusinessOnlineRecord,
@@ -375,11 +375,16 @@ export function PaymentsView({
   rows,
   loading,
   refresh,
+  resubmit,
 }: {
   rows: BusinessOnlineRecord[];
   loading: boolean;
   refresh: () => void;
+  resubmit?: (id: number | string, file: File) => Promise<void>;
 }) {
+  const receiptInputs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [receipts, setReceipts] = useState<Record<string, File>>({});
+  const [message, setMessage] = useState("");
   function serviceLabel(row: BusinessOnlineRecord) {
     const service = recordText(row, "service_type", "service");
     const plan = recordText(row, "plan_code", "plan");
@@ -402,6 +407,7 @@ export function PaymentsView({
   }
   return (
     <section className="form-wrap">
+      {message && <div className="app-toast on" role="status">{message}</div>}
       <div className="lead">To‘lovlarim</div>
       <div className="lead-sub">
         Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.
@@ -441,10 +447,58 @@ export function PaymentsView({
               )}
               {status === "rejected" && (
                 <>
-                  <button type="button" className="btn btn-outline btn-block">
-                    Yangi kvitansiya tanlash
+                  <input
+                    ref={(node) => {
+                      receiptInputs.current[String(recordId(row, index))] = node;
+                    }}
+                    type="file"
+                    hidden
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      if (!file) return;
+                      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)
+                        || file.size > 5 * 1024 * 1024) {
+                        event.currentTarget.value = "";
+                        setMessage("JPG, PNG yoki WEBP; maksimum 5 MB.");
+                        return;
+                      }
+                      setMessage("");
+                      setReceipts((current) => ({
+                        ...current,
+                        [String(recordId(row, index))]: file,
+                      }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-block"
+                    onClick={() => receiptInputs.current[String(recordId(row, index))]?.click()}
+                  >
+                    {receipts[String(recordId(row, index))]
+                      ? "Kvitansiya tanlandi ✅"
+                      : "Yangi kvitansiya tanlash"}
                   </button>
-                  <button type="button" className="btn btn-primary btn-block">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    disabled={loading}
+                    onClick={async () => {
+                      const id = recordId(row, index);
+                      const file = receipts[String(id)];
+                      if (!file) {
+                        setMessage("Yangi kvitansiyani tanlang.");
+                        return;
+                      }
+                      await resubmit?.(id, file);
+                      setReceipts((current) => {
+                        const next = { ...current };
+                        delete next[String(id)];
+                        return next;
+                      });
+                      setMessage("Kvitansiya qayta yuborildi ✅");
+                    }}
+                  >
                     Qayta yuborish
                   </button>
                 </>
@@ -762,13 +816,23 @@ export function OrdersView({
   setFilter,
   busy,
   setStatus,
+  action,
 }: {
   rows: BusinessOnlineRecord[];
   filter: OrderFilter;
   setFilter: (value: OrderFilter) => void;
   busy: boolean;
   setStatus: (id: number | string, status: string) => Promise<void>;
+  action?: (
+    id: number | string,
+    name: "report_problem" | "handoff",
+    payload?: BusinessOnlineRecord,
+  ) => Promise<void>;
 }) {
+  const [problemOrder, setProblemOrder] = useState<number | string | null>(null);
+  const [problemReason, setProblemReason] = useState("not_received");
+  const [problemNote, setProblemNote] = useState("");
+  const [handoffOrder, setHandoffOrder] = useState<number | string | null>(null);
   const activeStatuses = new Set([
     "new", "accepted", "preparing", "ready", "tayyor",
     "courier_assigned", "courier_arrived_store", "handoff_waiting_seller",
@@ -957,23 +1021,62 @@ export function OrdersView({
               </div>
             )}
             {status === "accepted" && !row.problem_open && (
-              <button
-                type="button"
-                className="mini-btn danger"
-                disabled={busy}
-                onClick={() => void setStatus(id, "cancelled")}
-              >
-                Bekor qilish
-              </button>
+              <div className="order-card-actions">
+                {["submitted", "recheck", "disputed"].includes(
+                  recordText(row, "payment_status"),
+                ) && (
+                  <button
+                    type="button"
+                    className="mini-btn warning"
+                    disabled={busy}
+                    onClick={() => {
+                      setProblemReason("not_received");
+                      setProblemNote("");
+                      setProblemOrder(id);
+                    }}
+                  >
+                    ⚠️ To'lov muammosi
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="mini-btn danger"
+                  disabled={busy}
+                  onClick={() => void setStatus(id, "cancelled")}
+                >
+                  Bekor qilish
+                </button>
+              </div>
             )}
             {status === "preparing" && (
               <button
                 type="button"
                 className="mini-btn success"
                 disabled={busy}
-                onClick={() => void setStatus(id, "ready")}
+                onClick={() => void setStatus(id, "tayyor")}
               >
                 ✅ Buyurtma tayyor
+              </button>
+            )}
+            {status === "handoff_waiting_seller" && (
+              <button
+                type="button"
+                className="mini-btn success"
+                disabled={busy}
+                onClick={() => setHandoffOrder(id)}
+              >
+                📦 Dostavkachiga topshirdim
+              </button>
+            )}
+            {["ready", "tayyor"].includes(status)
+              && recordText(row, "order_type") === "pickup" && (
+              <button
+                type="button"
+                className="mini-btn success"
+                disabled={busy}
+                onClick={() => setHandoffOrder(id)}
+              >
+                🏪 Buyurtmachiga topshirdim
               </button>
             )}
             <div className="idesc order-card-hint">
@@ -990,6 +1093,93 @@ export function OrdersView({
           </div>
         )}
       </div>
+      {problemOrder !== null && (
+        <>
+          <button
+            type="button"
+            className="sheet-backdrop on"
+            aria-label="Muammo oynasini yopish"
+            onClick={() => setProblemOrder(null)}
+          />
+          <div className="order-sheet on" role="dialog" aria-modal="true">
+            <button
+              type="button"
+              className="order-close"
+              aria-label="Yopish"
+              onClick={() => setProblemOrder(null)}
+            >×</button>
+            <div className="lead">To'lov bo'yicha muammo</div>
+            <div className="lead-sub">
+              Sababni tanlang. Muammo hal bo'lmaguncha tayyorlash, dostavka va yakunlash bloklanadi.
+            </div>
+            <label className="field">Muammo sababi
+              <select
+                className="input"
+                value={problemReason}
+                onChange={(event) => setProblemReason(event.currentTarget.value)}
+              >
+                <option value="not_received">Pul hisobga tushmadi</option>
+                <option value="amount_short">To'langan summa kam</option>
+                <option value="receipt_mismatch">Chek ma'lumoti mos kelmadi</option>
+                <option value="receipt_unreadable">Chek rasmi o'qilmaydi</option>
+                <option value="wrong_receipt">Noto'g'ri chek yuborilgan</option>
+                <option value="other">Boshqa muammo</option>
+              </select>
+            </label>
+            <label className="field">Izoh
+              <textarea
+                className="textarea"
+                placeholder="Muammoni qisqacha tushuntiring"
+                value={problemNote}
+                onChange={(event) => setProblemNote(event.currentTarget.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={busy}
+              onClick={async () => {
+                await action?.(problemOrder, "report_problem", {
+                  reason: problemReason,
+                  note: problemNote.trim(),
+                });
+                setProblemOrder(null);
+              }}
+            >
+              Muammoli buyurtmaga o'tkazish
+            </button>
+          </div>
+        </>
+      )}
+      {handoffOrder !== null && (
+        <>
+          <button
+            type="button"
+            className="app-modal-back on"
+            aria-label="Bekor qilish"
+            onClick={() => setHandoffOrder(null)}
+          />
+          <div className="app-confirm on" role="dialog" aria-modal="true">
+            <p className="acf-text">Buyurtma qarshi tomonga topshirildimi?</p>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setHandoffOrder(null)}>
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                className="acf-ok"
+                disabled={busy}
+                onClick={async () => {
+                  await action?.(handoffOrder, "handoff");
+                  setHandoffOrder(null);
+                }}
+              >
+                Ha, topshirdim
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -1000,6 +1190,8 @@ export function MessagesView({
   setValue,
   busy,
   send,
+  edit,
+  remove,
 }: {
   rows: BusinessOnlineRecord[];
   value: string;
@@ -1008,9 +1200,17 @@ export function MessagesView({
   send: (
     peer: { id: string; kind: string },
     text: string,
+    replyToId?: number | string,
   ) => Promise<void>;
+  edit?: (id: number | string, text: string) => Promise<void>;
+  remove?: (id: number | string) => Promise<void>;
 }) {
   const [peerKey, setPeerKey] = useState<string | null>(null);
+  const [menuId, setMenuId] = useState<number | string | null>(null);
+  const [replyMessage, setReplyMessage] = useState<BusinessOnlineRecord | null>(null);
+  const [editMessage, setEditMessage] = useState<BusinessOnlineRecord | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<BusinessOnlineRecord | null>(null);
+  const [notice, setNotice] = useState("");
   const conversations = useMemo(() => {
     const result = new Map<string, BusinessOnlineRecord>();
     rows.forEach((row, index) => {
@@ -1039,6 +1239,22 @@ export function MessagesView({
     const kind = recordText(row, "target_kind", "peer_kind", "receiver_kind") || "user";
     return `${kind}:${id}` === peerKey;
   }) : [];
+
+  function messagePreview(row: BusinessOnlineRecord) {
+    const text = recordText(row, "text", "message", "body").trim();
+    if (text) return text.length > 80 ? `${text.slice(0, 80)}...` : text;
+    return recordText(row, "media_type") === "photo" ? "📷 Rasm" : "Xabar";
+  }
+
+  async function copyMessage(row: BusinessOnlineRecord) {
+    const text = recordText(row, "text", "message", "body").trim();
+    if (!text) {
+      setNotice("Nusxalanadigan matn yo‘q.");
+      return;
+    }
+    await navigator.clipboard?.writeText(text);
+    setNotice("Matn nusxalandi.");
+  }
 
   if (!peer) {
     return (
@@ -1078,7 +1294,12 @@ export function MessagesView({
 
   return (
     <section className="chat-screen" aria-label={peerName}>
-      <button type="button" className="chat-back" onClick={() => setPeerKey(null)}>
+      <button type="button" className="chat-back" onClick={() => {
+        setPeerKey(null);
+        setMenuId(null);
+        setReplyMessage(null);
+        setEditMessage(null);
+      }}>
         ← Suhbatlar
       </button>
       <div className="chat-thread">
@@ -1088,23 +1309,89 @@ export function MessagesView({
           return (
             <div className={`msg ${mine ? "me" : "them"}`} key={String(recordId(row, index))}>
               {!deleted && (
-                <button type="button" className="order-msg-menu-btn" aria-label="Xabar amallari">
+                <button
+                  type="button"
+                  className="order-msg-menu-btn"
+                  aria-label="Xabar amallari"
+                  onClick={() => setMenuId(recordId(row, index))}
+                >
                   ⋯
                 </button>
               )}
               {deleted ? (
                 <div className="order-chat-deleted">Xabar o‘chirildi</div>
               ) : (
-                <div className="order-chat-text">
-                  {recordText(row, "text", "message", "body")}
-                </div>
+                <>
+                  {row.reply && typeof row.reply === "object" && (
+                    <div className="order-chat-reply-preview">
+                      <b>↩ {recordText(row.reply as BusinessOnlineRecord, "sender_name") || "Xabar"}</b>
+                      {messagePreview(row.reply as BusinessOnlineRecord)}
+                    </div>
+                  )}
+                  <div className="order-chat-text">
+                    {recordText(row, "text", "message", "body")}
+                  </div>
+                </>
               )}
-              <span className="msg-time">{notifyTime(row.created_at)}</span>
+              <span className="msg-time">
+                {notifyTime(row.created_at)}{row.edited_at ? " · Tahrirlangan" : ""}
+              </span>
             </div>
           );
         }) : <div className="chat-day">Hozircha xabar yo'q. Birinchi bo'lib yozing!</div>}
       </div>
+      {notice && <div className="app-toast on" role="status">{notice}</div>}
+      {menuId !== null && (() => {
+        const row = thread.find((item, index) => recordId(item, index) === menuId);
+        if (!row) return null;
+        const mine = recordText(row, "sender_kind") === "business" || Boolean(row.mine);
+        return (
+          <div className="order-chat-action-menu on" role="menu">
+            <button type="button" onClick={() => {
+              setReplyMessage(row);
+              setEditMessage(null);
+              setMenuId(null);
+            }}>↩️ Javob berish</button>
+            <button type="button" onClick={() => {
+              setMenuId(null);
+              void copyMessage(row);
+            }}>📋 Nusxalash</button>
+            {mine && recordText(row, "text", "message", "body").trim() && (
+              <button type="button" onClick={() => {
+                setEditMessage(row);
+                setReplyMessage(null);
+                setValue(recordText(row, "text", "message", "body"));
+                setMenuId(null);
+              }}>✏️ Tahrirlash</button>
+            )}
+            {mine && (
+              <button type="button" className="danger" onClick={() => {
+                setDeleteMessage(row);
+                setMenuId(null);
+              }}>🗑 O‘chirish</button>
+            )}
+            <button type="button" onClick={() => setMenuId(null)}>Yopish</button>
+          </div>
+        );
+      })()}
       <div className="chat-compose">
+        {replyMessage && (
+          <div className="order-chat-state on">
+            Javob berilyapti
+            <small>{messagePreview(replyMessage)}</small>
+            <button type="button" aria-label="Javobni bekor qilish" onClick={() => setReplyMessage(null)}>×</button>
+          </div>
+        )}
+        {editMessage && (
+          <div className="order-chat-state edit on">
+            Xabar tahrirlanyapti
+            <small>{messagePreview(editMessage)}</small>
+            <button type="button" aria-label="Tahrirlashni bekor qilish" onClick={() => {
+              setEditMessage(null);
+              setValue("");
+            }}>×</button>
+          </div>
+        )}
         <div className="chat-attach-row">
           <label className="chat-attach-btn">
             📎 Rasm qo‘shish
@@ -1122,19 +1409,64 @@ export function MessagesView({
           <button
             type="button"
             className="chat-send"
-            aria-label="Yuborish"
+            aria-label={editMessage ? "Saqlash" : "Yuborish"}
             disabled={busy || !value.trim()}
-            onClick={() => void send({
-              id: String(peer._peer_id),
-              kind: String(peer._peer_kind),
-            }, value.trim())}
+            onClick={async () => {
+              if (editMessage) {
+                await edit?.(recordId(editMessage), value.trim());
+                setEditMessage(null);
+                setValue("");
+                return;
+              }
+              const target = {
+                id: String(peer._peer_id),
+                kind: String(peer._peer_kind),
+              };
+              if (replyMessage) {
+                await send(target, value.trim(), recordId(replyMessage));
+              } else {
+                await send(target, value.trim());
+              }
+              setReplyMessage(null);
+            }}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-            </svg>
+            {editMessage ? "✓" : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
+      {deleteMessage && (
+        <>
+          <button
+            type="button"
+            className="app-modal-back on"
+            aria-label="Bekor qilish"
+            onClick={() => setDeleteMessage(null)}
+          />
+          <div className="app-confirm on" role="dialog" aria-modal="true">
+            <p className="acf-text">Bu xabar o‘chirilsinmi?</p>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setDeleteMessage(null)}>
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                className="acf-ok danger"
+                disabled={busy}
+                onClick={async () => {
+                  await remove?.(recordId(deleteMessage));
+                  setDeleteMessage(null);
+                }}
+              >
+                O‘chirish
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -1193,8 +1525,19 @@ export function ReviewsView({
                   <b>{recordText(row, "user_name", "reviewer_name", "name") || "Mijoz"}</b>
                   <div className="idesc business-review-date">{notifyTime(row.created_at)}</div>
                 </div>
-                <span className="business-review-stars">
-                  {"★".repeat(Math.max(0, Number(row.stars ?? row.rating ?? 0)))}
+                <span
+                  className="business-review-stars"
+                  aria-label={`5 dan ${Math.max(0, Math.min(5, Number(row.stars ?? row.rating ?? 0)))} baho`}
+                >
+                  {Array.from({ length: 5 }, (_, star) => (
+                    <span
+                      className="rv-star"
+                      style={{ color: star < Number(row.stars ?? row.rating ?? 0)
+                        ? "#f5a623"
+                        : "#d1d5db" }}
+                      key={star}
+                    >★</span>
+                  ))}
                 </span>
               </div>
               <div className="idesc business-review-comment">
@@ -1253,15 +1596,118 @@ export function ReviewsView({
 
 export function NotificationsView({
   rows,
+  filters = [],
   busy,
   markAll,
   markOne,
+  createFilter,
+  removeFilter,
 }: {
   rows: BusinessOnlineRecord[];
+  filters?: BusinessOnlineRecord[];
   busy: boolean;
   markAll: () => Promise<void>;
   markOne: (id: number | string) => Promise<void>;
+  createFilter?: (record: BusinessOnlineRecord) => Promise<void>;
+  removeFilter?: (id: number | string) => Promise<void>;
 }) {
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState<BusinessOnlineRecord>({ cat: "uy" });
+  const [deleteFilter, setDeleteFilter] = useState<number | string | null>(null);
+  const categories: Record<string, [string, string]> = {
+    uy: ["🏠", "Uy-joy"],
+    ish: ["💼", "Ish o'rinlari"],
+    moshina: ["🚙", "Moshinalar"],
+    hayvon: ["🐾", "Hayvonlar"],
+    texnika: ["📱", "Texnika"],
+    boshqa: ["📦", "Boshqalar"],
+  };
+
+  if (formOpen) {
+    return (
+      <section className="form-wrap notify-filter-form">
+        <div className="lead">Yangi filtr</div>
+        <div className="lead-sub">Faqat sizga kerakli e'lonlar haqida xabar olasiz.</div>
+        <label className="field">Tur (majburiy)
+          <select
+            className="input"
+            value={recordText(filterDraft, "cat") || "uy"}
+            onChange={(event) => setFilterDraft({ ...filterDraft, cat: event.currentTarget.value })}
+          >
+            {Object.entries(categories).map(([key, [icon, label]]) => (
+              <option value={key} key={key}>{icon} {label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">Viloyat — ixtiyoriy
+          <input
+            className="input"
+            value={recordText(filterDraft, "region")}
+            onChange={(event) => setFilterDraft({ ...filterDraft, region: event.currentTarget.value })}
+          />
+        </label>
+        <label className="field">Tuman — ixtiyoriy
+          <input
+            className="input"
+            value={recordText(filterDraft, "district")}
+            onChange={(event) => setFilterDraft({ ...filterDraft, district: event.currentTarget.value })}
+          />
+        </label>
+        <div className="field">
+          <label>Narx oralig'i — ixtiyoriy</label>
+          <div className="notify-filter-prices">
+            <input
+              className="input"
+              inputMode="numeric"
+              aria-label="Narx dan"
+              placeholder="dan (masalan 1000)"
+              value={recordText(filterDraft, "price_min")}
+              onChange={(event) => setFilterDraft({ ...filterDraft, price_min: event.currentTarget.value })}
+            />
+            <input
+              className="input"
+              inputMode="numeric"
+              aria-label="Narx gacha"
+              placeholder="gacha (masalan 5000)"
+              value={recordText(filterDraft, "price_max")}
+              onChange={(event) => setFilterDraft({ ...filterDraft, price_max: event.currentTarget.value })}
+            />
+          </div>
+          <div className="idesc">Raqamlarda kiriting (dollar yoki so'm — e'lon narxiga qarab)</div>
+        </div>
+        <label className="field">Kalit so'z — ixtiyoriy
+          <input
+            className="input"
+            placeholder="masalan: mushuk, Nexia, dasturchi"
+            value={recordText(filterDraft, "keyword")}
+            onChange={(event) => setFilterDraft({ ...filterDraft, keyword: event.currentTarget.value })}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          disabled={busy}
+          onClick={async () => {
+            await createFilter?.({
+              cat: recordText(filterDraft, "cat") || "uy",
+              region: recordText(filterDraft, "region").trim(),
+              district: recordText(filterDraft, "district").trim(),
+              price_min: Number(filterDraft.price_min ?? 0) || 0,
+              price_max: Number(filterDraft.price_max ?? 0) || 0,
+              keyword: recordText(filterDraft, "keyword").trim(),
+            });
+            setFormOpen(false);
+            setFilterDraft({ cat: "uy" });
+          }}
+        >Saqlash</button>
+        <button type="button" className="btn btn-soft btn-block" onClick={() => setFormOpen(false)}>
+          Bekor qilish
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="form-wrap notify-v1656">
       <div className="lead">Bildirishnomalarim</div>
@@ -1271,7 +1717,11 @@ export function NotificationsView({
       <div className="set-row notify-push-row">
         <span>📲 Push notification</span>
         <label>
-          <input type="checkbox" defaultChecked /> Yoqilgan
+          <input
+            type="checkbox"
+            checked={pushEnabled}
+            onChange={(event) => setPushEnabled(event.currentTarget.checked)}
+          /> Yoqilgan
         </label>
       </div>
       <div className="elon-hint">Mobil ilova qurilmasi ulanmagan.</div>
@@ -1319,13 +1769,60 @@ export function NotificationsView({
       <div className="lead-sub">
         Mos e'lon joylanganda Telegramingizga xabar keladi.
       </div>
-      <button type="button" className="btn btn-primary btn-block">
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        onClick={() => setFormOpen(true)}
+      >
         ➕ Yangi filtr qo'shish
       </button>
-      <div className="empty notify-filter-empty">
-        <h3>Filtr yo'q</h3>
-        <p>«Yangi filtr» orqali qiziqishlaringizni belgilang.</p>
-      </div>
+      {filters.length ? (
+        <div className="notify-filter-list">
+          {filters.map((filter, index) => {
+            const id = recordId(filter, index);
+            const [icon, label] = categories[recordText(filter, "cat")] ?? ["📦", recordText(filter, "cat")];
+            const parts = [];
+            if (recordText(filter, "district")) parts.push(recordText(filter, "district"));
+            else if (recordText(filter, "region")) parts.push(recordText(filter, "region"));
+            if (Number(filter.price_min ?? 0) || Number(filter.price_max ?? 0)) {
+              parts.push(`${filter.price_min || "0"}–${filter.price_max || "∞"}`);
+            }
+            if (recordText(filter, "keyword")) parts.push(`«${recordText(filter, "keyword")}»`);
+            return (
+              <div className="menu-card" key={String(id)}>
+                <div className="menu-ic">{icon}</div>
+                <div className="menu-main"><h4>{label}</h4><p>{parts.join(" · ") || "Barcha e'lonlar"}</p></div>
+                <button type="button" className="panel-x" aria-label="Filtrni o'chirish" onClick={() => setDeleteFilter(id)}>✕</button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty notify-filter-empty">
+          <h3>Filtr yo'q</h3>
+          <p>«Yangi filtr» orqali qiziqishlaringizni belgilang.</p>
+        </div>
+      )}
+      {deleteFilter !== null && (
+        <>
+          <button type="button" className="app-modal-back on" aria-label="Bekor qilish" onClick={() => setDeleteFilter(null)} />
+          <div className="app-confirm on" role="dialog" aria-modal="true">
+            <p className="acf-text">Bu filtrni o'chirasizmi?</p>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setDeleteFilter(null)}>Bekor qilish</button>
+              <button
+                type="button"
+                className="acf-ok danger"
+                disabled={busy}
+                onClick={async () => {
+                  await removeFilter?.(deleteFilter);
+                  setDeleteFilter(null);
+                }}
+              >O'chirish</button>
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

@@ -36,6 +36,7 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   advertisements: [],
   stories: [],
   notifications: [{ id: 7, title: "Yangi xabar", is_read: 0 }],
+  notify_filters: [],
   followers: [],
   following: [{ id: 9, name: "Hamkor biznes" }],
   dining_places: [],

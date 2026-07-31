@@ -25,6 +25,7 @@ import {
   PaymentsView,
   PeopleView,
   recordId,
+  recordText,
   ReviewsView,
   type SharedActions,
   SubscriptionsView,
@@ -93,6 +94,7 @@ function viewResources(
   if (view === "education-enrollments") {
     return [primary, "education_groups"];
   }
+  if (view === "notifications") return [primary, "notify_filters"];
   return [primary];
 }
 
@@ -347,6 +349,61 @@ export function BusinessOnlineScreen({
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
       } else if (
+        resource === "subscription_payments"
+        && name === "resubmit"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? { ...row, status: "pending", reason: "" }
+            : row
+        )));
+      } else if (
+        resource === "orders"
+        && name === "report_problem"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              problem_open: 1,
+              problem_reason: payload.reason,
+              problem_note: payload.note,
+            }
+            : row
+        )));
+      } else if (
+        resource === "messages"
+        && name === "delete"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              is_deleted: 1,
+              deleted_at: Math.floor(Date.now() / 1000),
+            }
+            : row
+        )));
+      } else if (
+        resource === "orders"
+        && name === "handoff"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              status: recordText(row, "order_type") === "pickup"
+                || ["ready", "tayyor"].includes(recordText(row, "status"))
+                ? "pickup_waiting_customer"
+                : "in_delivery",
+            }
+            : row
+        )));
+      } else if (
         resource === "following"
         && name === "unfollow"
         && recordIdValue !== undefined
@@ -587,6 +644,13 @@ function renderContent(context: RenderContext): ReactNode {
           rows={items}
           loading={context.loading}
           refresh={() => void context.refresh("subscription_payments")}
+          resubmit={async (id, file) => {
+            await shared.action("subscription_payments", "resubmit", id, {
+              receipt_name: file.name,
+              receipt_type: file.type,
+              receipt_size: file.size,
+            });
+          }}
         />
       );
     case "items":
@@ -683,6 +747,7 @@ function renderContent(context: RenderContext): ReactNode {
             id,
             { status },
           )}
+          action={(id, name, payload) => shared.action("orders", name, id, payload)}
         />
       );
     case "messages":
@@ -692,12 +757,13 @@ function renderContent(context: RenderContext): ReactNode {
           value={context.messageText}
           setValue={context.setMessageText}
           busy={shared.busy}
-          send={async (peer, value) => {
+          send={async (peer, value, replyToId) => {
             if (context.hasActionApi) {
               await shared.action("messages", "send", undefined, {
                 text: value,
                 receiver_id: Number(peer.id),
                 receiver_kind: peer.kind,
+                ...(replyToId === undefined ? {} : { reply_to_id: replyToId }),
               });
             } else {
               await shared.create("messages", {
@@ -705,9 +771,19 @@ function renderContent(context: RenderContext): ReactNode {
                 sender_kind: "business",
                 receiver_id: Number(peer.id),
                 receiver_kind: peer.kind,
+                ...(replyToId === undefined ? {} : { reply_to_id: replyToId }),
               });
             }
             context.setMessageText("");
+          }}
+          edit={async (id, text) => {
+            await shared.patch("messages", id, {
+              text,
+              edited_at: Math.floor(Date.now() / 1000),
+            });
+          }}
+          remove={async (id) => {
+            await shared.action("messages", "delete", id);
           }}
         />
       );
@@ -778,6 +854,7 @@ function renderContent(context: RenderContext): ReactNode {
       return (
         <NotificationsView
           rows={items}
+          filters={context.resources.notify_filters ?? []}
           busy={shared.busy}
           markAll={() => shared.action(
             "notifications",
@@ -788,6 +865,8 @@ function renderContent(context: RenderContext): ReactNode {
             "mark_read",
             id,
           )}
+          createFilter={(record) => shared.create("notify_filters", record)}
+          removeFilter={(id) => shared.remove("notify_filters", id)}
         />
       );
     case "followers":

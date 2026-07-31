@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type {
   BusinessOnlineRecord,
@@ -24,6 +24,11 @@ function storyRemaining(value: unknown): string {
   return hours > 0
     ? `${hours} soat ${minutes} daqiqa qoldi`
     : `${minutes} daqiqa qoldi`;
+}
+
+function localDateInputValue(date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 
@@ -136,6 +141,8 @@ export function CrudEditorView({
   const [openForm, setOpenForm] = useState(false);
   const [draft, setDraft] = useState<BusinessOnlineRecord>({});
   const [storyState, setStoryState] = useState<"active" | "archived">("active");
+  const [storyViewer, setStoryViewer] = useState<BusinessOnlineRecord | null>(null);
+  const [storyFile, setStoryFile] = useState<File | null>(null);
   const [confirm, setConfirm] = useState<{
     id: number | string;
     title?: string;
@@ -143,6 +150,15 @@ export function CrudEditorView({
     ok: string;
   } | null>(null);
   const [validationError, setValidationError] = useState("");
+
+  useEffect(() => {
+    setOpenForm(false);
+    setDraft({});
+    setConfirm(null);
+    setValidationError("");
+    setStoryViewer(null);
+    setStoryFile(null);
+  }, [resource]);
 
   function begin(next: BusinessOnlineRecord) {
     setDraft(next);
@@ -154,10 +170,44 @@ export function CrudEditorView({
 
   async function saveDraft() {
     const title = recordText(draft, "title", "caption").trim();
-    if (!title) {
-      setValidationError(resource === "stories"
-        ? "Istoriya matnini kiriting."
-        : "Sarlavha kiritilishi shart.");
+    if (resource === "advertisements") {
+      if (!recordText(draft, "image_file")) {
+        setValidationError("Reklama rasmini tanlang.");
+        return;
+      }
+      if (!title) {
+        setValidationError("Reklama sarlavhasini kiriting.");
+        return;
+      }
+      if (!Array.isArray(draft.targets) || draft.targets.length === 0) {
+        setValidationError("Kamida bitta hudud tanlang.");
+        return;
+      }
+      if (!recordText(draft, "start_date")) {
+        setValidationError("Boshlanish vaqtini tanlang.");
+        return;
+      }
+      if (!draft.daily_all_day) {
+        const start = recordText(draft, "daily_start");
+        const end = recordText(draft, "daily_end");
+        if (!start || !end) {
+          setValidationError("Kunlik boshlanish va tugash vaqtini tanlang.");
+          return;
+        }
+        if (start === end) {
+          setValidationError("Kunlik boshlanish va tugash vaqti bir xil bo'lmasin.");
+          return;
+        }
+      }
+    } else if (!title) {
+      setValidationError("Sarlavha kiritilishi shart.");
+      return;
+    }
+    if (
+      resource === "listings"
+      && (!Number.isFinite(Number(draft.lat)) || !Number.isFinite(Number(draft.lng)))
+    ) {
+      setValidationError("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash).");
       return;
     }
     await actions.create(resource, cleanDraft(draft));
@@ -178,7 +228,7 @@ export function CrudEditorView({
         />
         <div className="app-confirm on" role="dialog" aria-modal="true">
           {confirm.title && <div className="acf-title">{confirm.title}</div>}
-          <p>{confirm.text}</p>
+          <p className="acf-text">{confirm.text}</p>
           <div className="acf-btns">
             <button type="button" className="acf-cancel" onClick={() => setConfirm(null)}>
               Bekor qilish
@@ -262,14 +312,14 @@ export function CrudEditorView({
                     {archived ? "Arxiv" : `Faol · ${storyRemaining(row.expires_at)}`}
                   </span>
                   <div className="my-story-actions">
-                    <button type="button">Ko‘rish</button>
+                    <button type="button" onClick={() => setStoryViewer(row)}>Ko‘rish</button>
                     <button
                       type="button"
                       className="danger"
                       onClick={() => setConfirm({
                         id,
                         title: "Istoriyani o‘chirish",
-                        text: "Bu istoriya darhol o‘chiriladi.",
+                        text: "Istoriya va uning media fayli butunlay o‘chiriladi.",
                         ok: "O‘chirish",
                       })}
                     >
@@ -294,6 +344,120 @@ export function CrudEditorView({
             </div>
           )}
         </div>
+        {openForm && (
+          <div className="story-layer on">
+            <div className="story-sheet" role="dialog" aria-modal="true" aria-label="Istoriya joylash">
+              <div className="story-sheet-head">
+                <div className="story-sheet-title">Istoriya joylash</div>
+                <button type="button" className="story-text-btn" onClick={() => setOpenForm(false)}>Yopish</button>
+              </div>
+              <input
+                type="file"
+                hidden
+                id="reactStoryFileInput"
+                aria-label="Istoriya media fayli"
+                accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0] ?? null;
+                  if (file && ![
+                    "image/jpeg", "image/png", "image/webp",
+                    "video/mp4", "video/quicktime", "video/webm",
+                  ].includes(file.type)) {
+                    setStoryFile(null);
+                    setValidationError("Rasm yoki video tanlang.");
+                    event.currentTarget.value = "";
+                    return;
+                  }
+                  if (file?.type.startsWith("image/") && file.size > 10 * 1024 * 1024) {
+                    setStoryFile(null);
+                    setValidationError("Rasm hajmi 10 MB dan oshmasin.");
+                    event.currentTarget.value = "";
+                    return;
+                  }
+                  if (file?.type.startsWith("video/") && file.size > 100 * 1024 * 1024) {
+                    setStoryFile(null);
+                    setValidationError("Video hajmi 100 MB dan oshmasin.");
+                    event.currentTarget.value = "";
+                    return;
+                  }
+                  setStoryFile(file);
+                  setValidationError("");
+                }}
+              />
+              <div className="story-source-grid">
+                <button type="button" className="story-source-btn" onClick={() => {
+                  const input = document.getElementById("reactStoryFileInput");
+                  input?.setAttribute("capture", "environment");
+                  input?.click();
+                }}>
+                  Kamera orqali<small>Hozir rasm yoki video oling</small>
+                </button>
+                <button type="button" className="story-source-btn" onClick={() => {
+                  const input = document.getElementById("reactStoryFileInput");
+                  input?.removeAttribute("capture");
+                  input?.click();
+                }}>
+                  Galereyadan<small>Telefondagi rasm yoki videoni tanlang</small>
+                </button>
+              </div>
+              {storyFile && (
+                <div className="story-compose-fields on">
+                  <div className="idesc">{storyFile.name}</div>
+                  <label className="field">Qisqa matn — ixtiyoriy
+                    <textarea
+                      className="textarea"
+                      maxLength={200}
+                      placeholder="Istoriya haqida qisqa yozing"
+                      value={recordText(draft, "caption")}
+                      onChange={(event) => setDraft({ ...draft, caption: event.currentTarget.value })}
+                    />
+                    <span className="idesc">{recordText(draft, "caption").length} / 200</span>
+                  </label>
+                </div>
+              )}
+              {validationError && <div className="story-upload-error on" role="alert">{validationError}</div>}
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                disabled={actions.busy}
+                onClick={async () => {
+                  if (!storyFile) {
+                    setValidationError("Avval rasm yoki video tanlang.");
+                    return;
+                  }
+                  await actions.create("stories", {
+                    caption: recordText(draft, "caption").trim(),
+                    media_file: storyFile.name,
+                    media_type: storyFile.type.startsWith("video/") ? "video" : "photo",
+                    status: "active",
+                  });
+                  setStoryFile(null);
+                  setOpenForm(false);
+                }}
+              >Joylash</button>
+            </div>
+          </div>
+        )}
+        {storyViewer && (
+          <div className="story-viewer on">
+            <div className="story-stage" role="dialog" aria-modal="true" aria-label="Istoriya">
+              <div className="story-viewer-media">
+                {recordText(storyViewer, "media_type") === "video" ? (
+                  <video src={recordText(storyViewer, "media_url")} controls />
+                ) : (
+                  <img src={recordText(storyViewer, "media_url", "thumbnail_url")} alt="Istoriya" />
+                )}
+              </div>
+              <button
+                type="button"
+                className="story-viewer-close"
+                aria-label="Istoriyani yopish"
+                onClick={() => setStoryViewer(null)}
+              >×</button>
+              <div className="story-viewer-caption">{recordText(storyViewer, "caption")}</div>
+            </div>
+          </div>
+        )}
         {dialog()}
       </section>
     );
@@ -383,7 +547,16 @@ export function CrudEditorView({
             <button
               type="button"
               className="btn btn-primary btn-block"
-              onClick={() => begin({ status: "pending", daily_all_day: 1, duration_days: 1 })}
+              onClick={() => begin({
+                status: "pending",
+                daily_all_day: 1,
+                daily_start: "19:00",
+                daily_end: "21:00",
+                duration_days: 1,
+                start_date: localDateInputValue(),
+                target_level: "district",
+                targets: [],
+              })}
             >
               + Reklama joylashtirish
             </button>
@@ -510,6 +683,10 @@ function ListingForm({
   save: () => Promise<void>;
   cancel: () => void;
 }) {
+  const mediaInput = useRef<HTMLInputElement | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [latitude, setLatitude] = useState(recordText(draft, "lat"));
+  const [longitude, setLongitude] = useState(recordText(draft, "lng"));
   const categories = [
     { key: "uy", name: "Uy-joy" },
     { key: "ish", name: "Ish o'rinlari" },
@@ -566,12 +743,38 @@ function ListingForm({
       </label>
       <div className="field">
         <label>Rasm va video</label>
-        <button type="button" className="upload">📷 Galereya yoki papkadan tanlash</button>
+        <input
+          ref={mediaInput}
+          type="file"
+          hidden
+          multiple
+          accept="image/*,video/*"
+          aria-label="E'lon media fayllari"
+          onChange={(event) => {
+            const files = [...(event.currentTarget.files ?? [])];
+            setDraft({
+              ...draft,
+              media: files.map((file) => ({ name: file.name, type: file.type, size: file.size })),
+            });
+          }}
+        />
+        <button type="button" className="upload" onClick={() => mediaInput.current?.click()}>
+          📷 Galereya yoki papkadan tanlash
+        </button>
+        {Array.isArray(draft.media) && draft.media.length > 0 && (
+          <div className="idesc">{draft.media.length} ta fayl tanlandi</div>
+        )}
       </div>
       <div className="field">
         <label>Joylashuv</label>
-        <button type="button" className="upload">📍 Xaritada joy belgilash</button>
-        <div className="idesc">Joy hali belgilanmagan</div>
+        <button type="button" className="upload" onClick={() => setLocationOpen(true)}>
+          📍 Xaritada joy belgilash
+        </button>
+        <div className="idesc">
+          {Number.isFinite(Number(draft.lat)) && Number.isFinite(Number(draft.lng))
+            ? `📍 ${draft.lat}, ${draft.lng}`
+            : "Joy hali belgilanmagan"}
+        </div>
         <input
           className="input"
           placeholder="Manzil nomi (ixtiyoriy)"
@@ -601,6 +804,34 @@ function ListingForm({
         Joylash
       </button>
       <button type="button" className="btn btn-soft btn-block" onClick={cancel}>Bekor qilish</button>
+      {locationOpen && (
+        <>
+          <button type="button" className="app-modal-back on" aria-label="Bekor qilish" onClick={() => setLocationOpen(false)} />
+          <div className="app-confirm on listing-location-dialog" role="dialog" aria-modal="true" aria-label="Xaritada joy belgilash">
+            <div className="acf-title">Xaritada joy belgilash</div>
+            <label className="field">Kenglik
+              <input className="input" aria-label="Kenglik" inputMode="decimal" value={latitude} onChange={(event) => setLatitude(event.currentTarget.value)} />
+            </label>
+            <label className="field">Uzunlik
+              <input className="input" aria-label="Uzunlik" inputMode="decimal" value={longitude} onChange={(event) => setLongitude(event.currentTarget.value)} />
+            </label>
+            <div className="acf-btns">
+              <button type="button" className="acf-cancel" onClick={() => setLocationOpen(false)}>Bekor qilish</button>
+              <button
+                type="button"
+                className="acf-ok"
+                onClick={() => {
+                  const lat = Number(latitude);
+                  const lng = Number(longitude);
+                  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                  setDraft({ ...draft, lat, lng });
+                  setLocationOpen(false);
+                }}
+              >Joyni saqlash</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -620,6 +851,39 @@ function AdvertisementForm({
   save: () => Promise<void>;
   cancel: () => void;
 }) {
+  const desktopInput = useRef<HTMLInputElement | null>(null);
+  const mobileInput = useRef<HTMLInputElement | null>(null);
+  const [fileError, setFileError] = useState("");
+  const targets = Array.isArray(draft.targets)
+    ? draft.targets.filter((target): target is BusinessOnlineRecord => (
+      Boolean(target && typeof target === "object")
+    ))
+    : [];
+  const level = recordText(draft, "target_level") || "district";
+  const hours = Array.from({ length: 24 }, (_, hour) => (
+    String(hour).padStart(2, "0") + ":00"
+  ));
+
+  function selectImage(file: File | undefined, key: "image_file" | "mobile_image_file") {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setFileError("Faqat JPG, PNG yoki WEBP rasm tanlang.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError("Rasm hajmi 5 MB dan oshmasin.");
+      return;
+    }
+    setFileError("");
+    setDraft({ ...draft, [key]: file.name });
+  }
+
+  function targetLabel(target: BusinessOnlineRecord) {
+    if (target.level === "republic") return "🇺🇿 Respublika";
+    if (target.level === "region") return `Viloyat: ${recordText(target, "region")}`;
+    return `${recordText(target, "region")} · ${recordText(target, "district")}`;
+  }
+
   return (
     <div className="form-wrap advertisement-form-v1656">
       <div className="ad-quality">
@@ -628,10 +892,30 @@ function AdvertisementForm({
         har biri 5 MB gacha.
       </div>
       <div className="field"><label>Kompyuter uchun rasm — majburiy</label>
-        <button type="button" className="upload">🖼 Galereyadan rasm tanlash</button>
+        <input
+          ref={desktopInput}
+          type="file"
+          hidden
+          accept="image/jpeg,image/png,image/webp"
+          aria-label="Kompyuter uchun rasm"
+          onChange={(event) => selectImage(event.currentTarget.files?.[0], "image_file")}
+        />
+        <button type="button" className="upload" onClick={() => desktopInput.current?.click()}>
+          {recordText(draft, "image_file") ? "Rasm tanlandi ✅" : "🖼 Galereyadan rasm tanlash"}
+        </button>
       </div>
       <div className="field"><label>Telefon uchun rasm — ixtiyoriy</label>
-        <button type="button" className="upload">📱 Telefon rasmini tanlash</button>
+        <input
+          ref={mobileInput}
+          type="file"
+          hidden
+          accept="image/jpeg,image/png,image/webp"
+          aria-label="Telefon uchun rasm"
+          onChange={(event) => selectImage(event.currentTarget.files?.[0], "mobile_image_file")}
+        />
+        <button type="button" className="upload" onClick={() => mobileInput.current?.click()}>
+          {recordText(draft, "mobile_image_file") ? "Telefon rasmi tanlandi ✅" : "📱 Telefon rasmini tanlash"}
+        </button>
         <div className="idesc">Yuklanmasa, telefonda kompyuter rasmi ko‘rsatiladi.</div>
       </div>
       <label className="field">Reklama sarlavhasi
@@ -651,15 +935,113 @@ function AdvertisementForm({
         />
       </label>
       <div className="field"><label>Qayerda ko'rinsin?</label>
-        <select className="input"><option>Tuman kesimida</option><option>Viloyat kesimida</option><option>Respublika bo'ylab</option></select>
-        <button type="button" className="mini-btn">+ Hududni qo'shish</button>
+        <select
+          className="input full"
+          aria-label="Hudud darajasi"
+          value={level}
+          onChange={(event) => setDraft({ ...draft, target_level: event.currentTarget.value })}
+        >
+          <option value="district">Tuman kesimida</option>
+          <option value="region">Viloyat kesimida</option>
+          <option value="republic">Respublika bo'ylab</option>
+        </select>
+        {level !== "republic" && (
+          <input
+            className="input"
+            aria-label="Reklama viloyati"
+            placeholder="Viloyat"
+            value={recordText(draft, "target_region")}
+            onChange={(event) => setDraft({ ...draft, target_region: event.currentTarget.value })}
+          />
+        )}
+        {level === "district" && (
+          <input
+            className="input"
+            aria-label="Reklama tumani"
+            placeholder="Tuman"
+            value={recordText(draft, "target_district")}
+            onChange={(event) => setDraft({ ...draft, target_district: event.currentTarget.value })}
+          />
+        )}
+        <button
+          type="button"
+          className="mini-btn"
+          onClick={() => {
+            const target = {
+              level,
+              region: level === "republic" ? "" : recordText(draft, "target_region").trim(),
+              district: level === "district" ? recordText(draft, "target_district").trim() : "",
+            };
+            if (level !== "republic" && !target.region) return;
+            if (level === "district" && !target.district) return;
+            const next = level === "republic"
+              ? [target]
+              : [
+                ...targets.filter((value) => value.level !== "republic"),
+                target,
+              ].filter((value, index, all) => (
+                all.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(value)) === index
+              ));
+            setDraft({ ...draft, targets: next });
+          }}
+        >+ Hududni qo'shish</button>
+        <div className="ad-targets">
+          {targets.map((target, index) => (
+            <span className="ad-target-chip" key={`${targetLabel(target)}-${index}`}>
+              {targetLabel(target)}
+              <button type="button" aria-label="Hududni o'chirish" onClick={() => setDraft({
+                ...draft,
+                targets: targets.filter((_, targetIndex) => targetIndex !== index),
+              })}>×</button>
+            </span>
+          ))}
+        </div>
       </div>
-      <label className="field">Qachondan ko'rinsin?<input className="input" type="date" /></label>
-      <label className="field">Qancha vaqt?
-        <select className="input"><option>1 kun</option><option>3 kun</option><option>7 kun</option><option>14 kun</option><option>30 kun</option></select>
+      <label className="field">Qachondan ko'rinsin?
+        <input
+          className="input"
+          type="date"
+          value={recordText(draft, "start_date")}
+          onChange={(event) => setDraft({ ...draft, start_date: event.currentTarget.value })}
+        />
       </label>
-      <div className="ad-price-box"><div className="idesc">Hisoblangan reklama narxi</div><div className="price">0 so'm</div><div className="idesc">Hududni tanlang.</div></div>
+      <div className="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label>
+        <label className="ad-all-day">
+          <input
+            type="checkbox"
+            checked={Boolean(draft.daily_all_day)}
+            onChange={(event) => setDraft({ ...draft, daily_all_day: event.currentTarget.checked ? 1 : 0 })}
+          /> Kun bo'yi ko'rinsin
+        </label>
+        {!draft.daily_all_day && (
+          <div className="ad-daily-times">
+            <select className="input" aria-label="Kunlik boshlanish" value={recordText(draft, "daily_start")} onChange={(event) => setDraft({ ...draft, daily_start: event.currentTarget.value })}>
+              {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
+            </select>
+            <span>—</span>
+            <select className="input" aria-label="Kunlik tugash" value={recordText(draft, "daily_end")} onChange={(event) => setDraft({ ...draft, daily_end: event.currentTarget.value })}>
+              {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="idesc">
+          {draft.daily_all_day
+            ? "Reklama kun davomida uzluksiz ko'rinadi."
+            : `Har kuni ${recordText(draft, "daily_start")} dan ${recordText(draft, "daily_end")} gacha ko'rinadi.`}
+        </div>
+      </div>
+      <label className="field">Qancha vaqt?
+        <select className="input" value={Number(draft.duration_days ?? 1)} onChange={(event) => setDraft({ ...draft, duration_days: Number(event.currentTarget.value) })}>
+          {[1, 3, 7, 14, 30].map((days) => <option value={days} key={days}>{days} kun</option>)}
+        </select>
+      </label>
+      <div className="ad-price-box">
+        <div className="idesc">Hisoblangan reklama narxi</div>
+        <div className="price">{v1656Money(recordNumber(draft, "price"))}</div>
+        <div className="idesc">{targets.length ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun` : "Hududni tanlang."}</div>
+      </div>
       <div className="ad-info">Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama tasdiqlangandan keyin jadval bo'yicha ko'rinadi.</div>
+      {fileError && <div className="app-toast on" role="alert">{fileError}</div>}
       {error && <div className="app-toast on" role="alert">{error}</div>}
       <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void save()}>Reklamani joylashtirish</button>
       <button type="button" className="btn btn-soft btn-block" onClick={cancel}>Bekor qilish</button>

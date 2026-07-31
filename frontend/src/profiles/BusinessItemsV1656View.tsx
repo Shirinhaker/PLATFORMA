@@ -63,7 +63,7 @@ function matches(row: BusinessOnlineRecord, query: string): boolean {
 
 function priceText(row: BusinessOnlineRecord): string {
   const raw = row.price ?? row.price_amount ?? "";
-  if (raw === null || raw === undefined || String(raw).trim() === "" || raw === 0) {
+  if (raw === null || raw === undefined || raw === "" || raw === 0) {
     return "Narx kelishiladi";
   }
   const unit = recordText(row, "unit");
@@ -218,8 +218,6 @@ export function ItemsEditorView({
     title: string;
     text: string;
   } | null>(null);
-  const [moveItem, setMoveItem] = useState<BusinessOnlineRecord | null>(null);
-  const [moveGroupId, setMoveGroupId] = useState("");
   const normalizedQuery = query.trim().toLocaleLowerCase("uz");
   const searchActive = normalizedQuery.length > 0;
   const showAdd = !searchActive;
@@ -458,11 +456,7 @@ export function ItemsEditorView({
                         openMenu === menu ? null : menu,
                       )}
                       onEdit={() => editItem(row)}
-                      onMove={() => {
-                        setOpenMenu(null);
-                        setMoveItem(row);
-                        setMoveGroupId(groupIdOf(row));
-                      }}
+                      onMove={() => editItem(row)}
                       onDelete={() => {
                         setOpenMenu(null);
                         setConfirmDelete({
@@ -494,53 +488,6 @@ export function ItemsEditorView({
         })}
         {!blocks.length && <EmptyState query={query} kind={kind} />}
       </div>
-      {moveItem && (
-        <>
-          <div className="app-modal-back on" aria-hidden="true" />
-          <div className="app-confirm on" role="dialog" aria-modal="true">
-            <div className="acf-title">Guruhini o'zgartirish</div>
-            <label>
-              Guruh
-              <select
-                className="input"
-                aria-label="Guruh"
-                value={moveGroupId}
-                onChange={(event) => setMoveGroupId(event.currentTarget.value)}
-              >
-                <option value="">Guruhsiz</option>
-                {groups.map((group, index) => {
-                  const id = recordId(group, index);
-                  return (
-                    <option key={String(id)} value={String(id)}>
-                      {recordText(group, "name", "title") || "Guruh"}
-                      {" — "}
-                      {itemKind(group) === "service" ? "Xizmat" : "Mahsulot"}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-            <div className="acf-btns">
-              <button type="button" className="acf-cancel" onClick={() => setMoveItem(null)}>
-                Bekor qilish
-              </button>
-              <button
-                type="button"
-                className="acf-ok"
-                disabled={actions.busy}
-                onClick={() => {
-                  const id = recordId(moveItem);
-                  void actions.patch("items", id, {
-                    group_id: moveGroupId ? Number(moveGroupId) : null,
-                  }).then(() => setMoveItem(null));
-                }}
-              >
-                Saqlash
-              </button>
-            </div>
-          </div>
-        </>
-      )}
       {confirmDelete && (
         <>
           <button
@@ -551,7 +498,7 @@ export function ItemsEditorView({
           />
           <div className="app-confirm on" role="dialog" aria-modal="true">
             <div className="acf-title">{confirmDelete.title}</div>
-            <p>{confirmDelete.text}</p>
+            <p className="acf-text">{confirmDelete.text}</p>
             <div className="acf-btns">
               <button type="button" className="acf-cancel" onClick={() => setConfirmDelete(null)}>
                 Bekor qilish

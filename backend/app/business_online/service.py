@@ -37,6 +37,7 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
     "advertisements": ResourceSpec(create=True, update=True, delete=True),
     "stories": ResourceSpec(create=True, update=True, delete=True),
     "notifications": ResourceSpec(update=True, delete=True),
+    "notify_filters": ResourceSpec(create=True, delete=True),
     "followers": ResourceSpec(),
     "following": ResourceSpec(delete=True),
     "dining_places": ResourceSpec(create=True, update=True, delete=True),
@@ -81,6 +82,7 @@ ORDER_STATUSES = {
     "payment_confirmed",
     "preparing",
     "ready",
+    "tayyor",
     "courier_search",
     "courier_assigned",
     "courier_arrived_store",
@@ -1127,9 +1129,27 @@ def apply_action(
             "created_at": now,
             "updated_at": now,
         }
-        for key in ("order_id", "thread_id", "receiver_id", "receiver_kind"):
+        for key in (
+            "order_id",
+            "thread_id",
+            "receiver_id",
+            "receiver_kind",
+            "reply_to_id",
+        ):
             if key in data:
                 item[key] = data[key]
+        if data.get("reply_to_id") is not None:
+            try:
+                reply = find_record(rows, data["reply_to_id"])
+            except ApiError:
+                reply = None
+            if reply is not None:
+                item["reply"] = {
+                    "id": reply.get("id"),
+                    "sender_name": reply.get("sender_name") or "Xabar",
+                    "text": reply.get("text") or "",
+                    "media_type": reply.get("media_type") or "text",
+                }
         rows.append(item)
         payload[resource] = rows
         return item
@@ -1138,7 +1158,56 @@ def apply_action(
         raise missing_record_id()
     item = find_record(rows, record_id)
 
-    if resource == "notifications" and action == "mark_read":
+    if resource == "subscription_payments" and action == "resubmit":
+        receipt_type = str(data.get("receipt_type") or "")
+        receipt_size = integer(data.get("receipt_size"))
+        receipt_name = str(data.get("receipt_name") or "").strip()[:240]
+        if (
+            receipt_type not in {"image/jpeg", "image/png", "image/webp"}
+            or receipt_size <= 0
+            or receipt_size > 5 * 1024 * 1024
+            or not receipt_name
+        ):
+            raise ApiError(
+                422,
+                "invalid_payment_receipt",
+                "JPG, PNG yoki WEBP; maksimum 5 MB.",
+            )
+        attempts = item.get("attempts")
+        if not isinstance(attempts, list):
+            attempts = []
+        attempts.append({
+            "submitted_at": now,
+            "receipt_name": receipt_name,
+            "receipt_type": receipt_type,
+            "receipt_size": receipt_size,
+        })
+        item["attempts"] = attempts
+        item["status"] = "pending"
+        item.pop("reason", None)
+        item.pop("rejection_reason", None)
+    elif resource == "orders" and action == "report_problem":
+        item["problem_open"] = 1
+        item["problem_reason"] = str(data.get("reason") or "other")[:80]
+        item["problem_note"] = str(data.get("note") or "").strip()[:500]
+    elif resource == "orders" and action == "handoff":
+        status = str(item.get("status") or "")
+        order_type = str(item.get("order_type") or "")
+        if status not in {"handoff_waiting_seller", "ready", "tayyor"}:
+            raise ApiError(
+                422,
+                "order_not_ready_for_handoff",
+                "Buyurtma topshirishga tayyor emas.",
+            )
+        item["status"] = (
+            "pickup_waiting_customer"
+            if order_type == "pickup" or status in {"ready", "tayyor"}
+            else "in_delivery"
+        )
+    elif resource == "messages" and action == "delete":
+        item["is_deleted"] = 1
+        item["deleted_at"] = now
+    elif resource == "notifications" and action == "mark_read":
         item["is_read"] = 1
         item["read_at"] = now
     elif resource == "business_reviews" and action == "reply":

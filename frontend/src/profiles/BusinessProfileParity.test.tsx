@@ -59,6 +59,10 @@ function api() {
     uploadGrantedFile: vi.fn(),
     attachBusinessLogo: vi.fn().mockResolvedValue(profile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(profile),
+    getBusinessOnlineResource: vi.fn().mockImplementation(async (resource) => ({
+      resource,
+      items: [],
+    })),
     switchCabinet: vi.fn(),
     logout: vi.fn(),
   };
@@ -191,5 +195,23 @@ describe("v1656 business profile parity", () => {
 
     expect(await screen.findByRole("alert"))
       .toHaveTextContent("Biznes nomini kiriting.");
+  });
+
+  it("opens followers and following screens from the profile counters", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await openEditor(user);
+    await user.click(screen.getByRole("button", { name: "0 obunachi" }));
+
+    expect(await screen.findByRole("heading", { name: "Obunachilar" }))
+      .toBeInTheDocument();
   });
 });

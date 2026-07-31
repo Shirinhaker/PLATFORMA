@@ -229,15 +229,28 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     expect(remove).toHaveBeenCalledWith("item_groups", 1);
   });
 
-  it("Guruhini o'zgartirish alohida guruh tanlash oynasini ochadi", async () => {
+  it("Guruhini o'zgartirish monolit kabi to'liq openItemForm formasini ochadi", async () => {
     const user = userEvent.setup();
     render(<StatefulItemsView />);
 
     await user.click(screen.getByRole("button", { name: "banan amallari" }));
     await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
 
-    expect(screen.getByRole("dialog")).toHaveTextContent("Guruhini o'zgartirish");
+    expect(screen.getByRole("heading", { name: "Mahsulot yoki xizmatni tahrirlash" }))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("Nomi")).toHaveValue("banan");
+    expect(screen.getByLabelText("Narxi")).toHaveValue("25000");
     expect(screen.getByLabelText("Guruh")).toHaveValue("");
-    expect(screen.queryByLabelText("Nomi")).not.toBeInTheDocument();
+  });
+
+  it("guruh o'chirish matnini monolitdagi acf-text klassi bilan ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    render(<StatefulItemsView />);
+
+    await user.click(screen.getByRole("button", { name: "gighi amallari" }));
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+
+    expect(screen.getByText(/'gighi' guruhi o'chirilsinmi/))
+      .toHaveClass("acf-text");
   });
 });

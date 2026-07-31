@@ -216,6 +216,98 @@ async def test_online_actions_update_dashboard_and_keep_nested_order_data():
 
 
 @pytest.mark.asyncio
+async def test_claude_review_online_actions_match_v1656_contracts():
+    profile = business_profile()
+    profile.cabinet_payload["subscription_payments"] = [{
+        "id": 5,
+        "status": "rejected",
+        "reason": "Chek xira",
+        "attempts": [],
+    }]
+    profile.cabinet_payload["orders"][0].update({
+        "status": "accepted",
+        "payment_status": "submitted",
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    payment, _ = await service.apply_action(
+        7,
+        "subscription_payments",
+        "resubmit",
+        record_id=5,
+        data={
+            "receipt_name": "chek.png",
+            "receipt_type": "image/png",
+            "receipt_size": 1200,
+        },
+    )
+    assert payment is not None
+    assert payment["status"] == "pending"
+    assert "reason" not in payment
+    assert payment["attempts"][-1]["receipt_name"] == "chek.png"
+
+    problem, _ = await service.apply_action(
+        7,
+        "orders",
+        "report_problem",
+        record_id=44,
+        data={"reason": "not_received", "note": "Pul kelmadi"},
+    )
+    assert problem is not None
+    assert problem["problem_open"] == 1
+    assert problem["problem_reason"] == "not_received"
+    assert problem["problem_note"] == "Pul kelmadi"
+
+    profile.cabinet_payload["orders"][0]["status"] = "handoff_waiting_seller"
+    handed_off, _ = await service.apply_action(
+        7,
+        "orders",
+        "handoff",
+        record_id=44,
+        data={},
+    )
+    assert handed_off is not None
+    assert handed_off["status"] == "in_delivery"
+
+    message, _ = await service.apply_action(
+        7,
+        "messages",
+        "send",
+        record_id=None,
+        data={"text": "Javob", "receiver_id": 9, "reply_to_id": 3},
+    )
+    assert message is not None
+    assert message["reply_to_id"] == 3
+
+    deleted, _ = await service.apply_action(
+        7,
+        "messages",
+        "delete",
+        record_id=message["id"],
+        data={},
+    )
+    assert deleted is not None
+    assert deleted["is_deleted"] == 1
+    assert deleted["deleted_at"] > 0
+
+
+@pytest.mark.asyncio
+async def test_notification_filters_can_be_created_and_deleted():
+    profile = business_profile()
+    profile.cabinet_payload["notify_filters"] = []
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    created, rows = await service.create_record(
+        7,
+        "notify_filters",
+        {"cat": "ish", "district": "Qumqo‘rg‘on", "keyword": "dasturchi"},
+    )
+    assert created["id"] == 1
+    assert rows == [created]
+    assert await service.delete_record(7, "notify_filters", 1) == []
+
+
+@pytest.mark.asyncio
 async def test_readonly_resources_cannot_be_created_or_deleted():
     service = BusinessOnlineService(FakeDatabase(business_profile()).session)
 

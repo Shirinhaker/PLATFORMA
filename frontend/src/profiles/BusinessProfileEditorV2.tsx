@@ -23,6 +23,7 @@ type Props = {
   profile: BusinessProfile;
   onBack: () => void;
   onProfile: (profile: BusinessProfile) => void;
+  onOpenOnline?: (view: "followers" | "following") => void;
 };
 
 type Hours = { from: string; to: string };
@@ -232,7 +233,13 @@ function MapPicker({ value, onClose, onSave }: {
 }
 
 
-export function BusinessProfileEditorV2({ api, profile, onBack, onProfile }: Props) {
+export function BusinessProfileEditorV2({
+  api,
+  profile,
+  onBack,
+  onProfile,
+  onOpenOnline,
+}: Props) {
   const [draft, setDraft] = useState(profile);
   const [baseline, setBaseline] = useState(profile);
   const [hours, setHours] = useState(() => parseHours(profile.work_hours));
@@ -440,8 +447,12 @@ export function BusinessProfileEditorV2({ api, profile, onBack, onProfile }: Pro
           <h2 className="user-profile-name">{draft.name || "Biznes"}</h2>
           <p className="user-profile-location">{draft.direction || "Yo'nalish tanlanmagan"}{draft.activity_type ? ` · ${draft.activity_type}` : ""}</p>
           <div className="user-profile-stats">
-            <button type="button" className="user-profile-stat">{draft.followers_count ?? 0} obunachi</button>
-            <button type="button" className="user-profile-stat following">{draft.following_count ?? 0} obuna</button>
+            <button type="button" className="user-profile-stat" onClick={() => onOpenOnline?.("followers")}>
+              {draft.followers_count ?? 0} obunachi
+            </button>
+            <button type="button" className="user-profile-stat following" onClick={() => onOpenOnline?.("following")}>
+              {draft.following_count ?? 0} obuna
+            </button>
           </div>
         </div>
         <button
