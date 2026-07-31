@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import type { BusinessOnlineRecord } from "../api/business-online-types";
 import {
@@ -6,6 +6,11 @@ import {
   recordText,
   type SharedActions,
 } from "./BusinessOnlineViews";
+import {
+  cleanItemDraft,
+  GroupForm,
+  ItemForm,
+} from "./BusinessItemsV1656Forms";
 
 
 const FILTERS: ReadonlyArray<readonly [string, string]> = [
@@ -84,7 +89,7 @@ function CatalogMenu({
   label: string;
   open: boolean;
   onToggle: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="item-group-actions">
@@ -223,6 +228,10 @@ export function ItemsEditorView({
   const normalizedQuery = query.trim().toLocaleLowerCase("uz");
   const searchActive = normalizedQuery.length > 0;
   const showAdd = !searchActive;
+  const groupNew = "item_groups:new";
+  const groupEdit = "item_groups:edit";
+  const itemNew = "items:new";
+  const itemEdit = "items:edit";
 
   const knownGroups = useMemo(
     () => new Set(groups.map((group, index) => String(recordId(group, index)))),
@@ -252,7 +261,9 @@ export function ItemsEditorView({
     if (searchActive) {
       ungrouped = ungrouped.filter((row) => matches(row, normalizedQuery));
     }
-    const showEmptyUngrouped = !searchActive && kind === "all" && groups.length === 0;
+    const showEmptyUngrouped = !searchActive
+      && kind === "all"
+      && groups.length === 0;
     if (ungrouped.length > 0 || showEmptyUngrouped) {
       result.push({ group: null, id: null, rows: ungrouped });
     }
@@ -261,8 +272,45 @@ export function ItemsEditorView({
 
   function editItem(row: BusinessOnlineRecord) {
     actions.setDraft({ ...row });
-    actions.setForm("items:edit");
+    actions.setForm(itemEdit);
     setOpenMenu(null);
+  }
+
+  async function saveGroup() {
+    const name = recordText(actions.draft, "name").trim();
+    if (!name) return;
+    const payload = cleanItemDraft({
+      ...actions.draft,
+      name,
+      kind: itemKind(actions.draft),
+    });
+    if (actions.form === groupEdit && actions.draft.id !== undefined) {
+      await actions.patch("item_groups", String(actions.draft.id), payload);
+    } else {
+      await actions.create("item_groups", payload);
+    }
+    actions.setForm(null);
+    actions.setDraft({});
+  }
+
+  async function saveItem() {
+    const name = recordText(actions.draft, "name").trim();
+    if (!name) return;
+    const payload = cleanItemDraft({
+      ...actions.draft,
+      name,
+      kind: itemKind(actions.draft),
+      group_id: actions.draft.group_id === ""
+        ? null
+        : actions.draft.group_id,
+    });
+    if (actions.form === itemEdit && actions.draft.id !== undefined) {
+      await actions.patch("items", String(actions.draft.id), payload);
+    } else {
+      await actions.create("items", payload);
+    }
+    actions.setForm(null);
+    actions.setDraft({});
   }
 
   return (
@@ -300,11 +348,33 @@ export function ItemsEditorView({
           className="item-group-add-btn"
           onClick={() => {
             actions.setDraft({ kind: "product" });
-            actions.setForm("item_groups:new");
+            actions.setForm(groupNew);
           }}
         >
           + Guruh qo'shish
         </button>
+      )}
+
+      {[groupNew, groupEdit].includes(actions.form ?? "") && (
+        <GroupForm
+          draft={actions.draft}
+          setDraft={actions.setDraft}
+          busy={actions.busy}
+          editing={actions.form === groupEdit}
+          onCancel={() => actions.setForm(null)}
+          onSave={saveGroup}
+        />
+      )}
+      {[itemNew, itemEdit].includes(actions.form ?? "") && (
+        <ItemForm
+          draft={actions.draft}
+          groups={groups}
+          setDraft={actions.setDraft}
+          busy={actions.busy}
+          editing={actions.form === itemEdit}
+          onCancel={() => actions.setForm(null)}
+          onSave={saveItem}
+        />
       )}
 
       <div className="items-list">
@@ -339,7 +409,7 @@ export function ItemsEditorView({
                       type="button"
                       onClick={() => {
                         actions.setDraft({ ...block.group });
-                        actions.setForm("item_groups:edit");
+                        actions.setForm(groupEdit);
                         setOpenMenu(null);
                       }}
                     >
@@ -349,7 +419,10 @@ export function ItemsEditorView({
                       type="button"
                       className="danger"
                       disabled={actions.busy}
-                      onClick={() => void actions.remove("item_groups", block.id!)}
+                      onClick={() => void actions.remove(
+                        "item_groups",
+                        block.id as number | string,
+                      )}
                     >
                       O'chirish
                     </button>
@@ -367,7 +440,9 @@ export function ItemsEditorView({
                       id={id}
                       busy={actions.busy}
                       open={openMenu === menu}
-                      onToggle={() => setOpenMenu(openMenu === menu ? null : menu)}
+                      onToggle={() => setOpenMenu(
+                        openMenu === menu ? null : menu,
+                      )}
                       onEdit={() => editItem(row)}
                       onMove={() => editItem(row)}
                       onDelete={() => void actions.remove("items", id)}
@@ -378,10 +453,14 @@ export function ItemsEditorView({
                   <AddCard
                     onClick={() => {
                       actions.setDraft({
-                        kind: block.group ? itemKind(block.group) : "product",
+                        kind: block.group
+                          ? itemKind(block.group)
+                          : "product",
                         group_id: block.id,
+                        unit: "dona",
+                        track_stock: 0,
                       });
-                      actions.setForm("items:new");
+                      actions.setForm(itemNew);
                     }}
                   />
                 )}
