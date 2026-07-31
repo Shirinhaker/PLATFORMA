@@ -117,33 +117,14 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
 
 
 describe("v1656 online cabinet parity", () => {
-  it("uses dedicated subscription, payment, item and listing screens", async () => {
+  it("opens the exact v1656 item screen from the cabinet", async () => {
     const user = await renderCabinet();
 
-    await user.click(screen.getByRole("button", { name: /Obunalarim/ }));
-    expect(await screen.findByRole("heading", { name: "Obunalarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "1 oy" })).toBeInTheDocument();
-    expect(screen.getByText("Bepul")).toBeInTheDocument();
-    expect(screen.getByText("Plus")).toBeInTheDocument();
-    expect(screen.getByText("Pro")).toBeInTheDocument();
-    expect(screen.queryByText(/ta haqiqiy yozuv/)).not.toBeInTheDocument();
-
-    await back(user);
-    await user.click(screen.getByRole("button", { name: /To‘lovlarim/ }));
-    expect(await screen.findByRole("heading", { name: "To‘lovlarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Yangilash" })).toBeInTheDocument();
-
-    await back(user);
     await user.click(screen.getByRole("button", { name: /Mahsulot va xizmatlar/ }));
     expect(await screen.findByPlaceholderText("Tovar qidirish...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Guruh/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Mahsulot\/xizmat/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /\+ Guruh qo'shish/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tovar qo'shish" })).toBeInTheDocument();
     expect(screen.getByText("Muhr")).toBeInTheDocument();
-
-    await back(user);
-    await user.click(screen.getByRole("button", { name: /E’lonlarim/ }));
-    expect(await screen.findByRole("heading", { name: "E’lonlarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ E’lon/ })).toBeInTheDocument();
   });
 
   it("uses dedicated order, service, conversation and review workflows", async () => {

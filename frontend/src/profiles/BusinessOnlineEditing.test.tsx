@@ -103,7 +103,8 @@ describe("business online editing", () => {
       name: /Mahsulot va xizmatlar/,
     }));
     await screen.findByPlaceholderText("Tovar qidirish...");
-    await user.click(screen.getAllByRole("button", { name: "Tahrirlash" })[1]!);
+    await user.click(screen.getByRole("button", { name: "Eski nom amallari" }));
+    await user.click(screen.getByRole("button", { name: "Tahrirlash" }));
     expect(await screen.findByRole("heading", {
       name: "Mahsulot yoki xizmatni tahrirlash",
     })).toBeInTheDocument();
