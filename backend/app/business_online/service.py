@@ -38,6 +38,8 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
     "notifications": ResourceSpec(update=True, delete=True),
     "followers": ResourceSpec(),
     "following": ResourceSpec(delete=True),
+    "dining_places": ResourceSpec(create=True, update=True, delete=True),
+    "dining_orders": ResourceSpec(),
 }
 
 SENSITIVE_NAMES = {
@@ -124,7 +126,10 @@ class BusinessOnlineService:
                     "business_profile_not_found",
                     "Biznes profil topilmadi.",
                 )
-            return resource_rows(profile.cabinet_payload, resource)
+            ensure_resource_direction(profile, resource)
+            payload = normalized_payload(profile.cabinet_payload)
+            sync_dining_place_activity(payload)
+            return resource_rows(payload, resource)
 
     async def create_record(
         self,
@@ -141,8 +146,10 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             rows = resource_rows(payload, resource)
+            prepare_record_for_create(resource, clean, rows)
             now = unix_now()
             clean["id"] = next_record_id(rows)
             clean.setdefault("created_at", now)
@@ -172,9 +179,11 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             rows = resource_rows(payload, resource)
-            item = find_record(rows, record_id)
+            item = find_resource_record(rows, record_id, resource)
+            prepare_patch_for_resource(resource, item, clean)
             item.update(clean)
             item["updated_at"] = unix_now()
             payload[resource] = rows
@@ -195,11 +204,13 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             rows = resource_rows(payload, resource)
-            index = find_record_index(rows, record_id)
-            rows.pop(index)
+            index = find_resource_record_index(rows, record_id, resource)
+            deleted = rows.pop(index)
             payload[resource] = rows
+            cascade_after_delete(payload, resource, deleted)
             refresh_derived(profile, payload)
             profile.cabinet_payload = payload
             await session.commit()
@@ -219,6 +230,7 @@ class BusinessOnlineService:
 
         async with self._session_factory() as session:
             profile = await locked_profile(session, account_id)
+            ensure_resource_direction(profile, resource)
             payload = normalized_payload(profile.cabinet_payload)
             item = apply_action(
                 payload,
@@ -250,6 +262,99 @@ def operation_forbidden(resource: str) -> ApiError:
         "business_online_operation_forbidden",
         f"{resource} bo‘limida bu amal ruxsat etilmagan.",
     )
+
+
+def ensure_resource_direction(profile: BusinessProfile, resource: str) -> None:
+    if (
+        resource in {"dining_places", "dining_orders"}
+        and str(profile.direction or "").strip() != "Umumiy ovqatlanish"
+    ):
+        raise ApiError(
+            403,
+            "dining_direction_required",
+            "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun.",
+        )
+
+
+def prepare_record_for_create(
+    resource: str,
+    clean: dict[str, Any],
+    rows: list[dict[str, Any]],
+) -> None:
+    if resource != "dining_places":
+        return
+    kind = str(clean.get("kind") or "").strip()
+    if kind not in {"table", "room"}:
+        raise ApiError(
+            400,
+            "invalid_dining_place_kind",
+            "Stol yoki xona turini tanlang.",
+        )
+    name = str(clean.get("name") or "").strip()[:60]
+    seats = integer_or_default(clean.get("seats"), 0)
+    clean.clear()
+    clean.update({
+        "kind": kind,
+        "name": name or ("Stol" if kind == "table" else "Xona"),
+        "seats": (
+            max(0, min(100, seats))
+            if kind == "table"
+            else 0
+        ),
+        "x": 4 + (len(rows) % 5) * 18,
+        "y": 4,
+        "locked": 1,
+    })
+
+
+def prepare_patch_for_resource(
+    resource: str,
+    item: dict[str, Any],
+    clean: dict[str, Any],
+) -> None:
+    if resource != "dining_places":
+        return
+    prepared: dict[str, Any] = {}
+    if "name" in clean:
+        prepared["name"] = str(clean.get("name") or "").strip()[:60] or item["name"]
+    if "seats" in clean:
+        prepared["seats"] = (
+            max(0, min(100, integer_or_default(clean.get("seats"), 0)))
+            if item.get("kind") == "table"
+            else 0
+        )
+    try:
+        if "x" in clean:
+            prepared["x"] = max(0.0, min(90.0, float(clean["x"])))
+        if "y" in clean:
+            prepared["y"] = max(0.0, min(88.0, float(clean["y"])))
+    except (TypeError, ValueError):
+        raise ApiError(
+            400,
+            "invalid_dining_place_position",
+            "Joylashuv qiymati noto'g'ri.",
+        ) from None
+    if "locked" in clean:
+        prepared["locked"] = 1 if str(clean["locked"]).lower() in {"1", "true"} else 0
+    clean.clear()
+    clean.update(prepared)
+
+
+def cascade_after_delete(
+    payload: dict[str, Any],
+    resource: str,
+    deleted: dict[str, Any],
+) -> set[str]:
+    changed = {resource}
+    if resource == "dining_places":
+        place_id = str(deleted.get("id"))
+        payload["dining_orders"] = [
+            row
+            for row in resource_rows(payload, "dining_orders")
+            if str(row.get("place_id")) != place_id
+        ]
+        changed.add("dining_orders")
+    return changed
 
 
 async def locked_profile(session: AsyncSession, account_id: int) -> BusinessProfile:
@@ -353,6 +458,31 @@ def find_record_index(
     raise ApiError(404, "business_online_record_not_found", "Yozuv topilmadi.")
 
 
+def find_resource_record(
+    rows: list[dict[str, Any]],
+    record_id: int | str,
+    resource: str,
+) -> dict[str, Any]:
+    return rows[find_resource_record_index(rows, record_id, resource)]
+
+
+def find_resource_record_index(
+    rows: list[dict[str, Any]],
+    record_id: int | str,
+    resource: str,
+) -> int:
+    try:
+        return find_record_index(rows, record_id)
+    except ApiError:
+        if resource == "dining_places":
+            raise ApiError(
+                404,
+                "dining_place_not_found",
+                "Stol yoki xona topilmadi.",
+            ) from None
+        raise
+
+
 def apply_action(
     payload: dict[str, Any],
     resource: str,
@@ -363,6 +493,193 @@ def apply_action(
 ) -> dict[str, Any] | None:
     rows = resource_rows(payload, resource)
     now = unix_now()
+
+    if resource == "dining_places":
+        if record_id is None:
+            raise missing_record_id()
+        place = find_resource_record(rows, record_id, resource)
+        payload[resource] = rows
+        if action == "book":
+            customer = str(data.get("customer_name") or "").strip()[:80]
+            booking_date = str(data.get("booking_date") or "").strip()[:10]
+            booking_time = str(data.get("booking_time") or "").strip()[:5]
+            if not customer or not booking_date or not booking_time:
+                raise ApiError(
+                    400,
+                    "dining_booking_fields_required",
+                    "Mijoz ismi, sana va vaqtni kiriting.",
+                )
+            orders = resource_rows(payload, "dining_orders")
+            orders.append({
+                "id": next_record_id(orders),
+                "place_id": place["id"],
+                "kind": "booking",
+                "customer_name": customer,
+                "phone": str(data.get("phone") or "").strip()[:30],
+                "booking_date": booking_date,
+                "booking_time": booking_time,
+                "guests": max(
+                    1,
+                    min(100, integer_or_default(data.get("guests"), 1)),
+                ),
+                "note": str(data.get("note") or "").strip()[:300],
+                "total": 0,
+                "status": "active",
+                "created_at": now,
+                "updated_at": now,
+            })
+            payload["dining_orders"] = orders
+        elif action == "create_order":
+            prepared = dining_prepared_items(
+                payload,
+                data.get("items"),
+                empty_message="Zakaz uchun mahsulot tanlanmadi.",
+                missing_message="Tanlangan mahsulotlar topilmadi.",
+            )
+            orders = resource_rows(payload, "dining_orders")
+            total = sum(integer(item.get("total")) for item in prepared)
+            order_id = next_record_id(orders)
+            orders.append({
+                "id": order_id,
+                "place_id": place["id"],
+                "kind": "order",
+                "customer_name": str(data.get("customer_name") or "").strip()[:80],
+                "note": str(data.get("note") or "").strip()[:300],
+                "total": total,
+                "waiter_staff_id": None,
+                "waiter_name": "Rahbar",
+                "problem_open": 0,
+                "kitchen_status": "preparing",
+                "payment_status": "open",
+                "status": "active",
+                "items": prepared,
+                "created_at": now,
+                "updated_at": now,
+            })
+            payload["dining_orders"] = orders
+            append_dining_notification(
+                payload,
+                title="Yangi ichki zakaz",
+                body=f"{place.get('name') or 'Stol'} · {total} so'm",
+                action_type="dining_kitchen",
+                order_id=order_id,
+                target_perm="kitchen",
+                now=now,
+            )
+            append_dining_notification(
+                payload,
+                title="Yangi ochiq hisob",
+                body=f"{place.get('name') or 'Stol'} · {total} so'm",
+                action_type="dining_cash",
+                order_id=order_id,
+                target_perm="kassa",
+                now=now,
+            )
+        elif action == "clear":
+            orders = resource_rows(payload, "dining_orders")
+            unfinished = any(
+                str(order.get("place_id")) == str(place["id"])
+                and order.get("kind") == "order"
+                and order.get("status") == "active"
+                and (
+                    order.get("payment_status") != "confirmed"
+                    or order.get("kitchen_status") != "done"
+                )
+                for order in orders
+            )
+            if unfinished:
+                raise ApiError(
+                    409,
+                    "dining_place_has_unfinished_order",
+                    "Stolni bo'shatish uchun taom tayyor va to'lov "
+                    "tasdiqlangan bo'lishi kerak.",
+                )
+            for order in orders:
+                if (
+                    str(order.get("place_id")) == str(place["id"])
+                    and order.get("status") == "active"
+                ):
+                    order["status"] = "done"
+                    order["updated_at"] = now
+            payload["dining_orders"] = orders
+        else:
+            raise action_forbidden()
+        sync_dining_place_activity(payload)
+        return find_record(resource_rows(payload, resource), record_id)
+
+    if resource == "dining_orders" and action == "add_items":
+        if record_id is None:
+            raise missing_record_id()
+        try:
+            item = find_record(rows, record_id)
+        except ApiError:
+            raise ApiError(
+                404,
+                "dining_order_not_found",
+                "Ichki buyurtma topilmadi.",
+            ) from None
+        if item.get("kind") != "order":
+            raise ApiError(404, "dining_order_not_found", "Ichki buyurtma topilmadi.")
+        if (
+            item.get("status") != "active"
+            or item.get("payment_status") == "confirmed"
+        ):
+            raise ApiError(
+                400,
+                "completed_dining_order",
+                "Yakunlangan hisobga taom qo'shib bo'lmaydi.",
+            )
+        prepared = dining_prepared_items(
+            payload,
+            data.get("items"),
+            empty_message="Qo'shiladigan taom tanlanmadi.",
+            missing_message="Tanlangan taomlar topilmadi.",
+        )
+        current_items = item.get("items")
+        item["items"] = [
+            *(
+                value
+                for value in (
+                    current_items if isinstance(current_items, list) else []
+                )
+                if isinstance(value, dict)
+            ),
+            *prepared,
+        ]
+        added = sum(integer(value.get("total")) for value in prepared)
+        item["total"] = integer(item.get("total")) + added
+        item["kitchen_status"] = "preparing"
+        item["updated_at"] = now
+        payload[resource] = rows
+        place = next(
+            (
+                value
+                for value in resource_rows(payload, "dining_places")
+                if str(value.get("id")) == str(item.get("place_id"))
+            ),
+            {},
+        )
+        place_name = str(place.get("name") or "Stol")
+        append_dining_notification(
+            payload,
+            title="Ichki zakazga yangi taom qo'shildi",
+            body=f"{place_name} · +{added} so'm",
+            action_type="dining_kitchen",
+            order_id=integer(item.get("id")),
+            target_perm="kitchen",
+            now=now,
+        )
+        append_dining_notification(
+            payload,
+            title="Ichki zakaz hisobi yangilandi",
+            body=f"{place_name} · +{added} so'm",
+            action_type="dining_cash",
+            order_id=integer(item.get("id")),
+            target_perm="kassa",
+            now=now,
+        )
+        sync_dining_place_activity(payload)
+        return item
 
     if resource == "notifications" and action == "mark_all_read":
         for row in rows:
@@ -459,11 +776,7 @@ def apply_action(
         item["status"] = "archived"
         item["archived_at"] = now
     else:
-        raise ApiError(
-            403,
-            "business_online_action_forbidden",
-            "Bu bo‘limda tanlangan amal ruxsat etilmagan.",
-        )
+        raise action_forbidden()
 
     item["updated_at"] = now
     payload[resource] = rows
@@ -474,7 +787,126 @@ def missing_record_id() -> ApiError:
     return ApiError(422, "record_id_required", "Amal uchun yozuv IDsi kerak.")
 
 
+def action_forbidden() -> ApiError:
+    return ApiError(
+        403,
+        "business_online_action_forbidden",
+        "Bu bo‘limda tanlangan amal ruxsat etilmagan.",
+    )
+
+
+def dining_prepared_items(
+    payload: dict[str, Any],
+    incoming: Any,
+    *,
+    empty_message: str,
+    missing_message: str,
+) -> list[dict[str, Any]]:
+    wanted: dict[int, float] = {}
+    values = incoming if isinstance(incoming, list) else []
+    for value in values[:100]:
+        if not isinstance(value, dict):
+            continue
+        try:
+            item_id = int(value.get("item_id"))
+            quantity = max(0.01, min(999.0, float(value.get("qty") or 0)))
+        except (TypeError, ValueError):
+            continue
+        wanted[item_id] = wanted.get(item_id, 0.0) + quantity
+    if not wanted:
+        raise ApiError(400, "dining_items_required", empty_message)
+
+    prepared = []
+    for item in resource_rows(payload, "items"):
+        item_id = integer(item.get("id"))
+        if (
+            item_id not in wanted
+            or str(item.get("stock_type") or "ready_food") != "ready_food"
+        ):
+            continue
+        quantity = wanted[item_id]
+        price = parse_price_amount(item.get("price"))
+        line_total = int(round(price * quantity))
+        prepared.append({
+            "item_id": item_id,
+            "name": str(item.get("name") or ""),
+            "qty": quantity,
+            "unit": str(item.get("unit") or "dona"),
+            "price": price,
+            "total": line_total,
+        })
+    if not prepared:
+        raise ApiError(400, "dining_items_not_found", missing_message)
+    return prepared
+
+
+def append_dining_notification(
+    payload: dict[str, Any],
+    *,
+    title: str,
+    body: str,
+    action_type: str,
+    order_id: int,
+    target_perm: str,
+    now: int,
+) -> None:
+    notifications = resource_rows(payload, "notifications")
+    notifications.append({
+        "id": next_record_id(notifications),
+        "title": title,
+        "body": body,
+        "action_type": action_type,
+        "dining_order_id": order_id,
+        "target_perm": target_perm,
+        "is_read": 0,
+        "created_at": now,
+        "updated_at": now,
+    })
+    payload["notifications"] = notifications
+
+
+DINING_ACTIVE_FIELDS = {
+    "active_id",
+    "active_kind",
+    "customer_name",
+    "booking_date",
+    "booking_time",
+    "guests",
+    "total",
+}
+
+
+def sync_dining_place_activity(payload: dict[str, Any]) -> None:
+    if "dining_places" not in payload and "dining_orders" not in payload:
+        return
+    places = resource_rows(payload, "dining_places")
+    orders = resource_rows(payload, "dining_orders")
+    for place in places:
+        for key in DINING_ACTIVE_FIELDS:
+            place.pop(key, None)
+        active = [
+            order
+            for order in orders
+            if str(order.get("place_id")) == str(place.get("id"))
+            and order.get("status") == "active"
+        ]
+        if not active:
+            continue
+        latest = max(active, key=lambda order: integer(order.get("id")))
+        place.update({
+            "active_id": latest.get("id"),
+            "active_kind": latest.get("kind"),
+            "customer_name": latest.get("customer_name"),
+            "booking_date": latest.get("booking_date"),
+            "booking_time": latest.get("booking_time"),
+            "guests": latest.get("guests"),
+            "total": latest.get("total"),
+        })
+    payload["dining_places"] = places
+
+
 def refresh_derived(profile: BusinessProfile, payload: dict[str, Any]) -> None:
+    sync_dining_place_activity(payload)
     followers = resource_rows(payload, "followers")
     following = resource_rows(payload, "following")
     reviews = resource_rows(payload, "business_reviews")
@@ -498,6 +930,10 @@ def refresh_derived(profile: BusinessProfile, payload: dict[str, Any]) -> None:
     snapshot["problem_orders"] = sum(bool(row.get("problem_open")) for row in orders)
     snapshot["unread"] = sum(not bool(integer(row.get("is_read"))) for row in notifications)
     snapshot["followers"] = len(followers)
+    snapshot["occupied_places"] = sum(
+        bool(row.get("active_id"))
+        for row in resource_rows(payload, "dining_places")
+    )
     profile.dashboard_snapshot = snapshot
 
     ordered = sorted(
@@ -529,6 +965,18 @@ def integer(value: Any) -> int:
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def integer_or_default(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def parse_price_amount(value: Any) -> int:
+    digits = "".join(character for character in str(value or "") if character.isdigit())
+    return int(digits) if digits else 0
 
 
 def unix_now() -> int:

@@ -6,6 +6,7 @@ import type {
   BusinessOnlineResource,
 } from "../api/business-online-types";
 import type { BusinessProfile } from "../api/types";
+import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
 import {
   CrudEditorView,
   ItemsEditorView,
@@ -62,7 +63,20 @@ const VIEW_RESOURCE: Record<string, BusinessOnlineResource> = {
   notifications: "notifications",
   followers: "followers",
   following: "following",
+  "dining-places": "dining_places",
 };
+
+function viewResources(
+  view: string,
+  primary?: BusinessOnlineResource,
+): BusinessOnlineResource[] {
+  if (!primary) return [];
+  if (view === "items") return [primary, "item_groups"];
+  if (view === "dining-places") {
+    return [primary, "dining_orders", "items", "item_groups"];
+  }
+  return [primary];
+}
 
 function rowsFromProfile(
   profile: BusinessProfile,
@@ -93,10 +107,12 @@ export function BusinessOnlineScreen({
 }: Props) {
   const primary = VIEW_RESOURCE[view];
   const [resources, setResources] = useState<ResourceState>(() => ({
-    ...(primary ? { [primary]: rowsFromProfile(profile, primary) } : {}),
-    ...(view === "items"
-      ? { item_groups: rowsFromProfile(profile, "item_groups") }
-      : {}),
+    ...Object.fromEntries(
+      viewResources(view, primary).map((resource) => [
+        resource,
+        rowsFromProfile(profile, resource),
+      ]),
+    ),
   }));
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -111,6 +127,7 @@ export function BusinessOnlineScreen({
   const [messageText, setMessageText] = useState("");
   const [replyId, setReplyId] = useState<number | string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [subscreenBack, setSubscreenBack] = useState<(() => void) | null>(null);
 
   const items = primary ? resources[primary] ?? [] : [];
   const groups = resources.item_groups ?? [];
@@ -139,13 +156,21 @@ export function BusinessOnlineScreen({
 
   useEffect(() => {
     if (!primary || !api.getBusinessOnlineResource) return;
-    const names: BusinessOnlineResource[] = view === "items"
-      ? [primary, "item_groups"]
-      : [primary];
+    const names = viewResources(view, primary);
     void refresh(...names);
     // API instance App davomida barqaror. View o‘zgarganda serverdan yangilanadi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, primary, api.getBusinessOnlineResource]);
+
+  useEffect(() => {
+    if (view !== "dining-places" || !error) return;
+    const timeout = window.setTimeout(() => setError(""), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [error, view]);
+
+  useEffect(() => {
+    setSubscreenBack(null);
+  }, [view]);
 
   function setResource(
     resource: BusinessOnlineResource,
@@ -157,7 +182,7 @@ export function BusinessOnlineScreen({
   async function create(
     resource: BusinessOnlineResource,
     record: BusinessOnlineRecord,
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     setError("");
     setNotice("");
@@ -178,9 +203,11 @@ export function BusinessOnlineScreen({
       }
       setForm(null);
       setDraft({});
-      setNotice("Saqlandi");
+      if (resource !== "dining_places") setNotice("Saqlandi");
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv saqlanmadi.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -190,7 +217,7 @@ export function BusinessOnlineScreen({
     resource: BusinessOnlineResource,
     id: number | string,
     value: BusinessOnlineRecord,
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     setError("");
     try {
@@ -204,9 +231,11 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      setNotice("Yangilandi");
+      if (resource !== "dining_places") setNotice("Yangilandi");
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv yangilanmadi.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -215,7 +244,7 @@ export function BusinessOnlineScreen({
   async function remove(
     resource: BusinessOnlineResource,
     id: number | string,
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     setError("");
     try {
@@ -227,9 +256,11 @@ export function BusinessOnlineScreen({
           (row, index) => String(recordId(row, index)) !== String(id),
         ));
       }
-      setNotice("O‘chirildi");
+      if (resource !== "dining_places") setNotice("O‘chirildi");
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv o‘chirilmadi.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -240,7 +271,7 @@ export function BusinessOnlineScreen({
     name: string,
     recordIdValue?: number | string,
     payload: BusinessOnlineRecord = {},
-  ) {
+  ): Promise<BusinessOnlineRecord | null> {
     setBusy(true);
     setError("");
     setNotice("");
@@ -251,6 +282,8 @@ export function BusinessOnlineScreen({
           payload,
         });
         setResource(resource, result.items);
+        if (!resource.startsWith("dining_")) setNotice("Amal bajarildi");
+        return result.item;
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
       } else if (
@@ -290,9 +323,11 @@ export function BusinessOnlineScreen({
             : row
         )));
       }
-      setNotice("Amal bajarildi");
+      if (!resource.startsWith("dining_")) setNotice("Amal bajarildi");
+      return {};
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
+      return null;
     } finally {
       setBusy(false);
     }
@@ -304,10 +339,18 @@ export function BusinessOnlineScreen({
     draft,
     setForm,
     setDraft,
-    create,
-    patch,
-    remove,
-    action,
+    create: async (...arguments_) => {
+      await create(...arguments_);
+    },
+    patch: async (...arguments_) => {
+      await patch(...arguments_);
+    },
+    remove: async (...arguments_) => {
+      await remove(...arguments_);
+    },
+    action: async (...arguments_) => {
+      await action(...arguments_);
+    },
   };
 
   const content = renderContent({
@@ -333,29 +376,49 @@ export function BusinessOnlineScreen({
     setReplyText,
     refresh,
     hasActionApi: Boolean(api.applyBusinessOnlineAction),
+    resources,
+    create,
+    patch,
+    remove,
+    action,
+    setSubscreenBack: (handler) => {
+      setSubscreenBack(handler ? () => handler : null);
+    },
   });
 
   return (
     <main className="business-online">
       <header className="business-online__heading">
-        <button type="button" onClick={() => void onBack()}>
-          ← Kabinetga qaytish
+        <button
+          type="button"
+          onClick={() => {
+            if (subscreenBack) subscreenBack();
+            else void onBack();
+          }}
+        >
+          {subscreenBack ? "← Orqaga" : "← Kabinetga qaytish"}
         </button>
         <div>
-          <h1>{title}</h1>
+          <h1>{subscreenBack ? "Zakaz qilish" : title}</h1>
           <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
         </div>
         {primary && api.getBusinessOnlineResource && (
           <button
             type="button"
-            onClick={() => void refresh(primary)}
+            onClick={() => void refresh(...viewResources(view, primary))}
             disabled={loading}
           >
             Yangilash
           </button>
         )}
       </header>
-      {error && <p className="business-online__error" role="alert">{error}</p>}
+      {error && (view === "dining-places" ? (
+        <div className="business-dining-v1656">
+          <div className="app-toast on" role="alert">{error}</div>
+        </div>
+      ) : (
+        <p className="business-online__error" role="alert">{error}</p>
+      ))}
       {notice && <p className="business-online__notice" role="status">{notice}</p>}
       {loading && <div className="business-online__loading">Yuklanmoqda…</div>}
       {content}
@@ -387,6 +450,27 @@ type RenderContext = {
   setReplyText: (value: string) => void;
   refresh: (...names: BusinessOnlineResource[]) => Promise<void>;
   hasActionApi: boolean;
+  resources: ResourceState;
+  create: (
+    resource: BusinessOnlineResource,
+    record: BusinessOnlineRecord,
+  ) => Promise<boolean>;
+  patch: (
+    resource: BusinessOnlineResource,
+    id: number | string,
+    value: BusinessOnlineRecord,
+  ) => Promise<boolean>;
+  remove: (
+    resource: BusinessOnlineResource,
+    id: number | string,
+  ) => Promise<boolean>;
+  action: (
+    resource: BusinessOnlineResource,
+    name: string,
+    id?: number | string,
+    payload?: BusinessOnlineRecord,
+  ) => Promise<BusinessOnlineRecord | null>;
+  setSubscreenBack: (handler: (() => void) | null) => void;
 };
 
 function renderContent(context: RenderContext): ReactNode {
@@ -432,6 +516,21 @@ function renderContent(context: RenderContext): ReactNode {
           setQuery={context.setQuery}
           kind={context.kind}
           setKind={context.setKind}
+        />
+      );
+    case "dining-places":
+      return (
+        <BusinessDiningV1656View
+          places={context.resources.dining_places ?? []}
+          menuItems={context.resources.items ?? []}
+          groups={context.resources.item_groups ?? []}
+          busy={shared.busy}
+          createPlace={(record) => context.create("dining_places", record)}
+          patchPlace={(id, patch) => context.patch("dining_places", id, patch)}
+          removePlace={(id) => context.remove("dining_places", id)}
+          action={context.action}
+          refresh={context.refresh}
+          onBackHandlerChange={context.setSubscreenBack}
         />
       );
     case "listings":

@@ -247,6 +247,7 @@ export const ONLINE_MENUS: Menu[] = [
   { icon: "💎", label: "Obunalarim", caption: "Bepul, Plus va Pro tariflari", view: "subscriptions", payload: "business_subscriptions" },
   { icon: "💳", label: "To‘lovlarim", caption: "Yuborilgan to‘lovlar va tarix", view: "payments", payload: "subscription_payments" },
   { icon: "🛍️", label: "Mahsulot va xizmatlar", caption: "Guruhlar va katalog yozuvlari", view: "items", payload: ["item_groups", "items"] },
+  { icon: "🍽️", label: "Stollar va xonalar", caption: "Zal rejasini joylashtirish", view: "dining-places", payload: "dining_places", directions: ["Umumiy ovqatlanish"] },
   { icon: "📢", label: "E’lonlarim", caption: "Biznes nomidan joylangan e’lonlar", view: "listings", payload: "listings" },
   { icon: "📦", label: "Buyurtmalar", caption: "Mahsulot buyurtmalari", view: "orders", payload: "orders" },
   { icon: "🧰", label: "Xizmat buyurtmalari", caption: "Xizmat va navbatlar", view: "service-orders", payload: "orders" },
@@ -278,8 +279,6 @@ export const ADMIN_MENUS: Menu[] = [
 ];
 
 export const DIRECTION_MENUS: Menu[] = [
-  { icon: "🍽️", label: "Stol va xonalar", caption: "Umumiy ovqatlanish joylashuvi", view: "dining-places", payload: "dining_places", directions: ["Umumiy ovqatlanish"] },
-  { icon: "🧑‍🍳", label: "Ichki ovqatlanish buyurtmalari", caption: "Stol va tashqi buyurtmalar", view: "dining-orders", payload: "dining_orders", directions: ["Umumiy ovqatlanish"] },
   { icon: "👨‍🏫", label: "Ta’lim guruhlari", caption: "Guruh va dars ma’lumotlari", view: "education-groups", payload: "education_groups", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🎓", label: "O‘quvchilar", caption: "O‘quvchi va to‘lov holatlari", view: "education-students", payload: "education_students", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🧑‍🏫", label: "O‘qituvchilar", caption: "O‘qituvchi ma’lumotlari", view: "education-teachers", payload: "education_teachers", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },

@@ -11,7 +11,9 @@ export type BusinessOnlineResource =
   | "stories"
   | "notifications"
   | "followers"
-  | "following";
+  | "following"
+  | "dining_places"
+  | "dining_orders";
 
 export type BusinessOnlineRecord = Record<string, unknown>;
 

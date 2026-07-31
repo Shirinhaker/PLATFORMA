@@ -199,3 +199,172 @@ async def test_unknown_resource_is_not_exposed():
         await service.read_resource(7, "staff")
 
     assert error.value.code == "business_online_resource_not_found"
+
+
+@pytest.mark.asyncio
+async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
+    profile = business_profile()
+    profile.direction = "Umumiy ovqatlanish"
+    profile.cabinet_payload.update({
+        "items": [{
+            "id": 21,
+            "name": "Tuxum barak",
+            "price": 20000,
+            "unit": "dona",
+            "stock_type": "ready_food",
+        }],
+        "dining_places": [],
+        "dining_orders": [],
+        "notifications": [],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    place, places = await service.create_record(
+        7,
+        "dining_places",
+        {"kind": "table", "name": "Stol 1", "seats": 4},
+    )
+    assert {
+        key: place[key]
+        for key in ("id", "kind", "name", "seats", "x", "y", "locked")
+    } == {
+        "id": 1,
+        "kind": "table",
+        "name": "Stol 1",
+        "seats": 4,
+        "x": 4,
+        "y": 4,
+        "locked": 1,
+    }
+    assert places == [place]
+
+    booked, places = await service.apply_action(
+        7,
+        "dining_places",
+        "book",
+        record_id=1,
+        data={
+            "customer_name": "Ali",
+            "phone": "901234567",
+            "booking_date": "2026-08-01",
+            "booking_time": "19:30",
+            "guests": 3,
+            "note": "",
+        },
+    )
+    assert booked is not None
+    assert booked["active_kind"] == "booking"
+    assert places[0]["customer_name"] == "Ali"
+
+    ordered, places = await service.apply_action(
+        7,
+        "dining_places",
+        "create_order",
+        record_id=1,
+        data={
+            "items": [{"item_id": 21, "qty": 2}],
+            "customer_name": "Vali",
+            "note": "Issiq",
+        },
+    )
+    assert ordered is not None
+    assert ordered["active_kind"] == "order"
+    assert ordered["total"] == 40000
+    order_id = ordered["active_id"]
+    orders = profile.cabinet_payload["dining_orders"]
+    assert orders[1]["id"] == order_id
+    assert orders[1]["items"] == [{
+        "item_id": 21,
+        "name": "Tuxum barak",
+        "qty": 2.0,
+        "unit": "dona",
+        "price": 20000,
+        "total": 40000,
+    }]
+    assert places[0]["active_id"] == order_id
+
+    updated_order, _ = await service.apply_action(
+        7,
+        "dining_orders",
+        "add_items",
+        record_id=order_id,
+        data={"items": [{"item_id": 21, "qty": 1}], "note": ""},
+    )
+    assert updated_order is not None
+    assert updated_order["total"] == 60000
+    assert updated_order["kitchen_status"] == "preparing"
+    assert [row["title"] for row in profile.cabinet_payload["notifications"]] == [
+        "Yangi ichki zakaz",
+        "Yangi ochiq hisob",
+        "Ichki zakazga yangi taom qo'shildi",
+        "Ichki zakaz hisobi yangilandi",
+    ]
+    assert profile.dashboard_snapshot["occupied_places"] == 1
+
+
+@pytest.mark.asyncio
+async def test_dining_direction_clear_guard_and_delete_cascade_match_v1656():
+    profile = business_profile()
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    with pytest.raises(ApiError) as forbidden:
+        await service.read_resource(7, "dining_places")
+    assert forbidden.value.status_code == 403
+    assert forbidden.value.message == (
+        "Bu bo'lim faqat Umumiy ovqatlanish yo'nalishi uchun."
+    )
+
+    profile.direction = "Umumiy ovqatlanish"
+    profile.cabinet_payload.update({
+        "dining_places": [{
+            "id": 5,
+            "kind": "table",
+            "name": "Stol 1",
+            "seats": 4,
+            "x": 4,
+            "y": 4,
+            "locked": 1,
+        }],
+        "dining_orders": [{
+            "id": 41,
+            "place_id": 5,
+            "kind": "order",
+            "status": "active",
+            "kitchen_status": "preparing",
+            "payment_status": "open",
+            "total": 20000,
+            "items": [],
+        }],
+    })
+
+    with pytest.raises(ApiError) as unfinished:
+        await service.apply_action(
+            7,
+            "dining_places",
+            "clear",
+            record_id=5,
+            data={},
+        )
+    assert unfinished.value.status_code == 409
+    assert unfinished.value.message == (
+        "Stolni bo'shatish uchun taom tayyor va to'lov tasdiqlangan "
+        "bo'lishi kerak."
+    )
+
+    profile.cabinet_payload["dining_orders"][0].update({
+        "kitchen_status": "done",
+        "payment_status": "confirmed",
+    })
+    cleared, _ = await service.apply_action(
+        7,
+        "dining_places",
+        "clear",
+        record_id=5,
+        data={},
+    )
+    assert cleared is not None
+    assert cleared.get("active_id") is None
+    assert profile.cabinet_payload["dining_orders"][0]["status"] == "done"
+
+    assert await service.delete_record(7, "dining_places", 5) == []
+    assert profile.cabinet_payload["dining_orders"] == []
