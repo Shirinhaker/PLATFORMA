@@ -24,9 +24,15 @@ import type {
   PublicCatalogItem,
   PublicCatalogParams,
   PublicCatalogResponse,
+  PublicDistrictOffersResponse,
+  PublicFeatures,
+  PublicFollowedProfile,
+  PublicHomeMapParams,
+  PublicHomeMapResponse,
   PublicSearchParams,
   PublicSearchResponse,
   RegistrationStart,
+  ReverseGeocodeResult,
   SessionIdentity,
   UploadGrant,
   UploadGrantRequest,
@@ -171,6 +177,49 @@ export class ApiClient {
     return this.request("GET", `/api/v1/public/advertisements${suffix}`);
   }
 
+  getPublicFeatures(): Promise<PublicFeatures> {
+    return this.request("GET", "/api/v1/public/features");
+  }
+
+  getHomeMap(params: PublicHomeMapParams): Promise<PublicHomeMapResponse> {
+    const query = new URLSearchParams({ district: params.district });
+    return this.request("GET", `/api/v1/public/home/map?${query.toString()}`);
+  }
+
+  getDistrictOffers(
+    params: PublicHomeMapParams,
+  ): Promise<PublicDistrictOffersResponse> {
+    const query = new URLSearchParams({ district: params.district });
+    return this.request(
+      "GET",
+      `/api/v1/public/home/district-offers?${query.toString()}`,
+    );
+  }
+
+  getFollowedProfiles(): Promise<PublicFollowedProfile[]> {
+    return this.request(
+      "GET",
+      "/api/v1/public/home/followed-profiles",
+      undefined,
+      true,
+    );
+  }
+
+  recordAdvertisementViews(publicIds: string[]): Promise<void> {
+    return this.request(
+      "POST",
+      "/api/v1/public/advertisements/views",
+      { ids: publicIds },
+    );
+  }
+
+  recordAdvertisementClick(publicId: string): Promise<void> {
+    return this.request(
+      "POST",
+      `/api/v1/public/advertisements/${encodeURIComponent(publicId)}/click`,
+    );
+  }
+
   startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {
     return this.request("POST", "/api/v1/auth/register/start", body);
   }
@@ -221,6 +270,17 @@ export class ApiClient {
 
   updateBusinessProfile(body: BusinessProfilePatch): Promise<BusinessProfile> {
     return this.request("PUT", "/api/v1/business-profile", body, true);
+  }
+
+  reverseGeocode(
+    latitude: number,
+    longitude: number,
+  ): Promise<ReverseGeocodeResult> {
+    const query = new URLSearchParams({
+      lat: String(latitude),
+      lng: String(longitude),
+    });
+    return this.request("GET", `/api/geocode?${query.toString()}`);
   }
 
   getBusinessOnlineResource(

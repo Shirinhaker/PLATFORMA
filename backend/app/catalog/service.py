@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.repository import (
     ImageUrlProvider,
     get_public_catalog,
@@ -32,7 +33,7 @@ CatalogDetailLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:catalog:v1:"
+_CACHE_PREFIX = "public:catalog:v2:"
 
 
 class CatalogService:
@@ -45,6 +46,7 @@ class CatalogService:
         *,
         list_loader: CatalogLoader = list_public_catalog,
         detail_loader: CatalogDetailLoader = get_public_catalog,
+        catalog_cache_epoch: CatalogCacheEpoch | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis
@@ -52,13 +54,20 @@ class CatalogService:
         self._image_url_provider = image_url_provider
         self._list_loader = list_loader
         self._detail_loader = detail_loader
+        self._catalog_cache_epoch = (
+            catalog_cache_epoch or CatalogCacheEpoch(redis)
+        )
         self._tasks: dict[str, asyncio.Task] = {}
 
     async def list_items(
         self,
         params: PublicCatalogParams,
     ) -> PublicCatalogResponse:
-        key = self._cache_key("list", params.model_dump(mode="json"))
+        key = self._cache_key(
+            "list",
+            params.model_dump(mode="json"),
+            catalog_epoch=await self._catalog_cache_epoch.current(),
+        )
         cached = await self._read(key, PublicCatalogResponse)
         if cached is not None:
             return cached
@@ -68,7 +77,11 @@ class CatalogService:
         )
 
     async def get_item(self, public_id: str) -> PublicCatalogItem | None:
-        key = self._cache_key("detail", {"public_id": public_id})
+        key = self._cache_key(
+            "detail",
+            {"public_id": public_id},
+            catalog_epoch=await self._catalog_cache_epoch.current(),
+        )
         cached = await self._read(key, PublicCatalogItem)
         if cached is not None:
             return cached
@@ -145,8 +158,16 @@ class CatalogService:
         return self._redis if callable(getattr(self._redis, "get", None)) else None
 
     @staticmethod
-    def _cache_key(scope: str, payload: dict) -> str:
-        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    def _cache_key(
+        scope: str,
+        payload: dict,
+        *,
+        catalog_epoch: int = 0,
+    ) -> str:
+        canonical = json.dumps(
+            {"catalog_epoch": catalog_epoch, "payload": payload},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
         digest = hashlib.sha256(canonical.encode()).hexdigest()
         return f"{_CACHE_PREFIX}{scope}:{digest}"
-

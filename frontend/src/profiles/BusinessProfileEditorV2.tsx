@@ -7,6 +7,10 @@ import {
   directionActivities,
   initials,
 } from "./business-profile-config";
+import {
+  BusinessLocationPickerV1656View,
+  type PicklocPoint,
+} from "./BusinessLocationPickerV1656View";
 import "./BusinessProfileEditor.css";
 
 
@@ -16,7 +20,7 @@ type EditorApi = Pick<
   | "createUploadGrant"
   | "uploadGrantedFile"
   | "attachBusinessLogo"
-> & Partial<Pick<ApiClient, "attachBusinessPaymentQr">>;
+> & Partial<Pick<ApiClient, "attachBusinessPaymentQr" | "reverseGeocode">>;
 
 type Props = {
   api: EditorApi;
@@ -27,20 +31,7 @@ type Props = {
 };
 
 type Hours = { from: string; to: string };
-type Point = { latitude: number; longitude: number };
-
-type LeafletMap = {
-  on: (event: string, callback: (event: { latlng: { lat: number; lng: number } }) => void) => void;
-  remove: () => void;
-  setView: (point: [number, number], zoom: number) => LeafletMap;
-};
-
-type LeafletMarker = { setLatLng: (point: [number, number]) => void };
-type LeafletApi = {
-  map: (element: HTMLElement) => LeafletMap;
-  tileLayer: (url: string, options: Record<string, unknown>) => { addTo: (map: LeafletMap) => void };
-  marker: (point: [number, number]) => { addTo: (map: LeafletMap) => LeafletMarker };
-};
+type Point = PicklocPoint;
 
 type QrCtor = new (
   element: HTMLElement,
@@ -137,101 +128,6 @@ function QrCode({ value }: { value: string }) {
   }, [value]);
   return <div ref={root} className="business-profile-share__qr" aria-label="Do‘kon QR kodi" />;
 }
-
-function MapPicker({ value, onClose, onSave }: {
-  value: Point | null;
-  onClose: () => void;
-  onSave: (point: Point) => void;
-}) {
-  const root = useRef<HTMLDivElement | null>(null);
-  const [point, setPoint] = useState<Point>(value ?? { latitude: 38.861, longitude: 65.789 });
-  const [fallback, setFallback] = useState(false);
-
-  useEffect(() => {
-    const node = root.current;
-    const leaflet = (window as unknown as { L?: LeafletApi }).L;
-    if (!node || !leaflet) {
-      setFallback(true);
-      return;
-    }
-    const map = leaflet.map(node).setView([point.latitude, point.longitude], value ? 15 : 6);
-    leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap",
-    }).addTo(map);
-    const marker = leaflet.marker([point.latitude, point.longitude]).addTo(map);
-    map.on("click", (event) => {
-      const next = {
-        latitude: Number(event.latlng.lat.toFixed(7)),
-        longitude: Number(event.latlng.lng.toFixed(7)),
-      };
-      marker.setLatLng([next.latitude, next.longitude]);
-      setPoint(next);
-    });
-    return () => map.remove();
-  }, []);
-
-  function locate() {
-    navigator.geolocation?.getCurrentPosition((position) => {
-      setPoint({
-        latitude: Number(position.coords.latitude.toFixed(7)),
-        longitude: Number(position.coords.longitude.toFixed(7)),
-      });
-    });
-  }
-
-  return (
-    <div className="business-map-modal" role="dialog" aria-modal="true" aria-label="Xaritada joy belgilash">
-      <div className="business-map-modal__card">
-        <header>
-          <div>
-            <h2>Xaritada joy belgilash</h2>
-            <p>Xaritada biznes joylashgan nuqtani bosing.</p>
-          </div>
-          <button type="button" aria-label="Xaritani yopish" onClick={onClose}>×</button>
-        </header>
-        <div ref={root} className="business-map-modal__map" />
-        {fallback && (
-          <div className="business-map-modal__fallback">
-            <label>
-              Kenglik
-              <input
-                type="number"
-                step="any"
-                value={point.latitude}
-                onChange={(event) => {
-                  const latitude = Number(event.currentTarget.value);
-                  setPoint((current) => ({ ...current, latitude }));
-                }}
-              />
-            </label>
-            <label>
-              Uzunlik
-              <input
-                type="number"
-                step="any"
-                value={point.longitude}
-                onChange={(event) => {
-                  const longitude = Number(event.currentTarget.value);
-                  setPoint((current) => ({ ...current, longitude }));
-                }}
-              />
-            </label>
-          </div>
-        )}
-        <div className="business-map-modal__coordinates">
-          <span>📍 {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</span>
-          <button type="button" onClick={locate}>Joriy joylashuvim</button>
-        </div>
-        <footer>
-          <button type="button" className="button-secondary" onClick={onClose}>Bekor qilish</button>
-          <button type="button" onClick={() => onSave(point)}>Joyni tasdiqlash</button>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
 
 export function BusinessProfileEditorV2({
   api,
@@ -420,6 +316,53 @@ export function BusinessProfileEditorV2({
     } catch {
       setError("Havolani nusxalab bo‘lmadi.");
     }
+  }
+
+  async function savePickedLocation(next: Point) {
+    const localPatch = {
+      latitude: next.latitude,
+      longitude: next.longitude,
+      map_visible: true,
+    };
+    setDraft((current) => ({ ...current, ...localPatch }));
+    setBusy(true);
+    setError("");
+    setSaved(false);
+    try {
+      let address = draft.address;
+      if (api.reverseGeocode) {
+        try {
+          const geocode = await api.reverseGeocode(
+            next.latitude,
+            next.longitude,
+          );
+          address = geocode.address || address;
+        } catch {
+          // Monolit kabi geokodlash ishlamasa ham koordinata saqlanadi.
+        }
+      }
+      apply(await api.updateBusinessProfile({
+        ...localPatch,
+        address,
+      }));
+      setSaved(true);
+    } catch (reason) {
+      setError(errorText(reason));
+    } finally {
+      setBusy(false);
+      setMapOpen(false);
+    }
+  }
+
+  if (mapOpen) {
+    return (
+      <BusinessLocationPickerV1656View
+        prefix="bp"
+        value={point}
+        onCancel={() => setMapOpen(false)}
+        onConfirm={savePickedLocation}
+      />
+    );
   }
 
   return (
@@ -649,17 +592,6 @@ export function BusinessProfileEditorV2({
         <button type="submit" className="business-profile-form__save btn btn-primary btn-block" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
       </form>
 
-      {mapOpen && (
-        <MapPicker
-          value={point}
-          onClose={() => setMapOpen(false)}
-          onSave={(next) => {
-            setDraft((current) => ({ ...current, ...next, map_visible: true }));
-            setSaved(false);
-            setMapOpen(false);
-          }}
-        />
-      )}
       {lightbox && draft.logo_url && (
         <button type="button" className="business-logo-lightbox" aria-label="Kattalashtirilgan biznes rasmini yopish" onClick={() => setLightbox(false)}>
           <img src={draft.logo_url} alt={draft.name} />

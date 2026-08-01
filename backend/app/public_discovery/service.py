@@ -4,13 +4,26 @@ import asyncio
 import hashlib
 import json
 import logging
+import time
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
-from app.public_discovery.repository import search_public_profiles
-from app.public_discovery.schemas import PublicSearchParams, PublicSearchResponse
+from app.public_discovery.repository import (
+    load_public_district_offers,
+    load_followed_profiles,
+    load_public_home_map,
+    search_public_profiles,
+)
+from app.public_discovery.schemas import (
+    PublicDistrictOffersResponse,
+    PublicFollowedProfile,
+    PublicHomeMapResponse,
+    PublicSearchParams,
+    PublicSearchResponse,
+)
 from app.public_discovery.schemas import PublicResultType
 
 
@@ -21,7 +34,7 @@ SearchLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:search:v2:"
+_CACHE_PREFIX = "public:search:v3:"
 
 
 class PublicDiscoveryService:
@@ -32,6 +45,8 @@ class PublicDiscoveryService:
         settings: Settings,
         *,
         search_loader: SearchLoader | None = None,
+        image_url_provider: Callable[[str], str] | None = None,
+        catalog_cache_epoch: CatalogCacheEpoch | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis
@@ -61,13 +76,24 @@ class PublicDiscoveryService:
             self._search_loader = configured_loader
         else:
             self._search_loader = search_loader
+        self._image_url_provider = image_url_provider or (
+            lambda object_key: f"/media/{object_key}" if object_key else ""
+        )
+        self._catalog_cache_epoch = (
+            catalog_cache_epoch or CatalogCacheEpoch(redis)
+        )
         self._search_tasks: dict[str, asyncio.Task[PublicSearchResponse]] = {}
 
     async def search(
         self,
         params: PublicSearchParams,
     ) -> PublicSearchResponse:
-        cache_key = self.cache_key(params)
+        catalog_epoch = (
+            await self._catalog_cache_epoch.current()
+            if self._settings.phase3c_public_enabled
+            else 0
+        )
+        cache_key = self.cache_key(params, catalog_epoch=catalog_epoch)
         cached = await self._read_cache(cache_key)
         if cached is not None:
             return cached
@@ -86,6 +112,56 @@ class PublicDiscoveryService:
             task.add_done_callback(clear_completed)
 
         return await asyncio.shield(task)
+
+    async def home_map(
+        self,
+        district: str,
+        *,
+        account_id: int | None = None,
+        account_type: str | None = None,
+    ) -> PublicHomeMapResponse:
+        async with self._session_factory() as session:
+            result = await load_public_home_map(
+                session,
+                district=district.strip(),
+                image_url_provider=self._image_url_provider,
+                account_id=account_id,
+                account_type=account_type,
+            )
+            await session.rollback()
+            return result
+
+    async def district_offers(
+        self,
+        district: str,
+    ) -> PublicDistrictOffersResponse:
+        slot = int(time.time() // (30 * 60))
+        async with self._session_factory() as session:
+            result = await load_public_district_offers(
+                session,
+                district=district.strip(),
+                slot=slot,
+                image_url_provider=self._image_url_provider,
+                include_listings=self._settings.listings_enabled,
+            )
+            await session.rollback()
+            return result
+
+    async def followed_profiles(
+        self,
+        *,
+        account_id: int,
+        account_type: str,
+    ) -> list[PublicFollowedProfile]:
+        async with self._session_factory() as session:
+            result = await load_followed_profiles(
+                session,
+                account_id=account_id,
+                account_type=account_type,
+                image_url_provider=self._image_url_provider,
+            )
+            await session.rollback()
+            return result
 
     async def _load_and_cache(
         self,
@@ -156,9 +232,16 @@ class PublicDiscoveryService:
         return None
 
     @staticmethod
-    def cache_key(params: PublicSearchParams) -> str:
+    def cache_key(
+        params: PublicSearchParams,
+        *,
+        catalog_epoch: int = 0,
+    ) -> str:
         canonical = json.dumps(
-            params.model_dump(mode="json"),
+            {
+                "catalog_epoch": catalog_epoch,
+                "params": params.model_dump(mode="json"),
+            },
             separators=(",", ":"),
             sort_keys=True,
         )

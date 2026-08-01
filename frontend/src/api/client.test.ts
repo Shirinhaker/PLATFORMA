@@ -227,6 +227,82 @@ describe("ApiClient", () => {
     );
   });
 
+  it("uses the v1656 Home map, offers, followed and feature contracts", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getHomeMap({ district: "Qumqo‘rg‘on" });
+    await client.getDistrictOffers({ district: "Qumqo‘rg‘on" });
+    await client.getFollowedProfiles();
+    await client.getPublicFeatures();
+
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      "https://api.example/api/v1/public/home/map"
+        + "?district=Qumqo%E2%80%98rg%E2%80%98on",
+      "https://api.example/api/v1/public/home/district-offers"
+        + "?district=Qumqo%E2%80%98rg%E2%80%98on",
+      "https://api.example/api/v1/public/home/followed-profiles",
+      "https://api.example/api/v1/public/features",
+    ]);
+  });
+
+  it("records advertisement views and clicks without CSRF", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, {
+      status: 204,
+    }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.recordAdvertisementViews(["a_first", "a_second"]);
+    await client.recordAdvertisementClick("a_first");
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      1,
+      "https://api.example/api/v1/public/advertisements/views",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ ids: ["a_first", "a_second"] }),
+      }),
+    );
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "https://api.example/api/v1/public/advertisements/a_first/click",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetcher.mock.calls[0]?.[1]?.headers).not.toHaveProperty(
+      "X-CSRF-Token",
+    );
+  });
+
+  it("reverse geocodes the exact confirmed map center", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({
+      address: "Beruniy ko‘chasi, Qumqo‘rg‘on tumani",
+    }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.reverseGeocode(37.838933493659454, 67.58345251326438);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/geocode"
+        + "?lat=37.838933493659454&lng=67.58345251326438",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
+  });
+
   it("uploads granted bytes without browser credentials", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, {
       status: 200,

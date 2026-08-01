@@ -1,0 +1,69 @@
+[data-screen="pickloc"].screen {
+  --bg: var(--koprik-bg, #f4f7f5);
+  --card: var(--koprik-card, #fff);
+  --ink: var(--koprik-ink, #11201b);
+  --soft: var(--koprik-soft, #5c6e66);
+  --primary: var(--koprik-primary, #0e8c84);
+  --primary-ink: var(--koprik-primary-ink, #fff);
+  --primary-tint: var(--koprik-primary-tint, #e2f3f1);
+  --map-land: #e9efeb;
+  --shadow: 0 1px 2px rgb(16 40 33 / 4%), 0 8px 24px rgb(16 40 33 / 6%);
+  display: block;
+  width: min(100%, 840px);
+  margin: 0 auto;
+  padding: 0 14px;
+  color: var(--ink);
+  background: var(--bg);
+  animation: pickloc-fade .22s ease;
+}
+
+[data-screen="pickloc"] #pickMap {
+  height: calc(100vh - 180px);
+  height: calc(100dvh - 180px);
+}
+
+[data-screen="pickloc"] .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  height: 50px;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--koprik-font-display, system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-screen="pickloc"] .btn-primary {
+  color: var(--primary-ink);
+  background: var(--primary);
+  box-shadow: 0 6px 16px rgb(14 140 132 / 30%);
+}
+
+[data-screen="pickloc"] .btn-soft {
+  color: var(--primary);
+  background: var(--primary-tint);
+}
+
+[data-screen="pickloc"] .btn-block {
+  width: 100%;
+}
+
+[data-screen="pickloc"] .btn:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+@keyframes pickloc-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

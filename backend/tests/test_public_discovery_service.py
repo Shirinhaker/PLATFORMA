@@ -3,8 +3,10 @@ import asyncio
 
 import fakeredis.aioredis
 
+from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.schemas import (
+    PublicDistrictOffersResponse,
     PublicSearchItem,
     PublicSearchParams,
     PublicSearchResponse,
@@ -152,4 +154,73 @@ def test_public_search_cache_key_changes_with_filters_and_pagination():
 
     assert len({first, second, third}) == 3
     assert "savdo" not in first
-    assert first.startswith("public:search:v2:")
+    assert first.startswith("public:search:v3:")
+
+
+async def test_catalog_epoch_invalidates_cached_content_searches():
+    database = FakeDatabase()
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    epoch = CatalogCacheEpoch(redis)
+    reads = 0
+
+    async def loader(session, params):
+        nonlocal reads
+        reads += 1
+        return PublicSearchResponse(
+            items=[],
+            page=params.page,
+            page_size=params.page_size,
+            total=0,
+        )
+
+    service = PublicDiscoveryService(
+        database.session,
+        redis,
+        Settings(environment="test", phase3c_public_enabled=True),
+        search_loader=loader,
+        catalog_cache_epoch=epoch,
+    )
+    try:
+        await service.search(PublicSearchParams(q="stomatolog"))
+        await service.search(PublicSearchParams(q="stomatolog"))
+        await epoch.bump()
+        await service.search(PublicSearchParams(q="stomatolog"))
+    finally:
+        await redis.aclose()
+
+    assert reads == 2
+
+
+async def test_district_offers_follow_the_listings_feature_flag(monkeypatch):
+    database = FakeDatabase()
+    calls = []
+
+    async def loader(
+        session,
+        *,
+        district,
+        slot,
+        image_url_provider,
+        include_listings,
+    ):
+        calls.append((district, include_listings))
+        return PublicDistrictOffersResponse(
+            needs_district=False,
+            items=[],
+            slot=slot,
+        )
+
+    monkeypatch.setattr(
+        "app.public_discovery.service.load_public_district_offers",
+        loader,
+    )
+    service = PublicDiscoveryService(
+        database.session,
+        BrokenRedis(),
+        Settings(environment="test", listings_enabled=True),
+    )
+
+    await service.district_offers("Qumqo‘rg‘on")
+
+    assert calls == [("Qumqo‘rg‘on", True)]
+    assert database.rollbacks == 1

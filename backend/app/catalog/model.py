@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Identity,
+    Index,
     String,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -34,6 +35,7 @@ class CatalogGroup(Base):
         BigInteger,
         ForeignKey("accounts.id", ondelete="SET NULL"),
     )
+    source_record_key: Mapped[str | None] = mapped_column(String(160))
     owner_name_snapshot: Mapped[str] = mapped_column(
         String(160),
         nullable=False,
@@ -46,10 +48,9 @@ class CatalogGroup(Base):
         REVIEW_STATE_ENUM,
         nullable=False,
     )
-    migration_run_id: Mapped[int] = mapped_column(
+    migration_run_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("migration_runs.id", ondelete="RESTRICT"),
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -75,6 +76,7 @@ class CatalogItem(Base):
         BigInteger,
         ForeignKey("accounts.id", ondelete="SET NULL"),
     )
+    source_record_key: Mapped[str | None] = mapped_column(String(160))
     catalog_group_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("catalog_groups.id", ondelete="SET NULL"),
@@ -115,10 +117,9 @@ class CatalogItem(Base):
         REVIEW_STATE_ENUM,
         nullable=False,
     )
-    migration_run_id: Mapped[int] = mapped_column(
+    migration_run_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("migration_runs.id", ondelete="RESTRICT"),
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -128,3 +129,23 @@ class CatalogItem(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+
+
+Index(
+    "ix_catalog_groups_live_source",
+    CatalogGroup.business_account_id,
+    CatalogGroup.source_record_key,
+    unique=True,
+)
+
+Index(
+    "ix_catalog_items_live_source",
+    CatalogItem.business_account_id,
+    CatalogItem.source_record_key,
+    unique=True,
+)
+
+Index(
+    "ix_catalog_items_catalog_group_id",
+    CatalogItem.catalog_group_id,
+)

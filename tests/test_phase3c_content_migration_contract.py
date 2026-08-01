@@ -90,7 +90,8 @@ def test_migration_stage_flags_cache_and_report_guards_are_fixed():
     assert positions == sorted(positions)
     assert "listings_enabled: bool = False" in config
     assert "phase3c_public_enabled: bool = False" in config
-    assert 'public:search:v2:' in discovery
+    assert 'public:search:v3:' in discovery
+    assert "CatalogCacheEpoch" in discovery
     for forbidden in ("pass_plain", "token", "source_reference"):
         assert f'"{forbidden}"' in report
 

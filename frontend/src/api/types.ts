@@ -168,6 +168,12 @@ export type BusinessProfilePatch = Partial<Pick<
   | "map_visible"
 >>;
 
+export type ReverseGeocodeResult = {
+  address?: string;
+  region?: string;
+  district?: string;
+};
+
 export type CabinetSwitch = {
   account_id: number;
   account_type: AccountType;
@@ -293,9 +299,86 @@ export type PublicAdvertisement = {
   title: string;
   caption: string;
   owner_public_id: string;
+  owner_kind?: "user" | "business";
   desktop_image_url: string;
   mobile_image_url: string;
   crop_x: number;
   crop_y: number;
   crop_zoom: number;
+};
+
+export type PublicHomeBusinessPin = {
+  id: number;
+  public_id: string;
+  name: string;
+  yon: string;
+  tur: string;
+  lat: number;
+  lng: number;
+  logo_file: string;
+  logo_x: number;
+  logo_y: number;
+  logo_zoom: number;
+  address: string;
+  source: string;
+};
+
+export type PublicHomeSpecialistPin = {
+  user_id: number;
+  public_id: string;
+  name: string;
+  kasb: string;
+  is_gov: boolean;
+  lat: number;
+  lng: number;
+  avatar_file: string;
+  avatar_x: number;
+  avatar_y: number;
+  avatar_zoom: number;
+  source: string;
+};
+
+export type PublicHomeMapResponse = {
+  businesses: PublicHomeBusinessPin[];
+  specialists: PublicHomeSpecialistPin[];
+};
+
+export type PublicHomeMapParams = { district: string };
+
+export type PublicDistrictOffer = {
+  kind: "product" | "service" | "listing";
+  business_id: number;
+  business_public_id: string;
+  content_id: number;
+  content_public_id: string;
+  title: string;
+  business_name: string;
+  image: string;
+  business_logo: string;
+  price: string;
+  unit: string;
+};
+
+export type PublicDistrictOffersResponse = {
+  needs_district: boolean;
+  items: PublicDistrictOffer[];
+  slot?: number;
+};
+
+export type PublicFollowedProfile = {
+  kind: "user" | "business";
+  public_id: string;
+  name: string;
+  image_url: string;
+  crop_x: number;
+  crop_y: number;
+  crop_zoom: number;
+};
+
+export type PublicFeatures = {
+  listings: boolean;
+  stories: boolean;
+  chat: boolean;
+  systemization: boolean;
+  taxi: boolean;
 };
