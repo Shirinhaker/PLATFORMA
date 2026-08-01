@@ -122,6 +122,27 @@ def test_content_search_item_has_capabilities_without_private_ids():
     assert "image_object_key" not in payload
 
 
+def test_public_search_map_point_exposes_only_opted_in_business_location():
+    item = PublicSearchItem(
+        kind="service",
+        public_id="s_public",
+        name="Stomatolog",
+        map_point={
+            "business_public_id": "b_public",
+            "business_name": "Muhr",
+            "latitude": 37.8234,
+            "longitude": 67.5789,
+        },
+    )
+
+    assert item.model_dump(mode="json", exclude_none=True)["map_point"] == {
+        "business_public_id": "b_public",
+        "business_name": "Muhr",
+        "latitude": 37.8234,
+        "longitude": 67.5789,
+    }
+
+
 def test_public_search_response_has_stable_page_metadata():
     response = PublicSearchResponse(
         items=[],

@@ -221,6 +221,13 @@ export type PublicSearchParams = {
   page_size?: number;
 };
 
+export type PublicSearchMapPoint = {
+  business_public_id: string;
+  business_name: string;
+  latitude: number;
+  longitude: number;
+};
+
 export type PublicSearchItem = {
   kind: PublicResultKind;
   public_id: string;
@@ -238,6 +245,7 @@ export type PublicSearchItem = {
   owner_label?: string;
   can_order?: boolean;
   can_chat?: boolean;
+  map_point?: PublicSearchMapPoint;
 };
 
 export type PublicSearchResponse = {

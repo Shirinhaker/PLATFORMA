@@ -41,8 +41,6 @@ def test_public_search_query_selects_only_the_public_projection():
         "password_hash",
         "telegram_user_id",
         "phone",
-        "latitude",
-        "longitude",
         "pay_card",
         "tax_id",
         "director",
@@ -50,6 +48,16 @@ def test_public_search_query_selects_only_the_public_projection():
         "logo_object_key",
     ):
         assert private_column not in data_sql
+
+    assert "user_profiles.latitude" not in data_sql
+    assert "user_profiles.longitude" not in data_sql
+    public_map_gate = (
+        "case when (business_profiles.map_visible is true and "
+        "business_profiles.latitude is not null and "
+        "business_profiles.longitude is not null)"
+    )
+    assert f"{public_map_gate} then business_profiles.latitude end " in data_sql
+    assert f"{public_map_gate} then business_profiles.longitude end " in data_sql
 
 
 def test_business_only_search_excludes_user_profile_table():
@@ -78,7 +86,7 @@ def test_all_search_keeps_profiles_and_adds_content():
     assert "review_state" in sql
 
 
-def test_product_search_excludes_profile_tables():
+def test_product_search_joins_public_business_map_projection():
     data, _ = build_public_search_statements(
         PublicSearchParams(q="mebel", result_type="product")
     )
@@ -87,7 +95,10 @@ def test_product_search_excludes_profile_tables():
     assert "catalog_items" in sql
     assert "catalog_items.kind = 'product'" in sql
     assert "user_profiles" not in sql
-    assert "business_profiles" not in sql
+    assert "business_profiles" in sql
+    assert "business_profiles.map_visible" in sql
+    assert "business_profiles.latitude" in sql
+    assert "business_profiles.longitude" in sql
 
 
 def test_content_search_can_be_disabled_without_removing_profiles():

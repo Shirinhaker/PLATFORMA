@@ -36,6 +36,11 @@ type MapPoint = {
   small: boolean;
 };
 
+type SearchMapGroup = {
+  point: MapPoint;
+  prices: string[];
+};
+
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({
@@ -76,6 +81,63 @@ function avatarImageStyle(x: number, y: number, zoom: number) {
     `top:${top}%`,
     "transform:none",
   ].join(";");
+}
+
+
+function buildSearchMapPoints(items: PublicSearchItem[]): MapPoint[] {
+  const groups = new Map<string, SearchMapGroup>();
+
+  items.forEach((item) => {
+    const mapPoint = item.map_point;
+    if (
+      !mapPoint
+      || !Number.isFinite(mapPoint.latitude)
+      || !Number.isFinite(mapPoint.longitude)
+    ) return;
+
+    const catalogItem = item.kind === "product" || item.kind === "service";
+    const key = mapPoint.business_public_id;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        point: {
+          kind: "business",
+          publicId: mapPoint.business_public_id,
+          label: mapPoint.business_name,
+          latitude: mapPoint.latitude,
+          longitude: mapPoint.longitude,
+          color: catalogItem ? "#0E8C84" : "#2563EB",
+          fallback: catalogItem ? "🛒" : "🏪",
+          photo: item.image_url,
+          photoX: 50,
+          photoY: 50,
+          photoZoom: 1,
+          small: false,
+        },
+        prices: [],
+      };
+      groups.set(key, group);
+    }
+
+    if (catalogItem) {
+      group.point.color = "#0E8C84";
+      group.point.fallback = "🛒";
+      if (item.price_text && !group.prices.includes(item.price_text)) {
+        group.prices.push(item.price_text);
+      }
+    }
+    if (!group.point.photo && item.image_url) {
+      group.point.photo = item.image_url;
+      group.point.photoX = 50;
+      group.point.photoY = 50;
+      group.point.photoZoom = 1;
+    }
+  });
+
+  return Array.from(groups.values(), ({ point, prices }) => ({
+    ...point,
+    label: [point.label, ...prices].join("\n"),
+  }));
 }
 
 
@@ -128,7 +190,9 @@ export function HomeMapV1656({
         small: true,
       })),
     ];
-    const points = resultItems ? [] : normalPoints;
+    const points = resultItems
+      ? buildSearchMapPoints(resultItems)
+      : normalPoints;
 
     void import("leaflet").then((leafletModule) => {
       if (disposed || !mapElement.current) return;
@@ -158,7 +222,7 @@ export function HomeMapV1656({
           : "";
         const icon = L.divIcon({
           className: "leaflet-pin",
-          html: `<div class="pin"><div class="plabel">${escapeHtml(point.label)}</div><div class="dot${point.photo ? " has-photo" : ""}" style="background:${point.color};${smallStyle}">${photo}</div><div class="tail"></div></div>`,
+          html: `<div class="pin"><div class="plabel">${point.label.split("\n").map(escapeHtml).join("<br>")}</div><div class="dot${point.photo ? " has-photo" : ""}" style="background:${point.color};${smallStyle}">${photo}</div><div class="tail"></div></div>`,
           iconAnchor: [23, 52],
           iconSize: [46, 54],
         });
@@ -166,6 +230,22 @@ export function HomeMapV1656({
           .addTo(map)
           .on("click", () => onOpenResult(point.kind, point.publicId));
       });
+      const onlyPoint = points[0];
+      if (resultItems && onlyPoint && points.length === 1) {
+        map.setView(
+          [onlyPoint.latitude, onlyPoint.longitude],
+          14,
+          { animate: true },
+        );
+      } else if (resultItems && points.length > 1) {
+        map.fitBounds(
+          points.map((point) => [
+            point.latitude,
+            point.longitude,
+          ] as [number, number]),
+          { animate: true, maxZoom: 15, padding: [40, 40] },
+        );
+      }
       const invalidate = window.setTimeout(() => map.invalidateSize(), 240);
       cleanup = () => {
         window.clearTimeout(invalidate);

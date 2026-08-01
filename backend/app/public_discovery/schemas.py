@@ -57,6 +57,15 @@ class PublicSearchParams(BaseModel):
         return (self.page - 1) * self.page_size
 
 
+class PublicSearchMapPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    business_public_id: str = Field(min_length=1, max_length=64)
+    business_name: str = Field(min_length=1, max_length=120)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 class PublicSearchItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -76,6 +85,7 @@ class PublicSearchItem(BaseModel):
     owner_label: str | None = Field(default=None, max_length=200)
     can_order: bool | None = None
     can_chat: bool | None = None
+    map_point: PublicSearchMapPoint | None = None
 
 
 class PublicSearchResponse(BaseModel):
