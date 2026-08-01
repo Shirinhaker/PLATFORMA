@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 
 import { UZBEKISTAN_REGIONS } from "./location-data";
+import { findLocationCenter } from "./location-centers";
 import {
   readHomeLocation,
   saveHomeLocation,
@@ -38,10 +39,28 @@ export function LocationScreen({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const location = {
-      region: region.trim(),
-      district: district.trim(),
+    const selectedRegion = region.trim();
+    const selectedDistrict = district.trim();
+    const keepsExactPoint = Boolean(
+      restoredLocation.exact
+      && restoredLocation.region === selectedRegion
+      && restoredLocation.district === selectedDistrict
+      && Number.isFinite(restoredLocation.latitude)
+      && Number.isFinite(restoredLocation.longitude),
+    );
+    const center = keepsExactPoint
+      ? {
+          latitude: Number(restoredLocation.latitude),
+          longitude: Number(restoredLocation.longitude),
+        }
+      : findLocationCenter(selectedRegion, selectedDistrict);
+    const location: HomeLocation = {
+      region: selectedRegion,
+      district: selectedDistrict,
       neighborhood: neighborhood.trim(),
+      latitude: center?.latitude ?? null,
+      longitude: center?.longitude ?? null,
+      exact: keepsExactPoint,
     };
 
     if (!location.district) {

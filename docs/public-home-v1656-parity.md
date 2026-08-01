@@ -67,6 +67,13 @@ almashadi, 1 soniya xiralashadi, 2 soniya ko‘ringan real reklama view hisobiga
 kiradi; beshtagacha view bitta so‘rovda yuboriladi. Reklama topilmasa v1656
 dagi beshta demo banner chiqadi.
 
+Tanlangan hudud markazi `static/regions.js`dagi v1656 koordinatalaridan olinadi.
+React ro‘yxati 14 viloyat va 172 tumanning markazini aynan saqlaydi; eski
+brauzer yozuvida `lat/lng` bo‘lmasa ham xarita viloyat/tuman nomi orqali shu
+markazni tiklaydi. V7 ko‘chirishida tumani saqlanib, viloyati bo‘sh qolgan
+profil tuman qat’iy mos bo‘lsa qidiruvdan yo‘qolmaydi; viloyati mavjud
+yozuvlarda viloyat filtri avvalgidek tekshiriladi.
+
 ## React va backend joylashuvi
 
 | Vazifa | Modul |
