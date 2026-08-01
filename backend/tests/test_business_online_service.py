@@ -1,10 +1,16 @@
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.business_online.service import BusinessOnlineService
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
+
+
+# Navbat sanasi xizmatning o'z soati bilan solishtiriladi (Toshkent, UTC+5).
+# Qattiq yozilgan sana bilan test o'sha kun o'tishi bilan yiqilardi.
+TODAY = (datetime.now(UTC) + timedelta(hours=5)).strftime("%Y-%m-%d")
 
 
 class FakeSession:
@@ -444,7 +450,7 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
         data={
             "customer_name": "Ali",
             "phone": "901234567",
-            "booking_date": "2026-08-01",
+            "booking_date": TODAY,
             "booking_time": "19:30",
             "guests": 3,
             "note": "",
@@ -741,21 +747,21 @@ async def test_medical_lists_keep_the_v1656_database_order():
                 "staff_id": 12,
                 "item_id": 32,
                 "queue_no": 1,
-                "queue_date": "2026-08-01",
+                "queue_date": TODAY,
             },
             {
                 "id": 42,
                 "staff_id": 11,
                 "item_id": 31,
                 "queue_no": 2,
-                "queue_date": "2026-08-01",
+                "queue_date": TODAY,
             },
             {
                 "id": 41,
                 "staff_id": 11,
                 "item_id": 31,
                 "queue_no": 1,
-                "queue_date": "2026-08-01",
+                "queue_date": TODAY,
             },
         ],
     })
@@ -841,7 +847,7 @@ async def test_medical_offline_status_notifications_and_swap_match_v1656():
                 "staff_id": 11,
                 "user_id": 70,
                 "patient_name": "Vali",
-                "queue_date": "2026-08-01",
+                "queue_date": TODAY,
                 "queue_no": 1,
                 "queue_code": "QAB-001",
                 "source": "online",
@@ -854,7 +860,7 @@ async def test_medical_offline_status_notifications_and_swap_match_v1656():
                 "staff_id": 11,
                 "user_id": 71,
                 "patient_name": "Hasan",
-                "queue_date": "2026-08-01",
+                "queue_date": TODAY,
                 "queue_no": 2,
                 "queue_code": "QAB-002",
                 "source": "online",
@@ -880,7 +886,7 @@ async def test_medical_offline_status_notifications_and_swap_match_v1656():
             "staff_id": 11,
             "patient_name": "Olim",
             "phone": "901234567",
-            "queue_date": "2026-08-01",
+            "queue_date": TODAY,
         },
     )
     assert offline is not None
