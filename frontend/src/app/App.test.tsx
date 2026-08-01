@@ -93,6 +93,20 @@ function guestApi() {
   };
 }
 
+function saveHomeLocation() {
+  window.localStorage.setItem(
+    "koprik_home_location_v1",
+    JSON.stringify({
+      region: "Surxondaryo viloyati",
+      district: "Qumqo‘rg‘on tumani",
+      mahalla: "",
+      lat: 37.82,
+      lng: 67.58,
+      exact: false,
+    }),
+  );
+}
+
 function profileApi(identity = userIdentity) {
   return {
     getSession: vi.fn().mockResolvedValue(identity),
@@ -115,7 +129,20 @@ describe("App", () => {
     window.localStorage.clear();
   });
 
-  it("starts a guest on the public home instead of the login form", async () => {
+  it("requires a district before opening Home for the first time", async () => {
+    render(<App api={guestApi()} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Hududingizni tanlang" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kabinet" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Koprik’ga kirish" }))
+      .not.toBeInTheDocument();
+  });
+
+  it("starts a returning guest on the public Home", async () => {
+    saveHomeLocation();
     render(<App api={guestApi()} />);
 
     expect(
@@ -123,20 +150,61 @@ describe("App", () => {
         name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kirish" }))
+    expect(screen.getByRole("button", { name: "Kabinet" }))
       .toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Koprik’ga kirish" }))
+  });
+
+  it("does not expose linked-screen actions before those screens are owned", async () => {
+    saveHomeLocation();
+    const api = {
+      ...guestApi(),
+      getPublicFeatures: vi.fn().mockResolvedValue({
+        listings: true,
+        stories: false,
+        chat: false,
+        systemization: false,
+        taxi: true,
+      }),
+    };
+    render(<App api={api} />);
+
+    await screen.findByRole("heading", {
+      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+    });
+
+    expect(screen.queryByRole("button", { name: "E’lonlar" }))
       .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Savat" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Taxi bo'limi" }))
+      .not.toBeInTheDocument();
+  });
+
+  it("switches the v1656 theme palette and icon from the Home header", async () => {
+    saveHomeLocation();
+    document.documentElement.dataset.theme = "light";
+    render(<App api={guestApi()} />);
+    const button = await screen.findByRole("button", {
+      name: "Rang rejimini almashtirish",
+    });
+
+    expect(button.querySelector("path"))
+      .toHaveAttribute("d", "M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z");
+    await userEvent.click(button);
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(button.querySelector("circle")).toHaveAttribute("r", "4.5");
   });
 
   it("opens the existing authentication flow from the public header", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     render(<App api={guestApi()} />);
 
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(screen.getByRole("button", { name: "Kirish" }));
+    await user.click(screen.getByRole("button", { name: "Kabinet" }));
 
     expect(
       screen.getByRole("heading", { name: "Koprik’ga kirish" }),
@@ -145,6 +213,7 @@ describe("App", () => {
 
   it("opens the matching cabinet after a completed login", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     const api = guestApi();
     api.getSession
       .mockRejectedValueOnce(unauthorized())
@@ -168,7 +237,7 @@ describe("App", () => {
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(screen.getByRole("button", { name: "Kirish" }));
+    await user.click(screen.getByRole("button", { name: "Kabinet" }));
     await user.click(
       screen.getAllByRole("button", { name: "Kirish" }).at(-1)!,
     );
@@ -185,6 +254,7 @@ describe("App", () => {
 
   it("starts an authenticated session on Home and opens Cabinet on demand", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     const api = {
       getSession: vi.fn().mockResolvedValue(businessIdentity),
     };
@@ -207,6 +277,7 @@ describe("App", () => {
 
   it("returns to the public home after cabinet logout", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     const api = profileApi();
     render(<App api={api} />);
 
@@ -223,34 +294,86 @@ describe("App", () => {
         name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kirish" }))
+    expect(screen.getByRole("button", { name: "Kabinet" }))
       .toBeInTheDocument();
   });
 
-  it("opens the catalog with the Home search query", async () => {
+  it("keeps Home search results inline", async () => {
     const user = userEvent.setup();
-    render(<App api={guestApi()} />);
+    saveHomeLocation();
+    const api = {
+      ...guestApi(),
+      searchPublic: vi.fn().mockResolvedValue({
+        items: [{
+          kind: "business",
+          public_id: "biz_41",
+          name: "Telefon ustasi",
+          public_username: "telefon-ustasi",
+          description: "Telefon ta’miri",
+          direction: "Maishiy xizmatlar",
+          activity_type: "Usta",
+          region: "Surxondaryo viloyati",
+          district: "Qumqo‘rg‘on tumani",
+          mahalla: "",
+          image_url: "",
+        }],
+        page: 1,
+        page_size: 20,
+        total: 1,
+        pages: 1,
+      }),
+    };
+    render(<App api={api} />);
 
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.type(screen.getByLabelText("Qidiruv"), "telefon");
+    await user.type(screen.getByPlaceholderText("Nima qidiryapsiz?"), "telefon");
     await user.click(screen.getByRole("button", { name: "Qidirish" }));
 
+    expect(await screen.findByText("Natijalar — 1 ta")).toBeInTheDocument();
+    expect(document.querySelector(".app-shell"))
+      .toHaveClass("search-results-active");
+    expect(document.querySelector("#resList"))
+      .toHaveTextContent("Telefon ustasi");
+    expect(document.querySelector("#leafletMap .leaflet-pin"))
+      .not.toBeInTheDocument();
+    expect(api.searchPublic).toHaveBeenCalledWith({
+      q: "telefon",
+      region: "Surxondaryo viloyati",
+      district: "Qumqo‘rg‘on tumani",
+      page: 1,
+      page_size: 20,
+    });
     expect(
-      screen.getByRole("heading", { name: "Faoliyat yo‘nalishlari" }),
+      screen.getByRole("heading", {
+        name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Qidiruv")).toHaveValue("telefon");
+
+    await user.click(
+      screen.getByRole("button", { name: "Qidiruvni tozalash" }),
+    );
+    expect(document.querySelector(".app-shell"))
+      .toHaveClass("search-results-active");
+    await user.click(
+      screen.getByRole("button", { name: /Qidiruv natijalari/ }),
+    );
+    expect(document.querySelector(".app-shell"))
+      .not.toHaveClass("search-results-active");
   });
 
   it("navigates Catalog to Category and back", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     render(<App api={guestApi()} />);
 
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(screen.getByRole("button", { name: "Katalog bo‘yicha" }));
+    await user.click(
+      screen.getByRole("button", { name: /^Katalog bo‘yicha/ }),
+    );
     await user.click(
       screen.getByRole("button", { name: /^Savdo —/ }),
     );
@@ -267,10 +390,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App api={guestApi()} />);
 
-    await screen.findByRole("heading", {
-      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
-    });
-    await user.click(screen.getByRole("button", { name: "Manzil" }));
+    await screen.findByRole("heading", { name: "Hududingizni tanlang" });
     await user.selectOptions(
       screen.getByLabelText("Viloyat / shahar"),
       "Toshkent shahri",
@@ -278,9 +398,8 @@ describe("App", () => {
     await user.selectOptions(screen.getByLabelText("Tuman"), "Chilonzor");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Chilonzor" }),
-    ).toBeInTheDocument();
+    expect((await screen.findAllByText("Chilonzor")).length)
+      .toBeGreaterThanOrEqual(2);
   });
 
   it("keeps public location usable when session bootstrap fails", async () => {
@@ -292,21 +411,14 @@ describe("App", () => {
     render(<App api={api} />);
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
-      }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Manzil" }));
-
-    expect(
-      screen.getByRole("heading", { name: "Hududingizni tanlang" }),
+      await screen.findByRole("heading", { name: "Hududingizni tanlang" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("keeps the retryable session error on account views", async () => {
     const user = userEvent.setup();
+    saveHomeLocation();
     const api = {
       getSession: vi.fn()
         .mockRejectedValueOnce(new TypeError("offline"))
@@ -318,7 +430,7 @@ describe("App", () => {
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(screen.getByRole("button", { name: "Kirish" }));
+    await user.click(screen.getByRole("button", { name: "Kabinet" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Server bilan bog‘lanib bo‘lmadi.",

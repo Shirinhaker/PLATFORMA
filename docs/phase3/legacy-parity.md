@@ -27,6 +27,11 @@
 | `cat-types` | in-progress | `frontend/src/legacy/public/CategoryScreen.tsx` |
 | `loc` | in-progress | `frontend/src/legacy/public/LocationScreen.tsx` |
 
+`home`ning v1656 manbalari, modul xaritasi, ichki tayyor qismi va hali
+ko‘chirilmagan bog‘langan ekranlari
+[`docs/public-home-v1656-parity.md`](../public-home-v1656-parity.md) da
+alohida qayd etilgan.
+
 ## Qabul qoidasi
 
 Ekran faqat avtomatik test, desktop/mobil qo‘lda tekshiruv va rollback

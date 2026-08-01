@@ -124,6 +124,10 @@ def test_target_specificity_requires_location_match():
 
 
 class FakeAdvertisementService:
+    def __init__(self):
+        self.view_ids = []
+        self.click_id = ""
+
     async def list_public(self, **kwargs):
         return [
             PublicAdvertisement(
@@ -133,6 +137,12 @@ class FakeAdvertisementService:
                 mobile_image_url="/media/mobile.webp",
             )
         ]
+
+    async def record_public_views(self, public_ids):
+        self.view_ids = public_ids
+
+    async def record_public_click(self, public_id):
+        self.click_id = public_id
 
 
 def test_public_advertisement_response_excludes_internal_billing_fields():
@@ -153,3 +163,42 @@ def test_public_advertisement_response_excludes_internal_billing_fields():
     for field in ("price", "views", "clicks", "targets_json"):
         assert field not in response.text
 
+
+def test_public_advertisement_views_and_clicks_use_public_ids():
+    app = create_app(Settings(environment="test"))
+    service = FakeAdvertisementService()
+    app.state.advertisement_service = service
+    client = TestClient(app)
+
+    views = client.post(
+        "/api/v1/public/advertisements/views",
+        json={"ids": ["a_0123456789abcdef", "a_fedcba9876543210"]},
+    )
+    click = client.post(
+        "/api/v1/public/advertisements/a_0123456789abcdef/click"
+    )
+
+    assert views.status_code == 204
+    assert click.status_code == 204
+    assert service.view_ids == [
+        "a_0123456789abcdef",
+        "a_fedcba9876543210",
+    ]
+    assert service.click_id == "a_0123456789abcdef"
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/api/v1/public/advertisements/views", {"ids": ["a_invalid"]}),
+        ("/api/v1/public/advertisements/a_invalid/click", None),
+    ],
+)
+def test_public_advertisement_metrics_reject_invalid_public_ids(path, body):
+    app = create_app(Settings(environment="test"))
+    app.state.advertisement_service = FakeAdvertisementService()
+    client = TestClient(app)
+
+    response = client.post(path, json=body) if body else client.post(path)
+
+    assert response.status_code == 422
