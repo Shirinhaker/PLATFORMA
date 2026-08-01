@@ -1,0 +1,75 @@
+.public-listings-v1656,
+.owner-listings-v1656,
+.public-listing-page-v1656,
+.saved-listings-v1656 { width: min(100%, 760px); margin: 0 auto; padding: 18px 18px 34px; }
+.public-listings-v1656 #elonHead { margin-top: 4px; }
+.public-listings-v1656 .elon-row { display: flex; gap: 11px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 10px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.public-listings-v1656 .elon-row::-webkit-scrollbar { display: none; }
+.public-listings-v1656 .elon-card { flex: none; width: 122px; padding: 14px; border: 1.5px solid var(--line); border-radius: 16px; color: var(--ink); background: var(--card); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer; scroll-snap-align: start; transition: transform .12s,border-color .12s,background .12s; }
+.public-listings-v1656 .elon-card:active { transform: scale(.97); }
+.public-listings-v1656 .elon-card.on { border-color: var(--primary); background: var(--primary-tint); }
+.public-listings-v1656 .ec-ic { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 10px; border-radius: 12px; font-size: 21px; }
+.public-listings-v1656 .ec-name { font-family: var(--font-d); font-size: 13.5px; font-weight: 700; line-height: 1.2; }
+.public-listings-v1656 .ec-count { margin-top: 3px; color: var(--soft); font-size: 11.5px; }
+.public-listings-v1656 .sort-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 12px; scrollbar-width: none; }
+.public-listings-v1656 .sort-row::-webkit-scrollbar { display: none; }
+.public-listings-v1656 .sort-chip { flex: none; height: 34px; padding: 0 14px; border: 1.5px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--card); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.public-listings-v1656 .sort-chip.on { border-color: var(--primary); color: var(--primary); background: var(--primary-tint); }
+.public-listings-v1656 .elon-wrap { margin-bottom: 11px; }
+.public-listings-v1656 .elon-wrap .elon-item { width: 100%; margin-bottom: 0; }
+.public-listings-v1656 .li-price { display: block; margin-top: 2px; color: var(--primary); font-weight: 800; }
+.public-listings-v1656 .chev.down { transform: rotate(90deg); }
+.public-listings-v1656 .vbadge { position: absolute; right: 5px; bottom: 5px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; background: rgb(0 0 0 / 60%); font-size: 9px !important; }
+.listing-category-empty { padding: 24px 16px; }
+.el-detail { padding: 12px; margin-top: -11px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 16px 16px; background: var(--card); box-shadow: var(--shadow); animation: elopen .2s ease; }
+@keyframes elopen { from { opacity: 0; } to { opacity: 1; } }
+.listing-media-grid { display: grid; grid-auto-flow: column; grid-auto-columns: min(82vw,420px); gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 10px; margin: 0 0 10px; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.listing-media-grid::-webkit-scrollbar { display: none; }
+.listing-media-grid.is-single { grid-auto-flow: row; grid-template-columns: min(100%,720px); }
+.listing-media-card { position: relative; display: block; width: 100%; overflow: hidden; aspect-ratio: 4 / 3; padding: 0; border: 0; border-radius: 15px; background: #071514; box-shadow: var(--shadow); cursor: zoom-in; scroll-snap-align: start; }
+.listing-media-card img,
+.listing-media-card video { display: block; width: 100%; height: 100%; object-fit: cover; background: #071514; pointer-events: none; }
+.listing-media-play { position: absolute; left: 50%; top: 50%; display: grid; width: 48px; height: 48px; place-items: center; padding-left: 3px; border-radius: 50%; color: #fff; background: rgb(0 0 0 / 62%); box-shadow: 0 6px 18px rgb(0 0 0 / 28%); font-size: 19px; pointer-events: none; transform: translate(-50%,-50%); }
+.listing-media-open { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 4px; padding: 5px 8px; border-radius: 9px; color: #fff; background: rgb(0 0 0 / 62%); font-size: 10px; font-weight: 800; pointer-events: none; }
+.listing-upload-list { display: flex !important; flex-wrap: wrap !important; gap: 9px !important; margin-top: 9px !important; }
+.listing-upload-item { position: relative; width: 88px; height: 88px; overflow: visible; border-radius: 13px; background: #071514; box-shadow: var(--shadow); }
+.listing-upload-open { display: block; width: 100%; height: 100%; overflow: hidden; padding: 0; border: 0; border-radius: 13px; background: #071514; cursor: zoom-in; }
+.listing-upload-open img,
+.listing-upload-open video { display: block; width: 100%; height: 100%; object-fit: cover; background: #071514; pointer-events: none; }
+.listing-upload-item .listing-media-play { width: 32px; height: 32px; font-size: 13px; }
+.listing-upload-remove { position: absolute; right: -7px; top: -7px; z-index: 3; display: grid; width: 24px; height: 24px; place-items: center; border: 2px solid var(--bg); border-radius: 50%; color: #fff; background: #ef4444; font-size: 13px; font-weight: 900; line-height: 1; cursor: pointer; }
+.listing-upload-status { position: absolute; left: 5px; bottom: 5px; max-width: calc(100% - 10px); overflow: hidden; padding: 3px 5px; border-radius: 6px; color: #fff; background: rgb(0 0 0 / 64%); font-size: 8px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.image-viewer { position: fixed; inset: 0; z-index: 5000; display: none; align-items: center; justify-content: center; padding: 24px; background: rgb(4 10 8 / 88%); }
+.image-viewer.on { display: flex; }
+.image-viewer img,
+.image-viewer video { display: block; max-width: min(94vw,1080px); max-height: 88vh; object-fit: contain; border-radius: 18px; background: #071514; box-shadow: 0 20px 70px rgb(0 0 0 / 55%); }
+.image-viewer video { width: min(94vw,1080px); height: auto; }
+.image-viewer-frame { position: relative; display: flex; align-items: center; justify-content: center; }
+.image-viewer-close { position: absolute; top: max(18px,env(safe-area-inset-top)); right: 18px; display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgb(255 255 255 / 32%); border-radius: 50%; color: #fff; background: rgb(255 255 255 / 14%); font-size: 27px; cursor: pointer; }
+.el-price { margin-bottom: 6px; color: var(--primary); font-size: 19px; font-weight: 800; }
+.el-addr { margin-bottom: 8px; color: var(--soft); font-size: 13.5px; }
+.el-desc { margin-bottom: 12px; color: var(--ink); font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+.el-actions { display: flex; gap: 9px; }
+.el-actions .btn { flex: 1; height: 46px; }
+.public-listing-page-v1656 .listing-page-card { width: 100%; }
+.public-listing-page-v1656 .dot-sep { flex: none; width: 3px; height: 3px; border-radius: 50%; background: var(--soft); }
+.public-listing-page-v1656 .biz-hero { position: relative; display: flex; height: 148px; align-items: flex-end; overflow: hidden; padding: 14px; margin-top: 2px; border-radius: var(--r); }
+.public-listing-page-v1656 .biz-hero .emoji { position: absolute; right: -6px; top: -10px; opacity: .22; font-size: 120px; transform: rotate(-8deg); }
+.public-listing-page-v1656 .biz-title { margin: 14px 2px 4px; font-family: var(--font-d); font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.public-listing-page-v1656 .biz-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin: 0 2px 14px; color: var(--soft); font-size: 13.5px; }
+.public-listing-page-v1656 .listing-page-price { color: var(--primary); font-size: 16px; font-weight: 700; }
+.public-listing-page-v1656 .biz-desc { padding: 13px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: var(--card); box-shadow: var(--shadow); font-size: 14px; line-height: 1.55; }
+.public-listing-page-v1656 .actionbar { position: sticky; bottom: 0; display: flex; gap: 10px; padding: 12px 0 4px; margin-top: 6px; background: linear-gradient(to top,var(--bg) 70%,transparent); }
+.public-listing-page-v1656 .listing-page-save { flex: none; width: 50px; }
+.public-listing-page-v1656 .actionbar .btn-primary { flex: 1; }
+.owner-listings-v1656 .business-online-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.owner-listings-v1656 .business-online-head h1 { margin: 0; font-size: 22px; }
+.owner-listings-v1656 .listing-empty { padding: 30px 16px; }
+.owner-listings-v1656 .form-wrap { width: min(100%, 560px); margin: 0 auto; }
+.owner-listings-v1656 .upload { display: flex; min-height: 46px; align-items: center; justify-content: center; padding: 10px; border-radius: 12px; cursor: pointer; }
+.owner-listings-v1656 .btn-outline { margin-top: 8px; color: var(--primary); background: transparent; border: 1px solid var(--line); }
+.owner-listings-v1656 .idesc { margin-top: 6px; color: var(--soft); font-size: 12px; font-weight: 500; }
+.listing-form-v1656 .vis-card h5 { font-size: 13.5px; font-weight: 700; }
+.listing-form-v1656 .vis-card p { margin-top: 2px; color: var(--soft); font-size: 12px; line-height: 1.4; }
+.saved-listings-v1656 .business-online-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.saved-listings-v1656 .business-online-head h1 { margin: 0; font-size: 22px; }

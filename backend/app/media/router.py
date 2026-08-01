@@ -15,7 +15,9 @@ router = APIRouter(prefix="/api/v1/media", tags=["media"])
 class UploadGrantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    purpose: Literal["avatar", "logo", "payment_qr"]
+    purpose: Literal[
+        "avatar", "logo", "payment_qr", "listing_photo", "listing_video"
+    ]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
     size_bytes: int = Field(ge=1)
@@ -27,7 +29,7 @@ async def create_upload_grant(
     request: Request,
     current: Annotated[CurrentAccount, Depends(require_csrf)],
 ):
-    allowed = (
+    allowed = body.purpose in {"listing_photo", "listing_video"} or (
         current.account_type is AccountType.USER
         and body.purpose == "avatar"
     ) or (

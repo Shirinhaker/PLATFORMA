@@ -123,6 +123,7 @@ def _user_query(params: PublicSearchParams):
             literal(None).cast(String).label("map_business_name"),
             literal(None).cast(Float).label("map_latitude"),
             literal(None).cast(Float).label("map_longitude"),
+            literal(None).cast(String).label("map_owner_kind"),
         )
         .join(UserProfile, UserProfile.account_id == Account.id)
         .where(Account.status == "active")
@@ -199,6 +200,7 @@ def _business_query(params: PublicSearchParams):
             (map_visible, BusinessProfile.longitude),
             else_=None,
         ).label("map_longitude"),
+        literal(PublicResultKind.BUSINESS.value).label("map_owner_kind"),
     ).join(BusinessProfile, BusinessProfile.account_id == Account.id)
     if location_filtered:
         statement = statement.outerjoin(
@@ -303,6 +305,7 @@ def _content_query(params: PublicSearchParams, kind: str):
             (map_visible, BusinessProfile.longitude),
             else_=None,
         ).label("map_longitude"),
+        literal(PublicResultKind.BUSINESS.value).label("map_owner_kind"),
     ).outerjoin(
         BusinessProfile,
         BusinessProfile.account_id == CatalogItem.business_account_id,
@@ -343,10 +346,105 @@ def _content_query(params: PublicSearchParams, kind: str):
     return statement
 
 
+def _listing_query(params: PublicSearchParams):
+    owner_profile = aliased(UserProfile, name="listing_owner_profile")
+    business_profile = aliased(BusinessProfile, name="listing_business_profile")
+    profile_link = aliased(ProfileLink, name="listing_profile_link")
+    linked_owner_id = func.coalesce(
+        Listing.owner_user_account_id,
+        profile_link.user_account_id,
+    )
+    map_visible = (
+        Listing.latitude.is_not(None)
+        & Listing.longitude.is_not(None)
+    )
+    statement = (
+        select(
+            literal(PublicResultKind.LISTING.value).label("kind"),
+            Listing.id.label("account_id"),
+            Listing.title.label("name"),
+            _empty("public_username"),
+            Listing.description.label("description"),
+            func.coalesce(business_profile.direction, "").label("direction"),
+            func.coalesce(business_profile.activity_type, "").label("activity_type"),
+            func.coalesce(owner_profile.region, "").label("region"),
+            func.coalesce(owner_profile.district, "").label("district"),
+            func.coalesce(owner_profile.mahalla, "").label("mahalla"),
+            _empty("image_url"),
+            Listing.price_text.label("price_text"),
+            literal("linked").cast(String).label("owner_state"),
+            func.coalesce(business_profile.name, owner_profile.name, "").label("owner_label"),
+            literal(False).cast(Boolean).label("can_order"),
+            literal(False).cast(Boolean).label("can_chat"),
+            case(
+                (
+                    map_visible,
+                    func.coalesce(
+                        Listing.owner_business_account_id,
+                        Listing.owner_user_account_id,
+                    ),
+                ),
+                else_=None,
+            ).label("map_business_account_id"),
+            case(
+                (
+                    map_visible,
+                    func.coalesce(business_profile.name, owner_profile.name),
+                ),
+                else_=None,
+            ).label("map_business_name"),
+            case((map_visible, Listing.latitude), else_=None).label("map_latitude"),
+            case((map_visible, Listing.longitude), else_=None).label("map_longitude"),
+            case(
+                (
+                    Listing.owner_business_account_id.is_not(None),
+                    PublicResultKind.BUSINESS.value,
+                ),
+                else_=PublicResultKind.USER.value,
+            ).label("map_owner_kind"),
+        )
+        .outerjoin(
+            business_profile,
+            business_profile.account_id == Listing.owner_business_account_id,
+        )
+        .outerjoin(
+            profile_link,
+            profile_link.business_account_id == Listing.owner_business_account_id,
+        )
+        .outerjoin(owner_profile, owner_profile.account_id == linked_owner_id)
+        .where(
+            Listing.status == "active",
+            Listing.visibility == "all",
+            Listing.review_state == ReviewState.READY,
+        )
+    )
+    if params.q:
+        statement = statement.where(or_(
+            _contains(Listing.title, params.q),
+            _contains(Listing.description, params.q),
+            _contains(Listing.address, params.q),
+            _contains(Listing.price_text, params.q),
+        ))
+    for column, value in (
+        (business_profile.direction, params.direction),
+        (business_profile.activity_type, params.activity_type),
+    ):
+        if value:
+            statement = statement.where(_contains(column, value))
+    statement = statement.where(*_location_constraints(
+        owner_profile.region,
+        owner_profile.district,
+        owner_profile.mahalla,
+        params,
+    ))
+    return statement
+
+
 def build_public_search_statements(
     params: PublicSearchParams,
     *,
     include_content: bool = True,
+    include_listings: bool = False,
 ):
     queries = []
     if params.result_type in (
@@ -369,6 +467,11 @@ def build_public_search_statements(
         PublicResultType.SERVICE,
     ):
         queries.append(_content_query(params, "service"))
+    if include_listings and params.result_type in (
+        PublicResultType.ALL,
+        PublicResultType.LISTING,
+    ):
+        queries.append(_listing_query(params))
 
     if len(queries) == 1:
         combined = queries[0].subquery("public_profiles")
@@ -394,10 +497,12 @@ async def search_public_profiles(
     params: PublicSearchParams,
     *,
     include_content: bool = True,
+    include_listings: bool = False,
 ) -> PublicSearchResponse:
     data_statement, count_statement = build_public_search_statements(
         params,
         include_content=include_content,
+        include_listings=include_listings,
     )
     rows = (await session.execute(data_statement)).mappings().all()
     total = int((await session.execute(count_statement)).scalar_one())
@@ -409,13 +514,18 @@ async def search_public_profiles(
             from app.catalog.repository import build_content_public_id
 
             public_id = build_content_public_id(kind.value, row["account_id"])
+        elif kind is PublicResultKind.LISTING:
+            public_id = build_listing_public_id(int(row["account_id"]))
         else:
             public_id = build_public_id(kind, row["account_id"])
         map_point = None
         if row["map_business_account_id"] is not None:
+            map_owner_kind = PublicResultKind(
+                row["map_owner_kind"] or PublicResultKind.BUSINESS.value
+            )
             map_point = PublicSearchMapPoint(
                 business_public_id=build_public_id(
-                    PublicResultKind.BUSINESS,
+                    map_owner_kind,
                     int(row["map_business_account_id"]),
                 ),
                 business_name=row["map_business_name"],

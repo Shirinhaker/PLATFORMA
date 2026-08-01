@@ -260,6 +260,41 @@ describe("HomeScreen", () => {
       .toBeInTheDocument();
   });
 
+  it("renders a searchable E'lon and opens its migrated detail target", async () => {
+    const searchPublic = vi.fn().mockResolvedValue({
+      items: [{
+        kind: "listing" as const,
+        public_id: "l_flat",
+        name: "3 xonali kvartira",
+        public_username: "",
+        description: "Markazda",
+        direction: "E'lonlar",
+        activity_type: "Uy-joy",
+        region: "Surxondaryo viloyati",
+        district: "Qumqo'rg'on tumani",
+        mahalla: "",
+        image_url: "",
+        price_text: "250 000 000 so'm",
+        owner_label: "Muhr",
+        map_point: null,
+      }],
+      page: 1,
+      page_size: 20,
+      total: 1,
+      pages: 1,
+    });
+    const { onOpenPublicResult } = renderHome(undefined, { searchPublic });
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nima qidiryapsiz?"),
+      "kvartira{enter}",
+    );
+    expect(await screen.findByText("📣 E'lonlar")).toHaveClass("list-sub");
+    await userEvent.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
+
+    expect(onOpenPublicResult).toHaveBeenCalledWith("listing", "l_flat");
+  });
+
   it("loads the next v1656 search page from Yana ko'rsatish", async () => {
     const searchPublic = vi.fn().mockImplementation(async ({ page = 1 }) => ({
       items: [{

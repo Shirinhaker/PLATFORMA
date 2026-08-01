@@ -14,7 +14,20 @@ PROFILE_IMAGE_TYPES = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+LISTING_IMAGE_TYPES = {
+    **PROFILE_IMAGE_TYPES,
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+}
+LISTING_VIDEO_TYPES = {
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+    "video/x-m4v": ".m4v",
+}
 MAX_PROFILE_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_LISTING_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_LISTING_VIDEO_BYTES = 50 * 1024 * 1024
 
 
 class UploadRejected(ValueError):
@@ -48,24 +61,40 @@ class R2Storage:
         *,
         owner_type: AccountType,
         owner_id: int,
-        purpose: Literal["avatar", "logo", "payment_qr"],
+        purpose: Literal[
+            "avatar", "logo", "payment_qr", "listing_photo", "listing_video"
+        ],
         filename: str,
         content_type: str,
         size_bytes: int,
     ) -> UploadGrant:
-        allowed_purpose = (
+        profile_purpose = (
             owner_type is AccountType.USER and purpose == "avatar"
         ) or (
             owner_type is AccountType.BUSINESS
             and purpose in {"logo", "payment_qr"}
         )
-        if not allowed_purpose:
+        listing_purpose = purpose in {"listing_photo", "listing_video"}
+        if not profile_purpose and not listing_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
-        if content_type not in PROFILE_IMAGE_TYPES:
-            raise UploadRejected("Rasm turi ruxsat etilmagan.")
-        if not 1 <= size_bytes <= MAX_PROFILE_IMAGE_BYTES:
-            raise UploadRejected("Rasm hajmi 8 MB dan oshmasin.")
-        suffix = PROFILE_IMAGE_TYPES[content_type]
+        if purpose == "listing_photo":
+            if content_type not in LISTING_IMAGE_TYPES:
+                raise UploadRejected("JPG, PNG, WEBP, GIF yoki HEIC fayl tanlang.")
+            if not 1 <= size_bytes <= MAX_LISTING_IMAGE_BYTES:
+                raise UploadRejected("Fayl hajmi 10 MB dan oshmasin.")
+            suffix = LISTING_IMAGE_TYPES[content_type]
+        elif purpose == "listing_video":
+            if content_type not in LISTING_VIDEO_TYPES:
+                raise UploadRejected("MP4, WEBM yoki MOV fayl tanlang.")
+            if not 1 <= size_bytes <= MAX_LISTING_VIDEO_BYTES:
+                raise UploadRejected("Fayl hajmi 50 MB dan oshmasin.")
+            suffix = LISTING_VIDEO_TYPES[content_type]
+        else:
+            if content_type not in PROFILE_IMAGE_TYPES:
+                raise UploadRejected("Rasm turi ruxsat etilmagan.")
+            if not 1 <= size_bytes <= MAX_PROFILE_IMAGE_BYTES:
+                raise UploadRejected("Rasm hajmi 8 MB dan oshmasin.")
+            suffix = PROFILE_IMAGE_TYPES[content_type]
         object_key = (
             f"private/{owner_type.value}/{owner_id}/{purpose}/"
             f"{secrets.token_hex(16)}{suffix}"

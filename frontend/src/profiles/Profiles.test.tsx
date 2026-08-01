@@ -137,6 +137,25 @@ const businessProfile = {
   },
 };
 
+const listing = {
+  public_id: "l_1234567890abcdef",
+  cat: "uy" as const,
+  title: "Uy sotiladi",
+  price: "250 000 000 so'm",
+  descr: "Markazda",
+  address: "Qumqo'rg'on",
+  lat: 37.82,
+  lng: 67.58,
+  visibility: "all" as const,
+  status: "active" as const,
+  created_at: "2026-08-02T10:00:00Z",
+  media: [],
+  owner_kind: "user" as const,
+  owner_public_id: "u_1234567890abcdef",
+  owner_name: "Ali",
+  is_saved: false,
+};
+
 
 function profileApi() {
   return {
@@ -150,6 +169,10 @@ function profileApi() {
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(businessProfile),
+    getMyListings: vi.fn().mockResolvedValue([listing]),
+    getSavedListings: vi.fn().mockResolvedValue([{ ...listing, is_saved: true }]),
+    createListing: vi.fn().mockResolvedValue(listing),
+    deleteListing: vi.fn().mockResolvedValue(undefined),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -193,7 +216,8 @@ describe("profile cabinets", () => {
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "E’lonlarim" }));
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
-    expect(screen.getByText("1 ta haqiqiy yozuv")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
+      .toBeInTheDocument();
   });
 
   it("opens migrated driver, ride and notification-filter data", async () => {
@@ -224,6 +248,25 @@ describe("profile cabinets", () => {
       { name: "Bildirishnoma filtrlari" },
     ));
     expect(await screen.findByText("Qumqo‘rg‘on")).toBeInTheDocument();
+  });
+
+  it("loads saved E'lonlar from the relational save API", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    render(
+      <UserProfile
+        api={api}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Saqlanganlar" }));
+
+    expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
+    expect(screen.getByText("2 ta saqlangan")).toBeInTheDocument();
+    expect(api.getSavedListings).toHaveBeenCalledOnce();
   });
 
   it("edits user profile without business fields", async () => {
@@ -295,6 +338,34 @@ describe("profile cabinets", () => {
     ));
     expect(await screen.findByText("Muhr")).toBeInTheDocument();
     expect(screen.getByText("Tayyor mahsulotlar")).toBeInTheDocument();
+  });
+
+  it("opens the relational v1656 E'lonlar CRUD from the business cabinet", async () => {
+    const user = userEvent.setup();
+    const businessListing = {
+      ...listing,
+      title: "Biznes e'loni",
+      owner_kind: "business" as const,
+      owner_public_id: "b_1234567890abcdef",
+      owner_name: "Turon",
+    };
+    const api = profileApi();
+    api.getMyListings.mockResolvedValue([businessListing]);
+    render(
+      <BusinessProfile
+        api={api}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /E’lonlarim/ }));
+
+    expect(await screen.findByText("Biznes e'loni")).toBeInTheDocument();
+    expect(api.getMyListings).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
+      .toBeInTheDocument();
   });
 
   it("opens migrated staff, documents and combined warehouse data", async () => {

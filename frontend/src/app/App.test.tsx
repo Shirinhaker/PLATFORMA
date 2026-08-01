@@ -154,7 +154,8 @@ describe("App", () => {
       .toBeInTheDocument();
   });
 
-  it("does not expose linked-screen actions before those screens are owned", async () => {
+  it("opens the migrated E’lonlar screen while still hiding unowned actions", async () => {
+    const user = userEvent.setup();
     saveHomeLocation();
     const api = {
       ...guestApi(),
@@ -165,6 +166,9 @@ describe("App", () => {
         systemization: false,
         taxi: true,
       }),
+      getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
+      getPublicListings: vi.fn().mockResolvedValue([]),
+      toggleListingSave: vi.fn(),
     };
     render(<App api={api} />);
 
@@ -172,12 +176,64 @@ describe("App", () => {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
 
-    expect(screen.queryByRole("button", { name: "E’lonlar" }))
-      .not.toBeInTheDocument();
+    const listings = screen.getByRole("button", { name: "E’lonlar" });
+    await user.click(listings);
+    expect(screen.getByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Savat" }))
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Taxi bo'limi" }))
       .not.toBeInTheDocument();
+  });
+
+  it("opens a district listing offer in the migrated detail screen", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const detail = {
+      public_id: "l_1234567890abcdef",
+      cat: "uy" as const,
+      title: "3 xonali kvartira",
+      price: "Kelishilgan",
+      descr: "Markazda",
+      address: "Qumqo‘rg‘on",
+      lat: 37.82,
+      lng: 67.58,
+      visibility: "all" as const,
+      status: "active" as const,
+      created_at: "2026-08-02T10:00:00Z",
+      media: [],
+      owner_kind: "business" as const,
+      owner_public_id: "b_1234567890abcdef",
+      owner_name: "Muhr",
+      is_saved: false,
+    };
+    const api = {
+      ...guestApi(),
+      getDistrictOffers: vi.fn().mockResolvedValue({
+        needs_district: false,
+        items: [{
+          kind: "listing" as const,
+          business_id: 7,
+          business_public_id: "b_1234567890abcdef",
+          content_id: 31,
+          content_public_id: detail.public_id,
+          title: detail.title,
+          business_name: "Muhr",
+          image: "",
+          business_logo: "",
+          price: detail.price,
+          unit: "",
+        }],
+      }),
+      getPublicListing: vi.fn().mockResolvedValue(detail),
+      toggleListingSave: vi.fn(),
+    };
+
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", { name: /3 xonali kvartira/ }));
+
+    expect(await screen.findByRole("heading", { name: "3 xonali kvartira" }))
+      .toBeInTheDocument();
+    expect(api.getPublicListing).toHaveBeenCalledWith(detail.public_id);
   });
 
   it("switches the v1656 theme palette and icon from the Home header", async () => {

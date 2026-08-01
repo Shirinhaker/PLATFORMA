@@ -29,9 +29,13 @@ import type {
   PublicFollowedProfile,
   PublicHomeMapParams,
   PublicHomeMapResponse,
+  ListingCreate,
+  ListingPatch,
+  ListingRead,
   PublicProfileDetail,
   PublicSearchParams,
   PublicSearchResponse,
+  PublicListingParams,
   RegistrationStart,
   ReverseGeocodeResult,
   SessionIdentity,
@@ -176,6 +180,64 @@ export class ApiClient {
     }
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/advertisements${suffix}`);
+  }
+
+  getListingCounts(): Promise<Record<string, number>> {
+    return this.request("GET", "/api/v1/public/listings/counts");
+  }
+
+  getPublicListings(params: PublicListingParams = {}): Promise<ListingRead[]> {
+    const query = new URLSearchParams();
+    if (params.cat) query.set("cat", params.cat);
+    if (params.q) query.set("q", params.q);
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return this.request("GET", `/api/v1/public/listings${suffix}`);
+  }
+
+  getPublicListing(publicId: string): Promise<ListingRead> {
+    return this.request(
+      "GET",
+      `/api/v1/public/listings/${encodeURIComponent(publicId)}`,
+    );
+  }
+
+  getMyListings(): Promise<ListingRead[]> {
+    return this.request("GET", "/api/v1/listings/mine", undefined, true);
+  }
+
+  createListing(body: ListingCreate): Promise<ListingRead> {
+    return this.request("POST", "/api/v1/listings", body, true);
+  }
+
+  patchListing(publicId: string, body: ListingPatch): Promise<ListingRead> {
+    return this.request(
+      "PUT",
+      `/api/v1/listings/${encodeURIComponent(publicId)}`,
+      body,
+      true,
+    );
+  }
+
+  deleteListing(publicId: string): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/listings/${encodeURIComponent(publicId)}`,
+      undefined,
+      true,
+    );
+  }
+
+  toggleListingSave(publicId: string): Promise<{ saved: boolean }> {
+    return this.request(
+      "POST",
+      `/api/v1/listings/${encodeURIComponent(publicId)}/save`,
+      {},
+      true,
+    );
+  }
+
+  getSavedListings(): Promise<ListingRead[]> {
+    return this.request("GET", "/api/v1/listings/saved", undefined, true);
   }
 
   getPublicFeatures(): Promise<PublicFeatures> {

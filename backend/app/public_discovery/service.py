@@ -73,6 +73,7 @@ class PublicDiscoveryService:
                     session,
                     params,
                     include_content=settings.phase3c_public_enabled,
+                    include_listings=settings.listings_enabled,
                 )
 
             self._search_loader = configured_loader
@@ -92,7 +93,10 @@ class PublicDiscoveryService:
     ) -> PublicSearchResponse:
         catalog_epoch = (
             await self._catalog_cache_epoch.current()
-            if self._settings.phase3c_public_enabled
+            if (
+                self._settings.phase3c_public_enabled
+                or self._settings.listings_enabled
+            )
             else 0
         )
         cache_key = self.cache_key(params, catalog_epoch=catalog_epoch)

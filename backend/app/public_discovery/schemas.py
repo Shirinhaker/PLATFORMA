@@ -15,6 +15,7 @@ class PublicResultKind(str, Enum):
     BUSINESS = "business"
     PRODUCT = "product"
     SERVICE = "service"
+    LISTING = "listing"
 
 
 class PublicResultType(str, Enum):
@@ -23,6 +24,7 @@ class PublicResultType(str, Enum):
     BUSINESS = "business"
     PRODUCT = "product"
     SERVICE = "service"
+    LISTING = "listing"
 
 
 class PublicSearchParams(BaseModel):
@@ -71,7 +73,7 @@ class PublicSearchItem(BaseModel):
 
     kind: PublicResultKind
     public_id: str = Field(min_length=1, max_length=64)
-    name: str = Field(min_length=1, max_length=120)
+    name: str = Field(min_length=1, max_length=200)
     public_username: str = Field(default="", max_length=32)
     description: str = Field(default="", max_length=2000)
     direction: str = Field(default="", max_length=120)

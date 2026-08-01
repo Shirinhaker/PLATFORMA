@@ -9,6 +9,7 @@ interface PublicProfileV1656Props {
   publicId: string;
   getPublicProfile: ApiClient["getPublicProfile"];
   onTitleChange?(title: string): void;
+  onOpenListing?(publicId: string): void;
 }
 
 
@@ -40,6 +41,7 @@ export function PublicProfileV1656({
   publicId,
   getPublicProfile,
   onTitleChange,
+  onOpenListing,
 }: PublicProfileV1656Props) {
   const [profile, setProfile] = useState<PublicProfileDetail | null>(null);
   const [error, setError] = useState("");
@@ -170,7 +172,12 @@ export function PublicProfileV1656({
             <span className="link">{profile.listings.length} ta</span>
           </div>
           {profile.listings.map((listing) => (
-            <article className="elon-item" key={listing.public_id}>
+            <button
+              className="elon-item"
+              key={listing.public_id}
+              type="button"
+              onClick={() => onOpenListing?.(listing.public_id)}
+            >
               <div className="li-thumb">
                 {listing.image_url ? <img alt="" src={listing.image_url} /> : <span>📦</span>}
               </div>
@@ -179,7 +186,7 @@ export function PublicProfileV1656({
                 {listing.price_text ? <div className="iprice">{listing.price_text}</div> : null}
                 {listing.address ? <div className="li-meta">{listing.address}</div> : null}
               </div>
-            </article>
+            </button>
           ))}
         </section>
       ) : null}

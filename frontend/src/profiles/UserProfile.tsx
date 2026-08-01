@@ -7,6 +7,11 @@ import type {
   UserProfilePatch,
 } from "../api/types";
 import { CabinetDataView } from "./CabinetDataView";
+import {
+  OwnerListingsV1656,
+  type OwnerListingsApi,
+} from "../listings/OwnerListingsV1656";
+import { SavedListingsV1656 } from "../listings/SavedListingsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -19,12 +24,19 @@ export type UserProfileApi = Pick<
   | "attachUserAvatar"
   | "switchCabinet"
   | "logout"
->;
+> & Partial<Pick<
+  ApiClient,
+  | "getMyListings"
+  | "createListing"
+  | "deleteListing"
+  | "getSavedListings"
+>>;
 
 type Props = {
   api: UserProfileApi;
   identity: SessionIdentity;
   onLogout: () => void;
+  onOpenPublicListing?: (publicId: string) => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -173,8 +185,19 @@ function payloadRows(
   });
 }
 
+function supportsOwnerListings(api: UserProfileApi): api is UserProfileApi & OwnerListingsApi {
+  return ["getMyListings", "createListing", "deleteListing"]
+    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
 
-export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
+
+export function UserProfile({
+  api,
+  identity,
+  onLogout,
+  onOpenPublicListing,
+  onSwitched,
+}: Props) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [baseline, setBaseline] = useState<UserProfileData | null>(null);
   const [view, setView] = useState<CabinetView>("dashboard");
@@ -216,6 +239,11 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
     if (view === "orders") return rows.filter((row) => !isServiceOrder(row));
     return rows;
   }, [payload, selectedSection, view]);
+  const getSavedListings = useMemo(() => (
+    typeof api.getSavedListings === "function"
+      ? api.getSavedListings.bind(api)
+      : undefined
+  ), [api]);
 
   function setField<K extends keyof UserProfileData>(
     field: K,
@@ -345,6 +373,27 @@ export function UserProfile({ api, identity, onLogout, onSwitched }: Props) {
       <main className="profile-shell">
         {error ? <p role="alert">{error}</p> : "Profil yuklanmoqda…"}
       </main>
+    );
+  }
+
+  if (view === "listings" && supportsOwnerListings(api)) {
+    return (
+      <OwnerListingsV1656
+        actor="user"
+        api={api}
+        onBack={() => setView("dashboard")}
+      />
+    );
+  }
+
+  if (view === "saved" && getSavedListings) {
+    return (
+      <SavedListingsV1656
+        getSavedListings={getSavedListings}
+        legacyRows={selectedRows}
+        onBack={() => setView("dashboard")}
+        onOpenListing={(publicId) => onOpenPublicListing?.(publicId)}
+      />
     );
   }
 
