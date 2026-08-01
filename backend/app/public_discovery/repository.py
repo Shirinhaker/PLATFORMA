@@ -3,7 +3,9 @@ import hashlib
 import time
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
+    Float,
     String,
     case,
     cast,
@@ -32,6 +34,7 @@ from app.public_discovery.schemas import (
     PublicResultKind,
     PublicResultType,
     PublicSearchItem,
+    PublicSearchMapPoint,
     PublicSearchParams,
     PublicSearchResponse,
 )
@@ -112,6 +115,10 @@ def _user_query(params: PublicSearchParams):
             literal(None).cast(String).label("owner_label"),
             literal(None).cast(Boolean).label("can_order"),
             literal(None).cast(Boolean).label("can_chat"),
+            literal(None).cast(BigInteger).label("map_business_account_id"),
+            literal(None).cast(String).label("map_business_name"),
+            literal(None).cast(Float).label("map_latitude"),
+            literal(None).cast(Float).label("map_longitude"),
         )
         .join(UserProfile, UserProfile.account_id == Account.id)
         .where(Account.status == "active")
@@ -137,6 +144,11 @@ def _business_query(params: PublicSearchParams):
     owner_profile = aliased(UserProfile, name="business_owner_profile")
     location_filtered = bool(
         params.region or params.district or params.mahalla
+    )
+    map_visible = (
+        BusinessProfile.map_visible.is_(True)
+        & BusinessProfile.latitude.is_not(None)
+        & BusinessProfile.longitude.is_not(None)
     )
     statement = select(
         literal(PublicResultKind.BUSINESS.value).label("kind"),
@@ -167,6 +179,22 @@ def _business_query(params: PublicSearchParams):
         literal(None).cast(String).label("owner_label"),
         literal(None).cast(Boolean).label("can_order"),
         literal(None).cast(Boolean).label("can_chat"),
+        case(
+            (map_visible, BusinessProfile.account_id),
+            else_=None,
+        ).label("map_business_account_id"),
+        case(
+            (map_visible, BusinessProfile.name),
+            else_=None,
+        ).label("map_business_name"),
+        case(
+            (map_visible, BusinessProfile.latitude),
+            else_=None,
+        ).label("map_latitude"),
+        case(
+            (map_visible, BusinessProfile.longitude),
+            else_=None,
+        ).label("map_longitude"),
     ).join(BusinessProfile, BusinessProfile.account_id == Account.id)
     if location_filtered:
         statement = statement.outerjoin(
@@ -217,22 +245,20 @@ def _content_query(params: PublicSearchParams, kind: str):
         (CatalogItem.owner_state == "linked")
         & CatalogItem.business_account_id.is_not(None)
     )
+    map_visible = (
+        linked
+        & BusinessProfile.map_visible.is_(True)
+        & BusinessProfile.latitude.is_not(None)
+        & BusinessProfile.longitude.is_not(None)
+    )
     statement = select(
         literal(kind).label("kind"),
         CatalogItem.id.label("account_id"),
         CatalogItem.name.label("name"),
         _empty("public_username"),
         CatalogItem.note.label("description"),
-        (
-            BusinessProfile.direction.label("direction")
-            if owner_filtered
-            else _empty("direction")
-        ),
-        (
-            BusinessProfile.activity_type.label("activity_type")
-            if owner_filtered
-            else _empty("activity_type")
-        ),
+        BusinessProfile.direction.label("direction"),
+        BusinessProfile.activity_type.label("activity_type"),
         (
             owner_profile.region.label("region")
             if owner_filtered
@@ -257,12 +283,28 @@ def _content_query(params: PublicSearchParams, kind: str):
         ).label("owner_label"),
         case((linked, True), else_=False).label("can_order"),
         case((linked, True), else_=False).label("can_chat"),
+        case(
+            (map_visible, CatalogItem.business_account_id),
+            else_=None,
+        ).label("map_business_account_id"),
+        case(
+            (map_visible, BusinessProfile.name),
+            else_=None,
+        ).label("map_business_name"),
+        case(
+            (map_visible, BusinessProfile.latitude),
+            else_=None,
+        ).label("map_latitude"),
+        case(
+            (map_visible, BusinessProfile.longitude),
+            else_=None,
+        ).label("map_longitude"),
+    ).outerjoin(
+        BusinessProfile,
+        BusinessProfile.account_id == CatalogItem.business_account_id,
     )
     if owner_filtered:
         statement = statement.outerjoin(
-            BusinessProfile,
-            BusinessProfile.account_id == CatalogItem.business_account_id,
-        ).outerjoin(
             ProfileLink,
             ProfileLink.business_account_id == BusinessProfile.account_id,
         ).outerjoin(
@@ -365,6 +407,17 @@ async def search_public_profiles(
             public_id = build_content_public_id(kind.value, row["account_id"])
         else:
             public_id = build_public_id(kind, row["account_id"])
+        map_point = None
+        if row["map_business_account_id"] is not None:
+            map_point = PublicSearchMapPoint(
+                business_public_id=build_public_id(
+                    PublicResultKind.BUSINESS,
+                    int(row["map_business_account_id"]),
+                ),
+                business_name=row["map_business_name"],
+                latitude=row["map_latitude"],
+                longitude=row["map_longitude"],
+            )
         items.append(
             PublicSearchItem(
                 kind=row["kind"],
@@ -383,6 +436,7 @@ async def search_public_profiles(
                 owner_label=row["owner_label"],
                 can_order=row["can_order"],
                 can_chat=row["can_chat"],
+                map_point=map_point,
             )
         )
     return PublicSearchResponse(

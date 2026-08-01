@@ -119,10 +119,19 @@ def seed_business(store: AsyncStore, account_id: int, name: str) -> None:
 @pytest.mark.asyncio
 async def test_live_items_are_immediately_searchable_with_monolith_fields(store):
     seed_business(store, 7, "Muhr")
+    business = store.sync.get(BusinessProfile, 7)
+    business.latitude = 37.8234
+    business.longitude = 67.5789
+    store.sync.commit()
     payload = {
         "item_groups": [],
         "items": [
-            {"id": 1, "name": "ingliz tili", "price": 350000, "kind": "service"},
+            {
+                "id": 1,
+                "name": "ingliz tili",
+                "price": 350000,
+                "kind": "service",
+            },
             {"id": 2, "name": "stomatolog", "price": "", "kind": "service"},
             {"id": 3, "name": "fsf", "price": ""},
         ],
@@ -155,9 +164,31 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
     assert english.items[0].name == "ingliz tili"
     assert english.items[0].price_text == "350000"
     assert english.items[0].owner_label == "Muhr"
+    assert english.items[0].map_point is not None
+    assert english.items[0].map_point.business_public_id.startswith("b_")
+    assert english.items[0].map_point.business_name == "Muhr"
+    assert english.items[0].map_point.latitude == 37.8234
+    assert english.items[0].map_point.longitude == 67.5789
     assert [(item.name, item.kind.value) for item in fsf.items] == [
         ("fsf", "product")
     ]
+    business_result = await search_public_profiles(
+        store,
+        PublicSearchParams(q="Muhr", result_type="business"),
+    )
+    assert business_result.items[0].map_point is not None
+    assert (
+        business_result.items[0].map_point.business_public_id
+        == english.items[0].map_point.business_public_id
+    )
+
+    business.map_visible = False
+    store.sync.commit()
+    hidden = await search_public_profiles(
+        store,
+        PublicSearchParams(q="ingliz tili", result_type="service"),
+    )
+    assert hidden.items[0].map_point is None
 
 
 @pytest.mark.asyncio
