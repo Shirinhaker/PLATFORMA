@@ -79,6 +79,9 @@ describe("LocationScreen", () => {
       region: "Surxondaryo viloyati",
       district: "Qumqo'rg'on",
       neighborhood: "Yangi hayot",
+      latitude: 37.834,
+      longitude: 67.585,
+      exact: false,
     });
     expect(
       JSON.parse(
@@ -88,8 +91,8 @@ describe("LocationScreen", () => {
       region: "Surxondaryo viloyati",
       district: "Qumqo'rg'on",
       mahalla: "Yangi hayot",
-      lat: null,
-      lng: null,
+      lat: 37.834,
+      lng: 67.585,
       exact: false,
     });
   });

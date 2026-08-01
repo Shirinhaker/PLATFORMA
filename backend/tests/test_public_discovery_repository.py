@@ -100,3 +100,19 @@ def test_content_search_can_be_disabled_without_removing_profiles():
     assert "user_profiles" in sql
     assert "business_profiles" in sql
     assert "catalog_items" not in sql
+
+
+def test_district_search_keeps_v7_rows_whose_region_was_not_backfilled():
+    data, _ = build_public_search_statements(
+        PublicSearchParams(
+            q="mebel",
+            result_type="user",
+            region="Surxondaryo viloyati",
+            district="Qumqo'rg'on",
+        )
+    )
+    sql = compile_sql(data)
+
+    assert "coalesce(trim(user_profiles.region), '') = ''" in sql
+    assert "coalesce(trim(user_profiles.district), '') = ''" not in sql
+    assert "lower(user_profiles.district)" in sql

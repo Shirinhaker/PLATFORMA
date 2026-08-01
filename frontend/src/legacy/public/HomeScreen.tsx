@@ -19,6 +19,7 @@ import { HomeDistrictOffersV1656 } from "./home/HomeDistrictOffersV1656";
 import { HomeFollowedProfilesV1656 } from "./home/HomeFollowedProfilesV1656";
 import { HomeMapV1656 } from "./home/HomeMapV1656";
 import { HomeSearchResultsV1656 } from "./home/HomeSearchResultsV1656";
+import { findLocationCenter } from "./location-centers";
 import type { HomeLocation } from "./location-storage";
 
 
@@ -103,6 +104,13 @@ export function HomeScreen({
   const searchSequence = useRef(0);
   const district = currentDistrict?.trim() || "";
   const districtLabel = district || "Hudud tanlanmagan";
+  const locationCenter = (
+    location?.latitude != null
+    && location.longitude != null
+  ) ? {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    } : findLocationCenter(location?.region || "", location?.district || "");
 
   useEffect(() => {
     let active = true;
@@ -345,12 +353,7 @@ export function HomeScreen({
 
         <HomeMapV1656
           businesses={homeMap.businesses}
-          center={(
-            location?.latitude != null && location.longitude != null
-          ) ? {
-            latitude: location.latitude,
-            longitude: location.longitude,
-          } : undefined}
+          center={locationCenter ?? undefined}
           district={districtLabel}
           resultItems={results}
           specialists={homeMap.specialists}

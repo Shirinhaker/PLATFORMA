@@ -68,6 +68,31 @@ def _contains(column, value: str):
     return func.lower(column).contains(value.casefold())
 
 
+def _location_constraints(
+    region_column,
+    district_column,
+    mahalla_column,
+    params: PublicSearchParams,
+):
+    constraints = []
+    if params.region:
+        region_match = _contains(region_column, params.region)
+        if params.district:
+            # V7 ko'chirishda ayrim eski profillarning tumani saqlangan,
+            # ammo viloyati bo'sh qolgan. Tuman qat'iy mos bo'lsa, shu yozuvni
+            # qidiruvdan yo'qotmaymiz; region mavjud yozuvlarda baribir tekshiriladi.
+            region_match = or_(
+                func.coalesce(func.trim(region_column), "") == "",
+                region_match,
+            )
+        constraints.append(region_match)
+    if params.district:
+        constraints.append(_contains(district_column, params.district))
+    if params.mahalla:
+        constraints.append(_contains(mahalla_column, params.mahalla))
+    return constraints
+
+
 def _user_query(params: PublicSearchParams):
     statement = (
         select(
@@ -99,13 +124,12 @@ def _user_query(params: PublicSearchParams):
                 _contains(UserProfile.public_username, params.q),
             )
         )
-    for column, value in (
-        (UserProfile.region, params.region),
-        (UserProfile.district, params.district),
-        (UserProfile.mahalla, params.mahalla),
-    ):
-        if value:
-            statement = statement.where(_contains(column, value))
+    statement = statement.where(*_location_constraints(
+        UserProfile.region,
+        UserProfile.district,
+        UserProfile.mahalla,
+        params,
+    ))
     return statement
 
 
@@ -171,13 +195,12 @@ def _business_query(params: PublicSearchParams):
         if value:
             statement = statement.where(_contains(column, value))
 
-    for column, value in (
-        (owner_profile.region, params.region),
-        (owner_profile.district, params.district),
-        (owner_profile.mahalla, params.mahalla),
-    ):
-        if value:
-            statement = statement.where(_contains(column, value))
+    statement = statement.where(*_location_constraints(
+        owner_profile.region,
+        owner_profile.district,
+        owner_profile.mahalla,
+        params,
+    ))
     return statement
 
 
@@ -262,12 +285,15 @@ def _content_query(params: PublicSearchParams, kind: str):
     for column, value in (
         (BusinessProfile.direction, params.direction),
         (BusinessProfile.activity_type, params.activity_type),
-        (owner_profile.region, params.region),
-        (owner_profile.district, params.district),
-        (owner_profile.mahalla, params.mahalla),
     ):
         if value:
             statement = statement.where(_contains(column, value))
+    statement = statement.where(*_location_constraints(
+        owner_profile.region,
+        owner_profile.district,
+        owner_profile.mahalla,
+        params,
+    ))
     return statement
 
 
