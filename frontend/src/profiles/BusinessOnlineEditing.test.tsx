@@ -99,14 +99,15 @@ describe("business online editing", () => {
       />,
     );
     await screen.findByRole("heading", { name: "Muhr" });
+    expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
     await user.click(screen.getByRole("button", {
-      name: /Mahsulot va xizmatlar/,
+      name: /Mahsulotlar/,
     }));
     await screen.findByPlaceholderText("Tovar qidirish...");
     await user.click(screen.getByRole("button", { name: "Eski nom amallari" }));
     await user.click(screen.getByRole("button", { name: "Tahrirlash" }));
     expect(await screen.findByRole("heading", {
-      name: "Mahsulot yoki xizmatni tahrirlash",
+      name: "Tovarni tahrirlash",
     })).toBeInTheDocument();
 
     const name = screen.getByLabelText("Nomi");

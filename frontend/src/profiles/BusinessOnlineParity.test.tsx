@@ -120,7 +120,8 @@ describe("v1656 online cabinet parity", () => {
   it("opens the exact v1656 item screen from the cabinet", async () => {
     const user = await renderCabinet();
 
-    await user.click(screen.getByRole("button", { name: /Mahsulot va xizmatlar/ }));
+    expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Mahsulotlar/ }));
     expect(await screen.findByPlaceholderText("Tovar qidirish...")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /\+ Guruh qo'shish/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tovar qo'shish" })).toBeInTheDocument();
@@ -132,24 +133,32 @@ describe("v1656 online cabinet parity", () => {
 
     await user.click(screen.getByRole("button", { name: /^📦 Buyurtmalar/ }));
     expect(await screen.findByRole("heading", { name: "Buyurtmalar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Yangi" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Jarayondagi" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Yakunlangan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Buyurtmalar (1)" }))
+      .toHaveClass("seg-b", "on");
+    expect(screen.getByRole("button", { name: "Muammoli (0)" }))
+      .toHaveClass("seg-b");
+    expect(screen.getByRole("button", { name: "Yakunlangan (0)" }))
+      .toHaveClass("seg-b");
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Xizmat buyurtmalari/ }));
     expect(await screen.findByRole("heading", { name: "Xizmat buyurtmalari" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Buyurtma #45 — Xizmat/ })).toBeInTheDocument();
+    expect(screen.getByText("BUYURTMA №45")).toHaveClass("order-no-pill");
+    expect(screen.getByText("Xizmat").closest("article"))
+      .toHaveClass("item", "order-card", "order-new");
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Suhbatlar/ }));
     expect(await screen.findByRole("heading", { name: "Suhbatlar" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Xabar yozing...")).toBeInTheDocument();
+    const conversation = screen.getByRole("button", { name: /Suhbat Salom/ });
+    expect(conversation).toHaveClass("conv");
+    await user.click(conversation);
+    expect(screen.getByPlaceholderText("Xabar yozing...")).toHaveClass("chat-input");
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
     expect(await screen.findByRole("heading", { name: "Mijoz fikrlari" })).toBeInTheDocument();
-    expect(screen.getByText("O‘rtacha baho")).toBeInTheDocument();
+    expect(screen.getByText("O'rtacha baho")).toHaveClass("idesc");
     expect(screen.getByRole("button", { name: "Javob berish" })).toBeInTheDocument();
   });
 
@@ -163,12 +172,16 @@ describe("v1656 online cabinet parity", () => {
     await back(user);
     await user.click(screen.getByRole("button", { name: /Istoriya arxivi/ }));
     expect(await screen.findByRole("heading", { name: "Istoriya arxivi" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Istoriya/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Faol" })).toHaveClass("ad-tab", "on");
+    expect(screen.getByRole("button", { name: "Arxiv" })).toHaveClass("ad-tab");
+    expect(screen.getByRole("button", { name: "Ko‘rish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "O‘chirish" })).toBeInTheDocument();
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Bildirishnomalarim/ }));
     expect(await screen.findByRole("heading", { name: "Bildirishnomalarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Barchasini o‘qilgan qilish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Barchasini o'qish" }))
+      .toHaveClass("mini-btn");
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Obunachilar/ }));
@@ -178,6 +191,9 @@ describe("v1656 online cabinet parity", () => {
     await back(user);
     await user.click(screen.getByRole("button", { name: /Biznes obunalari/ }));
     expect(await screen.findByRole("heading", { name: "Biznes obunalari" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Obunani bekor qilish" })).toBeInTheDocument();
+    expect(screen.getByText("1 ta kuzatilmoqda")).toHaveClass("list-sub");
+    expect(screen.getByText("Hamkor biznes").closest("article")).toHaveClass("elon-item");
+    expect(screen.queryByRole("button", { name: "Obunani bekor qilish" }))
+      .not.toBeInTheDocument();
   });
 });

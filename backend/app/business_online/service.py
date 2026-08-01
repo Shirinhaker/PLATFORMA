@@ -37,6 +37,8 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
     "advertisements": ResourceSpec(create=True, update=True, delete=True),
     "stories": ResourceSpec(create=True, update=True, delete=True),
     "notifications": ResourceSpec(update=True, delete=True),
+    "notify_filters": ResourceSpec(create=True, delete=True),
+    "push_preferences": ResourceSpec(),
     "followers": ResourceSpec(),
     "following": ResourceSpec(delete=True),
     "dining_places": ResourceSpec(create=True, update=True, delete=True),
@@ -81,6 +83,7 @@ ORDER_STATUSES = {
     "payment_confirmed",
     "preparing",
     "ready",
+    "tayyor",
     "courier_search",
     "courier_assigned",
     "courier_arrived_store",
@@ -153,6 +156,24 @@ MEDICAL_QUEUE_STATUSES = {
     "skipped",
 }
 MEDICAL_QUEUE_TERMINAL = {"done", "cancelled", "no_show"}
+AD_VALID_DURATIONS = {1, 3, 7, 14, 30}
+AD_DISTRICT_HOUR_RATE = 20_000
+AD_REGION_DISTRICT_COUNTS = {
+    "Toshkent shahri": 11,
+    "Toshkent viloyati": 14,
+    "Andijon viloyati": 14,
+    "Farg'ona viloyati": 15,
+    "Namangan viloyati": 11,
+    "Samarqand viloyati": 14,
+    "Buxoro viloyati": 11,
+    "Qashqadaryo viloyati": 13,
+    "Surxondaryo viloyati": 13,
+    "Jizzax viloyati": 12,
+    "Sirdaryo viloyati": 10,
+    "Navoiy viloyati": 10,
+    "Xorazm viloyati": 10,
+    "Qoraqalpog'iston Respublikasi": 14,
+}
 
 
 class BusinessOnlineService:
@@ -363,6 +384,20 @@ def prepare_record_for_create(
 ) -> None:
     if resource == "medical_doctors":
         prepare_medical_doctor(payload or {}, clean)
+        return
+    if resource == "advertisements":
+        targets, pricing = advertisement_pricing(clean)
+        clean["targets"] = targets
+        clean.update({
+            "price": pricing["total"],
+            "district_count": pricing["district_count"],
+            "hours_per_day": pricing["hours_per_day"],
+            "duration_days": pricing["duration_days"],
+            "district_hour_rate": pricing["district_hour_rate"],
+            "billable_district_hours": pricing["billable_district_hours"],
+            "price_code": "advertisement_district_hour",
+            "status": "payment_pending",
+        })
         return
     if resource != "dining_places":
         return
@@ -1075,6 +1110,22 @@ def apply_action(
         payload[resource] = rows
         return None
 
+    if resource == "notifications" and action == "set_push_preferences":
+        enabled = 1 if bool(data.get("enabled")) else 0
+        orders_enabled = 1 if bool(data.get("orders_enabled")) else 0
+        preference = {
+            "id": 1,
+            "enabled": enabled,
+            "orders_enabled": orders_enabled,
+            "updated_at": now,
+        }
+        payload["push_preferences"] = [preference]
+        return preference
+
+    if resource == "advertisements" and action == "calculate_price":
+        _, pricing = advertisement_pricing(data)
+        return pricing
+
     if resource == "following" and action == "unfollow":
         if record_id is None:
             raise missing_record_id()
@@ -1127,9 +1178,27 @@ def apply_action(
             "created_at": now,
             "updated_at": now,
         }
-        for key in ("order_id", "thread_id", "receiver_id", "receiver_kind"):
+        for key in (
+            "order_id",
+            "thread_id",
+            "receiver_id",
+            "receiver_kind",
+            "reply_to_id",
+        ):
             if key in data:
                 item[key] = data[key]
+        if data.get("reply_to_id") is not None:
+            try:
+                reply = find_record(rows, data["reply_to_id"])
+            except ApiError:
+                reply = None
+            if reply is not None:
+                item["reply"] = {
+                    "id": reply.get("id"),
+                    "sender_name": reply.get("sender_name") or "Xabar",
+                    "text": reply.get("text") or "",
+                    "media_type": reply.get("media_type") or "text",
+                }
         rows.append(item)
         payload[resource] = rows
         return item
@@ -1138,7 +1207,56 @@ def apply_action(
         raise missing_record_id()
     item = find_record(rows, record_id)
 
-    if resource == "notifications" and action == "mark_read":
+    if resource == "subscription_payments" and action == "resubmit":
+        receipt_type = str(data.get("receipt_type") or "")
+        receipt_size = integer(data.get("receipt_size"))
+        receipt_name = str(data.get("receipt_name") or "").strip()[:240]
+        if (
+            receipt_type not in {"image/jpeg", "image/png", "image/webp"}
+            or receipt_size <= 0
+            or receipt_size > 5 * 1024 * 1024
+            or not receipt_name
+        ):
+            raise ApiError(
+                422,
+                "invalid_payment_receipt",
+                "JPG, PNG yoki WEBP; maksimum 5 MB.",
+            )
+        attempts = item.get("attempts")
+        if not isinstance(attempts, list):
+            attempts = []
+        attempts.append({
+            "submitted_at": now,
+            "receipt_name": receipt_name,
+            "receipt_type": receipt_type,
+            "receipt_size": receipt_size,
+        })
+        item["attempts"] = attempts
+        item["status"] = "pending"
+        item.pop("reason", None)
+        item.pop("rejection_reason", None)
+    elif resource == "orders" and action == "report_problem":
+        item["problem_open"] = 1
+        item["problem_reason"] = str(data.get("reason") or "other")[:80]
+        item["problem_note"] = str(data.get("note") or "").strip()[:500]
+    elif resource == "orders" and action == "handoff":
+        status = str(item.get("status") or "")
+        order_type = str(item.get("order_type") or "")
+        if status not in {"handoff_waiting_seller", "ready", "tayyor"}:
+            raise ApiError(
+                422,
+                "order_not_ready_for_handoff",
+                "Buyurtma topshirishga tayyor emas.",
+            )
+        item["status"] = (
+            "pickup_waiting_customer"
+            if order_type == "pickup" or status in {"ready", "tayyor"}
+            else "in_delivery"
+        )
+    elif resource == "messages" and action == "delete":
+        item["is_deleted"] = 1
+        item["deleted_at"] = now
+    elif resource == "notifications" and action == "mark_read":
         item["is_read"] = 1
         item["read_at"] = now
     elif resource == "business_reviews" and action == "reply":
@@ -1180,6 +1298,108 @@ def action_forbidden() -> ApiError:
         "business_online_action_forbidden",
         "Bu bo‘limda tanlangan amal ruxsat etilmagan.",
     )
+
+
+def advertisement_pricing(
+    data: dict[str, Any],
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    raw_targets = data.get("targets")
+    if not isinstance(raw_targets, list):
+        raise ApiError(400, "advertisement_targets_required", "Reklama hududlarini tanlang.")
+    targets: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for value in raw_targets[:30]:
+        if not isinstance(value, dict):
+            continue
+        level = str(value.get("level") or "").strip().lower()
+        region = str(value.get("region") or "").strip()
+        district = str(value.get("district") or "").strip()
+        if level not in {"district", "region", "republic"}:
+            continue
+        if level == "region" and region not in AD_REGION_DISTRICT_COUNTS:
+            continue
+        if (
+            level == "district"
+            and (region not in AD_REGION_DISTRICT_COUNTS or not district)
+        ):
+            continue
+        if level == "republic":
+            region = ""
+            district = ""
+        key = (level, region.casefold(), district.casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        targets.append({"level": level, "region": region, "district": district})
+    if not targets:
+        raise ApiError(400, "advertisement_targets_required", "Kamida bitta hudud tanlang.")
+    if any(target["level"] == "republic" for target in targets) and len(targets) > 1:
+        raise ApiError(
+            400,
+            "advertisement_republic_target_exclusive",
+            "Respublika tanlansa boshqa hudud qo'shilmaydi.",
+        )
+
+    duration = integer_or_default(data.get("duration_days"), 1)
+    if duration not in AD_VALID_DURATIONS:
+        raise ApiError(
+            400,
+            "invalid_advertisement_duration",
+            "Kunlar 1, 3, 7, 14 yoki 30 bo'lishi kerak.",
+        )
+    all_day = bool(data.get("daily_all_day"))
+    if all_day:
+        hours = 24
+    else:
+        start = full_advertisement_hour(data.get("daily_start"))
+        end = full_advertisement_hour(data.get("daily_end"))
+        if start == end:
+            raise ApiError(
+                400,
+                "same_advertisement_hours",
+                "Boshlanish va tugash soati bir xil bo'lmasin.",
+            )
+        hours = (end - start) % 24
+
+    if any(target["level"] == "republic" for target in targets):
+        district_count = sum(AD_REGION_DISTRICT_COUNTS.values())
+    else:
+        whole_regions = {
+            target["region"]
+            for target in targets
+            if target["level"] == "region"
+        }
+        individual_districts = {
+            (target["region"], target["district"].casefold())
+            for target in targets
+            if target["level"] == "district"
+            and target["region"] not in whole_regions
+        }
+        district_count = (
+            sum(AD_REGION_DISTRICT_COUNTS[region] for region in whole_regions)
+            + len(individual_districts)
+        )
+    billable = district_count * hours * duration
+    return targets, {
+        "district_count": district_count,
+        "hours_per_day": hours,
+        "duration_days": duration,
+        "district_hour_rate": AD_DISTRICT_HOUR_RATE,
+        "billable_district_hours": billable,
+        "total": billable * AD_DISTRICT_HOUR_RATE,
+        "currency": "UZS",
+    }
+
+
+def full_advertisement_hour(value: Any) -> int:
+    text = str(value or "").strip()
+    if not re.fullmatch(r"(?:[01]\d|2[0-3]):00", text):
+        raise ApiError(
+            400,
+            "invalid_advertisement_hour",
+            "Vaqt faqat to'liq HH:00 soat bo'lishi kerak.",
+        )
+    return int(text[:2])
 
 
 def apply_education_enrollment_action(

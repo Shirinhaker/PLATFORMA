@@ -25,11 +25,13 @@ import {
   PaymentsView,
   PeopleView,
   recordId,
+  recordText,
   ReviewsView,
   type SharedActions,
   SubscriptionsView,
 } from "./BusinessOnlineViews";
 import "./BusinessOnlineScreen.css";
+import "./BusinessExistingOnlineV1656.css";
 
 
 type OnlineApi = Partial<Pick<
@@ -91,6 +93,9 @@ function viewResources(
   }
   if (view === "education-enrollments") {
     return [primary, "education_groups"];
+  }
+  if (view === "notifications") {
+    return [primary, "notify_filters", "push_preferences"];
   }
   return [primary];
 }
@@ -334,17 +339,108 @@ export function BusinessOnlineScreen({
           record_id: recordIdValue,
           payload,
         });
+        if (resource === "advertisements" && name === "calculate_price") {
+          return result.item;
+        }
         setResource(resource, result.items);
+        if (
+          resource === "notifications"
+          && name === "set_push_preferences"
+          && result.item
+        ) {
+          setResource("push_preferences", [result.item]);
+        }
         if (
           !resource.startsWith("dining_")
           && !resource.startsWith("medical_")
           && !resource.startsWith("education_")
         ) {
-          setNotice("Amal bajarildi");
+          setNotice(
+            resource === "notifications" && name === "set_push_preferences"
+              ? payload.enabled
+                ? "Push notification yoqildi ✅"
+                : "Push notification o'chirildi"
+              : "Amal bajarildi",
+          );
         }
         return result.item;
       } else if (resource === "notifications" && name === "mark_all_read") {
         setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
+      } else if (
+        resource === "notifications"
+        && name === "set_push_preferences"
+      ) {
+        const preference = {
+          id: 1,
+          enabled: payload.enabled ? 1 : 0,
+          orders_enabled: payload.orders_enabled ? 1 : 0,
+        };
+        setResource("push_preferences", [preference]);
+        if (
+          !resource.startsWith("dining_")
+          && !resource.startsWith("medical_")
+          && !resource.startsWith("education_")
+        ) {
+          setNotice(payload.enabled
+            ? "Push notification yoqildi ✅"
+            : "Push notification o'chirildi");
+        }
+        return preference;
+      } else if (
+        resource === "subscription_payments"
+        && name === "resubmit"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? { ...row, status: "pending", reason: "" }
+            : row
+        )));
+      } else if (
+        resource === "orders"
+        && name === "report_problem"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              problem_open: 1,
+              problem_reason: payload.reason,
+              problem_note: payload.note,
+            }
+            : row
+        )));
+      } else if (
+        resource === "messages"
+        && name === "delete"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              is_deleted: 1,
+              deleted_at: Math.floor(Date.now() / 1000),
+            }
+            : row
+        )));
+      } else if (
+        resource === "orders"
+        && name === "handoff"
+        && recordIdValue !== undefined
+      ) {
+        setResource(resource, items.map((row, index) => (
+          String(recordId(row, index)) === String(recordIdValue)
+            ? {
+              ...row,
+              status: recordText(row, "order_type") === "pickup"
+                || ["ready", "tayyor"].includes(recordText(row, "status"))
+                ? "pickup_waiting_customer"
+                : "in_delivery",
+            }
+            : row
+        )));
       } else if (
         resource === "following"
         && name === "unfollow"
@@ -387,7 +483,13 @@ export function BusinessOnlineScreen({
         && !resource.startsWith("medical_")
         && !resource.startsWith("education_")
       ) {
-        setNotice("Amal bajarildi");
+        setNotice(
+          resource === "notifications" && name === "set_push_preferences"
+            ? payload.enabled
+              ? "Push notification yoqildi ✅"
+              : "Push notification o'chirildi"
+            : "Amal bajarildi",
+        );
       }
       return {};
     } catch (reason) {
@@ -448,11 +550,7 @@ export function BusinessOnlineScreen({
     action,
     setSubscreenBack: handleSubscreenBack,
   });
-  const exactV1656 = [
-    "medical-providers",
-    "medical-queue",
-    "education-enrollments",
-  ].includes(view);
+  const exactV1656 = Boolean(primary);
 
   return (
     <main className="business-online">
@@ -590,6 +688,13 @@ function renderContent(context: RenderContext): ReactNode {
           rows={items}
           loading={context.loading}
           refresh={() => void context.refresh("subscription_payments")}
+          resubmit={async (id, file) => {
+            await shared.action("subscription_payments", "resubmit", id, {
+              receipt_name: file.name,
+              receipt_type: file.type,
+              receipt_size: file.size,
+            });
+          }}
         />
       );
     case "items":
@@ -686,6 +791,7 @@ function renderContent(context: RenderContext): ReactNode {
             id,
             { status },
           )}
+          action={(id, name, payload) => shared.action("orders", name, id, payload)}
         />
       );
     case "messages":
@@ -695,20 +801,33 @@ function renderContent(context: RenderContext): ReactNode {
           value={context.messageText}
           setValue={context.setMessageText}
           busy={shared.busy}
-          send={async () => {
-            const value = context.messageText.trim();
-            if (!value) return;
+          send={async (peer, value, replyToId) => {
             if (context.hasActionApi) {
               await shared.action("messages", "send", undefined, {
                 text: value,
+                receiver_id: Number(peer.id),
+                receiver_kind: peer.kind,
+                ...(replyToId === undefined ? {} : { reply_to_id: replyToId }),
               });
             } else {
               await shared.create("messages", {
                 text: value,
                 sender_kind: "business",
+                receiver_id: Number(peer.id),
+                receiver_kind: peer.kind,
+                ...(replyToId === undefined ? {} : { reply_to_id: replyToId }),
               });
             }
             context.setMessageText("");
+          }}
+          edit={async (id, text) => {
+            await shared.patch("messages", id, {
+              text,
+              edited_at: Math.floor(Date.now() / 1000),
+            });
+          }}
+          remove={async (id) => {
+            await shared.action("messages", "delete", id);
           }}
         />
       );
@@ -723,9 +842,9 @@ function renderContent(context: RenderContext): ReactNode {
           setReplyId={context.setReplyId}
           setReply={context.setReplyText}
           busy={shared.busy}
-          save={async (id) => {
+          save={async (id, reply) => {
             await shared.action("business_reviews", "reply", id, {
-              reply: context.replyText,
+              reply,
             });
             context.setReplyId(null);
             context.setReplyText("");
@@ -749,6 +868,14 @@ function renderContent(context: RenderContext): ReactNode {
             "start_at",
             "end_at",
           ]}
+          quoteAdvertisement={context.hasActionApi
+            ? (request) => context.action(
+              "advertisements",
+              "calculate_price",
+              undefined,
+              request,
+            )
+            : undefined}
         />
       );
     case "stories":
@@ -779,6 +906,8 @@ function renderContent(context: RenderContext): ReactNode {
       return (
         <NotificationsView
           rows={items}
+          filters={context.resources.notify_filters ?? []}
+          pushPreference={(context.resources.push_preferences ?? [])[0]}
           busy={shared.busy}
           markAll={() => shared.action(
             "notifications",
@@ -789,17 +918,26 @@ function renderContent(context: RenderContext): ReactNode {
             "mark_read",
             id,
           )}
+          createFilter={(record) => shared.create("notify_filters", record)}
+          removeFilter={(id) => shared.remove("notify_filters", id)}
+          savePushPreference={async (enabled) => {
+            await context.action(
+              "notifications",
+              "set_push_preferences",
+              undefined,
+              { enabled, orders_enabled: enabled },
+            );
+          }}
         />
       );
     case "followers":
-      return <PeopleView rows={items} busy={shared.busy} />;
+      return <PeopleView kind="followers" rows={items} busy={shared.busy} />;
     case "following":
       return (
         <PeopleView
+          kind="following"
           rows={items}
           busy={shared.busy}
-          canUnfollow
-          unfollow={(id) => shared.action("following", "unfollow", id)}
         />
       );
     default:

@@ -36,6 +36,8 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   advertisements: [],
   stories: [],
   notifications: [{ id: 7, title: "Yangi xabar", is_read: 0 }],
+  notify_filters: [],
+  push_preferences: [{ id: 1, enabled: 0, orders_enabled: 0 }],
   followers: [],
   following: [{ id: 9, name: "Hamkor biznes" }],
   dining_places: [],
@@ -139,15 +141,28 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
 
 
 describe("business online server mutations", () => {
-  it("sends notification, review and unfollow actions to the API", async () => {
+  it("sends the v1656 notification and review actions to the API", async () => {
     const { user, client } = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /Bildirishnomalarim/ }));
     await screen.findByRole("heading", { name: "Bildirishnomalarim" });
     await waitFor(() => expect(client.getBusinessOnlineResource)
       .toHaveBeenCalledWith("notifications"));
+    expect(client.getBusinessOnlineResource)
+      .toHaveBeenCalledWith("push_preferences");
+    const pushCheckbox = screen.getByRole("checkbox", { name: "Yoqilgan" });
+    expect(pushCheckbox).not.toBeChecked();
+    await user.click(pushCheckbox);
+    expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
+      "notifications",
+      "set_push_preferences",
+      {
+        record_id: undefined,
+        payload: { enabled: true, orders_enabled: true },
+      },
+    );
     await user.click(screen.getByRole("button", {
-      name: "Barchasini o‘qilgan qilish",
+      name: "Barchasini o'qish",
     }));
     expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
       "notifications",
@@ -158,25 +173,33 @@ describe("business online server mutations", () => {
     await back(user);
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
     await screen.findByRole("heading", { name: "Mijoz fikrlari" });
+    await user.type(
+      screen.getByPlaceholderText("Mijozga javob yozing..."),
+      "Rahmat",
+    );
     await user.click(await screen.findByRole("button", { name: "Javob berish" }));
-    await user.type(screen.getByRole("textbox"), "Rahmat");
-    await user.click(screen.getByRole("button", { name: "Javobni saqlash" }));
     expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
       "business_reviews",
       "reply",
       { record_id: 4, payload: { reply: "Rahmat" } },
     );
 
-    await back(user);
+  });
+
+  it("renders following as the exact v1656 read-only profile list", async () => {
+    const { user, client } = await renderCabinet();
+
     await user.click(screen.getByRole("button", { name: /Biznes obunalari/ }));
     await screen.findByRole("heading", { name: "Biznes obunalari" });
-    await user.click(await screen.findByRole("button", {
-      name: "Obunani bekor qilish",
-    }));
-    expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
+    expect(screen.getByText("1 ta kuzatilmoqda")).toHaveClass("list-sub");
+    expect(screen.getByText("Hamkor biznes").closest("article"))
+      .toHaveClass("elon-item");
+    expect(screen.queryByRole("button", { name: "Obunani bekor qilish" }))
+      .not.toBeInTheDocument();
+    expect(client.applyBusinessOnlineAction).not.toHaveBeenCalledWith(
       "following",
       "unfollow",
-      { record_id: 9, payload: {} },
+      expect.anything(),
     );
   });
 });

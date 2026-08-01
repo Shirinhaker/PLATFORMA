@@ -216,6 +216,167 @@ async def test_online_actions_update_dashboard_and_keep_nested_order_data():
 
 
 @pytest.mark.asyncio
+async def test_claude_review_online_actions_match_v1656_contracts():
+    profile = business_profile()
+    profile.cabinet_payload["subscription_payments"] = [{
+        "id": 5,
+        "status": "rejected",
+        "reason": "Chek xira",
+        "attempts": [],
+    }]
+    profile.cabinet_payload["orders"][0].update({
+        "status": "accepted",
+        "payment_status": "submitted",
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    payment, _ = await service.apply_action(
+        7,
+        "subscription_payments",
+        "resubmit",
+        record_id=5,
+        data={
+            "receipt_name": "chek.png",
+            "receipt_type": "image/png",
+            "receipt_size": 1200,
+        },
+    )
+    assert payment is not None
+    assert payment["status"] == "pending"
+    assert "reason" not in payment
+    assert payment["attempts"][-1]["receipt_name"] == "chek.png"
+
+    problem, _ = await service.apply_action(
+        7,
+        "orders",
+        "report_problem",
+        record_id=44,
+        data={"reason": "not_received", "note": "Pul kelmadi"},
+    )
+    assert problem is not None
+    assert problem["problem_open"] == 1
+    assert problem["problem_reason"] == "not_received"
+    assert problem["problem_note"] == "Pul kelmadi"
+
+    profile.cabinet_payload["orders"][0]["status"] = "handoff_waiting_seller"
+    handed_off, _ = await service.apply_action(
+        7,
+        "orders",
+        "handoff",
+        record_id=44,
+        data={},
+    )
+    assert handed_off is not None
+    assert handed_off["status"] == "in_delivery"
+
+    message, _ = await service.apply_action(
+        7,
+        "messages",
+        "send",
+        record_id=None,
+        data={"text": "Javob", "receiver_id": 9, "reply_to_id": 3},
+    )
+    assert message is not None
+    assert message["reply_to_id"] == 3
+
+    deleted, _ = await service.apply_action(
+        7,
+        "messages",
+        "delete",
+        record_id=message["id"],
+        data={},
+    )
+    assert deleted is not None
+    assert deleted["is_deleted"] == 1
+    assert deleted["deleted_at"] > 0
+
+
+@pytest.mark.asyncio
+async def test_notification_filters_can_be_created_and_deleted():
+    profile = business_profile()
+    profile.cabinet_payload["notify_filters"] = []
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    created, rows = await service.create_record(
+        7,
+        "notify_filters",
+        {"cat": "ish", "district": "Qumqo‘rg‘on", "keyword": "dasturchi"},
+    )
+    assert created["id"] == 1
+    assert rows == [created]
+    assert await service.delete_record(7, "notify_filters", 1) == []
+
+
+@pytest.mark.asyncio
+async def test_advertisement_quote_and_create_use_v1656_hourly_tariff():
+    profile = business_profile()
+    profile.cabinet_payload["advertisements"] = []
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+    request = {
+        "targets": [{"level": "republic", "region": "", "district": ""}],
+        "duration_days": 1,
+        "daily_all_day": True,
+        "daily_start": "19:00",
+        "daily_end": "21:00",
+    }
+
+    quote, rows = await service.apply_action(
+        7,
+        "advertisements",
+        "calculate_price",
+        record_id=None,
+        data=request,
+    )
+    assert rows == []
+    assert quote == {
+        "district_count": 172,
+        "hours_per_day": 24,
+        "duration_days": 1,
+        "district_hour_rate": 20_000,
+        "billable_district_hours": 4_128,
+        "total": 82_560_000,
+        "currency": "UZS",
+    }
+
+    created, _ = await service.create_record(
+        7,
+        "advertisements",
+        {**request, "title": "Aksiya", "image_file": "banner.webp", "price": 1},
+    )
+    assert created["price"] == 82_560_000
+    assert created["district_count"] == 172
+    assert created["district_hour_rate"] == 20_000
+
+
+@pytest.mark.asyncio
+async def test_push_preferences_are_loaded_and_persisted():
+    profile = business_profile()
+    profile.cabinet_payload["push_preferences"] = [{
+        "id": 1,
+        "enabled": 0,
+        "orders_enabled": 0,
+    }]
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    assert await service.read_resource(7, "push_preferences") == [{
+        "id": 1,
+        "enabled": 0,
+        "orders_enabled": 0,
+    }]
+    preference, _ = await service.apply_action(
+        7,
+        "notifications",
+        "set_push_preferences",
+        record_id=None,
+        data={"enabled": True, "orders_enabled": True},
+    )
+    assert preference is not None
+    assert preference["enabled"] == 1
+    assert preference["orders_enabled"] == 1
+    assert profile.cabinet_payload["push_preferences"][0]["enabled"] == 1
+
+
+@pytest.mark.asyncio
 async def test_readonly_resources_cannot_be_created_or_deleted():
     service = BusinessOnlineService(FakeDatabase(business_profile()).session)
 

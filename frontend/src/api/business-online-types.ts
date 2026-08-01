@@ -10,6 +10,8 @@ export type BusinessOnlineResource =
   | "advertisements"
   | "stories"
   | "notifications"
+  | "notify_filters"
+  | "push_preferences"
   | "followers"
   | "following"
   | "dining_places"

@@ -8,6 +8,7 @@ import {
   pickReturnScreen,
 } from "./BusinessLocationPickerV1656View";
 import { BusinessProfile } from "./BusinessProfile";
+import { CrudEditorView } from "./BusinessOnlineEditingViews";
 
 
 const leaflet = vi.hoisted(() => {
@@ -118,6 +119,48 @@ describe("v1656 pickloc parity", () => {
       { latitude: 37.838933493659454, longitude: 67.58345251326438 },
       "cab-elon-form",
     );
+  });
+
+  it("opens the be picker from a business listing and saves its center", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CrudEditorView
+        resource="listings"
+        rows={[]}
+        addLabel="+ E’lon"
+        empty="Hozircha e’lon yo‘q."
+        fields={["title"]}
+        busy={false}
+        form={null}
+        draft={{}}
+        setForm={vi.fn()}
+        setDraft={vi.fn()}
+        create={create}
+        patch={vi.fn().mockResolvedValue(undefined)}
+        remove={vi.fn().mockResolvedValue(undefined)}
+        action={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "+ E'lon joylash" }));
+    await user.type(screen.getByLabelText("Sarlavha"), "Uy sotiladi");
+    await user.click(screen.getByRole("button", { name: "📍 Xaritada joy belgilash" }));
+
+    expect(document.querySelector('[data-screen="pickloc"]')).toBeInTheDocument();
+    expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Uzunlik")).not.toBeInTheDocument();
+    await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
+    leaflet.state.center = { lat: 37.83, lng: 67.58 };
+
+    await user.click(screen.getByRole("button", { name: "✅ Shu joyni tanlash" }));
+    await user.click(screen.getByRole("button", { name: "Joylash" }));
+
+    expect(create).toHaveBeenCalledWith("listings", expect.objectContaining({
+      title: "Uy sotiladi",
+      lat: 37.83,
+      lng: 67.58,
+    }));
   });
 
   it("invalidates after screen animation and viewport resize without shifting center", async () => {

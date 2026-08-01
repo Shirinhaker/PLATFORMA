@@ -51,42 +51,57 @@ export function GroupForm({
   onSave: () => Promise<void>;
 }) {
   return (
-    <section className="item-form-card">
-      <h2>{editing ? "Guruh nomini o'zgartirish" : "Yangi guruh"}</h2>
-      <label>
-        Guruh nomi
-        <input
-          aria-label="Guruh nomi"
-          value={String(draft.name ?? "")}
-          onChange={(event) => setDraft({
-            ...draft,
-            name: event.currentTarget.value,
-          })}
-        />
-      </label>
-      <div className="item-kind-row" role="group" aria-label="Guruh turi">
-        <button
-          type="button"
-          className={rowKind(draft) === "product" ? "on" : ""}
-          onClick={() => setDraft({ ...draft, kind: "product" })}
-        >
-          Mahsulotlar
-        </button>
-        <button
-          type="button"
-          className={rowKind(draft) === "service" ? "on" : ""}
-          onClick={() => setDraft({ ...draft, kind: "service" })}
-        >
-          Xizmatlar
-        </button>
-      </div>
-      <div className="item-form-actions">
-        <button type="button" onClick={onCancel}>Bekor qilish</button>
-        <button type="button" disabled={busy} onClick={() => void onSave()}>
+    <>
+      <button
+        type="button"
+        className="sheet-backdrop on"
+        aria-label="Guruh formasini yopish"
+        onClick={onCancel}
+      />
+      <section className="order-sheet on" role="dialog" aria-modal="true">
+        <button type="button" className="order-close" aria-label="Yopish" onClick={onCancel}>×</button>
+        <div className="order-grip" />
+        <div className="lead">{editing ? "Guruh nomini o'zgartirish" : "Yangi guruh"}</div>
+        <label className="field">
+          Guruh nomi
+          <input
+            className="input"
+            aria-label="Guruh nomi"
+            placeholder="Masalan: Ho'l mevalar"
+            value={String(draft.name ?? "")}
+            onChange={(event) => setDraft({
+              ...draft,
+              name: event.currentTarget.value,
+            })}
+          />
+        </label>
+        {!editing && (
+          <div className="field">
+            <label>Tur</label>
+            <div className="item-kind-row" role="group" aria-label="Guruh turi">
+              <button
+                type="button"
+                className={rowKind(draft) === "product" ? "sort-chip on" : "sort-chip"}
+                onClick={() => setDraft({ ...draft, kind: "product" })}
+              >
+                Mahsulot
+              </button>
+              <button
+                type="button"
+                className={rowKind(draft) === "service" ? "sort-chip on" : "sort-chip"}
+                onClick={() => setDraft({ ...draft, kind: "service" })}
+              >
+                Xizmat
+              </button>
+            </div>
+          </div>
+        )}
+        <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void onSave()}>
           Saqlash
         </button>
-      </div>
-    </section>
+        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>Bekor qilish</button>
+      </section>
+    </>
   );
 }
 
@@ -112,31 +127,94 @@ export function ItemForm({
   const note = String(draft.note ?? draft.description ?? "");
 
   return (
-    <section className="item-form-card">
+    <section className="item-form-card form-wrap">
       <h2>
         {editing
-          ? "Mahsulot yoki xizmatni tahrirlash"
-          : "Yangi mahsulot yoki xizmat"}
+          ? "Tovarni tahrirlash"
+          : "Yangi tovar"}
       </h2>
-      <div className="item-kind-row" role="group" aria-label="Tovar turi">
-        <button
-          type="button"
-          className={kind === "product" ? "on" : ""}
-          onClick={() => setDraft({ ...draft, kind: "product" })}
-        >
-          Mahsulot
-        </button>
-        <button
-          type="button"
-          className={kind === "service" ? "on" : ""}
-          onClick={() => setDraft({ ...draft, kind: "service" })}
-        >
-          Xizmat
+      <div className="field">
+        <label>Rasm — ixtiyoriy</label>
+        <button type="button" className="item-photo-add">
+          <span className="ic">📷</span><span>Rasm qo'shish</span>
         </button>
       </div>
-      <label>
+      <label className="field">
+        Nomi
+        <input
+          className="input"
+          aria-label="Nomi"
+          value={String(draft.name ?? "")}
+          placeholder="Masalan: Non"
+          onChange={(event) => setDraft({
+            ...draft,
+            name: event.currentTarget.value,
+          })}
+        />
+      </label>
+      <label className="field">
+        Narxi
+        <input
+          className="input"
+          aria-label="Narxi"
+          value={String(draft.price ?? "")}
+          placeholder="Masalan: 2 000 so'm"
+          onChange={(event) => setDraft({
+            ...draft,
+            price: event.currentTarget.value,
+          })}
+        />
+      </label>
+      {kind === "product" && (
+        <>
+          <label className="field">
+            O'lchov birligi
+            <select
+              className="input"
+              value={String(draft.unit ?? "dona")}
+              onChange={(event) => setDraft({
+                ...draft,
+                unit: event.currentTarget.value,
+              })}
+            >
+              {UNITS.map((unit) => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Omborda hisoblash
+            <select
+              className="input"
+              value={trackStock ? "1" : "0"}
+              onChange={(event) => setDraft({
+                ...draft,
+                track_stock: Number(event.currentTarget.value),
+              })}
+            >
+              <option value="0">Yo'q</option>
+              <option value="1">Ha — qoldiq yuritiladi</option>
+            </select>
+          </label>
+        </>
+      )}
+      <label className="field">
+        Izoh — ixtiyoriy
+        <input
+          className="input"
+          value={note}
+          placeholder="Izoh"
+          onChange={(event) => setDraft({
+            ...draft,
+            note: event.currentTarget.value,
+            description: event.currentTarget.value,
+          })}
+        />
+      </label>
+      <label className="field">
         Guruh
         <select
+          className="input"
           value={String(draft.group_id ?? "")}
           onChange={(event) => setDraft({
             ...draft,
@@ -156,77 +234,30 @@ export function ItemForm({
           })}
         </select>
       </label>
-      <label>
-        Nomi
-        <input
-          aria-label="Nomi"
-          value={String(draft.name ?? "")}
-          placeholder="Masalan: Non"
-          onChange={(event) => setDraft({
-            ...draft,
-            name: event.currentTarget.value,
-          })}
-        />
-      </label>
-      <label>
-        Narxi
-        <input
-          value={String(draft.price ?? "")}
-          placeholder="Masalan: 2 000 so'm"
-          onChange={(event) => setDraft({
-            ...draft,
-            price: event.currentTarget.value,
-          })}
-        />
-      </label>
-      {kind === "product" && (
-        <>
-          <label>
-            O'lchov birligi
-            <select
-              value={String(draft.unit ?? "dona")}
-              onChange={(event) => setDraft({
-                ...draft,
-                unit: event.currentTarget.value,
-              })}
-            >
-              {UNITS.map((unit) => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Omborda hisoblash
-            <select
-              value={trackStock ? "1" : "0"}
-              onChange={(event) => setDraft({
-                ...draft,
-                track_stock: Number(event.currentTarget.value),
-              })}
-            >
-              <option value="0">Yo'q</option>
-              <option value="1">Ha — qoldiq yuritiladi</option>
-            </select>
-          </label>
-        </>
-      )}
-      <label>
-        Izoh — ixtiyoriy
-        <textarea
-          value={note}
-          placeholder="Izoh"
-          onChange={(event) => setDraft({
-            ...draft,
-            note: event.currentTarget.value,
-            description: event.currentTarget.value,
-          })}
-        />
-      </label>
+      <div className="field">
+        <label>Turi</label>
+        <div className="item-kind-row" role="group" aria-label="Tovar turi">
+          <button
+            type="button"
+            className={kind === "product" ? "sort-chip on" : "sort-chip"}
+            onClick={() => setDraft({ ...draft, kind: "product" })}
+          >
+            Mahsulot
+          </button>
+          <button
+            type="button"
+            className={kind === "service" ? "sort-chip on" : "sort-chip"}
+            onClick={() => setDraft({ ...draft, kind: "service" })}
+          >
+            Xizmat
+          </button>
+        </div>
+      </div>
       <div className="item-form-actions">
-        <button type="button" onClick={onCancel}>Bekor qilish</button>
-        <button type="button" disabled={busy} onClick={() => void onSave()}>
+        <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void onSave()}>
           Saqlash
         </button>
+        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>Bekor qilish</button>
       </div>
     </section>
   );

@@ -15,6 +15,7 @@ import {
   DEFAULT_METRICS,
   DIRECTION_MENUS,
   initials,
+  isOnlineMenuVisibleForDirection,
   isService,
   type Menu,
   METRICS,
@@ -100,7 +101,9 @@ function visibleMenus(profile: BusinessProfileData | null, menus: Menu[]) {
   if (!profile) return [];
   return menus
     .filter((menu) => (
-      !menu.directions || menu.directions.includes(profile.direction)
+      isOnlineMenu(menu)
+        ? isOnlineMenuVisibleForDirection(menu, profile.direction)
+        : !menu.directions || menu.directions.includes(profile.direction)
     ))
     .map((menu) => adaptMenuForDirection(menu, profile.direction));
 }
@@ -161,6 +164,14 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
         profile={profile}
         onBack={() => setScreen("cabinet")}
         onProfile={setProfile}
+        onOpenOnline={(view) => {
+          const menu = visibleMenus(profile, ONLINE_MENUS).find(
+            (candidate) => candidate.view === view,
+          );
+          if (!menu) return;
+          setOnlineMenu(menu);
+          setScreen("online");
+        }}
       />
     );
   }
