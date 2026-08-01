@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, CheckConstraint, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, Index, UniqueConstraint
 
 from app.advertisements.model import Advertisement
 from app.catalog.model import CatalogGroup, CatalogItem
@@ -27,6 +27,14 @@ def check_names(model) -> set[str | None]:
     }
 
 
+def index_names(model) -> set[str | None]:
+    return {
+        index.name
+        for index in model.__table__.indexes
+        if isinstance(index, Index)
+    }
+
+
 def test_catalog_item_keeps_text_price_and_owner_state():
     columns = CatalogItem.__table__.c
 
@@ -34,14 +42,20 @@ def test_catalog_item_keeps_text_price_and_owner_state():
     assert columns.business_account_id.nullable is True
     assert columns.owner_state.nullable is False
     assert columns.review_state.nullable is False
-    assert columns.migration_run_id.nullable is False
+    assert columns.migration_run_id.nullable is True
+    assert columns.source_record_key.nullable is True
 
 
 def test_catalog_models_restrict_kind_and_keep_migration_ownership():
     assert "ck_catalog_groups_kind" in check_names(CatalogGroup)
     assert "ck_catalog_items_kind" in check_names(CatalogItem)
-    assert CatalogGroup.__table__.c.migration_run_id.nullable is False
-    assert CatalogItem.__table__.c.migration_run_id.nullable is False
+    assert CatalogGroup.__table__.c.migration_run_id.nullable is True
+    assert CatalogItem.__table__.c.migration_run_id.nullable is True
+    assert CatalogGroup.__table__.c.source_record_key.nullable is True
+    assert CatalogItem.__table__.c.source_record_key.nullable is True
+    assert "ix_catalog_groups_live_source" in index_names(CatalogGroup)
+    assert "ix_catalog_items_live_source" in index_names(CatalogItem)
+    assert "ix_catalog_items_catalog_group_id" in index_names(CatalogItem)
 
 
 def test_listing_models_keep_media_type_position_and_migration_run():

@@ -71,10 +71,16 @@ def run_static_checks() -> None:
         )
 
     require(
-        "public:search:v2:" in text(
+        "public:search:v3:" in text(
             "backend/app/public_discovery/service.py"
         ),
         "search_cache_version_missing",
+    )
+    require(
+        "CatalogCacheEpoch" in text(
+            "backend/app/public_discovery/service.py"
+        ),
+        "catalog_cache_epoch_missing",
     )
     maintenance = text("frontend/public/maintenance.html")
     require(
@@ -127,4 +133,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
