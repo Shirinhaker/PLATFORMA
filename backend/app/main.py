@@ -21,6 +21,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
 from app.listings.router import router as listings_router
+from app.listings.service import ListingService
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.platform.router import router as platform_router
@@ -93,6 +94,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             resolved,
             app.state.r2.create_download_url,
             catalog_cache_epoch=catalog_cache_epoch,
+        )
+        app.state.listing_service = ListingService(
+            database.session,
+            app.state.r2.create_download_url,
+            cache_epoch=catalog_cache_epoch,
         )
         app.state.advertisement_service = AdvertisementService(
             database.session,

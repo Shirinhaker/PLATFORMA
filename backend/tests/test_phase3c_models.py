@@ -8,7 +8,7 @@ from app.legacy_migration.model import (
     MigrationIssue,
     MigrationRun,
 )
-from app.listings.model import Listing, ListingMedia
+from app.listings.model import Listing, ListingMedia, ListingSave
 
 
 def unique_columns(model) -> set[tuple[str, ...]]:
@@ -58,16 +58,18 @@ def test_catalog_models_restrict_kind_and_keep_migration_ownership():
     assert "ix_catalog_items_catalog_group_id" in index_names(CatalogItem)
 
 
-def test_listing_models_keep_media_type_position_and_migration_run():
+def test_listing_models_support_live_rows_and_saved_items():
     listing_columns = Listing.__table__.c
     media_columns = ListingMedia.__table__.c
 
     assert listing_columns.price_text.type.length == 120
-    assert listing_columns.migration_run_id.nullable is False
+    assert listing_columns.migration_run_id.nullable is True
+    assert listing_columns.source_record_key.nullable is True
     assert media_columns.position.nullable is False
-    assert media_columns.migration_run_id.nullable is False
+    assert media_columns.migration_run_id.nullable is True
     assert "ck_listing_media_type" in check_names(ListingMedia)
     assert ("listing_id", "position") in unique_columns(ListingMedia)
+    assert ("owner_user_account_id", "listing_id") in unique_columns(ListingSave)
 
 
 def test_advertisement_keeps_json_targets_and_historical_integer_counters():

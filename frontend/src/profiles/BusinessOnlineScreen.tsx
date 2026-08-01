@@ -6,6 +6,10 @@ import type {
   BusinessOnlineResource,
 } from "../api/business-online-types";
 import type { BusinessProfile } from "../api/types";
+import {
+  OwnerListingsV1656,
+  type OwnerListingsApi,
+} from "../listings/OwnerListingsV1656";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
 import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsV1656View";
 import {
@@ -41,6 +45,11 @@ type OnlineApi = Partial<Pick<
   | "patchBusinessOnlineRecord"
   | "deleteBusinessOnlineRecord"
   | "applyBusinessOnlineAction"
+  | "getMyListings"
+  | "createListing"
+  | "deleteListing"
+  | "createUploadGrant"
+  | "uploadGrantedFile"
 >>;
 
 type Props = {
@@ -119,6 +128,16 @@ function nextLocalId(rows: BusinessOnlineRecord[]): number {
   ) + 1;
 }
 
+function supportsOwnerListings(api: OnlineApi): api is OnlineApi & OwnerListingsApi {
+  return [
+    "getMyListings",
+    "createListing",
+    "deleteListing",
+    "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof OnlineApi] === "function");
+}
+
 
 export function BusinessOnlineScreen({
   api,
@@ -178,7 +197,11 @@ export function BusinessOnlineScreen({
   }
 
   useEffect(() => {
-    if (!primary || !api.getBusinessOnlineResource) return;
+    if (
+      !primary
+      || !api.getBusinessOnlineResource
+      || (view === "listings" && supportsOwnerListings(api))
+    ) return;
     const names = viewResources(view, primary);
     void refresh(...names);
     // API instance App davomida barqaror. View o‘zgarganda serverdan yangilanadi.
@@ -519,6 +542,16 @@ export function BusinessOnlineScreen({
       await action(...arguments_);
     },
   };
+
+  if (view === "listings" && supportsOwnerListings(api)) {
+    return (
+      <OwnerListingsV1656
+        actor="business"
+        api={api}
+        onBack={() => { void onBack(); }}
+      />
+    );
+  }
 
   const content = renderContent({
     view,

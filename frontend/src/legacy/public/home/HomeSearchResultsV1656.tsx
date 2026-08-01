@@ -87,6 +87,7 @@ export function HomeSearchResultsV1656({
   );
   const businesses = items.filter((item) => item.kind === "business");
   const users = items.filter((item) => item.kind === "user");
+  const listings = items.filter((item) => item.kind === "listing");
 
   return (
     <>
@@ -140,6 +141,27 @@ export function HomeSearchResultsV1656({
                 </span>
               </span>
               <Chevron />
+            </button>
+          ))}
+        </>
+      ) : null}
+
+      {listings.length ? (
+        <>
+          <div className="list-sub" style={{ marginTop: 6 }}>📣 E&apos;lonlar</div>
+          {listings.map((item) => (
+            <button
+              className="elon-item"
+              key={item.public_id}
+              type="button"
+              onClick={() => onOpenResult(item)}
+            >
+              <ResultImage fallback="📣" item={item} />
+              <span className="li-main">
+                <span className="li-title">{item.name}</span>
+                <span className="li-meta">{item.owner_label || item.district}</span>
+              </span>
+              <span className="iprice">{item.price_text || "Narx kelishilgan"}</span>
             </button>
           ))}
         </>

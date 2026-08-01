@@ -227,6 +227,68 @@ describe("ApiClient", () => {
     );
   });
 
+  it("serializes public E'lonlar filters without auth or CSRF", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse([]));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getPublicListings({ cat: "uy", q: "3 xonali uy" });
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/public/listings?cat=uy&q=3+xonali+uy",
+      expect.objectContaining({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
+    expect(fetcher.mock.calls[0]?.[1]?.headers).not.toHaveProperty(
+      "X-CSRF-Token",
+    );
+  });
+
+  it("protects E'lon yaratish va saqlash requests with session CSRF", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "user",
+        name: "Ali",
+        login: "u_ali",
+        csrf_token: "listing-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValueOnce(jsonResponse({}))
+      .mockResolvedValueOnce(jsonResponse({ saved: true }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getSession();
+    await client.createListing({
+      cat: "uy",
+      title: "Uy sotiladi",
+      price: "Kelishilgan",
+      descr: "Markazda",
+      address: "Qumqo'rg'on",
+      lat: 37.82,
+      lng: 67.58,
+      visibility: "all",
+      media: [],
+    });
+    await client.toggleListingSave("l_1234567890abcdef");
+
+    expect(fetcher.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "listing-csrf",
+    });
+    expect(fetcher.mock.calls[2]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "listing-csrf",
+    });
+  });
+
   it("uses the v1656 Home map, offers, followed and feature contracts", async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
     const client = new ApiClient(

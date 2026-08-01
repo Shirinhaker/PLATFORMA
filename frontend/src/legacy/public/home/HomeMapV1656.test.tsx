@@ -205,4 +205,46 @@ describe("HomeMapV1656", () => {
     fireEvent.click(document.querySelector(".leaflet-marker-pane .leaflet-pin")!);
     expect(onOpenResult).toHaveBeenCalledWith("business", "b_muhr");
   });
+
+  it("keeps a searched E'lon as its own marker and opens the E'lon", async () => {
+    const onOpenResult = vi.fn();
+    render(
+      <HomeMapV1656
+        businesses={[]}
+        district="Qumqo‘rg‘on"
+        resultItems={[{
+          kind: "listing",
+          public_id: "l_flat",
+          name: "3 xonali kvartira",
+          public_username: "",
+          description: "Markazda",
+          direction: "E'lonlar",
+          activity_type: "Uy-joy",
+          region: "Surxondaryo viloyati",
+          district: "Qumqo'rg'on tumani",
+          mahalla: "",
+          image_url: "",
+          price_text: "250 000 000 so'm",
+          owner_label: "Muhr",
+          map_point: {
+            business_public_id: "b_muhr",
+            business_name: "Muhr",
+            latitude: 37.8234,
+            longitude: 67.5789,
+          },
+        }]}
+        specialists={[]}
+        onCloseResults={vi.fn()}
+        onOpenResult={onOpenResult}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".leaflet-marker-pane .plabel"))
+        .toHaveTextContent("3 xonali kvartira");
+    });
+    fireEvent.click(document.querySelector(".leaflet-marker-pane .leaflet-pin")!);
+
+    expect(onOpenResult).toHaveBeenCalledWith("listing", "l_flat");
+  });
 });

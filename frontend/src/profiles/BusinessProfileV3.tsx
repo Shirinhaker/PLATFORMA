@@ -48,6 +48,9 @@ export type BusinessProfileApiV3 = Pick<
   | "patchBusinessOnlineRecord"
   | "deleteBusinessOnlineRecord"
   | "applyBusinessOnlineAction"
+  | "getMyListings"
+  | "createListing"
+  | "deleteListing"
 >>;
 
 type Props = {

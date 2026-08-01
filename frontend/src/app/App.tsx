@@ -10,6 +10,8 @@ import { findCatalogDirection } from "../legacy/public/catalog-data";
 import { HomeScreen } from "../legacy/public/HomeScreen";
 import { LocationScreen } from "../legacy/public/LocationScreen";
 import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
+import { ListingPageV1656 } from "../listings/ListingPageV1656";
+import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
 import {
   readHomeLocation,
   type HomeLocation,
@@ -46,6 +48,10 @@ type PublicSearchApi = Pick<
   | "getPublicProfile"
   | "recordAdvertisementViews"
   | "recordAdvertisementClick"
+  | "getListingCounts"
+  | "getPublicListings"
+  | "getPublicListing"
+  | "toggleListingSave"
 >;
 type AppApi = (
   SessionApi
@@ -101,6 +107,10 @@ export function App({ api }: { api: AppApi }) {
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
   const [openedProfile, setOpenedProfile] = useState<{
     kind: "user" | "business";
+    publicId: string;
+    title: string;
+  } | null>(null);
+  const [openedListing, setOpenedListing] = useState<{
     publicId: string;
     title: string;
   } | null>(null);
@@ -167,6 +177,22 @@ export function App({ api }: { api: AppApi }) {
       ? api.recordAdvertisementClick.bind(api)
       : undefined
   ), [api]);
+  const getPublicListing = useMemo(() => (
+    typeof api.getPublicListing === "function"
+      ? api.getPublicListing.bind(api)
+      : undefined
+  ), [api]);
+  const listingApi = useMemo(() => (
+    typeof api.getListingCounts === "function"
+    && typeof api.getPublicListings === "function"
+    && typeof api.toggleListingSave === "function"
+      ? {
+          getListingCounts: api.getListingCounts.bind(api),
+          getPublicListings: api.getPublicListings.bind(api),
+          toggleListingSave: api.toggleListingSave.bind(api),
+        }
+      : undefined
+  ), [api]);
 
   useEffect(() => {
     if (typeof api.getPublicFeatures !== "function") return undefined;
@@ -221,12 +247,14 @@ export function App({ api }: { api: AppApi }) {
     catalog: "Katalog",
     category: category?.name ?? "Yo‘nalish",
     home: undefined,
+    listings: "E’lonlar",
     location: "Manzil",
   };
   const title = titles[navigation.view];
 
   function openHome() {
     setOpenedProfile(null);
+    setOpenedListing(null);
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
 
@@ -235,15 +263,23 @@ export function App({ api }: { api: AppApi }) {
     publicId: string,
   ) => {
     if ((kind === "user" || kind === "business") && getPublicProfile) {
+      setOpenedListing(null);
       setOpenedProfile({ kind, publicId, title: "Profil" });
       setHomeSearchResultsActive(false);
+    } else if (kind === "listing" && getPublicListing) {
+      setOpenedProfile(null);
+      setOpenedListing({ publicId, title: "E’lon" });
+      setHomeSearchResultsActive(false);
     }
-  }, [getPublicProfile]);
+  }, [getPublicListing, getPublicProfile]);
 
   const updateOpenedProfileTitle = useCallback((title: string) => {
     setOpenedProfile((current) => (
       current ? { ...current, title } : current
     ));
+  }, []);
+  const updateOpenedListingTitle = useCallback((title: string) => {
+    setOpenedListing((current) => current ? { ...current, title } : current);
   }, []);
 
   function toggleTheme() {
@@ -285,6 +321,11 @@ export function App({ api }: { api: AppApi }) {
           api={api}
           identity={session.identity}
           onLogout={logout}
+          onOpenPublicListing={(publicId) => {
+            setOpenedProfile(null);
+            setOpenedListing({ publicId, title: "E’lon" });
+            dispatch({ type: "GO_HOME" });
+          }}
           onSwitched={switched}
         />
       ) : (
@@ -300,6 +341,22 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function renderPublicContent() {
+    if (navigation.view === "home" && openedListing && getPublicListing) {
+      return (
+        <ListingPageV1656
+          authenticated={authenticated}
+          getPublicListing={getPublicListing}
+          publicId={openedListing.publicId}
+          toggleListingSave={listingApi?.toggleListingSave}
+          onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+          onOpenOwner={(kind, publicId) => {
+            setOpenedListing(null);
+            setOpenedProfile({ kind, publicId, title: "Profil" });
+          }}
+          onTitleChange={updateOpenedListingTitle}
+        />
+      );
+    }
     if (
       navigation.view === "home"
       && openedProfile
@@ -310,6 +367,10 @@ export function App({ api }: { api: AppApi }) {
           kind={openedProfile.kind}
           publicId={openedProfile.publicId}
           getPublicProfile={getPublicProfile}
+          onOpenListing={(publicId) => {
+            setOpenedProfile(null);
+            setOpenedListing({ publicId, title: "E’lon" });
+          }}
           onTitleChange={updateOpenedProfileTitle}
         />
       );
@@ -346,6 +407,21 @@ export function App({ api }: { api: AppApi }) {
             }}
           />
         );
+      case "listings":
+        return listingApi ? (
+          <PublicListingsV1656
+            api={listingApi}
+            authenticated={authenticated}
+            onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+            onOpenOwner={(kind, publicId) => {
+              setOpenedListing(null);
+              setOpenedProfile({ kind, publicId, title: "Profil" });
+              dispatch({ type: "GO_HOME" });
+            }}
+          />
+        ) : (
+          <main className="screen active" data-screen="listings" />
+        );
       case "auth":
       case "cabinet":
         return renderAccount();
@@ -374,10 +450,10 @@ export function App({ api }: { api: AppApi }) {
   return (
     <AppShell
       authenticated={authenticated}
-      title={openedProfile && navigation.view === "home"
-        ? openedProfile.title
+      title={(openedProfile || openedListing) && navigation.view === "home"
+        ? openedProfile?.title ?? openedListing?.title
         : title}
-      isHome={navigation.view === "home" && !openedProfile}
+      isHome={navigation.view === "home" && !openedProfile && !openedListing}
       searchResultsActive={(
         navigation.view === "home" && homeSearchResultsActive
       )}
@@ -386,20 +462,31 @@ export function App({ api }: { api: AppApi }) {
       onHome={openHome}
       onLocation={() => {
         setOpenedProfile(null);
+        setOpenedListing(null);
         dispatch({ type: "OPEN_LOCATION" });
       }}
       onAccount={() => {
         setOpenedProfile(null);
+        setOpenedListing(null);
         dispatch({
           type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
         });
       }}
       onBack={() => {
+        if (openedListing) {
+          setOpenedListing(null);
+          return;
+        }
         if (openedProfile) {
           setOpenedProfile(null);
           return;
         }
         dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
+      }}
+      onListings={() => {
+        setOpenedProfile(null);
+        setOpenedListing(null);
+        dispatch({ type: "OPEN_LISTINGS" });
       }}
       onToggleTheme={toggleTheme}
     >

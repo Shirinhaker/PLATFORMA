@@ -37,11 +37,13 @@ from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
+from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.profiles.model import BusinessProfile, UserProfile
 
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 CatalogSync = Callable[..., Awaitable[None]]
+ListingSync = Callable[..., Awaitable[None]]
 
 
 class BusinessOnlineService:
@@ -53,11 +55,13 @@ class BusinessOnlineService:
         repository: CabinetRecordRepository | None = None,
         *,
         catalog_sync: CatalogSync = sync_business_catalog,
+        listing_sync: ListingSync = sync_business_listings,
         catalog_cache_epoch: CatalogCacheEpoch | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CabinetRecordRepository()
         self._catalog_sync = catalog_sync
+        self._listing_sync = listing_sync
         self._catalog_cache_epoch = catalog_cache_epoch
 
     async def read_resource(
@@ -374,7 +378,15 @@ class BusinessOnlineService:
                 payload=payload,
                 changed_resources=resources,
             )
-        return catalog_changed
+        listings_changed = bool(LISTING_RESOURCES.intersection(resources))
+        if listings_changed:
+            await self._listing_sync(
+                session,
+                account_id=account_id,
+                payload=payload,
+                changed_resources=resources,
+            )
+        return catalog_changed or listings_changed
 
     async def _invalidate_catalog_cache(self, changed: bool) -> None:
         if changed and self._catalog_cache_epoch is not None:

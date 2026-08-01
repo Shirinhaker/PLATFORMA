@@ -16,13 +16,13 @@ interface HomeMapV1656Props {
   specialists: PublicHomeSpecialistPin[];
   onCloseResults(): void;
   onOpenResult(
-    kind: "user" | "business" | "product" | "service",
+    kind: "user" | "business" | "product" | "service" | "listing",
     publicId: string,
   ): void;
 }
 
 type MapPoint = {
-  kind: "user" | "business" | "product" | "service";
+  kind: "user" | "business" | "product" | "service" | "listing";
   publicId: string;
   label: string;
   latitude: number;
@@ -94,6 +94,27 @@ function buildSearchMapPoints(items: PublicSearchItem[]): MapPoint[] {
       || !Number.isFinite(mapPoint.latitude)
       || !Number.isFinite(mapPoint.longitude)
     ) return;
+
+    if (item.kind === "listing") {
+      groups.set(`listing:${item.public_id}`, {
+        point: {
+          kind: "listing",
+          publicId: item.public_id,
+          label: [item.name, item.price_text].filter(Boolean).join("\n"),
+          latitude: mapPoint.latitude,
+          longitude: mapPoint.longitude,
+          color: "#0E8C84",
+          fallback: "📣",
+          photo: item.image_url,
+          photoX: 50,
+          photoY: 50,
+          photoZoom: 1,
+          small: false,
+        },
+        prices: [],
+      });
+      return;
+    }
 
     const catalogItem = item.kind === "product" || item.kind === "service";
     const key = mapPoint.business_public_id;

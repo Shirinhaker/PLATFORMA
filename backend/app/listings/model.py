@@ -7,6 +7,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Identity,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -22,6 +23,22 @@ from app.legacy_migration.model import (
 
 class Listing(Base):
     __tablename__ = "listings"
+    __table_args__ = (
+        Index(
+            "uq_listings_business_source",
+            "owner_business_account_id",
+            "source_record_key",
+            unique=True,
+        ),
+        Index(
+            "ix_listings_public_v1656",
+            "category",
+            "status",
+            "visibility",
+            "review_state",
+            "created_at",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     owner_user_account_id: Mapped[int | None] = mapped_column(
@@ -32,6 +49,7 @@ class Listing(Base):
         BigInteger,
         ForeignKey("accounts.id", ondelete="SET NULL"),
     )
+    source_record_key: Mapped[str | None] = mapped_column(String(160))
     category: Mapped[str] = mapped_column(
         String(160),
         nullable=False,
@@ -65,10 +83,9 @@ class Listing(Base):
         REVIEW_STATE_ENUM,
         nullable=False,
     )
-    migration_run_id: Mapped[int] = mapped_column(
+    migration_run_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("migration_runs.id", ondelete="RESTRICT"),
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -112,8 +129,34 @@ class ListingMedia(Base):
         nullable=False,
         default="pending",
     )
-    migration_run_id: Mapped[int] = mapped_column(
+    migration_run_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("migration_runs.id", ondelete="RESTRICT"),
+    )
+
+
+class ListingSave(Base):
+    __tablename__ = "listing_saves"
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_user_account_id",
+            "listing_id",
+            name="uq_listing_saves_owner_listing",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    owner_user_account_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    listing_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("listings.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
     )

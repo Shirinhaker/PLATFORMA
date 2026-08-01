@@ -9,6 +9,7 @@ export interface PublicNavigationState {
 export type PublicNavigationAction =
   | { type: "OPEN_CATALOG"; query: string }
   | { type: "OPEN_CATEGORY"; categoryId: string }
+  | { type: "OPEN_LISTINGS" }
   | { type: "OPEN_LOCATION" }
   | { type: "OPEN_AUTH" }
   | { type: "OPEN_CABINET" }
@@ -37,6 +38,12 @@ export function publicNavigationReducer(
         view: "category",
         query: state.query,
         categoryId: action.categoryId,
+      };
+    case "OPEN_LISTINGS":
+      return {
+        view: "listings",
+        query: "",
+        categoryId: null,
       };
     case "OPEN_LOCATION":
       return {
