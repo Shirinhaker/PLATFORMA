@@ -383,6 +383,48 @@ export type PublicFollowedProfile = {
   crop_zoom: number;
 };
 
+export type PublicProfileItem = {
+  kind: "product" | "service";
+  public_id: string;
+  name: string;
+  price_text: string;
+  note: string;
+  image_url: string;
+  group_name: string;
+};
+
+export type PublicProfileListing = {
+  public_id: string;
+  title: string;
+  price_text: string;
+  description: string;
+  address: string;
+  image_url: string;
+};
+
+export type PublicProfileDetail = {
+  kind: "user" | "business";
+  public_id: string;
+  name: string;
+  public_username: string;
+  description: string;
+  direction: string;
+  activity_type: string;
+  address: string;
+  phone: string;
+  image_url: string;
+  crop_x: number;
+  crop_y: number;
+  crop_zoom: number;
+  followers_count: number;
+  specialist: {
+    profession: string;
+    description: string;
+  } | null;
+  items: PublicProfileItem[];
+  listings: PublicProfileListing[];
+};
+
 export type PublicFeatures = {
   listings: boolean;
   stories: boolean;

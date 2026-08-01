@@ -363,6 +363,65 @@ describe("App", () => {
       .not.toHaveClass("search-results-active");
   });
 
+  it("opens an followed business profile from its Home card", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const api = {
+      ...profileApi(),
+      getFollowedProfiles: vi.fn().mockResolvedValue([
+        {
+          kind: "business",
+          public_id: "b_first",
+          name: "Birinchi biznes",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+        },
+        {
+          kind: "business",
+          public_id: "b_second",
+          name: "Ikkinchi biznes",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+        },
+      ]),
+      getPublicProfile: vi.fn().mockResolvedValue({
+        kind: "business",
+        public_id: "b_second",
+        name: "Ikkinchi biznes",
+        public_username: "ikkinchi",
+        description: "",
+        direction: "Savdo",
+        activity_type: "Do‘kon",
+        address: "Qumqo‘rg‘on",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 2,
+        specialist: null,
+        items: [],
+        listings: [],
+      }),
+    };
+
+    render(<App api={api} />);
+
+    await user.click(await screen.findByRole("button", {
+      name: "Ikkinchi biznes profilini ochish",
+    }));
+
+    expect(await screen.findByText("Savdo · Do‘kon")).toBeInTheDocument();
+    expect(api.getPublicProfile).toHaveBeenCalledWith(
+      "business",
+      "b_second",
+    );
+  });
+
   it("navigates Catalog to Category and back", async () => {
     const user = userEvent.setup();
     saveHomeLocation();

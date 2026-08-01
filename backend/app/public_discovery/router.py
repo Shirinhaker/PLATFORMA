@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from app.auth.dependencies import CurrentAccount, require_current_account
 
@@ -9,6 +9,7 @@ from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
     PublicFollowedProfile,
     PublicHomeMapResponse,
+    PublicProfileDetail,
     PublicSearchParams,
     PublicSearchResponse,
 )
@@ -84,3 +85,24 @@ async def get_public_home_followed_profiles(
         account_id=current.account_id,
         account_type=current.account_type.value,
     )
+
+
+@router.get(
+    "/profiles/{kind}/{public_id}",
+    response_model=PublicProfileDetail,
+)
+async def get_public_profile(
+    request: Request,
+    kind: Literal["user", "business"],
+    public_id: Annotated[
+        str,
+        Path(pattern=r"^[ub]_[0-9a-f]{16}$"),
+    ],
+) -> PublicProfileDetail:
+    profile = await request.app.state.public_discovery_service.profile(
+        kind=kind,
+        public_id=public_id,
+    )
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profil topilmadi.")
+    return profile

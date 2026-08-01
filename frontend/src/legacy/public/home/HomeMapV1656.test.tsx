@@ -5,6 +5,60 @@ import { HomeMapV1656 } from "./HomeMapV1656";
 
 
 describe("HomeMapV1656", () => {
+  it("renders both followed business pins and opens the selected profile", async () => {
+    const onOpenResult = vi.fn();
+    render(
+      <HomeMapV1656
+        businesses={[
+          {
+            id: 41,
+            public_id: "b_first",
+            name: "Birinchi biznes",
+            yon: "Savdo",
+            tur: "Do‘kon",
+            lat: 37.82,
+            lng: 67.58,
+            logo_file: "",
+            logo_x: 50,
+            logo_y: 50,
+            logo_zoom: 1,
+            address: "Qumqo‘rg‘on",
+            source: "obuna",
+          },
+          {
+            id: 42,
+            public_id: "b_second",
+            name: "Ikkinchi biznes",
+            yon: "Savdo",
+            tur: "Do‘kon",
+            lat: 37.83,
+            lng: 67.59,
+            logo_file: "",
+            logo_x: 50,
+            logo_y: 50,
+            logo_zoom: 1,
+            address: "Qumqo‘rg‘on",
+            source: "obuna",
+          },
+        ]}
+        district="Qumqo‘rg‘on"
+        resultItems={null}
+        specialists={[]}
+        onCloseResults={vi.fn()}
+        onOpenResult={onOpenResult}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
+        .toHaveLength(2);
+    });
+    const pins = document.querySelectorAll(".leaflet-marker-pane .leaflet-pin");
+    fireEvent.click(pins[1]!);
+
+    expect(onOpenResult).toHaveBeenCalledWith("business", "b_second");
+  });
+
   it("uses the exact direction pin and migrated logo crop", async () => {
     render(
       <HomeMapV1656

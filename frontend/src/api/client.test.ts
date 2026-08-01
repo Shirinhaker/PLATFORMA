@@ -238,6 +238,7 @@ describe("ApiClient", () => {
     await client.getHomeMap({ district: "Qumqo‘rg‘on" });
     await client.getDistrictOffers({ district: "Qumqo‘rg‘on" });
     await client.getFollowedProfiles();
+    await client.getPublicProfile("business", "b_public");
     await client.getPublicFeatures();
 
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
@@ -246,6 +247,7 @@ describe("ApiClient", () => {
       "https://api.example/api/v1/public/home/district-offers"
         + "?district=Qumqo%E2%80%98rg%E2%80%98on",
       "https://api.example/api/v1/public/home/followed-profiles",
+      "https://api.example/api/v1/public/profiles/business/b_public",
       "https://api.example/api/v1/public/features",
     ]);
   });

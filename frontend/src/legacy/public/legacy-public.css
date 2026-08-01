@@ -1421,6 +1421,42 @@
 .app-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);width:calc(100% - 48px);max-width:360px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:13px;font-size:14px;font-weight:600;text-align:center;line-height:1.4;box-shadow:var(--shadow-lg);z-index:6000;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
 .app-toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 
+.public-profile-v1656 { width: min(100%, 760px); margin: 0 auto; padding: 18px 18px 34px; }
+.public-profile-loading { padding: 20px; }
+.public-profile-hero { position: relative; display: flex; flex-direction: column; align-items: center; margin: 4px 0 16px; padding: 24px 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: var(--shadow); text-align: center; }
+.public-profile-avatar { position: relative; display: grid; overflow: hidden; width: 84px; height: 84px; place-items: center; border-radius: 20px; color: #fff; background: linear-gradient(135deg,#6a8dff,#9a6bff); font: 800 34px var(--font-d); }
+.public-profile-avatar.has-photo { background: var(--primary-tint); }
+.public-profile-avatar img { position: absolute; max-width: none; max-height: none; object-fit: cover; transform: none; }
+.public-profile-avatar span { z-index: 0; }
+.public-profile-name { margin-top: 10px; font: 800 20px var(--font-d); }
+.public-profile-hero .idesc { margin-top: 2px; color: var(--soft); font-size: 13px; }
+.public-profile-phone { text-decoration: none; }
+.public-profile-hero .biz-desc { max-width: 580px; margin-top: 8px; line-height: 1.5; }
+.public-profile-section { margin-top: 16px; }
+.public-profile-v1656 .sec-head { display: flex; align-items: center; justify-content: space-between; margin: 14px 2px 10px; }
+.public-profile-v1656 .sec-head h2 { margin: 0; font: 800 18px var(--font-d); }
+.public-profile-v1656 .sec-head .link { color: var(--primary); font-size: 13px; font-weight: 700; }
+.public-profile-v1656 .item-group-block { margin-bottom: 16px; }
+.public-profile-v1656 .item-group-head { margin: 0 2px 8px; }
+.public-profile-v1656 .item-group-title { display: flex; align-items: center; justify-content: space-between; }
+.public-profile-v1656 .item-group-title h3,
+.public-profile-v1656 .item-group-title p { margin: 0; }
+.public-profile-v1656 .item-group-title p { color: var(--soft); font-size: 12px; }
+.public-profile-v1656 .item-hrow { display: flex; overflow-x: auto; gap: 10px; padding: 2px 2px 9px; scrollbar-width: none; }
+.public-profile-v1656 .item-hrow::-webkit-scrollbar { display: none; }
+.public-profile-v1656 .item-card2 { width: 154px; flex: 0 0 154px; overflow: hidden; padding: 0 0 11px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+.public-profile-v1656 .item-card2-img { display: grid; overflow: hidden; height: 108px; place-items: center; background: var(--primary-tint); font-size: 30px; }
+.public-profile-v1656 .item-card2-img img { width: 100%; height: 100%; object-fit: cover; }
+.public-profile-v1656 .item-card2 .name,
+.public-profile-v1656 .item-card2 .price,
+.public-profile-v1656 .item-card2 .note { margin: 8px 10px 0; }
+.public-profile-v1656 .item-card2 .name { font-weight: 800; }
+.public-profile-v1656 .item-card2 .price { color: var(--primary); font-size: 13px; font-weight: 700; }
+.public-profile-v1656 .item-card2 .note { color: var(--soft); font-size: 12px; line-height: 1.4; }
+.public-profile-v1656 .specialist-card { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+.public-profile-v1656 .specialist-card .idesc { margin-top: 5px; color: var(--soft); }
+.public-profile-empty { margin-top: 16px; text-align: center; }
+
 .district-offers { overflow: hidden; min-width: 0; margin: 14px -18px 0; }
 .district-offers-viewport { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 0 18px; scrollbar-width: none; touch-action: pan-x; }
 .district-offers-viewport::-webkit-scrollbar { display: none; }

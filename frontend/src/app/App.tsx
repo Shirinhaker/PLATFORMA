@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { PublicFeatures, SessionIdentity } from "../api/types";
@@ -9,6 +9,7 @@ import { CategoryScreen } from "../legacy/public/CategoryScreen";
 import { findCatalogDirection } from "../legacy/public/catalog-data";
 import { HomeScreen } from "../legacy/public/HomeScreen";
 import { LocationScreen } from "../legacy/public/LocationScreen";
+import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
 import {
   readHomeLocation,
   type HomeLocation,
@@ -42,6 +43,7 @@ type PublicSearchApi = Pick<
   | "getHomeMap"
   | "getDistrictOffers"
   | "getFollowedProfiles"
+  | "getPublicProfile"
   | "recordAdvertisementViews"
   | "recordAdvertisementClick"
 >;
@@ -97,6 +99,11 @@ export function App({ api }: { api: AppApi }) {
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
+  const [openedProfile, setOpenedProfile] = useState<{
+    kind: "user" | "business";
+    publicId: string;
+    title: string;
+  } | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => (
     document.documentElement.dataset.theme === "dark" ? "dark" : "light"
   ));
@@ -143,6 +150,11 @@ export function App({ api }: { api: AppApi }) {
   const getFollowedProfiles = useMemo(() => (
     typeof api.getFollowedProfiles === "function"
       ? api.getFollowedProfiles.bind(api)
+      : undefined
+  ), [api]);
+  const getPublicProfile = useMemo(() => (
+    typeof api.getPublicProfile === "function"
+      ? api.getPublicProfile.bind(api)
       : undefined
   ), [api]);
   const recordAdvertisementViews = useMemo(() => (
@@ -214,8 +226,25 @@ export function App({ api }: { api: AppApi }) {
   const title = titles[navigation.view];
 
   function openHome() {
+    setOpenedProfile(null);
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
+
+  const openPublicResult = useCallback((
+    kind: "user" | "business" | "product" | "service" | "listing",
+    publicId: string,
+  ) => {
+    if ((kind === "user" || kind === "business") && getPublicProfile) {
+      setOpenedProfile({ kind, publicId, title: "Profil" });
+      setHomeSearchResultsActive(false);
+    }
+  }, [getPublicProfile]);
+
+  const updateOpenedProfileTitle = useCallback((title: string) => {
+    setOpenedProfile((current) => (
+      current ? { ...current, title } : current
+    ));
+  }, []);
 
   function toggleTheme() {
     setTheme((current) => {
@@ -271,6 +300,20 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function renderPublicContent() {
+    if (
+      navigation.view === "home"
+      && openedProfile
+      && getPublicProfile
+    ) {
+      return (
+        <PublicProfileV1656
+          kind={openedProfile.kind}
+          publicId={openedProfile.publicId}
+          getPublicProfile={getPublicProfile}
+          onTitleChange={updateOpenedProfileTitle}
+        />
+      );
+    }
     switch (navigation.view) {
       case "catalog":
         return (
@@ -319,6 +362,7 @@ export function App({ api }: { api: AppApi }) {
             searchPublic={searchPublic}
             onOpenCatalog={() => dispatch({ type: "OPEN_CATALOG", query: "" })}
             onOpenLocation={() => dispatch({ type: "OPEN_LOCATION" })}
+            onOpenPublicResult={openPublicResult}
             onResultsActiveChange={setHomeSearchResultsActive}
             recordAdvertisementClick={recordAdvertisementClick}
             recordAdvertisementViews={recordAdvertisementViews}
@@ -330,21 +374,33 @@ export function App({ api }: { api: AppApi }) {
   return (
     <AppShell
       authenticated={authenticated}
-      title={title}
-      isHome={navigation.view === "home"}
+      title={openedProfile && navigation.view === "home"
+        ? openedProfile.title
+        : title}
+      isHome={navigation.view === "home" && !openedProfile}
       searchResultsActive={(
         navigation.view === "home" && homeSearchResultsActive
       )}
       publicFeatures={publicFeatures}
       theme={theme}
       onHome={openHome}
-      onLocation={() => dispatch({ type: "OPEN_LOCATION" })}
-      onAccount={() => dispatch({
-        type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
-      })}
-      onBack={() => dispatch({
-        type: homeLocation ? "BACK" : "OPEN_LOCATION",
-      })}
+      onLocation={() => {
+        setOpenedProfile(null);
+        dispatch({ type: "OPEN_LOCATION" });
+      }}
+      onAccount={() => {
+        setOpenedProfile(null);
+        dispatch({
+          type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
+        });
+      }}
+      onBack={() => {
+        if (openedProfile) {
+          setOpenedProfile(null);
+          return;
+        }
+        dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
+      }}
       onToggleTheme={toggleTheme}
     >
       <div className="app-shell__content" tabIndex={-1}>

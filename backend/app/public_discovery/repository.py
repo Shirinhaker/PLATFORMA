@@ -18,9 +18,9 @@ from sqlalchemy import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.accounts.model import Account
+from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
-from app.catalog.model import CatalogItem
+from app.catalog.model import CatalogGroup, CatalogItem
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
@@ -31,6 +31,10 @@ from app.public_discovery.schemas import (
     PublicHomeMapResponse,
     PublicHomeSpecialistPin,
     PublicFollowedProfile,
+    PublicProfileDetail,
+    PublicProfileItem,
+    PublicProfileListing,
+    PublicSpecialistSummary,
     PublicResultKind,
     PublicResultType,
     PublicSearchItem,
@@ -498,7 +502,6 @@ async def load_public_home_map(
         )
         .where(
             Account.status == "active",
-            BusinessProfile.map_visible.is_(True),
             BusinessProfile.latitude.is_not(None),
             BusinessProfile.longitude.is_not(None),
             _contains(business_owner.district, district),
@@ -562,7 +565,10 @@ async def load_public_home_map(
             PublicResultKind.BUSINESS,
             profile.account_id,
         ) in followed_businesses
-        or _has_active_pro_subscription(profile)
+        or (
+            profile.map_visible
+            and _has_active_pro_subscription(profile)
+        )
     ]
     specialists = []
     for profile in user_profiles:
@@ -602,6 +608,204 @@ async def load_public_home_map(
     return PublicHomeMapResponse(
         businesses=businesses,
         specialists=specialists,
+    )
+
+
+async def _resolve_public_profile_account_id(
+    session: AsyncSession,
+    *,
+    kind: str,
+    public_id: str,
+) -> int | None:
+    result_kind = (
+        PublicResultKind.BUSINESS
+        if kind == "business"
+        else PublicResultKind.USER
+    )
+    account_type = (
+        AccountType.BUSINESS
+        if kind == "business"
+        else AccountType.USER
+    )
+    account_ids = (
+        await session.scalars(
+            select(Account.id).where(
+                Account.status == "active",
+                Account.account_type == account_type,
+            )
+        )
+    ).all()
+    return next(
+        (
+            int(account_id)
+            for account_id in account_ids
+            if build_public_id(result_kind, int(account_id)) == public_id
+        ),
+        None,
+    )
+
+
+async def _load_public_listings(
+    session: AsyncSession,
+    *,
+    account_id: int,
+    kind: str,
+    image_url_provider: ImageUrlProvider,
+) -> list[PublicProfileListing]:
+    media_key = (
+        select(ListingMedia.object_key)
+        .where(
+            ListingMedia.listing_id == Listing.id,
+            ListingMedia.media_type == "photo",
+        )
+        .order_by(ListingMedia.position, ListingMedia.id)
+        .limit(1)
+        .scalar_subquery()
+    )
+    owner_constraint = (
+        Listing.owner_business_account_id == account_id
+        if kind == "business"
+        else (
+            (Listing.owner_user_account_id == account_id)
+            & (Listing.visibility == "all")
+        )
+    )
+    rows = (
+        await session.execute(
+            select(Listing, media_key.label("image_object_key"))
+            .where(
+                owner_constraint,
+                Listing.status == "active",
+                Listing.review_state == ReviewState.READY,
+            )
+            .order_by(Listing.created_at.desc(), Listing.id.desc())
+        )
+    ).all()
+    return [
+        PublicProfileListing(
+            public_id=build_listing_public_id(listing.id),
+            title=listing.title or "E'lon",
+            price_text=listing.price_text,
+            description=listing.description,
+            address=listing.address,
+            image_url=image_url_provider(image_object_key or ""),
+        )
+        for listing, image_object_key in rows
+    ]
+
+
+async def load_public_profile(
+    session: AsyncSession,
+    *,
+    kind: str,
+    public_id: str,
+    image_url_provider: ImageUrlProvider,
+    include_listings: bool = True,
+) -> PublicProfileDetail | None:
+    account_id = await _resolve_public_profile_account_id(
+        session,
+        kind=kind,
+        public_id=public_id,
+    )
+    if account_id is None:
+        return None
+
+    listings = (
+        await _load_public_listings(
+            session,
+            account_id=account_id,
+            kind=kind,
+            image_url_provider=image_url_provider,
+        )
+        if include_listings
+        else []
+    )
+    if kind == "user":
+        profile = await session.get(UserProfile, account_id)
+        if profile is None:
+            return None
+        specialist_payload = (
+            profile.specialist_profile
+            if isinstance(profile.specialist_profile, dict)
+            else {}
+        )
+        specialist = None
+        if specialist_payload and bool(specialist_payload.get("visible")):
+            specialist = PublicSpecialistSummary(
+                profession=str(
+                    specialist_payload.get("profession")
+                    or specialist_payload.get("kasb")
+                    or ""
+                ),
+                description=str(
+                    specialist_payload.get("description")
+                    or specialist_payload.get("descr")
+                    or ""
+                ),
+            )
+        return PublicProfileDetail(
+            kind="user",
+            public_id=public_id,
+            name=profile.name or "Foydalanuvchi",
+            public_username=profile.public_username,
+            image_url=image_url_provider(profile.avatar_object_key),
+            crop_x=profile.avatar_x,
+            crop_y=profile.avatar_y,
+            crop_zoom=profile.avatar_zoom,
+            followers_count=max(0, profile.followers_count),
+            specialist=specialist,
+            listings=listings,
+        )
+
+    profile = await session.get(BusinessProfile, account_id)
+    if profile is None:
+        return None
+    from app.catalog.repository import build_content_public_id
+
+    item_rows = (
+        await session.execute(
+            select(CatalogItem, CatalogGroup.name.label("group_name"))
+            .outerjoin(
+                CatalogGroup,
+                CatalogGroup.id == CatalogItem.catalog_group_id,
+            )
+            .where(
+                CatalogItem.business_account_id == account_id,
+                CatalogItem.status == "active",
+                CatalogItem.review_state == ReviewState.READY,
+            )
+            .order_by(CatalogItem.created_at.desc(), CatalogItem.id.desc())
+        )
+    ).all()
+    items = [
+        PublicProfileItem(
+            kind=item.kind,
+            public_id=build_content_public_id(item.kind, item.id),
+            name=item.name,
+            price_text=item.price_text,
+            note=item.note,
+            image_url=image_url_provider(item.image_object_key),
+            group_name=group_name or "",
+        )
+        for item, group_name in item_rows
+    ]
+    return PublicProfileDetail(
+        kind="business",
+        public_id=public_id,
+        name=profile.name or "Do'kon",
+        public_username=profile.public_username,
+        description=profile.description,
+        direction=profile.direction,
+        activity_type=profile.activity_type,
+        address=profile.address,
+        phone=profile.phone,
+        image_url=image_url_provider(profile.logo_object_key),
+        crop_x=profile.logo_x,
+        crop_y=profile.logo_y,
+        crop_zoom=profile.logo_zoom,
+        followers_count=max(0, profile.followers_count),
+        items=items,
+        listings=listings,
     )
 
 
