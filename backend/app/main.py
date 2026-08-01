@@ -13,6 +13,7 @@ from app.business_online.router import router as business_online_router
 from app.business_online.service_relational import BusinessOnlineService
 from app.cache.client import RedisClient
 from app.catalog.router import router as catalog_router
+from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.service import CatalogService
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
@@ -74,20 +75,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             redis_client,
             resolved,
         )
+        catalog_cache_epoch = CatalogCacheEpoch(redis_client)
         app.state.business_online_service = BusinessOnlineService(
             database.session,
+            catalog_cache_epoch=catalog_cache_epoch,
         )
         app.state.public_discovery_service = PublicDiscoveryService(
             database.session,
             redis_client,
             resolved,
             image_url_provider=app.state.r2.create_download_url,
+            catalog_cache_epoch=catalog_cache_epoch,
         )
         app.state.catalog_service = CatalogService(
             database.session,
             redis_client,
             resolved,
             app.state.r2.create_download_url,
+            catalog_cache_epoch=catalog_cache_epoch,
         )
         app.state.advertisement_service = AdvertisementService(
             database.session,

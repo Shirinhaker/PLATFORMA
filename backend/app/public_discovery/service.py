@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.repository import (
     load_public_district_offers,
@@ -33,7 +34,7 @@ SearchLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:search:v2:"
+_CACHE_PREFIX = "public:search:v3:"
 
 
 class PublicDiscoveryService:
@@ -45,6 +46,7 @@ class PublicDiscoveryService:
         *,
         search_loader: SearchLoader | None = None,
         image_url_provider: Callable[[str], str] | None = None,
+        catalog_cache_epoch: CatalogCacheEpoch | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis
@@ -77,13 +79,21 @@ class PublicDiscoveryService:
         self._image_url_provider = image_url_provider or (
             lambda object_key: f"/media/{object_key}" if object_key else ""
         )
+        self._catalog_cache_epoch = (
+            catalog_cache_epoch or CatalogCacheEpoch(redis)
+        )
         self._search_tasks: dict[str, asyncio.Task[PublicSearchResponse]] = {}
 
     async def search(
         self,
         params: PublicSearchParams,
     ) -> PublicSearchResponse:
-        cache_key = self.cache_key(params)
+        catalog_epoch = (
+            await self._catalog_cache_epoch.current()
+            if self._settings.phase3c_public_enabled
+            else 0
+        )
+        cache_key = self.cache_key(params, catalog_epoch=catalog_epoch)
         cached = await self._read_cache(cache_key)
         if cached is not None:
             return cached
@@ -222,9 +232,16 @@ class PublicDiscoveryService:
         return None
 
     @staticmethod
-    def cache_key(params: PublicSearchParams) -> str:
+    def cache_key(
+        params: PublicSearchParams,
+        *,
+        catalog_epoch: int = 0,
+    ) -> str:
         canonical = json.dumps(
-            params.model_dump(mode="json"),
+            {
+                "catalog_epoch": catalog_epoch,
+                "params": params.model_dump(mode="json"),
+            },
             separators=(",", ":"),
             sort_keys=True,
         )

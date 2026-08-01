@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from copy import deepcopy
 from typing import Any
 
@@ -34,11 +34,14 @@ from app.business_online.service import (
 )
 from app.cabinet_records.dual_write import sync_json_fallback
 from app.cabinet_records.repository import CabinetRecordRepository
+from app.catalog.cache_epoch import CatalogCacheEpoch
+from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
+CatalogSync = Callable[..., Awaitable[None]]
 
 
 class BusinessOnlineService:
@@ -48,9 +51,14 @@ class BusinessOnlineService:
         self,
         session_factory: SessionFactory,
         repository: CabinetRecordRepository | None = None,
+        *,
+        catalog_sync: CatalogSync = sync_business_catalog,
+        catalog_cache_epoch: CatalogCacheEpoch | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CabinetRecordRepository()
+        self._catalog_sync = catalog_sync
+        self._catalog_cache_epoch = catalog_cache_epoch
 
     async def read_resource(
         self,
@@ -112,10 +120,17 @@ class BusinessOnlineService:
             if resource == "medical_doctors":
                 sync_medical_doctor_links(payload, clean, account_id)
                 changed.add("medical_doctor_services")
-            await self._persist_resources(session, account_id, payload, changed)
+            catalog_changed = await self._persist_resources(
+                session,
+                account_id,
+                str(profile.name or ""),
+                payload,
+                changed,
+            )
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
+            await self._invalidate_catalog_cache(catalog_changed)
             displayed = display_resource_rows(payload, resource)
             item = next(
                 row for row in displayed if str(row.get("id")) == str(clean["id"])
@@ -152,10 +167,17 @@ class BusinessOnlineService:
             if resource == "medical_doctors":
                 sync_medical_doctor_links(payload, item, account_id)
                 changed.add("medical_doctor_services")
-            await self._persist_resources(session, account_id, payload, changed)
+            catalog_changed = await self._persist_resources(
+                session,
+                account_id,
+                str(profile.name or ""),
+                payload,
+                changed,
+            )
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
+            await self._invalidate_catalog_cache(catalog_changed)
             displayed = display_resource_rows(payload, resource)
             saved = next(
                 row for row in displayed if str(row.get("id")) == str(record_id)
@@ -184,10 +206,17 @@ class BusinessOnlineService:
             ))
             payload[resource] = rows
             changed = cascade_after_delete(payload, resource, deleted)
-            await self._persist_resources(session, account_id, payload, changed)
+            catalog_changed = await self._persist_resources(
+                session,
+                account_id,
+                str(profile.name or ""),
+                payload,
+                changed,
+            )
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
+            await self._invalidate_catalog_cache(catalog_changed)
             return deepcopy(rows)
 
     async def apply_action(
@@ -228,11 +257,18 @@ class BusinessOnlineService:
             }
             if not changed:
                 changed.add(resource)
-            await self._persist_resources(session, account_id, payload, changed)
+            catalog_changed = await self._persist_resources(
+                session,
+                account_id,
+                str(profile.name or ""),
+                payload,
+                changed,
+            )
             await self._persist_user_notifications(session, notification_events)
             sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
+            await self._invalidate_catalog_cache(catalog_changed)
             return deepcopy(item), display_resource_rows(payload, resource)
 
     async def _persist_user_notifications(
@@ -317,9 +353,10 @@ class BusinessOnlineService:
         self,
         session: AsyncSession,
         account_id: int,
+        owner_name: str,
         payload: dict[str, Any],
         resources: set[str],
-    ) -> None:
+    ) -> bool:
         for resource in sorted(resources):
             await self._repository.replace_resource(
                 session,
@@ -328,3 +365,17 @@ class BusinessOnlineService:
                 resource=resource,
                 rows=resource_rows(payload, resource),
             )
+        catalog_changed = bool(CATALOG_RESOURCES.intersection(resources))
+        if catalog_changed:
+            await self._catalog_sync(
+                session,
+                account_id=account_id,
+                owner_name=owner_name,
+                payload=payload,
+                changed_resources=resources,
+            )
+        return catalog_changed
+
+    async def _invalidate_catalog_cache(self, changed: bool) -> None:
+        if changed and self._catalog_cache_epoch is not None:
+            await self._catalog_cache_epoch.bump()
