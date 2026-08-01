@@ -11,7 +11,7 @@ MIGRATION = (
 
 def test_catalog_live_sync_migration_has_schema_identity_and_backfill():
     assert MIGRATION.exists()
-    source = MIGRATION.read_text()
+    source = MIGRATION.read_text(encoding="utf-8")
 
     assert 'revision = "0007_catalog_live_sync"' in source
     assert 'down_revision = "0006_v7_cabinet_records"' in source
@@ -29,7 +29,7 @@ def test_catalog_live_sync_migration_has_schema_identity_and_backfill():
 
 
 def test_catalog_live_sync_migration_keeps_legacy_rows_and_is_reversible():
-    source = MIGRATION.read_text()
+    source = MIGRATION.read_text(encoding="utf-8")
 
     assert "migration_run_id" in source
     assert "nullable=True" in source
