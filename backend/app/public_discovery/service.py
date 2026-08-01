@@ -15,12 +15,14 @@ from app.public_discovery.repository import (
     load_public_district_offers,
     load_followed_profiles,
     load_public_home_map,
+    load_public_profile,
     search_public_profiles,
 )
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
     PublicFollowedProfile,
     PublicHomeMapResponse,
+    PublicProfileDetail,
     PublicSearchParams,
     PublicSearchResponse,
 )
@@ -159,6 +161,23 @@ class PublicDiscoveryService:
                 account_id=account_id,
                 account_type=account_type,
                 image_url_provider=self._image_url_provider,
+            )
+            await session.rollback()
+            return result
+
+    async def profile(
+        self,
+        *,
+        kind: str,
+        public_id: str,
+    ) -> PublicProfileDetail | None:
+        async with self._session_factory() as session:
+            result = await load_public_profile(
+                session,
+                kind=kind,
+                public_id=public_id,
+                image_url_provider=self._image_url_provider,
+                include_listings=self._settings.listings_enabled,
             )
             await session.rollback()
             return result

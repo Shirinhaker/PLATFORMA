@@ -29,6 +29,7 @@ import type {
   PublicFollowedProfile,
   PublicHomeMapParams,
   PublicHomeMapResponse,
+  PublicProfileDetail,
   PublicSearchParams,
   PublicSearchResponse,
   RegistrationStart,
@@ -202,6 +203,16 @@ export class ApiClient {
       "/api/v1/public/home/followed-profiles",
       undefined,
       true,
+    );
+  }
+
+  getPublicProfile(
+    kind: "user" | "business",
+    publicId: string,
+  ): Promise<PublicProfileDetail> {
+    return this.request(
+      "GET",
+      `/api/v1/public/profiles/${kind}/${encodeURIComponent(publicId)}`,
     );
   }
 

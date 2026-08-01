@@ -176,3 +176,55 @@ class PublicFollowedProfile(BaseModel):
     crop_x: float = Field(default=50, ge=0, le=100)
     crop_y: float = Field(default=50, ge=0, le=100)
     crop_zoom: float = Field(default=1, gt=0)
+
+
+class PublicProfileItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(pattern="^(product|service)$")
+    public_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=160)
+    price_text: str = Field(default="", max_length=120)
+    note: str = Field(default="", max_length=2000)
+    image_url: str = Field(default="", max_length=2048)
+    group_name: str = Field(default="", max_length=160)
+
+
+class PublicProfileListing(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    public_id: str = Field(min_length=1, max_length=64)
+    title: str = Field(min_length=1, max_length=200)
+    price_text: str = Field(default="", max_length=120)
+    description: str = Field(default="", max_length=4000)
+    address: str = Field(default="", max_length=300)
+    image_url: str = Field(default="", max_length=2048)
+
+
+class PublicSpecialistSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profession: str = Field(default="", max_length=160)
+    description: str = Field(default="", max_length=2000)
+
+
+class PublicProfileDetail(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(pattern="^(user|business)$")
+    public_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    public_username: str = Field(default="", max_length=32)
+    description: str = Field(default="", max_length=2000)
+    direction: str = Field(default="", max_length=120)
+    activity_type: str = Field(default="", max_length=120)
+    address: str = Field(default="", max_length=300)
+    phone: str = Field(default="", max_length=32)
+    image_url: str = Field(default="", max_length=2048)
+    crop_x: float = Field(default=50, ge=0, le=100)
+    crop_y: float = Field(default=50, ge=0, le=100)
+    crop_zoom: float = Field(default=1, gt=0)
+    followers_count: int = Field(default=0, ge=0)
+    specialist: PublicSpecialistSummary | None = None
+    items: list[PublicProfileItem] = Field(default_factory=list)
+    listings: list[PublicProfileListing] = Field(default_factory=list)

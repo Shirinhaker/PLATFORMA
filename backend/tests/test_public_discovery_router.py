@@ -9,6 +9,7 @@ from app.public_discovery.schemas import (
     PublicSearchItem,
     PublicSearchResponse,
     PublicFollowedProfile,
+    PublicProfileDetail,
 )
 
 
@@ -87,6 +88,16 @@ class FakePublicDiscoveryService:
                 name="Koprik Savdo",
             )
         ]
+
+    async def profile(self, *, kind, public_id):
+        self.profile_target = (kind, public_id)
+        return PublicProfileDetail(
+            kind=kind,
+            public_id=public_id,
+            name="Koprik Savdo",
+            direction="Savdo",
+            activity_type="Do‘kon",
+        )
 
 
 def test_public_search_is_unauthenticated_and_returns_only_public_fields():
@@ -239,3 +250,18 @@ def test_public_home_map_uses_the_optional_active_actor():
 
     assert response.status_code == 200
     assert service.home_map_actor == (71, "user")
+
+
+def test_public_profile_opens_from_its_safe_public_id():
+    app = create_app(Settings(environment="test"))
+    service = FakePublicDiscoveryService()
+    app.state.public_discovery_service = service
+    public_id = "b_0123456789abcdef"
+
+    response = TestClient(app).get(
+        f"/api/v1/public/profiles/business/{public_id}"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Koprik Savdo"
+    assert service.profile_target == ("business", public_id)
