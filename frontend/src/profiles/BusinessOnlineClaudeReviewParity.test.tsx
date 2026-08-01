@@ -344,15 +344,10 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     );
     expect(listing.create).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "📍 Xaritada joy belgilash" }));
-    await user.type(screen.getByLabelText("Kenglik"), "37.83");
-    await user.type(screen.getByLabelText("Uzunlik"), "67.58");
-    await user.click(screen.getByRole("button", { name: "Joyni saqlash" }));
-    await user.click(screen.getByRole("button", { name: "Joylash" }));
-    expect(listing.create).toHaveBeenCalledWith("listings", expect.objectContaining({
-      title: "Uy sotiladi",
-      lat: 37.83,
-      lng: 67.58,
-    }));
+    expect(document.querySelector('[data-screen="pickloc"]')).toBeInTheDocument();
+    expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Uzunlik")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Bekor qilish" }));
 
     const advertisement = actions();
     rerender(

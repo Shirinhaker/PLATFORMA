@@ -5,6 +5,11 @@ import type {
   BusinessOnlineResource,
 } from "../api/business-online-types";
 import { UZBEKISTAN_REGIONS } from "../legacy/public/location-data";
+import { readHomeLocation } from "../legacy/public/location-storage";
+import {
+  BusinessLocationPickerV1656View,
+  normalizeLatLng,
+} from "./BusinessLocationPickerV1656View";
 import {
   recordId,
   recordNumber,
@@ -691,8 +696,6 @@ function ListingForm({
 }) {
   const mediaInput = useRef<HTMLInputElement | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
-  const [latitude, setLatitude] = useState(recordText(draft, "lat"));
-  const [longitude, setLongitude] = useState(recordText(draft, "lng"));
   const categories = [
     { key: "uy", name: "Uy-joy" },
     { key: "ish", name: "Ish o'rinlari" },
@@ -701,6 +704,32 @@ function ListingForm({
     { key: "texnika", name: "Texnika" },
     { key: "boshqa", name: "Boshqalar" },
   ];
+  if (locationOpen) {
+    const homeLocation = readHomeLocation();
+    const latitude = recordText(draft, "lat");
+    const longitude = recordText(draft, "lng");
+    return (
+      <BusinessLocationPickerV1656View
+        prefix="be"
+        value={latitude && longitude
+          ? normalizeLatLng(latitude, longitude)
+          : null}
+        fallback={normalizeLatLng(
+          homeLocation?.latitude,
+          homeLocation?.longitude,
+        )}
+        onCancel={() => setLocationOpen(false)}
+        onConfirm={(point) => {
+          setDraft({
+            ...draft,
+            lat: point.latitude,
+            lng: point.longitude,
+          });
+          setLocationOpen(false);
+        }}
+      />
+    );
+  }
   return (
     <div className="form-wrap listing-form-v1656">
       <div className="field">
@@ -810,34 +839,6 @@ function ListingForm({
         Joylash
       </button>
       <button type="button" className="btn btn-soft btn-block" onClick={cancel}>Bekor qilish</button>
-      {locationOpen && (
-        <>
-          <button type="button" className="app-modal-back on" aria-label="Bekor qilish" onClick={() => setLocationOpen(false)} />
-          <div className="app-confirm on listing-location-dialog" role="dialog" aria-modal="true" aria-label="Xaritada joy belgilash">
-            <div className="acf-title">Xaritada joy belgilash</div>
-            <label className="field">Kenglik
-              <input className="input" aria-label="Kenglik" inputMode="decimal" value={latitude} onChange={(event) => setLatitude(event.currentTarget.value)} />
-            </label>
-            <label className="field">Uzunlik
-              <input className="input" aria-label="Uzunlik" inputMode="decimal" value={longitude} onChange={(event) => setLongitude(event.currentTarget.value)} />
-            </label>
-            <div className="acf-btns">
-              <button type="button" className="acf-cancel" onClick={() => setLocationOpen(false)}>Bekor qilish</button>
-              <button
-                type="button"
-                className="acf-ok"
-                onClick={() => {
-                  const lat = Number(latitude);
-                  const lng = Number(longitude);
-                  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                  setDraft({ ...draft, lat, lng });
-                  setLocationOpen(false);
-                }}
-              >Joyni saqlash</button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
