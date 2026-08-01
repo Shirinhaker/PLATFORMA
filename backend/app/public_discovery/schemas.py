@@ -88,3 +88,81 @@ class PublicSearchResponse(BaseModel):
     @property
     def pages(self) -> int:
         return ceil(self.total / self.page_size) if self.total else 0
+
+
+class PublicHomeBusinessPin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    public_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    yon: str = Field(default="", max_length=120)
+    tur: str = Field(default="", max_length=120)
+    lat: float
+    lng: float
+    logo_file: str = Field(default="", max_length=2048)
+    logo_x: float = Field(default=50, ge=0, le=100)
+    logo_y: float = Field(default=50, ge=0, le=100)
+    logo_zoom: float = Field(default=1, gt=0)
+    address: str = Field(default="", max_length=300)
+    source: str = Field(default="public", max_length=40)
+
+
+class PublicHomeSpecialistPin(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: int
+    public_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    kasb: str = Field(default="Mutaxasis", max_length=160)
+    is_gov: bool = False
+    lat: float
+    lng: float
+    avatar_file: str = Field(default="", max_length=2048)
+    avatar_x: float = Field(default=50, ge=0, le=100)
+    avatar_y: float = Field(default=50, ge=0, le=100)
+    avatar_zoom: float = Field(default=1, gt=0)
+    source: str = Field(default="public", max_length=40)
+
+
+class PublicHomeMapResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    businesses: list[PublicHomeBusinessPin]
+    specialists: list[PublicHomeSpecialistPin]
+
+
+class PublicDistrictOffer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(pattern="^(product|service|listing)$")
+    business_id: int = 0
+    business_public_id: str = Field(default="", max_length=64)
+    content_id: int
+    content_public_id: str = Field(min_length=1, max_length=64)
+    title: str = Field(min_length=1, max_length=200)
+    business_name: str = Field(default="", max_length=160)
+    image: str = Field(default="", max_length=2048)
+    business_logo: str = Field(default="", max_length=2048)
+    price: str = Field(default="", max_length=120)
+    unit: str = Field(default="", max_length=40)
+
+
+class PublicDistrictOffersResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    needs_district: bool
+    items: list[PublicDistrictOffer]
+    slot: int | None = None
+
+
+class PublicFollowedProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(pattern="^(user|business)$")
+    public_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    image_url: str = Field(default="", max_length=2048)
+    crop_x: float = Field(default=50, ge=0, le=100)
+    crop_y: float = Field(default=50, ge=0, le=100)
+    crop_zoom: float = Field(default=1, gt=0)

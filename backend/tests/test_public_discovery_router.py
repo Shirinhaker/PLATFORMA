@@ -1,10 +1,14 @@
 from fastapi.testclient import TestClient
 
+from app.accounts.model import AccountType
+from app.auth.dependencies import CurrentAccount, require_current_account
 from app.core.config import Settings
 from app.main import create_app
+from app.public_discovery.router import optional_current_account
 from app.public_discovery.schemas import (
     PublicSearchItem,
     PublicSearchResponse,
+    PublicFollowedProfile,
 )
 
 
@@ -43,6 +47,46 @@ class FakePublicDiscoveryService:
             page_size=params.page_size,
             total=1,
         )
+
+    async def home_map(self, district, *, account_id=None, account_type=None):
+        self.home_map_district = district
+        self.home_map_actor = (account_id, account_type)
+        return {
+            "businesses": [{
+                "id": 41,
+                "public_id": "b_public",
+                "name": "Koprik Savdo",
+                "yon": "Savdo",
+                "tur": "Do‘kon",
+                "lat": 37.82,
+                "lng": 67.58,
+                "logo_file": "",
+                "logo_x": 50,
+                "logo_y": 50,
+                "logo_zoom": 1,
+                "address": "Qumqo‘rg‘on",
+                "source": "public",
+            }],
+            "specialists": [],
+        }
+
+    async def district_offers(self, district):
+        self.offers_district = district
+        return {
+            "needs_district": False,
+            "slot": 1,
+            "items": [],
+        }
+
+    async def followed_profiles(self, *, account_id, account_type):
+        self.followed_actor = (account_id, account_type)
+        return [
+            PublicFollowedProfile(
+                kind="business",
+                public_id="b_public",
+                name="Koprik Savdo",
+            )
+        ]
 
 
 def test_public_search_is_unauthenticated_and_returns_only_public_fields():
@@ -115,3 +159,83 @@ def test_product_search_returns_only_content_capability_fields():
     assert item["owner_state"] == "unlinked"
     assert item["can_order"] is False
     assert "business_account_id" not in item
+
+
+def test_public_home_map_and_district_offers_match_v1656_contract():
+    app = create_app(Settings(environment="test"))
+    service = FakePublicDiscoveryService()
+    app.state.public_discovery_service = service
+    client = TestClient(app)
+
+    map_response = client.get(
+        "/api/v1/public/home/map",
+        params={"district": " Qumqo‘rg‘on "},
+    )
+    offers_response = client.get(
+        "/api/v1/public/home/district-offers",
+        params={"district": " Qumqo‘rg‘on "},
+    )
+
+    assert map_response.status_code == 200
+    assert map_response.json()["businesses"][0]["public_id"] == "b_public"
+    assert offers_response.status_code == 200
+    assert offers_response.json()["needs_district"] is False
+    assert service.home_map_district == "Qumqo‘rg‘on"
+    assert service.home_map_actor == (None, None)
+    assert service.offers_district == "Qumqo‘rg‘on"
+
+
+def test_public_features_expose_server_flags_without_authentication():
+    app = create_app(Settings(
+        environment="test",
+        listings_enabled=True,
+    ))
+
+    response = TestClient(app).get("/api/v1/public/features")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "listings": True,
+        "stories": False,
+        "chat": False,
+        "systemization": False,
+        "taxi": False,
+    }
+
+
+def test_followed_profiles_require_and_use_the_active_actor():
+    app = create_app(Settings(environment="test"))
+    service = FakePublicDiscoveryService()
+    app.state.public_discovery_service = service
+    app.dependency_overrides[require_current_account] = lambda: CurrentAccount(
+        account_id=71,
+        account_type=AccountType.USER,
+        session_token="test-session",
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/public/home/followed-profiles"
+    )
+
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "Koprik Savdo"
+    assert service.followed_actor == (71, "user")
+
+
+def test_public_home_map_uses_the_optional_active_actor():
+    app = create_app(Settings(environment="test"))
+    service = FakePublicDiscoveryService()
+    app.state.public_discovery_service = service
+    app.dependency_overrides[optional_current_account] = lambda: CurrentAccount(
+        account_id=71,
+        account_type=AccountType.USER,
+        session_token="test-session",
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/public/home/map",
+        params={"district": "Qumqo‘rg‘on"},
+    )
+
+    assert response.status_code == 200
+    assert service.home_map_actor == (71, "user")

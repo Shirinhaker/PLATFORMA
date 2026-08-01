@@ -4,6 +4,9 @@ export interface HomeLocation {
   region: string;
   district: string;
   neighborhood: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  exact?: boolean;
 }
 
 interface ReadableStorage {
@@ -18,6 +21,9 @@ interface StoredHomeLocation {
   region?: unknown;
   district?: unknown;
   mahalla?: unknown;
+  lat?: unknown;
+  lng?: unknown;
+  exact?: unknown;
 }
 
 function browserStorage(): Storage | null {
@@ -49,11 +55,26 @@ export function readHomeLocation(
       return null;
     }
 
-    return {
+    const location: HomeLocation = {
       region: String(parsed.region ?? "").trim(),
       district,
       neighborhood: String(parsed.mahalla ?? "").trim(),
     };
+    const latitude = Number(parsed.lat);
+    const longitude = Number(parsed.lng);
+    if (
+      parsed.lat !== null
+      && parsed.lat !== undefined
+      && parsed.lng !== null
+      && parsed.lng !== undefined
+      && Number.isFinite(latitude)
+      && Number.isFinite(longitude)
+    ) {
+      location.latitude = latitude;
+      location.longitude = longitude;
+      location.exact = Boolean(parsed.exact);
+    }
+    return location;
   } catch {
     return null;
   }
@@ -76,9 +97,9 @@ export function saveHomeLocation(
         region: location.region.trim(),
         district,
         mahalla: location.neighborhood.trim(),
-        lat: null,
-        lng: null,
-        exact: false,
+        lat: location.latitude ?? null,
+        lng: location.longitude ?? null,
+        exact: Boolean(location.exact),
       }),
     );
     return true;

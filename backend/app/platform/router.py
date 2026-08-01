@@ -24,6 +24,18 @@ async def build(request: Request) -> dict[str, str]:
     }
 
 
+@router.get("/api/v1/public/features")
+async def public_features(request: Request) -> dict[str, bool]:
+    settings = request.app.state.settings
+    return {
+        "listings": settings.listings_enabled,
+        "stories": False,
+        "chat": False,
+        "systemization": False,
+        "taxi": False,
+    }
+
+
 @router.get("/readyz")
 async def readyz(request: Request):
     database_ready = await request.app.state.database.ready()

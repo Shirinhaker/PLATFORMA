@@ -24,6 +24,11 @@ import type {
   PublicCatalogItem,
   PublicCatalogParams,
   PublicCatalogResponse,
+  PublicDistrictOffersResponse,
+  PublicFeatures,
+  PublicFollowedProfile,
+  PublicHomeMapParams,
+  PublicHomeMapResponse,
   PublicSearchParams,
   PublicSearchResponse,
   RegistrationStart,
@@ -170,6 +175,49 @@ export class ApiClient {
     }
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/advertisements${suffix}`);
+  }
+
+  getPublicFeatures(): Promise<PublicFeatures> {
+    return this.request("GET", "/api/v1/public/features");
+  }
+
+  getHomeMap(params: PublicHomeMapParams): Promise<PublicHomeMapResponse> {
+    const query = new URLSearchParams({ district: params.district });
+    return this.request("GET", `/api/v1/public/home/map?${query.toString()}`);
+  }
+
+  getDistrictOffers(
+    params: PublicHomeMapParams,
+  ): Promise<PublicDistrictOffersResponse> {
+    const query = new URLSearchParams({ district: params.district });
+    return this.request(
+      "GET",
+      `/api/v1/public/home/district-offers?${query.toString()}`,
+    );
+  }
+
+  getFollowedProfiles(): Promise<PublicFollowedProfile[]> {
+    return this.request(
+      "GET",
+      "/api/v1/public/home/followed-profiles",
+      undefined,
+      true,
+    );
+  }
+
+  recordAdvertisementViews(publicIds: string[]): Promise<void> {
+    return this.request(
+      "POST",
+      "/api/v1/public/advertisements/views",
+      { ids: publicIds },
+    );
+  }
+
+  recordAdvertisementClick(publicId: string): Promise<void> {
+    return this.request(
+      "POST",
+      `/api/v1/public/advertisements/${encodeURIComponent(publicId)}/click`,
+    );
   }
 
   startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {

@@ -81,6 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             redis_client,
             resolved,
+            image_url_provider=app.state.r2.create_download_url,
         )
         app.state.catalog_service = CatalogService(
             database.session,

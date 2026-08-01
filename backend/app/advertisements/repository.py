@@ -1,9 +1,9 @@
+import hashlib
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from datetime import datetime, time
-import hashlib
+from datetime import UTC, datetime, time
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.advertisements.model import Advertisement
@@ -134,6 +134,7 @@ def _public_advertisement(
             if owner_id is not None and owner_kind is not None
             else ""
         ),
+        owner_kind=owner_kind.value if owner_kind is not None else None,
         desktop_image_url=image_url_provider(
             advertisement.desktop_image_object_key
         ),
@@ -167,3 +168,57 @@ class AdvertisementService:
             await session.rollback()
             return result
 
+    async def record_public_views(self, public_ids: list[str]) -> None:
+        await self._increment_public_metric(
+            public_ids,
+            metric="views",
+        )
+
+    async def record_public_click(self, public_id: str) -> None:
+        await self._increment_public_metric(
+            [public_id],
+            metric="clicks",
+        )
+
+    async def _increment_public_metric(
+        self,
+        public_ids: list[str],
+        *,
+        metric: str,
+    ) -> None:
+        requested = set(public_ids[:5])
+        if not requested:
+            return
+        async with self._session_factory() as session:
+            now = datetime.now(UTC)
+            internal_ids = list(
+                (
+                    await session.scalars(
+                        select(Advertisement.id).where(
+                            Advertisement.status == "active",
+                            Advertisement.review_state == ReviewState.READY,
+                            Advertisement.start_at <= now,
+                            Advertisement.end_at > now,
+                        )
+                    )
+                ).all()
+            )
+            matched = [
+                target_id
+                for target_id in internal_ids
+                if build_advertisement_public_id(target_id) in requested
+            ]
+            if matched:
+                column = (
+                    Advertisement.views
+                    if metric == "views"
+                    else Advertisement.clicks
+                )
+                await session.execute(
+                    update(Advertisement)
+                    .where(Advertisement.id.in_(matched))
+                    .values({metric: column + 1})
+                )
+                await session.commit()
+            else:
+                await session.rollback()

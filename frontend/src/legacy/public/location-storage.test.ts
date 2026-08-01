@@ -35,6 +35,26 @@ describe("v1656-compatible home location storage", () => {
     expect(getItem).toHaveBeenCalledWith(HOME_LOCATION_STORAGE_KEY);
   });
 
+  it("preserves the exact saved map center used by the v1656 Home map", () => {
+    const getItem = vi.fn(() => JSON.stringify({
+      region: "Surxondaryo viloyati",
+      district: "Qumqo'rg'on",
+      mahalla: "Yangi hayot",
+      lat: 37.82,
+      lng: 67.58,
+      exact: true,
+    }));
+
+    expect(readHomeLocation({ getItem })).toEqual({
+      region: "Surxondaryo viloyati",
+      district: "Qumqo'rg'on",
+      neighborhood: "Yangi hayot",
+      latitude: 37.82,
+      longitude: 67.58,
+      exact: true,
+    });
+  });
+
   it("ignores malformed JSON and entries without a district", () => {
     expect(
       readHomeLocation({

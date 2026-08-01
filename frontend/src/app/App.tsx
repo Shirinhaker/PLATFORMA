@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type { SessionIdentity } from "../api/types";
+import type { PublicFeatures, SessionIdentity } from "../api/types";
 import { AuthFlow, type AuthApi } from "../auth/AuthFlow";
 import type { AppSession } from "../auth/types";
 import { CatalogScreen } from "../legacy/public/CatalogScreen";
@@ -35,7 +35,15 @@ type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;
 type PublicSearchApi = Pick<
   ApiClient,
-  "searchPublic" | "getCatalogItems" | "getAdvertisements"
+  | "searchPublic"
+  | "getCatalogItems"
+  | "getAdvertisements"
+  | "getPublicFeatures"
+  | "getHomeMap"
+  | "getDistrictOffers"
+  | "getFollowedProfiles"
+  | "recordAdvertisementViews"
+  | "recordAdvertisementClick"
 >;
 type AppApi = (
   SessionApi
@@ -85,16 +93,30 @@ function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
 
 
 export function App({ api }: { api: AppApi }) {
+  const initialLocation = useMemo(() => readHomeLocation(), []);
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
+  const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => (
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light"
+  ));
   const [attempt, setAttempt] = useState(0);
   const [navigation, dispatch] = useReducer(
     publicNavigationReducer,
-    initialPublicNavigationState,
+    initialLocation
+      ? initialPublicNavigationState
+      : { ...initialPublicNavigationState, view: "location" },
   );
   const [homeLocation, setHomeLocation] = useState<HomeLocation | null>(
-    () => readHomeLocation(),
+    initialLocation,
   );
+  const [publicFeatures, setPublicFeatures] = useState<PublicFeatures>({
+    listings: false,
+    stories: false,
+    chat: false,
+    systemization: false,
+    taxi: false,
+  });
   const searchPublic = useMemo(() => (
     typeof api.searchPublic === "function"
       ? api.searchPublic.bind(api)
@@ -110,6 +132,42 @@ export function App({ api }: { api: AppApi }) {
       ? api.getAdvertisements.bind(api)
       : undefined
   ), [api]);
+  const getHomeMap = useMemo(() => (
+    typeof api.getHomeMap === "function" ? api.getHomeMap.bind(api) : undefined
+  ), [api]);
+  const getDistrictOffers = useMemo(() => (
+    typeof api.getDistrictOffers === "function"
+      ? api.getDistrictOffers.bind(api)
+      : undefined
+  ), [api]);
+  const getFollowedProfiles = useMemo(() => (
+    typeof api.getFollowedProfiles === "function"
+      ? api.getFollowedProfiles.bind(api)
+      : undefined
+  ), [api]);
+  const recordAdvertisementViews = useMemo(() => (
+    typeof api.recordAdvertisementViews === "function"
+      ? api.recordAdvertisementViews.bind(api)
+      : undefined
+  ), [api]);
+  const recordAdvertisementClick = useMemo(() => (
+    typeof api.recordAdvertisementClick === "function"
+      ? api.recordAdvertisementClick.bind(api)
+      : undefined
+  ), [api]);
+
+  useEffect(() => {
+    if (typeof api.getPublicFeatures !== "function") return undefined;
+    let active = true;
+    api.getPublicFeatures()
+      .then((features) => {
+        if (active) setPublicFeatures(features);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [api]);
 
   useEffect(() => {
     let active = true;
@@ -156,7 +214,15 @@ export function App({ api }: { api: AppApi }) {
   const title = titles[navigation.view];
 
   function openHome() {
-    dispatch({ type: "GO_HOME" });
+    dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
+  }
+
+  function toggleTheme() {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      return next;
+    });
   }
 
   function completeAuthentication(identity: SessionIdentity) {
@@ -233,7 +299,7 @@ export function App({ api }: { api: AppApi }) {
             initialLocation={homeLocation}
             onSaved={(location) => {
               setHomeLocation(location);
-              openHome();
+              dispatch({ type: "GO_HOME" });
             }}
           />
         );
@@ -243,12 +309,19 @@ export function App({ api }: { api: AppApi }) {
       case "home":
         return (
           <HomeScreen
+            authenticated={authenticated}
             currentDistrict={homeLocation?.district}
             getAdvertisements={getAdvertisements}
+            getDistrictOffers={getDistrictOffers}
+            getFollowedProfiles={getFollowedProfiles}
+            getHomeMap={getHomeMap}
             location={homeLocation}
-            onSearch={(query) => dispatch({ type: "OPEN_CATALOG", query })}
+            searchPublic={searchPublic}
             onOpenCatalog={() => dispatch({ type: "OPEN_CATALOG", query: "" })}
             onOpenLocation={() => dispatch({ type: "OPEN_LOCATION" })}
+            onResultsActiveChange={setHomeSearchResultsActive}
+            recordAdvertisementClick={recordAdvertisementClick}
+            recordAdvertisementViews={recordAdvertisementViews}
           />
         );
     }
@@ -259,12 +332,20 @@ export function App({ api }: { api: AppApi }) {
       authenticated={authenticated}
       title={title}
       isHome={navigation.view === "home"}
+      searchResultsActive={(
+        navigation.view === "home" && homeSearchResultsActive
+      )}
+      publicFeatures={publicFeatures}
+      theme={theme}
       onHome={openHome}
       onLocation={() => dispatch({ type: "OPEN_LOCATION" })}
       onAccount={() => dispatch({
         type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
       })}
-      onBack={() => dispatch({ type: "BACK" })}
+      onBack={() => dispatch({
+        type: homeLocation ? "BACK" : "OPEN_LOCATION",
+      })}
+      onToggleTheme={toggleTheme}
     >
       <div className="app-shell__content" tabIndex={-1}>
         {failed && accountView ? (

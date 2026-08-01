@@ -1,4 +1,12 @@
+from typing import Annotated
+
 from pydantic import BaseModel, ConfigDict, Field
+
+
+PublicAdvertisementId = Annotated[
+    str,
+    Field(pattern=r"^a_[0-9a-f]{16}$"),
+]
 
 
 class PublicAdvertisement(BaseModel):
@@ -8,9 +16,18 @@ class PublicAdvertisement(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     caption: str = Field(default="", max_length=2000)
     owner_public_id: str = Field(default="", max_length=64)
+    owner_kind: str | None = Field(
+        default=None,
+        pattern="^(user|business)$",
+    )
     desktop_image_url: str = Field(default="", max_length=2048)
     mobile_image_url: str = Field(default="", max_length=2048)
     crop_x: float = Field(default=50.0, ge=0, le=100)
     crop_y: float = Field(default=50.0, ge=0, le=100)
     crop_zoom: float = Field(default=1.0, gt=0)
 
+
+class PublicAdvertisementViews(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ids: list[PublicAdvertisementId] = Field(min_length=1, max_length=5)

@@ -8,10 +8,18 @@ type AppShellProps = {
   authenticated: boolean;
   title?: string;
   isHome?: boolean;
+  searchResultsActive?: boolean;
+  publicFeatures?: { listings: boolean; taxi: boolean };
+  theme?: "light" | "dark";
+  cartCount?: number;
   onHome?: () => void;
   onLocation?: () => void;
   onAccount?: () => void;
   onBack?: () => void;
+  onListings?: () => void;
+  onCart?: () => void;
+  onTaxi?: () => void;
+  onToggleTheme?: () => void;
   onCabinet?: () => void;
   onLogin?: () => void;
 };
@@ -23,10 +31,18 @@ export function AppShell({
   authenticated,
   title,
   isHome = true,
+  searchResultsActive = false,
+  publicFeatures = { listings: false, taxi: false },
+  theme = "light",
+  cartCount = 0,
   onHome = noop,
   onLocation = noop,
   onAccount,
   onBack = noop,
+  onListings,
+  onCart,
+  onTaxi,
+  onToggleTheme = noop,
   onCabinet,
   onLogin,
 }: AppShellProps) {
@@ -37,15 +53,22 @@ export function AppShell({
   );
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isHome ? " home-active" : ""}${searchResultsActive ? " search-results-active" : ""}`}>
       <PublicHeader
         authenticated={authenticated}
+        cartCount={cartCount}
+        features={publicFeatures}
+        theme={theme}
         title={title}
         isHome={isHome}
         onHome={onHome}
         onLocation={onLocation}
         onAccount={accountAction}
         onBack={onBack}
+        onListings={onListings}
+        onCart={onCart}
+        onTaxi={onTaxi}
+        onToggleTheme={onToggleTheme}
       />
       {children}
     </div>

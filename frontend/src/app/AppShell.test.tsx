@@ -24,16 +24,18 @@ describe("AppShell", () => {
     );
 
     expect(screen.getByRole("banner")).toHaveTextContent("Koprik");
-    await userEvent.click(screen.getByRole("button", { name: "Koprik" }));
-    await userEvent.click(screen.getByRole("button", { name: "Manzil" }));
-    await userEvent.click(screen.getByRole("button", { name: "Kirish" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Koprik bosh sahifasi" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Manzilim" }));
+    await userEvent.click(screen.getByRole("button", { name: "Kabinet" }));
 
     expect(onHome).toHaveBeenCalledOnce();
     expect(onLocation).toHaveBeenCalledOnce();
     expect(onAccount).toHaveBeenCalledOnce();
   });
 
-  it("connects subview back and authenticated cabinet actions", async () => {
+  it("shows only the v1656 back/title bar on public subviews", async () => {
     const onBack = vi.fn();
     const onAccount = vi.fn();
     render(
@@ -51,9 +53,31 @@ describe("AppShell", () => {
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Orqaga" }));
-    await userEvent.click(screen.getByRole("button", { name: "Kabinet" }));
 
     expect(onBack).toHaveBeenCalledOnce();
+    expect(document.querySelector(".tb-title")).toHaveTextContent("Katalog");
+    expect(screen.queryByRole("button", { name: "Kabinet" }))
+      .not.toBeInTheDocument();
+    expect(onAccount).not.toHaveBeenCalled();
+  });
+
+  it("connects the authenticated cabinet action on Home", async () => {
+    const onAccount = vi.fn();
+    render(
+      <AppShell
+        authenticated
+        isHome
+        onHome={vi.fn()}
+        onLocation={vi.fn()}
+        onAccount={onAccount}
+        onBack={vi.fn()}
+      >
+        <p>Kontent</p>
+      </AppShell>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Kabinet" }));
+
     expect(onAccount).toHaveBeenCalledOnce();
   });
 });

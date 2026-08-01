@@ -5,6 +5,7 @@ import fakeredis.aioredis
 
 from app.core.config import Settings
 from app.public_discovery.schemas import (
+    PublicDistrictOffersResponse,
     PublicSearchItem,
     PublicSearchParams,
     PublicSearchResponse,
@@ -153,3 +154,38 @@ def test_public_search_cache_key_changes_with_filters_and_pagination():
     assert len({first, second, third}) == 3
     assert "savdo" not in first
     assert first.startswith("public:search:v2:")
+
+
+async def test_district_offers_follow_the_listings_feature_flag(monkeypatch):
+    database = FakeDatabase()
+    calls = []
+
+    async def loader(
+        session,
+        *,
+        district,
+        slot,
+        image_url_provider,
+        include_listings,
+    ):
+        calls.append((district, include_listings))
+        return PublicDistrictOffersResponse(
+            needs_district=False,
+            items=[],
+            slot=slot,
+        )
+
+    monkeypatch.setattr(
+        "app.public_discovery.service.load_public_district_offers",
+        loader,
+    )
+    service = PublicDiscoveryService(
+        database.session,
+        BrokenRedis(),
+        Settings(environment="test", listings_enabled=True),
+    )
+
+    await service.district_offers("Qumqo‘rg‘on")
+
+    assert calls == [("Qumqo‘rg‘on", True)]
+    assert database.rollbacks == 1

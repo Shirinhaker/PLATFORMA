@@ -4,13 +4,25 @@ import asyncio
 import hashlib
 import json
 import logging
+import time
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.public_discovery.repository import search_public_profiles
-from app.public_discovery.schemas import PublicSearchParams, PublicSearchResponse
+from app.public_discovery.repository import (
+    load_public_district_offers,
+    load_followed_profiles,
+    load_public_home_map,
+    search_public_profiles,
+)
+from app.public_discovery.schemas import (
+    PublicDistrictOffersResponse,
+    PublicFollowedProfile,
+    PublicHomeMapResponse,
+    PublicSearchParams,
+    PublicSearchResponse,
+)
 from app.public_discovery.schemas import PublicResultType
 
 
@@ -32,6 +44,7 @@ class PublicDiscoveryService:
         settings: Settings,
         *,
         search_loader: SearchLoader | None = None,
+        image_url_provider: Callable[[str], str] | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._redis = redis
@@ -61,6 +74,9 @@ class PublicDiscoveryService:
             self._search_loader = configured_loader
         else:
             self._search_loader = search_loader
+        self._image_url_provider = image_url_provider or (
+            lambda object_key: f"/media/{object_key}" if object_key else ""
+        )
         self._search_tasks: dict[str, asyncio.Task[PublicSearchResponse]] = {}
 
     async def search(
@@ -86,6 +102,56 @@ class PublicDiscoveryService:
             task.add_done_callback(clear_completed)
 
         return await asyncio.shield(task)
+
+    async def home_map(
+        self,
+        district: str,
+        *,
+        account_id: int | None = None,
+        account_type: str | None = None,
+    ) -> PublicHomeMapResponse:
+        async with self._session_factory() as session:
+            result = await load_public_home_map(
+                session,
+                district=district.strip(),
+                image_url_provider=self._image_url_provider,
+                account_id=account_id,
+                account_type=account_type,
+            )
+            await session.rollback()
+            return result
+
+    async def district_offers(
+        self,
+        district: str,
+    ) -> PublicDistrictOffersResponse:
+        slot = int(time.time() // (30 * 60))
+        async with self._session_factory() as session:
+            result = await load_public_district_offers(
+                session,
+                district=district.strip(),
+                slot=slot,
+                image_url_provider=self._image_url_provider,
+                include_listings=self._settings.listings_enabled,
+            )
+            await session.rollback()
+            return result
+
+    async def followed_profiles(
+        self,
+        *,
+        account_id: int,
+        account_type: str,
+    ) -> list[PublicFollowedProfile]:
+        async with self._session_factory() as session:
+            result = await load_followed_profiles(
+                session,
+                account_id=account_id,
+                account_type=account_type,
+                image_url_provider=self._image_url_provider,
+            )
+            await session.rollback()
+            return result
 
     async def _load_and_cache(
         self,
