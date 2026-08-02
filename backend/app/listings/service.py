@@ -280,10 +280,10 @@ class ListingService:
     async def _resolve(self, session: AsyncSession, public_id: str) -> Listing | None:
         if PUBLIC_ID_RE.fullmatch(public_id) is None:
             return None
-        for listing_id in await self._repository.all_ids(session):
-            if build_listing_public_id(listing_id) == public_id:
-                return await self._repository.get(session, listing_id)
-        return None
+        return await self._repository.by_public_id(
+            session,
+            public_id=public_id,
+        )
 
     async def _owned(
         self,

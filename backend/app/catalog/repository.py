@@ -1,5 +1,4 @@
 from collections.abc import Callable
-import hashlib
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,26 +13,25 @@ from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import build_public_id
 from app.public_discovery.schemas import PublicResultKind
+from app.public_ids import build_content_public_id as _build_content_public_id
 
 
 ImageUrlProvider = Callable[[str], str]
 
 
 def build_content_public_id(kind: str, target_id: int) -> str:
-    digest = hashlib.blake2s(
-        f"{kind}:{target_id}".encode("utf-8"),
-        digest_size=8,
-        key=b"koprik-content-v1",
-    ).hexdigest()
-    prefix = "p" if kind == "product" else "s"
-    return f"{prefix}_{digest}"
+    return _build_content_public_id(kind, target_id)
 
 
 def _contains(column, value: str):
     return func.lower(column).contains(value.casefold())
 
 
-def build_catalog_statements(params: PublicCatalogParams):
+def build_catalog_statements(
+    params: PublicCatalogParams,
+    *,
+    public_id: str = "",
+):
     base = (
         select(
             CatalogItem.id.label("target_id"),
@@ -61,6 +59,8 @@ def build_catalog_statements(params: PublicCatalogParams):
             CatalogItem.review_state == ReviewState.READY,
         )
     )
+    if public_id:
+        base = base.where(CatalogItem.public_id == public_id)
     if params.kind:
         base = base.where(CatalogItem.kind == params.kind)
     if params.q:
@@ -122,17 +122,11 @@ async def get_public_catalog(
     image_url_provider: ImageUrlProvider,
 ) -> PublicCatalogItem | None:
     data, _ = build_catalog_statements(
-        PublicCatalogParams(page=1, page_size=50)
+        PublicCatalogParams(page=1, page_size=1),
+        public_id=public_id,
     )
-    statement = data.limit(None).offset(None)
-    rows = (await session.execute(statement)).mappings()
-    for row in rows:
-        if (
-            build_content_public_id(row["kind"], row["target_id"])
-            == public_id
-        ):
-            return _public_item(row, image_url_provider)
-    return None
+    row = (await session.execute(data)).mappings().first()
+    return _public_item(row, image_url_provider) if row is not None else None
 
 
 def _public_item(row, image_url_provider: ImageUrlProvider):

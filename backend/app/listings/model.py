@@ -11,14 +11,16 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    event,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, attributes, mapped_column
 
 from app.db.base import Base
 from app.legacy_migration.model import (
     REVIEW_STATE_ENUM,
     ReviewState,
 )
+from app.public_ids import build_listing_public_id
 
 
 class Listing(Base):
@@ -41,6 +43,7 @@ class Listing(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    public_id: Mapped[str | None] = mapped_column(String(18))
     owner_user_account_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("accounts.id", ondelete="SET NULL"),
@@ -160,3 +163,23 @@ class ListingSave(Base):
         DateTime(timezone=True),
         nullable=False,
     )
+
+
+Index(
+    "uq_listings_public_id",
+    Listing.public_id,
+    unique=True,
+)
+
+
+@event.listens_for(Listing, "after_insert")
+def _assign_listing_public_id(_mapper, connection, target: Listing) -> None:
+    if target.public_id:
+        return
+    public_id = build_listing_public_id(target.id)
+    connection.execute(
+        Listing.__table__.update()
+        .where(Listing.id == target.id)
+        .values(public_id=public_id)
+    )
+    attributes.set_committed_value(target, "public_id", public_id)

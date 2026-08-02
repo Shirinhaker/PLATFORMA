@@ -9,12 +9,11 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.accounts.model import Account, AccountType
+from app.accounts.model import AccountType
 from app.catalog.model import CatalogItem
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError
-from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.orders.notifications import (
@@ -711,17 +710,12 @@ class OrderService:
         return order, side
 
     async def _resolve_profile_public_id(self, session, kind: str, public_id: str) -> int | None:
-        model = BusinessProfile if kind == "business" else UserProfile
-        enum_kind = PublicResultKind.BUSINESS if kind == "business" else PublicResultKind.USER
-        ids = list((await session.scalars(
-            select(model.account_id)
-            .join(Account, Account.id == model.account_id)
-            .where(
-                Account.status == "active",
-                Account.account_type == AccountType(kind),
-            )
-        )).all())
-        return next((int(value) for value in ids if build_public_id(enum_kind, int(value)) == public_id), None)
+        profile = await self._repository.profile_by_public_id(
+            session,
+            kind=kind,
+            public_id=public_id,
+        )
+        return int(profile.account_id) if profile is not None else None
 
     async def _profile(self, session, account_id: int, kind: str):
         model = BusinessProfile if kind == "business" else UserProfile
@@ -736,15 +730,9 @@ class OrderService:
     ) -> Listing | None:
         if not public_id:
             return None
-        rows = list((await session.scalars(
-            select(Listing).where(
-                Listing.status == "active",
-                Listing.review_state == ReviewState.READY,
-            )
-        )).all())
-        listing = next(
-            (row for row in rows if build_listing_public_id(row.id) == public_id),
-            None,
+        listing = await self._repository.listing_by_public_id(
+            session,
+            public_id=public_id,
         )
         if listing is None:
             raise ApiError(404, "order_listing_not_found", "E'lon topilmadi.")
@@ -768,13 +756,21 @@ class OrderService:
     async def _catalog_snapshots(self, session, requested, provider_id: int, provider_kind: str):
         if requested and provider_kind != "business":
             raise ApiError(400, "order_items_business_only", "Mahsulot/xizmatli buyurtma faqat biznesga yuboriladi.")
-        all_items = await self._repository.all_catalog_items(session)
+        limited = requested[:50]
+        if not limited:
+            return []
+        public_ids = list(dict.fromkeys(entry.public_id for entry in limited))
+        all_items = await self._repository.catalog_items_by_public_ids(
+            session,
+            public_ids=public_ids,
+        )
         by_public = {
-            build_content_public_id(item.kind, item.id): item for item in all_items
+            item.public_id or build_content_public_id(item.kind, item.id): item
+            for item in all_items
         }
         quantities: dict[int, Decimal] = {}
         rows: dict[int, CatalogItem] = {}
-        for entry in requested[:50]:
+        for entry in limited:
             item = by_public.get(entry.public_id)
             if item is None:
                 raise ApiError(404, "order_item_not_found", "Mahsulot/xizmat topilmadi.")
