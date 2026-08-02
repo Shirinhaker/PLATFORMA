@@ -1,0 +1,188 @@
+# Navbat tizimi — v1656 funksional paritet auditi
+
+Sana: 2026-08-02
+
+Haqiqat manbai: ishlab turgan `static/index.html` (`BUILD v1656`), uning
+legacy API mantiqi joylashgan `api.py` va SQLite sxemasi joylashgan
+`database.py`.
+
+## Audit maqsadi
+
+`docs/onlaynlashtirish-parity-audit.md` biznes kabinetidagi uchta navbat
+ekranini React View va ko'rinish testlari mavjudligi sabab `migrated` deb
+belgilaydi:
+
+- `cab-medical-doctors`;
+- `cab-medical-doctor-form`;
+- `cab-medical-queue`.
+
+Bu holat faqat **ekran paritetini** bildiradi. Ishlab turgan v1656dagi to'liq
+navbat zanjiri biznes kabinetidan tashqari ommaviy profil, oddiy foydalanuvchi
+kabineti, bildirishnomalar va alohida relatsion navbat jadvallarini ham qamrab
+oladi. Ushbu hujjat shu **funksional domen paritetini** tekshiradi.
+
+Q0 faqat audit blokidir. Kod, `static/index.html`, `api.py`, `database.py`,
+Tizimlashtirish modullari, `main` va production o'zgartirilmaydi.
+
+## Holat mezonlari
+
+- `migrated` — React oqimi typed `/api/v1` endpoint va relatsion domen bilan
+  v1656 xatti-harakatini to'liq bajaradi, parity testi mavjud;
+- `partial` — ko'rinish yoki mantiqning bir qismi mavjud, ammo zanjirning
+  majburiy qismi generic snapshot, ishlamaydigan tugma yoki yetishmagan API
+  sabab tugallanmagan;
+- `missing` — v1656 funksiyasi uchun yangi frontend/backend oqimi yoki
+  relatsion saqlash mavjud emas.
+
+## v1656dagi to'liq navbat zanjiri
+
+```text
+Navbatli yo'nalishdagi xizmat
+  -> "Navbat tizimi: Yoqilgan"
+  -> faol xodimni xizmat ko'rsatuvchi sifatida biriktirish
+  -> ish kunlari, vaqt, o'rtacha qabul va live/slot rejimi
+  -> ommaviy profilda "Navbat olish"
+  -> sana -> xizmat ko'rsatuvchi -> bo'sh vaqt (slot bo'lsa)
+  -> onlayn navbat yozuvi + "Navbat olindi" bildirishnomasi
+  -> biznesning onlayn/oflayn yagona navbati
+  -> Chaqirish / Qabul / Yakunlash / Kelmadi / Bekor qilish
+  -> mijozning "Navbatlar" ro'yxati, oldindagi odam va kutish vaqti
+  -> bildirishnomadan aynan shu navbat kartasiga o'tish
+```
+
+`live` yoki `slot` rejimi v1656da xizmatga emas, xizmat ko'rsatuvchiga
+biriktiriladi: `medical_doctors.mode`.
+
+## Yo'nalish va atama matritsasi
+
+Monolit 14 yo'nalishda navbatni yoqadi:
+`static/index.html:3680–3681`, `api.py:5506–5547`.
+
+1. Transport va logistika
+2. Xizmat ko'rsatish
+3. Maishiy xizmatlar
+4. Qurilish
+5. Tibbiy xizmatlar
+6. Ko'chmas mulk
+7. Axborot texnologiyalari
+8. Konsalting va professional
+9. Madaniyat, sport, ko'ngilochar
+10. Turizm va mehmonxona
+11. Reklama va marketing
+12. Poligrafiya va nashriyot
+13. Moliyaviy faoliyat
+14. Import-eksport
+
+Tibbiy xizmatlarda `Shifokor`, `Shifokorlar`, `Bemor`; qolgan 13 yo'nalishda
+`Xizmat ko'rsatuvchi`, `Xizmat ko'rsatuvchilar`, `Mijoz` ishlatiladi:
+`static/index.html:12076–12078`, `api.py:5535–5540`.
+
+Navbat menyusi Savdo, Umumiy ovqatlanish, Ta'lim faoliyati, Qishloq
+xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
+
+## Funksional birliklar bo'yicha audit
+
+| # | Funksional birlik | Joriy holat | Yangi koddagi dalil | v1656 etaloni | Yetishmayotgan qism / test |
+|---:|---|---|---|---|---|
+| 1 | 14 yo'nalish guardi va dinamik atamalar | migrated | `frontend/src/profiles/business-profile-config.ts:43–50, 388–389`; `backend/app/business_online/service.py` direction guardi | `static/index.html:3680–3681, 12076–12078`; `api.py:5506–5547` | Mavjud matritsa testlari saqlanadi |
+| 2 | Xizmatda navbatni yoqish/o'chirish | partial | `backend/app/catalog/model.py` va public sxemalarda `queue_enabled` bor; ammo `frontend/src/profiles/BusinessItemsV1656Forms.tsx:120–264`da `Navbat tizimi` maydoni yo'q | `static/index.html:2135, 12906, 12947, 13008`; `api.py:2391–2434` | React form maydoni, yo'nalish/kind guardi va save parity testi |
+| 3 | Xizmat ko'rsatuvchilar ro'yxati va formasi | partial | `BusinessMedicalProvidersV1656View`; create/update generic `business-online/medical_doctors` resursiga yozadi | `static/index.html:2107–2108, 11637–11641`; `api.py:5557–5599` | Alohida provider va provider-service relatsiyalari, typed API, legacy backfill |
+| 4 | Biznesning yagona navbat boshqaruvi | partial | `BusinessMedicalQueueV1656View` oflayn qo'shish, status va swapni ko'rsatadi; `medical_queue` generic cabinet snapshoti bilan ishlaydi | `static/index.html:2109, 11642–11669`; `api.py:5743–5778` | Typed biznes API, relatsion tranzaksiya va haqiqiy onlayn yozuvlar bilan bir ro'yxat |
+| 5 | Ommaviy profil/katalogdagi `Navbat olish` | partial | `PublicProfileV1656.tsx:137–147` tugmani handlersiz chiqaradi; `CatalogItemCard.tsx:16–20, 50–57` tugma matnini chiqarib profilni ochadi | `static/index.html:5112–5115, 5700–5708, 11711` | Login guardi va booking oqimini ochadigan handler; provider/count payloadi |
+| 6 | Sana va xizmat ko'rsatuvchini tanlash | missing | API client va `frontend/src/queues` komponenti yo'q | `static/index.html:11682–11694`; `api.py:5600–5605` | Options endpoint, schema, client va modal parity testi |
+| 7 | Slot rejimida bo'sh vaqtlarni olish | missing | Queue slots endpointi va frontend tanlovi yo'q | `static/index.html:11695–11704`; `api.py:5607–5700` | Ish kuni/vaqti, o'tgan vaqt va band slot filtrli typed endpoint |
+| 8 | Onlayn navbat yaratish | missing | Modular backendda public queue create endpointi yo'q | `static/index.html:11705–11710`; `api.py:5624–5676, 5702–5710` | Ownership, takroriy yozilish, live raqam/slot unique va idempotent notification |
+| 9 | Mijozning `📋 Navbatlar` ro'yxati | missing | `UserProfile.tsx:446–460` faqat order domenini ochadi; `MyQueues` View/API yo'q | `static/index.html:6996–7025`; `api.py:5712–5731` | Xizmat buyurtmalari ichidagi alohida navbat qismi va typed `/mine` endpointi |
+| 10 | Oldindagi odam va kutish vaqti | missing | Yangi frontend/backendda `ahead_count` va `wait_minutes` navbat oqimi yo'q | `static/index.html:7007–7010`; `api.py:5716–5730` | Faol statuslar bo'yicha indeksli count va `ahead_count × avg_minutes` |
+| 11 | Mijoz navbatini bekor qilish | missing | Queue ownership/cancel endpointi va tasdiqlash oqimi yo'q | `static/index.html:7009, 11712`; `api.py:5733–5741` | Faqat o'z `waiting/called` navbatini bekor qilish, tarix yozuvi va aniq matnlar |
+| 12 | Navbat bildirishnomasi va deep-link | partial | `notifications` relatsion jadvali payloadni saqlay oladi; `UserProfile.tsx:469–480` faqat `order_id`ni ochadi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | `medical_queue_id`ni navbat kartasiga ochish, read holati va called/soon/cancelled/changed hodisalari |
+| 13 | Alohida relatsion navbat jadvallari | missing | `backend/app/queues` moduli va queue Alembic migratsiyasi yo'q; yozuvlar generic `cabinet_records`/fallback payloadda | `database.py:1726–1747` | Provider, service link, queue, history va indeksli counter jadvallari; idempotent backfill |
+| 14 | Parallel navbat raqami/slot xavfsizligi | missing | Generic snapshot butun biznes profilini qulflaydi; dedicated atomar allocator yo'q | `api.py:5649–5668`; `database.py:1733–1743` | PostgreSQLda bitta navbat kesimida atomar raqam berish va unique slot; concurrency testi |
+| 15 | Ikki aktyorli end-to-end parity testi | missing | Biznes ekran parity testi bor, ammo `mijoz -> navbat -> biznes -> bildirishnoma -> mijoz` testi yo'q | Yuqoridagi barcha v1656 oqimlari | Backend transaction va frontend integration/parity testlari |
+
+Natija: **1 migrated, 5 partial, 9 missing** funksional birlik.
+
+## Nima uchun mavjud uchta ekran yetarli emas
+
+`BusinessMedicalV1656View.tsx` ko'rinish va biznes ichidagi tugmalarni
+ko'chirgan. Uning amallari hozir
+`/api/v1/business-online/medical_queue/actions/...` orqali generic
+`cabinet_records` snapshotini o'zgartiradi. Shu oqim:
+
+- ommaviy foydalanuvchiga sana/provider/slot bermaydi;
+- foydalanuvchiga tegishli navbat yozuvini yaratmaydi;
+- `mine`, ownership va cancel endpointlarini bermaydi;
+- navbatni katalogdagi relatsion xizmat va relational notification bilan
+  bitta atomar tranzaksiyada bog'lamaydi;
+- katta parallel oqimda alohida navbat kesimida atomar raqam bermaydi.
+
+Shu sabab `cab-medical-doctors`, `cab-medical-doctor-form` va
+`cab-medical-queue` ekran darajasida `migrated`, ammo **navbat domeni
+funksional darajada `partial`**.
+
+## Majburiy biznes qoidalari
+
+1. Queue faqat yuqoridagi 14 yo'nalishda ishlaydi; boshqa yo'nalish 403 oladi.
+2. Faqat `kind=service` va `queue_enabled=true` xizmat navbatga ulanadi.
+3. Xizmat ko'rsatuvchi faol xodim va faol queue xizmatiga biriktiriladi.
+4. `live/slot` rejimi xizmat ko'rsatuvchi kesimida saqlanadi.
+5. O'tgan sana, ishlamaydigan kun, o'tgan/band slot qabul qilinmaydi.
+6. Bitta foydalanuvchi bir xizmat/provider/sanaga takror faol live navbat
+   ololmaydi; slotda aynan bir vaqt takror band qilinmaydi.
+7. Mijoz faqat o'zining `waiting` yoki `called` navbatini bekor qiladi.
+8. Biznes faqat o'z navbatlarini ko'radi va o'zgartiradi.
+9. Faqat bir xil sana, xizmat va providerning ikkita navbati almashtiriladi.
+10. `called`, navbati yaqinlashgan, biznes bekor qilgan va raqami o'zgargan
+    hodisalar foydalanuvchiga idempotent bildirishnoma yaratadi.
+11. Statuslar va matnlar v1656 bilan harfma-harf bir xil bo'ladi.
+
+## Tizimlashtirish bilan chegara
+
+Navbat providerini tanlash v1656da Ma'muriyatdagi faol xodimni o'qiydi. Bu
+navbat domenining **read-only bog'liqligi** bo'lib qoladi:
+
+- Xodimlar/Ma'muriyat moduliga yangi qator yozilmaydi;
+- Tizimlashtirish komponentlari o'zgartirilmaydi;
+- queue provider relatsiyasi biznes, mavjud xodim manba IDsi va ism/kasb
+  snapshotini o'zida saqlaydi;
+- xodimlar domeni keyin relatsion migratsiya qilinganda optional FK alohida
+  blokda ko'rib chiqiladi.
+
+## Rejalashtirilgan modul va papkalar
+
+| Qatlam | Rejalashtirilgan joy | Vazifa |
+|---|---|---|
+| Backend model | `backend/app/queues/model.py` | provider, provider-service, queue entry, history va atomar counter |
+| Backend schema | `backend/app/queues/schemas.py` | public/business request va response turlari |
+| Backend repository | `backend/app/queues/repository.py` | ownership va indeksli so'rovlar |
+| Backend service | `backend/app/queues/service.py` | live/slot, duplicate, status, swap, ahead/wait va notification qoidalari |
+| Backend router | `backend/app/queues/router.py` | typed `/api/v1/queues` endpointlari |
+| Migratsiya | `backend/migrations/versions/0012_queue_domain.py` | generic snapshot/fallbackdan idempotent backfill |
+| Public booking | `frontend/src/queues/QueueBookingV1656.tsx` | sana, provider, slot va navbat yaratish |
+| Mijoz ro'yxati | `frontend/src/queues/MyQueuesV1656.tsx` | `📋 Navbatlar`, ahead/wait, cancel va focus |
+| Biznes oqimi | `frontend/src/queues/BusinessQueueV1656.tsx` yoki mavjud `BusinessMedicalV1656View.tsx` adapteri | typed API bilan yagona navbat |
+| Frontend API | `frontend/src/api/client.ts`, `frontend/src/api/types.ts` | queue client metodlari va typed DTOlar |
+| Testlar | `backend/tests/test_queue_*.py`, `frontend/src/queues/*.test.tsx` | TDD, parity, ownership, concurrency va deep-link |
+
+## Bloklar va PR chegarasi
+
+1. **Q0 — audit:** ushbu hujjat; kod yozilmaydi.
+2. **Q1 — relatsion domen:** model, migratsiya/backfill, repository, service va
+   typed API.
+3. **Q2 — biznes oqimi:** xizmat toggle, provider va biznes navbat ekranlarini
+   typed queue APIga ulash.
+4. **Q3 — ommaviy navbat olish:** sana, provider, bo'sh slot va online create.
+5. **Q4 — mijoz oqimi:** `📋 Navbatlar`, ahead/wait, cancel va notification
+   deep-link.
+6. **Q5 — yakuniy parity:** ikki aktyorli integration, concurrency, to'liq
+   frontend/backend test va audit holatlarini yangilash.
+
+Har blok alohida PR bo'ladi. Keyingi blok faqat oldingi PR CI va Claude Code
+Reviewda jiddiy/o'rtacha kamchiliksiz merge qilingandan, keyin foydalanuvchi
+ruxsat bergandan so'ng boshlanadi.
+
+## Q0 yakuniy hisoboti
+
+`Navbat funksional pariteti: 1/15 migrated, partial: 5, missing: 9.`
+
+`Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`
