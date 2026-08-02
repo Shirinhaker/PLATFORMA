@@ -17,6 +17,7 @@ from app.auth.router import _set_session_cookie
 from app.auth.security import derive_csrf
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
+from app.notifications.repository import NotificationRepository
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
     get_business_profile,
@@ -42,6 +43,7 @@ router = APIRouter(prefix="/api/v1", tags=["profiles"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 _cabinet_records = CabinetRecordRepository()
+_notifications = NotificationRepository()
 
 
 async def profile_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -108,7 +110,38 @@ async def assembled_cabinet_payload(
         account_type=account_type.value,
     )
     result.update(relational)
+    notification_rows = await _notifications.list_rows(
+        session,
+        account_id=account_id,
+        account_type=account_type.value,
+    )
+    if notification_rows is not None:
+        result["notifications"] = notification_rows
     return result
+
+
+def dashboard_with_notification_count(
+    profile,
+    cabinet_payload: dict[str, Any],
+) -> dict[str, Any]:
+    def is_read(row: dict[str, Any]) -> bool:
+        value = row.get("is_read")
+        if isinstance(value, str):
+            return value.strip().casefold() in {"1", "true", "yes", "on"}
+        try:
+            return bool(int(value or 0))
+        except (TypeError, ValueError):
+            return bool(value)
+
+    snapshot = dict(profile.dashboard_snapshot or {})
+    rows = cabinet_payload.get("notifications")
+    if isinstance(rows, list):
+        snapshot["unread"] = sum(
+            not is_read(row)
+            for row in rows
+            if isinstance(row, dict)
+        )
+    return snapshot
 
 
 def business_profile_read(
@@ -127,6 +160,10 @@ def business_profile_read(
     }
     if cabinet_payload is not None:
         updates["cabinet_payload"] = cabinet_payload
+        updates["dashboard_snapshot"] = dashboard_with_notification_count(
+            profile,
+            cabinet_payload,
+        )
     return BusinessProfileRead.model_validate(profile).model_copy(update=updates)
 
 
@@ -138,7 +175,13 @@ async def user_profile_read(session: AsyncSession, profile) -> UserProfileRead:
         fallback=profile.cabinet_payload,
     )
     return UserProfileRead.model_validate(profile).model_copy(
-        update={"cabinet_payload": payload}
+        update={
+            "cabinet_payload": payload,
+            "dashboard_snapshot": dashboard_with_notification_count(
+                profile,
+                payload,
+            ),
+        }
     )
 
 

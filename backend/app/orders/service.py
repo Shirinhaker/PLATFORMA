@@ -11,10 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
 from app.catalog.model import CatalogItem
-from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError
 from app.listings.model import Listing
+from app.notifications.repository import NotificationRepository
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.orders.notifications import (
     append_order_notification,
@@ -51,12 +51,14 @@ class OrderService:
         image_url_provider: ImageUrlProvider,
         *,
         repository: OrderRepository | None = None,
-        notification_repository: CabinetRecordRepository | None = None,
+        notification_repository: NotificationRepository | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._image_url_provider = image_url_provider
         self._repository = repository or OrderRepository()
-        self._notification_repository = notification_repository or CabinetRecordRepository()
+        self._notification_repository = (
+            notification_repository or NotificationRepository()
+        )
 
     async def create(
         self, *, account_id: int, account_type: AccountType, body: OrderCreate

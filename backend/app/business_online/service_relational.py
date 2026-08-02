@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Awaitable, Callable
 from copy import deepcopy
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,7 @@ from app.business_online.service import (
     find_resource_record,
     find_resource_record_index,
     locked_profile,
+    missing_record_id,
     next_record_id,
     normalized_payload,
     operation_forbidden,
@@ -38,6 +40,7 @@ from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
+from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, UserProfile
 
 
@@ -57,12 +60,14 @@ class BusinessOnlineService:
         catalog_sync: CatalogSync = sync_business_catalog,
         listing_sync: ListingSync = sync_business_listings,
         catalog_cache_epoch: CatalogCacheEpoch | None = None,
+        notification_repository: NotificationRepository | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CabinetRecordRepository()
         self._catalog_sync = catalog_sync
         self._listing_sync = listing_sync
         self._catalog_cache_epoch = catalog_cache_epoch
+        self._notifications = notification_repository or NotificationRepository()
 
     async def read_resource(
         self,
@@ -79,6 +84,13 @@ class BusinessOnlineService:
                     "Biznes profil topilmadi.",
                 )
             ensure_resource_direction(profile, resource)
+            if resource == "notifications" and self._notifications.supported(session):
+                rows = await self._notifications.list_rows(
+                    session,
+                    account_id=account_id,
+                    account_type="business",
+                )
+                return rows or []
             if (
                 resource == "dining_places"
                 or resource in MEDICAL_RESOURCES
@@ -199,6 +211,40 @@ class BusinessOnlineService:
             raise operation_forbidden(resource)
 
         async with self._session_factory() as session:
+            if resource == "notifications" and self._notifications.supported(session):
+                profile = await session.get(BusinessProfile, account_id)
+                if profile is None:
+                    raise ApiError(
+                        404,
+                        "business_profile_not_found",
+                        "Biznes profil topilmadi.",
+                    )
+                ensure_resource_direction(profile, resource)
+                rows = await self._notifications.list_rows(
+                    session,
+                    account_id=account_id,
+                    account_type="business",
+                ) or []
+                find_resource_record(rows, record_id, resource)
+                try:
+                    notification_id = int(record_id)
+                except (TypeError, ValueError):
+                    raise ApiError(
+                        404,
+                        "business_online_record_not_found",
+                        "Yozuv topilmadi.",
+                    ) from None
+                await self._notifications.delete(
+                    session,
+                    account_id=account_id,
+                    account_type="business",
+                    notification_id=notification_id,
+                )
+                await session.commit()
+                return [
+                    row for row in rows
+                    if str(row.get("id")) != str(record_id)
+                ]
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
@@ -236,6 +282,62 @@ class BusinessOnlineService:
         clean = sanitize_mapping(data, allow_id=False)
 
         async with self._session_factory() as session:
+            if (
+                resource == "notifications"
+                and action in {"mark_read", "mark_all_read"}
+                and self._notifications.supported(session)
+            ):
+                profile = await session.get(BusinessProfile, account_id)
+                if profile is None:
+                    raise ApiError(
+                        404,
+                        "business_profile_not_found",
+                        "Biznes profil topilmadi.",
+                    )
+                ensure_resource_direction(profile, resource)
+                now = unix_now()
+                if action == "mark_all_read":
+                    await self._notifications.mark_all_read(
+                        session,
+                        account_id=account_id,
+                        account_type="business",
+                        read_at=now,
+                    )
+                    item = None
+                else:
+                    if record_id is None:
+                        raise missing_record_id()
+                    rows = await self._notifications.list_rows(
+                        session,
+                        account_id=account_id,
+                        account_type="business",
+                    ) or []
+                    find_resource_record(rows, record_id, resource)
+                    try:
+                        notification_id = int(record_id)
+                    except (TypeError, ValueError):
+                        raise ApiError(
+                            404,
+                            "business_online_record_not_found",
+                            "Yozuv topilmadi.",
+                        ) from None
+                    await self._notifications.mark_read(
+                        session,
+                        account_id=account_id,
+                        account_type="business",
+                        notification_id=notification_id,
+                        read_at=now,
+                    )
+                    item = None
+                rows = await self._notifications.list_rows(
+                    session,
+                    account_id=account_id,
+                    account_type="business",
+                ) or []
+                if record_id is not None:
+                    item = find_resource_record(rows, record_id, resource)
+                await session.commit()
+                return deepcopy(item), deepcopy(rows)
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
@@ -261,6 +363,18 @@ class BusinessOnlineService:
             }
             if not changed:
                 changed.add(resource)
+            if (
+                "notifications" in changed
+                and self._notifications.supported(session)
+            ):
+                await self._persist_business_notifications(
+                    session,
+                    account_id=account_id,
+                    previous=before["notifications"],
+                    current=resource_rows(payload, "notifications"),
+                )
+                payload["notifications"] = deepcopy(before["notifications"])
+                changed.discard("notifications")
             catalog_changed = await self._persist_resources(
                 session,
                 account_id,
@@ -275,6 +389,40 @@ class BusinessOnlineService:
             await self._invalidate_catalog_cache(catalog_changed)
             return deepcopy(item), display_resource_rows(payload, resource)
 
+    async def _persist_business_notifications(
+        self,
+        session: AsyncSession,
+        *,
+        account_id: int,
+        previous: list[dict[str, Any]],
+        current: list[dict[str, Any]],
+    ) -> None:
+        def identity(row: dict[str, Any]) -> str:
+            event_key = str(row.get("event_key") or "").strip()
+            if event_key:
+                return f"event:{event_key}"
+            return f"id:{row.get('id')}"
+
+        existing = {
+            identity(row)
+            for row in previous
+            if isinstance(row, dict)
+        }
+        for row in current:
+            if not isinstance(row, dict) or identity(row) in existing:
+                continue
+            saved = deepcopy(row)
+            if not str(saved.get("event_key") or "").strip():
+                saved["event_key"] = (
+                    f"business:{account_id}:{uuid4().hex}"
+                )
+            await self._notifications.append(
+                session,
+                account_id=account_id,
+                account_type="business",
+                row=saved,
+            )
+
     async def _persist_user_notifications(
         self,
         session: AsyncSession,
@@ -288,6 +436,25 @@ class BusinessOnlineService:
                 continue
             if user_id:
                 by_user.setdefault(user_id, []).append(event)
+
+        if self._notifications.supported(session):
+            for user_id, user_events in by_user.items():
+                profile = await session.get(UserProfile, user_id)
+                if profile is None:
+                    continue
+                for event in user_events:
+                    notification_payload: dict[str, Any] = {"notifications": []}
+                    append_medical_user_notification(notification_payload, event)
+                    rows = resource_rows(notification_payload, "notifications")
+                    if not rows:
+                        continue
+                    await self._notifications.append(
+                        session,
+                        account_id=user_id,
+                        account_type="user",
+                        row=rows[0],
+                    )
+            return
 
         for user_id, user_events in by_user.items():
             profile = await session.get(UserProfile, user_id)

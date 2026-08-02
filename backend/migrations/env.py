@@ -15,6 +15,7 @@ from app.auth import model as auth_model  # noqa: F401
 from app.catalog import model as catalog_model  # noqa: F401
 from app.legacy_migration import model as legacy_migration_model  # noqa: F401
 from app.listings import model as listings_model  # noqa: F401
+from app.notifications import model as notifications_model  # noqa: F401
 from app.orders import model as orders_model  # noqa: F401
 from app.profiles import model as profiles_model  # noqa: F401
 
