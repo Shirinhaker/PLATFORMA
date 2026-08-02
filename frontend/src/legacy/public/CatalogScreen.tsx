@@ -22,6 +22,7 @@ interface CatalogScreenProps {
   searchPublic?: ApiClient["searchPublic"];
   getCatalogItems?: ApiClient["getCatalogItems"];
   onOpenCategory(categoryId: string): void;
+  onOpenOwner?(publicId: string): void;
 }
 
 const SEARCH_TYPES = [
@@ -52,6 +53,7 @@ export function CatalogScreen({
   searchPublic,
   getCatalogItems,
   onOpenCategory,
+  onOpenOwner,
 }: CatalogScreenProps) {
   const [query, setQuery] = useState(initialQuery);
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>(
@@ -224,7 +226,7 @@ export function CatalogScreen({
           ) : (
             <div className="public-catalog-items-grid">
               {catalogItems.map((item) => (
-                <CatalogItemCard item={item} key={item.public_id} />
+                <CatalogItemCard item={item} key={item.public_id} onOpenOwner={onOpenOwner} />
               ))}
             </div>
           )}

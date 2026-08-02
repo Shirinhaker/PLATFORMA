@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { PublicProfileV1656 } from "./PublicProfileV1656";
@@ -27,9 +28,11 @@ describe("PublicProfileV1656", () => {
         public_id: "p_non",
         name: "Non",
         price_text: "4 000 so‘m",
+        unit: "dona",
         note: "Issiq non",
         image_url: "",
         group_name: "Oziq-ovqat",
+        queue_enabled: false,
       }],
       listings: [{
         public_id: "l_un",
@@ -60,5 +63,88 @@ describe("PublicProfileV1656", () => {
     expect(screen.getByText("E'lonlari")).toBeInTheDocument();
     expect(screen.getByText("Un sotiladi")).toBeInTheDocument();
     expect(getPublicProfile).toHaveBeenCalledWith("business", "b_turon");
+  });
+
+  it("uses the direction action guard and the exact sticky cart copy", async () => {
+    const user = userEvent.setup();
+    const onAddCartItem = vi.fn();
+    const onOpenCart = vi.fn();
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_shifo",
+      name: "Shifo",
+      public_username: "",
+      description: "",
+      direction: "Tibbiy xizmatlar",
+      activity_type: "Klinika",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [{
+        kind: "service",
+        public_id: "s_qabul",
+        name: "Qabul",
+        price_text: "20 000 so'm",
+        unit: "marta",
+        note: "",
+        image_url: "",
+        group_name: "",
+        queue_enabled: true,
+      }, {
+        kind: "product",
+        public_id: "p_dori",
+        name: "Dori",
+        price_text: "10 000 so'm",
+        unit: "dona",
+        note: "",
+        image_url: "",
+        group_name: "",
+        queue_enabled: false,
+      }],
+      listings: [],
+    });
+    render(
+      <PublicProfileV1656
+        authenticated
+        cart={{
+          provider_public_id: "b_shifo",
+          provider_name: "Shifo",
+          items: {
+            p_dori: {
+              public_id: "p_dori",
+              kind: "product",
+              name: "Dori",
+              price_text: "10 000 so'm",
+              unit: "dona",
+              qty: 2,
+            },
+          },
+        }}
+        kind="business"
+        publicId="b_shifo"
+        getPublicProfile={getPublicProfile}
+        onAddCartItem={onAddCartItem}
+        onOpenCart={onOpenCart}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Navbat olish" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✓ Savatda: 2" }))
+      .toBeInTheDocument();
+    expect(document.getElementById("bizCartBarTotal"))
+      .toHaveTextContent("20 000 so'm");
+    await user.click(screen.getByRole("button", { name: "✓ Savatda: 2" }));
+    expect(onAddCartItem).toHaveBeenCalledWith(
+      expect.objectContaining({ public_id: "p_dori" }),
+      { public_id: "b_shifo", name: "Shifo" },
+    );
+    await user.click(screen.getByRole("button", { name: /🛒 Savatcha: 1 ta/ }));
+    expect(onOpenCart).toHaveBeenCalledOnce();
   });
 });

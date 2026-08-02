@@ -12,6 +12,46 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("creates an order through the versioned authenticated API", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 5,
+        account_type: "user",
+        name: "Ali",
+        login: "u_ali",
+        csrf_token: "order-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValueOnce(jsonResponse({ id: 91 }));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const body = {
+      provider_kind: "business" as const,
+      provider_public_id: "b_turon",
+      items: [{ public_id: "p_non", qty: 3 }],
+      listing_public_id: "",
+      title: "Buyurtma: Turon savdo",
+      phone: "+998901234567",
+      order_type: "pickup" as const,
+      address: "",
+      desired_time: "bugun 18:00",
+      delivery_lat: null,
+      delivery_lng: null,
+      note: "",
+    };
+
+    await client.createOrder(body);
+
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "https://api.example/api/v1/orders",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: expect.objectContaining({ "X-CSRF-Token": "order-csrf" }),
+      }),
+    );
+  });
+
   it("uses the versioned API and exactly one auth mechanism", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

@@ -127,6 +127,23 @@ describe("PublicHeader", () => {
     expect(onTaxi).toHaveBeenCalledOnce();
   });
 
+  it("caps the v1656 cart badge at 99+", () => {
+    const actions = {
+      onHome: vi.fn(), onLocation: vi.fn(), onAccount: vi.fn(), onBack: vi.fn(),
+    };
+    render(
+      <PublicHeader
+        authenticated
+        cartCount={120}
+        features={{ listings: false, taxi: false }}
+        isHome
+        onCart={vi.fn()}
+        {...actions}
+      />,
+    );
+    expect(screen.getByText("99+")).toHaveClass("badge");
+  });
+
   it("uses the exact v1656 moon and sun icons for the current theme", () => {
     const { unmount } = renderHeader({ theme: "light" });
     const lightButton = screen.getByRole("button", {

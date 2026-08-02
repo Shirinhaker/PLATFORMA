@@ -18,6 +18,7 @@ def test_unlinked_catalog_card_disables_owner_actions():
     assert payload["can_order"] is False
     assert payload["can_chat"] is False
     assert payload["unit"] == "dona"
+    assert payload["queue_enabled"] is False
     assert "business_account_id" not in payload
     assert "image_object_key" not in payload
     assert "legacy_id" not in payload

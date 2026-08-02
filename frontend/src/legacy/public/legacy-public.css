@@ -1453,6 +1453,12 @@
 .public-profile-v1656 .item-card2 .name { font-weight: 800; }
 .public-profile-v1656 .item-card2 .price { color: var(--primary); font-size: 13px; font-weight: 700; }
 .public-profile-v1656 .item-card2 .note { color: var(--soft); font-size: 12px; line-height: 1.4; }
+.public-profile-v1656 .biz-add-btn { display: block; width: calc(100% - 20px); height: 38px; margin: 11px 10px 0; border: none; border-radius: 11px; color: #fff; background: var(--primary); font: inherit; font-size: 13px; font-weight: 800; line-height: 1; white-space: nowrap; cursor: pointer; }
+.public-profile-v1656 .biz-add-btn.in-cart { background: var(--primary); }
+#bizCartBar { position: sticky; z-index: 600; top: 0; margin: -14px -14px 12px; padding: 8px 14px 10px; border-bottom: 1px solid var(--line); background: var(--bg); }
+#bizCartBarBtn { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; }
+#bizCartBarBtn > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#bizCartBarBtn > span:last-child { flex: 0 0 auto; font-weight: 700; }
 .public-profile-v1656 .specialist-card { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
 .public-profile-v1656 .specialist-card .idesc { margin-top: 5px; color: var(--soft); }
 .public-profile-empty { margin-top: 16px; text-align: center; }

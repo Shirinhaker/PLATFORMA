@@ -163,6 +163,7 @@ async def test_public_business_profile_uses_live_catalog_and_listings():
         assert profile.phone == "+998901234567"
         assert profile.items[0].name == "Non"
         assert profile.items[0].unit == "dona"
+        assert profile.items[0].queue_enabled is False
         assert profile.items[0].group_name == "Oziq-ovqat"
         assert profile.items[0].image_url == "/media/items/non.webp"
         assert profile.listings[0].title == "Un sotiladi"

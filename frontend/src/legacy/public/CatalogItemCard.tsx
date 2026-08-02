@@ -13,6 +13,11 @@ export function CatalogItemCard({
 }: CatalogItemCardProps) {
   const image = item.image_url || "/assets/catalog-placeholder.svg";
   const linkedOwner = item.owner_state === "linked" && item.owner_public_id;
+  const orderLabel = item.direction === "Ta'lim faoliyati"
+    ? "Kursga yozilish"
+    : item.kind === "service" && item.queue_enabled
+      ? "Navbat olish"
+      : "Buyurtma berish";
 
   return (
     <article className="public-catalog-item">
@@ -43,8 +48,12 @@ export function CatalogItemCard({
           </p>
         )}
         <div className="public-catalog-item__actions">
-          <button type="button" disabled={!item.can_order}>
-            Buyurtma berish
+          <button
+            type="button"
+            disabled={!item.can_order}
+            onClick={() => onOpenOwner?.(item.owner_public_id)}
+          >
+            {orderLabel}
           </button>
           <button type="button" disabled={!item.can_chat}>Chat</button>
         </div>
@@ -52,4 +61,3 @@ export function CatalogItemCard({
     </article>
   );
 }
-

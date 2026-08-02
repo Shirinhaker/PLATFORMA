@@ -62,6 +62,7 @@ class PublicCatalogItem(BaseModel):
     image_url: str = Field(default="", max_length=2048)
     can_order: bool
     can_chat: bool
+    queue_enabled: bool = False
 
 
 class PublicCatalogResponse(BaseModel):

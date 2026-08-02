@@ -12,6 +12,12 @@ import { LocationScreen } from "../legacy/public/LocationScreen";
 import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
 import { ListingPageV1656 } from "../listings/ListingPageV1656";
 import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
+import { CartV1656 } from "../orders/CartV1656";
+import {
+  addCartItem,
+  cartLineCount,
+  type CartState,
+} from "../orders/order-store";
 import {
   readHomeLocation,
   type HomeLocation,
@@ -53,11 +59,13 @@ type PublicSearchApi = Pick<
   | "getPublicListing"
   | "toggleListingSave"
 >;
+type OrderApi = Pick<ApiClient, "createOrder">;
 type AppApi = (
   SessionApi
   & Partial<AuthApi>
   & Partial<ProfileApi>
   & Partial<PublicSearchApi>
+  & Partial<OrderApi>
 );
 
 
@@ -114,6 +122,9 @@ export function App({ api }: { api: AppApi }) {
     publicId: string;
     title: string;
   } | null>(null);
+  const [carts, setCarts] = useState<CartState>({});
+  const [cartFilter, setCartFilter] = useState<string | null>(null);
+  const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
   const [theme, setTheme] = useState<"light" | "dark">(() => (
     document.documentElement.dataset.theme === "dark" ? "dark" : "light"
   ));
@@ -182,6 +193,13 @@ export function App({ api }: { api: AppApi }) {
       ? api.getPublicListing.bind(api)
       : undefined
   ), [api]);
+  const createOrder = useMemo(() => (
+    typeof api.createOrder === "function"
+      ? api.createOrder.bind(api)
+      : async () => {
+          throw new Error("Buyurtma xizmati hozircha ulanmagan.");
+        }
+  ), [api]);
   const listingApi = useMemo(() => (
     typeof api.getListingCounts === "function"
     && typeof api.getPublicListings === "function"
@@ -232,6 +250,36 @@ export function App({ api }: { api: AppApi }) {
     };
   }, [api, attempt]);
 
+  useEffect(() => {
+    let active = true;
+    if (session.status === "user" && typeof api.getUserProfile === "function") {
+      api.getUserProfile().then((profile) => {
+        if (!active) return;
+        setOrderCustomer({
+          phone: profile.phone || "",
+          address: [profile.region, profile.district, profile.mahalla]
+            .filter(Boolean)
+            .join(", "),
+        });
+      }).catch(() => undefined);
+    } else if (
+      session.status === "business"
+      && typeof api.getBusinessProfile === "function"
+    ) {
+      api.getBusinessProfile().then((profile) => {
+        if (active) setOrderCustomer({
+          phone: profile.phone || "",
+          address: profile.address || "",
+        });
+      }).catch(() => undefined);
+    } else if (session.status === "guest") {
+      setOrderCustomer({ phone: "", address: "" });
+    }
+    return () => {
+      active = false;
+    };
+  }, [api, session.status]);
+
   const authenticated = (
     session.status === "user" || session.status === "business"
   );
@@ -249,12 +297,14 @@ export function App({ api }: { api: AppApi }) {
     home: undefined,
     listings: "E’lonlar",
     location: "Manzil",
+    cart: "Savat",
   };
   const title = titles[navigation.view];
 
   function openHome() {
     setOpenedProfile(null);
     setOpenedListing(null);
+    setCartFilter(null);
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
 
@@ -364,9 +414,19 @@ export function App({ api }: { api: AppApi }) {
     ) {
       return (
         <PublicProfileV1656
+          authenticated={authenticated}
+          cart={carts[openedProfile.publicId]}
           kind={openedProfile.kind}
           publicId={openedProfile.publicId}
           getPublicProfile={getPublicProfile}
+          onAddCartItem={(item, provider) => {
+            setCarts((current) => addCartItem(current, provider, item));
+          }}
+          onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+          onOpenCart={() => {
+            setCartFilter(openedProfile.publicId);
+            dispatch({ type: "OPEN_CART" });
+          }}
           onOpenListing={(publicId) => {
             setOpenedProfile(null);
             setOpenedListing({ publicId, title: "E’lon" });
@@ -383,6 +443,10 @@ export function App({ api }: { api: AppApi }) {
             location={homeLocation}
             searchPublic={searchPublic}
             getCatalogItems={getCatalogItems}
+            onOpenOwner={(publicId) => {
+              setOpenedProfile({ kind: "business", publicId, title: "Profil" });
+              dispatch({ type: "GO_HOME" });
+            }}
             onOpenCategory={(categoryId) => dispatch({
               type: "OPEN_CATEGORY",
               categoryId,
@@ -395,6 +459,10 @@ export function App({ api }: { api: AppApi }) {
             categoryId={navigation.categoryId ?? ""}
             searchPublic={searchPublic}
             getCatalogItems={getCatalogItems}
+            onOpenOwner={(publicId) => {
+              setOpenedProfile({ kind: "business", publicId, title: "Profil" });
+              dispatch({ type: "GO_HOME" });
+            }}
           />
         );
       case "location":
@@ -421,6 +489,24 @@ export function App({ api }: { api: AppApi }) {
           />
         ) : (
           <main className="screen active" data-screen="listings" />
+        );
+      case "cart":
+        return (
+          <CartV1656
+            authenticated={authenticated}
+            carts={carts}
+            createOrder={createOrder}
+            customer={orderCustomer}
+            filterProviderPublicId={cartFilter}
+            homePoint={homeLocation?.latitude != null && homeLocation.longitude != null
+              ? {
+                  latitude: homeLocation.latitude,
+                  longitude: homeLocation.longitude,
+                }
+              : null}
+            onCartsChange={setCarts}
+            onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+          />
         );
       case "auth":
       case "cabinet":
@@ -458,6 +544,7 @@ export function App({ api }: { api: AppApi }) {
         navigation.view === "home" && homeSearchResultsActive
       )}
       publicFeatures={publicFeatures}
+      cartCount={cartLineCount(carts)}
       theme={theme}
       onHome={openHome}
       onLocation={() => {
@@ -473,6 +560,10 @@ export function App({ api }: { api: AppApi }) {
         });
       }}
       onBack={() => {
+        if (navigation.view === "cart") {
+          dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
+          return;
+        }
         if (openedListing) {
           setOpenedListing(null);
           return;
@@ -487,6 +578,12 @@ export function App({ api }: { api: AppApi }) {
         setOpenedProfile(null);
         setOpenedListing(null);
         dispatch({ type: "OPEN_LISTINGS" });
+      }}
+      onCart={() => {
+        setOpenedProfile(null);
+        setOpenedListing(null);
+        setCartFilter(null);
+        dispatch({ type: "OPEN_CART" });
       }}
       onToggleTheme={toggleTheme}
     >

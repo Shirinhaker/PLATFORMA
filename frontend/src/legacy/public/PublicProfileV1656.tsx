@@ -2,15 +2,46 @@ import { useEffect, useState } from "react";
 
 import type { ApiClient } from "../../api/client";
 import type { PublicProfileDetail, PublicProfileItem } from "../../api/types";
+import {
+  cartReceiptTotal,
+  formatQuantity,
+  moneyText,
+  type CartReceipt,
+} from "../../orders/order-store";
 
 
 interface PublicProfileV1656Props {
   kind: "user" | "business";
   publicId: string;
   getPublicProfile: ApiClient["getPublicProfile"];
+  authenticated?: boolean;
+  cart?: CartReceipt;
+  onAddCartItem?(
+    item: PublicProfileItem,
+    provider: { public_id: string; name: string },
+  ): void;
+  onNeedLogin?(): void;
+  onOpenCart?(): void;
   onTitleChange?(title: string): void;
   onOpenListing?(publicId: string): void;
 }
+
+const QUEUE_DIRECTIONS = new Set([
+  "Transport va logistika",
+  "Xizmat ko'rsatish",
+  "Maishiy xizmatlar",
+  "Qurilish",
+  "Tibbiy xizmatlar",
+  "Ko'chmas mulk",
+  "Axborot texnologiyalari",
+  "Konsalting va professional",
+  "Madaniyat, sport, ko'ngilochar",
+  "Turizm va mehmonxona",
+  "Reklama va marketing",
+  "Poligrafiya va nashriyot",
+  "Moliyaviy faoliyat",
+  "Import-eksport",
+]);
 
 
 function cropStyle(profile: PublicProfileDetail) {
@@ -40,6 +71,11 @@ export function PublicProfileV1656({
   kind,
   publicId,
   getPublicProfile,
+  authenticated = false,
+  cart,
+  onAddCartItem,
+  onNeedLogin,
+  onOpenCart,
   onTitleChange,
   onOpenListing,
 }: PublicProfileV1656Props) {
@@ -91,12 +127,58 @@ export function PublicProfileV1656({
     .join(" · ");
   const groups = itemGroups(profile.items);
   const business = profile.kind === "business";
+  const providerPublicId = profile.public_id;
+  const providerName = profile.name;
+  const profileDirection = profile.direction;
+  const education = profileDirection === "Ta'lim faoliyati";
+  const cartLines = Object.keys(cart?.items ?? {}).length;
+  const cartTotal = cart ? cartReceiptTotal(cart) : 0;
+
+  function itemAction(item: PublicProfileItem) {
+    if (education) {
+      return <button className="biz-add-btn" type="button">Kursga yozilish</button>;
+    }
+    if (
+      QUEUE_DIRECTIONS.has(profileDirection)
+      && item.kind === "service"
+      && item.queue_enabled
+    ) {
+      return <button className="biz-add-btn" type="button">Navbat olish</button>;
+    }
+    const quantity = cart?.items[item.public_id]?.qty ?? 0;
+    return (
+      <div className="biz-item-ctrl">
+        <button
+          className={`biz-add-btn${quantity > 0 ? " in-cart" : ""}`}
+          type="button"
+          onClick={() => {
+            if (!authenticated) {
+              onNeedLogin?.();
+              return;
+            }
+            onAddCartItem?.(item, {
+              public_id: providerPublicId,
+              name: providerName,
+            });
+          }}
+        >{quantity > 0 ? `✓ Savatda: ${formatQuantity(quantity)}` : "+ Savatga"}</button>
+      </div>
+    );
+  }
 
   return (
     <main
       className="screen active public-profile-v1656"
       data-screen={business ? "business" : "user-page"}
     >
+      {business && cartLines > 0 ? (
+        <div id="bizCartBar">
+          <button className="btn btn-amber btn-block" id="bizCartBarBtn" type="button" onClick={onOpenCart}>
+            <span>🛒 Savatcha: <b id="bizCartBarCount">{cartLines}</b> ta{cartTotal > 0 ? <> · <b id="bizCartBarTotal">{moneyText(cartTotal)}</b></> : null}</span>
+            <span>Ko'rish →</span>
+          </button>
+        </div>
+      ) : null}
       <section className="public-profile-hero koprik-profile-surface">
         <div className={`public-profile-avatar${profile.image_url ? " has-photo" : ""}`}>
           <span>{initial}</span>
@@ -135,7 +217,7 @@ export function PublicProfileV1656({
       {business && profile.items.length ? (
         <section className="public-profile-section">
           <div className="sec-head">
-            <h2>Mahsulot va xizmatlar</h2>
+            <h2>{education ? "Kurslar va xizmatlar" : "Mahsulot va xizmatlar"}</h2>
             <span className="link">{profile.items.length} ta</span>
           </div>
           {groups.map(([groupName, items]) => (
@@ -157,6 +239,7 @@ export function PublicProfileV1656({
                     <div className="name">{item.name}</div>
                     <div className="price">{item.price_text || "Narx kelishiladi"}</div>
                     {item.note ? <div className="note">{item.note}</div> : null}
+                    {itemAction(item)}
                   </article>
                 ))}
               </div>
