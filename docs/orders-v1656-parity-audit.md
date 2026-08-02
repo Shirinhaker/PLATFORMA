@@ -7,14 +7,14 @@ Haqiqat manbai: `static/index.html` (`BUILD v1656`), monolit API uchun
 
 ## Audit natijasi
 
-Buyurtma berish tizimi React va modulli backendga to'liq ko'chirilmagan.
-Hozirgi kabinetda ayrim kartalar, tablar va mahalliy holat amallari bor, lekin
-ular mijoz yaratgan bitta jonli buyurtmani mijoz va biznes tomonda birgalikda
-boshqaradigan order domeniga ulanmagan.
+Buyurtma berish tizimining Onlaynlashtirish chegarasidagi barcha 14 funksional
+birligi React va modulli backenddagi bitta jonli order domeniga ulandi.
+Mijoz va biznes kabineti endi `cabinet_payload` snapshotini o'zgartirmaydi;
+ular mos ravishda `/api/v1/orders/my` va `/api/v1/orders/inbox` orqali aynan
+bitta order yozuvini boshqaradi.
 
-O2 savat va checkout'dan keyingi funksional birliklar holati:
-**4 migrated, 10 partial, 0 missing**. Mijoz va biznes kabinetidagi keyingi
-order ekranlari O3–O5 bloklarda alohida ko'chiriladi.
+O2 savat/checkout va birlashtirilgan O3–O5 yakunidan keyingi holat:
+**14 migrated, 0 partial, 0 missing**.
 
 Holatlar:
 
@@ -53,16 +53,16 @@ alohida tashqi bog'liqlik sifatida qayd etilgan.
 | 2 | Header savat tugmasi, sticky savat va `cart` ekrani | migrated | `frontend/src/app/App.tsx`; `frontend/src/app/AppShell.tsx`; `frontend/src/legacy/public/PublicHeader.tsx`; `frontend/src/orders/CartV1656.tsx`; `frontend/src/orders/order-store.ts` | `static/index.html:1450–1453, 1517, 2954–2956, 5822–5968, 7839–7845, 8861–8884` | `frontend/src/orders/OrdersV1656Parity.test.tsx`; `frontend/src/legacy/public/PublicHeader.test.tsx`; `frontend/src/legacy/public/public-navigation.test.ts` |
 | 3 | `Buyurtma berish` sheeti va yetkazish xaritasi | migrated | `frontend/src/orders/OrderCheckoutV1656.tsx`; `frontend/src/orders/OrdersV1656.css` | `static/index.html:6108–6233` | `frontend/src/orders/OrdersV1656Parity.test.tsx` |
 | 4 | Buyurtmani yuborish va savatni tozalash | migrated | `frontend/src/api/client.ts`; `frontend/src/orders/CartV1656.tsx`; `backend/app/orders/` | `static/index.html:6234–6263`; `api.py:9916–10013` | `frontend/src/orders/OrdersV1656Parity.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py` |
-| 5 | Mijoz mahsulot buyurtmalari — `ucab-orders` | partial | `frontend/src/profiles/UserProfile.tsx` umumiy `CabinetDataView` orqali snapshot qatorlarini chiqaradi | `static/index.html:2371, 2714–2715, 6296–6995, 7017–7035` | Maxsus customer-order parity testi yo'q |
-| 6 | Mijoz xizmat buyurtmalari — `ucab-service-orders` | partial | `frontend/src/profiles/UserProfile.tsx` faqat umumiy snapshotni `order_type` bo'yicha filtrlaydi | `static/index.html:2372, 2717–2718, 6296–7035` | Maxsus customer-service-order parity testi yo'q |
-| 7 | Biznes mahsulot buyurtmalari — `cab-orders` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:1771, 2222–2230, 6296–6995, 7036–7051` | `BusinessExistingOnlineV1656Parity.test.tsx`; `BusinessOnlineClaudeReviewParity.test.tsx`; testlar ko'rinish va snapshot amalini tekshiradi |
-| 8 | Biznes xizmat buyurtmalari — `cab-service-orders` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:1772, 2231–2233, 6296–7051` | `BusinessExistingOnlineV1656Parity.test.tsx`; `BusinessOnlineClaudeReviewParity.test.tsx`; jonli ikki tomonlama oqim testi yo'q |
-| 9 | Buyurtma tafsiloti, chek va yetkazish metkasi | partial | Backend detail uchun order/item/provider/payment maydonlarini beradi; karta detail ochmaydi va maxsus View O3/O4da | `static/index.html:6301–6499` | `backend/tests/test_orders_live_v1656.py`; frontend testi yo'q |
-| 10 | Onlayn to'lov, QR/karta, chek va tasdiqlash | partial | Backend submit/review va R2 `order_chat_image` grantini beradi; maxsus React komponent O3/O4da | `static/index.html:6500–6586`; `api.py:10378–10483` | `backend/tests/test_orders_live_v1656.py`; `backend/tests/test_media_storage.py`; frontend testi yo'q |
-| 11 | To'lov muammosi va mijoz yechimi | partial | Backend jonli problem/solution APIga ega; React biznes modali hali snapshot yozuvini o'zgartiradi, mijoz yechim UI O3da | `static/index.html:6275–6278, 6331–6350, 7100–7122`; `api.py:10318–10375` | `backend/tests/test_orders_live_v1656.py`; frontend testi faqat biznes modalini tekshiradi |
-| 12 | Buyurtmaga alohida chat | partial | `backend/app/orders/`da orderga bog'langan text/image/reply/edit/soft-delete API bor; React chat View O5da | `static/index.html:6587–6960`; `api.py:10550–10821` | `backend/tests/test_orders_live_v1656.py`; frontend testi yo'q |
-| 13 | Order badge, ko'rildi holati va bildirishnomadan detailga o'tish | partial | Backend seen/unread va barqaror outbox hodisalarini beradi; notification consumer, badge va detail deep-link O5da | `static/index.html:6279–6295, 6964–6995, 7531–7704`; `api.py:9618–9808, 10055–10081` | Backend event testi bor; uchdan-uchga frontend testi O5da |
-| 14 | Tayyorlash, kuryerga/mijozga topshirish va mijoz qabul tasdig'i | partial | Backend status, pickup handoff, received va delivery statuslarini saqlaydi; React oqimi va delivery adapter O4/O5da | `static/index.html:6328–6376, 7093–7132`; `api.py:10084–10247, 10486–10547` | `backend/tests/test_orders_live_v1656.py`; delivery integratsiya testi O5da |
+| 5 | Mijoz mahsulot buyurtmalari — `ucab-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/UserProfile.tsx`; `frontend/src/api/client.ts` | `static/index.html:2371, 2714–2715, 6296–6995, 7017–7035` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/api/client.test.ts` |
+| 6 | Mijoz xizmat buyurtmalari — `ucab-service-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/UserProfile.tsx` | `static/index.html:2372, 2717–2718, 6296–7035` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx` |
+| 7 | Biznes mahsulot buyurtmalari — `cab-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessProfileV3.tsx` | `static/index.html:1771, 2222–2230, 6296–6995, 7036–7051` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `backend/tests/test_orders_live_v1656.py` |
+| 8 | Biznes xizmat buyurtmalari — `cab-service-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessProfileV3.tsx` | `static/index.html:1772, 2231–2233, 6296–7051` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `backend/tests/test_orders_live_v1656.py` |
+| 9 | Buyurtma tafsiloti, chek va yetkazish metkasi | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/orders/OrdersV1656.css` | `static/index.html:6301–6499` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `backend/tests/test_orders_live_v1656.py` |
+| 10 | Onlayn to'lov, QR/karta, chek va tasdiqlash | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/api/client.ts`; `backend/app/orders/`; `backend/app/media/` | `static/index.html:6500–6586`; `api.py:10378–10483` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py`; `backend/tests/test_media_storage.py` |
+| 11 | To'lov muammosi va mijoz yechimi | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `backend/app/orders/` | `static/index.html:6275–6278, 6331–6350, 7100–7122`; `api.py:10318–10375` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `backend/tests/test_orders_live_v1656.py` |
+| 12 | Buyurtmaga alohida chat | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/api/client.ts`; `backend/app/orders/`; `backend/app/media/` | `static/index.html:6587–6960`; `api.py:10550–10821` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py`; `backend/tests/test_media_authorization.py` |
+| 13 | Order badge, ko'rildi holati va bildirishnomadan detailga o'tish | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/UserProfile.tsx`; `frontend/src/profiles/BusinessProfileV3.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx`; `frontend/src/profiles/CabinetDataView.tsx`; `backend/app/orders/notifications.py` | `static/index.html:6279–6295, 6964–6995, 7531–7704`; `api.py:9618–9808, 10055–10081` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/orders/OrdersCabinetWiringV1656.test.tsx`; `backend/tests/test_orders_live_v1656.py` |
+| 14 | Tayyorlash, kuryerga/mijozga topshirish va mijoz qabul tasdig'i | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/api/client.ts`; `backend/app/orders/` | `static/index.html:6328–6376, 7093–7132`; `api.py:10084–10247, 10486–10547` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `backend/tests/test_orders_live_v1656.py` (pickup va delivery zanjirlari) |
 
 ## v1656 ma'lumot oqimi
 
@@ -181,8 +181,8 @@ Qat'iy server qoidalari:
 | `PUT /orders/{id}/problem/solution` | Mijoz yechim tanlaydi | migrated (O1 backend) |
 | `POST /orders/{id}/payment/submit` | Mijoz chekni tekshirishga beradi | migrated (O1 backend) |
 | `POST /orders/{id}/payment` | Biznes to'lovni tasdiqlaydi/rad etadi | migrated; qarz amali tashqi bog'liqlik |
-| `POST /orders/{id}/handoff` | Biznes qarshi tomonga topshiradi | pickup migrated; delivery adapter O5da |
-| `POST /orders/{id}/received` | Mijoz qabul qilib orderni yakunlaydi | migrated; delivery tasdig'i adapteri O5da |
+| `POST /orders/{id}/handoff` | Biznes qarshi tomonga topshiradi | order tomoni migrated; kuryer status manbai tashqi dependency |
+| `POST /orders/{id}/received` | Mijoz qabul qilib orderni yakunlaydi | migrated; delivery status manbai tashqi dependency |
 | `GET/POST/PUT/DELETE /orders/{id}/chat...` | Order chat, rasm, reply, edit, soft delete | migrated (O1 backend) |
 
 O1da `backend/app/orders/` paketi va `orders`, `order_items`,
@@ -218,6 +218,12 @@ Order chat umumiy suhbatlardan alohida. U matn, rasm, rasm preview/viewer,
 reply, edit, copy va soft delete'ni qo'llaydi. Mijoz yuborgan so'nggi
 o'chirilmagan rasm to'lov cheki hisoblanadi.
 
+Order kartasi `chat_count`, so'nggi o'chirilmagan `last_chat` va
+`last_chat_at`ni bitta guruhlangan backend so'rovida oladi. Yangi order,
+status, to'lov, tayyorlash va topshirish hodisalari mavjud relatsion
+`notifications` resursiga yoziladi; detail ochilganda shu orderga tegishli
+bildirishnomalar o'qilgan deb belgilanadi.
+
 ## Tashqi bog'liqliklar va qat'iy chegara
 
 Monolitda order oqimi quyidagi boshqa tizimlarga ham ta'sir qiladi:
@@ -234,9 +240,12 @@ ularning consumerlari o'z Tizimlashtirish migratsiyasida ulanadi. Shu yon
 ta'sirlar ulanmaguncha hisobotda ular ochiq tashqi bog'liqlik deb ko'rsatiladi,
 `to'liq paritet` deb yashirilmaydi.
 
-Delivery zanjiri ham alohida domen bog'liqligidir. O5 blokida mavjud delivery
-domeniga xavfsiz adapter yoki aniq ochiq dependency qo'shiladi; taxi modulini
-o'zgartirish uchun alohida ruxsat talab qilinadi.
+Delivery zanjirining order tomoni ko'chirildi: tashqi kuryer manbai orderni
+`handoff_waiting_seller`ga o'tkazgach, sotuvchi tasdig'i uni `in_delivery`ga,
+kuryer `delivered_waiting_customer`ga o'tkazgach esa mijoz tasdig'i `done`ga
+o'tkazadi. Kuryerni topish va uning oraliq statuslarini yuborish taxi/delivery
+domenining ochiq tashqi bog'liqligi; qat'iy chegaraga ko'ra taxi moduliga bu
+PRda yozilmadi.
 
 ## Migratsiya modul va papka xaritasi
 
@@ -249,6 +258,7 @@ backend/app/orders/
 ├── schemas.py        # request/response kontraktlari
 ├── repository.py     # ownership va atomar DB amallari
 ├── service.py        # v1656 status mashinasi va biznes qoidalari
+├── notifications.py  # order hodisalarini mavjud notification resursiga yozish
 ├── status.py         # ruxsat etilgan transition jadvali
 └── router.py         # /api/v1/orders endpointlari
 
@@ -267,16 +277,11 @@ Frontend:
 frontend/src/orders/
 ├── CartV1656.tsx
 ├── OrderCheckoutV1656.tsx
-├── OrderLocationMapV1656.tsx
-├── CustomerOrdersV1656.tsx
-├── BusinessOrdersV1656.tsx
-├── OrderDetailV1656.tsx
-├── OrderPaymentV1656.tsx
-├── OrderProblemV1656.tsx
-├── OrderChatV1656.tsx
+├── OrdersCabinetV1656.tsx # ikki aktyorli list/detail/payment/chat/status oqimi
 ├── order-store.ts
 ├── OrdersV1656.css
-└── OrdersV1656Parity.test.tsx
+├── OrdersV1656Parity.test.tsx
+└── OrdersCabinetV1656Parity.test.tsx
 ```
 
 Ulanadigan mavjud fayllar:
@@ -307,12 +312,13 @@ Media:
    map, cancel, payment, receipt, problem solution, received.
 5. **O4 — Biznes buyurtmalari:** `cab-orders`, `cab-service-orders`, detail,
    accept/reject, payment review, problem, ready va handoff.
-6. **O5 — Order chat, notification, delivery adapter va yakuniy paritet:**
+6. **O5 — Order chat, notification, delivery order-adapteri va yakuniy paritet:**
    reply/edit/delete/image, unread/badges, notification deep-link va barcha
    ikki-aktyor integratsiya testlari.
 
-Har blok alohida branch/PRda TDD bilan bajariladi. Keyingi blokka avvalgi PR
-merge bo'lib, Claude reviewda jiddiy yoki o'rtacha kamchilik qolmagach o'tiladi.
+Foydalanuvchining 2026-08-02dagi ko'rsatmasi bilan O2.1 xarita tuzatishi va
+qolgan O3–O5 birliklari bitta yakuniy branch/PRga birlashtirildi. TDD va Claude
+review talablari o'zgarmadi.
 
 ## Majburiy test matritsasi
 
@@ -361,3 +367,24 @@ cab-service-orders (partial).`
 
 `Onlaynlashtirish biznes ekranlari: 19/21 migrated, qolgani: cab-orders,
 cab-service-orders (partial).`
+
+### O2.1 — checkout xaritasi hudud markazi
+
+Monolitdagi `initOrderMap()` avval `HOME_POINT`ni ishlatadi
+(`static/index.html:6165–6187`). React checkout ham shu tartibda ishlaydi:
+saqlangan aniq koordinata bo'lsa o'sha nuqta, aks holda tanlangan
+viloyat+tuman markazi olinadi. Faqat hudud ham topilmasa Toshkent zaxira
+markazi ishlatiladi. Bu koordinatasiz eski `koprik_home_location_v1`
+yozuvlari checkoutni noto'g'ri Toshkentdan ochishining oldini oladi.
+
+## Birlashtirilgan O3–O5 yakuniy holati
+
+`Buyurtma berish: 14/14 funksional birlik migrated, qolgani: yo'q.`
+
+`Onlaynlashtirish: 21/21 ekran migrated, qolgani: yo'q.`
+
+Deliveryning order tomoni — statuslarni ko'rsatish, `handoff_waiting_seller`,
+`delivered_waiting_customer`, handoff va received tasdiqlari — ko'chirildi.
+Kuryer topish va kuryer statuslarini o'zgartirish tashqi taxi/delivery domeni
+bo'lib qoladi; qat'iy chegaraga ko'ra bu PR taxi moduliga yozmaydi. Order
+domeni shu tashqi consumer uchun barqaror hodisalarni saqlaydi.

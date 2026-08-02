@@ -276,6 +276,34 @@ describe("v1656 Savat screen parity", () => {
     expect(screen.getByText("🏪 Muhr")).toBeInTheDocument();
   });
 
+  it("starts the delivery map from the selected district when coordinates are absent", async () => {
+    const user = userEvent.setup();
+    render(
+      <CartV1656
+        authenticated
+        carts={oneStoreCart()}
+        createOrder={vi.fn()}
+        customer={{ phone: "+998901234567", address: "Qumqo‘rg‘on" }}
+        homeLocation={{
+          region: "Surxondaryo viloyati",
+          district: "Qumqo‘rg‘on tumani",
+          neighborhood: "",
+          latitude: null,
+          longitude: null,
+        }}
+        onCartsChange={vi.fn()}
+        onNeedLogin={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Buyurtma qilish" }));
+
+    await waitFor(() => expect(leaflet.map.setView).toHaveBeenCalledWith(
+      [37.834, 67.585],
+      15,
+    ));
+  });
+
   it("switches pickup and booking fields exactly like v1656", async () => {
     const user = userEvent.setup();
     render(<StatefulCart />);

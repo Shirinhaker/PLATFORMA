@@ -105,6 +105,14 @@ class OrderItemRead(BaseModel):
     kind: str
 
 
+class OrderMessageReplyRead(BaseModel):
+    id: int
+    text: str
+    media_type: str
+    is_deleted: bool
+    sender_name: str
+
+
 class OrderMessageRead(BaseModel):
     id: int
     text: str
@@ -112,6 +120,7 @@ class OrderMessageRead(BaseModel):
     media_url: str
     file_name: str
     reply_to_id: int | None
+    reply: OrderMessageReplyRead | None = None
     edited_at: datetime | None
     deleted_at: datetime | None
     is_deleted: bool
@@ -156,6 +165,9 @@ class OrderRead(BaseModel):
     seller_completed_at: datetime | None
     customer_received_at: datetime | None
     last_event: str
+    chat_count: int = 0
+    last_chat: str = ""
+    last_chat_at: datetime | None = None
     pay_card: str
     pay_holder: str
     pay_qr_url: str

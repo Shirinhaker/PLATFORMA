@@ -51,6 +51,21 @@ export type BusinessProfileApiV3 = Pick<
   | "getMyListings"
   | "createListing"
   | "deleteListing"
+  | "getMyOrders"
+  | "getOrderInbox"
+  | "markOrderSeen"
+  | "changeOrderStatus"
+  | "submitOrderPayment"
+  | "decideOrderPayment"
+  | "openOrderProblem"
+  | "chooseOrderProblemSolution"
+  | "handoffOrder"
+  | "receiveOrder"
+  | "getOrderChat"
+  | "sendOrderChatMessage"
+  | "sendOrderChatImage"
+  | "editOrderChatMessage"
+  | "deleteOrderChatMessage"
 >>;
 
 type Props = {
@@ -123,6 +138,8 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   const [screen, setScreen] = useState<Screen>("cabinet");
   const [onlineMenu, setOnlineMenu] = useState<Menu | null>(null);
   const [dataView, setDataView] = useState<DataView>({ title: "", rows: [] });
+  const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
+  const [orderTarget, setOrderTarget] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +158,19 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return () => {
       mounted = false;
     };
+  }, [api]);
+
+  useEffect(() => {
+    if (typeof api.getOrderInbox !== "function") return;
+    let active = true;
+    api.getOrderInbox().then((rows) => {
+      if (!active) return;
+      setOrderUnread({
+        product: rows.filter((row) => !isService(row) && row.is_unread).length,
+        service: rows.filter((row) => isService(row) && row.is_unread).length,
+      });
+    }).catch(() => undefined);
+    return () => { active = false; };
   }, [api]);
 
   const metrics = useMemo(
@@ -186,6 +216,20 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
         profile={profile}
         view={onlineMenu.view}
         title={onlineMenu.label}
+        initialOrderId={orderTarget}
+        onOpenOrder={async (orderId) => {
+          if (typeof api.getOrderInbox !== "function") return;
+          const rows = await api.getOrderInbox();
+          const target = rows.find((order) => order.id === orderId);
+          if (!target) return;
+          const targetView = isService(target) ? "service-orders" : "orders";
+          const menu = visibleMenus(profile, ONLINE_MENUS).find(
+            (candidate) => candidate.view === targetView,
+          );
+          if (!menu) return;
+          setOrderTarget(orderId);
+          setOnlineMenu(menu);
+        }}
         onBack={async () => {
           try {
             setProfile(await api.getBusinessProfile());
@@ -303,7 +347,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
         </div>
         <div className="business-cabinet__menu-grid">
           {menus.map((menu) => {
-            const count = menu.payload ? menuRows(loadedProfile, menu).length : 0;
+            const liveUnread = menu.view === "orders"
+              ? orderUnread.product
+              : menu.view === "service-orders" ? orderUnread.service : 0;
+            const count = liveUnread || (menu.payload ? menuRows(loadedProfile, menu).length : 0);
             return (
               <button
                 type="button"

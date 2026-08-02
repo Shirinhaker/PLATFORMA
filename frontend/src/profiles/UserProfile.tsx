@@ -12,6 +12,10 @@ import {
   type OwnerListingsApi,
 } from "../listings/OwnerListingsV1656";
 import { SavedListingsV1656 } from "../listings/SavedListingsV1656";
+import {
+  OrdersCabinetV1656,
+  type OrdersApi,
+} from "../orders/OrdersCabinetV1656";
 
 
 export type UserProfileApi = Pick<
@@ -30,6 +34,21 @@ export type UserProfileApi = Pick<
   | "createListing"
   | "deleteListing"
   | "getSavedListings"
+  | "getMyOrders"
+  | "getOrderInbox"
+  | "markOrderSeen"
+  | "changeOrderStatus"
+  | "submitOrderPayment"
+  | "decideOrderPayment"
+  | "openOrderProblem"
+  | "chooseOrderProblemSolution"
+  | "handoffOrder"
+  | "receiveOrder"
+  | "getOrderChat"
+  | "sendOrderChatMessage"
+  | "sendOrderChatImage"
+  | "editOrderChatMessage"
+  | "deleteOrderChatMessage"
 >>;
 
 type Props = {
@@ -168,8 +187,9 @@ function activityDate(value: number) {
 function isServiceOrder(row: unknown) {
   if (!row || typeof row !== "object") return false;
   const value = row as Record<string, unknown>;
+  if (String(value.order_category ?? "") === "service") return true;
   return ["booking", "service", "queue", "medical"].includes(
-    String(value.order_type ?? value.kind ?? value.order_category ?? ""),
+    String(value.order_type ?? value.kind ?? ""),
   );
 }
 
@@ -190,6 +210,17 @@ function supportsOwnerListings(api: UserProfileApi): api is UserProfileApi & Own
     .every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
+function supportsOrders(api: UserProfileApi): api is UserProfileApi & OrdersApi {
+  return [
+    "getMyOrders", "getOrderInbox", "markOrderSeen", "changeOrderStatus",
+    "submitOrderPayment", "decideOrderPayment", "openOrderProblem",
+    "chooseOrderProblemSolution", "handoffOrder", "receiveOrder",
+    "getOrderChat", "sendOrderChatMessage", "sendOrderChatImage",
+    "editOrderChatMessage", "deleteOrderChatMessage", "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
 
 export function UserProfile({
   api,
@@ -205,6 +236,8 @@ export function UserProfile({
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [specialist, setSpecialist] = useState<Record<string, unknown>>({});
+  const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
+  const [orderTarget, setOrderTarget] = useState<number | null>(null);
 
   function applyLoaded(value: UserProfileData) {
     setProfile(value);
@@ -228,6 +261,19 @@ export function UserProfile({
     return () => {
       active = false;
     };
+  }, [api]);
+
+  useEffect(() => {
+    if (typeof api.getMyOrders !== "function") return;
+    let active = true;
+    api.getMyOrders().then((rows) => {
+      if (!active) return;
+      setOrderUnread({
+        product: rows.filter((row) => !isServiceOrder(row) && row.is_unread).length,
+        service: rows.filter((row) => isServiceOrder(row) && row.is_unread).length,
+      });
+    }).catch(() => undefined);
+    return () => { active = false; };
   }, [api]);
 
   const payload = profile?.cabinet_payload ?? {};
@@ -397,12 +443,41 @@ export function UserProfile({
     );
   }
 
+  if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
+    return (
+      <OrdersCabinetV1656
+        key={view}
+        api={api}
+        side="customer"
+        category={view === "service-orders" ? "service" : "product"}
+        onBack={() => setView("dashboard")}
+        initialOrderId={orderTarget}
+        onUnreadChange={(count) => setOrderUnread((current) => ({
+          ...current,
+          [view === "service-orders" ? "service" : "product"]: count,
+        }))}
+      />
+    );
+  }
+
   if (selectedSection?.payload) {
     return (
       <CabinetDataView
         title={selectedSection.label}
         rows={selectedRows}
         onBack={() => setView("dashboard")}
+        onOpenRow={view === "notifications" && typeof api.getMyOrders === "function"
+          ? (row) => {
+            const id = Number(row.order_id ?? 0);
+            if (!id) return;
+            void api.getMyOrders!().then((orders) => {
+              const target = orders.find((order) => order.id === id);
+              if (!target) return;
+              setOrderTarget(id);
+              setView(isServiceOrder(target) ? "service-orders" : "orders");
+            }).catch(() => undefined);
+          }
+          : undefined}
       />
     );
   }
@@ -576,6 +651,12 @@ export function UserProfile({
                 >
                   <span aria-hidden="true">{section.icon}</span>
                   <strong>{section.label}</strong>
+                  {section.view === "orders" && orderUnread.product > 0 ? (
+                    <em className="order-badge">{orderUnread.product > 99 ? "99+" : orderUnread.product}</em>
+                  ) : null}
+                  {section.view === "service-orders" && orderUnread.service > 0 ? (
+                    <em className="order-badge">{orderUnread.service > 99 ? "99+" : orderUnread.service}</em>
+                  ) : null}
                 </button>
               ))}
             </div>
