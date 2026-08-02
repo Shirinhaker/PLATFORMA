@@ -86,35 +86,34 @@ xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
 |---:|---|---|---|---|---|
 | 1 | 14 yo'nalish guardi va dinamik atamalar | migrated | `frontend/src/profiles/business-profile-config.ts:43–50, 388–389`; `backend/app/business_online/service.py` direction guardi | `static/index.html:3680–3681, 12076–12078`; `api.py:5506–5547` | Mavjud matritsa testlari saqlanadi |
 | 2 | Xizmatda navbatni yoqish/o'chirish | partial | `backend/app/catalog/model.py` va public sxemalarda `queue_enabled` bor; ammo `frontend/src/profiles/BusinessItemsV1656Forms.tsx:120–264`da `Navbat tizimi` maydoni yo'q | `static/index.html:2135, 12906, 12947, 13008`; `api.py:2391–2434` | React form maydoni, yo'nalish/kind guardi va save parity testi |
-| 3 | Xizmat ko'rsatuvchilar ro'yxati va formasi | partial | `BusinessMedicalProvidersV1656View`; create/update generic `business-online/medical_doctors` resursiga yozadi | `static/index.html:2107–2108, 11637–11641`; `api.py:5557–5599` | Alohida provider va provider-service relatsiyalari, typed API, legacy backfill |
-| 4 | Biznesning yagona navbat boshqaruvi | partial | `BusinessMedicalQueueV1656View` oflayn qo'shish, status va swapni ko'rsatadi; `medical_queue` generic cabinet snapshoti bilan ishlaydi | `static/index.html:2109, 11642–11669`; `api.py:5743–5778` | Typed biznes API, relatsion tranzaksiya va haqiqiy onlayn yozuvlar bilan bir ro'yxat |
+| 3 | Xizmat ko'rsatuvchilar ro'yxati va formasi | partial | Q1da `queue_providers`/`queue_provider_services` va typed business provider API yaratildi; `BusinessMedicalProvidersV1656View` hali generic `business-online/medical_doctors`ga ulangan | `static/index.html:2107–2108, 11637–11641`; `api.py:5557–5599` | Q2da mavjud React formani typed APIga ulash va parity testi |
+| 4 | Biznesning yagona navbat boshqaruvi | partial | Q1da typed daily list, offline create, status va swap API yaratildi; `BusinessMedicalQueueV1656View` hali generic `medical_queue` snapshotini ishlatadi | `static/index.html:2109, 11642–11669`; `api.py:5743–5778` | Q2da biznes ekranini relatsion APIga ulash |
 | 5 | Ommaviy profil/katalogdagi `Navbat olish` | partial | `PublicProfileV1656.tsx:137–147` tugmani handlersiz chiqaradi; `CatalogItemCard.tsx:16–20, 50–57` tugma matnini chiqarib profilni ochadi | `static/index.html:5112–5115, 5700–5708, 11711` | Login guardi va booking oqimini ochadigan handler; provider/count payloadi |
-| 6 | Sana va xizmat ko'rsatuvchini tanlash | missing | API client va `frontend/src/queues` komponenti yo'q | `static/index.html:11682–11694`; `api.py:5600–5605` | Options endpoint, schema, client va modal parity testi |
-| 7 | Slot rejimida bo'sh vaqtlarni olish | missing | Queue slots endpointi va frontend tanlovi yo'q | `static/index.html:11695–11704`; `api.py:5607–5700` | Ish kuni/vaqti, o'tgan vaqt va band slot filtrli typed endpoint |
-| 8 | Onlayn navbat yaratish | missing | Modular backendda public queue create endpointi yo'q | `static/index.html:11705–11710`; `api.py:5624–5676, 5702–5710` | Ownership, takroriy yozilish, live raqam/slot unique va idempotent notification |
-| 9 | Mijozning `📋 Navbatlar` ro'yxati | missing | `UserProfile.tsx:446–460` faqat order domenini ochadi; `MyQueues` View/API yo'q | `static/index.html:6996–7025`; `api.py:5712–5731` | Xizmat buyurtmalari ichidagi alohida navbat qismi va typed `/mine` endpointi |
-| 10 | Oldindagi odam va kutish vaqti | missing | Yangi frontend/backendda `ahead_count` va `wait_minutes` navbat oqimi yo'q | `static/index.html:7007–7010`; `api.py:5716–5730` | Faol statuslar bo'yicha indeksli count va `ahead_count × avg_minutes` |
-| 11 | Mijoz navbatini bekor qilish | missing | Queue ownership/cancel endpointi va tasdiqlash oqimi yo'q | `static/index.html:7009, 11712`; `api.py:5733–5741` | Faqat o'z `waiting/called` navbatini bekor qilish, tarix yozuvi va aniq matnlar |
-| 12 | Navbat bildirishnomasi va deep-link | partial | `notifications` relatsion jadvali payloadni saqlay oladi; `UserProfile.tsx:469–480` faqat `order_id`ni ochadi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | `medical_queue_id`ni navbat kartasiga ochish, read holati va called/soon/cancelled/changed hodisalari |
-| 13 | Alohida relatsion navbat jadvallari | missing | `backend/app/queues` moduli va queue Alembic migratsiyasi yo'q; yozuvlar generic `cabinet_records`/fallback payloadda | `database.py:1726–1747` | Provider, service link, queue, history va indeksli counter jadvallari; idempotent backfill |
-| 14 | Parallel navbat raqami/slot xavfsizligi | missing | Generic snapshot butun biznes profilini qulflaydi; dedicated atomar allocator yo'q | `api.py:5649–5668`; `database.py:1733–1743` | PostgreSQLda bitta navbat kesimida atomar raqam berish va unique slot; concurrency testi |
+| 6 | Sana va xizmat ko'rsatuvchini tanlash | partial | Q1 typed `GET /api/v1/queues/options` va response schemani berdi; `frontend/src/queues` komponenti yo'q | `static/index.html:11682–11694`; `api.py:5600–5605` | Q3 client, modal va parity testi |
+| 7 | Slot rejimida bo'sh vaqtlarni olish | partial | Q1 typed `/slots` endpointida ish kuni, o'tgan vaqt va band slot filtri bor; frontend tanlovi yo'q | `static/index.html:11695–11704`; `api.py:5607–5700` | Q3 slot tanlash React oqimi |
+| 8 | Onlayn navbat yaratish | partial | Q1 typed `POST /api/v1/queues`, ownership, duplicate/slot unique, atomar live counter va idempotent notificationni berdi | `static/index.html:11705–11710`; `api.py:5624–5676, 5702–5710` | Q3 ommaviy booking komponenti va frontend parity testi |
+| 9 | Mijozning `📋 Navbatlar` ro'yxati | partial | Q1 typed `/mine` endpointini berdi; `UserProfile.tsx:446–460` va `MyQueues` View hali yo'q | `static/index.html:6996–7025`; `api.py:5712–5731` | Q4 mijoz View va API client ulanishi |
+| 10 | Oldindagi odam va kutish vaqti | partial | Q1 repository bitta indeksli projectionda `ahead_count` va `wait_minutes` hisoblaydi; frontend ko'rsatmaydi | `static/index.html:7007–7010`; `api.py:5716–5730` | Q4 navbat kartasida ko'rsatish |
+| 11 | Mijoz navbatini bekor qilish | partial | Q1 ownershipli `POST /{queue_id}/cancel` va history yozuvini berdi; React tasdiqlash oqimi yo'q | `static/index.html:7009, 11712`; `api.py:5733–5741` | Q4 aynan v1656 matnli tasdiqlash va karta yangilanishi |
+| 12 | Navbat bildirishnomasi va deep-link | partial | Q1 booked/called/soon/cancelled/changed hodisalarini `notifications` jadvaliga idempotent yozadi; `UserProfile.tsx:469–480` faqat `order_id`ni ochadi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | Q4 `medical_queue_id` deep-linki va read holati |
+| 13 | Alohida relatsion navbat jadvallari | migrated | Q1 `backend/app/queues/model.py` va `0012_queue_domain.py`da provider, link, entry, history, counter hamda idempotent dual-source backfillni yaratdi | `database.py:1726–1747` | Q1 model/migration testlari mavjud |
+| 14 | Parallel navbat raqami/slot xavfsizligi | migrated | Q1 `QueueRepository.allocate_live_number()` atomar UPSERT/RETURNING, unique slot/customer indekslari va doimiy lock tartibini ishlatadi | `api.py:5649–5668`; `database.py:1733–1743` | PostgreSQL integratsiya tekshiruvi CI migratsiya oqimida ishlaydi |
 | 15 | Ikki aktyorli end-to-end parity testi | missing | Biznes ekran parity testi bor, ammo `mijoz -> navbat -> biznes -> bildirishnoma -> mijoz` testi yo'q | Yuqoridagi barcha v1656 oqimlari | Backend transaction va frontend integration/parity testlari |
 
-Natija: **1 migrated, 5 partial, 9 missing** funksional birlik.
+Q1dan keyingi natija: **3 migrated, 11 partial, 1 missing** funksional birlik.
 
 ## Nima uchun mavjud uchta ekran yetarli emas
 
 `BusinessMedicalV1656View.tsx` ko'rinish va biznes ichidagi tugmalarni
 ko'chirgan. Uning amallari hozir
 `/api/v1/business-online/medical_queue/actions/...` orqali generic
-`cabinet_records` snapshotini o'zgartiradi. Shu oqim:
+`cabinet_records` snapshotini o'zgartiradi. Q1 typed backend domenini yaratdi,
+ammo mavjud React ekranlari hali unga ulanmagan. Shu frontend oqimi:
 
 - ommaviy foydalanuvchiga sana/provider/slot bermaydi;
 - foydalanuvchiga tegishli navbat yozuvini yaratmaydi;
-- `mine`, ownership va cancel endpointlarini bermaydi;
-- navbatni katalogdagi relatsion xizmat va relational notification bilan
-  bitta atomar tranzaksiyada bog'lamaydi;
-- katta parallel oqimda alohida navbat kesimida atomar raqam bermaydi.
+- typed `/api/v1/queues` endpointlarini chaqirmaydi;
+- relatsion navbat yozuvlarini foydalanuvchiga ko'rsatmaydi.
 
 Shu sabab `cab-medical-doctors`, `cab-medical-doctor-form` va
 `cab-medical-queue` ekran darajasida `migrated`, ammo **navbat domeni
@@ -184,5 +183,15 @@ ruxsat bergandan so'ng boshlanadi.
 ## Q0 yakuniy hisoboti
 
 `Navbat funksional pariteti: 1/15 migrated, partial: 5, missing: 9.`
+
+`Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`
+
+## Q1 yakuniy hisoboti
+
+Q1 faqat backend relatsion domenini tayyorladi. `0012_queue_domain.py` kodi
+yaratildi, lekin staging/production bazasiga migratsiya va deploy qilinmadi.
+Bu amallar uchun alohida foydalanuvchi ruxsati talab qilinadi.
+
+`Navbat funksional pariteti: 3/15 migrated, partial: 11, missing: 1.`
 
 `Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`

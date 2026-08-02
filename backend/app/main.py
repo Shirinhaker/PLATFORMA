@@ -31,6 +31,8 @@ from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
+from app.queues.router import router as queues_router
+from app.queues.service import QueueService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -110,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2.create_download_url,
         )
+        app.state.queue_service = QueueService(database.session)
         try:
             yield
         finally:
@@ -144,6 +147,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(advertisements_router)
     app.include_router(listings_router)
     app.include_router(orders_router)
+    app.include_router(queues_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

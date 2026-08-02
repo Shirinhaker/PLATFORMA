@@ -18,6 +18,7 @@ from app.listings import model as listings_model  # noqa: F401
 from app.notifications import model as notifications_model  # noqa: F401
 from app.orders import model as orders_model  # noqa: F401
 from app.profiles import model as profiles_model  # noqa: F401
+from app.queues import model as queues_model  # noqa: F401
 
 
 config = context.config
