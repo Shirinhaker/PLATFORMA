@@ -603,6 +603,79 @@ async def test_business_status_swap_customer_cancel_and_idempotent_notifications
 
 
 @pytest.mark.asyncio
+async def test_two_actor_queue_chain_reaches_business_notification_and_customer(queue_store):
+    service = service_for(queue_store)
+    provider = await create_provider(service)
+    queue_day = date(2026, 8, 3)
+
+    # 1-aktiv: mijoz ommaviy profildagi variantni tanlab navbat oladi.
+    options = await service.options(
+        business_public_id=build_profile_public_id("business", 7),
+        item_public_id=build_content_public_id("service", 11),
+        queue_date=queue_day,
+    )
+    assert [(row.id, row.queue_count) for row in options.providers] == [
+        (provider.id, 0),
+    ]
+    created = await service.create_online(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=public_body(provider.id, queue_date=queue_day),
+    )
+    assert (created.queue_code, created.status, created.source) == (
+        "QAB-001",
+        "waiting",
+        "online",
+    )
+
+    # 2-aktiv: biznes aynan shu navbatni jonli ro'yxatda ko'rib chaqiradi.
+    business_rows = await service.list_business(
+        business_account_id=7,
+        queue_date=queue_day,
+    )
+    assert [(row.id, row.patient_name, row.status) for row in business_rows] == [
+        (created.id, "Ali", "waiting"),
+    ]
+    called = await service.change_status(
+        business_account_id=7,
+        queue_id=created.id,
+        body=QueueStatusChange(status="called"),
+    )
+    assert called.status == "called"
+
+    # 1-aktivga qaytish: bildirishnoma shu navbatga bog'langan va o'qiladi.
+    called_notification = queue_store.sync.scalar(
+        select(Notification).where(
+            Notification.account_id == 5,
+            Notification.event_key == f"medical_queue:{created.id}:called",
+        )
+    )
+    assert called_notification is not None
+    assert called_notification.title == "Navbatingiz keldi"
+    assert called_notification.body == (
+        "QAB-001 navbat shifokor tomonidan chaqirildi."
+    )
+    assert called_notification.action_type == "medical_queue_called"
+    assert called_notification.payload["medical_queue_id"] == created.id
+
+    mine = await service.list_mine(
+        account_id=5,
+        account_type=AccountType.USER,
+    )
+    assert [(row.id, row.status, row.queue_code) for row in mine] == [
+        (created.id, "called", "QAB-001"),
+    ]
+    marked = await service.mark_notification_read(
+        account_id=5,
+        account_type=AccountType.USER,
+        notification_id=called_notification.id,
+    )
+    assert (marked.medical_queue_id, marked.is_read) == (created.id, True)
+    queue_store.sync.refresh(called_notification)
+    assert called_notification.is_read is True
+
+
+@pytest.mark.asyncio
 async def test_business_offline_queue_and_indexed_daily_list(queue_store):
     service = service_for(queue_store)
     provider = await create_provider(service)

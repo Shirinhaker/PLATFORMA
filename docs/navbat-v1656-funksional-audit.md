@@ -98,7 +98,7 @@ xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
 | 12 | Navbat bildirishnomasi va deep-link | migrated | `UserProfile.tsx` `medical_queue_id`ni xizmat buyurtmalaridagi tegishli kartaga uzatadi; ownershipli `POST /api/v1/queues/notifications/{id}/read` relatsion bildirishnomani o'qilgan qiladi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | `OrdersCabinetWiringV1656.test.tsx`, client va backend queue testlari read/focus oqimini tekshiradi |
 | 13 | Alohida relatsion navbat jadvallari | migrated | Q1 `backend/app/queues/model.py` va `0012_queue_domain.py`da provider, link, entry, history, counter hamda idempotent dual-source backfillni yaratdi | `database.py:1726–1747` | Q1 model/migration testlari mavjud |
 | 14 | Parallel navbat raqami/slot xavfsizligi | migrated | Q1 `QueueRepository.allocate_live_number()` atomar UPSERT/RETURNING, unique slot/customer indekslari va doimiy lock tartibini ishlatadi | `api.py:5649–5668`; `database.py:1733–1743` | PostgreSQL integratsiya tekshiruvi CI migratsiya oqimida ishlaydi |
-| 15 | Ikki aktyorli end-to-end parity testi | missing | Biznes ekran parity testi bor, ammo `mijoz -> navbat -> biznes -> bildirishnoma -> mijoz` testi yo'q | Yuqoridagi barcha v1656 oqimlari | Backend transaction va frontend integration/parity testlari |
+| 15 | Ikki aktyorli end-to-end parity testi | migrated | Bitta stateful frontend testi `QueueBookingV1656` → `BusinessQueueV1656` → `UserProfile` notification deep-link → `MyQueuesV1656` zanjirini, bitta backend tranzaksion testi esa public options → online create → business list/status → notification → customer list/read zanjirini tekshiradi | Yuqoridagi barcha v1656 oqimlari | `test_two_actor_queue_chain_reaches_business_notification_and_customer`; `QueueTwoActorV1656Parity.test.tsx` |
 
 Q1dan keyingi natija: **3 migrated, 11 partial, 1 missing** funksional birlik.
 
@@ -108,14 +108,17 @@ Q3dan keyingi natija: **10 migrated, 4 partial, 1 missing** funksional birlik.
 
 Q4dan keyingi natija: **14 migrated, 0 partial, 1 missing** funksional birlik.
 
+Q5dan keyingi natija: **15 migrated, 0 partial, 0 missing** funksional birlik.
+
 ## Nima uchun mavjud uchta ekran yetarli emas
 
 Q2da `BusinessMedicalV1656View.tsx`ning v1656 ko'rinishi saqlanib,
 `BusinessQueueV1656.tsx` adapteri orqali Q1 typed backend domeniga ulandi.
 Q3 ommaviy profil va katalogdan sana/provider/slot orqali typed relatsion navbat
 yaratishni uladi. Q4 mijoz ro'yxati, ahead/wait, cancel va notification
-deep-linkni tugatdi. Endi faqat Q5dagi ikki aktyorli yakuniy parity testi
-`missing`; alohida funksional birlik `partial` holatda qolmagan.
+deep-linkni tugatdi. Q5 backend va frontendda ikki aktyorli yakuniy zanjirni
+bitta stateful oqim sifatida tekshirdi; `partial` yoki `missing` funksional birlik
+qolmadi.
 
 ## Majburiy biznes qoidalari
 
@@ -230,3 +233,18 @@ qilinib, aynan tegishli navbat kartasini fokuslaydi.
 `Navbat funksional pariteti: 14/15 migrated, partial: 0, missing: 1.`
 
 `Onlaynlashtirish ekranlari: 21/21 migrated; faqat Q5 yakuniy parity testi qolgan.`
+
+## Q5 yakuniy hisoboti
+
+Q5 yangi production funksiyasi qo'shmadi. Backend tranzaksion testi mijozning
+ommaviy variantdan navbat olishi, navbatning biznes ro'yxatida ko'rinishi,
+biznes uni chaqirganda aynan shu mijozga relatsion bildirishnoma yozilishi,
+mijoz ro'yxatida yangi holat ko'rinishi va bildirishnoma o'qilishini bitta
+zanjirda tekshiradi. Frontend stateful parity testi xuddi shu ma'lumotni
+`QueueBookingV1656`, `BusinessQueueV1656`, `UserProfile` va `MyQueuesV1656`
+orasida uzilmasdan o'tishini tekshiradi. Q1dagi PostgreSQL parallel booking
+testi concurrency himoyasini saqlaydi.
+
+`Navbat funksional pariteti: 15/15 migrated, partial: 0, missing: 0.`
+
+`Onlaynlashtirish ekranlari: 21/21 migrated; navbat funksional migratsiyasi tugagan.`
