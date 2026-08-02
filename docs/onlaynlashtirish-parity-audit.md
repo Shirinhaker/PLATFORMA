@@ -21,8 +21,9 @@ Holatlar:
 - `missing` — monolit ekrani uchun maxsus React View va
   `BusinessOnlineScreen.tsx` case mavjud emas.
 
-Joriy React qamrovi: **21/21 ekran mavjud**. Qat'iy paritet holati:
-**21 migrated, 0 partial, 0 missing**.
+Joriy React qamrovi: **21/21 ekran mavjud**. 2026-08-02dagi chuqur
+buyurtma oqimi qayta auditidan keyingi qat'iy paritet holati:
+**19 migrated, 2 partial, 0 missing**.
 
 ## 21 ekran inventari
 
@@ -39,8 +40,8 @@ Joriy React qamrovi: **21/21 ekran mavjud**. Qat'iy paritet holati:
 | 9 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | migrated | `frontend/src/profiles/BusinessMedicalV1656View.tsx` (xizmat ko'rsatuvchi formasi) | `static/index.html:2108, 11638–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
 | 10 | Navbat — `cab-medical-queue` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalQueueV1656View`) | `static/index.html:2109, 11642–11669` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
 | 11 | Kursga yozilishlar — `cab-education-enrollments` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessEducationEnrollmentsV1656View.tsx` | `static/index.html:1770, 2086, 5425, 9138–9141, 12005, 12140–12158, 12318`; `api.py:2675–2687, 3406–3438` | `frontend/src/profiles/BusinessEducationEnrollmentsV1656Parity.test.tsx`; `backend/tests/test_business_online_service.py`; `backend/tests/test_business_online_relational_service.py` |
-| 12 | Buyurtmalar — `cab-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2222–2230, 6296–6357, 6964–7132` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx`; `frontend/src/profiles/BusinessOnlineDirectionPlanV1656Parity.test.ts` |
-| 13 | Xizmat buyurtmalari — `cab-service-orders` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2231–2233, 6296–6357, 6964–7132` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx`; `frontend/src/profiles/BusinessOnlineDirectionPlanV1656Parity.test.ts` |
+| 12 | Buyurtmalar — `cab-orders` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2222–2230, 6296–6357, 6964–7132` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx`; jonli customer/business order testi yo'q |
+| 13 | Xizmat buyurtmalari — `cab-service-orders` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:2231–2233, 6296–6357, 6964–7132` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx`; jonli customer/business order testi yo'q |
 | 14 | Suhbatlar — `chats`, `chat` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`MessagesView`) | `static/index.html:2630–2648, 7272–7489` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx`; `frontend/src/profiles/BusinessOnlineParity.test.tsx` |
 | 15 | Mijoz fikrlari — `cab-reviews` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineViews.tsx` (`ReviewsView`) | `static/index.html:1946–1954, 11507–11529` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineMutations.test.tsx` |
 | 16 | E'lonlar — `cab-elon` (`listings` tabi), `cab-elon-form` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessOnlineCrudEditorView.tsx` | `static/index.html:2141–2156, 2195–2220, 13214–13250, 13753–13852` | `frontend/src/profiles/BusinessExistingOnlineV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineClaudeReviewParity.test.tsx` |
@@ -82,9 +83,9 @@ boshlab tasdiqlangan.
 
 ## Claude qayta reviewidan keyingi paritet yopilishlari
 
-Commit `0541a6a` qayta reviewida oldingi 6 ta jiddiy topilmaning barchasi
-yopilgani tasdiqlandi. Qolgan 3 ta o'rtacha va 3 ta kichik topilma ham keyingi
-TDD siklida tuzatildi:
+Commit `0541a6a` qayta reviewida o'sha PR doirasida topilgan oldingi 6 ta jiddiy
+topilmaning barchasi yopilgani tasdiqlandi. Qolgan 3 ta o'rtacha va 3 ta kichik
+topilma ham keyingi TDD siklida tuzatildi:
 
 - reklama narxi `static/index.html:13420–13429`dagi kabi hududlar, kunlik
   soatlar va davomiylik o'zgarganda backend orqali qayta hisoblanadi;
@@ -105,7 +106,28 @@ TDD siklida tuzatildi:
 Bu bandlar `BusinessOnlineClaudeReviewParity.test.tsx`,
 `BusinessItemsV1656Parity.test.tsx`, `BusinessOnlineMutations.test.tsx` va
 `backend/tests/test_business_online_service.py`da tekshiriladi. Qabul qilingan
-yoki hujjatlashtirilgan paritet chekinishi qolmagan.
+yoki hujjatlashtirilgan paritet chekinishi o'sha PR doirasida qolmagan.
+
+## Buyurtmalar bo'yicha chuqur qayta audit — 2026-08-02
+
+Oldingi audit `cab-orders` va `cab-service-orders` uchun React `OrdersView`
+hamda ko'rinish testlari borligini `migrated` deb baholagan. Bu funksional
+paritet uchun yetarli emasligi aniqlandi:
+
+- ommaviy profilda `+ Savatga`, sticky savat va `cart` ekrani yo'q;
+- `frontend/src/api/client.ts`da order endpointlari yo'q;
+- modulli backendda jonli `orders`, `order_items`, `order_messages` domeni
+  yo'q;
+- biznesdagi generic `set_status`, `report_problem` va `handoff` amallari
+  faqat bitta kabinet snapshotini o'zgartiradi, mijoz tomonini atomar
+  yangilamaydi;
+- customer detail, payment, receipt, problem solution, received va order
+  chat oqimlari yo'q;
+- mavjud testlar kartochka/tab/modal ko'rinishini tekshiradi, ammo ikki
+  aktyorli buyurtma zanjirini tekshirmaydi.
+
+To'liq dalil, endpoint va migratsiya rejasi:
+`docs/orders-v1656-parity-audit.md`.
 
 ## Yo'nalishga moslashuv auditi
 
@@ -158,9 +180,11 @@ Reactdagi yakuniy holat:
    `Ta'lim faoliyati` ko'rinish qoidasidan o'tdi.
 4. **Blok 3.5:** `pickloc` avval monolitda tuzatiladi, so'ng React View sifatida
    `bp` / `be` / `ue` prefikslari bilan ko'chirildi.
-5. **Blok 4:** mavjud 14 ekran monolit bilan matn, CSS klass, xatti-harakat,
-   bo'sh holat va tasdiqlash oynasi darajasida qayta tekshirildi; ushbu
-   auditdagi barcha `partial` qatorlar yopildi.
+5. **Blok 4:** mavjud 14 ekran ko'rinish, matn, CSS klass, bo'sh holat va
+   tasdiqlash oynasi darajasida qayta tekshirildi. 2026-08-02dagi chuqur
+   funksional audit `cab-orders` va `cab-service-orders`ning jonli order
+   domeniga ulanmaganini aniqladi; ular yana `partial` deb belgilandi.
 
-Blok 4 yakuniy sharti:
-`Onlaynlashtirish: 21/21 ekran migrated, qolgani: yo'q`.
+Joriy qayta audit hisoboti:
+`Onlaynlashtirish: 19/21 ekran migrated, qolgani: cab-orders,
+cab-service-orders (partial)`.
