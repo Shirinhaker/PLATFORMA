@@ -25,6 +25,7 @@ const unlinkedItem: PublicCatalogItem = {
   can_order: false,
   can_chat: false,
   queue_enabled: false,
+  queue_provider_count: 0,
 };
 
 
@@ -61,5 +62,39 @@ describe("CatalogItemCard", () => {
 
     screen.getByRole("button", { name: "Turon Savdo" }).click();
     expect(onOpenOwner).toHaveBeenCalledWith("b_public");
+  });
+
+  it("opens queue booking directly from a linked queue service", () => {
+    const onBookQueue = vi.fn();
+    const onOpenOwner = vi.fn();
+    render(
+      <CatalogItemCard
+        authenticated
+        item={{
+          ...unlinkedItem,
+          kind: "service",
+          public_id: "s_qabul",
+          name: "Qabul",
+          owner_state: "linked",
+          owner_public_id: "b_shifo",
+          owner_label: "Shifo",
+          direction: "Tibbiy xizmatlar",
+          can_order: true,
+          queue_enabled: true,
+          queue_provider_count: 1,
+        }}
+        onBookQueue={onBookQueue}
+        onOpenOwner={onOpenOwner}
+      />,
+    );
+
+    screen.getByRole("button", { name: "Navbat olish" }).click();
+    expect(onBookQueue).toHaveBeenCalledWith({
+      businessPublicId: "b_shifo",
+      itemPublicId: "s_qabul",
+      serviceName: "Qabul",
+      direction: "Tibbiy xizmatlar",
+    });
+    expect(onOpenOwner).not.toHaveBeenCalled();
   });
 });

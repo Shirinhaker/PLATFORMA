@@ -15,14 +15,19 @@ import { searchCatalogDirections } from "./catalog-data";
 import { CatalogItemCard } from "./CatalogItemCard";
 import type { HomeLocation } from "./location-storage";
 import { PublicSearchResults } from "./PublicSearchResults";
+import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
 
 interface CatalogScreenProps {
   initialQuery: string;
   location?: HomeLocation | null;
   searchPublic?: ApiClient["searchPublic"];
   getCatalogItems?: ApiClient["getCatalogItems"];
+  authenticated?: boolean;
   onOpenCategory(categoryId: string): void;
   onOpenOwner?(publicId: string): void;
+  onNeedQueueLogin?(): void;
+  onBookQueue?(target: QueueBookingTarget): void;
+  onQueueMessage?(message: string): void;
 }
 
 const SEARCH_TYPES = [
@@ -52,8 +57,12 @@ export function CatalogScreen({
   location = null,
   searchPublic,
   getCatalogItems,
+  authenticated = false,
   onOpenCategory,
   onOpenOwner,
+  onNeedQueueLogin,
+  onBookQueue,
+  onQueueMessage,
 }: CatalogScreenProps) {
   const [query, setQuery] = useState(initialQuery);
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>(
@@ -226,7 +235,15 @@ export function CatalogScreen({
           ) : (
             <div className="public-catalog-items-grid">
               {catalogItems.map((item) => (
-                <CatalogItemCard item={item} key={item.public_id} onOpenOwner={onOpenOwner} />
+                <CatalogItemCard
+                  authenticated={authenticated}
+                  item={item}
+                  key={item.public_id}
+                  onBookQueue={onBookQueue}
+                  onNeedQueueLogin={onNeedQueueLogin}
+                  onOpenOwner={onOpenOwner}
+                  onQueueMessage={onQueueMessage}
+                />
               ))}
             </div>
           )}

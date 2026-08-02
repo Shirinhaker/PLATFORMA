@@ -54,6 +54,20 @@ function authApi() {
 
 
 describe("AuthFlow", () => {
+  it("shows the exact v1656 reason when queue booking requires login", () => {
+    render(
+      <AuthFlow
+        api={authApi()}
+        onAuthenticated={vi.fn()}
+        reason="Navbat olish"
+      />,
+    );
+
+    expect(screen.getByText(
+      "🔒 Navbat olish uchun tizimga kiring yoki ro'yxatdan o'ting.",
+    )).toHaveAttribute("id", "loginReason");
+  });
+
   it("registers a separate business account through telegram code", async () => {
     const user = userEvent.setup();
     const api = authApi();

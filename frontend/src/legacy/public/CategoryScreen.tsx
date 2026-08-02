@@ -9,19 +9,28 @@ import type { PublicCatalogItem, PublicSearchItem } from "../../api/types";
 import { CatalogItemCard } from "./CatalogItemCard";
 import { findCatalogDirection } from "./catalog-data";
 import { PublicSearchResults } from "./PublicSearchResults";
+import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
 
 interface CategoryScreenProps {
   categoryId: string;
   searchPublic?: ApiClient["searchPublic"];
   getCatalogItems?: ApiClient["getCatalogItems"];
+  authenticated?: boolean;
   onOpenOwner?(publicId: string): void;
+  onNeedQueueLogin?(): void;
+  onBookQueue?(target: QueueBookingTarget): void;
+  onQueueMessage?(message: string): void;
 }
 
 export function CategoryScreen({
   categoryId,
   searchPublic,
   getCatalogItems,
+  authenticated = false,
   onOpenOwner,
+  onNeedQueueLogin,
+  onBookQueue,
+  onQueueMessage,
 }: CategoryScreenProps) {
   const direction = findCatalogDirection(categoryId);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
@@ -134,7 +143,15 @@ export function CategoryScreen({
           {catalogItems.length ? (
             <div className="public-catalog-items-grid">
               {catalogItems.map((item) => (
-                <CatalogItemCard item={item} key={item.public_id} onOpenOwner={onOpenOwner} />
+                <CatalogItemCard
+                  authenticated={authenticated}
+                  item={item}
+                  key={item.public_id}
+                  onBookQueue={onBookQueue}
+                  onNeedQueueLogin={onNeedQueueLogin}
+                  onOpenOwner={onOpenOwner}
+                  onQueueMessage={onQueueMessage}
+                />
               ))}
             </div>
           ) : null}

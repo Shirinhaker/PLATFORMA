@@ -18,13 +18,16 @@ from app.cabinet_records.model import (
     CabinetResource,
 )
 from app.catalog.model import CatalogGroup, CatalogItem
+from app.catalog.repository import list_public_catalog
+from app.catalog.schemas import PublicCatalogParams
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
-from app.listings.model import Listing
+from app.listings.model import Listing, ListingMedia
 from app.notifications.model import Notification
 from app.orders.model import Order
 from app.profiles.model import BusinessProfile, UserProfile
+from app.public_discovery.repository import load_public_profile
 from app.public_ids import build_content_public_id, build_profile_public_id
 from app.queues.model import (
     QueueCounter,
@@ -152,6 +155,7 @@ def queue_store():
             CabinetRecord.__table__,
             CabinetRecordField.__table__,
             Listing.__table__,
+            ListingMedia.__table__,
             Order.__table__,
             Notification.__table__,
             QueueProvider.__table__,
@@ -372,6 +376,29 @@ async def test_provider_setup_reads_staff_without_writing_tizimlashtirish(queue_
     assert provider.item_public_ids == [build_content_public_id("service", 11)]
     staff_resource = queue_store.sync.get(CabinetResource, 101)
     assert staff_resource.record_count == 1
+
+
+@pytest.mark.asyncio
+async def test_public_profile_and_catalog_expose_only_active_provider_count(queue_store):
+    service = service_for(queue_store)
+    await create_provider(service)
+    business_public_id = build_profile_public_id("business", 7)
+
+    profile = await load_public_profile(
+        queue_store,
+        kind="business",
+        public_id=business_public_id,
+        image_url_provider=lambda _key: "",
+    )
+    catalog = await list_public_catalog(
+        queue_store,
+        PublicCatalogParams(kind="service"),
+        lambda _key: "",
+    )
+
+    assert profile is not None
+    assert profile.items[0].queue_provider_count == 1
+    assert catalog.items[0].queue_provider_count == 1
 
 
 @pytest.mark.asyncio

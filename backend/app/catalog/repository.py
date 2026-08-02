@@ -14,6 +14,7 @@ from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import build_public_id
 from app.public_discovery.schemas import PublicResultKind
 from app.public_ids import build_content_public_id as _build_content_public_id
+from app.queues.repository import active_provider_count
 
 
 ImageUrlProvider = Callable[[str], str]
@@ -41,6 +42,10 @@ def build_catalog_statements(
             CatalogItem.unit,
             CatalogItem.note,
             CatalogItem.queue_enabled,
+            active_provider_count(
+                CatalogItem.id,
+                CatalogItem.business_account_id,
+            ).label("queue_provider_count"),
             CatalogItem.owner_state,
             CatalogItem.business_account_id,
             CatalogItem.owner_name_snapshot,
@@ -167,4 +172,5 @@ def _public_item(row, image_url_provider: ImageUrlProvider):
         can_order=linked,
         can_chat=linked,
         queue_enabled=bool(row["queue_enabled"]),
+        queue_provider_count=max(0, int(row["queue_provider_count"] or 0)),
     )

@@ -1,0 +1,73 @@
+.queue-booking-v1656 .app-modal-back {
+  position: fixed;
+  z-index: 5200;
+  inset: 0;
+  display: none;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.queue-booking-v1656 .app-modal-back.on {
+  display: block;
+}
+
+.queue-booking-v1656 .app-confirm {
+  position: fixed;
+  z-index: 5201;
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 56px);
+  max-width: 340px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.queue-booking-v1656 .app-confirm.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.queue-booking-v1656 .acf-title {
+  margin-bottom: 8px;
+  font-family: var(--font-d);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.queue-booking-v1656__label {
+  margin: 10px 2px 4px;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  text-align: left;
+}
+
+.queue-booking-v1656 .acf-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.queue-booking-v1656 .acf-btns button {
+  flex: 1;
+  height: 46px;
+  border: 1.5px solid var(--line);
+  border-radius: 13px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.queue-booking-v1656 .acf-ok {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}

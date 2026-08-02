@@ -68,6 +68,7 @@ describe("PublicProfileV1656", () => {
   it("uses the direction action guard and the exact sticky cart copy", async () => {
     const user = userEvent.setup();
     const onAddCartItem = vi.fn();
+    const onBookQueue = vi.fn();
     const onOpenCart = vi.fn();
     const getPublicProfile = vi.fn().mockResolvedValue({
       kind: "business",
@@ -95,6 +96,7 @@ describe("PublicProfileV1656", () => {
         image_url: "",
         group_name: "",
         queue_enabled: true,
+        queue_provider_count: 1,
       }, {
         kind: "product",
         public_id: "p_dori",
@@ -129,12 +131,20 @@ describe("PublicProfileV1656", () => {
         publicId="b_shifo"
         getPublicProfile={getPublicProfile}
         onAddCartItem={onAddCartItem}
+        onBookQueue={onBookQueue}
         onOpenCart={onOpenCart}
       />,
     );
 
     expect(await screen.findByRole("button", { name: "Navbat olish" }))
       .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Navbat olish" }));
+    expect(onBookQueue).toHaveBeenCalledWith({
+      businessPublicId: "b_shifo",
+      itemPublicId: "s_qabul",
+      serviceName: "Qabul",
+      direction: "Tibbiy xizmatlar",
+    });
     expect(screen.getByRole("button", { name: "✓ Savatda: 2" }))
       .toBeInTheDocument();
     expect(document.getElementById("bizCartBarTotal"))
@@ -146,5 +156,58 @@ describe("PublicProfileV1656", () => {
     );
     await user.click(screen.getByRole("button", { name: /🛒 Savatcha: 1 ta/ }));
     expect(onOpenCart).toHaveBeenCalledOnce();
+  });
+
+  it("checks the provider count before the login guard with exact v1656 copy", async () => {
+    const user = userEvent.setup();
+    const onBookQueue = vi.fn();
+    const onNeedLogin = vi.fn();
+    const onQueueMessage = vi.fn();
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_shifo",
+      name: "Shifo",
+      public_username: "",
+      description: "",
+      direction: "Tibbiy xizmatlar",
+      activity_type: "Klinika",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [{
+        kind: "service",
+        public_id: "s_qabul",
+        name: "Qabul",
+        price_text: "",
+        unit: "marta",
+        note: "",
+        image_url: "",
+        group_name: "",
+        queue_enabled: true,
+        queue_provider_count: 0,
+      }],
+      listings: [],
+    });
+
+    render(
+      <PublicProfileV1656
+        kind="business"
+        publicId="b_shifo"
+        getPublicProfile={getPublicProfile}
+        onBookQueue={onBookQueue}
+        onNeedLogin={onNeedLogin}
+        onQueueMessage={onQueueMessage}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Navbat olish" }));
+    expect(onQueueMessage).toHaveBeenCalledWith("Shifokor hali biriktirilmagan.");
+    expect(onNeedLogin).not.toHaveBeenCalled();
+    expect(onBookQueue).not.toHaveBeenCalled();
   });
 });

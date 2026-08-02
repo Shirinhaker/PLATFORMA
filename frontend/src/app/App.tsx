@@ -38,6 +38,12 @@ import {
 import "./App.css";
 import { AppShell } from "./AppShell";
 import { SessionStatus } from "./SessionStatus";
+import {
+  QueueBookingV1656,
+  supportsQueueBookingApi,
+  type QueueBookingApi,
+  type QueueBookingTarget,
+} from "../queues/QueueBookingV1656";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -66,6 +72,7 @@ type AppApi = (
   & Partial<ProfileApi>
   & Partial<PublicSearchApi>
   & Partial<OrderApi>
+  & Partial<QueueBookingApi>
 );
 
 
@@ -125,6 +132,9 @@ export function App({ api }: { api: AppApi }) {
   const [carts, setCarts] = useState<CartState>({});
   const [cartFilter, setCartFilter] = useState<string | null>(null);
   const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
+  const [queueBooking, setQueueBooking] = useState<QueueBookingTarget | null>(null);
+  const [queueMessage, setQueueMessage] = useState({ id: 0, text: "" });
+  const [authReason, setAuthReason] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">(() => (
     document.documentElement.dataset.theme === "dark" ? "dark" : "light"
   ));
@@ -280,6 +290,16 @@ export function App({ api }: { api: AppApi }) {
     };
   }, [api, session.status]);
 
+  useEffect(() => {
+    if (!queueMessage.text) return;
+    const timeout = window.setTimeout(() => {
+      setQueueMessage((current) => current.id === queueMessage.id
+        ? { ...current, text: "" }
+        : current);
+    }, 2600);
+    return () => window.clearTimeout(timeout);
+  }, [queueMessage]);
+
   const authenticated = (
     session.status === "user" || session.status === "business"
   );
@@ -305,6 +325,8 @@ export function App({ api }: { api: AppApi }) {
     setOpenedProfile(null);
     setOpenedListing(null);
     setCartFilter(null);
+    setQueueBooking(null);
+    setAuthReason("");
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
 
@@ -332,6 +354,31 @@ export function App({ api }: { api: AppApi }) {
     setOpenedListing((current) => current ? { ...current, title } : current);
   }, []);
 
+  const showQueueMessage = useCallback((text: string) => {
+    setQueueMessage((current) => ({ id: current.id + 1, text }));
+  }, []);
+
+  const openAuth = useCallback((reason = "") => {
+    setAuthReason(reason);
+    dispatch({ type: "OPEN_AUTH" });
+  }, []);
+
+  const openQueueBooking = useCallback((target: QueueBookingTarget) => {
+    if (session.status === "guest") {
+      openAuth("Navbat olish");
+      return;
+    }
+    if (session.status !== "user") {
+      showQueueMessage("Avval oddiy profilga o'ting.");
+      return;
+    }
+    if (!supportsQueueBookingApi(api)) {
+      showQueueMessage("Navbat xizmati hozircha ulanmagan.");
+      return;
+    }
+    setQueueBooking(target);
+  }, [api, openAuth, session.status, showQueueMessage]);
+
   function toggleTheme() {
     setTheme((current) => {
       const next = current === "dark" ? "light" : "dark";
@@ -341,6 +388,7 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function completeAuthentication(identity: SessionIdentity) {
+    setAuthReason("");
     setSession({ status: identity.account_type, identity });
     dispatch({ type: "OPEN_CABINET" });
   }
@@ -348,7 +396,11 @@ export function App({ api }: { api: AppApi }) {
   function renderAccount() {
     if (session.status === "guest") {
       return supportsAuthFlow(api) ? (
-        <AuthFlow api={api} onAuthenticated={completeAuthentication} />
+        <AuthFlow
+          api={api}
+          onAuthenticated={completeAuthentication}
+          reason={authReason}
+        />
       ) : (
         <main className="session-panel"><h1>Koprik’ga kirish</h1></main>
       );
@@ -398,7 +450,7 @@ export function App({ api }: { api: AppApi }) {
           getPublicListing={getPublicListing}
           publicId={openedListing.publicId}
           toggleListingSave={listingApi?.toggleListingSave}
-          onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+          onNeedLogin={() => openAuth()}
           onOpenOwner={(kind, publicId) => {
             setOpenedListing(null);
             setOpenedProfile({ kind, publicId, title: "Profil" });
@@ -422,7 +474,9 @@ export function App({ api }: { api: AppApi }) {
           onAddCartItem={(item, provider) => {
             setCarts((current) => addCartItem(current, provider, item));
           }}
-          onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+          onBookQueue={openQueueBooking}
+          onNeedLogin={() => openAuth()}
+          onNeedQueueLogin={() => openAuth("Navbat olish")}
           onOpenCart={() => {
             setCartFilter(openedProfile.publicId);
             dispatch({ type: "OPEN_CART" });
@@ -431,6 +485,7 @@ export function App({ api }: { api: AppApi }) {
             setOpenedProfile(null);
             setOpenedListing({ publicId, title: "E’lon" });
           }}
+          onQueueMessage={showQueueMessage}
           onTitleChange={updateOpenedProfileTitle}
         />
       );
@@ -439,10 +494,13 @@ export function App({ api }: { api: AppApi }) {
       case "catalog":
         return (
           <CatalogScreen
+            authenticated={authenticated}
             initialQuery={navigation.query}
             location={homeLocation}
             searchPublic={searchPublic}
             getCatalogItems={getCatalogItems}
+            onBookQueue={openQueueBooking}
+            onNeedQueueLogin={() => openAuth("Navbat olish")}
             onOpenOwner={(publicId) => {
               setOpenedProfile({ kind: "business", publicId, title: "Profil" });
               dispatch({ type: "GO_HOME" });
@@ -451,18 +509,23 @@ export function App({ api }: { api: AppApi }) {
               type: "OPEN_CATEGORY",
               categoryId,
             })}
+            onQueueMessage={showQueueMessage}
           />
         );
       case "category":
         return (
           <CategoryScreen
+            authenticated={authenticated}
             categoryId={navigation.categoryId ?? ""}
             searchPublic={searchPublic}
             getCatalogItems={getCatalogItems}
+            onBookQueue={openQueueBooking}
+            onNeedQueueLogin={() => openAuth("Navbat olish")}
             onOpenOwner={(publicId) => {
               setOpenedProfile({ kind: "business", publicId, title: "Profil" });
               dispatch({ type: "GO_HOME" });
             }}
+            onQueueMessage={showQueueMessage}
           />
         );
       case "location":
@@ -480,7 +543,7 @@ export function App({ api }: { api: AppApi }) {
           <PublicListingsV1656
             api={listingApi}
             authenticated={authenticated}
-            onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+            onNeedLogin={() => openAuth()}
             onOpenOwner={(kind, publicId) => {
               setOpenedListing(null);
               setOpenedProfile({ kind, publicId, title: "Profil" });
@@ -500,7 +563,7 @@ export function App({ api }: { api: AppApi }) {
             filterProviderPublicId={cartFilter}
             homeLocation={homeLocation}
             onCartsChange={setCarts}
-            onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
+            onNeedLogin={() => openAuth()}
           />
         );
       case "auth":
@@ -550,6 +613,7 @@ export function App({ api }: { api: AppApi }) {
       onAccount={() => {
         setOpenedProfile(null);
         setOpenedListing(null);
+        setAuthReason("");
         dispatch({
           type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
         });
@@ -582,14 +646,28 @@ export function App({ api }: { api: AppApi }) {
       }}
       onToggleTheme={toggleTheme}
     >
-      <div className="app-shell__content" tabIndex={-1}>
-        {failed && accountView ? (
-          <SessionStatus
-            state="error"
-            onRetry={() => setAttempt((value) => value + 1)}
+      <>
+        <div className="app-shell__content" tabIndex={-1}>
+          {failed && accountView ? (
+            <SessionStatus
+              state="error"
+              onRetry={() => setAttempt((value) => value + 1)}
+            />
+          ) : renderPublicContent()}
+        </div>
+        {queueBooking && supportsQueueBookingApi(api) ? (
+          <QueueBookingV1656
+            api={api}
+            key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
+            target={queueBooking}
+            onClose={() => setQueueBooking(null)}
+            onMessage={showQueueMessage}
           />
-        ) : renderPublicContent()}
-      </div>
+        ) : null}
+        {queueMessage.text ? (
+          <div className="app-toast on" role="status">{queueMessage.text}</div>
+        ) : null}
+      </>
     </AppShell>
   );
 }

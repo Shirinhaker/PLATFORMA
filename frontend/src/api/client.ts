@@ -58,6 +58,9 @@ import type {
   UserProfile,
   UserProfilePatch,
   QueueEntryStatus,
+  QueueCreate,
+  QueueOptions,
+  QueueSlots,
 } from "./types";
 
 
@@ -183,6 +186,38 @@ export class ApiClient {
 
   getCatalogItem(publicId: string): Promise<PublicCatalogItem> {
     return this.request("GET", `/api/v1/public/catalog/items/${encodeURIComponent(publicId)}`);
+  }
+
+  getQueueOptions(
+    businessPublicId: string,
+    itemPublicId: string,
+    queueDate: string,
+  ): Promise<QueueOptions> {
+    const query = new URLSearchParams({
+      business_public_id: businessPublicId,
+      item_public_id: itemPublicId,
+      queue_date: queueDate,
+    });
+    return this.request("GET", `/api/v1/queues/options?${query.toString()}`);
+  }
+
+  getQueueSlots(
+    businessPublicId: string,
+    itemPublicId: string,
+    providerId: number,
+    queueDate: string,
+  ): Promise<QueueSlots> {
+    const query = new URLSearchParams({
+      business_public_id: businessPublicId,
+      item_public_id: itemPublicId,
+      provider_id: String(providerId),
+      queue_date: queueDate,
+    });
+    return this.request("GET", `/api/v1/queues/slots?${query.toString()}`);
+  }
+
+  createQueue(body: QueueCreate): Promise<BusinessQueueEntry> {
+    return this.request("POST", "/api/v1/queues", body, true);
   }
 
   getBusinessQueueSetup(): Promise<BusinessQueueSetup> {

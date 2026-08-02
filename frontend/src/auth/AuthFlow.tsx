@@ -39,9 +39,11 @@ type AuthStep =
 export function AuthFlow({
   api,
   onAuthenticated,
+  reason = "",
 }: {
   api: AuthApi;
   onAuthenticated: (identity: SessionIdentity) => void;
+  reason?: string;
 }) {
   const [step, setStep] = useState<AuthStep>({ name: "choice" });
 
@@ -129,6 +131,9 @@ export function AuthFlow({
     <main className="auth-card auth-choice">
       <p className="session-panel__eyebrow">Koprik</p>
       <h1>Koprik’ga kirish</h1>
+      {reason ? (
+        <p id="loginReason">🔒 {reason} uchun tizimga kiring yoki ro'yxatdan o'ting.</p>
+      ) : null}
       <p>Telegram orqali xavfsiz kirish yoki ro‘yxatdan o‘tish.</p>
       <button type="button" onClick={() => setStep({ name: "login" })}>
         Kirish
