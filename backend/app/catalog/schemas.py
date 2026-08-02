@@ -63,6 +63,7 @@ class PublicCatalogItem(BaseModel):
     can_order: bool
     can_chat: bool
     queue_enabled: bool = False
+    queue_provider_count: int = Field(default=0, ge=0)
 
 
 class PublicCatalogResponse(BaseModel):

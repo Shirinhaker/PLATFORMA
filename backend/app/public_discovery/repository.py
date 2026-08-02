@@ -28,6 +28,7 @@ from app.public_ids import (
     build_listing_public_id as _build_listing_public_id,
     build_profile_public_id,
 )
+from app.queues.repository import active_provider_count
 from app.public_discovery.schemas import (
     PublicDistrictOffer,
     PublicDistrictOffersResponse,
@@ -860,7 +861,14 @@ async def load_public_profile(
 
     item_rows = (
         await session.execute(
-            select(CatalogItem, CatalogGroup.name.label("group_name"))
+            select(
+                CatalogItem,
+                CatalogGroup.name.label("group_name"),
+                active_provider_count(
+                    CatalogItem.id,
+                    CatalogItem.business_account_id,
+                ).label("queue_provider_count"),
+            )
             .outerjoin(
                 CatalogGroup,
                 CatalogGroup.id == CatalogItem.catalog_group_id,
@@ -884,8 +892,9 @@ async def load_public_profile(
             image_url=image_url_provider(item.image_object_key),
             group_name=group_name or "",
             queue_enabled=bool(item.queue_enabled),
+            queue_provider_count=max(0, int(queue_provider_count or 0)),
         )
-        for item, group_name in item_rows
+        for item, group_name, queue_provider_count in item_rows
     ]
     return PublicProfileDetail(
         kind="business",

@@ -22,6 +22,25 @@ from app.queues.model import (
 ACTIVE_STATUSES = ("waiting", "called", "in_service")
 
 
+def active_provider_count(catalog_item_id, business_account_id):
+    return (
+        select(func.count(QueueProviderService.id))
+        .select_from(QueueProviderService)
+        .join(
+            QueueProvider,
+            QueueProvider.id == QueueProviderService.provider_id,
+        )
+        .where(
+            QueueProviderService.catalog_item_id == catalog_item_id,
+            QueueProviderService.active.is_(True),
+            QueueProvider.business_account_id == business_account_id,
+            QueueProvider.status == "active",
+        )
+        .correlate(CatalogItem)
+        .scalar_subquery()
+    )
+
+
 class QueueRepository:
     async def business_by_public_id(
         self,

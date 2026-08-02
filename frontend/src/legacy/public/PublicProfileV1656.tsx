@@ -8,6 +8,7 @@ import {
   moneyText,
   type CartReceipt,
 } from "../../orders/order-store";
+import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
 
 
 interface PublicProfileV1656Props {
@@ -21,6 +22,9 @@ interface PublicProfileV1656Props {
     provider: { public_id: string; name: string },
   ): void;
   onNeedLogin?(): void;
+  onNeedQueueLogin?(): void;
+  onBookQueue?(target: QueueBookingTarget): void;
+  onQueueMessage?(message: string): void;
   onOpenCart?(): void;
   onTitleChange?(title: string): void;
   onOpenListing?(publicId: string): void;
@@ -75,6 +79,9 @@ export function PublicProfileV1656({
   cart,
   onAddCartItem,
   onNeedLogin,
+  onNeedQueueLogin,
+  onBookQueue,
+  onQueueMessage,
   onOpenCart,
   onTitleChange,
   onOpenListing,
@@ -143,7 +150,30 @@ export function PublicProfileV1656({
       && item.kind === "service"
       && item.queue_enabled
     ) {
-      return <button className="biz-add-btn" type="button">Navbat olish</button>;
+      return (
+        <button
+          className="biz-add-btn"
+          type="button"
+          onClick={() => {
+            if (Math.max(0, Number(item.queue_provider_count) || 0) < 1) {
+              onQueueMessage?.(profileDirection === "Tibbiy xizmatlar"
+                ? "Shifokor hali biriktirilmagan."
+                : "Xizmat ko'rsatuvchi hali biriktirilmagan.");
+              return;
+            }
+            if (!authenticated) {
+              (onNeedQueueLogin ?? onNeedLogin)?.();
+              return;
+            }
+            onBookQueue?.({
+              businessPublicId: providerPublicId,
+              itemPublicId: item.public_id,
+              serviceName: item.name || "Xizmat",
+              direction: profileDirection,
+            });
+          }}
+        >Navbat olish</button>
+      );
     }
     const quantity = cart?.items[item.public_id]?.qty ?? 0;
     return (

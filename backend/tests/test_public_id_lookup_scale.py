@@ -22,6 +22,7 @@ from app.public_discovery.repository import (
     build_public_id,
 )
 from app.public_discovery.schemas import PublicResultKind
+from app.queues.model import QueueProvider, QueueProviderService
 
 
 MIGRATION = (
@@ -221,6 +222,8 @@ async def test_public_profile_and_catalog_detail_filter_by_indexed_public_id():
             Account.__table__,
             BusinessProfile.__table__,
             CatalogItem.__table__,
+            QueueProvider.__table__,
+            QueueProviderService.__table__,
         ),
     )
     statements: list[str] = []

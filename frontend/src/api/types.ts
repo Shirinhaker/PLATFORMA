@@ -290,6 +290,27 @@ export type BusinessQueueEntry = {
   updated_at: string;
 };
 
+export type QueueOptions = {
+  business_public_id: string;
+  item_public_id: string;
+  queue_date: string;
+  providers: BusinessQueueProvider[];
+};
+
+export type QueueSlots = {
+  mode: QueueProviderMode;
+  slots: string[];
+};
+
+export type QueueCreate = {
+  business_public_id: string;
+  item_public_id: string;
+  provider_id: number;
+  queue_date: string;
+  slot_time: string;
+  note: string;
+};
+
 export type PublicResultKind = (
   "user" | "business" | "product" | "service" | "listing"
 );
@@ -374,6 +395,7 @@ export type PublicCatalogItem = {
   can_order: boolean;
   can_chat: boolean;
   queue_enabled: boolean;
+  queue_provider_count?: number;
 };
 
 export type PublicCatalogResponse = {
@@ -481,6 +503,7 @@ export type PublicProfileItem = {
   image_url: string;
   group_name: string;
   queue_enabled: boolean;
+  queue_provider_count?: number;
 };
 
 export type OrderCreate = {

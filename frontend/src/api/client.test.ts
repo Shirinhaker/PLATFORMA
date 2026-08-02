@@ -12,6 +12,58 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("uses the typed public queue endpoints with the exact Q3 payloads", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 5,
+        account_type: "user",
+        name: "Ali",
+        login: "u_ali",
+        csrf_token: "queue-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const body = {
+      business_public_id: "b_shifo",
+      item_public_id: "s_qabul",
+      provider_id: 5,
+      queue_date: "2026-08-02",
+      slot_time: "09:20",
+      note: "",
+    };
+
+    await client.getQueueOptions("b_shifo", "s_qabul", "2026-08-02");
+    await client.getQueueSlots("b_shifo", "s_qabul", 5, "2026-08-02");
+    await client.createQueue(body);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      [
+        "https://api.example/api/v1/queues/options?business_public_id=b_shifo&item_public_id=s_qabul&queue_date=2026-08-02",
+        "GET",
+        undefined,
+      ],
+      [
+        "https://api.example/api/v1/queues/slots?business_public_id=b_shifo&item_public_id=s_qabul&provider_id=5&queue_date=2026-08-02",
+        "GET",
+        undefined,
+      ],
+      [
+        "https://api.example/api/v1/queues",
+        "POST",
+        JSON.stringify(body),
+      ],
+    ]);
+    expect(fetcher.mock.calls[3]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "queue-csrf",
+    });
+  });
+
   it("uses the typed business queue endpoints with the exact Q2 payloads", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({
