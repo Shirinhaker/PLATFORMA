@@ -283,8 +283,7 @@ class QueueService:
                     for row in rows
                     if row[0].legacy_staff_id in active_staff_ids
                 ]
-            await session.rollback()
-            return QueueOptionsRead(
+            response = QueueOptionsRead(
                 business_public_id=business_public_id,
                 item_public_id=item_public_id,
                 queue_date=resolved_date,
@@ -297,6 +296,8 @@ class QueueService:
                     for provider, count in rows
                 ],
             )
+            await session.rollback()
+            return response
 
     async def slots(
         self,
