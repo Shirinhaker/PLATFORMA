@@ -21,6 +21,10 @@ import {
   BusinessMedicalQueueV1656View,
 } from "./BusinessMedicalV1656View";
 import {
+  BusinessQueueV1656,
+  supportsBusinessQueueApi,
+} from "../queues/BusinessQueueV1656";
+import {
   CrudEditorView,
   ItemsEditorView,
 } from "./BusinessOnlineEditingViews";
@@ -69,6 +73,14 @@ type OnlineApi = Partial<Pick<
   | "sendOrderChatImage"
   | "editOrderChatMessage"
   | "deleteOrderChatMessage"
+  | "getBusinessQueueSetup"
+  | "getBusinessQueueProviders"
+  | "createBusinessQueueProvider"
+  | "updateBusinessQueueProvider"
+  | "getBusinessQueueEntries"
+  | "createBusinessOfflineQueue"
+  | "changeBusinessQueueStatus"
+  | "swapBusinessQueues"
 >>;
 
 type Props = {
@@ -236,6 +248,8 @@ export function BusinessOnlineScreen({
       || !api.getBusinessOnlineResource
       || (view === "listings" && supportsOwnerListings(api))
       || (["orders", "service-orders"].includes(view) && supportsOrders(api))
+      || (["medical-providers", "medical-queue"].includes(view)
+        && supportsBusinessQueueApi(api))
     ) return;
     const names = viewResources(view, primary);
     void refresh(...names);
@@ -602,6 +616,7 @@ export function BusinessOnlineScreen({
   }
 
   const content = renderContent({
+    api,
     view,
     items,
     groups,
@@ -691,6 +706,7 @@ export function BusinessOnlineScreen({
 
 
 type RenderContext = {
+  api: OnlineApi;
   view: string;
   items: BusinessOnlineRecord[];
   groups: BusinessOnlineRecord[];
@@ -790,6 +806,7 @@ function renderContent(context: RenderContext): ReactNode {
           setQuery={context.setQuery}
           kind={context.kind}
           setKind={context.setKind}
+          direction={profile.direction}
         />
       );
     case "dining-places":
@@ -808,6 +825,16 @@ function renderContent(context: RenderContext): ReactNode {
         />
       );
     case "medical-providers":
+      if (supportsBusinessQueueApi(context.api)) {
+        return (
+          <BusinessQueueV1656
+            api={context.api}
+            direction={profile.direction}
+            view="medical-providers"
+            onBackHandlerChange={context.setSubscreenBack}
+          />
+        );
+      }
       return (
         <BusinessMedicalProvidersV1656View
           direction={profile.direction}
@@ -815,12 +842,23 @@ function renderContent(context: RenderContext): ReactNode {
           staff={context.resources.medical_staff ?? []}
           items={context.resources.items ?? []}
           busy={shared.busy}
+          loading={context.loading}
           createDoctor={(record) => context.create("medical_doctors", record)}
           patchDoctor={(id, patch) => context.patch("medical_doctors", id, patch)}
           onBackHandlerChange={context.setSubscreenBack}
         />
       );
     case "medical-queue":
+      if (supportsBusinessQueueApi(context.api)) {
+        return (
+          <BusinessQueueV1656
+            api={context.api}
+            direction={profile.direction}
+            view="medical-queue"
+            onBackHandlerChange={context.setSubscreenBack}
+          />
+        );
+      }
       return (
         <BusinessMedicalQueueV1656View
           direction={profile.direction}
@@ -829,10 +867,34 @@ function renderContent(context: RenderContext): ReactNode {
           staff={context.resources.medical_staff ?? []}
           items={context.resources.items ?? []}
           busy={shared.busy}
+          loading={context.loading}
           createDoctor={(record) => context.create("medical_doctors", record)}
           patchDoctor={(id, patch) => context.patch("medical_doctors", id, patch)}
-          action={context.action}
-          refresh={context.refresh}
+          createOffline={async (input) => context.action(
+            "medical_queue",
+            "offline_add",
+            undefined,
+            {
+              patient_name: input.patientName,
+              phone: input.phone,
+              item_id: Number(input.itemId),
+              staff_id: Number(input.providerId),
+              queue_date: input.queueDate,
+            },
+          )}
+          changeStatus={async (id, status) => Boolean(await context.action(
+            "medical_queue",
+            "set_status",
+            id,
+            { status },
+          ))}
+          swapQueues={async (first, second) => Boolean(await context.action(
+            "medical_queue",
+            "swap",
+            Number(first),
+            { other_queue_id: Number(second) },
+          ))}
+          loadDate={async () => context.refresh("medical_queue")}
           onBackHandlerChange={context.setSubscreenBack}
         />
       );

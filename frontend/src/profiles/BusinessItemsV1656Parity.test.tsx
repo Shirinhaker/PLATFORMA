@@ -57,6 +57,7 @@ function renderView(overrides: Partial<Parameters<typeof ItemsEditorView>[0]> = 
       setQuery={vi.fn()}
       kind="all"
       setKind={vi.fn()}
+      direction=""
       {...overrides}
     />,
   );
@@ -66,10 +67,12 @@ function StatefulItemsView({
   initialForm = null,
   initialDraft = {},
   actions = {},
+  direction = "",
 }: {
   initialForm?: string | null;
   initialDraft?: Record<string, unknown>;
   actions?: Partial<typeof shared>;
+  direction?: string;
 }) {
   const [form, setForm] = useState<string | null>(initialForm);
   const [draft, setDraft] = useState(initialDraft);
@@ -87,6 +90,7 @@ function StatefulItemsView({
       setQuery={vi.fn()}
       kind="all"
       setKind={vi.fn()}
+      direction={direction}
     />
   );
 }
@@ -171,6 +175,52 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Nomi kiritilishi shart.");
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("navbatli yo'nalishdagi xizmatda v1656 Navbat tizimi maydonini saqlaydi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "service", name: "Qabul" }}
+        actions={{ create }}
+        direction="Tibbiy xizmatlar"
+      />,
+    );
+
+    expect(screen.getByLabelText("Navbat tizimi")).toHaveValue("0");
+    expect(screen.getByText(
+      "Xizmat kartasida onlayn va oflayn yagona navbatni ishlatadi.",
+    )).toHaveClass("idesc");
+
+    await user.selectOptions(screen.getByLabelText("Navbat tizimi"), "1");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      name: "Qabul",
+      kind: "service",
+      queue_enabled: 1,
+    }));
+  });
+
+  it("mahsulot yoki navbatsiz yo'nalishda Navbat tizimini yashirib o'chiradi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "Non", queue_enabled: 1 }}
+        actions={{ create }}
+        direction="Tibbiy xizmatlar"
+      />,
+    );
+
+    expect(screen.queryByLabelText("Navbat tizimi")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      queue_enabled: 0,
+    }));
   });
 
   it("bo'sh guruh nomida monolitdagi xatoni ko'rsatadi", async () => {

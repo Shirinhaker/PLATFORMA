@@ -11,6 +11,7 @@ import {
   GroupForm,
   ItemForm,
 } from "./BusinessItemsV1656Forms";
+import { QUEUE_DIRECTIONS } from "./business-profile-config";
 
 
 const FILTERS: ReadonlyArray<readonly [string, string]> = [
@@ -26,6 +27,7 @@ type Props = SharedActions & {
   setQuery: (value: string) => void;
   kind: string;
   setKind: (value: string) => void;
+  direction?: string;
 };
 
 type GroupBlock = {
@@ -38,6 +40,17 @@ function itemKind(row: BusinessOnlineRecord): "product" | "service" {
   return recordText(row, "kind", "item_type", "type") === "service"
     ? "service"
     : "product";
+}
+
+function itemKindWithGroup(
+  row: BusinessOnlineRecord,
+  groups: BusinessOnlineRecord[],
+): "product" | "service" {
+  const groupId = row.group_id;
+  const group = groups.find((candidate, index) => (
+    String(recordId(candidate, index)) === String(groupId ?? "")
+  ));
+  return group ? itemKind(group) : itemKind(row);
 }
 
 function kindText(value: unknown): string {
@@ -208,6 +221,7 @@ export function ItemsEditorView({
   setQuery,
   kind,
   setKind,
+  direction = "",
   ...actions
 }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -297,10 +311,15 @@ export function ItemsEditorView({
       return;
     }
     setValidationError("");
+    const effectiveKind = itemKindWithGroup(actions.draft, groups);
     const payload = cleanItemDraft({
       ...actions.draft,
       name,
-      kind: itemKind(actions.draft),
+      kind: effectiveKind,
+      queue_enabled: (
+        effectiveKind === "service"
+        && QUEUE_DIRECTIONS.some((value) => value === direction)
+      ) ? Number(actions.draft.queue_enabled ?? 0) : 0,
       group_id: actions.draft.group_id === ""
         ? null
         : actions.draft.group_id,
@@ -374,6 +393,7 @@ export function ItemsEditorView({
         <ItemForm
           draft={actions.draft}
           groups={groups}
+          direction={direction}
           setDraft={actions.setDraft}
           busy={actions.busy}
           editing={actions.form === itemEdit}

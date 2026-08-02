@@ -13,6 +13,11 @@ import type {
   BuildInfo,
   BusinessProfile,
   BusinessProfilePatch,
+  BusinessQueueEntry,
+  BusinessQueueOfflineCreate,
+  BusinessQueueProvider,
+  BusinessQueueProviderWrite,
+  BusinessQueueSetup,
   CabinetSwitch,
   ChallengeResent,
   ChallengeStarted,
@@ -52,6 +57,7 @@ import type {
   UploadGrantRequest,
   UserProfile,
   UserProfilePatch,
+  QueueEntryStatus,
 } from "./types";
 
 
@@ -177,6 +183,92 @@ export class ApiClient {
 
   getCatalogItem(publicId: string): Promise<PublicCatalogItem> {
     return this.request("GET", `/api/v1/public/catalog/items/${encodeURIComponent(publicId)}`);
+  }
+
+  getBusinessQueueSetup(): Promise<BusinessQueueSetup> {
+    return this.request(
+      "GET",
+      "/api/v1/queues/business/setup",
+      undefined,
+      true,
+    );
+  }
+
+  getBusinessQueueProviders(): Promise<BusinessQueueProvider[]> {
+    return this.request(
+      "GET",
+      "/api/v1/queues/business/providers",
+      undefined,
+      true,
+    );
+  }
+
+  createBusinessQueueProvider(
+    body: BusinessQueueProviderWrite,
+  ): Promise<BusinessQueueProvider> {
+    return this.request(
+      "POST",
+      "/api/v1/queues/business/providers",
+      body,
+      true,
+    );
+  }
+
+  updateBusinessQueueProvider(
+    providerId: number,
+    body: BusinessQueueProviderWrite,
+  ): Promise<BusinessQueueProvider> {
+    return this.request(
+      "PUT",
+      `/api/v1/queues/business/providers/${providerId}`,
+      body,
+      true,
+    );
+  }
+
+  getBusinessQueueEntries(queueDate: string): Promise<BusinessQueueEntry[]> {
+    const query = new URLSearchParams({ queue_date: queueDate });
+    return this.request(
+      "GET",
+      `/api/v1/queues/business/entries?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  createBusinessOfflineQueue(
+    body: BusinessQueueOfflineCreate,
+  ): Promise<BusinessQueueEntry> {
+    return this.request(
+      "POST",
+      "/api/v1/queues/business/entries",
+      body,
+      true,
+    );
+  }
+
+  changeBusinessQueueStatus(
+    queueId: number,
+    status: QueueEntryStatus,
+  ): Promise<BusinessQueueEntry> {
+    return this.request(
+      "PUT",
+      `/api/v1/queues/business/entries/${queueId}/status`,
+      { status },
+      true,
+    );
+  }
+
+  swapBusinessQueues(
+    queueId: number,
+    otherQueueId: number,
+  ): Promise<BusinessQueueEntry> {
+    return this.request(
+      "POST",
+      `/api/v1/queues/business/entries/${queueId}/swap`,
+      { other_queue_id: otherQueueId },
+      true,
+    );
   }
 
   getAdvertisements(params: PublicAdvertisementParams = {}): Promise<PublicAdvertisement[]> {
