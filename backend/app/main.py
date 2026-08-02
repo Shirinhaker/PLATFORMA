@@ -24,6 +24,8 @@ from app.listings.router import router as listings_router
 from app.listings.service import ListingService
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
+from app.orders.router import router as orders_router
+from app.orders.service import OrderService
 from app.platform.router import router as platform_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
@@ -104,6 +106,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2.create_download_url,
         )
+        app.state.order_service = OrderService(
+            database.session,
+            app.state.r2.create_download_url,
+        )
         try:
             yield
         finally:
@@ -137,6 +143,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(catalog_router)
     app.include_router(advertisements_router)
     app.include_router(listings_router)
+    app.include_router(orders_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

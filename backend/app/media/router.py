@@ -16,7 +16,8 @@ class UploadGrantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     purpose: Literal[
-        "avatar", "logo", "payment_qr", "listing_photo", "listing_video"
+        "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
+        "order_chat_image",
     ]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
@@ -29,7 +30,9 @@ async def create_upload_grant(
     request: Request,
     current: Annotated[CurrentAccount, Depends(require_csrf)],
 ):
-    allowed = body.purpose in {"listing_photo", "listing_video"} or (
+    allowed = body.purpose in {
+        "listing_photo", "listing_video", "order_chat_image"
+    } or (
         current.account_type is AccountType.USER
         and body.purpose == "avatar"
     ) or (

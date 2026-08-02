@@ -893,6 +893,7 @@ async def load_public_profile(
             public_id=build_content_public_id(item.kind, item.id),
             name=item.name,
             price_text=item.price_text,
+            unit=item.unit or "dona",
             note=item.note,
             image_url=image_url_provider(item.image_object_key),
             group_name=group_name or "",

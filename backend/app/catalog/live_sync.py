@@ -93,6 +93,7 @@ async def sync_business_catalog(
                 owner_name_snapshot=normalized_owner,
                 name="",
                 price_text="",
+                unit="dona",
                 note="",
                 kind="product",
                 queue_enabled=False,
@@ -165,6 +166,7 @@ def _apply_item(
     item.owner_name_snapshot = owner_name
     item.name = name
     item.price_text = _scalar_text(price, 120)
+    item.unit = _text(row.get("unit") or "dona", 40) or "dona"
     item.note = _text(note, 2000)
     item.kind = kind
     item.queue_enabled = _boolean(row.get("queue_enabled"))

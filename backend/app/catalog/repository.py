@@ -40,6 +40,7 @@ def build_catalog_statements(params: PublicCatalogParams):
             CatalogItem.kind,
             CatalogItem.name,
             CatalogItem.price_text,
+            CatalogItem.unit,
             CatalogItem.note,
             CatalogItem.owner_state,
             CatalogItem.business_account_id,
@@ -152,6 +153,7 @@ def _public_item(row, image_url_provider: ImageUrlProvider):
         public_id=build_content_public_id(row["kind"], row["target_id"]),
         name=row["name"],
         price_text=row["price_text"],
+        unit=row["unit"] or "dona",
         note=row["note"],
         owner_state="linked" if linked else "unlinked",
         owner_public_id=owner_public_id,
@@ -170,4 +172,3 @@ def _public_item(row, image_url_provider: ImageUrlProvider):
         can_order=linked,
         can_chat=linked,
     )
-

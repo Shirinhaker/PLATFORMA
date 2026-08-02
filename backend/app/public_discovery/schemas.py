@@ -187,6 +187,7 @@ class PublicProfileItem(BaseModel):
     public_id: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=160)
     price_text: str = Field(default="", max_length=120)
+    unit: str = Field(default="dona", max_length=40)
     note: str = Field(default="", max_length=2000)
     image_url: str = Field(default="", max_length=2048)
     group_name: str = Field(default="", max_length=160)

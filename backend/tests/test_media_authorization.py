@@ -206,6 +206,27 @@ async def test_business_receives_only_logo_prefix(media_clients):
     )
 
 
+@pytest.mark.parametrize(
+    ("client_name", "owner_prefix"),
+    (("user", "private/user/42"), ("business", "private/business/84")),
+)
+async def test_both_order_sides_receive_only_their_chat_image_prefix(
+    media_clients,
+    client_name,
+    owner_prefix,
+):
+    client = getattr(media_clients, client_name)
+    response = await client.post(
+        "/api/v1/media/upload-grants",
+        headers={"X-CSRF-Token": client.csrf},
+        json=upload_request("order_chat_image"),
+    )
+    assert response.status_code == 200
+    assert response.json()["object_key"].startswith(
+        f"{owner_prefix}/order_chat_image/"
+    )
+
+
 async def test_user_attaches_only_own_generated_avatar(media_clients):
     grant = await media_clients.user.post(
         "/api/v1/media/upload-grants",

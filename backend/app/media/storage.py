@@ -62,7 +62,8 @@ class R2Storage:
         owner_type: AccountType,
         owner_id: int,
         purpose: Literal[
-            "avatar", "logo", "payment_qr", "listing_photo", "listing_video"
+            "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
+            "order_chat_image",
         ],
         filename: str,
         content_type: str,
@@ -74,14 +75,22 @@ class R2Storage:
             owner_type is AccountType.BUSINESS
             and purpose in {"logo", "payment_qr"}
         )
-        listing_purpose = purpose in {"listing_photo", "listing_video"}
+        listing_purpose = purpose in {
+            "listing_photo", "listing_video", "order_chat_image"
+        }
         if not profile_purpose and not listing_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
-        if purpose == "listing_photo":
+        if purpose in {"listing_photo", "order_chat_image"}:
             if content_type not in LISTING_IMAGE_TYPES:
                 raise UploadRejected("JPG, PNG, WEBP, GIF yoki HEIC fayl tanlang.")
-            if not 1 <= size_bytes <= MAX_LISTING_IMAGE_BYTES:
-                raise UploadRejected("Fayl hajmi 10 MB dan oshmasin.")
+            maximum = (
+                MAX_PROFILE_IMAGE_BYTES
+                if purpose == "order_chat_image"
+                else MAX_LISTING_IMAGE_BYTES
+            )
+            if not 1 <= size_bytes <= maximum:
+                limit = 8 if purpose == "order_chat_image" else 10
+                raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
             suffix = LISTING_IMAGE_TYPES[content_type]
         elif purpose == "listing_video":
             if content_type not in LISTING_VIDEO_TYPES:
