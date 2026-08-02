@@ -11,11 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogItem
+from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError
 from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
+from app.orders.notifications import (
+    append_order_notification,
+    mark_order_notifications_read,
+)
 from app.orders.repository import OrderRepository
 from app.orders.schemas import (
     OrderCreate,
@@ -47,10 +52,12 @@ class OrderService:
         image_url_provider: ImageUrlProvider,
         *,
         repository: OrderRepository | None = None,
+        notification_repository: CabinetRecordRepository | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._image_url_provider = image_url_provider
         self._repository = repository or OrderRepository()
+        self._notification_repository = notification_repository or CabinetRecordRepository()
 
     async def create(
         self, *, account_id: int, account_type: AccountType, body: OrderCreate
@@ -157,6 +164,16 @@ class OrderService:
                 ))
             await session.flush()
             await self._event(session, "order.created", order, account_id)
+            await append_order_notification(
+                session,
+                self._notification_repository,
+                order,
+                side="provider",
+                event="created",
+                title="Yangi buyurtma keldi",
+                body="Buyurtmani ko'rib, qabul qiling.",
+                action_type="accept_order",
+            )
             await session.commit()
             return await self._project(session, order, "customer")
 
@@ -176,6 +193,12 @@ class OrderService:
                 order.customer_seen_at = now
             else:
                 order.provider_seen_at = now
+            await mark_order_notifications_read(
+                session,
+                self._notification_repository,
+                order,
+                side=side,
+            )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -183,6 +206,9 @@ class OrderService:
         async with self._session_factory() as session:
             rows = await self._repository.list_for_side(session, account_id=account_id, side=side)
             items_by_order = await self._repository.items_for_orders(
+                session, [row.id for row in rows]
+            )
+            chat_by_order = await self._repository.message_summaries(
                 session, [row.id for row in rows]
             )
             business_ids = {
@@ -206,6 +232,7 @@ class OrderService:
                     prefetched_items=items_by_order.get(row.id, []),
                     prefetched_business=businesses.get(row.provider_account_id),
                     business_prefetched=True,
+                    message_summary=chat_by_order.get(row.id),
                 )
                 for row in rows
             ]
@@ -244,6 +271,38 @@ class OrderService:
             order.updated_at = now
             self._changed(order, side, body.status, now)
             await self._event(session, "order.status_changed", order, account_id)
+            if side == "provider" and body.status == "accepted":
+                await append_order_notification(
+                    session, self._notification_repository, order,
+                    side="customer", event="accepted",
+                    title="Buyurtma qabul qilindi",
+                    body="To'lovni amalga oshirib, chekni yuboring.",
+                    action_type="make_payment",
+                )
+            elif side == "provider" and body.status == "tayyor":
+                await append_order_notification(
+                    session, self._notification_repository, order,
+                    side="customer", event="ready",
+                    title="Buyurtma tayyor bo'ldi",
+                    body=(
+                        "Do'kondan olib ketishingiz mumkin."
+                        if order.order_type == "pickup"
+                        else "Dostavka jarayoni boshlandi."
+                    ),
+                    action_type="view_ready",
+                )
+            elif side == "provider" and body.status in {"rejected", "cancelled"}:
+                await append_order_notification(
+                    session, self._notification_repository, order,
+                    side="customer", event=body.status,
+                    title="Buyurtma bekor qilindi", body=order.title,
+                )
+            elif side == "customer" and body.status == "cancelled":
+                await append_order_notification(
+                    session, self._notification_repository, order,
+                    side="provider", event="cancelled_by_customer",
+                    title="Mijoz buyurtmani bekor qildi", body=order.title,
+                )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -277,6 +336,13 @@ class OrderService:
             order.updated_at = now
             self._changed(order, side, "payment_submitted", now)
             await self._event(session, "order.payment_submitted", order, account_id)
+            await append_order_notification(
+                session, self._notification_repository, order,
+                side="provider", event="payment_submitted",
+                title="To'lov qilindi",
+                body="To'lov cheki yuborildi. To'lovni tekshirib tasdiqlang.",
+                action_type="confirm_payment",
+            )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -347,6 +413,13 @@ class OrderService:
             ))
             await session.flush()
             await self._event(session, topic, order, account_id)
+            if body.status == "confirmed":
+                await append_order_notification(
+                    session, self._notification_repository, order,
+                    side="customer", event="payment_confirmed",
+                    title="To'lov tasdiqlandi",
+                    body="Buyurtma tayyorlanmoqda.",
+                )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -419,21 +492,40 @@ class OrderService:
                     "order_provider_required",
                     "Bu amal faqat xizmat ko'rsatuvchiga tegishli.",
                 )
-            if order.status != "tayyor":
-                raise ApiError(
-                    409,
-                    "order_handoff_invalid",
-                    "Buyurtma hali topshirishga tayyor emas.",
-                )
-            if order.order_type != "pickup":
-                raise ApiError(409, "order_delivery_external", "Yetkazib berish holati alohida modulda tasdiqlanadi.")
+            if order.order_type == "delivery":
+                if order.status != "handoff_waiting_seller":
+                    raise ApiError(
+                        409,
+                        "order_delivery_not_picked_up",
+                        "Dostavkachi 'Dostavkani oldim' tugmasini hali bosmagan.",
+                    )
+                next_status = "in_delivery"
+            else:
+                if order.status != "tayyor":
+                    raise ApiError(
+                        409,
+                        "order_handoff_invalid",
+                        "Buyurtma hali topshirishga tayyor emas.",
+                    )
+                next_status = "pickup_waiting_customer"
             now = datetime.now(UTC)
-            order.status = "pickup_waiting_customer"
+            order.status = next_status
             order.handed_off_at = now
             order.seller_completed_at = now
             order.updated_at = now
             self._changed(order, side, "handoff", now)
             await self._event(session, "order.handed_off", order, account_id)
+            await append_order_notification(
+                session, self._notification_repository, order,
+                side="customer", event="seller_handoff",
+                title="Buyurtma topshirildi",
+                body=(
+                    "Buyurtma sizga yo'l oldi."
+                    if order.order_type == "delivery"
+                    else "Buyurtmani qabul qilganingizni tasdiqlang."
+                ),
+                action_type="" if order.order_type == "delivery" else "confirm_received",
+            )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -456,6 +548,12 @@ class OrderService:
             order.updated_at = now
             self._changed(order, side, "completed", now)
             await self._event(session, "order.completed", order, account_id)
+            await append_order_notification(
+                session, self._notification_repository, order,
+                side="provider", event="customer_received",
+                title="Buyurtma qabul qilindi",
+                body="Buyurtmachi buyurtmani olganini tasdiqladi.",
+            )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -732,6 +830,7 @@ class OrderService:
         prefetched_items: list[OrderItem] | None = None,
         prefetched_business: BusinessProfile | None = None,
         business_prefetched: bool = False,
+        message_summary: dict[str, object] | None = None,
     ) -> OrderRead:
         items = (
             prefetched_items
@@ -741,6 +840,10 @@ class OrderService:
         business = prefetched_business
         if not business_prefetched and order.provider_kind == "business":
             business = await session.get(BusinessProfile, order.provider_account_id)
+        if message_summary is None:
+            message_summary = (await self._repository.message_summaries(
+                session, [order.id]
+            )).get(order.id, {})
         customer_kind = (
             PublicResultKind.BUSINESS
             if order.customer_kind == "business"
@@ -787,6 +890,9 @@ class OrderService:
             seller_completed_at=order.seller_completed_at,
             customer_received_at=order.customer_received_at,
             last_event=order.last_event,
+            chat_count=int(message_summary.get("chat_count", 0)),
+            last_chat=str(message_summary.get("last_chat", "")),
+            last_chat_at=message_summary.get("last_chat_at"),
             pay_card=business.pay_card if business else "",
             pay_holder=business.pay_holder if business else "",
             pay_qr_url=self._image_url_provider(business.pay_qr_object_key) if business else "",
@@ -815,10 +921,31 @@ class OrderService:
 
     async def _project_message(self, session, message: OrderMessage, account_id: int) -> OrderMessageRead:
         sender = await self._profile(session, message.sender_account_id, message.sender_kind)
+        reply = None
+        if message.reply_to_id is not None:
+            reply_message = await self._repository.message(
+                session,
+                order_id=message.order_id,
+                message_id=message.reply_to_id,
+            )
+            if reply_message is not None:
+                reply_sender = await self._profile(
+                    session,
+                    reply_message.sender_account_id,
+                    reply_message.sender_kind,
+                )
+                reply = {
+                    "id": reply_message.id,
+                    "text": "" if reply_message.is_deleted else reply_message.text,
+                    "media_type": reply_message.media_type,
+                    "is_deleted": reply_message.is_deleted,
+                    "sender_name": reply_sender.name if reply_sender else "",
+                }
         return OrderMessageRead(
             id=message.id, text=message.text, media_type=message.media_type,
             media_url=(self._image_url_provider(message.media_object_key) if message.media_object_key else message.legacy_media_url),
             file_name=message.file_name, reply_to_id=message.reply_to_id,
+            reply=reply,
             edited_at=message.edited_at, deleted_at=message.deleted_at,
             is_deleted=message.is_deleted, mine=message.sender_account_id == account_id,
             sender_name=sender.name if sender else "", sender_kind=message.sender_kind,

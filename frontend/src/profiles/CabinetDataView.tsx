@@ -92,10 +92,12 @@ export function CabinetDataView({
   title,
   rows,
   onBack,
+  onOpenRow,
 }: {
   title: string;
   rows: unknown;
   onBack: () => void;
+  onOpenRow?: (row: RecordValue) => void;
 }) {
   const list = Array.isArray(rows) ? rows : [];
   return (
@@ -119,7 +121,11 @@ export function CabinetDataView({
               : { value: item };
             const heading = headingEntry(row, index);
             return (
-              <article key={String(row.id ?? index)}>
+              <article
+                key={String(row.id ?? index)}
+                className={onOpenRow ? "cabinet-data-view__clickable" : undefined}
+                onClick={onOpenRow ? () => onOpenRow(row) : undefined}
+              >
                 <strong>{present(heading.value)}</strong>
                 <dl>
                   {usefulEntries(row, heading.key).map(([key, value]) => (

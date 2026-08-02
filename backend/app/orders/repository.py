@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.model import CatalogItem
@@ -83,6 +83,51 @@ class OrderRepository:
             .order_by(OrderMessage.created_at, OrderMessage.id)
             .limit(500)
         )).all())
+
+    async def message_summaries(
+        self, session: AsyncSession, order_ids: list[int]
+    ) -> dict[int, dict[str, object]]:
+        if not order_ids:
+            return {}
+        counts = (await session.execute(
+            select(OrderMessage.order_id, func.count(OrderMessage.id))
+            .where(OrderMessage.order_id.in_(order_ids))
+            .group_by(OrderMessage.order_id)
+        )).all()
+        ranked = select(
+            OrderMessage.order_id.label("order_id"),
+            OrderMessage.text.label("text"),
+            OrderMessage.media_type.label("media_type"),
+            OrderMessage.created_at.label("created_at"),
+            func.row_number().over(
+                partition_by=OrderMessage.order_id,
+                order_by=(OrderMessage.created_at.desc(), OrderMessage.id.desc()),
+            ).label("message_rank"),
+        ).where(
+            OrderMessage.order_id.in_(order_ids),
+            OrderMessage.is_deleted.is_(False),
+        ).subquery()
+        latest = (await session.execute(
+            select(
+                ranked.c.order_id,
+                ranked.c.text,
+                ranked.c.media_type,
+                ranked.c.created_at,
+            ).where(ranked.c.message_rank == 1)
+        )).all()
+        summaries: dict[int, dict[str, object]] = {
+            int(order_id): {
+                "chat_count": int(count),
+                "last_chat": "",
+                "last_chat_at": None,
+            }
+            for order_id, count in counts
+        }
+        for order_id, message, media_type, created_at in latest:
+            summary = summaries.setdefault(int(order_id), {"chat_count": 0})
+            summary["last_chat"] = message or ("📷 Rasm" if media_type == "photo" else "")
+            summary["last_chat_at"] = created_at
+        return summaries
 
     async def message(
         self,

@@ -455,8 +455,9 @@ export function activityDate(value: number) {
 export function isService(row: unknown) {
   if (!row || typeof row !== "object") return false;
   const data = row as Record<string, unknown>;
+  if (String(data.order_category ?? "") === "service") return true;
   return ["booking", "service", "queue", "medical"].includes(
-    String(data.order_type ?? data.kind ?? data.order_category ?? ""),
+    String(data.order_type ?? data.kind ?? ""),
   );
 }
 

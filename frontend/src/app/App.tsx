@@ -498,12 +498,7 @@ export function App({ api }: { api: AppApi }) {
             createOrder={createOrder}
             customer={orderCustomer}
             filterProviderPublicId={cartFilter}
-            homePoint={homeLocation?.latitude != null && homeLocation.longitude != null
-              ? {
-                  latitude: homeLocation.latitude,
-                  longitude: homeLocation.longitude,
-                }
-              : null}
+            homeLocation={homeLocation}
             onCartsChange={setCarts}
             onNeedLogin={() => dispatch({ type: "OPEN_AUTH" })}
           />

@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import type { ApiClient } from "../api/client";
+import { findLocationCenter } from "../legacy/public/location-centers";
+import type { HomeLocation } from "../legacy/public/location-storage";
 import { OrderCheckoutV1656, type OrderDetails } from "./OrderCheckoutV1656";
 import {
   cartReceiptTotal,
@@ -23,6 +25,7 @@ type Props = {
   createOrder: ApiClient["createOrder"];
   customer?: { phone?: string; address?: string };
   filterProviderPublicId?: string | null;
+  homeLocation?: HomeLocation | null;
   homePoint?: { latitude: number; longitude: number } | null;
   onCartsChange(carts: CartState): void;
   onNeedLogin(): void;
@@ -42,6 +45,7 @@ export function CartV1656({
   createOrder,
   customer,
   filterProviderPublicId,
+  homeLocation,
   homePoint,
   onCartsChange,
   onNeedLogin,
@@ -54,6 +58,19 @@ export function CartV1656({
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const ids = receiptIds(carts, filterProviderPublicId);
   const checkout = checkoutId ? carts[checkoutId] : undefined;
+  const savedLocationPoint = homeLocation
+    && Number.isFinite(homeLocation.latitude)
+    && Number.isFinite(homeLocation.longitude)
+    ? {
+        latitude: Number(homeLocation.latitude),
+        longitude: Number(homeLocation.longitude),
+      }
+    : null;
+  const checkoutHomePoint = savedLocationPoint
+    ?? homePoint
+    ?? (homeLocation
+      ? findLocationCenter(homeLocation.region, homeLocation.district)
+      : null);
 
   function updateQuantity(
     providerPublicId: string,
@@ -247,7 +264,7 @@ export function CartV1656({
         <OrderCheckoutV1656
           businessName={checkout.provider_name}
           customer={customer}
-          homePoint={homePoint}
+          homePoint={checkoutHomePoint}
           useItems={Object.keys(checkout.items).length > 0}
           onCancel={() => setCheckoutId(null)}
           onSubmit={(details) => submit(checkout, details)}

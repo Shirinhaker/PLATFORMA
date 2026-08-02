@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogGroup, CatalogItem
+from app.cabinet_records.model import CabinetRecord, CabinetRecordField, CabinetResource
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
@@ -86,6 +87,9 @@ def order_store():
             BusinessProfile.__table__,
             CatalogGroup.__table__,
             CatalogItem.__table__,
+            CabinetResource.__table__,
+            CabinetRecord.__table__,
+            CabinetRecordField.__table__,
             Listing.__table__,
             Order.__table__,
             OrderItem.__table__,
@@ -329,6 +333,13 @@ async def test_create_order_snapshots_items_and_is_visible_to_both_sides(order_s
     assert created.order_category == "service"
     assert created.status == "new"
     assert created.payment_status == ""
+    provider = order_store.sync.get(BusinessProfile, 7)
+    notifications = provider.cabinet_payload.get("notifications", [])
+    assert notifications[-1]["event_key"] == f"order:{created.id}:created"
+    assert notifications[-1]["title"] == "Yangi buyurtma keldi"
+    assert notifications[-1]["body"] == "Buyurtmani ko'rib, qabul qiling."
+    assert notifications[-1]["order_id"] == created.id
+    assert notifications[-1]["is_read"] == 0
     assert created.total_amount == 70000
     assert created.items[0].name == "Ingliz tili"
     assert created.items[0].price == "35 000 so'm"
@@ -410,6 +421,19 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert accepted.status == "accepted"
     assert accepted.payment_status == "pending"
+    customer = order_store.sync.get(UserProfile, 5)
+    accepted_notification = customer.cabinet_payload["notifications"][-1]
+    assert accepted_notification["event_key"] == f"order:{created.id}:accepted"
+    assert accepted_notification["title"] == "Buyurtma qabul qilindi"
+    assert accepted_notification["action_type"] == "make_payment"
+    await service.mark_seen(
+        order_id=created.id,
+        account_id=5,
+        account_type=AccountType.USER,
+    )
+    customer = order_store.sync.get(UserProfile, 5)
+    assert customer.cabinet_payload["notifications"][-1]["is_read"] == 1
+    assert customer.dashboard_snapshot["unread"] == 0
 
     with pytest.raises(ApiError, match="Avval to'lov cheki rasmini"):
         await service.submit_payment(
@@ -436,6 +460,8 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert submitted.payment_status == "submitted"
     assert submitted.receipt_message_id == receipt.id
+    assert submitted.chat_count == 1
+    assert submitted.last_chat == "To‘lov cheki"
 
     disputed = await service.open_problem(
         order_id=created.id,
@@ -461,6 +487,11 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
         account_type=AccountType.USER,
         body=OrderMessageCreate(text="Yangisi", reply_to_id=receipt.id),
     )
+    assert reply.reply is not None
+    assert reply.reply.id == receipt.id
+    assert reply.reply.text == "To‘lov cheki"
+    assert reply.reply.media_type == "photo"
+    assert reply.reply.sender_name == "Ali"
     edited = await service.edit_message(
         order_id=created.id,
         message_id=reply.id,
@@ -513,6 +544,14 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert done.status == "done"
 
+    listed = (await service.list_my(
+        account_id=5,
+        account_type=AccountType.USER,
+    ))[0]
+    assert listed.chat_count == 3
+    assert listed.last_chat == "✅ To'lov tasdiqlandi. Rahmat!"
+    assert listed.last_chat_at is not None
+
     topics = list(order_store.sync.scalars(
         select(OutboxEvent.topic).order_by(OutboxEvent.id)
     ))
@@ -532,6 +571,46 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
         "order.handed_off",
         "order.completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_delivery_handoff_waiting_seller_moves_order_to_in_delivery(order_store):
+    service = service_for(order_store)
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(order_type="delivery"),
+    )
+    delivery = order_store.sync.get(Order, created.id)
+    delivery.status = "handoff_waiting_seller"
+    delivery.payment_status = "confirmed"
+    order_store.sync.commit()
+
+    handed = await service.handoff(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+    )
+
+    assert handed.status == "in_delivery"
+    assert handed.seller_completed_at is not None
+    event = order_store.sync.scalar(
+        select(OutboxEvent)
+        .where(OutboxEvent.topic == "order.handed_off")
+        .order_by(OutboxEvent.id.desc())
+    )
+    assert event is not None
+    assert event.payload["status"] == "in_delivery"
+
+    delivery.status = "delivered_waiting_customer"
+    order_store.sync.commit()
+    received = await service.received(
+        order_id=created.id,
+        account_id=5,
+        account_type=AccountType.USER,
+    )
+    assert received.status == "done"
+    assert received.customer_received_at is not None
 
 
 @pytest.mark.asyncio

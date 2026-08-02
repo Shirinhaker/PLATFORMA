@@ -52,6 +52,61 @@ describe("ApiClient", () => {
     );
   });
 
+  it("uses the complete authenticated order flow endpoints", async () => {
+    const session = {
+      account_id: 5,
+      account_type: "user",
+      name: "Ali",
+      login: "u_ali",
+      csrf_token: "order-csrf",
+      expires_at: "2026-08-27T08:00:00Z",
+    };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(session))
+      .mockResolvedValue(jsonResponse([]));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+
+    await client.getMyOrders();
+    await client.getOrderInbox();
+    await client.markOrderSeen(91);
+    await client.changeOrderStatus(91, "accepted");
+    await client.submitOrderPayment(91);
+    await client.decideOrderPayment(91, "confirmed");
+    await client.openOrderProblem(91, { reason: "amount_short", note: "" });
+    await client.chooseOrderProblemSolution(91, "new_receipt");
+    await client.handoffOrder(91);
+    await client.receiveOrder(91);
+    await client.getOrderChat(91);
+    await client.sendOrderChatMessage(91, { text: "Salom", reply_to_id: null });
+    await client.sendOrderChatImage(91, { object_key: "orders/receipt.jpg", file_name: "receipt.jpg" });
+    await client.editOrderChatMessage(91, 7, "Yangilandi");
+    await client.deleteOrderChatMessage(91, 7);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [url, init?.method])).toEqual([
+      ["https://api.example/api/v1/orders/my", "GET"],
+      ["https://api.example/api/v1/orders/inbox", "GET"],
+      ["https://api.example/api/v1/orders/91/seen", "PUT"],
+      ["https://api.example/api/v1/orders/91/status", "PUT"],
+      ["https://api.example/api/v1/orders/91/payment/submit", "POST"],
+      ["https://api.example/api/v1/orders/91/payment", "POST"],
+      ["https://api.example/api/v1/orders/91/problem", "POST"],
+      ["https://api.example/api/v1/orders/91/problem/solution", "PUT"],
+      ["https://api.example/api/v1/orders/91/handoff", "POST"],
+      ["https://api.example/api/v1/orders/91/received", "POST"],
+      ["https://api.example/api/v1/orders/91/chat", "GET"],
+      ["https://api.example/api/v1/orders/91/chat", "POST"],
+      ["https://api.example/api/v1/orders/91/chat/image", "POST"],
+      ["https://api.example/api/v1/orders/91/chat/7", "PUT"],
+      ["https://api.example/api/v1/orders/91/chat/7", "DELETE"],
+    ]);
+    for (const [, init] of fetcher.mock.calls.slice(3)) {
+      if (init?.method !== "GET") {
+        expect(init?.headers).toMatchObject({ "X-CSRF-Token": "order-csrf" });
+      }
+    }
+  });
+
   it("uses the versioned API and exactly one auth mechanism", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

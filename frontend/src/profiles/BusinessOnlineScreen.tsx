@@ -11,6 +11,10 @@ import {
   type OwnerListingsApi,
 } from "../listings/OwnerListingsV1656";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
+import {
+  OrdersCabinetV1656,
+  type OrdersApi,
+} from "../orders/OrdersCabinetV1656";
 import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsV1656View";
 import {
   BusinessMedicalProvidersV1656View,
@@ -50,6 +54,21 @@ type OnlineApi = Partial<Pick<
   | "deleteListing"
   | "createUploadGrant"
   | "uploadGrantedFile"
+  | "getMyOrders"
+  | "getOrderInbox"
+  | "markOrderSeen"
+  | "changeOrderStatus"
+  | "submitOrderPayment"
+  | "decideOrderPayment"
+  | "openOrderProblem"
+  | "chooseOrderProblemSolution"
+  | "handoffOrder"
+  | "receiveOrder"
+  | "getOrderChat"
+  | "sendOrderChatMessage"
+  | "sendOrderChatImage"
+  | "editOrderChatMessage"
+  | "deleteOrderChatMessage"
 >>;
 
 type Props = {
@@ -58,6 +77,8 @@ type Props = {
   view: string;
   title: string;
   onBack: () => void | Promise<void>;
+  initialOrderId?: number | null;
+  onOpenOrder?: (orderId: number) => void | Promise<void>;
 };
 
 type ResourceState = Partial<Record<
@@ -138,6 +159,17 @@ function supportsOwnerListings(api: OnlineApi): api is OnlineApi & OwnerListings
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
+function supportsOrders(api: OnlineApi): api is OnlineApi & OrdersApi {
+  return [
+    "getMyOrders", "getOrderInbox", "markOrderSeen", "changeOrderStatus",
+    "submitOrderPayment", "decideOrderPayment", "openOrderProblem",
+    "chooseOrderProblemSolution", "handoffOrder", "receiveOrder",
+    "getOrderChat", "sendOrderChatMessage", "sendOrderChatImage",
+    "editOrderChatMessage", "deleteOrderChatMessage", "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof OnlineApi] === "function");
+}
+
 
 export function BusinessOnlineScreen({
   api,
@@ -145,6 +177,8 @@ export function BusinessOnlineScreen({
   view,
   title,
   onBack,
+  initialOrderId,
+  onOpenOrder,
 }: Props) {
   const primary = VIEW_RESOURCE[view];
   const [resources, setResources] = useState<ResourceState>(() => ({
@@ -201,6 +235,7 @@ export function BusinessOnlineScreen({
       !primary
       || !api.getBusinessOnlineResource
       || (view === "listings" && supportsOwnerListings(api))
+      || (["orders", "service-orders"].includes(view) && supportsOrders(api))
     ) return;
     const names = viewResources(view, primary);
     void refresh(...names);
@@ -553,6 +588,19 @@ export function BusinessOnlineScreen({
     );
   }
 
+  if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
+    return (
+      <OrdersCabinetV1656
+        key={view}
+        api={api}
+        side="provider"
+        category={view === "service-orders" ? "service" : "product"}
+        onBack={() => { void onBack(); }}
+        initialOrderId={initialOrderId}
+      />
+    );
+  }
+
   const content = renderContent({
     view,
     items,
@@ -582,6 +630,7 @@ export function BusinessOnlineScreen({
     remove,
     action,
     setSubscreenBack: handleSubscreenBack,
+    onOpenOrder,
   });
   const exactV1656 = Boolean(primary);
 
@@ -688,6 +737,7 @@ type RenderContext = {
     handler: (() => void) | null,
     title?: string,
   ) => void;
+  onOpenOrder?: (orderId: number) => void | Promise<void>;
 };
 
 function renderContent(context: RenderContext): ReactNode {
@@ -961,6 +1011,7 @@ function renderContent(context: RenderContext): ReactNode {
               { enabled, orders_enabled: enabled },
             );
           }}
+          onOpenOrder={context.onOpenOrder}
         />
       );
     case "followers":

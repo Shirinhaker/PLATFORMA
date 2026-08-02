@@ -1633,6 +1633,7 @@ export function NotificationsView({
   createFilter,
   removeFilter,
   savePushPreference,
+  onOpenOrder,
 }: {
   rows: BusinessOnlineRecord[];
   filters?: BusinessOnlineRecord[];
@@ -1643,6 +1644,7 @@ export function NotificationsView({
   createFilter?: (record: BusinessOnlineRecord) => Promise<void>;
   removeFilter?: (id: number | string) => Promise<void>;
   savePushPreference?: (enabled: boolean) => Promise<void>;
+  onOpenOrder?: (orderId: number) => void | Promise<void>;
 }) {
   const serverPushEnabled = pushPreference
     ? Boolean(pushPreference.enabled) && Boolean(pushPreference.orders_enabled)
@@ -1791,7 +1793,11 @@ export function NotificationsView({
               style={!read ? { borderColor: "var(--koprik-primary)" } : undefined}
               key={String(recordId(row, index))}
               disabled={busy}
-              onClick={() => void markOne(recordId(row, index))}
+              onClick={async () => {
+                await markOne(recordId(row, index));
+                const orderId = Number(row.order_id ?? 0);
+                if (orderId) await onOpenOrder?.(orderId);
+              }}
             >
               <span className="menu-ic">{read ? "🔔" : "🟢"}</span>
               <span className="menu-main">
