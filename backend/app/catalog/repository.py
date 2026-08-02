@@ -42,6 +42,7 @@ def build_catalog_statements(params: PublicCatalogParams):
             CatalogItem.price_text,
             CatalogItem.unit,
             CatalogItem.note,
+            CatalogItem.queue_enabled,
             CatalogItem.owner_state,
             CatalogItem.business_account_id,
             CatalogItem.owner_name_snapshot,
@@ -171,4 +172,5 @@ def _public_item(row, image_url_provider: ImageUrlProvider):
         image_url=image_url_provider(row["image_object_key"]),
         can_order=linked,
         can_chat=linked,
+        queue_enabled=bool(row["queue_enabled"]),
     )

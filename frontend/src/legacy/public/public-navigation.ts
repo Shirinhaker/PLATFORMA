@@ -11,6 +11,7 @@ export type PublicNavigationAction =
   | { type: "OPEN_CATEGORY"; categoryId: string }
   | { type: "OPEN_LISTINGS" }
   | { type: "OPEN_LOCATION" }
+  | { type: "OPEN_CART" }
   | { type: "OPEN_AUTH" }
   | { type: "OPEN_CABINET" }
   | { type: "GO_HOME" }
@@ -48,6 +49,12 @@ export function publicNavigationReducer(
     case "OPEN_LOCATION":
       return {
         view: "location",
+        query: "",
+        categoryId: null,
+      };
+    case "OPEN_CART":
+      return {
+        view: "cart",
         query: "",
         categoryId: null,
       };

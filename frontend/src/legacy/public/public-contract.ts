@@ -4,6 +4,7 @@ export const PUBLIC_VIEWS = [
   "category",
   "listings",
   "location",
+  "cart",
   "auth",
   "cabinet",
 ] as const;
@@ -27,7 +28,6 @@ export type CatalogSearchType = (typeof CATALOG_SEARCH_TYPES)[number];
 
 export const PHASE3B_OUT_OF_SCOPE = [
   "taxi",
-  "cart",
   "payments",
   "admin",
   "staff",

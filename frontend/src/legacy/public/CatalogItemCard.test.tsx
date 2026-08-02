@@ -10,6 +10,7 @@ const unlinkedItem: PublicCatalogItem = {
   public_id: "p_public",
   name: "Mebel",
   price_text: "Kelishiladi",
+  unit: "dona",
   note: "",
   owner_state: "unlinked",
   owner_public_id: "",
@@ -23,6 +24,7 @@ const unlinkedItem: PublicCatalogItem = {
   image_url: "",
   can_order: false,
   can_chat: false,
+  queue_enabled: false,
 };
 
 
@@ -61,4 +63,3 @@ describe("CatalogItemCard", () => {
     expect(onOpenOwner).toHaveBeenCalledWith("b_public");
   });
 });
-

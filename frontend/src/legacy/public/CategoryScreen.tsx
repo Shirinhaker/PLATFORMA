@@ -14,12 +14,14 @@ interface CategoryScreenProps {
   categoryId: string;
   searchPublic?: ApiClient["searchPublic"];
   getCatalogItems?: ApiClient["getCatalogItems"];
+  onOpenOwner?(publicId: string): void;
 }
 
 export function CategoryScreen({
   categoryId,
   searchPublic,
   getCatalogItems,
+  onOpenOwner,
 }: CategoryScreenProps) {
   const direction = findCatalogDirection(categoryId);
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export function CategoryScreen({
           {catalogItems.length ? (
             <div className="public-catalog-items-grid">
               {catalogItems.map((item) => (
-                <CatalogItemCard item={item} key={item.public_id} />
+                <CatalogItemCard item={item} key={item.public_id} onOpenOwner={onOpenOwner} />
               ))}
             </div>
           ) : null}

@@ -114,10 +114,10 @@ Oldingi audit `cab-orders` va `cab-service-orders` uchun React `OrdersView`
 hamda ko'rinish testlari borligini `migrated` deb baholagan. Bu funksional
 paritet uchun yetarli emasligi aniqlandi:
 
-- ommaviy profilda `+ Savatga`, sticky savat va `cart` ekrani yo'q;
-- `frontend/src/api/client.ts`da order endpointlari yo'q;
-- modulli backendda jonli `orders`, `order_items`, `order_messages` domeni
-  yo'q;
+- O2dan oldin ommaviy profilda `+ Savatga`, sticky savat va `cart` ekrani
+  yo'q edi; O2da ular v1656 parity testlari bilan ko'chirildi;
+- O1/O2da `frontend/src/api/client.ts` va modulli backend jonli create order
+  oqimiga ulandi;
 - biznesdagi generic `set_status`, `report_problem` va `handoff` amallari
   faqat bitta kabinet snapshotini o'zgartiradi, mijoz tomonini atomar
   yangilamaydi;
@@ -128,6 +128,11 @@ paritet uchun yetarli emasligi aniqlandi:
 
 To'liq dalil, endpoint va migratsiya rejasi:
 `docs/orders-v1656-parity-audit.md`.
+
+O2 yakuni: public profil/katalog order entry, har biznes uchun alohida savat,
+miqdor–summa bog'lanishi, header/sticky badge, uch xil checkout va markaziy
+xarita metkasi ko'chirildi. `cab-orders` va `cab-service-orders` O4dagi jonli
+biznes boshqaruv oqimi tugamaguncha `partial` bo'lib qoladi.
 
 ## Yo'nalishga moslashuv auditi
 

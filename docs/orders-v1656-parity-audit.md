@@ -12,9 +12,9 @@ Hozirgi kabinetda ayrim kartalar, tablar va mahalliy holat amallari bor, lekin
 ular mijoz yaratgan bitta jonli buyurtmani mijoz va biznes tomonda birgalikda
 boshqaradigan order domeniga ulanmagan.
 
-O1 backend order core'dan keyingi funksional birliklar holati:
-**0 migrated, 12 partial, 2 missing**. Frontend ekranlari keyingi alohida
-bloklarda ko'chirilmaguncha biror birlik `migrated` deb oshirib ko'rsatilmaydi.
+O2 savat va checkout'dan keyingi funksional birliklar holati:
+**4 migrated, 10 partial, 0 missing**. Mijoz va biznes kabinetidagi keyingi
+order ekranlari O3–O5 bloklarda alohida ko'chiriladi.
 
 Holatlar:
 
@@ -49,10 +49,10 @@ alohida tashqi bog'liqlik sifatida qayd etilgan.
 
 | # | Ekran yoki oqim | Holat | Hozirgi React/modulli fayl | Monolit qatorlari | Hozirgi test |
 |---:|---|---|---|---|---|
-| 1 | Ommaviy profil/katalogdan buyurtma boshlash | partial | `frontend/src/legacy/public/PublicProfileV1656.tsx`; `frontend/src/legacy/public/CatalogItemCard.tsx` | `static/index.html:5684–5825, 8651–8682` | `frontend/src/legacy/public/PublicProfileV1656.test.tsx`; `frontend/src/legacy/public/CatalogItemCard.test.tsx` |
-| 2 | Header savat tugmasi, sticky savat va `cart` ekrani | missing | `AppShell.tsx`da ixtiyoriy `onCart`/`cartCount` bor, ammo `App.tsx` ularni uzatmaydi; maxsus savat View yo'q | `static/index.html:1450–1453, 1517, 2954–2956, 5822–5968, 7839–7845, 8861–8884` | Maxsus parity test yo'q; `frontend/src/app/App.test.tsx` hozir `Savat` yo'qligini kutadi |
-| 3 | `Buyurtma berish` sheeti va yetkazish xaritasi | missing | Maxsus React komponent yo'q | `static/index.html:6108–6233` | yo'q |
-| 4 | Buyurtmani yuborish va savatni tozalash | partial | `backend/app/orders/`da jonli create API bor; `frontend/src/api/client.ts` va savatni tozalash hali O2da | `static/index.html:6234–6263`; `api.py:9916–10013` | `backend/tests/test_orders_live_v1656.py`; frontend testi O2da |
+| 1 | Ommaviy profil/katalogdan buyurtma boshlash | migrated | `frontend/src/legacy/public/PublicProfileV1656.tsx`; `frontend/src/legacy/public/CatalogItemCard.tsx`; `backend/app/public_discovery/`; `backend/app/catalog/` | `static/index.html:5684–5825, 8651–8682` | `frontend/src/legacy/public/PublicProfileV1656.test.tsx`; `frontend/src/legacy/public/CatalogItemCard.test.tsx`; `frontend/src/orders/OrdersV1656Parity.test.tsx`; `backend/tests/test_public_profile_v1656.py` |
+| 2 | Header savat tugmasi, sticky savat va `cart` ekrani | migrated | `frontend/src/app/App.tsx`; `frontend/src/app/AppShell.tsx`; `frontend/src/legacy/public/PublicHeader.tsx`; `frontend/src/orders/CartV1656.tsx`; `frontend/src/orders/order-store.ts` | `static/index.html:1450–1453, 1517, 2954–2956, 5822–5968, 7839–7845, 8861–8884` | `frontend/src/orders/OrdersV1656Parity.test.tsx`; `frontend/src/legacy/public/PublicHeader.test.tsx`; `frontend/src/legacy/public/public-navigation.test.ts` |
+| 3 | `Buyurtma berish` sheeti va yetkazish xaritasi | migrated | `frontend/src/orders/OrderCheckoutV1656.tsx`; `frontend/src/orders/OrdersV1656.css` | `static/index.html:6108–6233` | `frontend/src/orders/OrdersV1656Parity.test.tsx` |
+| 4 | Buyurtmani yuborish va savatni tozalash | migrated | `frontend/src/api/client.ts`; `frontend/src/orders/CartV1656.tsx`; `backend/app/orders/` | `static/index.html:6234–6263`; `api.py:9916–10013` | `frontend/src/orders/OrdersV1656Parity.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py` |
 | 5 | Mijoz mahsulot buyurtmalari — `ucab-orders` | partial | `frontend/src/profiles/UserProfile.tsx` umumiy `CabinetDataView` orqali snapshot qatorlarini chiqaradi | `static/index.html:2371, 2714–2715, 6296–6995, 7017–7035` | Maxsus customer-order parity testi yo'q |
 | 6 | Mijoz xizmat buyurtmalari — `ucab-service-orders` | partial | `frontend/src/profiles/UserProfile.tsx` faqat umumiy snapshotni `order_type` bo'yicha filtrlaydi | `static/index.html:2372, 2717–2718, 6296–7035` | Maxsus customer-service-order parity testi yo'q |
 | 7 | Biznes mahsulot buyurtmalari — `cab-orders` | partial | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `BusinessOnlineViews.tsx` (`OrdersView`) | `static/index.html:1771, 2222–2230, 6296–6995, 7036–7051` | `BusinessExistingOnlineV1656Parity.test.tsx`; `BusinessOnlineClaudeReviewParity.test.tsx`; testlar ko'rinish va snapshot amalini tekshiradi |
@@ -350,6 +350,14 @@ cab-service-orders (partial).`
 
 `Buyurtma berish: 0/14 funksional birlik migrated, qolgani: 12 partial,
 2 missing (header/sticky savat va checkout React ekranlari).`
+
+`Onlaynlashtirish biznes ekranlari: 19/21 migrated, qolgani: cab-orders,
+cab-service-orders (partial).`
+
+## O2 yakuniy holati
+
+`Buyurtma berish: 4/14 funksional birlik migrated, qolgani: 10 partial,
+0 missing.`
 
 `Onlaynlashtirish biznes ekranlari: 19/21 migrated, qolgani: cab-orders,
 cab-service-orders (partial).`

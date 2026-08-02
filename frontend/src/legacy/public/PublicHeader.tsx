@@ -131,7 +131,9 @@ export function PublicHeader({
               onClick={onCart}
             >
               <CartIcon />
-              {cartCount > 0 ? <span className="badge">{cartCount}</span> : null}
+              {cartCount > 0 ? (
+                <span className="badge">{cartCount > 99 ? "99+" : cartCount}</span>
+              ) : null}
               <span className="web-header-label">Savat</span>
             </button>
           ) : null}

@@ -191,6 +191,7 @@ class PublicProfileItem(BaseModel):
     note: str = Field(default="", max_length=2000)
     image_url: str = Field(default="", max_length=2048)
     group_name: str = Field(default="", max_length=160)
+    queue_enabled: bool = False
 
 
 class PublicProfileListing(BaseModel):

@@ -15,6 +15,7 @@ describe("Phase 3B public flow contract", () => {
       "category",
       "listings",
       "location",
+      "cart",
       "auth",
       "cabinet",
     ]);
@@ -38,7 +39,6 @@ describe("Phase 3B public flow contract", () => {
   it("does not claim unmigrated Phase 3B features", () => {
     expect(PHASE3B_OUT_OF_SCOPE).toEqual([
       "taxi",
-      "cart",
       "payments",
       "admin",
       "staff",

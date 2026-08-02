@@ -18,6 +18,8 @@ import type {
   ChallengeStarted,
   ChallengeVerification,
   Me,
+  OrderCreate,
+  OrderCreateResponse,
   ProfileImageAttachment,
   PublicAdvertisement,
   PublicAdvertisementParams,
@@ -276,6 +278,10 @@ export class ApiClient {
       "GET",
       `/api/v1/public/profiles/${kind}/${encodeURIComponent(publicId)}`,
     );
+  }
+
+  createOrder(body: OrderCreate): Promise<OrderCreateResponse> {
+    return this.request("POST", "/api/v1/orders", body, true);
   }
 
   recordAdvertisementViews(publicIds: string[]): Promise<void> {

@@ -897,6 +897,7 @@ async def load_public_profile(
             note=item.note,
             image_url=image_url_provider(item.image_object_key),
             group_name=group_name or "",
+            queue_enabled=bool(item.queue_enabled),
         )
         for item, group_name in item_rows
     ]

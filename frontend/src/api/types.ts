@@ -277,6 +277,7 @@ export type PublicCatalogItem = {
   public_id: string;
   name: string;
   price_text: string;
+  unit: string;
   note: string;
   owner_state: "linked" | "unlinked";
   owner_public_id: string;
@@ -290,6 +291,7 @@ export type PublicCatalogItem = {
   image_url: string;
   can_order: boolean;
   can_chat: boolean;
+  queue_enabled: boolean;
 };
 
 export type PublicCatalogResponse = {
@@ -392,10 +394,29 @@ export type PublicProfileItem = {
   public_id: string;
   name: string;
   price_text: string;
+  unit: string;
   note: string;
   image_url: string;
   group_name: string;
+  queue_enabled: boolean;
 };
+
+export type OrderCreate = {
+  provider_kind: "user" | "business";
+  provider_public_id: string;
+  items: Array<{ public_id: string; qty: number }>;
+  listing_public_id: string;
+  title: string;
+  phone: string;
+  order_type: "delivery" | "pickup" | "booking";
+  address: string;
+  desired_time: string;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
+  note: string;
+};
+
+export type OrderCreateResponse = { id: number };
 
 export type PublicProfileListing = {
   public_id: string;

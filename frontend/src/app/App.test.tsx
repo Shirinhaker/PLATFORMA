@@ -152,6 +152,24 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Kabinet" }))
       .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Savat" }))
+      .toBeInTheDocument();
+  });
+
+  it("opens the migrated empty Savat screen from Home", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    render(<App api={guestApi()} />);
+    await screen.findByRole("heading", {
+      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Savat" }));
+
+    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Do'kon sahifasidan mahsulot qo'shing."))
+      .toBeInTheDocument();
   });
 
   it("opens the migrated E’lonlar screen while still hiding unowned actions", async () => {
