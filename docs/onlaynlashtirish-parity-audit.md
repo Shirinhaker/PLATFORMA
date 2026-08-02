@@ -27,7 +27,7 @@ Joriy React qamrovi va qat'iy paritet holati: **21 migrated, 0 partial,
 > Bu son faqat Onlaynlashtirish **ekran inventari** holatidir. Navbatning
 > ommaviy profil, mijoz kabineti, bildirishnoma deep-linki va relatsion domen
 > bo'yicha funksional auditi `docs/navbat-v1656-funksional-audit.md`da.
-> 2026-08-02 Q1 holatida navbat domeni: **3/15 migrated, 11 partial, 1 missing**.
+> 2026-08-02 Q2 holatida navbat domeni: **6/15 migrated, 8 partial, 1 missing**.
 
 ## 21 ekran inventari
 
@@ -40,9 +40,9 @@ Joriy React qamrovi va qat'iy paritet holati: **21 migrated, 0 partial,
 | 5 | Mahsulot/Xizmatlar va guruhlar — `cab-items`, `cab-item-form` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessItemsV1656View.tsx`; `frontend/src/profiles/BusinessItemsV1656Forms.tsx` | `static/index.html:1956–1968, 2111–2139, 12716–13108` | `frontend/src/profiles/BusinessItemsV1656Parity.test.tsx`; `frontend/src/profiles/BusinessOnlineEditing.test.tsx`; `frontend/src/profiles/BusinessOnlineDirectionPlanV1656Parity.test.ts` |
 | 6 | Stollar va xonalar — `cab-dining` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` | `static/index.html:1970–1976, 11531–11616` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
 | 7 | Stol/xona zakazi — `cab-dining-order` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessDiningV1656View.tsx` (`DiningOrderView`) | `static/index.html:1978–1980, 11617–11632` | `frontend/src/profiles/BusinessDiningV1656Parity.test.tsx` |
-| 8 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalProvidersV1656View`) | `static/index.html:2107, 11637–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
-| 9 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | migrated | `frontend/src/profiles/BusinessMedicalV1656View.tsx` (xizmat ko'rsatuvchi formasi) | `static/index.html:2108, 11638–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
-| 10 | Navbat — `cab-medical-queue` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalQueueV1656View`) | `static/index.html:2109, 11642–11669` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx` |
+| 8 | Xizmat ko'rsatuvchilar — `cab-medical-doctors` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/queues/BusinessQueueV1656.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalProvidersV1656View`) | `static/index.html:2107, 11637–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx`; `frontend/src/queues/BusinessQueueV1656Integration.test.tsx` |
+| 9 | Xizmat ko'rsatuvchi formasi — `cab-medical-doctor-form` | migrated | `frontend/src/queues/BusinessQueueV1656.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (xizmat ko'rsatuvchi formasi) | `static/index.html:2108, 11638–11641` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx`; `frontend/src/queues/BusinessQueueV1656Integration.test.tsx` |
+| 10 | Navbat — `cab-medical-queue` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/queues/BusinessQueueV1656.tsx`; `frontend/src/profiles/BusinessMedicalV1656View.tsx` (`BusinessMedicalQueueV1656View`) | `static/index.html:2109, 11642–11669` | `frontend/src/profiles/BusinessMedicalV1656Parity.test.tsx`; `frontend/src/queues/BusinessQueueV1656Integration.test.tsx` |
 | 11 | Kursga yozilishlar — `cab-education-enrollments` | migrated | `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessEducationEnrollmentsV1656View.tsx` | `static/index.html:1770, 2086, 5425, 9138–9141, 12005, 12140–12158, 12318`; `api.py:2675–2687, 3406–3438` | `frontend/src/profiles/BusinessEducationEnrollmentsV1656Parity.test.tsx`; `backend/tests/test_business_online_service.py`; `backend/tests/test_business_online_relational_service.py` |
 | 12 | Buyurtmalar — `cab-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessProfileV3.tsx` | `static/index.html:2222–2230, 6296–6995, 7036–7051` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/orders/OrdersCabinetWiringV1656.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py` |
 | 13 | Xizmat buyurtmalari — `cab-service-orders` | migrated | `frontend/src/orders/OrdersCabinetV1656.tsx`; `frontend/src/profiles/BusinessOnlineScreen.tsx`; `frontend/src/profiles/BusinessProfileV3.tsx` | `static/index.html:2231–2233, 6296–6995, 7036–7051` | `frontend/src/orders/OrdersCabinetV1656Parity.test.tsx`; `frontend/src/orders/OrdersCabinetWiringV1656.test.tsx`; `frontend/src/api/client.test.ts`; `backend/tests/test_orders_live_v1656.py` |
@@ -202,4 +202,4 @@ Joriy qayta audit hisoboti:
 `Onlaynlashtirish: 21/21 ekran migrated, qolgani: yo'q`.
 
 Funksional izoh:
-`Navbat domeni: 3/15 migrated, partial: 11, missing: 1`.
+`Navbat domeni: 6/15 migrated, partial: 8, missing: 1`.

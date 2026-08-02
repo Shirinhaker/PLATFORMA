@@ -85,9 +85,9 @@ xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
 | # | Funksional birlik | Joriy holat | Yangi koddagi dalil | v1656 etaloni | Yetishmayotgan qism / test |
 |---:|---|---|---|---|---|
 | 1 | 14 yo'nalish guardi va dinamik atamalar | migrated | `frontend/src/profiles/business-profile-config.ts:43–50, 388–389`; `backend/app/business_online/service.py` direction guardi | `static/index.html:3680–3681, 12076–12078`; `api.py:5506–5547` | Mavjud matritsa testlari saqlanadi |
-| 2 | Xizmatda navbatni yoqish/o'chirish | partial | `backend/app/catalog/model.py` va public sxemalarda `queue_enabled` bor; ammo `frontend/src/profiles/BusinessItemsV1656Forms.tsx:120–264`da `Navbat tizimi` maydoni yo'q | `static/index.html:2135, 12906, 12947, 13008`; `api.py:2391–2434` | React form maydoni, yo'nalish/kind guardi va save parity testi |
-| 3 | Xizmat ko'rsatuvchilar ro'yxati va formasi | partial | Q1da `queue_providers`/`queue_provider_services` va typed business provider API yaratildi; `BusinessMedicalProvidersV1656View` hali generic `business-online/medical_doctors`ga ulangan | `static/index.html:2107–2108, 11637–11641`; `api.py:5557–5599` | Q2da mavjud React formani typed APIga ulash va parity testi |
-| 4 | Biznesning yagona navbat boshqaruvi | partial | Q1da typed daily list, offline create, status va swap API yaratildi; `BusinessMedicalQueueV1656View` hali generic `medical_queue` snapshotini ishlatadi | `static/index.html:2109, 11642–11669`; `api.py:5743–5778` | Q2da biznes ekranini relatsion APIga ulash |
+| 2 | Xizmatda navbatni yoqish/o'chirish | migrated | `BusinessItemsV1656Forms.tsx` v1656 maydonini faqat 14 navbatli yo'nalishdagi xizmatda ko'rsatadi; qiymat `business-online/items` yozuvi orqali relatsion katalogning `queue_enabled` ustuniga sinxronlanadi | `static/index.html:2135, 12906, 12947, 13008`; `api.py:2391–2434` | `BusinessItemsV1656Parity.test.tsx` yoqish, yashirish va majburiy o'chirishni tekshiradi |
+| 3 | Xizmat ko'rsatuvchilar ro'yxati va formasi | migrated | `BusinessQueueV1656.tsx` setup/list/create/update oqimini typed `/api/v1/queues/business/providers`ga ulaydi; `BusinessMedicalProvidersV1656View`ning v1656 markup va matnlari saqlangan | `static/index.html:2107–2108, 11637–11641`; `api.py:5557–5599` | `BusinessQueueV1656Integration.test.tsx` generic snapshot chaqirilmasligini ham tekshiradi |
+| 4 | Biznesning yagona navbat boshqaruvi | migrated | `BusinessQueueV1656.tsx` sana bo'yicha list, offline create, status va swapni typed `/api/v1/queues/business/entries` endpointlariga ulaydi | `static/index.html:2109, 11642–11669`; `api.py:5743–5778` | Integration testi to'rtala amal payloadini va v1656 ko'rinish testlari matn/modal paritetini tekshiradi |
 | 5 | Ommaviy profil/katalogdagi `Navbat olish` | partial | `PublicProfileV1656.tsx:137–147` tugmani handlersiz chiqaradi; `CatalogItemCard.tsx:16–20, 50–57` tugma matnini chiqarib profilni ochadi | `static/index.html:5112–5115, 5700–5708, 11711` | Login guardi va booking oqimini ochadigan handler; provider/count payloadi |
 | 6 | Sana va xizmat ko'rsatuvchini tanlash | partial | Q1 typed `GET /api/v1/queues/options` va response schemani berdi; `frontend/src/queues` komponenti yo'q | `static/index.html:11682–11694`; `api.py:5600–5605` | Q3 client, modal va parity testi |
 | 7 | Slot rejimida bo'sh vaqtlarni olish | partial | Q1 typed `/slots` endpointida ish kuni, o'tgan vaqt va band slot filtri bor; frontend tanlovi yo'q | `static/index.html:11695–11704`; `api.py:5607–5700` | Q3 slot tanlash React oqimi |
@@ -102,22 +102,23 @@ xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
 
 Q1dan keyingi natija: **3 migrated, 11 partial, 1 missing** funksional birlik.
 
+Q2dan keyingi natija: **6 migrated, 8 partial, 1 missing** funksional birlik.
+
 ## Nima uchun mavjud uchta ekran yetarli emas
 
-`BusinessMedicalV1656View.tsx` ko'rinish va biznes ichidagi tugmalarni
-ko'chirgan. Uning amallari hozir
-`/api/v1/business-online/medical_queue/actions/...` orqali generic
-`cabinet_records` snapshotini o'zgartiradi. Q1 typed backend domenini yaratdi,
-ammo mavjud React ekranlari hali unga ulanmagan. Shu frontend oqimi:
+Q2da `BusinessMedicalV1656View.tsx`ning v1656 ko'rinishi saqlanib,
+`BusinessQueueV1656.tsx` adapteri orqali Q1 typed backend domeniga ulandi.
+Biznes provider va navbat amallari endi generic `medical_*` snapshotini
+o'zgartirmaydi. Biroq Q3/Q4gacha qoladigan frontend oqimi:
 
 - ommaviy foydalanuvchiga sana/provider/slot bermaydi;
 - foydalanuvchiga tegishli navbat yozuvini yaratmaydi;
-- typed `/api/v1/queues` endpointlarini chaqirmaydi;
+- ommaviy va mijoz typed `/api/v1/queues` endpointlarini chaqirmaydi;
 - relatsion navbat yozuvlarini foydalanuvchiga ko'rsatmaydi.
 
-Shu sabab `cab-medical-doctors`, `cab-medical-doctor-form` va
-`cab-medical-queue` ekran darajasida `migrated`, ammo **navbat domeni
-funksional darajada `partial`**.
+Shu sabab biznesning uch ekrani ham ekran va funksional darajada `migrated`,
+ammo ommaviy navbat olish va mijoz zanjiri tugamagani uchun butun **navbat
+domeni funksional darajada `partial`**.
 
 ## Majburiy biznes qoidalari
 
@@ -193,5 +194,17 @@ yaratildi, lekin staging/production bazasiga migratsiya va deploy qilinmadi.
 Bu amallar uchun alohida foydalanuvchi ruxsati talab qilinadi.
 
 `Navbat funksional pariteti: 3/15 migrated, partial: 11, missing: 1.`
+
+`Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`
+
+## Q2 yakuniy hisoboti
+
+Q2 xizmat formasidagi `Navbat tizimi` maydonini v1656 yo'nalish/kind guardi
+bilan qaytardi. Xizmat ko'rsatuvchilar setup/list/create/update hamda biznesning
+kunlik list/offline create/status/swap oqimlari typed relatsion queue APIga
+ulandi. Tizimlashtirish komponentlari o'zgartirilmadi; Ma'muriyat xodimlari
+faqat setup orqali read-only o'qiladi.
+
+`Navbat funksional pariteti: 6/15 migrated, partial: 8, missing: 1.`
 
 `Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`

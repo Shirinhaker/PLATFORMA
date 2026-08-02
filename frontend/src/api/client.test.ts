@@ -12,6 +12,74 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("uses the typed business queue endpoints with the exact Q2 payloads", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Klinika",
+        login: "b_klinika",
+        csrf_token: "queue-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse([]));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const provider = {
+      staff_id: 11,
+      item_public_ids: ["s_qabul"],
+      specialty: "Kardiolog",
+      experience_years: 8,
+      qualification: "Oliy toifa",
+      work_days: "1,2,3,4,5,6",
+      work_start: "08:00",
+      work_end: "17:00",
+      avg_minutes: 20,
+      room: "12-xona",
+      bio: "",
+      status: "active" as const,
+      mode: "live" as const,
+    };
+    const offline = {
+      item_public_id: "s_qabul",
+      provider_id: 5,
+      queue_date: "2026-08-02",
+      patient_name: "Vali",
+      phone: "",
+      note: "",
+      slot_time: "",
+    };
+
+    await client.getBusinessQueueSetup();
+    await client.getBusinessQueueProviders();
+    await client.createBusinessQueueProvider(provider);
+    await client.updateBusinessQueueProvider(5, provider);
+    await client.getBusinessQueueEntries("2026-08-02");
+    await client.createBusinessOfflineQueue(offline);
+    await client.changeBusinessQueueStatus(41, "called");
+    await client.swapBusinessQueues(41, 42);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      ["https://api.example/api/v1/queues/business/setup", "GET", undefined],
+      ["https://api.example/api/v1/queues/business/providers", "GET", undefined],
+      ["https://api.example/api/v1/queues/business/providers", "POST", JSON.stringify(provider)],
+      ["https://api.example/api/v1/queues/business/providers/5", "PUT", JSON.stringify(provider)],
+      ["https://api.example/api/v1/queues/business/entries?queue_date=2026-08-02", "GET", undefined],
+      ["https://api.example/api/v1/queues/business/entries", "POST", JSON.stringify(offline)],
+      ["https://api.example/api/v1/queues/business/entries/41/status", "PUT", JSON.stringify({ status: "called" })],
+      ["https://api.example/api/v1/queues/business/entries/41/swap", "POST", JSON.stringify({ other_queue_id: 42 })],
+    ]);
+    for (const [, init] of fetcher.mock.calls.slice(3)) {
+      if (init?.method !== "GET") {
+        expect(init?.headers).toMatchObject({ "X-CSRF-Token": "queue-csrf" });
+      }
+    }
+  });
+
   it("creates an order through the versioned authenticated API", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

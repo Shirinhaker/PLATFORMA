@@ -1,4 +1,5 @@
 import type { BusinessOnlineRecord } from "../api/business-online-types";
+import { QUEUE_DIRECTIONS } from "./business-profile-config";
 import { recordId, recordText } from "./BusinessOnlineViews";
 
 
@@ -108,6 +109,7 @@ export function GroupForm({
 export function ItemForm({
   draft,
   groups,
+  direction,
   setDraft,
   busy,
   editing,
@@ -116,15 +118,22 @@ export function ItemForm({
 }: {
   draft: BusinessOnlineRecord;
   groups: BusinessOnlineRecord[];
+  direction: string;
   setDraft: (value: BusinessOnlineRecord) => void;
   busy: boolean;
   editing: boolean;
   onCancel: () => void;
   onSave: () => Promise<void>;
 }) {
-  const kind = rowKind(draft);
+  const selectedGroup = groups.find((group, index) => (
+    String(recordId(group, index)) === String(draft.group_id ?? "")
+  ));
+  const kind = selectedGroup ? rowKind(selectedGroup) : rowKind(draft);
   const trackStock = Boolean(Number(draft.track_stock ?? 0));
   const note = String(draft.note ?? draft.description ?? "");
+  const queueVisible = kind === "service" && QUEUE_DIRECTIONS.some(
+    (value) => value === direction,
+  );
 
   return (
     <section className="item-form-card form-wrap">
@@ -216,10 +225,21 @@ export function ItemForm({
         <select
           className="input"
           value={String(draft.group_id ?? "")}
-          onChange={(event) => setDraft({
-            ...draft,
-            group_id: event.currentTarget.value || null,
-          })}
+          onChange={(event) => {
+            const groupId = event.currentTarget.value;
+            const group = groups.find((candidate, index) => (
+              String(recordId(candidate, index)) === groupId
+            ));
+            const nextKind = group ? rowKind(group) : rowKind(draft);
+            setDraft({
+              ...draft,
+              group_id: groupId || null,
+              kind: nextKind,
+              queue_enabled: nextKind === "service"
+                ? draft.queue_enabled ?? 0
+                : 0,
+            });
+          }}
         >
           <option value="">Guruhsiz</option>
           {groups.map((group, index) => {
@@ -235,12 +255,22 @@ export function ItemForm({
         </select>
       </label>
       <div className="field">
-        <label>Turi</label>
-        <div className="item-kind-row" role="group" aria-label="Tovar turi">
+        {selectedGroup ? (
+          <div className="item-auto-kind">
+            Tur avtomatik: {kind === "service" ? "Xizmat" : "Mahsulot"} ({String(selectedGroup.name ?? "")} guruhi bo'yicha)
+          </div>
+        ) : (
+          <>
+            <label>Turi</label>
+            <div className="item-kind-row" role="group" aria-label="Tovar turi">
           <button
             type="button"
             className={kind === "product" ? "sort-chip on" : "sort-chip"}
-            onClick={() => setDraft({ ...draft, kind: "product" })}
+            onClick={() => setDraft({
+              ...draft,
+              kind: "product",
+              queue_enabled: 0,
+            })}
           >
             Mahsulot
           </button>
@@ -251,8 +281,30 @@ export function ItemForm({
           >
             Xizmat
           </button>
-        </div>
+            </div>
+          </>
+        )}
       </div>
+      {queueVisible && (
+        <div className="field" id="itQueueWrap">
+          <label htmlFor="itQueueEnabled">Navbat tizimi</label>
+          <select
+            className="input"
+            id="itQueueEnabled"
+            value={Number(draft.queue_enabled ?? 0) ? "1" : "0"}
+            onChange={(event) => setDraft({
+              ...draft,
+              queue_enabled: Number(event.currentTarget.value),
+            })}
+          >
+            <option value="0">O‘chirilgan</option>
+            <option value="1">Yoqilgan</option>
+          </select>
+          <div className="idesc">
+            Xizmat kartasida onlayn va oflayn yagona navbatni ishlatadi.
+          </div>
+        </div>
+      )}
       <div className="item-form-actions">
         <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void onSave()}>
           Saqlash

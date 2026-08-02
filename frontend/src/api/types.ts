@@ -209,6 +209,87 @@ export type ProfileImageAttachment = {
   zoom: number;
 };
 
+export type QueueProviderStatus = "active" | "inactive";
+export type QueueProviderMode = "live" | "slot";
+export type QueueEntryStatus = (
+  "waiting" | "called" | "in_service" | "done" | "no_show"
+  | "cancelled" | "skipped"
+);
+
+export type BusinessQueueService = {
+  public_id: string;
+  name: string;
+  price_text: string;
+};
+
+export type BusinessQueueStaff = {
+  id: number;
+  name: string;
+  profession: string;
+};
+
+export type BusinessQueueSetup = {
+  services: BusinessQueueService[];
+  staff: BusinessQueueStaff[];
+};
+
+export type BusinessQueueProviderWrite = {
+  staff_id: number;
+  item_public_ids: string[];
+  specialty: string;
+  experience_years: number;
+  qualification: string;
+  work_days: string;
+  work_start: string;
+  work_end: string;
+  avg_minutes: number;
+  room: string;
+  bio: string;
+  status: QueueProviderStatus;
+  mode: QueueProviderMode;
+};
+
+export type BusinessQueueProvider = BusinessQueueProviderWrite & {
+  id: number;
+  name: string;
+  profession: string;
+  queue_count: number;
+};
+
+export type BusinessQueueOfflineCreate = {
+  item_public_id: string;
+  provider_id: number;
+  queue_date: string;
+  patient_name: string;
+  phone: string;
+  note: string;
+  slot_time: string;
+};
+
+export type BusinessQueueEntry = {
+  id: number;
+  business_account_id: number;
+  customer_account_id: number | null;
+  item_public_id: string;
+  provider_id: number;
+  patient_name: string;
+  phone: string;
+  service_name: string;
+  provider_name: string;
+  queue_date: string;
+  queue_no: number;
+  queue_code: string;
+  source: string;
+  status: QueueEntryStatus;
+  note: string;
+  slot_time: string;
+  ahead_count: number;
+  avg_minutes: number;
+  wait_minutes: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PublicResultKind = (
   "user" | "business" | "product" | "service" | "listing"
 );

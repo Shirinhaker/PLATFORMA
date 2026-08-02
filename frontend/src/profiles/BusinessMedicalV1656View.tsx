@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type {
-  BusinessOnlineRecord,
-  BusinessOnlineResource,
-} from "../api/business-online-types";
+import type { BusinessOnlineRecord } from "../api/business-online-types";
 import { queueUiLabels } from "./business-profile-config";
 import "./BusinessMedicalV1656View.css";
 
@@ -19,6 +16,7 @@ type ProviderProps = {
   staff: BusinessOnlineRecord[];
   items: BusinessOnlineRecord[];
   busy: boolean;
+  loading?: boolean;
   createDoctor: (record: BusinessOnlineRecord) => Promise<boolean>;
   patchDoctor: (
     id: number | string,
@@ -35,15 +33,25 @@ type QueueProps = {
   staff: BusinessOnlineRecord[];
   items: BusinessOnlineRecord[];
   busy: boolean;
+  loading?: boolean;
   createDoctor: ProviderProps["createDoctor"];
   patchDoctor: ProviderProps["patchDoctor"];
-  action: (
-    resource: BusinessOnlineResource,
-    name: string,
-    id?: number | string,
-    payload?: BusinessOnlineRecord,
-  ) => Promise<BusinessOnlineRecord | null>;
-  refresh: (...resources: BusinessOnlineResource[]) => Promise<void>;
+  createOffline: (input: {
+    patientName: string;
+    phone: string;
+    itemId: string;
+    providerId: string;
+    queueDate: string;
+  }) => Promise<BusinessOnlineRecord | null>;
+  changeStatus: (
+    id: number | string,
+    status: string,
+  ) => Promise<boolean>;
+  swapQueues: (
+    first: number | string,
+    second: number | string,
+  ) => Promise<boolean>;
+  loadDate: (date: string) => Promise<void>;
   onBackHandlerChange: BackHandlerChange;
 };
 
@@ -60,7 +68,7 @@ type DoctorDraft = {
   room: string;
   bio: string;
   status: string;
-  item_ids: number[];
+  item_ids: Array<number | string>;
 };
 
 type Toast = { text: string; role: "alert" | "status" } | null;
@@ -82,11 +90,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 function text(value: unknown) {
   return String(value ?? "");
-}
-
-function number(value: unknown) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function recordId(row: BusinessOnlineRecord) {
@@ -127,10 +130,27 @@ function doctorDraft(row?: BusinessOnlineRecord): DoctorDraft {
     room: text(row?.room),
     bio: text(row?.bio),
     status: text(row?.status || "active"),
-    item_ids: Array.isArray(row?.item_ids)
-      ? row.item_ids.map(number).filter(Boolean)
+    item_ids: Array.isArray(row?.item_public_ids)
+      ? row.item_public_ids as Array<number | string>
+      : Array.isArray(row?.item_ids)
+        ? row.item_ids as Array<number | string>
       : [],
   };
+}
+
+function itemKey(row: BusinessOnlineRecord) {
+  return text(row.public_id ?? row.id);
+}
+
+function providerItemIds(row: BusinessOnlineRecord) {
+  const value = Array.isArray(row.item_public_ids)
+    ? row.item_public_ids
+    : row.item_ids;
+  return Array.isArray(value) ? value.map(text) : [];
+}
+
+function providerChoiceId(row: BusinessOnlineRecord) {
+  return text(row.provider_id ?? row.staff_id);
 }
 
 function AppToast({ toast }: { toast: Toast }) {
@@ -230,6 +250,7 @@ export function BusinessMedicalProvidersV1656View({
   staff,
   items,
   busy,
+  loading = false,
   createDoctor,
   patchDoctor,
   onBackHandlerChange,
@@ -359,17 +380,18 @@ export function BusinessMedicalProvidersV1656View({
             <label>{labels.medical ? "Qabul qiladigan xizmatlari" : "Ko‘rsatadigan xizmatlari"}</label>
             <div>
               {queueItems.length > 0 ? queueItems.map((item) => {
-                const id = number(item.id);
+                const id = itemKey(item);
+                const value = (item.public_id ?? item.id ?? "") as number | string;
                 return (
                   <label style={{ display: "flex", gap: 8, margin: "8px 2px" }} key={id}>
                     <input
                       type="checkbox"
-                      checked={draft.item_ids.includes(id)}
+                      checked={draft.item_ids.map(text).includes(id)}
                       onChange={(event) => update(
                         "item_ids",
                         event.target.checked
-                          ? [...draft.item_ids, id]
-                          : draft.item_ids.filter((value) => value !== id),
+                          ? [...draft.item_ids, value]
+                          : draft.item_ids.filter((current) => text(current) !== id),
                       )}
                     />
                     {text(item.name)}
@@ -403,7 +425,9 @@ export function BusinessMedicalProvidersV1656View({
           + {labels.provider} biriktirish
         </button>
         <div>
-          {doctors.length > 0 ? doctors.map((doctor) => (
+          {loading ? (
+            <div className="idesc">Yuklanmoqda...</div>
+          ) : doctors.length > 0 ? doctors.map((doctor) => (
             <button
               type="button"
               className="panel-card"
@@ -428,7 +452,7 @@ export function BusinessMedicalProvidersV1656View({
                 </span>
               </div>
               <div className="idesc" style={{ marginTop: 7 }}>
-                {Array.isArray(doctor.item_ids) ? doctor.item_ids.length : 0} xizmat · {text(doctor.work_start)}–{text(doctor.work_end)} · {doctor.mode === "slot" ? "🕐 Vaqtli qabul" : "Jonli navbat"}
+                {providerItemIds(doctor).length} xizmat · {text(doctor.work_start)}–{text(doctor.work_end)} · {doctor.mode === "slot" ? "🕐 Vaqtli qabul" : "Jonli navbat"}
               </div>
             </button>
           )) : (
@@ -480,10 +504,13 @@ export function BusinessMedicalQueueV1656View({
   staff,
   items,
   busy,
+  loading = false,
   createDoctor,
   patchDoctor,
-  action,
-  refresh,
+  createOffline,
+  changeStatus,
+  swapQueues,
+  loadDate,
   onBackHandlerChange,
 }: QueueProps) {
   const labels = queueUiLabels(direction);
@@ -510,8 +537,7 @@ export function BusinessMedicalQueueV1656View({
   function providersForItem(itemId: string) {
     return doctors.filter((doctor) => (
       doctor.status === "active"
-      && Array.isArray(doctor.item_ids)
-      && doctor.item_ids.map(text).includes(itemId)
+      && providerItemIds(doctor).includes(itemId)
       && staffById.has(text(doctor.staff_id))
     ));
   }
@@ -532,13 +558,7 @@ export function BusinessMedicalQueueV1656View({
   }
 
   async function setStatus(row: BusinessOnlineRecord, status: string) {
-    const saved = await action(
-      "medical_queue",
-      "set_status",
-      recordId(row),
-      { status },
-    );
-    if (saved) await refresh("medical_queue");
+    if (await changeStatus(recordId(row), status)) await loadDate(date);
   }
 
   async function saveOffline(current: Extract<QueueModal, { kind: "offline" }>) {
@@ -554,17 +574,17 @@ export function BusinessMedicalQueueV1656View({
       setToast({ text: `${labels.provider} tanlanishi shart.`, role: "alert" });
       return;
     }
-    const saved = await action("medical_queue", "offline_add", undefined, {
-      patient_name: current.patient.trim(),
+    const saved = await createOffline({
+      patientName: current.patient.trim(),
       phone: current.phone.trim(),
-      item_id: Number(current.itemId),
-      staff_id: Number(current.staffId),
-      queue_date: date,
+      itemId: current.itemId,
+      providerId: current.staffId,
+      queueDate: date,
     });
     if (!saved) return;
     setModal(null);
     setToast({ text: `Navbat: ${text(saved.queue_code)}`, role: "status" });
-    await refresh("medical_queue");
+    await loadDate(date);
   }
 
   async function saveSwap(current: Extract<QueueModal, { kind: "swap" }>) {
@@ -576,16 +596,10 @@ export function BusinessMedicalQueueV1656View({
       setToast({ text: "Ikkinchi navbat ID kiritilishi shart.", role: "alert" });
       return;
     }
-    const saved = await action(
-      "medical_queue",
-      "swap",
-      Number(current.first),
-      { other_queue_id: Number(current.second) },
-    );
-    if (!saved) return;
+    if (!await swapQueues(current.first, current.second)) return;
     setModal(null);
     setToast({ text: "Navbatlar almashtirildi.", role: "status" });
-    await refresh("medical_queue");
+    await loadDate(date);
   }
 
   if (providersOpen) {
@@ -619,7 +633,11 @@ export function BusinessMedicalQueueV1656View({
           type="date"
           style={{ marginBottom: 10 }}
           value={date}
-          onChange={(event) => setDate(event.target.value)}
+          onChange={(event) => {
+            const nextDate = event.target.value;
+            setDate(nextDate);
+            void loadDate(nextDate);
+          }}
         />
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={openOffline}>
@@ -638,13 +656,15 @@ export function BusinessMedicalQueueV1656View({
           ↔ Navbatlarni almashtirish
         </button>
         <div>
-          {visibleRows.length > 0 ? visibleRows.map((row) => (
+          {loading ? (
+            <div className="idesc">Yuklanmoqda...</div>
+          ) : visibleRows.length > 0 ? visibleRows.map((row) => (
             <div className="panel-card" key={text(row.id)}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <div>
                   <b>{text(row.queue_code)} · {text(row.patient_name)}</b>
                   <div className="idesc">
-                    {text(row.service_name)} · {text(row.doctor_name)} · {row.source === "online" ? "Onlayn" : "Oflayn"}{row.slot_time ? ` · 🕐 ${text(row.slot_time)}` : ""}
+                    {text(row.service_name)} · {text(row.provider_name ?? row.doctor_name)} · {row.source === "online" ? "Onlayn" : "Oflayn"}{row.slot_time ? ` · 🕐 ${text(row.slot_time)}` : ""}
                   </div>
                 </div>
                 <span className="sort-chip">{STATUS_LABELS[text(row.status)]}</span>
@@ -702,8 +722,9 @@ export function BusinessMedicalQueueV1656View({
             <option value="">{labels.provider}ni tanlang</option>
             {providersForItem(modal.itemId).map((doctor) => {
               const employee = staffById.get(text(doctor.staff_id)) ?? doctor;
+              const choiceId = providerChoiceId(doctor);
               return (
-                <option key={text(doctor.staff_id)} value={text(doctor.staff_id)}>
+                <option key={choiceId} value={choiceId}>
                   {text(employee.name)}{employee.profession ? ` — ${text(employee.profession)}` : ""}
                 </option>
               );
