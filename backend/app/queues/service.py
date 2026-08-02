@@ -436,8 +436,9 @@ class QueueService:
                 business_account_id=business_account_id,
                 queue_date=queue_date or self._local_now().date(),
             )
+            response = [self._entry_read(*row) for row in rows]
             await session.rollback()
-            return [self._entry_read(*row) for row in rows]
+            return response
 
     async def list_mine(
         self,
@@ -452,8 +453,9 @@ class QueueService:
                 session,
                 customer_account_id=account_id,
             )
+            response = [self._entry_read(*row) for row in rows]
             await session.rollback()
-            return [self._entry_read(*row) for row in rows]
+            return response
 
     async def cancel_mine(
         self,

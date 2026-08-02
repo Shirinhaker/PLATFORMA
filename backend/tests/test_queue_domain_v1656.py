@@ -942,6 +942,225 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
 
 
 @pytest.mark.asyncio
+async def test_queue_lists_serialize_before_rollback_on_postgresql():
+    database_url = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
+    if not database_url:
+        for method in (QueueService.list_mine, QueueService.list_business):
+            source = inspect.getsource(method)
+            assert source.index("response = [") < source.index(
+                "await session.rollback()"
+            )
+        return
+
+    engine = create_async_engine(database_url)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    token = uuid4().hex
+    queue_day = date(2026, 8, 3)
+    business_id: int | None = None
+    customer_id: int | None = None
+    catalog_item_id: int | None = None
+    provider_id: int | None = None
+    entry_id: int | None = None
+
+    try:
+        async with sessions.begin() as session:
+            business_account = Account(
+                account_type=AccountType.BUSINESS,
+                login=f"queue-list-business-{token}",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            customer_account = Account(
+                account_type=AccountType.USER,
+                login=f"queue-list-customer-{token}",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add_all((business_account, customer_account))
+            await session.flush()
+            business_id = business_account.id
+            customer_id = customer_account.id
+
+            session.add(BusinessProfile(
+                account_id=business_id,
+                name="Ro'yxat stomatolog",
+                phone="+998901234567",
+                description="",
+                public_username=f"queue_list_{token[:12]}",
+                direction="Tibbiy xizmatlar",
+                activity_type="Stomatologiya",
+                address="Qumqo'rg'on",
+                latitude=None,
+                longitude=None,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ))
+
+            item = CatalogItem(
+                business_account_id=business_id,
+                source_record_key=f"queue-list-{token}",
+                catalog_group_id=None,
+                owner_name_snapshot="Ro'yxat stomatolog",
+                name="Tish ko'rigi",
+                price_text="50 000 so'm",
+                unit="dona",
+                note="",
+                kind="service",
+                queue_enabled=True,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(item)
+            await session.flush()
+            catalog_item_id = item.id
+
+            provider = QueueProvider(
+                business_account_id=business_id,
+                legacy_source_id=None,
+                legacy_staff_id=8_000_000_000 + business_id,
+                staff_name_snapshot="Bunyod",
+                profession_snapshot="Stomatolog",
+                specialty="Terapevt stomatolog",
+                experience_years=9,
+                qualification="Oliy toifa",
+                work_days="1,2,3,4,5,6,7",
+                work_start=time(8, 0),
+                work_end=time(17, 0),
+                avg_minutes=15,
+                room="3-xona",
+                bio="",
+                status="active",
+                mode="live",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(provider)
+            await session.flush()
+            provider_id = provider.id
+
+            entry = QueueEntry(
+                business_account_id=business_id,
+                legacy_source_id=None,
+                catalog_item_id=catalog_item_id,
+                provider_id=provider_id,
+                customer_account_id=customer_id,
+                patient_name="Ali",
+                phone="+998900000000",
+                service_name_snapshot="Tish ko'rigi",
+                provider_name_snapshot="Bunyod",
+                queue_date=queue_day,
+                queue_no=1,
+                queue_code="STO-001",
+                source="online",
+                status="waiting",
+                note="STAGING E2E 2026-08-03",
+                slot_time=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(entry)
+            await session.flush()
+            entry_id = entry.id
+
+        service = QueueService(sessions, now_provider=lambda: NOW)
+        mine = await service.list_mine(
+            account_id=customer_id,
+            account_type=AccountType.USER,
+        )
+        business_rows = await service.list_business(
+            business_account_id=business_id,
+            queue_date=queue_day,
+        )
+
+        expected = [(
+            entry_id,
+            "STO-001",
+            "Ro'yxat stomatolog",
+            "Tibbiy xizmatlar",
+            "Bunyod",
+        )]
+        assert [
+            (
+                row.id,
+                row.queue_code,
+                row.business_name,
+                row.business_direction,
+                row.provider_name,
+            )
+            for row in mine
+        ] == expected
+        assert [
+            (
+                row.id,
+                row.queue_code,
+                row.business_name,
+                row.business_direction,
+                row.provider_name,
+            )
+            for row in business_rows
+        ] == expected
+    finally:
+        if business_id is not None:
+            async with sessions.begin() as session:
+                await session.execute(
+                    delete(QueueEntry).where(
+                        QueueEntry.business_account_id == business_id
+                    )
+                )
+                if provider_id is not None:
+                    await session.execute(
+                        delete(QueueProvider).where(
+                            QueueProvider.id == provider_id
+                        )
+                    )
+                if catalog_item_id is not None:
+                    await session.execute(
+                        delete(CatalogItem).where(
+                            CatalogItem.id == catalog_item_id
+                        )
+                    )
+                await session.execute(
+                    delete(BusinessProfile).where(
+                        BusinessProfile.account_id == business_id
+                    )
+                )
+                account_ids = [business_id]
+                if customer_id is not None:
+                    account_ids.append(customer_id)
+                await session.execute(
+                    delete(Account).where(Account.id.in_(account_ids))
+                )
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_parallel_live_bookings_receive_distinct_numbers_on_postgresql():
     database_url = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
     if not database_url:
