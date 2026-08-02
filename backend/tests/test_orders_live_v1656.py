@@ -13,6 +13,7 @@ from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
+from app.orders.repository import OrderRepository
 from app.orders.router import router as orders_router
 from app.orders.schemas import (
     OrderCreate,
@@ -283,6 +284,21 @@ def service_for(store: AsyncStore) -> OrderService:
         yield store
 
     return OrderService(sessions, lambda key: f"/media/{key}")
+
+
+def service_with_repository(
+    store: AsyncStore,
+    repository: OrderRepository,
+) -> OrderService:
+    @asynccontextmanager
+    async def sessions():
+        yield store
+
+    return OrderService(
+        sessions,
+        lambda key: f"/media/{key}",
+        repository=repository,
+    )
 
 
 def create_body(*, item_id: int = 11, order_type: str = "pickup") -> OrderCreate:
@@ -671,6 +687,58 @@ async def test_generic_business_order_and_provider_cancellation_match_v1656(orde
         body=OrderStatusChange(status="cancelled"),
     )
     assert cancelled.status == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_generic_order_does_not_query_the_catalog(order_store):
+    class CatalogQueryGuard(OrderRepository):
+        async def catalog_items_by_public_ids(self, session, *, public_ids):
+            raise AssertionError("Bo'sh buyurtmada katalog so'rovi bajarilmasligi kerak.")
+
+        async def all_catalog_items(self, session):
+            raise AssertionError("Butun katalogni yuklash taqiqlangan.")
+
+    service = service_with_repository(order_store, CatalogQueryGuard())
+    body = create_body().model_copy(update={
+        "items": [],
+        "title": "Buyurtma: Muhr",
+    })
+
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=body,
+    )
+
+    assert created.title == "Buyurtma: Muhr"
+    assert created.items == []
+
+
+@pytest.mark.asyncio
+async def test_catalog_order_queries_only_requested_public_ids(order_store):
+    expected = build_content_public_id("service", 11)
+
+    class CatalogQueryGuard(OrderRepository):
+        requested: list[str] | None = None
+
+        async def catalog_items_by_public_ids(self, session, *, public_ids):
+            self.requested = list(public_ids)
+            return [order_store.sync.get(CatalogItem, 11)]
+
+        async def all_catalog_items(self, session):
+            raise AssertionError("Butun katalogni yuklash taqiqlangan.")
+
+    repository = CatalogQueryGuard()
+    service = service_with_repository(order_store, repository)
+
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(),
+    )
+
+    assert repository.requested == [expected]
+    assert created.items[0].name == "Ingliz tili"
 
 
 @pytest.mark.asyncio

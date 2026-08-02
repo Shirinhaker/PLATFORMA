@@ -47,13 +47,17 @@ class ListingRepository:
             statement.order_by(Listing.created_at.desc(), Listing.id.desc()).limit(100)
         )).all())
 
-    async def all_ids(self, session: AsyncSession) -> list[int]:
-        return [int(value) for value in (await session.scalars(
-            select(Listing.id)
-        )).all()]
-
-    async def get(self, session: AsyncSession, listing_id: int) -> Listing | None:
-        return await session.get(Listing, listing_id)
+    async def by_public_id(
+        self,
+        session: AsyncSession,
+        *,
+        public_id: str,
+    ) -> Listing | None:
+        return await session.scalar(
+            select(Listing)
+            .where(Listing.public_id == public_id)
+            .limit(1)
+        )
 
     async def list_owner(
         self,

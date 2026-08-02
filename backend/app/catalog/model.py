@@ -9,8 +9,9 @@ from sqlalchemy import (
     Identity,
     Index,
     String,
+    event,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, attributes, mapped_column
 
 from app.db.base import Base
 from app.legacy_migration.model import (
@@ -19,6 +20,7 @@ from app.legacy_migration.model import (
     OwnerState,
     ReviewState,
 )
+from app.public_ids import build_content_public_id
 
 
 class CatalogGroup(Base):
@@ -72,6 +74,7 @@ class CatalogItem(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    public_id: Mapped[str | None] = mapped_column(String(18))
     business_account_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("accounts.id", ondelete="SET NULL"),
@@ -137,6 +140,13 @@ class CatalogItem(Base):
 
 
 Index(
+    "uq_catalog_items_public_id",
+    CatalogItem.public_id,
+    unique=True,
+)
+
+
+Index(
     "ix_catalog_groups_live_source",
     CatalogGroup.business_account_id,
     CatalogGroup.source_record_key,
@@ -154,3 +164,16 @@ Index(
     "ix_catalog_items_catalog_group_id",
     CatalogItem.catalog_group_id,
 )
+
+
+@event.listens_for(CatalogItem, "after_insert")
+def _assign_catalog_item_public_id(_mapper, connection, target: CatalogItem) -> None:
+    if target.public_id:
+        return
+    public_id = build_content_public_id(target.kind, target.id)
+    connection.execute(
+        CatalogItem.__table__.update()
+        .where(CatalogItem.id == target.id)
+        .values(public_id=public_id)
+    )
+    attributes.set_committed_value(target, "public_id", public_id)

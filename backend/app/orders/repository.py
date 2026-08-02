@@ -1,20 +1,66 @@
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogItem
 from app.legacy_migration.model import OwnerState, ReviewState
+from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 class OrderRepository:
-    async def all_catalog_items(self, session: AsyncSession) -> list[CatalogItem]:
+    async def profile_by_public_id(
+        self,
+        session: AsyncSession,
+        *,
+        kind: str,
+        public_id: str,
+    ) -> BusinessProfile | UserProfile | None:
+        model = BusinessProfile if kind == "business" else UserProfile
+        return await session.scalar(
+            select(model)
+            .join(Account, Account.id == model.account_id)
+            .where(
+                model.public_id == public_id,
+                Account.status == "active",
+                Account.account_type == AccountType(kind),
+            )
+            .limit(1)
+        )
+
+    async def catalog_items_by_public_ids(
+        self,
+        session: AsyncSession,
+        *,
+        public_ids: list[str],
+    ) -> list[CatalogItem]:
+        if not public_ids:
+            return []
         return list((await session.scalars(
             select(CatalogItem).where(
+                CatalogItem.public_id.in_(public_ids),
                 CatalogItem.status == "active",
                 CatalogItem.review_state == ReviewState.READY,
                 CatalogItem.owner_state == OwnerState.LINKED,
             )
         )).all())
+
+    async def listing_by_public_id(
+        self,
+        session: AsyncSession,
+        *,
+        public_id: str,
+    ) -> Listing | None:
+        return await session.scalar(
+            select(Listing)
+            .where(
+                Listing.public_id == public_id,
+                Listing.status == "active",
+                Listing.review_state == ReviewState.READY,
+            )
+            .limit(1)
+        )
 
     async def owned_order(
         self,

@@ -24,6 +24,10 @@ from app.catalog.model import CatalogGroup, CatalogItem
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
+from app.public_ids import (
+    build_listing_public_id as _build_listing_public_id,
+    build_profile_public_id,
+)
 from app.public_discovery.schemas import (
     PublicDistrictOffer,
     PublicDistrictOffersResponse,
@@ -49,22 +53,11 @@ _cabinet_records = CabinetRecordRepository()
 
 
 def build_public_id(kind: PublicResultKind, account_id: int) -> str:
-    digest = hashlib.blake2s(
-        f"{kind.value}:{account_id}".encode("utf-8"),
-        digest_size=8,
-        person=b"koprik",
-    ).hexdigest()
-    prefix = "u" if kind is PublicResultKind.USER else "b"
-    return f"{prefix}_{digest}"
+    return build_profile_public_id(kind.value, account_id)
 
 
 def build_listing_public_id(listing_id: int) -> str:
-    digest = hashlib.blake2s(
-        f"listing:{listing_id}".encode("utf-8"),
-        digest_size=8,
-        key=b"koprik-content-v1",
-    ).hexdigest()
-    return f"l_{digest}"
+    return _build_listing_public_id(listing_id)
 
 
 def _empty(label: str):
@@ -727,32 +720,25 @@ async def _resolve_public_profile_account_id(
     kind: str,
     public_id: str,
 ) -> int | None:
-    result_kind = (
-        PublicResultKind.BUSINESS
-        if kind == "business"
-        else PublicResultKind.USER
-    )
+    model = BusinessProfile if kind == "business" else UserProfile
     account_type = (
         AccountType.BUSINESS
         if kind == "business"
         else AccountType.USER
     )
-    account_ids = (
+    account_id = (
         await session.scalars(
-            select(Account.id).where(
+            select(model.account_id)
+            .join(Account, Account.id == model.account_id)
+            .where(
+                model.public_id == public_id,
                 Account.status == "active",
                 Account.account_type == account_type,
             )
+            .limit(1)
         )
-    ).all()
-    return next(
-        (
-            int(account_id)
-            for account_id in account_ids
-            if build_public_id(result_kind, int(account_id)) == public_id
-        ),
-        None,
-    )
+    ).first()
+    return int(account_id) if account_id is not None else None
 
 
 async def _load_public_listings(

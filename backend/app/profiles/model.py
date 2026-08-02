@@ -11,12 +11,14 @@ from sqlalchemy import (
     Integer,
     JSON,
     String,
+    event,
     func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.public_ids import build_profile_public_id
 
 
 class UserProfile(Base):
@@ -27,6 +29,7 @@ class UserProfile(Base):
         ForeignKey("accounts.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    public_id: Mapped[str | None] = mapped_column(String(18))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     public_username: Mapped[str] = mapped_column(
@@ -64,6 +67,13 @@ class UserProfile(Base):
 
 
 Index(
+    "uq_user_profiles_public_id",
+    UserProfile.public_id,
+    unique=True,
+)
+
+
+Index(
     "uq_user_profiles_public_username_lower",
     func.lower(UserProfile.__table__.c.public_username),
     unique=True,
@@ -79,6 +89,7 @@ class BusinessProfile(Base):
         ForeignKey("accounts.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    public_id: Mapped[str | None] = mapped_column(String(18))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     description: Mapped[str] = mapped_column(
@@ -133,11 +144,34 @@ class BusinessProfile(Base):
 
 
 Index(
+    "uq_business_profiles_public_id",
+    BusinessProfile.public_id,
+    unique=True,
+)
+
+
+Index(
     "uq_business_profiles_public_username_lower",
     func.lower(BusinessProfile.__table__.c.public_username),
     unique=True,
     postgresql_where=text("public_username <> ''"),
 )
+
+
+@event.listens_for(UserProfile, "before_insert")
+def _assign_user_profile_public_id(_mapper, _connection, target: UserProfile) -> None:
+    if not target.public_id:
+        target.public_id = build_profile_public_id("user", target.account_id)
+
+
+@event.listens_for(BusinessProfile, "before_insert")
+def _assign_business_profile_public_id(
+    _mapper,
+    _connection,
+    target: BusinessProfile,
+) -> None:
+    if not target.public_id:
+        target.public_id = build_profile_public_id("business", target.account_id)
 
 
 class ProfileLink(Base):
