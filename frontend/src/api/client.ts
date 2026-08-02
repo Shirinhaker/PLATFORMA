@@ -60,6 +60,7 @@ import type {
   QueueEntryStatus,
   QueueCreate,
   QueueOptions,
+  QueueNotificationRead,
   QueueSlots,
 } from "./types";
 
@@ -218,6 +219,28 @@ export class ApiClient {
 
   createQueue(body: QueueCreate): Promise<BusinessQueueEntry> {
     return this.request("POST", "/api/v1/queues", body, true);
+  }
+
+  getMyQueues(): Promise<BusinessQueueEntry[]> {
+    return this.request("GET", "/api/v1/queues/mine", undefined, true);
+  }
+
+  cancelMyQueue(queueId: number): Promise<BusinessQueueEntry> {
+    return this.request(
+      "POST",
+      `/api/v1/queues/${queueId}/cancel`,
+      undefined,
+      true,
+    );
+  }
+
+  markQueueNotificationRead(notificationId: number): Promise<QueueNotificationRead> {
+    return this.request(
+      "POST",
+      `/api/v1/queues/notifications/${notificationId}/read`,
+      undefined,
+      true,
+    );
   }
 
   getBusinessQueueSetup(): Promise<BusinessQueueSetup> {

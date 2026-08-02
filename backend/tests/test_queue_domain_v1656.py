@@ -461,6 +461,40 @@ async def test_live_queue_uses_atomic_counter_prevents_duplicate_and_projects_wa
     assert notification.title == "Navbat olindi"
     assert notification.payload["medical_queue_id"] == first.id
 
+    mine = await service.list_mine(
+        account_id=5,
+        account_type=AccountType.USER,
+    )
+    assert mine[0].business_name == "Shifo markazi"
+    assert mine[0].business_direction == "Tibbiy xizmatlar"
+
+    marked = await service.mark_notification_read(
+        account_id=5,
+        account_type=AccountType.USER,
+        notification_id=notification.id,
+    )
+    assert marked.id == notification.id
+    assert marked.medical_queue_id == first.id
+    assert marked.is_read is True
+    queue_store.sync.refresh(notification)
+    assert notification.is_read is True
+
+    with pytest.raises(ApiError) as other_user_notification:
+        await service.mark_notification_read(
+            account_id=6,
+            account_type=AccountType.USER,
+            notification_id=notification.id,
+        )
+    assert other_user_notification.value.status_code == 404
+
+    with pytest.raises(ApiError) as business_notification:
+        await service.mark_notification_read(
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+            notification_id=notification.id,
+        )
+    assert business_notification.value.status_code == 403
+
 
 @pytest.mark.asyncio
 async def test_slot_queue_returns_free_times_and_saves_exact_slot(queue_store):
@@ -607,6 +641,7 @@ def test_queue_router_exposes_typed_public_customer_and_business_endpoints():
         ("/api/v1/queues/slots", "GET"),
         ("/api/v1/queues", "POST"),
         ("/api/v1/queues/mine", "GET"),
+        ("/api/v1/queues/notifications/{notification_id}/read", "POST"),
         ("/api/v1/queues/{queue_id}/cancel", "POST"),
         ("/api/v1/queues/business/setup", "GET"),
         ("/api/v1/queues/business/providers", "GET"),

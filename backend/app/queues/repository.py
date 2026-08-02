@@ -455,8 +455,14 @@ class QueueRepository:
                 QueueEntry,
                 QueueProvider.avg_minutes,
                 ahead_count.label("ahead_count"),
+                BusinessProfile.name.label("business_name"),
+                BusinessProfile.direction.label("business_direction"),
             )
             .join(QueueProvider, QueueProvider.id == QueueEntry.provider_id)
+            .join(
+                BusinessProfile,
+                BusinessProfile.account_id == QueueEntry.business_account_id,
+            )
         )
 
     async def projected_entry(

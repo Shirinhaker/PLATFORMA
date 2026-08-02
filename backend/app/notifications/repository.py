@@ -136,6 +136,25 @@ class NotificationRepository:
         )).all())
         return [_row(notification) for notification in notifications]
 
+    async def get_row(
+        self,
+        session: AsyncSession,
+        *,
+        account_id: int,
+        account_type: str,
+        notification_id: int,
+    ) -> dict[str, Any] | None:
+        notification = await session.scalar(
+            select(Notification)
+            .where(
+                Notification.id == notification_id,
+                Notification.account_id == account_id,
+                Notification.account_type == account_type,
+            )
+            .limit(1)
+        )
+        return _row(notification) if notification is not None else None
+
     async def unread_count(
         self,
         session: AsyncSession,

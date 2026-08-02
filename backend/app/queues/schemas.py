@@ -186,6 +186,8 @@ class QueueSwap(BaseModel):
 class QueueEntryRead(BaseModel):
     id: int
     business_account_id: int
+    business_name: str = ""
+    business_direction: str = ""
     customer_account_id: int | None
     item_public_id: str
     provider_id: int
@@ -205,3 +207,9 @@ class QueueEntryRead(BaseModel):
     wait_minutes: int = 0
     created_at: datetime
     updated_at: datetime
+
+
+class QueueNotificationRead(BaseModel):
+    id: int
+    medical_queue_id: int
+    is_read: bool

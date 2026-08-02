@@ -1,0 +1,113 @@
+.my-queues-v1656 {
+  margin-bottom: 18px;
+}
+
+.my-queues-v1656__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.my-queues-v1656__heading h2,
+.my-queues-v1656__heading span {
+  margin: 0;
+}
+
+.my-queues-v1656__heading h2 {
+  font-size: 19px;
+}
+
+.my-queues-v1656__heading span,
+.my-queues-v1656__message {
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.my-queues-v1656__message {
+  margin: 8px 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+}
+
+.my-queues-v1656__list {
+  display: grid;
+  gap: 10px;
+}
+
+.my-queues-v1656 .panel-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.my-queues-v1656 .medical-queue-focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(14, 140, 132, .16), var(--shadow);
+}
+
+.my-queues-v1656__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-queues-v1656__top .iname {
+  margin-top: 9px;
+}
+
+.my-queues-v1656__details {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.my-queues-v1656__details .mini-btn {
+  margin-top: 9px;
+}
+
+.my-queues-v1656__empty {
+  padding: 6px 2px 14px;
+}
+
+.my-queues-v1656__backdrop {
+  position: fixed;
+  z-index: 5000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, .44);
+}
+
+.my-queues-v1656__confirm {
+  width: min(420px, 100%);
+  padding: 18px;
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.my-queues-v1656__confirm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.my-queues-v1656__confirm .danger {
+  color: #fff;
+  background: #dc2626;
+}
+
+.queue-orders-v1656__heading {
+  margin: 18px 0 10px;
+  font-size: 19px;
+}

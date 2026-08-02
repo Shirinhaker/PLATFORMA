@@ -269,6 +269,8 @@ export type BusinessQueueOfflineCreate = {
 export type BusinessQueueEntry = {
   id: number;
   business_account_id: number;
+  business_name: string;
+  business_direction: string;
   customer_account_id: number | null;
   item_public_id: string;
   provider_id: number;
@@ -288,6 +290,12 @@ export type BusinessQueueEntry = {
   wait_minutes: number;
   created_at: string;
   updated_at: string;
+};
+
+export type QueueNotificationRead = {
+  id: number;
+  medical_queue_id: number;
+  is_read: boolean;
 };
 
 export type QueueOptions = {

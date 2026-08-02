@@ -92,10 +92,10 @@ xo'jaligi, Ishlab chiqarish va Hunarmandchilikda ko'rinmaydi.
 | 6 | Sana va xizmat ko'rsatuvchini tanlash | migrated | `QueueBookingV1656.tsx` v1656 `app-confirm` oynasida sana va dinamik `Shifokor`/`Xizmat ko'rsatuvchi` tanlovini typed `GET /api/v1/queues/options`ga ulaydi | `static/index.html:11682–11694`; `api.py:5600–5605` | `QueueBookingV1656Parity.test.tsx` sana, provider nomi, specialty va live sanog'ini aynan tekshiradi |
 | 7 | Slot rejimida bo'sh vaqtlarni olish | migrated | Tanlangan provider `slot` bo'lsa `GET /api/v1/queues/slots` chaqiriladi; bo'sh vaqt bo'lmasa aynan v1656 xabari, bo'lsa `Qabul vaqtini tanlang` oynasi chiqadi | `static/index.html:11695–11704`; `api.py:5607–5700` | Parity testi `12:20` tanlovi va typed payloadni tekshiradi |
 | 8 | Onlayn navbat yaratish | migrated | `ApiClient.createQueue()` authenticated `POST /api/v1/queues`ga live yoki slot payloadini CSRF bilan yuboradi; muvaffaqiyatda `Navbatingiz: {queue_code}` chiqadi | `static/index.html:11705–11710`; `api.py:5624–5676, 5702–5710` | Client testi endpoint/CSRFni, parity testi live/slot natijasini tekshiradi |
-| 9 | Mijozning `📋 Navbatlar` ro'yxati | partial | Q1 typed `/mine` endpointini berdi; `UserProfile.tsx:446–460` va `MyQueues` View hali yo'q | `static/index.html:6996–7025`; `api.py:5712–5731` | Q4 mijoz View va API client ulanishi |
-| 10 | Oldindagi odam va kutish vaqti | partial | Q1 repository bitta indeksli projectionda `ahead_count` va `wait_minutes` hisoblaydi; frontend ko'rsatmaydi | `static/index.html:7007–7010`; `api.py:5716–5730` | Q4 navbat kartasida ko'rsatish |
-| 11 | Mijoz navbatini bekor qilish | partial | Q1 ownershipli `POST /{queue_id}/cancel` va history yozuvini berdi; React tasdiqlash oqimi yo'q | `static/index.html:7009, 11712`; `api.py:5733–5741` | Q4 aynan v1656 matnli tasdiqlash va karta yangilanishi |
-| 12 | Navbat bildirishnomasi va deep-link | partial | Q1 booked/called/soon/cancelled/changed hodisalarini `notifications` jadvaliga idempotent yozadi; `UserProfile.tsx:469–480` faqat `order_id`ni ochadi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | Q4 `medical_queue_id` deep-linki va read holati |
+| 9 | Mijozning `📋 Navbatlar` ro'yxati | migrated | `MyQueuesV1656.tsx` typed `GET /api/v1/queues/mine` natijasini `UserProfile`dagi xizmat buyurtmalari tepasida v1656 kartalari bilan chiqaradi | `static/index.html:6996–7025`; `api.py:5712–5731` | `MyQueuesV1656Parity.test.tsx` real DTO, bo'sh holat va karta matnlarini tekshiradi |
+| 10 | Oldindagi odam va kutish vaqti | migrated | Queue projection biznes nomi/yo'nalishi bilan birga indeksli `ahead_count` va `wait_minutes`ni beradi; mijoz kartasi live rejimda ikkalasini, slot rejimida qabul vaqtini ko'rsatadi | `static/index.html:7007–7010`; `api.py:5716–5730` | Backend queue testi projectionni, frontend parity testi live/slot ko'rinishini tekshiradi |
+| 11 | Mijoz navbatini bekor qilish | migrated | `MyQueuesV1656.tsx` faqat `waiting/called` holatida v1656 tasdiqlash matnini chiqaradi va typed `POST /api/v1/queues/{queue_id}/cancel` natijasi bilan kartani yangilaydi | `static/index.html:7009, 11712`; `api.py:5733–5741` | Parity testi tugma guardi, tasdiqlash va `Navbat bekor qilindi.` natijasini tekshiradi |
+| 12 | Navbat bildirishnomasi va deep-link | migrated | `UserProfile.tsx` `medical_queue_id`ni xizmat buyurtmalaridagi tegishli kartaga uzatadi; ownershipli `POST /api/v1/queues/notifications/{id}/read` relatsion bildirishnomani o'qilgan qiladi | `static/index.html:7561, 7596–7628`; `api.py:5670–5676, 5760–5766` | `OrdersCabinetWiringV1656.test.tsx`, client va backend queue testlari read/focus oqimini tekshiradi |
 | 13 | Alohida relatsion navbat jadvallari | migrated | Q1 `backend/app/queues/model.py` va `0012_queue_domain.py`da provider, link, entry, history, counter hamda idempotent dual-source backfillni yaratdi | `database.py:1726–1747` | Q1 model/migration testlari mavjud |
 | 14 | Parallel navbat raqami/slot xavfsizligi | migrated | Q1 `QueueRepository.allocate_live_number()` atomar UPSERT/RETURNING, unique slot/customer indekslari va doimiy lock tartibini ishlatadi | `api.py:5649–5668`; `database.py:1733–1743` | PostgreSQL integratsiya tekshiruvi CI migratsiya oqimida ishlaydi |
 | 15 | Ikki aktyorli end-to-end parity testi | missing | Biznes ekran parity testi bor, ammo `mijoz -> navbat -> biznes -> bildirishnoma -> mijoz` testi yo'q | Yuqoridagi barcha v1656 oqimlari | Backend transaction va frontend integration/parity testlari |
@@ -106,20 +106,16 @@ Q2dan keyingi natija: **6 migrated, 8 partial, 1 missing** funksional birlik.
 
 Q3dan keyingi natija: **10 migrated, 4 partial, 1 missing** funksional birlik.
 
+Q4dan keyingi natija: **14 migrated, 0 partial, 1 missing** funksional birlik.
+
 ## Nima uchun mavjud uchta ekran yetarli emas
 
 Q2da `BusinessMedicalV1656View.tsx`ning v1656 ko'rinishi saqlanib,
 `BusinessQueueV1656.tsx` adapteri orqali Q1 typed backend domeniga ulandi.
-o'zgartirmaydi. Q3 ommaviy profil va katalogdan sana/provider/slot orqali
-typed relatsion navbat yaratishni uladi. Biroq Q4gacha qoladigan frontend oqimi:
-
-- relatsion navbat yozuvlarini foydalanuvchiga ko'rsatmaydi;
-- oldindagi odam va kutish vaqtini mijoz kabinetida chiqarmaydi;
-- bekor qilish va bildirishnoma deep-linkini typed APIga ulamaydi.
-
-Shu sabab biznesning uch ekrani ham ekran va funksional darajada `migrated`,
-ammo mijoz ro'yxati va bildirishnoma zanjiri tugamagani uchun butun **navbat
-domeni funksional darajada `partial`**.
+Q3 ommaviy profil va katalogdan sana/provider/slot orqali typed relatsion navbat
+yaratishni uladi. Q4 mijoz ro'yxati, ahead/wait, cancel va notification
+deep-linkni tugatdi. Endi faqat Q5dagi ikki aktyorli yakuniy parity testi
+`missing`; alohida funksional birlik `partial` holatda qolmagan.
 
 ## Majburiy biznes qoidalari
 
@@ -221,3 +217,16 @@ orqali hisoblanadi; butun provider yoki katalog ro'yxati xotiraga olinmaydi.
 `Navbat funksional pariteti: 10/15 migrated, partial: 4, missing: 1.`
 
 `Onlaynlashtirish ekranlari: 21/21 migrated; navbat domeni: partial.`
+
+## Q4 yakuniy hisoboti
+
+Q4 oddiy foydalanuvchining xizmat buyurtmalari ekraniga v1656 `📋 Navbatlar`
+blokini typed `/api/v1/queues/mine` orqali uladi. Jonli navbatda oldindagi odam
+va taxminiy kutish, slot navbatida qabul vaqti ko'rsatiladi. Faqat
+`waiting/called` navbati v1656 tasdiqlash matni bilan bekor qilinadi.
+`medical_queue_id` bildirishnomasi ownershipli read endpoint orqali o'qilgan
+qilinib, aynan tegishli navbat kartasini fokuslaydi.
+
+`Navbat funksional pariteti: 14/15 migrated, partial: 0, missing: 1.`
+
+`Onlaynlashtirish ekranlari: 21/21 migrated; faqat Q5 yakuniy parity testi qolgan.`
