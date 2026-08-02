@@ -751,6 +751,197 @@ def test_queue_repository_uses_atomic_upsert_not_max_scan_for_live_numbers():
 
 
 @pytest.mark.asyncio
+async def test_queue_options_serializes_before_rollback_on_postgresql():
+    database_url = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
+    if not database_url:
+        source = inspect.getsource(QueueService.options)
+        assert source.index("response = QueueOptionsRead(") < source.index(
+            "await session.rollback()"
+        )
+        return
+
+    engine = create_async_engine(database_url)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    token = uuid4().hex
+    business_id: int | None = None
+    catalog_item_id: int | None = None
+    provider_id: int | None = None
+
+    try:
+        async with sessions.begin() as session:
+            business_account = Account(
+                account_type=AccountType.BUSINESS,
+                login=f"queue-options-{token}",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(business_account)
+            await session.flush()
+            business_id = business_account.id
+
+            session.add(BusinessProfile(
+                account_id=business_id,
+                name="Rollback stomatolog",
+                phone="+998901234567",
+                description="",
+                public_username=f"queue_options_{token[:12]}",
+                direction="Tibbiy xizmatlar",
+                activity_type="Stomatologiya",
+                address="Qumqo'rg'on",
+                latitude=None,
+                longitude=None,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={
+                    "staff": [{
+                        "id": 77,
+                        "name": "Real shifokor",
+                        "profession": "Stomatolog",
+                        "status": "active",
+                    }]
+                },
+            ))
+
+            item = CatalogItem(
+                business_account_id=business_id,
+                source_record_key=f"queue-options-{token}",
+                catalog_group_id=None,
+                owner_name_snapshot="Rollback stomatolog",
+                name="Tish ko'rigi",
+                price_text="50 000 so'm",
+                unit="dona",
+                note="",
+                kind="service",
+                queue_enabled=True,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(item)
+            await session.flush()
+            catalog_item_id = item.id
+
+            provider = QueueProvider(
+                business_account_id=business_id,
+                legacy_source_id=None,
+                legacy_staff_id=77,
+                staff_name_snapshot="Real shifokor",
+                profession_snapshot="Stomatolog",
+                specialty="Terapevt stomatolog",
+                experience_years=9,
+                qualification="Oliy toifa",
+                work_days="1,2,3,4,5,6,7",
+                work_start=time(8, 0),
+                work_end=time(17, 0),
+                avg_minutes=15,
+                room="3-xona",
+                bio="",
+                status="active",
+                mode="live",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            session.add(provider)
+            await session.flush()
+            provider_id = provider.id
+            session.add(QueueProviderService(
+                provider_id=provider_id,
+                catalog_item_id=catalog_item_id,
+                active=True,
+                duration_minutes=15,
+                created_at=NOW,
+                updated_at=NOW,
+            ))
+
+        options = await QueueService(
+            sessions,
+            now_provider=lambda: NOW,
+        ).options(
+            business_public_id=build_profile_public_id(
+                "business", business_id
+            ),
+            item_public_id=build_content_public_id(
+                "service", catalog_item_id
+            ),
+            queue_date=date(2026, 8, 3),
+        )
+
+        assert options.business_public_id == build_profile_public_id(
+            "business", business_id
+        )
+        assert [
+            (row.id, row.name, row.item_public_ids, row.queue_count)
+            for row in options.providers
+        ] == [(
+            provider_id,
+            "Real shifokor",
+            [build_content_public_id("service", catalog_item_id)],
+            0,
+        )]
+    finally:
+        if business_id is not None:
+            async with sessions.begin() as session:
+                if provider_id is not None:
+                    await session.execute(
+                        delete(QueueProviderService).where(
+                            QueueProviderService.provider_id == provider_id
+                        )
+                    )
+                    await session.execute(
+                        delete(QueueEntry).where(
+                            QueueEntry.provider_id == provider_id
+                        )
+                    )
+                    await session.execute(
+                        delete(QueueCounter).where(
+                            QueueCounter.provider_id == provider_id
+                        )
+                    )
+                    await session.execute(
+                        delete(QueueProvider).where(
+                            QueueProvider.id == provider_id
+                        )
+                    )
+                if catalog_item_id is not None:
+                    await session.execute(
+                        delete(CatalogItem).where(
+                            CatalogItem.id == catalog_item_id
+                        )
+                    )
+                await session.execute(
+                    delete(BusinessProfile).where(
+                        BusinessProfile.account_id == business_id
+                    )
+                )
+                await session.execute(
+                    delete(Account).where(Account.id == business_id)
+                )
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 async def test_parallel_live_bookings_receive_distinct_numbers_on_postgresql():
     database_url = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
     if not database_url:
