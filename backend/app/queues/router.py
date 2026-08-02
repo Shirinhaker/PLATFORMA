@@ -10,6 +10,7 @@ from app.queues.schemas import (
     QueueBusinessSetupRead,
     QueueCreate,
     QueueEntryRead,
+    QueueNotificationRead,
     QueueOfflineCreate,
     QueueOptionsRead,
     QueueProviderRead,
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/api/v1/queues", tags=["queues"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 QueueId = Annotated[int, Path(gt=0)]
+NotificationId = Annotated[int, Path(gt=0)]
 ProviderId = Annotated[int, Path(gt=0)]
 
 
@@ -199,6 +201,22 @@ async def my_queues(request: Request, current: CurrentRead):
     return await queue_service(request).list_mine(
         account_id=current.account_id,
         account_type=current.account_type,
+    )
+
+
+@router.post(
+    "/notifications/{notification_id}/read",
+    response_model=QueueNotificationRead,
+)
+async def mark_queue_notification_read(
+    notification_id: NotificationId,
+    request: Request,
+    current: CurrentWrite,
+):
+    return await queue_service(request).mark_notification_read(
+        account_id=current.account_id,
+        account_type=current.account_type,
+        notification_id=notification_id,
     )
 
 

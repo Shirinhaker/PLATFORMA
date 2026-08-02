@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -41,6 +41,7 @@ type Props = {
   onBack(): void;
   onUnreadChange?(count: number): void;
   initialOrderId?: number | null;
+  beforeList?: ReactNode;
 };
 
 type Tab = "active" | "problem" | "done";
@@ -230,6 +231,7 @@ export function OrdersCabinetV1656({
   onBack,
   onUnreadChange,
   initialOrderId = null,
+  beforeList,
 }: Props) {
   const [orders, setOrders] = useState<OrderRead[]>([]);
   const [tab, setTab] = useState<Tab>("active");
@@ -725,6 +727,7 @@ export function OrdersCabinetV1656({
           : category === "service" ? "Xizmat buyurtmalari" : "Buyurtmalar"}</h1>
       </header>
       {error ? <p className="app-toast on" role="alert">{error}</p> : null}
+      {beforeList}
       <div className="order-tabs" role="tablist">
         <button type="button" className={`seg-b${tab === "active" ? " on" : ""}`} onClick={() => setTab("active")}>Buyurtmalar ({active.length}){active.some((order) => order.is_unread) ? " 🔔" : ""}</button>
         <button type="button" className={`seg-b${tab === "problem" ? " on" : ""}`} onClick={() => setTab("problem")}>Muammoli ({problem.length})</button>

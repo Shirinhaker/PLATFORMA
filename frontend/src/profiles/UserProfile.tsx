@@ -16,6 +16,10 @@ import {
   OrdersCabinetV1656,
   type OrdersApi,
 } from "../orders/OrdersCabinetV1656";
+import {
+  MyQueuesV1656,
+  type MyQueuesApi,
+} from "../queues/MyQueuesV1656";
 
 
 export type UserProfileApi = Pick<
@@ -49,6 +53,9 @@ export type UserProfileApi = Pick<
   | "sendOrderChatImage"
   | "editOrderChatMessage"
   | "deleteOrderChatMessage"
+  | "getMyQueues"
+  | "cancelMyQueue"
+  | "markQueueNotificationRead"
 >>;
 
 type Props = {
@@ -221,6 +228,11 @@ function supportsOrders(api: UserProfileApi): api is UserProfileApi & OrdersApi 
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
+function supportsMyQueues(api: UserProfileApi): api is UserProfileApi & MyQueuesApi {
+  return ["getMyQueues", "cancelMyQueue"]
+    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
 
 export function UserProfile({
   api,
@@ -238,6 +250,7 @@ export function UserProfile({
   const [specialist, setSpecialist] = useState<Record<string, unknown>>({});
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
+  const [queueTarget, setQueueTarget] = useState<number | null>(null);
 
   function applyLoaded(value: UserProfileData) {
     setProfile(value);
@@ -414,6 +427,36 @@ export function UserProfile({
     }
   }
 
+  function markNotificationRead(notificationId: number) {
+    setProfile((current) => {
+      if (!current) return current;
+      const payload = { ...(current.cabinet_payload ?? {}) };
+      const notifications = Array.isArray(payload.notifications)
+        ? payload.notifications.map((value) => {
+          if (!value || typeof value !== "object") return value;
+          const row = value as Record<string, unknown>;
+          return Number(row.id ?? 0) === notificationId
+            ? { ...row, is_read: 1 }
+            : row;
+        })
+        : [];
+      payload.notifications = notifications;
+      const unread = notifications.filter((value) => (
+        value
+        && typeof value === "object"
+        && !Boolean(Number((value as Record<string, unknown>).is_read ?? 0))
+      )).length;
+      return {
+        ...current,
+        cabinet_payload: payload,
+        dashboard_snapshot: {
+          ...(current.dashboard_snapshot ?? {}),
+          unread,
+        },
+      };
+    });
+  }
+
   if (!profile) {
     return (
       <main className="profile-shell">
@@ -444,6 +487,16 @@ export function UserProfile({
   }
 
   if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
+    const queueSection = view === "service-orders" && supportsMyQueues(api) ? (
+      <>
+        <MyQueuesV1656
+          api={api}
+          focusQueueId={queueTarget}
+          onFocusHandled={() => setQueueTarget(null)}
+        />
+        <h2 className="queue-orders-v1656__heading">Boshqa xizmat buyurtmalari</h2>
+      </>
+    ) : null;
     return (
       <OrdersCabinetV1656
         key={view}
@@ -452,6 +505,7 @@ export function UserProfile({
         category={view === "service-orders" ? "service" : "product"}
         onBack={() => setView("dashboard")}
         initialOrderId={orderTarget}
+        beforeList={queueSection}
         onUnreadChange={(count) => setOrderUnread((current) => ({
           ...current,
           [view === "service-orders" ? "service" : "product"]: count,
@@ -466,10 +520,25 @@ export function UserProfile({
         title={selectedSection.label}
         rows={selectedRows}
         onBack={() => setView("dashboard")}
-        onOpenRow={view === "notifications" && typeof api.getMyOrders === "function"
+        onOpenRow={view === "notifications"
           ? (row) => {
+            const queueId = Number(row.medical_queue_id ?? 0);
+            if (queueId) {
+              const notificationId = Number(row.id ?? 0);
+              setQueueTarget(queueId);
+              setView("service-orders");
+              if (
+                notificationId
+                && typeof api.markQueueNotificationRead === "function"
+              ) {
+                void api.markQueueNotificationRead(notificationId)
+                  .then(() => markNotificationRead(notificationId))
+                  .catch((reason) => setError(message(reason)));
+              }
+              return;
+            }
             const id = Number(row.order_id ?? 0);
-            if (!id) return;
+            if (!id || typeof api.getMyOrders !== "function") return;
             void api.getMyOrders!().then((orders) => {
               const target = orders.find((order) => order.id === id);
               if (!target) return;

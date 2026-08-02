@@ -27,7 +27,7 @@ Joriy React qamrovi va qat'iy paritet holati: **21 migrated, 0 partial,
 > Bu son faqat Onlaynlashtirish **ekran inventari** holatidir. Navbatning
 > ommaviy profil, mijoz kabineti, bildirishnoma deep-linki va relatsion domen
 > bo'yicha funksional auditi `docs/navbat-v1656-funksional-audit.md`da.
-> 2026-08-02 Q3 holatida navbat domeni: **10/15 migrated, 4 partial, 1 missing**.
+> 2026-08-03 Q4 holatida navbat domeni: **14/15 migrated, 0 partial, 1 missing**.
 
 ## 21 ekran inventari
 
@@ -186,8 +186,8 @@ Reactdagi yakuniy holat:
    testlaridan o'tdi.
 2. **Blok 2:** `cab-medical-doctors`, `cab-medical-doctor-form`,
    `cab-medical-queue` maxsus React View va 14 navbatli yo'nalish matritsasidan
-   o'tdi. Bu ekran paritetidir; ommaviy navbat olish va mijoz oqimi hali
-   funksional `partial`, batafsil audit:
+   o'tdi. Bu ekran paritetidir; Q4dan keyin ommaviy navbat olish va mijoz oqimi
+   ham funksional `migrated`, faqat Q5 yakuniy ikki aktyorli test qolgan:
    `docs/navbat-v1656-funksional-audit.md`.
 3. **Blok 3:** `cab-education-enrollments` maxsus React View va faqat
    `Ta'lim faoliyati` ko'rinish qoidasidan o'tdi.
@@ -202,4 +202,4 @@ Joriy qayta audit hisoboti:
 `Onlaynlashtirish: 21/21 ekran migrated, qolgani: yo'q`.
 
 Funksional izoh:
-`Navbat domeni: 10/15 migrated, partial: 4, missing: 1`.
+`Navbat domeni: 14/15 migrated, partial: 0, missing: 1`.

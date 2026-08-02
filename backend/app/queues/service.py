@@ -21,6 +21,7 @@ from app.queues.schemas import (
     QueueCreate,
     QueueEntryRead,
     QueueOfflineCreate,
+    QueueNotificationRead,
     QueueOptionsRead,
     QueueProviderRead,
     QueueProviderWrite,
@@ -491,6 +492,57 @@ class QueueService:
             )
             await session.commit()
             return await self._project(session, entry.id)
+
+    async def mark_notification_read(
+        self,
+        *,
+        account_id: int,
+        account_type: AccountType,
+        notification_id: int,
+    ) -> QueueNotificationRead:
+        if account_type is not AccountType.USER:
+            raise ApiError(403, "queue_user_required", "Avval oddiy profilga o'ting.")
+        async with self._session_factory() as session:
+            row = await self._notifications.get_row(
+                session,
+                account_id=account_id,
+                account_type=AccountType.USER.value,
+                notification_id=notification_id,
+            )
+            try:
+                queue_id = int((row or {}).get("medical_queue_id") or 0)
+            except (TypeError, ValueError):
+                queue_id = 0
+            if row is None or queue_id < 1:
+                raise ApiError(
+                    404,
+                    "queue_notification_not_found",
+                    "Navbat bildirishnomasi topilmadi.",
+                )
+            entry = await self._repository.entry(
+                session,
+                queue_id=queue_id,
+                customer_account_id=account_id,
+            )
+            if entry is None:
+                raise ApiError(
+                    404,
+                    "queue_notification_not_found",
+                    "Navbat bildirishnomasi topilmadi.",
+                )
+            await self._notifications.mark_read(
+                session,
+                account_id=account_id,
+                account_type=AccountType.USER.value,
+                notification_id=notification_id,
+                read_at=int(self._now().timestamp()),
+            )
+            await session.commit()
+            return QueueNotificationRead(
+                id=notification_id,
+                medical_queue_id=queue_id,
+                is_read=True,
+            )
 
     async def change_status(
         self,
@@ -1027,6 +1079,8 @@ class QueueService:
         entry: QueueEntry,
         avg_minutes: int,
         ahead_count: int,
+        business_name: str,
+        business_direction: str,
     ) -> QueueEntryRead:
         active = entry.status in ACTIVE_STATUSES
         ahead = int(ahead_count or 0) if active else 0
@@ -1034,6 +1088,8 @@ class QueueService:
         return QueueEntryRead(
             id=entry.id,
             business_account_id=entry.business_account_id,
+            business_name=str(business_name or ""),
+            business_direction=str(business_direction or ""),
             customer_account_id=entry.customer_account_id,
             item_public_id=(
                 build_content_public_id("service", entry.catalog_item_id)

@@ -80,6 +80,90 @@ function orderMethods(rows = [liveOrder]) {
 
 
 describe("v1656 order kabinet wiring", () => {
+  it("queue bildirishnomasini o'qib xizmat ekranidagi tegishli navbatga fokuslaydi", async () => {
+    const user = userEvent.setup();
+    const queue = {
+      id: 41,
+      business_account_id: 7,
+      business_name: "Shifo markazi",
+      business_direction: "Tibbiy xizmatlar",
+      customer_account_id: 5,
+      item_public_id: "s_qabul",
+      provider_id: 11,
+      patient_name: "Ali",
+      phone: "",
+      service_name: "Qabul",
+      provider_name: "Ali Valiyev",
+      queue_date: "2026-08-03",
+      queue_no: 3,
+      queue_code: "QAB-003",
+      source: "online",
+      status: "waiting" as const,
+      note: "",
+      slot_time: "",
+      ahead_count: 2,
+      avg_minutes: 20,
+      wait_minutes: 40,
+      created_at: "2026-08-03T07:00:00Z",
+      updated_at: "2026-08-03T07:00:00Z",
+    };
+    const queueProfile = {
+      ...userProfile,
+      cabinet_payload: {
+        notifications: [{
+          id: 8,
+          title: "Navbatingiz yaqinlashdi",
+          body: "Oldingizda 2 ta navbat qoldi.",
+          is_read: 0,
+          medical_queue_id: 41,
+          action_type: "medical_queue_soon",
+        }],
+      },
+    };
+    const api = {
+      ...orderMethods([]),
+      getSession: vi.fn(),
+      getUserProfile: vi.fn().mockResolvedValue(queueProfile),
+      updateUserProfile: vi.fn(),
+      attachUserAvatar: vi.fn(),
+      switchCabinet: vi.fn(),
+      logout: vi.fn(),
+      getMyQueues: vi.fn().mockResolvedValue([queue]),
+      cancelMyQueue: vi.fn(),
+      markQueueNotificationRead: vi.fn().mockResolvedValue({
+        id: 8,
+        medical_queue_id: 41,
+        is_read: true,
+      }),
+    };
+
+    render(
+      <UserProfile
+        api={api}
+        identity={{
+          account_id: 5,
+          account_type: "user",
+          name: "Ali",
+          login: "u_ali",
+          csrf_token: "csrf",
+          expires_at: "2026-08-30T00:00:00Z",
+        }}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Bildirishnomalarim" }));
+    await user.click(await screen.findByText("Navbatingiz yaqinlashdi"));
+
+    expect(api.markQueueNotificationRead).toHaveBeenCalledWith(8);
+    expect(await screen.findByText("NAVBAT QAB-003")).toBeInTheDocument();
+    expect(screen.getByTestId("medical-queue-41"))
+      .toHaveClass("medical-queue-focus");
+    expect(screen.getByRole("heading", { name: "Boshqa xizmat buyurtmalari" }))
+      .toBeInTheDocument();
+  });
+
   it("biznes order ekranini snapshot emas, jonli inbox bilan ochadi", async () => {
     const legacy = vi.fn();
     const api = { ...orderMethods(), getBusinessOnlineResource: legacy };
