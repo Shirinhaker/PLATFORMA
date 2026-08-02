@@ -78,6 +78,49 @@ class FakeCabinetRecordRepository:
         self.replacements.append(resource)
 
 
+class FakeNotificationRepository:
+    def __init__(self):
+        self.rows: dict[tuple[int, str], list[dict]] = {}
+        self.calls: list[tuple[str, int, str]] = []
+
+    def supported(self, session):
+        return True
+
+    async def append(self, session, *, account_id, account_type, row):
+        key = (account_id, account_type)
+        if any(item["event_key"] == row["event_key"] for item in self.rows.get(key, [])):
+            return
+        saved = deepcopy(dict(row))
+        saved["id"] = len(self.rows.get(key, [])) + 101
+        self.rows.setdefault(key, []).append(saved)
+        self.calls.append(("append", account_id, account_type))
+
+    async def list_rows(self, session, *, account_id, account_type):
+        self.calls.append(("list", account_id, account_type))
+        return deepcopy(self.rows.get((account_id, account_type), []))
+
+    async def mark_read(
+        self, session, *, account_id, account_type, notification_id, read_at,
+    ):
+        for row in self.rows.get((account_id, account_type), []):
+            if int(row["id"]) == notification_id:
+                row.update(is_read=1, read_at=read_at)
+        self.calls.append(("mark_read", account_id, account_type))
+
+    async def mark_all_read(self, session, *, account_id, account_type, read_at):
+        for row in self.rows.get((account_id, account_type), []):
+            row.update(is_read=1, read_at=read_at)
+        self.calls.append(("mark_all_read", account_id, account_type))
+
+    async def delete(self, session, *, account_id, account_type, notification_id):
+        key = (account_id, account_type)
+        self.rows[key] = [
+            row for row in self.rows.get(key, [])
+            if int(row["id"]) != notification_id
+        ]
+        self.calls.append(("delete", account_id, account_type))
+
+
 class FakeCatalogSync:
     def __init__(self):
         self.calls = []
@@ -251,6 +294,131 @@ async def test_relational_action_updates_derived_counts_and_json_fallback():
     assert notifications[0]["is_read"] == 1
     assert business.dashboard_snapshot["unread"] == 0
     assert business.cabinet_payload["notifications"] == notifications
+
+
+@pytest.mark.asyncio
+async def test_notification_resource_uses_dedicated_table_without_json_rewrite():
+    business = profile()
+    original_payload = deepcopy(business.cabinet_payload)
+    database = FakeDatabase(business)
+    cabinet_repository = FakeCabinetRecordRepository()
+    notifications = FakeNotificationRepository()
+    notifications.rows[(7, "business")] = [{
+        "id": 101,
+        "event_key": "order:44:created",
+        "title": "Yangi buyurtma keldi",
+        "body": "Buyurtmani ko'rib, qabul qiling.",
+        "order_id": 44,
+        "is_read": 0,
+        "created_at": 100,
+    }]
+    service = BusinessOnlineService(
+        database.session,
+        cabinet_repository,
+        notification_repository=notifications,
+    )
+
+    rows = await service.read_resource(7, "notifications")
+    assert rows[0]["id"] == 101
+    assert rows[0]["is_read"] == 0
+
+    item, rows = await service.apply_action(
+        7,
+        "notifications",
+        "mark_read",
+        record_id=101,
+        data={},
+    )
+    assert item is not None
+    assert item["is_read"] == 1
+    assert rows[0]["is_read"] == 1
+    assert cabinet_repository.replacements == []
+    assert business.cabinet_payload == original_payload
+
+    rows = await service.delete_record(7, "notifications", 101)
+    assert rows == []
+    assert cabinet_repository.replacements == []
+    assert business.cabinet_payload == original_payload
+
+
+@pytest.mark.asyncio
+async def test_medical_user_notification_uses_dedicated_table_without_user_json_write():
+    business = profile()
+    user = user_profile(70, "Vali")
+    original_payload = deepcopy(user.cabinet_payload)
+    database = FakeDatabase(business, {70: user})
+    notifications = FakeNotificationRepository()
+    service = BusinessOnlineService(
+        database.session,
+        FakeCabinetRecordRepository(),
+        notification_repository=notifications,
+    )
+
+    await service._persist_user_notifications(database.session_value, [{
+        "user_id": 70,
+        "event_key": "medical:41:called",
+        "title": "Navbatingiz chaqirildi",
+        "body": "QAB-001 navbat xizmatga chaqirildi.",
+        "medical_queue_id": 41,
+        "action_type": "medical_queue_called",
+        "created_at": 100,
+    }])
+
+    rows = notifications.rows[(70, "user")]
+    assert rows[0]["event_key"] == "medical:41:called"
+    assert rows[0]["medical_queue_id"] == 41
+    assert rows[0]["is_read"] == 0
+    assert user.cabinet_payload == original_payload
+
+
+@pytest.mark.asyncio
+async def test_dining_notifications_do_not_grow_business_json():
+    business = profile()
+    business.direction = "Umumiy ovqatlanish"
+    business.cabinet_payload.update({
+        "items": [{
+            "id": 21,
+            "name": "Tuxum barak",
+            "price": 20000,
+            "unit": "dona",
+            "stock_type": "ready_food",
+        }],
+        "dining_places": [{
+            "id": 5,
+            "kind": "table",
+            "name": "Stol 1",
+            "seats": 4,
+            "x": 4,
+            "y": 4,
+            "locked": 1,
+        }],
+        "dining_orders": [],
+        "notifications": [],
+    })
+    database = FakeDatabase(business)
+    cabinet_repository = FakeCabinetRecordRepository()
+    notifications = FakeNotificationRepository()
+    service = BusinessOnlineService(
+        database.session,
+        cabinet_repository,
+        notification_repository=notifications,
+    )
+
+    await service.apply_action(
+        7,
+        "dining_places",
+        "create_order",
+        record_id=5,
+        data={"items": [{"item_id": 21, "qty": 1}]},
+    )
+
+    assert len(notifications.rows[(7, "business")]) == 2
+    assert all(
+        row["event_key"].startswith("business:7:")
+        for row in notifications.rows[(7, "business")]
+    )
+    assert "notifications" not in cabinet_repository.replacements
+    assert business.cabinet_payload["notifications"] == []
 
 
 @pytest.mark.asyncio

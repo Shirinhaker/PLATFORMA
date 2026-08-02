@@ -12,6 +12,7 @@ from app.core.errors import ApiError
 from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
+from app.notifications.model import Notification
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.orders.repository import OrderRepository
 from app.orders.router import router as orders_router
@@ -70,6 +71,9 @@ class AsyncStore:
     async def get(self, model, identity, **_kwargs):
         return self.sync.get(model, identity)
 
+    def get_bind(self):
+        return self.sync.get_bind()
+
     async def commit(self):
         self.sync.commit()
 
@@ -95,6 +99,7 @@ def order_store():
             Order.__table__,
             OrderItem.__table__,
             OrderMessage.__table__,
+            Notification.__table__,
             OutboxEvent.__table__,
         ),
     )
@@ -349,13 +354,16 @@ async def test_create_order_snapshots_items_and_is_visible_to_both_sides(order_s
     assert created.order_category == "service"
     assert created.status == "new"
     assert created.payment_status == ""
-    provider = order_store.sync.get(BusinessProfile, 7)
-    notifications = provider.cabinet_payload.get("notifications", [])
-    assert notifications[-1]["event_key"] == f"order:{created.id}:created"
-    assert notifications[-1]["title"] == "Yangi buyurtma keldi"
-    assert notifications[-1]["body"] == "Buyurtmani ko'rib, qabul qiling."
-    assert notifications[-1]["order_id"] == created.id
-    assert notifications[-1]["is_read"] == 0
+    notification = order_store.sync.scalar(select(Notification).where(
+        Notification.account_id == 7,
+        Notification.account_type == "business",
+        Notification.event_key == f"order:{created.id}:created",
+    ))
+    assert notification is not None
+    assert notification.title == "Yangi buyurtma keldi"
+    assert notification.body == "Buyurtmani ko'rib, qabul qiling."
+    assert notification.order_id == created.id
+    assert notification.is_read is False
     assert created.total_amount == 70000
     assert created.items[0].name == "Ingliz tili"
     assert created.items[0].price == "35 000 so'm"
@@ -437,19 +445,27 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert accepted.status == "accepted"
     assert accepted.payment_status == "pending"
-    customer = order_store.sync.get(UserProfile, 5)
-    accepted_notification = customer.cabinet_payload["notifications"][-1]
-    assert accepted_notification["event_key"] == f"order:{created.id}:accepted"
-    assert accepted_notification["title"] == "Buyurtma qabul qilindi"
-    assert accepted_notification["action_type"] == "make_payment"
+    accepted_notification = order_store.sync.scalar(select(Notification).where(
+        Notification.account_id == 5,
+        Notification.account_type == "user",
+        Notification.event_key == f"order:{created.id}:accepted",
+    ))
+    assert accepted_notification is not None
+    assert accepted_notification.title == "Buyurtma qabul qilindi"
+    assert accepted_notification.action_type == "make_payment"
     await service.mark_seen(
         order_id=created.id,
         account_id=5,
         account_type=AccountType.USER,
     )
-    customer = order_store.sync.get(UserProfile, 5)
-    assert customer.cabinet_payload["notifications"][-1]["is_read"] == 1
-    assert customer.dashboard_snapshot["unread"] == 0
+    order_store.sync.refresh(accepted_notification)
+    assert accepted_notification.is_read is True
+    unread = order_store.sync.scalar(select(func.count(Notification.id)).where(
+        Notification.account_id == 5,
+        Notification.account_type == "user",
+        Notification.is_read.is_(False),
+    ))
+    assert unread == 0
 
     with pytest.raises(ApiError, match="Avval to'lov cheki rasmini"):
         await service.submit_payment(

@@ -1,0 +1,1 @@
+"""Relatsion bildirishnoma saqlash qatlami."""
