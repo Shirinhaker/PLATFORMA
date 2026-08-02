@@ -48,6 +48,7 @@ class PublicCatalogItem(BaseModel):
     public_id: str = Field(min_length=1, max_length=64)
     name: str = Field(min_length=1, max_length=160)
     price_text: str = Field(default="", max_length=120)
+    unit: str = Field(default="dona", max_length=40)
     note: str = Field(default="", max_length=2000)
     owner_state: Literal["linked", "unlinked"]
     owner_public_id: str = Field(default="", max_length=64)
@@ -75,4 +76,3 @@ class PublicCatalogResponse(BaseModel):
         if not self.total:
             return 0
         return (self.total + self.page_size - 1) // self.page_size
-

@@ -92,6 +92,11 @@ class CatalogItem(Base):
         nullable=False,
         default="",
     )
+    unit: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        default="dona",
+    )
     note: Mapped[str] = mapped_column(
         String(2000),
         nullable=False,
