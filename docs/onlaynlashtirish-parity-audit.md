@@ -24,6 +24,11 @@ Holatlar:
 Joriy React qamrovi va qat'iy paritet holati: **21 migrated, 0 partial,
 0 missing**.
 
+> Bu son faqat Onlaynlashtirish **ekran inventari** holatidir. Navbatning
+> ommaviy profil, mijoz kabineti, bildirishnoma deep-linki va relatsion domen
+> bo'yicha funksional auditi `docs/navbat-v1656-funksional-audit.md`da.
+> 2026-08-02 holatida navbat domeni: **1/15 migrated, 5 partial, 9 missing**.
+
 ## 21 ekran inventari
 
 | # | Ekran | Holat | React fayli | Monolitdagi qator oralig'i | Test fayli |
@@ -181,7 +186,9 @@ Reactdagi yakuniy holat:
    testlaridan o'tdi.
 2. **Blok 2:** `cab-medical-doctors`, `cab-medical-doctor-form`,
    `cab-medical-queue` maxsus React View va 14 navbatli yo'nalish matritsasidan
-   o'tdi.
+   o'tdi. Bu ekran paritetidir; ommaviy navbat olish va mijoz oqimi hali
+   funksional `partial`, batafsil audit:
+   `docs/navbat-v1656-funksional-audit.md`.
 3. **Blok 3:** `cab-education-enrollments` maxsus React View va faqat
    `Ta'lim faoliyati` ko'rinish qoidasidan o'tdi.
 4. **Blok 3.5:** `pickloc` avval monolitda tuzatiladi, so'ng React View sifatida
@@ -193,3 +200,6 @@ Reactdagi yakuniy holat:
 
 Joriy qayta audit hisoboti:
 `Onlaynlashtirish: 21/21 ekran migrated, qolgani: yo'q`.
+
+Funksional izoh:
+`Navbat domeni: 1/15 migrated, partial: 5, missing: 9`.
