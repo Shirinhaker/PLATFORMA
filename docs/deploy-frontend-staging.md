@@ -19,6 +19,11 @@
 7. Healthcheck Path: `/`
 8. Public domain target port: `8080`
 
+`vite preview` `/api` so‘rovlarini shu API origin’iga proksi qiladi. Frontend
+runtime konfiguratsiyasi Railway’da API bazasi sifatida frontendning o‘z
+origin’ini tanlaydi; shu sabab sessiya cookie’si first-party bo‘lib saqlanadi.
+`/api/v1/build` frontend domenidan JSON qaytarmasa deployni qabul qilmang.
+
 ## CORS
 
 Frontend domeni yaratilgach, uning to‘liq `https://...` origin qiymatini
@@ -28,6 +33,7 @@ Frontend domeni yaratilgach, uning to‘liq `https://...` origin qiymatini
 ## Acceptance
 
 - frontend deployment `ACTIVE`;
+- frontend domenidagi `/api/v1/build` JSON va HTTP `200` qaytaradi;
 - foundation sahifasi ochiladi;
 - `API v1`, `Phase 1`, `Eski faol BUILD: v1656` ko‘rinadi;
 - browser console’da CORS xatosi yo‘q;

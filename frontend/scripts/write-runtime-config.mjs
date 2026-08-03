@@ -33,6 +33,7 @@ function normalizeHttpsOrigin(value) {
 
 
 const apiBaseUrl = normalizeHttpsOrigin(rawValue);
+const sameOriginApiProxy = railwayBuild && Boolean(apiBaseUrl);
 if (railwayBuild && !apiBaseUrl) {
   throw new Error(
     "KOPRIK_API_BASE_URL is required for Railway frontend deployment",
@@ -42,7 +43,7 @@ if (railwayBuild && !apiBaseUrl) {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(
   outputPath,
-  `${JSON.stringify({ apiBaseUrl }, null, 2)}\n`,
+  `${JSON.stringify({ apiBaseUrl, sameOriginApiProxy }, null, 2)}\n`,
   "utf8",
 );
 
