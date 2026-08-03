@@ -173,6 +173,44 @@ function profileApi() {
     getSavedListings: vi.fn().mockResolvedValue([{ ...listing, is_saved: true }]),
     createListing: vi.fn().mockResolvedValue(listing),
     deleteListing: vi.fn().mockResolvedValue(undefined),
+    getStaffSetup: vi.fn().mockResolvedValue({
+      active: [{
+        id: 11,
+        name: "Haqiqiy xodim",
+        profession: "Kassir",
+        phone: "",
+        salary: 0,
+        hire_date: null,
+        status: "active",
+        note: "",
+        login: "",
+        can_login: false,
+        has_password: false,
+        permissions: [],
+        schedule: {},
+        created_at: "2026-08-01T08:00:00Z",
+        fired_at: null,
+      }],
+      fired: [],
+      active_count: 1,
+      fired_count: 0,
+      total_salary: 0,
+      firm_login: "b_turon",
+      business_direction: "Savdo",
+      professions: ["Kassir"],
+      permission_definitions: [],
+      permission_templates: [],
+    }),
+    createStaffMember: vi.fn(),
+    updateStaffMember: vi.fn(),
+    fireStaffMember: vi.fn(),
+    rehireStaffMember: vi.fn(),
+    deleteStaffMember: vi.fn(),
+    updateStaffAccess: vi.fn(),
+    updateStaffSchedule: vi.fn(),
+    createStaffProfession: vi.fn(),
+    getStaffAttendance: vi.fn(),
+    updateStaffAttendance: vi.fn(),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -368,7 +406,7 @@ describe("profile cabinets", () => {
       .toBeInTheDocument();
   });
 
-  it("opens migrated staff, documents and combined warehouse data", async () => {
+  it("opens live staff management, migrated documents and combined warehouse data", async () => {
     const user = userEvent.setup();
     render(
       <BusinessProfile

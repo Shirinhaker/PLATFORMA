@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.accounts.model import AccountType
-from app.auth.dependencies import CurrentAccount, require_csrf
+from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
 from app.core.errors import ApiError
 from app.media.storage import UploadRejected
 
@@ -30,6 +30,16 @@ async def create_upload_grant(
     request: Request,
     current: Annotated[CurrentAccount, Depends(require_csrf)],
 ):
+    if current.actor_type == "staff":
+        required = {
+            "listing_photo": ("ads",),
+            "listing_video": ("ads",),
+            "order_chat_image": (
+                "buyurtma", "service_orders", "dining_internal",
+                "dining_external", "kitchen",
+            ),
+        }.get(body.purpose, ("__business_owner__",))
+        require_staff_permission(current, *required)
     allowed = body.purpose in {
         "listing_photo", "listing_video", "order_chat_image"
     } or (

@@ -181,8 +181,44 @@ class OrderService:
     async def list_my(self, *, account_id: int, account_type: AccountType) -> list[OrderRead]:
         return await self._list(account_id, "customer")
 
-    async def list_inbox(self, *, account_id: int, account_type: AccountType) -> list[OrderRead]:
-        return await self._list(account_id, "provider")
+    async def list_inbox(
+        self,
+        *,
+        account_id: int,
+        account_type: AccountType,
+        allowed_categories: frozenset[str] | None = None,
+    ) -> list[OrderRead]:
+        return await self._list(
+            account_id,
+            "provider",
+            allowed_categories=allowed_categories,
+        )
+
+    async def assert_staff_provider_access(
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        allowed_categories: frozenset[str],
+    ) -> None:
+        async with self._session_factory() as session:
+            order = await self._repository.owned_order(
+                session,
+                order_id=order_id,
+                account_id=account_id,
+            )
+            allowed = (
+                order is not None
+                and order.provider_account_id == account_id
+                and order.order_category in allowed_categories
+            )
+            await session.rollback()
+            if not allowed:
+                raise ApiError(
+                    403,
+                    "staff_order_forbidden",
+                    "Bu buyurtmaga vakolatingiz yo‘q.",
+                )
 
     async def mark_seen(
         self, *, order_id: int, account_id: int, account_type: AccountType
@@ -203,9 +239,20 @@ class OrderService:
             await session.commit()
             return await self._project(session, order, side)
 
-    async def _list(self, account_id: int, side: str) -> list[OrderRead]:
+    async def _list(
+        self,
+        account_id: int,
+        side: str,
+        *,
+        allowed_categories: frozenset[str] | None = None,
+    ) -> list[OrderRead]:
         async with self._session_factory() as session:
-            rows = await self._repository.list_for_side(session, account_id=account_id, side=side)
+            rows = await self._repository.list_for_side(
+                session,
+                account_id=account_id,
+                side=side,
+                allowed_categories=allowed_categories,
+            )
             items_by_order = await self._repository.items_for_orders(
                 session, [row.id for row in rows]
             )

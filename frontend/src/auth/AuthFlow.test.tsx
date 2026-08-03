@@ -117,6 +117,43 @@ describe("AuthFlow", () => {
       .not.toBeInTheDocument();
   });
 
+  it("lets staff sign in with firm-scoped credentials", async () => {
+    const user = userEvent.setup();
+    const api = {
+      ...authApi(),
+      loginStaff: vi.fn().mockResolvedValue({
+        account_id: 7,
+        account_type: "business" as const,
+        name: "Ali Valiyev",
+        login: "ali01",
+        csrf_token: "staff-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+        actor_type: "staff" as const,
+        staff_id: 11,
+        permissions: ["kassa"],
+      }),
+    };
+    const authenticated = vi.fn();
+    render(<AuthFlow api={api} onAuthenticated={authenticated} />);
+
+    await user.click(screen.getByRole("button", { name: "Xodimlar uchun kirish" }));
+    await user.type(screen.getByLabelText("Firma logini"), "b_turon");
+    await user.type(screen.getByLabelText("Xodim logini"), "ali01");
+    await user.type(screen.getByLabelText("Xodim paroli"), "safe-pass-42");
+    await user.click(screen.getByRole("button", { name: "Kirish" }));
+
+    expect(api.loginStaff).toHaveBeenCalledWith({
+      firm_login: "b_turon",
+      login: "ali01",
+      password: "safe-pass-42",
+    });
+    expect(authenticated).toHaveBeenCalledWith(expect.objectContaining({
+      actor_type: "staff",
+      staff_id: 11,
+      permissions: ["kassa"],
+    }));
+  });
+
   it("shows generated credentials once after registration", async () => {
     const user = userEvent.setup();
     const api = authApi();

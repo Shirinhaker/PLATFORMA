@@ -55,6 +55,12 @@ import type {
   RegistrationStart,
   ReverseGeocodeResult,
   SessionIdentity,
+  StaffAccessWrite,
+  StaffAttendance,
+  StaffMember,
+  StaffMemberWrite,
+  StaffSchedule,
+  StaffSetup,
   UploadGrant,
   UploadGrantRequest,
   UserProfile,
@@ -576,6 +582,14 @@ export class ApiClient {
     return this.request("POST", "/api/v1/auth/login/verify", body);
   }
 
+  loginStaff(body: {
+    firm_login: string;
+    login: string;
+    password: string;
+  }): Promise<SessionIdentity> {
+    return this.request("POST", "/api/v1/staff-auth/login", body);
+  }
+
   resendChallenge(requestId: number): Promise<ChallengeResent> {
     return this.request("POST", `/api/v1/auth/challenges/${requestId}/resend`);
   }
@@ -606,6 +620,59 @@ export class ApiClient {
 
   getBusinessProfile(): Promise<BusinessProfile> {
     return this.request("GET", "/api/v1/business-profile", undefined, true);
+  }
+
+  getStaffSetup(): Promise<StaffSetup> {
+    return this.request("GET", "/api/v1/staff", undefined, true);
+  }
+
+  createStaffMember(body: StaffMemberWrite): Promise<StaffMember> {
+    return this.request("POST", "/api/v1/staff", body, true);
+  }
+
+  updateStaffMember(staffId: number, body: Partial<StaffMemberWrite>): Promise<StaffMember> {
+    return this.request("PUT", `/api/v1/staff/${staffId}`, body, true);
+  }
+
+  fireStaffMember(staffId: number): Promise<StaffMember> {
+    return this.request("POST", `/api/v1/staff/${staffId}/fire`, undefined, true);
+  }
+
+  rehireStaffMember(staffId: number): Promise<StaffMember> {
+    return this.request("POST", `/api/v1/staff/${staffId}/rehire`, undefined, true);
+  }
+
+  deleteStaffMember(staffId: number): Promise<void> {
+    return this.request("DELETE", `/api/v1/staff/${staffId}`, undefined, true);
+  }
+
+  updateStaffAccess(staffId: number, body: StaffAccessWrite): Promise<StaffMember> {
+    return this.request("PUT", `/api/v1/staff/${staffId}/access`, body, true);
+  }
+
+  updateStaffSchedule(staffId: number, schedule: StaffSchedule): Promise<StaffMember> {
+    return this.request(
+      "PUT",
+      `/api/v1/staff/${staffId}/schedule`,
+      { schedule },
+      true,
+    );
+  }
+
+  createStaffProfession(name: string): Promise<{ professions: string[] }> {
+    return this.request("POST", "/api/v1/staff/professions", { name }, true);
+  }
+
+  getStaffAttendance(day: string): Promise<StaffAttendance> {
+    const query = new URLSearchParams({ day });
+    return this.request("GET", `/api/v1/staff/attendance?${query.toString()}`, undefined, true);
+  }
+
+  updateStaffAttendance(
+    staffId: number,
+    body: { date: string; status: string; time_in: string; time_out: string },
+  ): Promise<StaffAttendance> {
+    return this.request("PUT", `/api/v1/staff/${staffId}/attendance`, body, true);
   }
 
   updateBusinessProfile(body: BusinessProfilePatch): Promise<BusinessProfile> {

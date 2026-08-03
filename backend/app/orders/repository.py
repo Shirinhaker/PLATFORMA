@@ -85,15 +85,18 @@ class OrderRepository:
         *,
         account_id: int,
         side: str,
+        allowed_categories: frozenset[str] | None = None,
     ) -> list[Order]:
         owner = (
             Order.customer_account_id
             if side == "customer"
             else Order.provider_account_id
         )
+        statement = select(Order).where(owner == account_id)
+        if allowed_categories is not None:
+            statement = statement.where(Order.order_category.in_(allowed_categories))
         return list((await session.scalars(
-            select(Order)
-            .where(owner == account_id)
+            statement
             .order_by(Order.created_at.desc(), Order.id.desc())
             .limit(200)
         )).all())

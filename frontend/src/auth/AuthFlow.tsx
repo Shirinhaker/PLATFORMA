@@ -8,6 +8,7 @@ import type {
 } from "../api/types";
 import { LoginForm } from "./LoginForm";
 import { RegistrationForm } from "./RegistrationForm";
+import { StaffLoginForm } from "./StaffLoginForm";
 import { TelegramCodeForm } from "./TelegramCodeForm";
 
 
@@ -19,12 +20,13 @@ export type AuthApi = Pick<
   | "verifyLogin"
   | "resendChallenge"
   | "getSession"
->;
+> & Partial<Pick<ApiClient, "loginStaff">>;
 
 type AuthStep =
   | { name: "choice" }
   | { name: "registration-choice" }
   | { name: "login" }
+  | { name: "staff-login" }
   | { name: "registration"; accountType: AccountType }
   | {
       name: "telegram";
@@ -66,6 +68,15 @@ export function AuthFlow({
       <LoginForm
         api={api}
         onStarted={(challenge) => telegramStep("login", challenge)}
+        onBack={() => setStep({ name: "choice" })}
+      />
+    );
+  }
+  if (step.name === "staff-login" && api.loginStaff) {
+    return (
+      <StaffLoginForm
+        api={{ loginStaff: api.loginStaff.bind(api) }}
+        onAuthenticated={onAuthenticated}
         onBack={() => setStep({ name: "choice" })}
       />
     );
@@ -138,6 +149,15 @@ export function AuthFlow({
       <button type="button" onClick={() => setStep({ name: "login" })}>
         Kirish
       </button>
+      {api.loginStaff && (
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => setStep({ name: "staff-login" })}
+        >
+          Xodimlar uchun kirish
+        </button>
+      )}
       <button
         type="button"
         className="button-secondary"

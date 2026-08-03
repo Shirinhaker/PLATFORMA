@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import Account, AccountType
 from app.auth.dependencies import (
     CurrentAccount,
+    require_business_owner,
     require_csrf,
     require_current_account,
+    require_staff_permission,
 )
 from app.auth.repository import create_session, lock_session
 from app.auth.router import _set_session_cookie
@@ -37,6 +39,7 @@ from app.profiles.schemas import (
     UserProfileRead,
 )
 from app.profiles.summary_service import ProfileSummaryService
+from app.staff.permissions import allowed_payload_resources
 
 
 router = APIRouter(prefix="/api/v1", tags=["profiles"])
@@ -189,6 +192,8 @@ async def business_profile_response(
     request: Request,
     session: AsyncSession,
     profile,
+    *,
+    current: CurrentAccount | None = None,
 ) -> BusinessProfileRead:
     payload = await assembled_cabinet_payload(
         session,
@@ -196,7 +201,22 @@ async def business_profile_response(
         account_type=AccountType.BUSINESS,
         fallback=profile.cabinet_payload,
     )
-    return business_profile_read(request, profile, cabinet_payload=payload)
+    response = business_profile_read(request, profile, cabinet_payload=payload)
+    if current is None or current.actor_type != "staff":
+        return response
+    allowed = allowed_payload_resources(current.permissions)
+    filtered = {name: value for name, value in payload.items() if name in allowed}
+    return response.model_copy(update={
+        "pay_card": "",
+        "pay_holder": "",
+        "pay_qr_object_key": "",
+        "pay_qr_url": "",
+        "director": "",
+        "tax_id": "",
+        "cabinet_payload": filtered,
+        "dashboard_snapshot": {},
+        "recent_activity": [],
+    })
 
 
 @router.get("/me", response_model=MeRead)
@@ -204,6 +224,7 @@ async def get_me(
     current: CurrentRead,
     summaries: ProfileSummary,
 ) -> MeRead:
+    require_staff_permission(current, "__business_owner__")
     return await summaries.resolve(current.account_type, current.account_id)
 
 
@@ -241,7 +262,12 @@ async def read_business_profile(
 ):
     require_account_type(current, AccountType.BUSINESS)
     profile = await get_business_profile(session, current.account_id)
-    return await business_profile_response(request, session, profile)
+    return await business_profile_response(
+        request,
+        session,
+        profile,
+        current=current,
+    )
 
 
 @router.put("/business-profile", response_model=BusinessProfileRead)
@@ -253,6 +279,7 @@ async def update_business_profile(
     summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
+    require_business_owner(current)
     if (
         "pay_qr_object_key" in body.model_fields_set
         and body.pay_qr_object_key
@@ -282,6 +309,7 @@ async def switch_cabinet(
     current: CurrentWrite,
     session: ProfileSession,
 ):
+    require_staff_permission(current, "__business_owner__")
     if body.target_type is current.account_type:
         raise ApiError(409, "cabinet_already_active", "Tanlangan kabinet allaqachon ochiq.")
 
@@ -377,6 +405,7 @@ async def attach_business_logo(
     summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
+    require_business_owner(current)
     require_profile_object_key(
         body.object_key,
         account_type=AccountType.BUSINESS,
@@ -407,6 +436,7 @@ async def attach_business_payment_qr(
     summaries: ProfileSummary,
 ):
     require_account_type(current, AccountType.BUSINESS)
+    require_business_owner(current)
     if body.object_key:
         require_profile_object_key(
             body.object_key,

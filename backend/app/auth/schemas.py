@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,5 +52,9 @@ class SessionIdentity(BaseModel):
     account_id: int
     account_type: AccountType
     login: str
+    name: str | None = None
     csrf_token: str
     expires_at: datetime
+    actor_type: Literal["owner", "staff"] = "owner"
+    staff_id: int | None = None
+    permissions: list[str] = Field(default_factory=list)

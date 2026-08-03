@@ -4,7 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Request, status
 
 from app.accounts.model import AccountType
-from app.auth.dependencies import CurrentAccount, require_csrf, require_current_account
+from app.auth.dependencies import (
+    CurrentAccount,
+    require_csrf,
+    require_current_account,
+    require_staff_permission,
+)
 from app.core.errors import ApiError
 from app.queues.schemas import (
     QueueBusinessSetupRead,
@@ -41,6 +46,7 @@ def require_business(current: CurrentAccount) -> int:
             "queue_business_required",
             "Bu bo‘lim faqat biznes kabinetida ishlaydi.",
         )
+    require_staff_permission(current, "service_orders")
     return current.account_id
 
 
@@ -189,6 +195,7 @@ async def create_public_queue(
     request: Request,
     current: CurrentWrite,
 ):
+    require_staff_permission(current, "__business_owner__")
     return await queue_service(request).create_online(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -198,6 +205,7 @@ async def create_public_queue(
 
 @router.get("/mine", response_model=list[QueueEntryRead])
 async def my_queues(request: Request, current: CurrentRead):
+    require_staff_permission(current, "__business_owner__")
     return await queue_service(request).list_mine(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -213,6 +221,7 @@ async def mark_queue_notification_read(
     request: Request,
     current: CurrentWrite,
 ):
+    require_staff_permission(current, "notifications", "service_orders")
     return await queue_service(request).mark_notification_read(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -226,6 +235,7 @@ async def cancel_my_queue(
     request: Request,
     current: CurrentWrite,
 ):
+    require_staff_permission(current, "__business_owner__")
     return await queue_service(request).cancel_mine(
         account_id=current.account_id,
         account_type=current.account_type,

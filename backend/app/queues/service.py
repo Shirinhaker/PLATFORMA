@@ -8,7 +8,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
-from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
 from app.notifications.repository import NotificationRepository
@@ -31,6 +30,7 @@ from app.queues.schemas import (
     QueueStatusChange,
     QueueSwap,
 )
+from app.staff.repository import StaffRepository
 
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -92,13 +92,13 @@ class QueueService:
         session_factory: SessionFactory,
         *,
         repository: QueueRepository | None = None,
-        cabinet_repository: CabinetRecordRepository | None = None,
+        staff_repository: StaffRepository | None = None,
         notification_repository: NotificationRepository | None = None,
         now_provider: NowProvider | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or QueueRepository()
-        self._cabinet_repository = cabinet_repository or CabinetRecordRepository()
+        self._staff_repository = staff_repository or StaffRepository()
         self._notifications = notification_repository or NotificationRepository()
         self._now_provider = now_provider or (lambda: datetime.now(UTC))
 
@@ -969,41 +969,15 @@ class QueueService:
         session: AsyncSession,
         business: BusinessProfile,
     ) -> list[dict[str, object]]:
-        source: list = []
-        for resource in ("staff", "business_staff", "employees"):
-            source = await self._cabinet_repository.read_resource(
-                session,
-                account_id=business.account_id,
-                account_type="business",
-                resource=resource,
-            )
-            if source:
-                break
-            fallback = (business.cabinet_payload or {}).get(resource)
-            if isinstance(fallback, list) and fallback:
-                source = fallback
-                break
-        rows: list[dict[str, object]] = []
-        seen: set[int] = set()
-        for source_row in source:
-            if not isinstance(source_row, dict):
-                continue
-            try:
-                identifier = int(source_row.get("id") or 0)
-            except (TypeError, ValueError):
-                continue
-            if not identifier or identifier in seen:
-                continue
-            if str(source_row.get("status") or "active") != "active":
-                continue
-            seen.add(identifier)
-            rows.append({
-                "id": identifier,
-                "name": str(source_row.get("name") or "")[:120],
-                "profession": str(source_row.get("profession") or "Xodim")[:120],
-            })
-        rows.sort(key=lambda row: str(row["name"]).casefold())
-        return rows
+        rows = await self._staff_repository.members(
+            session,
+            business.account_id,
+            active_only=True,
+        )
+        return [
+            {"id": row.id, "name": row.name, "profession": row.profession}
+            for row in rows
+        ]
 
     async def _active_staff(
         self,
@@ -1028,17 +1002,10 @@ class QueueService:
         session: AsyncSession,
         business: BusinessProfile,
     ) -> bool:
-        for resource in ("staff", "business_staff", "employees"):
-            if await self._cabinet_repository.has_resource(
-                session,
-                account_id=business.account_id,
-                account_type="business",
-                resource=resource,
-            ):
-                return True
-            if isinstance((business.cabinet_payload or {}).get(resource), list):
-                return True
-        return False
+        return bool(await self._staff_repository.members(
+            session,
+            business.account_id,
+        ))
 
     def _provider_read(
         self,

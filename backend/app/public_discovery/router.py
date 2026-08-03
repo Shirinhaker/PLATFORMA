@@ -3,7 +3,11 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
-from app.auth.dependencies import CurrentAccount, require_current_account
+from app.auth.dependencies import (
+    CurrentAccount,
+    require_current_account,
+    require_staff_permission,
+)
 
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
@@ -81,6 +85,7 @@ async def get_public_home_followed_profiles(
     request: Request,
     current: CurrentAccount = Depends(require_current_account),
 ) -> list[PublicFollowedProfile]:
+    require_staff_permission(current, "__business_owner__")
     return await request.app.state.public_discovery_service.followed_profiles(
         account_id=current.account_id,
         account_type=current.account_type.value,
