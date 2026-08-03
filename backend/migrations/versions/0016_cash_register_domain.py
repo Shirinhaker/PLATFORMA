@@ -102,10 +102,10 @@ source_rows AS (
             WHEN row.resource = 'sales'
              AND COALESCE(row.row_data->>'source', 'manual') = 'order'
              AND COALESCE(row.row_data->>'order_id', '') ~ '^[0-9]+$'
-                THEN 'sales:order:' || row.row_data->>'order_id'
+                THEN 'sales:order:' || (row.row_data->>'order_id')
             WHEN row.resource = 'sales'
              AND COALESCE(row.row_data->>'chek_no', '') ~ '^[0-9]+$'
-                THEN 'sales:chek:' || row.row_data->>'chek_no'
+                THEN 'sales:chek:' || (row.row_data->>'chek_no')
             ELSE row.resource || ':row:' || row.source_key
         END AS group_key
     FROM deduplicated AS row

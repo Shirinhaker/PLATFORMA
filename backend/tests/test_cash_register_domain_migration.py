@@ -40,6 +40,9 @@ def test_migration_backfills_sales_with_fallback_and_idempotent_keys():
     assert "'sales', 'cash_transactions', 'cash_register_transactions'" in receipt_sql
     assert "row.resource = 'sales'" in receipt_sql
     assert "NOT EXISTS" in receipt_sql
+    assert "'sales:order:' || (row.row_data->>'order_id')" in receipt_sql
+    assert "'sales:chek:' || (row.row_data->>'chek_no')" in receipt_sql
+    assert "|| row.row_data->>" not in receipt_sql
     assert "ON CONFLICT (business_account_id, legacy_group_key)" in receipt_sql
     assert "ON CONFLICT (business_account_id, legacy_source_key)" in line_sql
     assert "inventory.legacy_source_id" in line_sql
