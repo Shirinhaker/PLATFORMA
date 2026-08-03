@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +16,115 @@ from app.staff.schemas import (
     StaffMemberCreate,
 )
 from app.staff.service import StaffService
+
+
+class ExpiringRow(SimpleNamespace):
+    _expired = False
+
+    def expire(self) -> None:
+        object.__setattr__(self, "_expired", True)
+
+    def __getattribute__(self, name: str):
+        if name not in {"_expired", "expire", "__class__", "__dict__"}:
+            if object.__getattribute__(self, "_expired"):
+                raise AssertionError(f"expired attribute accessed: {name}")
+        return object.__getattribute__(self, name)
+
+
+class ExpiringReadSession:
+    def __init__(self, account, rows: list[ExpiringRow]) -> None:
+        self.account = account
+        self.rows = rows
+        self.rolled_back = False
+
+    async def get(self, _model, _key):
+        return self.account
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+        for row in self.rows:
+            row.expire()
+
+
+class ExpiringReadRepository:
+    def __init__(self, profile_row, member_rows: list[ExpiringRow]) -> None:
+        self.profile_row = profile_row
+        self.member_rows = member_rows
+
+    async def business_profile(self, _session, _account_id):
+        return self.profile_row
+
+    async def members(self, _session, _account_id, *, active_only=False):
+        if active_only:
+            return [row for row in self.member_rows if row.status == "active"]
+        return self.member_rows
+
+    async def professions(self, _session, _account_id):
+        return []
+
+
+def expiring_member() -> ExpiringRow:
+    now = datetime(2026, 8, 3, 8, 0, tzinfo=UTC)
+    return ExpiringRow(
+        id=7,
+        name="Ali Valiyev",
+        profession="Kassir",
+        phone="+998901234567",
+        salary=2_500_000,
+        hire_date=date(2026, 8, 1),
+        status="active",
+        note="",
+        login=None,
+        can_login=False,
+        password_hash=None,
+        permissions=[],
+        schedule={},
+        created_at=now,
+        fired_at=None,
+    )
+
+
+async def test_read_services_materialize_rows_before_transaction_rollback():
+    profile_row = ExpiringRow(direction="Savdo")
+    account_row = ExpiringRow(login="b_turon")
+    setup_member = expiring_member()
+    setup_session = ExpiringReadSession(
+        account_row,
+        [profile_row, account_row, setup_member],
+    )
+
+    @asynccontextmanager
+    async def setup_sessions():
+        yield setup_session
+
+    setup_service = StaffService(
+        setup_sessions,
+        Settings(environment="test", csrf_secret="staff-test-csrf"),
+        repository=ExpiringReadRepository(profile_row, [setup_member]),
+    )
+    setup = await setup_service.setup(1)
+
+    assert setup_session.rolled_back
+    assert setup.active_count == 1
+    assert setup.active[0].name == "Ali Valiyev"
+    assert setup.firm_login == "b_turon"
+
+    active_member = expiring_member()
+    active_session = ExpiringReadSession(None, [active_member])
+
+    @asynccontextmanager
+    async def active_sessions():
+        yield active_session
+
+    active_service = StaffService(
+        active_sessions,
+        Settings(environment="test", csrf_secret="staff-test-csrf"),
+        repository=ExpiringReadRepository(profile_row, [active_member]),
+    )
+    active = await active_service.active_member_rows(1)
+
+    assert active_session.rolled_back
+    assert active == [{"id": 7, "name": "Ali Valiyev", "profession": "Kassir"}]
 
 
 def account(login: str) -> Account:

@@ -79,12 +79,11 @@ class StaffService:
             account = await session.get(Account, business_account_id)
             rows = await self._repository.members(session, business_account_id)
             professions = await self._profession_names(session, business_account_id)
-            await session.rollback()
             active = [self._member_read(row) for row in rows if row.status == "active"]
             fired = [self._member_read(row) for row in rows if row.status == "fired"]
             definitions = permission_definitions(profile.direction)
             templates = permission_templates(profile.direction)
-            return StaffSetupRead(
+            result = StaffSetupRead(
                 active=active,
                 fired=fired,
                 active_count=len(active),
@@ -106,6 +105,8 @@ class StaffService:
                     for item in templates
                 ],
             )
+            await session.rollback()
+            return result
 
     async def create_member(
         self,
@@ -522,11 +523,12 @@ class StaffService:
             rows = await self._repository.members(
                 session, business_account_id, active_only=True
             )
-            await session.rollback()
-            return [
+            result = [
                 {"id": row.id, "name": row.name, "profession": row.profession}
                 for row in rows
             ]
+            await session.rollback()
+            return result
 
     async def _business_profile(self, session: AsyncSession, account_id: int):
         profile = await self._repository.business_profile(session, account_id)
