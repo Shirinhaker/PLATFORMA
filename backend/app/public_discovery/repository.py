@@ -56,6 +56,13 @@ _cabinet_records = CabinetRecordRepository()
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 
 
+def _bounded_integer(value: object, maximum: int) -> int:
+    try:
+        return max(0, min(maximum, int(value or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def build_public_id(kind: PublicResultKind, account_id: int) -> str:
     return build_profile_public_id(kind.value, account_id)
 
@@ -863,6 +870,28 @@ async def load_public_profile(
         return None
     from app.catalog.repository import build_content_public_id
 
+    course_rows_by_id: dict[str, dict[str, object]] = {}
+    if str(profile.direction or "").strip() == "Ta'lim faoliyati":
+        course_rows = await _cabinet_records.read_resource(
+            session,
+            account_id=account_id,
+            account_type="business",
+            resource="items",
+        )
+        if not course_rows:
+            payload = (
+                profile.cabinet_payload
+                if isinstance(profile.cabinet_payload, dict)
+                else {}
+            )
+            fallback = payload.get("items", [])
+            course_rows = fallback if isinstance(fallback, list) else []
+        course_rows_by_id = {
+            str(row.get("id")): row
+            for row in course_rows
+            if isinstance(row, dict) and row.get("id") not in (None, "")
+        }
+
     resolved_queue_date = queue_date or datetime.now(UZBEKISTAN_TZ).date()
 
     item_rows = (
@@ -892,8 +921,30 @@ async def load_public_profile(
             .order_by(CatalogItem.created_at.desc(), CatalogItem.id.desc())
         )
     ).all()
-    items = [
-        PublicProfileItem(
+    items = []
+    for (
+        item,
+        group_name,
+        queue_provider_count,
+        today_queue_count,
+    ) in item_rows:
+        source_key = str(item.source_record_key or "")
+        course_row = course_rows_by_id.get(source_key, {})
+        if not course_row and source_key.startswith("item:"):
+            course_row = course_rows_by_id.get(
+                source_key.removeprefix("item:"),
+                {},
+            )
+        course_mode = str(course_row.get("course_mode") or "")
+        if course_mode not in {"", "offline", "online", "hybrid"}:
+            course_mode = "offline"
+        course_level = str(course_row.get("course_level") or "")
+        if course_level not in {"", "beginner", "intermediate", "advanced", "all"}:
+            course_level = "all"
+        enrollment_status = str(course_row.get("enrollment_status") or "open")
+        if enrollment_status not in {"open", "closed"}:
+            enrollment_status = "open"
+        items.append(PublicProfileItem(
             kind=item.kind,
             public_id=build_content_public_id(item.kind, item.id),
             name=item.name,
@@ -905,14 +956,16 @@ async def load_public_profile(
             queue_enabled=bool(item.queue_enabled),
             queue_provider_count=max(0, int(queue_provider_count or 0)),
             today_queue_count=max(0, int(today_queue_count or 0)),
-        )
-        for (
-            item,
-            group_name,
-            queue_provider_count,
-            today_queue_count,
-        ) in item_rows
-    ]
+            course_mode=course_mode,
+            course_duration=str(course_row.get("course_duration") or "")[:80],
+            lesson_duration=_bounded_integer(
+                course_row.get("lesson_duration"), 1440,
+            ),
+            age_from=_bounded_integer(course_row.get("age_from"), 120),
+            age_to=_bounded_integer(course_row.get("age_to"), 120),
+            course_level=course_level,
+            enrollment_status=enrollment_status,
+        ))
     queue_total = (
         sum(item.today_queue_count for item in items)
         if str(profile.direction or "").strip() in QUEUE_DIRECTIONS

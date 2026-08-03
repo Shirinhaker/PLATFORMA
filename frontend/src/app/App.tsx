@@ -10,6 +10,11 @@ import { findCatalogDirection } from "../legacy/public/catalog-data";
 import { HomeScreen } from "../legacy/public/HomeScreen";
 import { LocationScreen } from "../legacy/public/LocationScreen";
 import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
+import {
+  CourseEnrollmentV1656,
+  type CourseEnrollmentApi,
+  type CourseEnrollmentTarget,
+} from "../education/CourseEnrollmentV1656";
 import { ListingPageV1656 } from "../listings/ListingPageV1656";
 import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
 import { CartV1656 } from "../orders/CartV1656";
@@ -73,6 +78,7 @@ type AppApi = (
   & Partial<PublicSearchApi>
   & Partial<OrderApi>
   & Partial<QueueBookingApi>
+  & Partial<CourseEnrollmentApi>
 );
 
 
@@ -133,6 +139,7 @@ export function App({ api }: { api: AppApi }) {
   const [cartFilter, setCartFilter] = useState<string | null>(null);
   const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
   const [queueBooking, setQueueBooking] = useState<QueueBookingTarget | null>(null);
+  const [courseEnrollment, setCourseEnrollment] = useState<CourseEnrollmentTarget | null>(null);
   const [queueMessage, setQueueMessage] = useState({ id: 0, text: "" });
   const [authReason, setAuthReason] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">(() => (
@@ -326,6 +333,7 @@ export function App({ api }: { api: AppApi }) {
     setOpenedListing(null);
     setCartFilter(null);
     setQueueBooking(null);
+    setCourseEnrollment(null);
     setAuthReason("");
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
@@ -377,6 +385,22 @@ export function App({ api }: { api: AppApi }) {
       return;
     }
     setQueueBooking(target);
+  }, [api, openAuth, session.status, showQueueMessage]);
+
+  const openCourseEnrollment = useCallback((target: CourseEnrollmentTarget) => {
+    if (session.status === "guest") {
+      openAuth("Kursga yozilish");
+      return;
+    }
+    if (session.status !== "user") {
+      showQueueMessage("Avval oddiy profilga o'ting.");
+      return;
+    }
+    if (typeof api.createCourseEnrollment !== "function") {
+      showQueueMessage("Kursga yozilish xizmati hozircha ulanmagan.");
+      return;
+    }
+    setCourseEnrollment(target);
   }, [api, openAuth, session.status, showQueueMessage]);
 
   function toggleTheme() {
@@ -475,7 +499,9 @@ export function App({ api }: { api: AppApi }) {
             setCarts((current) => addCartItem(current, provider, item));
           }}
           onBookQueue={openQueueBooking}
+          onEnrollCourse={openCourseEnrollment}
           onNeedLogin={() => openAuth()}
+          onNeedCourseLogin={() => openAuth("Kursga yozilish")}
           onNeedQueueLogin={() => openAuth("Navbat olish")}
           onOpenCart={() => {
             setCartFilter(openedProfile.publicId);
@@ -619,6 +645,10 @@ export function App({ api }: { api: AppApi }) {
         });
       }}
       onBack={() => {
+        if (courseEnrollment) {
+          setCourseEnrollment(null);
+          return;
+        }
         if (navigation.view === "cart") {
           dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
           return;
@@ -661,6 +691,15 @@ export function App({ api }: { api: AppApi }) {
             key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
             target={queueBooking}
             onClose={() => setQueueBooking(null)}
+            onMessage={showQueueMessage}
+          />
+        ) : null}
+        {courseEnrollment && typeof api.createCourseEnrollment === "function" ? (
+          <CourseEnrollmentV1656
+            api={api as CourseEnrollmentApi}
+            customerPhone={session.status === "user" ? orderCustomer.phone : ""}
+            target={courseEnrollment}
+            onClose={() => setCourseEnrollment(null)}
             onMessage={showQueueMessage}
           />
         ) : null}

@@ -11,6 +11,7 @@ from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import build_public_id, load_public_profile
+from app.public_discovery import repository as public_repository
 from app.public_discovery.schemas import PublicResultKind
 from app.queues.model import QueueEntry, QueueProvider, QueueProviderService
 
@@ -172,6 +173,127 @@ async def test_public_business_profile_uses_live_catalog_and_listings():
         assert profile.items[0].image_url == "/media/items/non.webp"
         assert profile.listings[0].title == "Un sotiladi"
         assert profile.listings[0].image_url == "/media/listings/un.webp"
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_public_education_profile_enriches_course_metadata_from_cabinet_records(
+    monkeypatch,
+):
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(
+        engine,
+        tables=(
+            Account.__table__,
+            BusinessProfile.__table__,
+            CatalogGroup.__table__,
+            CatalogItem.__table__,
+            QueueProvider.__table__,
+            QueueProviderService.__table__,
+            QueueEntry.__table__,
+            Listing.__table__,
+            ListingMedia.__table__,
+        ),
+    )
+    session = Session(engine, expire_on_commit=False)
+
+    class CourseRecords:
+        async def read_resource(self, _session, **_kwargs):
+            return [{
+                "id": 51,
+                "course_mode": "hybrid",
+                "course_duration": "3 oy",
+                "lesson_duration": 90,
+                "age_from": 12,
+                "age_to": 18,
+                "course_level": "beginner",
+                "enrollment_status": "closed",
+            }]
+
+    monkeypatch.setattr(public_repository, "_cabinet_records", CourseRecords())
+    try:
+        session.add_all((
+            Account(
+                id=41,
+                account_type=AccountType.BUSINESS,
+                login="english-house",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            BusinessProfile(
+                account_id=41,
+                name="English House",
+                phone="+998901234567",
+                description="Ingliz tili kurslari",
+                public_username="englishhouse",
+                direction="Ta'lim faoliyati",
+                activity_type="O'quv markazi",
+                address="Qumqo'rg'on",
+                latitude=None,
+                longitude=None,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=True,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ),
+            CatalogItem(
+                id=61,
+                business_account_id=41,
+                source_record_key="51",
+                catalog_group_id=None,
+                owner_name_snapshot="English House",
+                name="Ingliz tili",
+                price_text="500 000 so'm",
+                unit="oy",
+                note="Haftada 3 kun",
+                kind="service",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+        ))
+        session.commit()
+
+        profile = await load_public_profile(
+            AsyncStore(session),
+            kind="business",
+            public_id=build_public_id(PublicResultKind.BUSINESS, 41),
+            image_url_provider=lambda key: f"/media/{key}" if key else "",
+        )
+
+        assert profile is not None
+        course = profile.items[0]
+        assert course.course_mode == "hybrid"
+        assert course.course_duration == "3 oy"
+        assert course.lesson_duration == 90
+        assert course.age_from == 12
+        assert course.age_to == 18
+        assert course.course_level == "beginner"
+        assert course.enrollment_status == "closed"
     finally:
         session.close()
         engine.dispose()

@@ -496,6 +496,81 @@ describe("App", () => {
     );
   });
 
+  it("opens and submits the course enrollment flow from a public profile", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const api = {
+      ...profileApi(),
+      getUserProfile: vi.fn().mockResolvedValue({
+        ...userProfile,
+        phone: "+998901234567",
+      }),
+      getFollowedProfiles: vi.fn().mockResolvedValue([{
+        kind: "business",
+        public_id: "b_english",
+        name: "English House",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+      }]),
+      getPublicProfile: vi.fn().mockResolvedValue({
+        kind: "business",
+        public_id: "b_english",
+        name: "English House",
+        public_username: "englishhouse",
+        description: "",
+        direction: "Ta'lim faoliyati",
+        activity_type: "O'quv markazi",
+        address: "",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 2,
+        specialist: null,
+        items: [{
+          kind: "service",
+          public_id: "s_english",
+          name: "Ingliz tili",
+          price_text: "500 000 so'm",
+          unit: "oy",
+          note: "",
+          image_url: "",
+          group_name: "",
+          queue_enabled: false,
+          course_mode: "offline",
+          enrollment_status: "open",
+        }],
+        listings: [],
+      }),
+      createCourseEnrollment: vi.fn().mockResolvedValue({ ok: true, id: 91 }),
+    };
+
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", {
+      name: "English House profilini ochish",
+    }));
+    await user.click(await screen.findByRole("button", {
+      name: "Kursga yozilish",
+    }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Telefon raqamingiz"))
+      .toHaveValue("+998901234567");
+    await user.type(screen.getByLabelText("Izoh"), "Kechki guruh");
+    await user.click(screen.getByRole("button", { name: "Ariza yuborish" }));
+
+    expect(api.createCourseEnrollment).toHaveBeenCalledWith({
+      course_item_public_id: "s_english",
+      phone: "+998901234567",
+      note: "Kechki guruh",
+    });
+    expect(await screen.findByRole("status"))
+      .toHaveTextContent("Arizangiz yuborildi ✅");
+  });
+
   it("navigates Catalog to Category and back", async () => {
     const user = userEvent.setup();
     saveHomeLocation();

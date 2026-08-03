@@ -9,6 +9,7 @@ import {
   type CartReceipt,
 } from "../../orders/order-store";
 import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
+import type { CourseEnrollmentTarget } from "../../education/CourseEnrollmentV1656";
 
 
 interface PublicProfileV1656Props {
@@ -24,6 +25,8 @@ interface PublicProfileV1656Props {
   onNeedLogin?(): void;
   onNeedQueueLogin?(): void;
   onBookQueue?(target: QueueBookingTarget): void;
+  onEnrollCourse?(target: CourseEnrollmentTarget): void;
+  onNeedCourseLogin?(): void;
   onQueueMessage?(message: string): void;
   onOpenCart?(): void;
   onTitleChange?(title: string): void;
@@ -81,6 +84,8 @@ export function PublicProfileV1656({
   onNeedLogin,
   onNeedQueueLogin,
   onBookQueue,
+  onEnrollCourse,
+  onNeedCourseLogin,
   onQueueMessage,
   onOpenCart,
   onTitleChange,
@@ -148,7 +153,23 @@ export function PublicProfileV1656({
 
   function itemAction(item: PublicProfileItem) {
     if (education) {
-      return <button className="biz-add-btn" type="button">Kursga yozilish</button>;
+      if (item.enrollment_status === "closed") return null;
+      return (
+        <button
+          className="biz-add-btn"
+          type="button"
+          onClick={() => {
+            if (!authenticated) {
+              (onNeedCourseLogin ?? onNeedLogin)?.();
+              return;
+            }
+            onEnrollCourse?.({
+              itemPublicId: item.public_id,
+              courseName: item.name || "Kurs",
+            });
+          }}
+        >Kursga yozilish</button>
+      );
     }
     if (
       QUEUE_DIRECTIONS.has(profileDirection)
@@ -289,6 +310,31 @@ export function PublicProfileV1656({
                       <div className="name">{item.name}</div>
                       <div className="price">{item.price_text || "Narx kelishiladi"}</div>
                       {item.note ? <div className="note">{item.note}</div> : null}
+                      {education ? (
+                        <>
+                          <div className="note">
+                            {item.course_mode === "online"
+                              ? "Onlayn"
+                              : item.course_mode === "hybrid"
+                                ? "Aralash"
+                                : "Offline"}
+                            {item.course_duration ? ` · ${item.course_duration}` : ""}
+                            {item.lesson_duration
+                              ? ` · ${item.lesson_duration} daqiqa`
+                              : ""}
+                          </div>
+                          {item.age_from || item.age_to ? (
+                            <div className="note">
+                              Yosh: {item.age_from || 0}–{item.age_to || "+"}
+                            </div>
+                          ) : null}
+                          <div className="kind">
+                            {item.enrollment_status === "closed"
+                              ? "Qabul yopiq"
+                              : "Qabul ochiq"}
+                          </div>
+                        </>
+                      ) : null}
                       {queueEnabled ? (
                         <div
                           className="idesc"

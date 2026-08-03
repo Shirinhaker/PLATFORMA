@@ -1444,13 +1444,29 @@ def apply_education_enrollment_action(
 
         students = raw_payload_rows(payload, "education_students")
         user_id = integer(enrollment.get("user_id"))
+        user_account_id = integer(enrollment.get("user_account_id"))
+        user_legacy_id = integer(enrollment.get("user_legacy_id"))
         student = next(
             (
                 row
                 for row in students
-                if user_id
-                and integer(row.get("user_id")) == user_id
-                and str(row.get("status") or "") == "active"
+                if str(row.get("status") or "") == "active"
+                and (
+                    (
+                        user_account_id
+                        and integer(row.get("user_account_id")) == user_account_id
+                    )
+                    or (
+                        user_account_id
+                        and user_legacy_id
+                        and integer(row.get("user_id")) == user_legacy_id
+                    )
+                    or (
+                        not user_account_id
+                        and user_id
+                        and integer(row.get("user_id")) == user_id
+                    )
+                )
             ),
             None,
         )
@@ -1472,6 +1488,8 @@ def apply_education_enrollment_action(
                 "created_at": now,
                 "updated_at": now,
             }
+            if user_account_id:
+                student["user_account_id"] = user_account_id
             students.append(student)
         else:
             student["group_id"] = group_id
