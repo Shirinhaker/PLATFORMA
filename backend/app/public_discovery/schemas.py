@@ -193,6 +193,7 @@ class PublicProfileItem(BaseModel):
     group_name: str = Field(default="", max_length=160)
     queue_enabled: bool = False
     queue_provider_count: int = Field(default=0, ge=0)
+    today_queue_count: int = Field(default=0, ge=0)
 
 
 class PublicProfileListing(BaseModel):
@@ -230,6 +231,7 @@ class PublicProfileDetail(BaseModel):
     crop_y: float = Field(default=50, ge=0, le=100)
     crop_zoom: float = Field(default=1, gt=0)
     followers_count: int = Field(default=0, ge=0)
+    queue_total: int = Field(default=0, ge=0)
     specialist: PublicSpecialistSummary | None = None
     items: list[PublicProfileItem] = Field(default_factory=list)
     listings: list[PublicProfileListing] = Field(default_factory=list)

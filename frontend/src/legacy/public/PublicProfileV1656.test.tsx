@@ -85,6 +85,7 @@ describe("PublicProfileV1656", () => {
       crop_y: 50,
       crop_zoom: 1,
       followers_count: 0,
+      queue_total: 3,
       specialist: null,
       items: [{
         kind: "service",
@@ -97,6 +98,7 @@ describe("PublicProfileV1656", () => {
         group_name: "",
         queue_enabled: true,
         queue_provider_count: 1,
+        today_queue_count: 3,
       }, {
         kind: "product",
         public_id: "p_dori",
@@ -137,6 +139,10 @@ describe("PublicProfileV1656", () => {
     );
 
     expect(await screen.findByRole("button", { name: "Navbat olish" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("👥 Bugungi jami navbat: 3 ta"))
+      .toBeInTheDocument();
+    expect(screen.getByText("👥 Bugungi navbat: 3 ta"))
       .toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Navbat olish" }));
     expect(onBookQueue).toHaveBeenCalledWith({

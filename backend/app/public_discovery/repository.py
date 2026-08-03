@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import time
 
@@ -28,7 +29,8 @@ from app.public_ids import (
     build_listing_public_id as _build_listing_public_id,
     build_profile_public_id,
 )
-from app.queues.repository import active_provider_count
+from app.queues.repository import active_provider_count, active_queue_count
+from app.queues.service import QUEUE_DIRECTIONS
 from app.public_discovery.schemas import (
     PublicDistrictOffer,
     PublicDistrictOffersResponse,
@@ -51,6 +53,7 @@ from app.public_discovery.schemas import (
 
 ImageUrlProvider = Callable[[str], str]
 _cabinet_records = CabinetRecordRepository()
+UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 
 
 def build_public_id(kind: PublicResultKind, account_id: int) -> str:
@@ -798,6 +801,7 @@ async def load_public_profile(
     public_id: str,
     image_url_provider: ImageUrlProvider,
     include_listings: bool = True,
+    queue_date: date | None = None,
 ) -> PublicProfileDetail | None:
     account_id = await _resolve_public_profile_account_id(
         session,
@@ -859,6 +863,8 @@ async def load_public_profile(
         return None
     from app.catalog.repository import build_content_public_id
 
+    resolved_queue_date = queue_date or datetime.now(UZBEKISTAN_TZ).date()
+
     item_rows = (
         await session.execute(
             select(
@@ -868,6 +874,11 @@ async def load_public_profile(
                     CatalogItem.id,
                     CatalogItem.business_account_id,
                 ).label("queue_provider_count"),
+                active_queue_count(
+                    CatalogItem.id,
+                    CatalogItem.business_account_id,
+                    resolved_queue_date,
+                ).label("today_queue_count"),
             )
             .outerjoin(
                 CatalogGroup,
@@ -893,9 +904,20 @@ async def load_public_profile(
             group_name=group_name or "",
             queue_enabled=bool(item.queue_enabled),
             queue_provider_count=max(0, int(queue_provider_count or 0)),
+            today_queue_count=max(0, int(today_queue_count or 0)),
         )
-        for item, group_name, queue_provider_count in item_rows
+        for (
+            item,
+            group_name,
+            queue_provider_count,
+            today_queue_count,
+        ) in item_rows
     ]
+    queue_total = (
+        sum(item.today_queue_count for item in items)
+        if str(profile.direction or "").strip() in QUEUE_DIRECTIONS
+        else 0
+    )
     return PublicProfileDetail(
         kind="business",
         public_id=public_id,
@@ -911,6 +933,7 @@ async def load_public_profile(
         crop_y=profile.logo_y,
         crop_zoom=profile.logo_zoom,
         followers_count=max(0, profile.followers_count),
+        queue_total=queue_total,
         items=items,
         listings=listings,
     )
