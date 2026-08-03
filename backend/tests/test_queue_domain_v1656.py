@@ -379,9 +379,37 @@ async def test_provider_setup_reads_staff_without_writing_tizimlashtirish(queue_
 
 
 @pytest.mark.asyncio
-async def test_public_profile_and_catalog_expose_only_active_provider_count(queue_store):
+async def test_public_profile_exposes_provider_and_active_today_queue_counts(queue_store):
     service = service_for(queue_store)
-    await create_provider(service)
+    provider = await create_provider(service)
+    queue_store.sync.add_all([
+        QueueEntry(
+            id=700 + queue_no,
+            business_account_id=7,
+            legacy_source_id=None,
+            catalog_item_id=11,
+            provider_id=provider.id,
+            customer_account_id=None,
+            patient_name=f"Mijoz {queue_no}",
+            phone="+998900000000",
+            service_name_snapshot="Qabul",
+            provider_name_snapshot=provider.name,
+            queue_date=date(2026, 8, 3),
+            queue_no=queue_no,
+            queue_code=f"QAB-{queue_no:03d}",
+            source="offline",
+            status=status,
+            note="",
+            slot_time=None,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        for queue_no, status in enumerate(
+            ("waiting", "called", "in_service", "done", "cancelled"),
+            start=1,
+        )
+    ])
+    queue_store.sync.commit()
     business_public_id = build_profile_public_id("business", 7)
 
     profile = await load_public_profile(
@@ -389,6 +417,7 @@ async def test_public_profile_and_catalog_expose_only_active_provider_count(queu
         kind="business",
         public_id=business_public_id,
         image_url_provider=lambda _key: "",
+        queue_date=date(2026, 8, 3),
     )
     catalog = await list_public_catalog(
         queue_store,
@@ -398,6 +427,8 @@ async def test_public_profile_and_catalog_expose_only_active_provider_count(queu
 
     assert profile is not None
     assert profile.items[0].queue_provider_count == 1
+    assert profile.items[0].today_queue_count == 3
+    assert profile.queue_total == 3
     assert catalog.items[0].queue_provider_count == 1
 
 

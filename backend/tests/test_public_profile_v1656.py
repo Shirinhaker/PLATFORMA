@@ -12,7 +12,7 @@ from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import build_public_id, load_public_profile
 from app.public_discovery.schemas import PublicResultKind
-from app.queues.model import QueueProvider, QueueProviderService
+from app.queues.model import QueueEntry, QueueProvider, QueueProviderService
 
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
@@ -44,6 +44,7 @@ async def test_public_business_profile_uses_live_catalog_and_listings():
             CatalogItem.__table__,
             QueueProvider.__table__,
             QueueProviderService.__table__,
+            QueueEntry.__table__,
             Listing.__table__,
             ListingMedia.__table__,
         ),

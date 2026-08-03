@@ -41,6 +41,20 @@ def active_provider_count(catalog_item_id, business_account_id):
     )
 
 
+def active_queue_count(catalog_item_id, business_account_id, queue_date):
+    return (
+        select(func.count(QueueEntry.id))
+        .where(
+            QueueEntry.business_account_id == business_account_id,
+            QueueEntry.catalog_item_id == catalog_item_id,
+            QueueEntry.queue_date == queue_date,
+            QueueEntry.status.in_(ACTIVE_STATUSES),
+        )
+        .correlate(CatalogItem)
+        .scalar_subquery()
+    )
+
+
 class QueueRepository:
     async def business_by_public_id(
         self,

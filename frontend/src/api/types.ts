@@ -512,6 +512,7 @@ export type PublicProfileItem = {
   group_name: string;
   queue_enabled: boolean;
   queue_provider_count?: number;
+  today_queue_count?: number;
 };
 
 export type OrderCreate = {
@@ -678,6 +679,7 @@ export type PublicProfileDetail = {
   crop_y: number;
   crop_zoom: number;
   followers_count: number;
+  queue_total?: number;
   specialist: {
     profession: string;
     description: string;

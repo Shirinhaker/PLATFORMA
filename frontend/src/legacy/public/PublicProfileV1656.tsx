@@ -138,6 +138,11 @@ export function PublicProfileV1656({
   const providerName = profile.name;
   const profileDirection = profile.direction;
   const education = profileDirection === "Ta'lim faoliyati";
+  const queueSupported = business && QUEUE_DIRECTIONS.has(profileDirection);
+  const queueTotal = Math.max(0, Number(profile.queue_total) || 0);
+  const hasQueueService = profile.items.some((item) => (
+    item.kind === "service" && item.queue_enabled
+  ));
   const cartLines = Object.keys(cart?.items ?? {}).length;
   const cartTotal = cart ? cartReceiptTotal(cart) : 0;
 
@@ -233,6 +238,13 @@ export function PublicProfileV1656({
         {profile.description ? (
           <div className="biz-desc">{profile.description}</div>
         ) : null}
+        {queueSupported && (queueTotal > 0 || hasQueueService) ? (
+          <div
+            className="idesc"
+            data-biz-queue-total
+            style={{ marginTop: 10, color: "var(--primary)", fontWeight: 800 }}
+          >👥 Bugungi jami navbat: {queueTotal} ta</div>
+        ) : null}
       </section>
 
       {profile.specialist ? (
@@ -261,17 +273,33 @@ export function PublicProfileV1656({
                 </div>
               ) : null}
               <div className="item-hrow">
-                {items.map((item) => (
-                  <article className="item-card2 biz-prod-card" key={item.public_id}>
-                    <div className="item-card2-img">
-                      {item.image_url ? <img alt="" src={item.image_url} /> : <span>📦</span>}
-                    </div>
-                    <div className="name">{item.name}</div>
-                    <div className="price">{item.price_text || "Narx kelishiladi"}</div>
-                    {item.note ? <div className="note">{item.note}</div> : null}
-                    {itemAction(item)}
-                  </article>
-                ))}
+                {items.map((item) => {
+                  const queueEnabled = queueSupported
+                    && item.kind === "service"
+                    && item.queue_enabled;
+                  const queueCount = Math.max(
+                    0,
+                    Number(item.today_queue_count) || 0,
+                  );
+                  return (
+                    <article className="item-card2 biz-prod-card" key={item.public_id}>
+                      <div className="item-card2-img">
+                        {item.image_url ? <img alt="" src={item.image_url} /> : <span>📦</span>}
+                      </div>
+                      <div className="name">{item.name}</div>
+                      <div className="price">{item.price_text || "Narx kelishiladi"}</div>
+                      {item.note ? <div className="note">{item.note}</div> : null}
+                      {queueEnabled ? (
+                        <div
+                          className="idesc"
+                          data-medical-queue-count={queueCount}
+                          style={{ color: "var(--primary)", fontWeight: 800, marginTop: 3 }}
+                        >👥 Bugungi navbat: {queueCount} ta</div>
+                      ) : null}
+                      {itemAction(item)}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           ))}
