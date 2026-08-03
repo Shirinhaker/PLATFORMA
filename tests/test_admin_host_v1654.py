@@ -40,10 +40,11 @@ class AdminHostTests(unittest.TestCase):
             main,
             "feature_snapshot",
             return_value={
-                "listings": False,
-                "stories": False,
-                "chat": False,
-                "systemization": False,
+                "listings": True,
+                "stories": True,
+                "chat": True,
+                "systemization": True,
+                "taxi": True,
             },
         ):
             os.makedirs(main.UPLOAD_DIR)
@@ -59,10 +60,11 @@ class AdminHostTests(unittest.TestCase):
             self.assertEqual(
                 payload["features"],
                 {
-                    "listings": False,
-                    "stories": False,
-                    "chat": False,
-                    "systemization": False,
+                    "listings": True,
+                    "stories": True,
+                    "chat": True,
+                    "systemization": True,
+                    "taxi": True,
                 },
             )
             self.assertNotIn(root, response.text)

@@ -136,8 +136,8 @@ def prepare_release_database(
         conn.execute(
             """
             UPDATE platform_feature_flags
-            SET enabled=0, updated_by_tg_id=0, updated_at=strftime('%s','now')
-            WHERE feature_code IN ('listings','stories','chat','systemization')
+            SET enabled=1, updated_by_tg_id=0, updated_at=strftime('%s','now')
+            WHERE feature_code IN ('listings','stories','chat','systemization','taxi')
             """
         )
         conn.execute(

@@ -13,6 +13,7 @@ FEATURE_ENV_NAMES = {
     "stories": "MVP_STORIES_ENABLED",
     "chat": "MVP_CHAT_ENABLED",
     "systemization": "MVP_SYSTEMIZATION_ENABLED",
+    "taxi": "MVP_TAXI_ENABLED",
 }
 
 SYSTEMIZATION_PREFIXES = (
@@ -29,6 +30,11 @@ SYSTEMIZATION_PREFIXES = (
     "/api/documents",
     "/api/education",
     "/api/ai",
+)
+
+TAXI_PREFIXES = (
+    "/api/driver",
+    "/api/rides",
 )
 
 
@@ -48,7 +54,7 @@ def ensure_feature_flag_schema(conn):
 def feature_snapshot(conn, environ=None):
     env = os.environ if environ is None else environ
     values = {
-        code: env_flag(env_name, False, env)
+        code: env_flag(env_name, True, env)
         for code, env_name in FEATURE_ENV_NAMES.items()
     }
     rows = conn.execute(
@@ -112,4 +118,6 @@ def guarded_feature_for_path(path):
         return "systemization"
     if any(_matches_prefix(value, prefix) for prefix in SYSTEMIZATION_PREFIXES):
         return "systemization"
+    if any(_matches_prefix(value, prefix) for prefix in TAXI_PREFIXES):
+        return "taxi"
     return None

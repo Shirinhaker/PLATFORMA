@@ -124,9 +124,10 @@ def validate_runtime_config(
         "MVP_STORIES_ENABLED",
         "MVP_CHAT_ENABLED",
         "MVP_SYSTEMIZATION_ENABLED",
+        "MVP_TAXI_ENABLED",
     ):
-        if str(env.get(flag_name, "")).strip() != "0":
-            errors.append(f"{flag_name}=0 bo‘lishi kerak")
+        if str(env.get(flag_name, "")).strip() != "1":
+            errors.append(f"{flag_name}=1 bo‘lishi kerak")
 
     try:
         init_data_age = int(str(env.get("INIT_DATA_MAX_AGE_SEC", "86400")).strip())

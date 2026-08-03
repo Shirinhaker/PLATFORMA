@@ -22,17 +22,9 @@ from fastapi import APIRouter, Request, Header, HTTPException
 
 from database import db
 from api import require_business, deny_staff, _row_val
-from access_config import is_privileged_tg_id
 
 router = APIRouter(prefix="/api")
 TASHKENT_TZ = 5 * 3600
-
-
-def _require_privileged_ai(conn, user):
-    if not is_privileged_tg_id(_row_val(user, "tg_id", None)):
-        conn.close()
-        raise HTTPException(403, "AI yordamchi ushbu profil uchun yopiq.")
-
 
 # ====================================================================
 # Umumiy yordamchilar
@@ -239,7 +231,6 @@ async def ai_chat(request: Request, x_telegram_init_data: str = Header(default="
     """
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    _require_privileged_ai(conn, user)
     deny_staff(conn, x_telegram_init_data, "AI yordamchi")
     _ensure_ai_tables(conn)
     if request.method == "GET":
@@ -273,7 +264,6 @@ async def ai_history(limit: int = 40, x_telegram_init_data: str = Header(default
     limit = max(1, min(int(limit or 40), 100))
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    _require_privileged_ai(conn, user)
     deny_staff(conn, x_telegram_init_data, "AI yordamchi")
     _ensure_ai_tables(conn)
     rows = conn.execute(
@@ -289,7 +279,6 @@ async def ai_status(x_telegram_init_data: str = Header(default="")):
     """Frontend va backend bir xil build ekanini tekshirish uchun."""
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    _require_privileged_ai(conn, user)
     deny_staff(conn, x_telegram_init_data, "AI yordamchi")
     _ensure_ai_tables(conn)
     conn.commit()
@@ -578,7 +567,6 @@ M.O'.
 async def ai_document_draft(request: Request, x_telegram_init_data: str = Header(default="")):
     conn = db()
     user, biz = require_business(conn, x_telegram_init_data)
-    _require_privileged_ai(conn, user)
     deny_staff(conn, x_telegram_init_data, "AI hujjat yaratish")
     body = await request.json()
     prompt = _norm(body.get("prompt"))
