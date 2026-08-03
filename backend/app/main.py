@@ -22,6 +22,8 @@ from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
+from app.inventory.router import router as inventory_router
+from app.inventory.service import InventoryService
 from app.listings.router import router as listings_router
 from app.listings.service import ListingService
 from app.media.router import router as media_router
@@ -121,6 +123,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
         )
         app.state.staff_service = StaffService(database.session, resolved)
+        app.state.inventory_service = InventoryService(database.session)
         try:
             yield
         finally:
@@ -158,6 +161,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(queues_router)
     app.include_router(education_router)
     app.include_router(staff_router)
+    app.include_router(inventory_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
