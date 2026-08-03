@@ -513,6 +513,24 @@ export type PublicProfileItem = {
   queue_enabled: boolean;
   queue_provider_count?: number;
   today_queue_count?: number;
+  course_mode?: "" | "offline" | "online" | "hybrid";
+  course_duration?: string;
+  lesson_duration?: number;
+  age_from?: number;
+  age_to?: number;
+  course_level?: "" | "beginner" | "intermediate" | "advanced" | "all";
+  enrollment_status?: "open" | "closed";
+};
+
+export type CourseEnrollmentCreate = {
+  course_item_public_id: string;
+  phone: string;
+  note: string;
+};
+
+export type CourseEnrollmentCreated = {
+  ok: boolean;
+  id: number;
 };
 
 export type OrderCreate = {

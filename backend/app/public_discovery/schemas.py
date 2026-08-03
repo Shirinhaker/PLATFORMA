@@ -194,6 +194,16 @@ class PublicProfileItem(BaseModel):
     queue_enabled: bool = False
     queue_provider_count: int = Field(default=0, ge=0)
     today_queue_count: int = Field(default=0, ge=0)
+    course_mode: str = Field(default="", pattern="^(|offline|online|hybrid)$")
+    course_duration: str = Field(default="", max_length=80)
+    lesson_duration: int = Field(default=0, ge=0, le=1440)
+    age_from: int = Field(default=0, ge=0, le=120)
+    age_to: int = Field(default=0, ge=0, le=120)
+    course_level: str = Field(
+        default="",
+        pattern="^(|beginner|intermediate|advanced|all)$",
+    )
+    enrollment_status: str = Field(default="open", pattern="^(open|closed)$")
 
 
 class PublicProfileListing(BaseModel):

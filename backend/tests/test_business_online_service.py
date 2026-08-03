@@ -1083,3 +1083,51 @@ async def test_education_enrollment_accept_and_reject_match_v1656_student_flow()
         )
     assert not_new.value.status_code == 404
     assert not_new.value.message == "Yangi ariza topilmadi."
+
+
+@pytest.mark.asyncio
+async def test_education_accept_does_not_confuse_new_account_with_legacy_user_id():
+    profile = business_profile()
+    profile.direction = "Ta'lim faoliyati"
+    profile.cabinet_payload.update({
+        "items": [{"id": 51, "name": "Ingliz tili"}],
+        "education_groups": [
+            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
+        ],
+        "education_students": [{
+            "id": 81,
+            "group_id": 61,
+            "user_id": 700,
+            "full_name": "Eski o'quvchi",
+            "phone": "+998900000001",
+            "status": "active",
+        }],
+        "education_enrollments": [{
+            "id": 71,
+            "course_item_id": 51,
+            "user_id": 700,
+            "user_account_id": 700,
+            "user_legacy_id": 0,
+            "customer_name": "Yangi o'quvchi",
+            "phone": "+998900000002",
+            "note": "",
+            "status": "new",
+        }],
+    })
+    service = BusinessOnlineService(FakeDatabase(profile).session)
+
+    accepted, _rows = await service.apply_action(
+        7,
+        "education_enrollments",
+        "accept",
+        record_id=71,
+        data={"group_id": 61},
+    )
+
+    assert accepted is not None
+    students = profile.cabinet_payload["education_students"]
+    assert len(students) == 2
+    assert students[0]["full_name"] == "Eski o'quvchi"
+    new_student = students[1]
+    assert new_student["full_name"] == "Yangi o'quvchi"
+    assert new_student["user_account_id"] == 700

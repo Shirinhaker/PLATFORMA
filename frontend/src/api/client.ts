@@ -22,6 +22,8 @@ import type {
   ChallengeResent,
   ChallengeStarted,
   ChallengeVerification,
+  CourseEnrollmentCreate,
+  CourseEnrollmentCreated,
   Me,
   OrderCreate,
   OrderCreateResponse,
@@ -219,6 +221,17 @@ export class ApiClient {
 
   createQueue(body: QueueCreate): Promise<BusinessQueueEntry> {
     return this.request("POST", "/api/v1/queues", body, true);
+  }
+
+  createCourseEnrollment(
+    body: CourseEnrollmentCreate,
+  ): Promise<CourseEnrollmentCreated> {
+    return this.request(
+      "POST",
+      "/api/v1/education/enrollments",
+      body,
+      true,
+    );
   }
 
   getMyQueues(): Promise<BusinessQueueEntry[]> {

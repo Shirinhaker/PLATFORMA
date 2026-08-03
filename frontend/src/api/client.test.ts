@@ -12,6 +12,39 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("submits a course enrollment through the authenticated v1 API", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 5,
+        account_type: "user",
+        name: "Ali",
+        login: "u_ali",
+        csrf_token: "education-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true, id: 91 }, 201));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const body = {
+      course_item_public_id: "s_english",
+      phone: "+998901234567",
+      note: "Kechki guruh",
+    };
+
+    await client.createCourseEnrollment(body);
+
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "https://api.example/api/v1/education/enrollments",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: expect.objectContaining({
+          "X-CSRF-Token": "education-csrf",
+        }),
+      }),
+    );
+  });
+
   it("uses the typed Q4 customer queue and notification endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

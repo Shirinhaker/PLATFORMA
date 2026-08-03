@@ -216,4 +216,137 @@ describe("PublicProfileV1656", () => {
     expect(onNeedLogin).not.toHaveBeenCalled();
     expect(onBookQueue).not.toHaveBeenCalled();
   });
+
+  it("shows v1656 course metadata and opens enrollment only while admission is open", async () => {
+    const user = userEvent.setup();
+    const onEnrollCourse = vi.fn();
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_english",
+      name: "English House",
+      public_username: "",
+      description: "",
+      direction: "Ta'lim faoliyati",
+      activity_type: "O'quv markazi",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [{
+        kind: "service",
+        public_id: "s_english",
+        name: "Ingliz tili",
+        price_text: "500 000 so'm",
+        unit: "oy",
+        note: "Haftada 3 kun",
+        image_url: "",
+        group_name: "",
+        queue_enabled: false,
+        course_mode: "hybrid",
+        course_duration: "3 oy",
+        lesson_duration: 90,
+        age_from: 12,
+        age_to: 18,
+        course_level: "beginner",
+        enrollment_status: "open",
+      }, {
+        kind: "service",
+        public_id: "s_math",
+        name: "Matematika",
+        price_text: "",
+        unit: "oy",
+        note: "",
+        image_url: "",
+        group_name: "",
+        queue_enabled: false,
+        course_mode: "offline",
+        course_duration: "",
+        lesson_duration: 60,
+        age_from: 0,
+        age_to: 0,
+        course_level: "all",
+        enrollment_status: "closed",
+      }],
+      listings: [],
+    });
+
+    render(
+      <PublicProfileV1656
+        authenticated
+        kind="business"
+        publicId="b_english"
+        getPublicProfile={getPublicProfile}
+        onEnrollCourse={onEnrollCourse}
+      />,
+    );
+
+    expect(await screen.findByText("Aralash · 3 oy · 90 daqiqa"))
+      .toBeInTheDocument();
+    expect(screen.getByText("Yosh: 12–18")).toBeInTheDocument();
+    expect(screen.getByText("Qabul ochiq")).toBeInTheDocument();
+    expect(screen.getByText("Qabul yopiq")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Kursga yozilish" }))
+      .toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Kursga yozilish" }));
+    expect(onEnrollCourse).toHaveBeenCalledWith({
+      itemPublicId: "s_english",
+      courseName: "Ingliz tili",
+    });
+  });
+
+  it("sends guests to login before opening the course form", async () => {
+    const user = userEvent.setup();
+    const onEnrollCourse = vi.fn();
+    const onNeedCourseLogin = vi.fn();
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_english",
+      name: "English House",
+      public_username: "",
+      description: "",
+      direction: "Ta'lim faoliyati",
+      activity_type: "O'quv markazi",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [{
+        kind: "service",
+        public_id: "s_english",
+        name: "Ingliz tili",
+        price_text: "",
+        unit: "oy",
+        note: "",
+        image_url: "",
+        group_name: "",
+        queue_enabled: false,
+        enrollment_status: "open",
+      }],
+      listings: [],
+    });
+
+    render(
+      <PublicProfileV1656
+        kind="business"
+        publicId="b_english"
+        getPublicProfile={getPublicProfile}
+        onEnrollCourse={onEnrollCourse}
+        onNeedCourseLogin={onNeedCourseLogin}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", {
+      name: "Kursga yozilish",
+    }));
+    expect(onNeedCourseLogin).toHaveBeenCalledOnce();
+    expect(onEnrollCourse).not.toHaveBeenCalled();
+  });
 });
