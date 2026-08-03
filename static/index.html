@@ -1793,7 +1793,7 @@
         <div class="menu-card" id="educationTeachersMenu" data-nav="cab-education-teachers" style="display:none"><div class="menu-ic">🧑‍🏫</div><div class="menu-main"><h4>O'qituvchilar</h4><p>O'qituvchi, fan va ish haqi</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationPayrollMenu" data-nav="cab-education-payroll" style="display:none"><div class="menu-ic">💰</div><div class="menu-main"><h4>O'qituvchi maoshi</h4><p>Hisoblangan va to'langan maoshlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="educationStatisticsMenu" data-nav="cab-education-statistics" style="display:none"><div class="menu-ic">📊</div><div class="menu-main"><h4>Ta'lim statistikasi</h4><p>Davomat, to'lovlar, maosh va natija</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="menu-card" data-nav="ai-chat" data-privileged-only><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="menu-card" data-nav="ai-chat"><div class="menu-ic">🤖</div><div class="menu-main"><h4>AI yordamchi</h4><p>Savdo, ombor, qarz bo\'yicha savol bering</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" data-nav="cab-admin"><div class="menu-ic">🛡️</div><div class="menu-main"><h4>Ma'muriyat</h4><p>Xodimlar va hujjatlar</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
         <div class="menu-card" id="cabReportMenu" data-nav="cab-report" data-privileged-only><div class="menu-ic">📑</div><div class="menu-main"><h4>Hisobot</h4><p>Vazifasi keyingi bosqichda belgilanadi</p></div><span class="soon-mini">Keyingi bosqich</span></div>
         <div class="menu-card" data-nav="cab-settings"><div class="menu-ic">⚙️</div><div class="menu-main"><h4>Sozlamalar</h4><p>Akkaunt, til, chiqish</p></div><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span></div>
@@ -4758,7 +4758,7 @@
   function openType(t){
     var callBtn = "";
     if(["Taxi","Yetkazib berish","Yuk tashish","Evakuator"].indexOf(t)>-1){
-      callBtn = '<button class="btn btn-amber btn-block" style="margin:4px 0 14px" data-alert="Chaqiruv tizimi 2-bosqichda ishlaydi (namuna).">🚖 Chaqirish <span class="soon-mini" style="margin-left:8px">tez orada</span></button>';
+      callBtn = '<button class="btn btn-amber btn-block" style="margin:4px 0 14px" data-taxi-call>🚖 Chaqirish</button>';
     }
     el("searchInput").value = t;
     api("GET","/api/browse?tur="+encodeURIComponent(t)+"&scope="+encodeURIComponent(scope)+"&"+actorQuery()+"&"+homeSearchContextQuery()).then(function(data){
@@ -5466,7 +5466,7 @@
     }
     if(HOME_LOCATION_REQUIRED && screen==="home") screen="loc";
     var staffCanReport=!!(STAFF_INFO&&(STAFF_INFO.perms||[]).indexOf("reports")>=0);
-    if((screen==="ai-chat" || screen==="cab-report") && !(ME && ME.is_privileged) && !(screen==="cab-report"&&staffCanReport)){
+    if(screen==="cab-report" && !(ME && ME.is_privileged) && !staffCanReport){
       showMsg("Bu bo'lim ushbu profil uchun yopiq.");
       screen = "cabinet";
     }
@@ -8888,7 +8888,7 @@
     if(ch){ openChats(); return; }
     var nt=e.target.closest("[data-notify]");
     if(nt){ openNotify(); return; }
-    var n=e.target.closest("[data-nav]");
+    var taxiCall=e.target.closest("[data-taxi-call]");if(taxiCall){enterCall();return;} var n=e.target.closest("[data-nav]");
     if(n){ nav(n.getAttribute("data-nav")); return; }
     var a=e.target.closest("[data-alert]");
     if(a){ showMsg(a.getAttribute("data-alert")); }

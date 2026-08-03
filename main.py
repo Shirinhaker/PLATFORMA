@@ -867,11 +867,12 @@ async def app_build():
     payload.update(
         {
             "mvp_release_v1654": True,
-            "stories_enabled": False,
-            "listings_enabled": False,
-            "general_chat_enabled": False,
-            "systemization_enabled": False,
-            "taxi_call_enabled": False,
+            "stories_enabled": True,
+            "listings_enabled": True,
+            "general_chat_enabled": True,
+            "systemization_enabled": True,
+            "taxi_call_enabled": True,
+            "ai_all_businesses_enabled": True,
             "orders_enabled": True,
             "service_orders_enabled": True,
             "order_chat_enabled": True,
@@ -922,10 +923,11 @@ async def readiness_check():
         for name in ("index.html", "styles.css", "app.js")
     )
     expected_features = {
-        "listings": False,
-        "stories": False,
-        "chat": False,
-        "systemization": False,
+        "listings": True,
+        "stories": True,
+        "chat": True,
+        "systemization": True,
+        "taxi": True,
     }
     features_ready = features == expected_features
     payload = {

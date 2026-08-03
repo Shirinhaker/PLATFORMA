@@ -1,5 +1,8 @@
 # Ko‘prik v1656 — desktop xarita, Taxi guard va to‘liq MVP source
 
+> Tarixiy hujjat: bu yerda Taxi yopiq bo‘lgan dastlabki v1656 holati
+> tasvirlangan. Joriy ochilgan holat `docs/v1656-unlocked-sections.md`da.
+
 ## Talab
 
 1. Bosh sahifa xaritasidagi `+ / −` boshqaruvi kompyuterda ham chiqmasin.
@@ -24,4 +27,3 @@
 - `MVP_README.md`
 - `tests/test_mvp_map_taxi_v1656_contract.py`
 - build markeriga bog‘langan regressiya testlari
-

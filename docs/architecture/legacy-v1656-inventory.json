@@ -334,7 +334,7 @@
     "admin/styles.css": "b3d2b6dfcd334bbe735cbd38ddca72320ea6647b8994a43d864b1bf173affc02",
     "api.py": "8c007d4582c4437b219bc2733d726580f02b9262ebed17addfeb456bbc0a5c09",
     "database.py": "71be29b506a4ad5a97b8f88193f03d04349ffd45bde8ad9a7ff103553c48a48e",
-    "main.py": "2caf60bd7467ea111d46e904e515f3ede85c088e10dac9d1caed6cc720090506",
-    "static/index.html": "54afc04b9f4019740b7cb5d2f6ca5e5fa7ba0d2d51be3fd8ceac0b8c5e4f4280"
+    "main.py": "75128504bb37c952dbe0f03a7599f1566264e4112db6d5e61e07e8101d18223b",
+    "static/index.html": "101b3c8af81f3a07b9ad8d45a96a7318682375189df9880dc1d29ec2bf50926c"
   }
 }
