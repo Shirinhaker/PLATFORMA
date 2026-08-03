@@ -13,6 +13,12 @@ import type {
   BuildInfo,
   BusinessProfile,
   BusinessProfilePatch,
+  CashCatalogItem,
+  CashPayType,
+  CashReceipt,
+  CashReceiptCreate,
+  CashReceiptCreated,
+  CashRegister,
   BusinessQueueEntry,
   BusinessQueueOfflineCreate,
   BusinessQueueProvider,
@@ -620,6 +626,40 @@ export class ApiClient {
 
   getBusinessProfile(): Promise<BusinessProfile> {
     return this.request("GET", "/api/v1/business-profile", undefined, true);
+  }
+
+  getCashRegister(day = ""): Promise<CashRegister> {
+    const suffix = day ? `?day=${encodeURIComponent(day)}` : "";
+    return this.request("GET", `/api/v1/cash-register${suffix}`, undefined, true);
+  }
+
+  getCashCatalog(): Promise<CashCatalogItem[]> {
+    return this.request("GET", "/api/v1/cash-register/catalog", undefined, true);
+  }
+
+  createCashReceipt(body: CashReceiptCreate): Promise<CashReceiptCreated> {
+    return this.request("POST", "/api/v1/cash-register/receipts", body, true);
+  }
+
+  deleteCashReceipt(receiptId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/cash-register/receipts/${receiptId}`,
+      undefined,
+      true,
+    );
+  }
+
+  updateCashOrderPayment(
+    receiptId: number,
+    payType: CashPayType,
+  ): Promise<CashReceipt> {
+    return this.request(
+      "PUT",
+      `/api/v1/cash-register/receipts/${receiptId}/payment`,
+      { pay_type: payType },
+      true,
+    );
   }
 
   getStaffSetup(): Promise<StaffSetup> {

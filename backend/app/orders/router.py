@@ -195,6 +195,7 @@ async def handoff_order(order_id: OrderId, request: Request, current: CurrentWri
         order_id=order_id,
         account_id=current.account_id,
         account_type=current.account_type,
+        actor_staff_id=current.staff_id,
     )
 
 

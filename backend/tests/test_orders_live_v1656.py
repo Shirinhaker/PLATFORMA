@@ -8,9 +8,18 @@ from sqlalchemy.orm import Session
 from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.cabinet_records.model import CabinetRecord, CabinetRecordField, CabinetResource
+from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
+from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
+from app.inventory.model import (
+    InventoryItem,
+    StockBatch,
+    StockBatchConsumption,
+    StockMove,
+)
+from app.inventory.service import InventoryService
 from app.listings.model import Listing
 from app.notifications.model import Notification
 from app.orders.model import Order, OrderItem, OrderMessage
@@ -31,6 +40,7 @@ from app.profiles.model import BusinessProfile, UserProfile
 from app.public_discovery.repository import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
 from app.catalog.repository import build_content_public_id
+from app.staff.model import StaffMember
 
 
 NOW = datetime(2026, 8, 2, 12, 0, tzinfo=UTC)
@@ -92,6 +102,7 @@ def order_store():
             BusinessProfile.__table__,
             CatalogGroup.__table__,
             CatalogItem.__table__,
+            StaffMember.__table__,
             CabinetResource.__table__,
             CabinetRecord.__table__,
             CabinetRecordField.__table__,
@@ -99,6 +110,13 @@ def order_store():
             Order.__table__,
             OrderItem.__table__,
             OrderMessage.__table__,
+            InventoryItem.__table__,
+            StockMove.__table__,
+            StockBatch.__table__,
+            StockBatchConsumption.__table__,
+            CashReceiptCounter.__table__,
+            CashReceipt.__table__,
+            CashReceiptLine.__table__,
             Notification.__table__,
             OutboxEvent.__table__,
         ),
@@ -303,6 +321,24 @@ def service_with_repository(
         sessions,
         lambda key: f"/media/{key}",
         repository=repository,
+    )
+
+
+def service_with_cash(store: AsyncStore) -> OrderService:
+    @asynccontextmanager
+    async def sessions():
+        yield store
+
+    inventory = InventoryService(sessions, now_provider=lambda: NOW)
+    cash = CashRegisterService(
+        sessions,
+        inventory_service=inventory,
+        now_provider=lambda: NOW,
+    )
+    return OrderService(
+        sessions,
+        lambda key: f"/media/{key}",
+        cash_register_service=cash,
     )
 
 
@@ -643,6 +679,82 @@ async def test_delivery_handoff_waiting_seller_moves_order_to_in_delivery(order_
     )
     assert received.status == "done"
     assert received.customer_received_at is not None
+
+
+@pytest.mark.asyncio
+async def test_handoff_posts_cash_receipt_in_the_order_transaction(order_store):
+    service = service_with_cash(order_store)
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(),
+    )
+    order = order_store.sync.get(Order, created.id)
+    order.status = "tayyor"
+    order.payment_status = "confirmed"
+    order.pay_type = "karta"
+    order_store.sync.commit()
+
+    handed = await service.handoff(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        actor_staff_id=44,
+    )
+
+    assert handed.status == "pickup_waiting_customer"
+    receipt = order_store.sync.scalar(
+        select(CashReceipt).where(CashReceipt.order_id == created.id)
+    )
+    assert receipt is not None
+    assert receipt.source == "order"
+    assert receipt.pay_type == "karta"
+    assert receipt.created_by_staff_id == 44
+    lines = list(order_store.sync.scalars(
+        select(CashReceiptLine).where(CashReceiptLine.receipt_id == receipt.id)
+    ))
+    assert len(lines) == 1
+    assert lines[0].total == 70000
+
+
+@pytest.mark.asyncio
+async def test_handoff_fifo_failure_rolls_back_order_and_cash(order_store):
+    service = service_with_cash(order_store)
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(),
+    )
+    order = order_store.sync.get(Order, created.id)
+    order.status = "tayyor"
+    order.payment_status = "confirmed"
+    order.pay_type = "karta"
+    order_store.sync.add(InventoryItem(
+        id=301,
+        business_account_id=7,
+        catalog_item_id=11,
+        legacy_source_id=101,
+        track_stock=True,
+        stock_type="ready_food",
+        stock_qty=0,
+        cost_price=0,
+        min_qty=0,
+        fifo_initialized=True,
+        created_at=NOW,
+        updated_at=NOW,
+    ))
+    order_store.sync.commit()
+
+    with pytest.raises(ApiError) as error:
+        await service.handoff(
+            order_id=created.id,
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+        )
+    assert error.value.code == "inventory_fifo_insufficient"
+    order_store.sync.expire_all()
+    assert order_store.sync.get(Order, created.id).status == "tayyor"
+    assert order_store.sync.scalar(select(func.count(CashReceipt.id))) == 0
 
 
 @pytest.mark.asyncio

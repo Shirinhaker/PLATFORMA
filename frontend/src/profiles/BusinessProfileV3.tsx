@@ -26,6 +26,10 @@ import {
 } from "./business-profile-config";
 import { CabinetDataView } from "./CabinetDataView";
 import {
+  CashRegisterV1656,
+  type CashRegisterApi,
+} from "./CashRegisterV1656";
+import {
   StaffManagementV1656,
   type StaffManagementApi,
 } from "./StaffManagementV1656";
@@ -89,6 +93,11 @@ export type BusinessProfileApiV3 = Pick<
   | "createStaffProfession"
   | "getStaffAttendance"
   | "updateStaffAttendance"
+  | "getCashRegister"
+  | "getCashCatalog"
+  | "createCashReceipt"
+  | "deleteCashReceipt"
+  | "updateCashOrderPayment"
 >>;
 
 type Props = {
@@ -99,7 +108,7 @@ type Props = {
 };
 
 type DataView = { title: string; rows: unknown[] };
-type Screen = "cabinet" | "profile" | "data" | "online" | "staff";
+type Screen = "cabinet" | "profile" | "data" | "online" | "staff" | "cash";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -189,6 +198,15 @@ function supportsStaffManagement(
     "fireStaffMember", "rehireStaffMember", "deleteStaffMember",
     "updateStaffAccess", "updateStaffSchedule", "createStaffProfession",
     "getStaffAttendance", "updateStaffAttendance",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+}
+
+function supportsCashRegister(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & CashRegisterApi {
+  return [
+    "getCashRegister", "getCashCatalog", "createCashReceipt",
+    "deleteCashReceipt", "updateCashOrderPayment",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
@@ -345,6 +363,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
+  if (screen === "cash" && supportsCashRegister(api)) {
+    return <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />;
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -367,6 +389,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }
     if (menu.view === "profile") {
       setScreen("profile");
+      return;
+    }
+    if (menu.view === "sales" && supportsCashRegister(api)) {
+      setScreen("cash");
       return;
     }
     if (isOnlineMenu(menu)) {
