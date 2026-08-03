@@ -12,6 +12,62 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("uses secure staff login and the live staff management endpoints", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Ali Valiyev",
+        login: "ali01",
+        csrf_token: "staff-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+        actor_type: "staff",
+        staff_id: 11,
+        permissions: ["kassa"],
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    const credentials = {
+      firm_login: "b_turon",
+      login: "ali01",
+      password: "safe-pass-42",
+    };
+    const member = {
+      name: "Vali Karimov",
+      profession: "Kassir",
+      phone: "",
+      salary: 0,
+      hire_date: null,
+      note: "",
+    };
+
+    await client.loginStaff(credentials);
+    await client.getStaffSetup();
+    await client.createStaffMember(member);
+    await client.updateStaffAccess(11, {
+      can_login: true,
+      login: "vali01",
+      password: "new-pass-42",
+      permissions: ["kassa"],
+    });
+    await client.getStaffAttendance("2026-08-03");
+
+    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
+      ["https://api.example/api/v1/staff-auth/login", "POST"],
+      ["https://api.example/api/v1/staff", "GET"],
+      ["https://api.example/api/v1/staff", "POST"],
+      ["https://api.example/api/v1/staff/11/access", "PUT"],
+      ["https://api.example/api/v1/staff/attendance?day=2026-08-03", "GET"],
+    ]);
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(credentials));
+    expect(fetcher.mock.calls[2]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "staff-csrf",
+    });
+    expect(fetcher.mock.calls[3]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "staff-csrf",
+    });
+  });
+
   it("submits a course enrollment through the authenticated v1 API", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

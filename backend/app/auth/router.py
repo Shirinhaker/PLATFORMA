@@ -220,10 +220,16 @@ async def logout(
     response: Response,
     current: CurrentAccount = Depends(require_csrf),
 ) -> Response:
-    await request.app.state.auth_service.revoke_session(
-        current.session_token,
-        datetime.now(UTC),
-    )
+    if current.actor_type == "staff":
+        await request.app.state.staff_service.revoke_session(
+            current.session_token,
+            datetime.now(UTC),
+        )
+    else:
+        await request.app.state.auth_service.revoke_session(
+            current.session_token,
+            datetime.now(UTC),
+        )
     settings = request.app.state.settings
     response.delete_cookie(
         key=settings.auth_cookie_name,

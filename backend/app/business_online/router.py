@@ -3,7 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.accounts.model import AccountType
-from app.auth.dependencies import CurrentAccount, require_csrf, require_current_account
+from app.auth.dependencies import (
+    CurrentAccount,
+    require_csrf,
+    require_current_account,
+    require_staff_permission,
+)
 from app.business_online.schemas import (
     BusinessOnlineAction,
     BusinessOnlineCreate,
@@ -13,6 +18,7 @@ from app.business_online.schemas import (
 )
 from app.business_online.service import BusinessOnlineService
 from app.core.errors import ApiError
+from app.staff.permissions import RESOURCE_PERMISSIONS
 
 
 router = APIRouter(prefix="/api/v1/business-online", tags=["business-online"])
@@ -33,6 +39,11 @@ def require_business(current: CurrentAccount) -> None:
         )
 
 
+def require_resource_permission(current: CurrentAccount, resource: str) -> None:
+    required = RESOURCE_PERMISSIONS.get(resource, ("__business_owner__",))
+    require_staff_permission(current, *required)
+
+
 @router.get("/{resource}", response_model=BusinessOnlineResourceRead)
 async def read_resource(
     resource: str,
@@ -40,6 +51,7 @@ async def read_resource(
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineResourceRead:
     require_business(current)
+    require_resource_permission(current, resource)
     return BusinessOnlineResourceRead(
         resource=resource,
         items=await service.read_resource(current.account_id, resource),
@@ -59,6 +71,7 @@ async def create_record(
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineMutationRead:
     require_business(current)
+    require_resource_permission(current, resource)
     item, items = await service.create_record(
         current.account_id,
         resource,
@@ -84,6 +97,7 @@ async def patch_record(
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineMutationRead:
     require_business(current)
+    require_resource_permission(current, resource)
     item, items = await service.patch_record(
         current.account_id,
         resource,
@@ -109,6 +123,7 @@ async def delete_record(
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineMutationRead:
     require_business(current)
+    require_resource_permission(current, resource)
     items = await service.delete_record(current.account_id, resource, record_id)
     await request.app.state.profile_summary_service.invalidate(
         current.account_type,
@@ -130,6 +145,7 @@ async def apply_action(
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineMutationRead:
     require_business(current)
+    require_resource_permission(current, resource)
     item, items = await service.apply_action(
         current.account_id,
         resource,

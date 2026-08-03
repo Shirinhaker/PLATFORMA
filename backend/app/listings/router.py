@@ -3,7 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from app.accounts.model import AccountType
-from app.auth.dependencies import CurrentAccount, require_csrf, require_current_account
+from app.auth.dependencies import (
+    CurrentAccount,
+    require_csrf,
+    require_current_account,
+    require_staff_permission,
+)
 from app.core.errors import ApiError
 from app.listings.schemas import ListingCreate, ListingPatch, ListingRead, ListingSaveRead
 from app.listings.service import ListingService
@@ -71,6 +76,7 @@ async def get_public_listing(
 @router.get("/listings/mine", response_model=list[ListingRead])
 async def my_listings(request: Request, current: CurrentRead):
     require_enabled(request)
+    require_staff_permission(current, "ads")
     return await service(request).list_owner(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -80,6 +86,7 @@ async def my_listings(request: Request, current: CurrentRead):
 @router.post("/listings", response_model=ListingRead, status_code=201)
 async def create_listing(body: ListingCreate, request: Request, current: CurrentWrite):
     require_enabled(request)
+    require_staff_permission(current, "ads")
     return await service(request).create(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -95,6 +102,7 @@ async def patch_listing(
     current: CurrentWrite,
 ):
     require_enabled(request)
+    require_staff_permission(current, "ads")
     return await service(request).patch(
         public_id=public_id,
         account_id=current.account_id,
@@ -110,6 +118,7 @@ async def delete_listing(
     current: CurrentWrite,
 ):
     require_enabled(request)
+    require_staff_permission(current, "ads")
     await service(request).delete(
         public_id=public_id,
         account_id=current.account_id,
@@ -125,6 +134,7 @@ async def toggle_listing_save(
     current: CurrentWrite,
 ):
     require_enabled(request)
+    require_staff_permission(current, "__business_owner__")
     return ListingSaveRead(saved=await service(request).toggle_save(
         public_id=public_id,
         account_id=current.account_id,
@@ -135,6 +145,7 @@ async def toggle_listing_save(
 @router.get("/listings/saved", response_model=list[ListingRead])
 async def saved_listings(request: Request, current: CurrentRead):
     require_enabled(request)
+    require_staff_permission(current, "__business_owner__")
     if current.account_type is not AccountType.USER:
         return []
     return await service(request).list_saved(account_id=current.account_id)

@@ -15,6 +15,9 @@ class CurrentAccount:
     account_id: int
     account_type: AccountType
     session_token: str
+    actor_type: str = "owner"
+    staff_id: int | None = None
+    permissions: tuple[str, ...] = ()
 
 
 async def require_current_account(request: Request) -> CurrentAccount:
@@ -32,6 +35,13 @@ async def require_current_account(request: Request) -> CurrentAccount:
         datetime.now(UTC),
     )
     if identity is None:
+        staff_service = getattr(request.app.state, "staff_service", None)
+        if staff_service is not None:
+            identity = await staff_service.resolve_session(
+                session_token,
+                datetime.now(UTC),
+            )
+    if identity is None:
         raise ApiError(
             401,
             "session_expired",
@@ -42,6 +52,9 @@ async def require_current_account(request: Request) -> CurrentAccount:
         account_id=identity.account_id,
         account_type=identity.account_type,
         session_token=session_token,
+        actor_type=identity.actor_type,
+        staff_id=identity.staff_id,
+        permissions=tuple(identity.permissions),
     )
 
 
@@ -64,3 +77,30 @@ async def require_csrf(
             "So‘rov xavfsizlik tekshiruvidan o‘tmadi.",
         )
     return current
+
+
+def require_business_owner(current: CurrentAccount) -> None:
+    if (
+        current.account_type is not AccountType.BUSINESS
+        or current.actor_type != "owner"
+        or current.staff_id is not None
+    ):
+        raise ApiError(
+            403,
+            "business_owner_required",
+            "Bu amal faqat biznes egasi uchun.",
+        )
+
+
+def require_staff_permission(
+    current: CurrentAccount,
+    *permissions: str,
+) -> None:
+    if current.actor_type != "staff":
+        return
+    if not set(permissions).intersection(current.permissions):
+        raise ApiError(
+            403,
+            "staff_permission_required",
+            "Bu bo‘limga vakolatingiz yo‘q.",
+        )

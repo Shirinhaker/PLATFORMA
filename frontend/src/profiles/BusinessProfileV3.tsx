@@ -25,6 +25,10 @@ import {
   SYSTEM_MENUS,
 } from "./business-profile-config";
 import { CabinetDataView } from "./CabinetDataView";
+import {
+  StaffManagementV1656,
+  type StaffManagementApi,
+} from "./StaffManagementV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -66,6 +70,25 @@ export type BusinessProfileApiV3 = Pick<
   | "sendOrderChatImage"
   | "editOrderChatMessage"
   | "deleteOrderChatMessage"
+  | "getBusinessQueueSetup"
+  | "getBusinessQueueProviders"
+  | "createBusinessQueueProvider"
+  | "updateBusinessQueueProvider"
+  | "getBusinessQueueEntries"
+  | "createBusinessOfflineQueue"
+  | "changeBusinessQueueStatus"
+  | "swapBusinessQueues"
+  | "getStaffSetup"
+  | "createStaffMember"
+  | "updateStaffMember"
+  | "fireStaffMember"
+  | "rehireStaffMember"
+  | "deleteStaffMember"
+  | "updateStaffAccess"
+  | "updateStaffSchedule"
+  | "createStaffProfession"
+  | "getStaffAttendance"
+  | "updateStaffAttendance"
 >>;
 
 type Props = {
@@ -76,7 +99,7 @@ type Props = {
 };
 
 type DataView = { title: string; rows: unknown[] };
-type Screen = "cabinet" | "profile" | "data" | "online";
+type Screen = "cabinet" | "profile" | "data" | "online" | "staff";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -115,13 +138,71 @@ function menuRows(profile: BusinessProfileData | null, menu: Menu): unknown[] {
   return rows;
 }
 
-function visibleMenus(profile: BusinessProfileData | null, menus: Menu[]) {
+const MENU_PERMISSIONS: Record<string, readonly string[]> = {
+  items: ["items"],
+  "dining-places": ["dining_places"],
+  "education-enrollments": ["education_enrollments"],
+  "medical-providers": ["service_orders"],
+  "medical-queue": ["service_orders"],
+  listings: ["ads"],
+  orders: ["buyurtma", "dining_internal", "dining_external", "kitchen"],
+  "service-orders": ["service_orders"],
+  messages: ["chats"],
+  reviews: ["reviews"],
+  advertisements: ["ads"],
+  stories: ["ads"],
+  notifications: ["notifications"],
+  sales: ["kassa"],
+  expenses: ["expenses"],
+  debtors: ["debts"],
+  warehouse: ["ombor", "production"],
+  statistics: ["statistics", "education_statistics"],
+  reports: ["reports"],
+  documents: ["documents"],
+  "incoming-documents": ["documents"],
+  "outgoing-documents": ["documents"],
+  "internal-documents": ["documents"],
+  counterparties: ["documents"],
+  "education-groups": ["education_groups"],
+  "education-students": ["education_students"],
+  "education-teachers": ["education_teachers"],
+};
+
+const OWNER_ONLY_VIEWS = new Set([
+  "profile", "subscriptions", "payments", "followers", "following", "staff",
+]);
+
+function canUseView(identity: SessionIdentity, view: string) {
+  if (identity.actor_type !== "staff") return true;
+  if (OWNER_ONLY_VIEWS.has(view)) return false;
+  const required = MENU_PERMISSIONS[view];
+  return Boolean(required?.some((permission) => (
+    identity.permissions ?? []
+  ).includes(permission)));
+}
+
+function supportsStaffManagement(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & StaffManagementApi {
+  return [
+    "getStaffSetup", "createStaffMember", "updateStaffMember",
+    "fireStaffMember", "rehireStaffMember", "deleteStaffMember",
+    "updateStaffAccess", "updateStaffSchedule", "createStaffProfession",
+    "getStaffAttendance", "updateStaffAttendance",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+}
+
+function visibleMenus(
+  profile: BusinessProfileData | null,
+  menus: Menu[],
+  identity: SessionIdentity,
+) {
   if (!profile) return [];
   return menus
     .filter((menu) => (
-      isOnlineMenu(menu)
+      canUseView(identity, menu.view) && (isOnlineMenu(menu)
         ? isOnlineMenuVisibleForDirection(menu, profile.direction)
-        : !menu.directions || menu.directions.includes(profile.direction)
+        : !menu.directions || menu.directions.includes(profile.direction))
     ))
     .map((menu) => adaptMenuForDirection(menu, profile.direction));
 }
@@ -161,7 +242,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   }, [api]);
 
   useEffect(() => {
-    if (typeof api.getOrderInbox !== "function") return;
+    if (
+      typeof api.getOrderInbox !== "function"
+      || (!canUseView(identity, "orders") && !canUseView(identity, "service-orders"))
+    ) return;
     let active = true;
     api.getOrderInbox().then((rows) => {
       if (!active) return;
@@ -171,11 +255,12 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
       });
     }).catch(() => undefined);
     return () => { active = false; };
-  }, [api]);
+  }, [api, identity]);
 
   const metrics = useMemo(
-    () => profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS,
-    [profile],
+    () => (profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS)
+      .filter((metric) => canUseView(identity, metric.view)),
+    [identity, profile],
   );
 
   if (loading) {
@@ -198,7 +283,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
         onBack={() => setScreen("cabinet")}
         onProfile={setProfile}
         onOpenOnline={(view) => {
-          const menu = visibleMenus(profile, ONLINE_MENUS).find(
+          const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
             (candidate) => candidate.view === view,
           );
           if (!menu) return;
@@ -223,7 +308,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           const target = rows.find((order) => order.id === orderId);
           if (!target) return;
           const targetView = isService(target) ? "service-orders" : "orders";
-          const menu = visibleMenus(profile, ONLINE_MENUS).find(
+          const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
             (candidate) => candidate.view === targetView,
           );
           if (!menu) return;
@@ -253,6 +338,13 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     );
   }
 
+  if (
+    screen === "staff"
+    && supportsStaffManagement(api)
+  ) {
+    return <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />;
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -260,15 +352,19 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     active_orders: loadedProfile.dashboard_snapshot.active_orders ?? activeCount(payload),
     followers: loadedProfile.followers_count,
   };
-  const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS);
+  const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);
   const onlineMenuCards = onlineMenus.filter((menu) => !HEADER_ONLINE_VIEWS.has(menu.view));
   const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
   const followingMenu = onlineMenus.find((menu) => menu.view === "following");
-  const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS);
-  const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS);
-  const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS);
+  const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS, identity);
+  const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS, identity);
+  const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);
 
   function openMenu(menu: Menu) {
+    if (menu.view === "staff") {
+      setScreen("staff");
+      return;
+    }
     if (menu.view === "profile") {
       setScreen("profile");
       return;
@@ -401,10 +497,12 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
             ) : initials(loadedProfile.name)}
           </div>
           <div className="business-cabinet__identity-copy">
-            <h1>{loadedProfile.name}</h1>
+            <h1>{identity.actor_type === "staff" ? identity.name : loadedProfile.name}</h1>
             <p>{loadedProfile.direction || "Yo‘nalish tanlanmagan"}</p>
-            <span>{loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}</span>
-            <div className="business-cabinet__identity-chips">
+            <span>{identity.actor_type === "staff"
+              ? `${loadedProfile.name} xodimi`
+              : loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}</span>
+            {identity.actor_type !== "staff" && <div className="business-cabinet__identity-chips">
               <button
                 type="button"
                 aria-label="Obunachilar"
@@ -421,7 +519,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
               >
                 {loadedProfile.following_count} obuna
               </button>
-            </div>
+            </div>}
           </div>
           <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
         </header>
@@ -461,14 +559,14 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
               `${loadedProfile.direction} uchun maxsus boshqaruv`,
               directionMenus,
             )}
-            <button
+            {identity.actor_type !== "staff" && <button
               type="button"
               className="business-cabinet__switch"
               disabled={busy}
               onClick={() => void switchToUser()}
             >
               👤 Oddiy kabinetga qaytish
-            </button>
+            </button>}
           </div>
 
           <aside className="business-cabinet__activity">

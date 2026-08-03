@@ -46,6 +46,7 @@ from app.queues.schemas import (
     QueueSwap,
 )
 from app.queues.service import QueueService
+from app.staff.model import StaffMember
 
 
 NOW = datetime(2026, 8, 2, 7, 0, tzinfo=UTC)  # O'zbekistonda 12:00
@@ -163,6 +164,7 @@ def queue_store():
             QueueEntry.__table__,
             QueueHistory.__table__,
             QueueCounter.__table__,
+            StaffMember.__table__,
         ),
     )
     session = Session(engine, expire_on_commit=False)
@@ -303,6 +305,26 @@ def queue_store():
             value_type="text",
             value_text="active",
         ),
+        StaffMember(
+            id=11,
+            business_account_id=7,
+            legacy_source_id=11,
+            name="Ali Valiyev",
+            profession="Terapevt",
+            phone="",
+            salary=0,
+            hire_date=None,
+            status="active",
+            note="",
+            login=None,
+            password_hash=None,
+            can_login=False,
+            permissions=[],
+            schedule={},
+            created_at=NOW,
+            updated_at=NOW,
+            fired_at=None,
+        ),
     ))
     session.commit()
     try:
@@ -362,7 +384,7 @@ def public_body(
 
 
 @pytest.mark.asyncio
-async def test_provider_setup_reads_staff_without_writing_tizimlashtirish(queue_store):
+async def test_provider_setup_reads_relational_staff_without_writing_legacy_payload(queue_store):
     service = service_for(queue_store)
 
     setup = await service.business_setup(business_account_id=7)

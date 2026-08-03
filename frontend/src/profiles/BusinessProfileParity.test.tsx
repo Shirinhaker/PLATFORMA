@@ -63,6 +63,28 @@ function api() {
       resource,
       items: [],
     })),
+    getStaffSetup: vi.fn().mockResolvedValue({
+      active: [],
+      fired: [],
+      active_count: 0,
+      fired_count: 0,
+      total_salary: 0,
+      firm_login: "b_muhr",
+      business_direction: "Savdo",
+      professions: ["Sotuvchi"],
+      permission_definitions: [],
+      permission_templates: [],
+    }),
+    createStaffMember: vi.fn(),
+    updateStaffMember: vi.fn(),
+    fireStaffMember: vi.fn(),
+    rehireStaffMember: vi.fn(),
+    deleteStaffMember: vi.fn(),
+    updateStaffAccess: vi.fn(),
+    updateStaffSchedule: vi.fn(),
+    createStaffProfession: vi.fn(),
+    getStaffAttendance: vi.fn(),
+    updateStaffAttendance: vi.fn(),
     switchCabinet: vi.fn(),
     logout: vi.fn(),
   };
@@ -213,5 +235,54 @@ describe("v1656 business profile parity", () => {
 
     expect(await screen.findByRole("heading", { name: "Obunachilar" }))
       .toBeInTheDocument();
+  });
+
+  it("opens live staff management instead of the legacy read-only payload", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
+    expect(await screen.findByRole("heading", { name: "Xodimlar" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Xodim qo‘shish" }))
+      .toBeInTheDocument();
+  });
+
+  it("shows staff only the sections granted by the server session", async () => {
+    const staffIdentity = {
+      ...identity,
+      name: "Ali Valiyev",
+      login: "ali01",
+      actor_type: "staff" as const,
+      staff_id: 11,
+      permissions: ["kassa"],
+    };
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={staffIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Ali Valiyev" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Kassa/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Xarajatlar/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Xodimlar/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Profil \/ Mening sahifam/ }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }))
+      .not.toBeInTheDocument();
   });
 });

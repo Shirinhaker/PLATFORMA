@@ -35,6 +35,8 @@ from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
 from app.queues.router import router as queues_router
 from app.queues.service import QueueService
+from app.staff.router import router as staff_router
+from app.staff.service import StaffService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -118,6 +120,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
         )
+        app.state.staff_service = StaffService(database.session, resolved)
         try:
             yield
         finally:
@@ -154,6 +157,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(orders_router)
     app.include_router(queues_router)
     app.include_router(education_router)
+    app.include_router(staff_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

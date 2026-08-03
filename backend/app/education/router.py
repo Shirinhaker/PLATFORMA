@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
 
-from app.auth.dependencies import CurrentAccount, require_csrf
+from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
 from app.education.schemas import CourseEnrollmentCreate, CourseEnrollmentCreated
 from app.education.service import EducationEnrollmentService
 
@@ -25,6 +25,7 @@ async def create_course_enrollment(
     request: Request,
     current: CurrentWrite,
 ) -> CourseEnrollmentCreated:
+    require_staff_permission(current, "__business_owner__")
     return await service(request).create(
         account_id=current.account_id,
         account_type=current.account_type,
