@@ -1,3 +1,4 @@
 {
-  "apiBaseUrl": ""
+  "apiBaseUrl": "",
+  "sameOriginApiProxy": false
 }

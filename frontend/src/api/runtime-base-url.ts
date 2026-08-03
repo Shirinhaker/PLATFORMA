@@ -10,6 +10,7 @@ type LegacyStorage = Pick<Storage, "removeItem">;
 
 type RuntimeConfig = {
   apiBaseUrl?: unknown;
+  sameOriginApiProxy?: unknown;
 };
 
 
@@ -121,6 +122,14 @@ export async function loadApiBaseUrl(
     if (response.ok) {
       const payload = await readJsonObject(response) as RuntimeConfig;
       const runtimeOrigin = safeHttpsOrigin(payload.apiBaseUrl);
+      if (runtimeOrigin && payload.sameOriginApiProxy === true) {
+        if (await sameOriginProxyAvailable(fetcher, origin)) {
+          return origin;
+        }
+        throw new ApiConfigurationError(
+          "same_origin_api_proxy_unavailable",
+        );
+      }
       if (runtimeOrigin) return runtimeOrigin;
       runtimeConfigFailure = "runtime_config_api_origin_invalid";
     } else if (response.status !== 404) {
@@ -128,6 +137,9 @@ export async function loadApiBaseUrl(
     }
   } catch (error) {
     if (error instanceof ApiConfigurationError) {
+      if (error.code === "same_origin_api_proxy_unavailable") {
+        throw error;
+      }
       runtimeConfigFailure = error.code;
     } else {
       runtimeConfigFailure = "runtime_config_unreachable";

@@ -84,6 +84,55 @@ describe("loadApiBaseUrl", () => {
     );
   });
 
+  it("uses the frontend origin when Railway requires the first-party API proxy", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(
+        200,
+        JSON.stringify({
+          apiBaseUrl: "https://api-staging.example",
+          sameOriginApiProxy: true,
+        }),
+      ))
+      .mockResolvedValueOnce(response(
+        200,
+        JSON.stringify({ api_version: "v1", foundation: "phase1" }),
+      ));
+
+    await expect(loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    )).resolves.toBe(
+      "https://frontend-staging-production-6c41.up.railway.app",
+    );
+
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "https://frontend-staging-production-6c41.up.railway.app/api/v1/build",
+      expect.objectContaining({ credentials: "include" }),
+    );
+  });
+
+  it("fails closed when the required first-party API proxy is unavailable", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(
+        200,
+        JSON.stringify({
+          apiBaseUrl: "https://api-staging.example",
+          sameOriginApiProxy: true,
+        }),
+      ))
+      .mockResolvedValueOnce(response(404, "not found"));
+
+    await expect(loadApiBaseUrl(
+      fetcher as unknown as typeof fetch,
+      location(),
+      storage(),
+    )).rejects.toMatchObject({
+      code: "same_origin_api_proxy_unavailable",
+    });
+  });
+
   it("uses the same runtime config in a fresh tab or incognito session", async () => {
     const fetcher = vi.fn().mockResolvedValue(response(
       200,
