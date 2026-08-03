@@ -11,6 +11,8 @@ from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
 from app.business_online.router import router as business_online_router
 from app.business_online.service_relational import BusinessOnlineService
+from app.cash_register.router import router as cash_register_router
+from app.cash_register.service import CashRegisterService
 from app.cache.client import RedisClient
 from app.catalog.router import router as catalog_router
 from app.catalog.cache_epoch import CatalogCacheEpoch
@@ -114,16 +116,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2.create_download_url,
         )
+        app.state.inventory_service = InventoryService(database.session)
+        app.state.cash_register_service = CashRegisterService(
+            database.session,
+            inventory_service=app.state.inventory_service,
+        )
         app.state.order_service = OrderService(
             database.session,
             app.state.r2.create_download_url,
+            cash_register_service=app.state.cash_register_service,
         )
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
         )
         app.state.staff_service = StaffService(database.session, resolved)
-        app.state.inventory_service = InventoryService(database.session)
         try:
             yield
         finally:
@@ -162,6 +169,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(education_router)
     app.include_router(staff_router)
     app.include_router(inventory_router)
+    app.include_router(cash_register_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import AccountType
 from app.catalog.model import CatalogItem
 from app.catalog.repository import build_content_public_id
+from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
 from app.listings.model import Listing
 from app.notifications.repository import NotificationRepository
@@ -52,6 +53,7 @@ class OrderService:
         *,
         repository: OrderRepository | None = None,
         notification_repository: NotificationRepository | None = None,
+        cash_register_service: CashRegisterService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._image_url_provider = image_url_provider
@@ -59,6 +61,7 @@ class OrderService:
         self._notification_repository = (
             notification_repository or NotificationRepository()
         )
+        self._cash_register_service = cash_register_service
 
     async def create(
         self, *, account_id: int, account_type: AccountType, body: OrderCreate
@@ -530,7 +533,12 @@ class OrderService:
             return await self._project(session, order, side)
 
     async def handoff(
-        self, *, order_id: int, account_id: int, account_type: AccountType
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
+        actor_staff_id: int | None = None,
     ) -> OrderRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
@@ -574,6 +582,16 @@ class OrderService:
                 ),
                 action_type="" if order.order_type == "delivery" else "confirm_received",
             )
+            if self._cash_register_service is not None:
+                try:
+                    await self._cash_register_service.post_order(
+                        session,
+                        order=order,
+                        actor_staff_id=actor_staff_id,
+                    )
+                except Exception:
+                    await session.rollback()
+                    raise
             await session.commit()
             return await self._project(session, order, side)
 

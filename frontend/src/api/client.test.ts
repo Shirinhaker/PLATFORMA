@@ -12,6 +12,45 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("uses the typed K2-K4 cash register endpoints", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "cash-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const body = {
+      items: [{ catalog_item_id: 20, name: "", qty: 2, price: 300 }],
+      pay_type: "naqd" as const,
+      note: "",
+      sale_date: "2026-08-04",
+    };
+
+    await client.getCashRegister("2026-08-04");
+    await client.getCashCatalog();
+    await client.createCashReceipt(body);
+    await client.updateCashOrderPayment(9, "karta");
+    await client.deleteCashReceipt(9);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [url, init?.method, init?.body]))
+      .toEqual([
+        ["https://api.example/api/v1/cash-register?day=2026-08-04", "GET", undefined],
+        ["https://api.example/api/v1/cash-register/catalog", "GET", undefined],
+        ["https://api.example/api/v1/cash-register/receipts", "POST", JSON.stringify(body)],
+        ["https://api.example/api/v1/cash-register/receipts/9/payment", "PUT", JSON.stringify({ pay_type: "karta" })],
+        ["https://api.example/api/v1/cash-register/receipts/9", "DELETE", undefined],
+      ]);
+    for (const [, init] of fetcher.mock.calls.slice(3)) {
+      expect(init?.headers).toMatchObject({ "X-CSRF-Token": "cash-csrf" });
+    }
+  });
+
   it("uses secure staff login and the live staff management endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

@@ -211,6 +211,47 @@ function profileApi() {
     createStaffProfession: vi.fn(),
     getStaffAttendance: vi.fn(),
     updateStaffAttendance: vi.fn(),
+    getCashRegister: vi.fn().mockResolvedValue({
+      day: "2026-08-04",
+      totals: {
+        all: 500000,
+        cash_in: 500000,
+        naqd: 500000,
+        karta: 0,
+        qarz: 0,
+        qarzpay: 0,
+        order: 0,
+      },
+      receipts: [{
+        id: 19,
+        receipt_no: 12,
+        source: "manual",
+        order_id: null,
+        pay_type: "naqd",
+        pay_text: "Naqd",
+        debtor_name: "",
+        note: "",
+        who: "Rahbar",
+        created_at: "2026-08-04T09:00:00Z",
+        total: 500000,
+        can_delete: true,
+        can_change_payment: false,
+        lines: [{
+          id: 20,
+          catalog_item_id: 2,
+          item_name: "Muhr",
+          qty: 1,
+          unit: "dona",
+          price: 500000,
+          total: 500000,
+          cost_total: 0,
+        }],
+      }],
+    }),
+    getCashCatalog: vi.fn().mockResolvedValue([]),
+    createCashReceipt: vi.fn(),
+    deleteCashReceipt: vi.fn(),
+    updateCashOrderPayment: vi.fn(),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -429,6 +470,23 @@ describe("profile cabinets", () => {
     const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
     await user.click(warehouseButtons.at(-1)!);
     expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);
+  });
+
+  it("opens the live typed Kassa instead of the legacy payload list", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    render(
+      <BusinessProfile
+        api={api}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Kassa/ }));
+    expect(await screen.findByText("🧾 Chek #12")).toBeInTheDocument();
+    expect(api.getCashRegister).toHaveBeenCalledWith("");
   });
 
   it("opens the v1656 editor and uploads the business logo", async () => {

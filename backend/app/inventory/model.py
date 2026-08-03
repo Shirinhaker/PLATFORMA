@@ -91,6 +91,9 @@ class StockMove(Base):
     note: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     cost: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     legacy_order_source_id: Mapped[int | None] = mapped_column(BigInteger)
+    cash_sale_line_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+    )
     performed_by_staff_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("staff_members.id", ondelete="SET NULL"),
@@ -284,6 +287,7 @@ Index(
     StockMove.created_at,
     StockMove.id,
 )
+Index("ix_inventory_stock_moves_cash_line", StockMove.cash_sale_line_id)
 Index(
     "uq_inventory_stock_batches_business_legacy",
     StockBatch.business_account_id,
