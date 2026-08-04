@@ -110,8 +110,7 @@ class QueueService:
                 business_account_id=business_account_id,
             )
             staff = await self._staff_rows(session, business)
-            await session.rollback()
-            return QueueBusinessSetupRead(
+            response = QueueBusinessSetupRead(
                 services=[
                     QueueServiceRead(
                         public_id=self._item_public_id(item),
@@ -129,6 +128,8 @@ class QueueService:
                     for row in staff
                 ],
             )
+            await session.rollback()
+            return response
 
     async def list_providers(
         self,
@@ -144,11 +145,12 @@ class QueueService:
             links = await self._repository.provider_links(
                 session, [provider.id for provider in providers]
             )
-            await session.rollback()
-            return [
+            response = [
                 self._provider_read(provider, links.get(provider.id, []))
                 for provider in providers
             ]
+            await session.rollback()
+            return response
 
     async def create_provider(
         self,
@@ -317,11 +319,13 @@ class QueueService:
             )
             self._validate_date(resolved_date)
             if provider.mode != "slot":
+                response = QueueSlotsRead(mode="live", slots=[])
                 await session.rollback()
-                return QueueSlotsRead(mode="live", slots=[])
+                return response
             if not self._works_on(provider, resolved_date):
+                response = QueueSlotsRead(mode="slot", slots=[])
                 await session.rollback()
-                return QueueSlotsRead(mode="slot", slots=[])
+                return response
             taken = await self._repository.taken_slots(
                 session,
                 catalog_item_id=item.id,
@@ -343,11 +347,12 @@ class QueueService:
                     <= local_now.hour * 60 + local_now.minute
                 )
             ]
-            await session.rollback()
-            return QueueSlotsRead(
+            response = QueueSlotsRead(
                 mode="slot",
                 slots=[_clock_text(value) for value in values],
             )
+            await session.rollback()
+            return response
 
     async def create_online(
         self,

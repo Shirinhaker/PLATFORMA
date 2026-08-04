@@ -47,8 +47,11 @@ class ListingService:
     async def counts(self) -> dict[str, int]:
         async with self._session_factory() as session:
             value = await self._repository.counts(session)
+            response = {
+                category: value.get(category, 0) for category in CATEGORIES
+            }
             await session.rollback()
-            return {category: value.get(category, 0) for category in CATEGORIES}
+            return response
 
     async def list_public(
         self,
