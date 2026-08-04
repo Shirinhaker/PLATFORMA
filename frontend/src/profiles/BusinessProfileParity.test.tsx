@@ -85,6 +85,19 @@ function api() {
     createStaffProfession: vi.fn(),
     getStaffAttendance: vi.fn(),
     updateStaffAttendance: vi.fn(),
+    getExpenses: vi.fn().mockResolvedValue({
+      day: "2026-08-04",
+      expenses: [],
+      total: 0,
+      by_category: {},
+    }),
+    getExpenseCategories: vi.fn().mockResolvedValue({
+      categories: ["Boshqa"],
+      defaults: ["Boshqa"],
+    }),
+    createExpenseCategory: vi.fn(),
+    createExpense: vi.fn(),
+    deleteExpense: vi.fn(),
     switchCabinet: vi.fn(),
     logout: vi.fn(),
   };
@@ -252,6 +265,24 @@ describe("v1656 business profile parity", () => {
     expect(await screen.findByRole("heading", { name: "Xodimlar" }))
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Xodim qo‘shish" }))
+      .toBeInTheDocument();
+  });
+
+  it("opens the live v1656 expense ledger instead of payload rows", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Xarajatlar/ }));
+    expect(await screen.findByRole("heading", { name: "Xarajatlar" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Xarajat yozish" }))
       .toBeInTheDocument();
   });
 

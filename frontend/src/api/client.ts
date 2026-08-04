@@ -24,6 +24,10 @@ import type {
   Debtor,
   DebtorCreate,
   DebtorDetail,
+  ExpenseCategories,
+  ExpenseCategoryCreate,
+  ExpenseCreate,
+  ExpenseDay,
   BusinessQueueEntry,
   BusinessQueueOfflineCreate,
   BusinessQueueProvider,
@@ -702,6 +706,34 @@ export class ApiClient {
       "POST",
       `/api/v1/debt-ledger/debtors/${debtorId}/transactions`,
       body,
+      true,
+    );
+  }
+
+  getExpenses(day = ""): Promise<ExpenseDay> {
+    const suffix = day ? `?day=${encodeURIComponent(day)}` : "";
+    return this.request("GET", `/api/v1/expenses${suffix}`, undefined, true);
+  }
+
+  getExpenseCategories(): Promise<ExpenseCategories> {
+    return this.request("GET", "/api/v1/expenses/categories", undefined, true);
+  }
+
+  createExpenseCategory(
+    body: ExpenseCategoryCreate,
+  ): Promise<{ ok: true; exists: boolean }> {
+    return this.request("POST", "/api/v1/expenses/categories", body, true);
+  }
+
+  createExpense(body: ExpenseCreate): Promise<{ id: number }> {
+    return this.request("POST", "/api/v1/expenses", body, true);
+  }
+
+  deleteExpense(expenseId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/expenses/${expenseId}`,
+      undefined,
       true,
     );
   }

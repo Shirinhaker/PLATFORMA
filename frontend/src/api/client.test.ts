@@ -103,6 +103,44 @@ describe("ApiClient", () => {
     }
   });
 
+  it("uses the typed K6 expense endpoints", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "expense-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const category = { name: "Reklama" };
+    const expense = { category: "Reklama", amount: 75_000, note: "Banner" };
+
+    await client.getExpenses("2026-08-04");
+    await client.getExpenseCategories();
+    await client.createExpenseCategory(category);
+    await client.createExpense(expense);
+    await client.deleteExpense(13);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      ["https://api.example/api/v1/expenses?day=2026-08-04", "GET", undefined],
+      ["https://api.example/api/v1/expenses/categories", "GET", undefined],
+      ["https://api.example/api/v1/expenses/categories", "POST", JSON.stringify(category)],
+      ["https://api.example/api/v1/expenses", "POST", JSON.stringify(expense)],
+      ["https://api.example/api/v1/expenses/13", "DELETE", undefined],
+    ]);
+    for (const [, init] of fetcher.mock.calls.slice(3)) {
+      expect(init?.headers).toMatchObject({ "X-CSRF-Token": "expense-csrf" });
+    }
+  });
+
   it("uses secure staff login and the live staff management endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

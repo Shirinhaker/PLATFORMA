@@ -1,0 +1,1 @@
+"""Xarajatlar domeni."""

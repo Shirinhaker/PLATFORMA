@@ -26,6 +26,8 @@ from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
+from app.expenses.router import router as expenses_router
+from app.expenses.service import ExpenseService
 from app.inventory.router import router as inventory_router
 from app.inventory.service import InventoryService
 from app.listings.router import router as listings_router
@@ -118,7 +120,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2.create_download_url,
         )
-        app.state.inventory_service = InventoryService(database.session)
+        app.state.expense_service = ExpenseService(database.session)
+        app.state.inventory_service = InventoryService(
+            database.session,
+            expense_service=app.state.expense_service,
+        )
         app.state.debt_ledger_service = DebtLedgerService(database.session)
         app.state.cash_register_service = CashRegisterService(
             database.session,
@@ -176,6 +182,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(inventory_router)
     app.include_router(cash_register_router)
     app.include_router(debt_ledger_router)
+    app.include_router(expenses_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

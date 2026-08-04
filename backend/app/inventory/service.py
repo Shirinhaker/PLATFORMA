@@ -9,6 +9,7 @@ from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
+from app.expenses.service import ExpenseService
 from app.inventory.model import (
     InventoryItem,
     ProductionBatch,
@@ -80,10 +81,12 @@ class InventoryService:
         session_factory: SessionFactory,
         *,
         repository: InventoryRepository | None = None,
+        expense_service: ExpenseService | None = None,
         now_provider: NowProvider | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or InventoryRepository()
+        self._expenses = expense_service or ExpenseService(session_factory)
         self._now_provider = now_provider or (lambda: datetime.now(UTC))
 
     async def lock_cash_catalog_items(
@@ -304,6 +307,7 @@ class InventoryService:
         actor_staff_id: int | None,
         permissions: tuple[str, ...] | None,
         body: StockMoveCreate,
+        actor_name: str = "",
     ) -> StockMoveResult:
         self._require_any(permissions, "ombor", "production")
         async with self._session_factory() as session:
@@ -490,6 +494,24 @@ class InventoryService:
                     cost = _money_per_unit(total, abs(delta))
                     move.cost = cost
 
+                if delta > 0 and cost > 0 and not inputs:
+                    # SQLite servis testlari va PostgreSQL FK bog‘lanishi uchun
+                    # barcha oldingi Ombor obyektlari avval aniq ID oladi.
+                    await session.flush()
+                    await self._expenses.create_stock_expense_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        inventory_stock_move_id=move.id,
+                        amount=_money_total(cost, delta),
+                        note=(
+                            catalog.name
+                            + (f" — {body.note}" if body.note else "")
+                        ),
+                        actor_staff_id=actor_staff_id,
+                        actor_name=actor_name,
+                        created_at=now,
+                    )
+
                 await session.flush()
                 result = StockMoveResult(
                     move_id=move.id,
@@ -571,6 +593,11 @@ class InventoryService:
                     )
                 item.stock_qty = _quantity(item.stock_qty - move.delta)
                 item.updated_at = self._now_provider()
+                await self._expenses.delete_stock_expense_in_session(
+                    session,
+                    business_account_id=business_account_id,
+                    inventory_stock_move_id=move.id,
+                )
                 await session.delete(move)
                 await session.flush()
                 await session.commit()
