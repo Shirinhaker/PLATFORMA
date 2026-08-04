@@ -11,6 +11,7 @@ from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.core.errors import ApiError
 from app.db.base import Base
+from app.expenses.model import Expense, ExpenseCategory
 from app.inventory.model import (
     InventoryItem,
     ProductionBatch,
@@ -157,6 +158,8 @@ def inventory_context():
             RecipeIngredient.__table__,
             ProductionBatch.__table__,
             Base.metadata.tables["inventory_production_inputs"],
+            ExpenseCategory.__table__,
+            Expense.__table__,
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
@@ -494,3 +497,71 @@ async def test_production_staff_sees_quantity_but_not_costs(inventory_context):
     assert raw.fifo_next_cost == 0
     assert raw.fifo_value == 0
     assert raw.price == ""
+
+
+async def test_stock_receipt_creates_and_deletes_one_atomic_expense(
+    inventory_context,
+):
+    service, engine = inventory_context
+    receipt = await service.create_move(
+        business_account_id=1,
+        actor_staff_id=None,
+        actor_name="Muhr",
+        permissions=None,
+        body=StockMoveCreate(
+            item_id=101,
+            delta=2.5,
+            cost=100_000,
+            note="Yetkazib beruvchi",
+        ),
+    )
+
+    with Session(engine) as session:
+        expense = session.scalar(select(Expense))
+        assert expense is not None
+        assert expense.business_account_id == 1
+        assert expense.inventory_stock_move_id == receipt.move_id
+        assert expense.category == "Tovar xaridi"
+        assert expense.amount == 250_000
+        assert expense.note == "Un — Yetkazib beruvchi"
+        assert expense.source == "stock"
+        assert expense.actor_name_snapshot == "Muhr"
+
+    await service.delete_move(
+        business_account_id=1,
+        actor_staff_id=None,
+        permissions=None,
+        move_id=receipt.move_id,
+    )
+    with Session(engine) as session:
+        assert session.scalar(select(func.count(Expense.id))) == 0
+        item = session.get(InventoryItem, 101)
+        assert item is not None and item.stock_qty == Decimal("0.000")
+
+
+async def test_production_output_does_not_duplicate_input_purchase_expense(
+    inventory_context,
+):
+    service, engine = inventory_context
+    await service.create_move(
+        business_account_id=1,
+        actor_staff_id=None,
+        permissions=None,
+        body=StockMoveCreate(item_id=101, delta=4, cost=100_000),
+    )
+    await service.create_move(
+        business_account_id=1,
+        actor_staff_id=None,
+        permissions=None,
+        body=StockMoveCreate(
+            item_id=102,
+            delta=2,
+            ingredients=[IngredientWrite(item_id=101, qty=4)],
+        ),
+    )
+
+    with Session(engine) as session:
+        expenses = list(session.scalars(select(Expense)).all())
+        assert [(row.category, row.amount) for row in expenses] == [
+            ("Tovar xaridi", 400_000)
+        ]

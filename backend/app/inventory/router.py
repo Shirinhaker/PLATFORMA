@@ -89,6 +89,7 @@ async def create_stock_move(
         actor_staff_id=current.staff_id,
         permissions=_permissions(current),
         body=body,
+        actor_name=current.name,
     )
 
 

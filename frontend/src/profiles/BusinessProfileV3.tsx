@@ -34,6 +34,10 @@ import {
   type DebtLedgerApi,
 } from "./DebtLedgerV1656";
 import {
+  ExpensesV1656,
+  type ExpensesApi,
+} from "./ExpensesV1656";
+import {
   StaffManagementV1656,
   type StaffManagementApi,
 } from "./StaffManagementV1656";
@@ -106,6 +110,11 @@ export type BusinessProfileApiV3 = Pick<
   | "createDebtor"
   | "getDebtor"
   | "addDebtTransaction"
+  | "getExpenses"
+  | "getExpenseCategories"
+  | "createExpenseCategory"
+  | "createExpense"
+  | "deleteExpense"
 >>;
 
 type Props = {
@@ -116,7 +125,15 @@ type Props = {
 };
 
 type DataView = { title: string; rows: unknown[] };
-type Screen = "cabinet" | "profile" | "data" | "online" | "staff" | "cash" | "debt";
+type Screen =
+  | "cabinet"
+  | "profile"
+  | "data"
+  | "online"
+  | "staff"
+  | "cash"
+  | "debt"
+  | "expenses";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -224,6 +241,17 @@ function supportsDebtLedger(
   return [
     "getDebtors", "createDebtor", "getDebtor", "addDebtTransaction",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+}
+
+function supportsExpenses(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & ExpensesApi {
+  return [
+    "getExpenses", "getExpenseCategories", "createExpenseCategory",
+    "createExpense", "deleteExpense",
+  ].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
 }
 
 function visibleMenus(
@@ -387,6 +415,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
+  if (screen === "expenses" && supportsExpenses(api)) {
+    return <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />;
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -417,6 +449,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }
     if (menu.view === "debtors" && supportsDebtLedger(api)) {
       setScreen("debt");
+      return;
+    }
+    if (menu.view === "expenses" && supportsExpenses(api)) {
+      setScreen("expenses");
       return;
     }
     if (isOnlineMenu(menu)) {
