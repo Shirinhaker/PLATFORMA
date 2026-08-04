@@ -7,7 +7,7 @@ Revises: 0009_orders_live_v1656
 import hashlib
 from collections.abc import Callable
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -53,6 +53,13 @@ def _backfill_public_ids(
     builder: Callable[[str, int], str],
     batch_size=1000,
 ) -> None:
+    if context.is_offline_mode():
+        # `--sql` rejimida bazadan o'qib bo'lmaydi (blake2s ni PostgreSQL
+        # hisoblab bera olmaydi). Backfill jonli ulanishda bajariladi.
+        op.execute(
+            f"-- {table}.public_id backfill jonli ulanishda bajariladi"
+        )
+        return
     connection = op.get_bind()
     last_id = 0
     kind_select = f", {kind_column} AS target_kind" if kind_column else ""

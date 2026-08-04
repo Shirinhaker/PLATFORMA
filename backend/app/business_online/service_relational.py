@@ -39,6 +39,13 @@ from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
+from app.education.repository import (
+    ENROLLMENTS as EDUCATION_ENROLLMENTS,
+    GROUPS as EDUCATION_GROUPS,
+    STUDENTS as EDUCATION_STUDENTS,
+    EducationEnrollmentRepository,
+)
+from app.education.service import EducationEnrollmentService
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, UserProfile
@@ -47,6 +54,12 @@ from app.profiles.model import BusinessProfile, UserProfile
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 CatalogSync = Callable[..., Awaitable[None]]
 ListingSync = Callable[..., Awaitable[None]]
+# Ta'lim domenidan o'z jadvaliga ko'chirilgan resurslar.
+RELATIONAL_EDUCATION_RESOURCES = (
+    EDUCATION_GROUPS,
+    EDUCATION_STUDENTS,
+    EDUCATION_ENROLLMENTS,
+)
 
 
 class BusinessOnlineService:
@@ -61,6 +74,8 @@ class BusinessOnlineService:
         listing_sync: ListingSync = sync_business_listings,
         catalog_cache_epoch: CatalogCacheEpoch | None = None,
         notification_repository: NotificationRepository | None = None,
+        education_repository: EducationEnrollmentRepository | None = None,
+        education_service: EducationEnrollmentService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CabinetRecordRepository()
@@ -68,6 +83,11 @@ class BusinessOnlineService:
         self._listing_sync = listing_sync
         self._catalog_cache_epoch = catalog_cache_epoch
         self._notifications = notification_repository or NotificationRepository()
+        self._education = education_repository or EducationEnrollmentRepository()
+        self._education_service = education_service or EducationEnrollmentService(
+            session_factory,
+            repository=self._education,
+        )
 
     async def read_resource(
         self,
@@ -338,6 +358,19 @@ class BusinessOnlineService:
                     item = find_resource_record(rows, record_id, resource)
                 await session.commit()
                 return deepcopy(item), deepcopy(rows)
+            if (
+                resource == EDUCATION_ENROLLMENTS
+                and action in {"accept", "reject"}
+                and self._education.supported(session)
+            ):
+                return await self._apply_enrollment_action(
+                    session,
+                    account_id=account_id,
+                    resource=resource,
+                    action=action,
+                    record_id=record_id,
+                    data=clean,
+                )
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
@@ -506,6 +539,64 @@ class BusinessOnlineService:
             )
         return resource_rows(profile.cabinet_payload, resource)
 
+    async def _apply_enrollment_action(
+        self,
+        session: AsyncSession,
+        *,
+        account_id: int,
+        resource: str,
+        action: str,
+        record_id: int | str | None,
+        data: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+        """Ariza qabul qilish/rad etish — uch yozuv bitta tranzaksiyada."""
+        profile = await session.get(BusinessProfile, account_id)
+        if profile is None:
+            raise ApiError(
+                404,
+                "business_profile_not_found",
+                "Biznes profil topilmadi.",
+            )
+        ensure_resource_direction(profile, resource)
+        if record_id is None:
+            raise missing_record_id()
+        try:
+            enrollment_id = int(record_id)
+        except (TypeError, ValueError):
+            raise ApiError(
+                404,
+                "new_education_enrollment_not_found",
+                "Yangi ariza topilmadi.",
+            ) from None
+        now = unix_now()
+        if action == "accept":
+            try:
+                group_id = int(data.get("group_id") or 0)
+            except (TypeError, ValueError):
+                group_id = 0
+            await self._education_service.accept_in_session(
+                session,
+                business_account_id=account_id,
+                enrollment_id=enrollment_id,
+                group_id=group_id,
+                now=now,
+            )
+        else:
+            await self._education_service.reject_in_session(
+                session,
+                business_account_id=account_id,
+                enrollment_id=enrollment_id,
+                now=now,
+            )
+        payload = await self._hybrid_payload(session, profile)
+        displayed = display_resource_rows(payload, resource)
+        item = next(
+            (row for row in displayed if str(row.get("id")) == str(record_id)),
+            None,
+        )
+        await session.commit()
+        return deepcopy(item), deepcopy(displayed)
+
     async def _hybrid_payload(
         self,
         session: AsyncSession,
@@ -518,6 +609,17 @@ class BusinessOnlineService:
             account_type="business",
         )
         payload.update(relational)
+        # Ta'lim resurslari o'z jadvallariga ko'chirilgan — ular JSON
+        # nusxasidan emas, jadvaldan o'qiladi.
+        if self._education.supported(session):
+            for resource in RELATIONAL_EDUCATION_RESOURCES:
+                rows = await self._education.list_rows(
+                    session,
+                    business_account_id=profile.account_id,
+                    resource=resource,
+                )
+                if rows is not None:
+                    payload[resource] = rows
         return payload
 
     async def _persist_resources(

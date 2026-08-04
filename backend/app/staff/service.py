@@ -371,8 +371,13 @@ class StaffService:
                     month_present=present.get(member.id, 0),
                     month_minutes=minutes.get(member.id, 0),
                 ))
+            response = StaffAttendanceRead(
+                date=day,
+                weekday=day.weekday(),
+                staff=result,
+            )
             await session.rollback()
-            return StaffAttendanceRead(date=day, weekday=day.weekday(), staff=result)
+            return response
 
     async def set_attendance(
         self,

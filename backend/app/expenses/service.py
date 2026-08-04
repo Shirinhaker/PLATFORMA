@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
+from datetime import UTC, date, datetime, time, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +23,8 @@ from app.expenses.schemas import (
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
-UZBEKISTAN_TZ = ZoneInfo("Asia/Tashkent")
+# O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5 (qarang: cash_register).
+UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 DEFAULT_EXPENSE_CATEGORIES = (
     "Ijara",
     "Kommunal",

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, date, datetime, time
-from zoneinfo import ZoneInfo
+from datetime import UTC, date, datetime, time, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +23,8 @@ from app.debt_ledger.schemas import (
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
-UZBEKISTAN_TZ = ZoneInfo("Asia/Tashkent")
+# O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5 (qarang: cash_register).
+UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 
 
 class DebtLedgerService:
@@ -51,8 +51,12 @@ class DebtLedgerService:
                 session,
                 business_account_id=business_account_id,
             )
+            response = [
+                self._debtor_read(debtor, int(balance or 0))
+                for debtor, balance in rows
+            ]
             await session.rollback()
-            return [self._debtor_read(debtor, int(balance or 0)) for debtor, balance in rows]
+            return response
 
     async def create_debtor(
         self,
@@ -120,12 +124,13 @@ class DebtLedgerService:
                 business_account_id=business_account_id,
                 debtor_id=debtor_id,
             )
-            await session.rollback()
             base = self._debtor_read(debtor, balance)
-            return DebtorDetailRead(
+            response = DebtorDetailRead(
                 **base.model_dump(),
                 tx=[self._transaction_read(row) for row in transactions],
             )
+            await session.rollback()
+            return response
 
     async def add_transaction(
         self,

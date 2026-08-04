@@ -52,6 +52,10 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: "jsdom",
       setupFiles: "./src/test/setup.ts",
+      // v1656 paritet testlari bitta testda o'nlab ekranni to'liq
+      // render qiladi. 5 soniyalik standart chegara to'plam parallel
+      // ishlaganda yetmay qoladi va test tasodifiy yiqiladi.
+      testTimeout: 20000,
     },
   };
 });

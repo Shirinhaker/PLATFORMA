@@ -76,8 +76,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        database = Database(resolved.database_url)
-        redis_client = RedisClient(resolved.redis_url)
+        database = Database(
+            resolved.database_url,
+            pool_size=resolved.db_pool_size,
+            max_overflow=resolved.db_max_overflow,
+            pool_timeout=resolved.db_pool_timeout_seconds,
+        )
+        redis_client = RedisClient(
+            resolved.redis_url,
+            max_connections=resolved.redis_max_connections,
+        )
         await database.start()
         await redis_client.start()
         app.state.database = database
