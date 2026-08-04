@@ -22,11 +22,12 @@ depends_on = None
 
 
 JSON_VALUE_SQL = r"""
-CASE
-    WHEN field.value_type = 'number' THEN to_jsonb(field.number_value)
-    WHEN field.value_type = 'bool' THEN to_jsonb(field.bool_value)
-    WHEN field.value_type = 'null' THEN 'null'::jsonb
-    ELSE to_jsonb(field.text_value)
+CASE field.value_type
+    WHEN 'null' THEN 'null'::jsonb
+    WHEN 'boolean' THEN to_jsonb(field.value_boolean)
+    WHEN 'integer' THEN to_jsonb(field.value_integer)
+    WHEN 'float' THEN to_jsonb(field.value_float)
+    ELSE to_jsonb(COALESCE(field.value_text, ''))
 END
 """
 
