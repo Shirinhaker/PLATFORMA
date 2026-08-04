@@ -141,6 +141,28 @@ describe("ApiClient", () => {
     }
   });
 
+  it("uses the typed K8 statistics report and navigation endpoints", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+
+    await client.getStatistics("chorak", "2026-08-04");
+    await client.getStatisticsNav("chorak", -1, "2026-08-04");
+
+    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method]))
+      .toEqual([
+        [
+          "https://api.example/api/v1/statistics"
+            + "?period=chorak&anchor=2026-08-04",
+          "GET",
+        ],
+        [
+          "https://api.example/api/v1/statistics/nav"
+            + "?period=chorak&dir=-1&anchor=2026-08-04",
+          "GET",
+        ],
+      ]);
+  });
+
   it("uses secure staff login and the live staff management endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

@@ -98,6 +98,34 @@ function api() {
     createExpenseCategory: vi.fn(),
     createExpense: vi.fn(),
     deleteExpense: vi.fn(),
+    getStatistics: vi.fn().mockResolvedValue({
+      period: "oy",
+      anchor: "",
+      label: "Avg 2026",
+      revenue: 500000,
+      cash_in: 500000,
+      cogs: 100000,
+      gross_profit: 400000,
+      expenses: 50000,
+      inventory_purchases: 200000,
+      profit: 350000,
+      qarzpay: 0,
+      pay: { naqd: 500000, karta: 0, qarz: 0, order: 0 },
+      exp_by_cat: { Ijara: 50000 },
+      trend: [],
+      top_products: [],
+      low_stock: [],
+      source_split: {
+        internal: { count: 0, total: 0 },
+        external: { count: 0, total: 0 },
+        manual: { count: 1, total: 500000 },
+      },
+      cashiers: [],
+      waiters: [],
+      sales_count: 1,
+      can_next: false,
+    }),
+    getStatisticsNav: vi.fn().mockResolvedValue({ anchor: "2026-07-01" }),
     switchCabinet: vi.fn(),
     logout: vi.fn(),
   };
@@ -284,6 +312,47 @@ describe("v1656 business profile parity", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Xarajat yozish" }))
       .toBeInTheDocument();
+  });
+
+  it("opens live v1656 statistics instead of dashboard snapshot rows", async () => {
+    const user = userEvent.setup();
+    const client = api();
+    render(
+      <BusinessProfile
+        api={client}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Statistika/ }));
+    expect(await screen.findByRole("heading", { name: "Statistika" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Haqiqiy pul tushumi").closest("article"))
+      .toHaveTextContent("500 000");
+    expect(client.getStatistics).toHaveBeenCalledWith("oy", "");
+  });
+
+  it("keeps general statistics out of the education cabinet", async () => {
+    const client = api();
+    client.getBusinessProfile.mockResolvedValue({
+      ...profile,
+      direction: "Ta'lim faoliyati",
+    });
+    render(
+      <BusinessProfile
+        api={client}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Muhr" }))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Statistika/ }))
+      .not.toBeInTheDocument();
   });
 
   it("shows staff only the sections granted by the server session", async () => {
