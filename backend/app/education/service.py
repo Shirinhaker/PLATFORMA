@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from copy import deepcopy
 import time
-from typing import Any, Protocol
+from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
-from app.cabinet_records.dual_write import sync_json_fallback
 from app.core.errors import ApiError
+from app.education.model import CourseEnrollment, EducationStudent
 from app.education.repository import EducationEnrollmentRepository
 from app.education.schemas import CourseEnrollmentCreate, CourseEnrollmentCreated
 
@@ -18,41 +18,12 @@ from app.education.schemas import CourseEnrollmentCreate, CourseEnrollmentCreate
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
-class EnrollmentRepository(Protocol):
-    async def user_profile(self, session, account_id: int): ...
-
-    async def locked_course_context(self, session, public_id: str): ...
-
-    async def legacy_id(
-        self,
-        session,
-        entity_type: str,
-        target_id: int,
-    ) -> int | None: ...
-
-    async def resource_rows(
-        self,
-        session,
-        profile,
-        resource: str,
-    ) -> list[dict[str, Any]]: ...
-
-    async def replace_resource(
-        self,
-        session,
-        *,
-        account_id: int,
-        resource: str,
-        rows: list[dict[str, Any]],
-    ) -> None: ...
-
-
 class EducationEnrollmentService:
     def __init__(
         self,
         session_factory: SessionFactory,
         *,
-        repository: EnrollmentRepository | None = None,
+        repository: EducationEnrollmentRepository | None = None,
         now: Callable[[], int] | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -66,72 +37,49 @@ class EducationEnrollmentService:
         account_type: AccountType,
         body: CourseEnrollmentCreate,
     ) -> CourseEnrollmentCreated:
-        if account_type is not AccountType.USER:
-            raise ApiError(
-                403,
-                "education_user_required",
-                "Avval oddiy profilga o'ting.",
-            )
-
         async with self._session_factory() as session:
-            customer = await self._repository.user_profile(session, account_id)
+            # v1656da kursga har qanday kirgan akkaunt yozila olardi. Yangi
+            # modelda biznes alohida akkaunt, shuning uchun ariza uning
+            # bog'langan oddiy profili nomidan yoziladi.
+            student_account_id = account_id
+            if account_type is not AccountType.USER:
+                student_account_id = await self._repository.linked_user_account_id(
+                    session,
+                    business_account_id=account_id,
+                )
+                if student_account_id is None:
+                    raise ApiError(
+                        403,
+                        "education_user_required",
+                        "Avval oddiy profilga o'ting.",
+                    )
+            customer = await self._repository.user_profile(
+                session,
+                student_account_id,
+            )
             if customer is None:
                 raise ApiError(
                     404,
                     "course_enrollment_customer_not_found",
                     "Profil topilmadi.",
                 )
-            context = await self._repository.locked_course_context(
+            context = await self._repository.course_context(
                 session,
                 body.course_item_public_id,
             )
             if context is None:
-                raise ApiError(
-                    404,
-                    "course_not_found",
-                    "Kurs topilmadi.",
-                )
+                raise ApiError(404, "course_not_found", "Kurs topilmadi.")
             course, business = context
-            items = await self._repository.resource_rows(
-                session,
-                business,
-                "items",
-            )
+            items = await self._repository.catalog_rows(session, business)
             course_row = _course_row(items, str(course.source_record_key or ""))
             course_id = _integer(course_row.get("id")) if course_row else 0
             if course_row is None or course_id < 1:
-                raise ApiError(
-                    404,
-                    "course_not_found",
-                    "Kurs topilmadi.",
-                )
+                raise ApiError(404, "course_not_found", "Kurs topilmadi.")
             if str(course_row.get("enrollment_status") or "open") == "closed":
                 raise ApiError(
                     400,
                     "course_enrollment_closed",
                     "Bu kursga qabul yopilgan.",
-                )
-
-            legacy_user_id = await self._repository.legacy_id(
-                session,
-                "user_account",
-                account_id,
-            )
-            enrollments = await self._repository.resource_rows(
-                session,
-                business,
-                "education_enrollments",
-            )
-            if _active_duplicate(
-                enrollments,
-                course_id=course_id,
-                account_id=account_id,
-                legacy_user_id=legacy_user_id,
-            ):
-                raise ApiError(
-                    400,
-                    "course_enrollment_duplicate",
-                    "Siz bu kursga avval yozilgansiz.",
                 )
 
             phone = str(body.phone or customer.phone or "").strip()[:30]
@@ -141,43 +89,155 @@ class EducationEnrollmentService:
                     "course_enrollment_phone_required",
                     "Telefon raqamini kiriting.",
                 )
+            legacy_user_id = await self._repository.legacy_id(
+                session,
+                "user_account",
+                student_account_id,
+            )
             legacy_business_id = await self._repository.legacy_id(
                 session,
                 "business_account",
                 business.account_id,
             )
-            enrollment_id = _next_id(enrollments)
             now = self._now()
-            row = {
-                "id": enrollment_id,
-                "business_id": legacy_business_id or business.account_id,
-                "course_item_id": course_id,
-                "user_id": legacy_user_id or account_id,
-                "user_account_id": account_id,
-                "user_legacy_id": legacy_user_id or 0,
-                "customer_name": str(customer.name or "O'quvchi")[:160],
-                "phone": phone,
-                "note": str(body.note or "").strip()[:300],
-                "status": "new",
-                "created_at": now,
-                "updated_at": now,
-            }
-            enrollments.append(row)
-            await self._repository.replace_resource(
-                session,
-                account_id=business.account_id,
-                resource="education_enrollments",
-                rows=enrollments,
+            enrollment = CourseEnrollment(
+                business_account_id=business.account_id,
+                legacy_source_id=None,
+                legacy_business_id=legacy_business_id,
+                course_item_id=course_id,
+                user_account_id=student_account_id,
+                legacy_user_id=legacy_user_id,
+                customer_name=str(customer.name or "O'quvchi")[:160],
+                phone=phone,
+                note=str(body.note or "").strip()[:300],
+                status="new",
+                group_id=None,
+                created_at=now,
+                updated_at=now,
             )
-            payload = (
-                dict(business.cabinet_payload)
-                if isinstance(business.cabinet_payload, dict)
-                else {}
-            )
-            payload["education_enrollments"] = deepcopy(enrollments)
-            sync_json_fallback(business, payload)
+            # Takroriy arizani baza to'sadi (qisman noyob indeks), shuning
+            # uchun butun ro'yxatni o'qib skanerlash kerak emas.
+            try:
+                await self._repository.add_enrollment(session, enrollment)
+            except IntegrityError as error:
+                await session.rollback()
+                raise ApiError(
+                    400,
+                    "course_enrollment_duplicate",
+                    "Siz bu kursga avval yozilgansiz.",
+                ) from error
+            enrollment_id = enrollment.id
             await session.commit()
             return CourseEnrollmentCreated(id=enrollment_id)
+
+    async def accept_in_session(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        enrollment_id: int,
+        group_id: int,
+        now: int,
+    ) -> None:
+        """Arizani qabul qiladi: guruh tekshiriladi, o'quvchi yoziladi.
+
+        Uch yozuv ham chaqiruvchining tranzaksiyasida bajariladi —
+        xato bo'lsa hammasi birga qaytariladi.
+        """
+        enrollment = await self._repository.enrollment(
+            session,
+            business_account_id=business_account_id,
+            enrollment_id=enrollment_id,
+            lock=True,
+        )
+        if enrollment is None or enrollment.status != "new":
+            raise ApiError(
+                404,
+                "new_education_enrollment_not_found",
+                "Yangi ariza topilmadi.",
+            )
+        group = await self._repository.group(
+            session,
+            business_account_id=business_account_id,
+            group_id=group_id,
+        )
+        if group is None:
+            raise ApiError(400, "education_group_required", "Guruhni tanlang.")
+        if group.course_item_id and group.course_item_id != enrollment.course_item_id:
+            raise ApiError(
+                400,
+                "education_group_course_mismatch",
+                "Tanlangan guruh boshqa kursga tegishli.",
+            )
+        student = await self._repository.active_student(
+            session,
+            business_account_id=business_account_id,
+            user_account_id=enrollment.user_account_id,
+            legacy_user_id=enrollment.legacy_user_id,
+        )
+        if student is None:
+            await self._repository.add_student(session, EducationStudent(
+                business_account_id=business_account_id,
+                legacy_source_id=None,
+                group_id=group.id,
+                user_account_id=enrollment.user_account_id,
+                legacy_user_id=enrollment.legacy_user_id,
+                full_name=enrollment.customer_name,
+                phone=enrollment.phone,
+                joined_date=_local_day(now),
+                note=("Kurs arizasi: " + enrollment.note)[:500],
+                monthly_fee=0,
+                status="active",
+                created_at=now,
+                updated_at=now,
+            ))
+        else:
+            student.group_id = group.id
+            student.phone = enrollment.phone
+            student.updated_at = now
+        await self._repository.touch_enrollment(
+            session,
+            enrollment_id=enrollment.id,
+            status="accepted",
+            group_id=group.id,
+            now=now,
+        )
+
+    async def reject_in_session(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        enrollment_id: int,
+        now: int,
+    ) -> None:
+        enrollment = await self._repository.enrollment(
+            session,
+            business_account_id=business_account_id,
+            enrollment_id=enrollment_id,
+            lock=True,
+        )
+        if enrollment is None or enrollment.status != "new":
+            raise ApiError(
+                404,
+                "new_education_enrollment_not_found",
+                "Yangi ariza topilmadi.",
+            )
+        await self._repository.touch_enrollment(
+            session,
+            enrollment_id=enrollment.id,
+            status="rejected",
+            group_id=None,
+            now=now,
+        )
+
+
+def _local_day(now: int) -> str:
+    from datetime import UTC, datetime, timedelta
+
+    return (
+        datetime.fromtimestamp(now, UTC) + timedelta(hours=5)
+    ).strftime("%Y-%m-%d")
 
 
 def _course_row(
@@ -191,29 +251,6 @@ def _course_row(
         (row for row in rows if str(row.get("id") or "") in candidates),
         None,
     )
-
-
-def _active_duplicate(
-    rows: list[dict[str, Any]],
-    *,
-    course_id: int,
-    account_id: int,
-    legacy_user_id: int | None,
-) -> bool:
-    for row in rows:
-        if _integer(row.get("course_item_id")) != course_id:
-            continue
-        if str(row.get("status") or "") not in {"new", "accepted"}:
-            continue
-        if _integer(row.get("user_account_id")) == account_id:
-            return True
-        if legacy_user_id is not None and _integer(row.get("user_id")) == legacy_user_id:
-            return True
-    return False
-
-
-def _next_id(rows: list[dict[str, Any]]) -> int:
-    return max((_integer(row.get("id")) for row in rows), default=0) + 1
 
 
 def _integer(value: object) -> int:

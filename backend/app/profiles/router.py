@@ -39,6 +39,10 @@ from app.profiles.schemas import (
     UserProfileRead,
 )
 from app.profiles.summary_service import ProfileSummaryService
+from app.business_online.service_relational import (
+    RELATIONAL_EDUCATION_RESOURCES,
+)
+from app.education.repository import EducationEnrollmentRepository
 from app.staff.permissions import allowed_payload_resources
 
 
@@ -47,6 +51,7 @@ CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 _cabinet_records = CabinetRecordRepository()
 _notifications = NotificationRepository()
+_education = EducationEnrollmentRepository()
 
 
 async def profile_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -120,6 +125,16 @@ async def assembled_cabinet_payload(
     )
     if notification_rows is not None:
         result["notifications"] = notification_rows
+    if account_type is AccountType.BUSINESS:
+        # Ta'lim resurslari o'z jadvallariga ko'chirilgan.
+        for resource in RELATIONAL_EDUCATION_RESOURCES:
+            rows = await _education.list_rows(
+                session,
+                business_account_id=account_id,
+                resource=resource,
+            )
+            if rows is not None:
+                result[resource] = rows
     return result
 
 
