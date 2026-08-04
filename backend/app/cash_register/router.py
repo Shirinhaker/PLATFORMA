@@ -95,6 +95,7 @@ async def update_cash_order_payment(
 ) -> CashReceiptRead:
     return await service.update_order_payment(
         business_account_id=_business_id(current),
+        actor_staff_id=current.staff_id,
         permissions=_permissions(current),
         receipt_id=receipt_id,
         body=body,

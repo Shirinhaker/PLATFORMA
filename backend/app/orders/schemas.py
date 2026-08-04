@@ -48,6 +48,7 @@ class OrderStatusChange(BaseModel):
 class OrderPaymentDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal["confirmed", "rejected", "pending", "debt"]
+    debtor_id: int | None = Field(default=None, gt=0)
 
 
 class OrderProblemCreate(BaseModel):
@@ -155,6 +156,7 @@ class OrderRead(BaseModel):
     status: str
     payment_status: str
     pay_type: str
+    debtor_id: int | None
     receipt_message_id: int | None
     problem_open: bool
     problem_reason: str

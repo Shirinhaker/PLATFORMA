@@ -23,6 +23,7 @@ from app.cash_register.schemas import (
     CashTotalsRead,
 )
 from app.core.errors import ApiError
+from app.debt_ledger.service import DebtLedgerService
 from app.inventory.service import InventoryService
 from app.orders.model import Order, OrderItem
 
@@ -69,11 +70,13 @@ class CashRegisterService:
         *,
         repository: CashRegisterRepository | None = None,
         inventory_service: InventoryService | None = None,
+        debt_ledger_service: DebtLedgerService | None = None,
         now_provider: NowProvider | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CashRegisterRepository()
         self._inventory = inventory_service or InventoryService(session_factory)
+        self._debt_ledger = debt_ledger_service
         self._now_provider = now_provider or (lambda: datetime.now(UTC))
 
     async def catalog(
@@ -174,15 +177,24 @@ class CashRegisterService:
         body: CashReceiptCreate,
     ) -> CashReceiptCreated:
         self._require_kassa(permissions)
-        if body.pay_type == "qarz":
+        if body.pay_type == "qarz" and (
+            self._debt_ledger is None or body.debtor_id is None
+        ):
             raise ApiError(
-                409,
-                "cash_debt_module_required",
-                "Qarzga savdo Qarz daftari migratsiyasidan keyin yoqiladi.",
+                400,
+                "debt_debtor_required",
+                "Qarz uchun qarzdorni tanlang.",
             )
         now = self._sale_time(body.sale_date)
         async with self._session_factory() as session:
             try:
+                debtor = None
+                if body.pay_type == "qarz":
+                    debtor = await self._debt_ledger.require_debtor_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        debtor_id=body.debtor_id,
+                    )
                 requested = sorted({
                     item.catalog_item_id
                     for item in body.items
@@ -235,8 +247,11 @@ class CashRegisterService:
                     legacy_order_source_id=None,
                     legacy_group_key=None,
                     pay_type=body.pay_type,
-                    debtor_name_snapshot="",
-                    legacy_debtor_source_id=None,
+                    debtor_id=debtor.id if debtor is not None else None,
+                    debtor_name_snapshot=debtor.name if debtor is not None else "",
+                    legacy_debtor_source_id=(
+                        debtor.legacy_source_id if debtor is not None else None
+                    ),
                     note=body.note,
                     created_by_staff_id=actor_staff_id,
                     actor_name_snapshot=actor_name[:160],
@@ -245,6 +260,7 @@ class CashRegisterService:
                 session.add(receipt)
                 await session.flush()
                 grand_total = 0
+                debt_entries: list[tuple[int, str]] = []
                 for catalog, name, unit, qty, price, total in prepared:
                     line = CashReceiptLine(
                         receipt_id=receipt.id,
@@ -276,6 +292,18 @@ class CashRegisterService:
                         line.inventory_item_id = inventory_id
                         line.cost_total = cost_total
                     grand_total += total
+                    if debtor is not None:
+                        debt_entries.append((total, f"Kassa: {name}"[:200]))
+                if debtor is not None:
+                    await self._debt_ledger.replace_receipt_debts_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        cash_receipt_id=receipt.id,
+                        debtor_id=debtor.id,
+                        entries=debt_entries,
+                        actor_staff_id=actor_staff_id,
+                        transaction_date=now.astimezone(UZBEKISTAN_TZ).date(),
+                    )
                 await session.flush()
                 await session.commit()
                 return CashReceiptCreated(
@@ -313,12 +341,6 @@ class CashRegisterService:
                         "cash_order_receipt_locked",
                         "Buyurtma orqali kelgan savdo bu yerdan o‘chirilmaydi.",
                     )
-                if receipt.pay_type == "qarz":
-                    raise ApiError(
-                        409,
-                        "cash_debt_receipt_locked",
-                        "Qarzli chek Qarz daftari bilan birga qaytarilishi kerak.",
-                    )
                 lines = await self._repository.receipt_lines(
                     session, receipt.id, lock=True
                 )
@@ -340,6 +362,13 @@ class CashRegisterService:
                         ),
                         now=now,
                     )
+                await session.flush()
+                if self._debt_ledger is not None:
+                    await self._debt_ledger.delete_receipt_transactions_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        cash_receipt_id=receipt.id,
+                    )
                 await session.delete(receipt)
                 await session.flush()
                 await session.commit()
@@ -351,16 +380,19 @@ class CashRegisterService:
         self,
         *,
         business_account_id: int,
+        actor_staff_id: int | None,
         permissions: tuple[str, ...] | None,
         receipt_id: int,
         body: CashPaymentUpdate,
     ) -> CashReceiptRead:
         self._require_kassa(permissions)
-        if body.pay_type == "qarz":
+        if body.pay_type == "qarz" and (
+            self._debt_ledger is None or body.debtor_id is None
+        ):
             raise ApiError(
-                409,
-                "cash_debt_module_required",
-                "Qarzga savdo Qarz daftari migratsiyasidan keyin yoqiladi.",
+                400,
+                "debt_debtor_required",
+                "Qarz uchun qarzdorni tanlang.",
             )
         async with self._session_factory() as session:
             try:
@@ -378,12 +410,58 @@ class CashRegisterService:
                         "cash_order_receipt_required",
                         "Bu faqat buyurtma savdosi uchun.",
                     )
-                receipt.pay_type = body.pay_type
                 order = await session.get(Order, receipt.order_id, with_for_update=True)
+                lines = await self._repository.receipt_lines(session, receipt.id)
+                if body.pay_type == "qarz":
+                    debtor = await self._debt_ledger.require_debtor_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        debtor_id=body.debtor_id,
+                        lock=True,
+                    )
+                    await self._debt_ledger.delete_receipt_transactions_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        cash_receipt_id=receipt.id,
+                    )
+                    await self._debt_ledger.delete_order_debt_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        order_id=receipt.order_id,
+                    )
+                    await self._debt_ledger.create_order_debt_in_session(
+                        session,
+                        business_account_id=business_account_id,
+                        order_id=receipt.order_id,
+                        debtor_id=debtor.id,
+                        amount=sum(line.total for line in lines),
+                        note=f"Tashqi buyurtma #{receipt.order_id}",
+                        actor_staff_id=actor_staff_id,
+                        cash_receipt_id=receipt.id,
+                    )
+                    receipt.debtor_id = debtor.id
+                    receipt.debtor_name_snapshot = debtor.name
+                    receipt.legacy_debtor_source_id = debtor.legacy_source_id
+                else:
+                    if self._debt_ledger is not None:
+                        await self._debt_ledger.delete_receipt_transactions_in_session(
+                            session,
+                            business_account_id=business_account_id,
+                            cash_receipt_id=receipt.id,
+                        )
+                        await self._debt_ledger.delete_order_debt_in_session(
+                            session,
+                            business_account_id=business_account_id,
+                            order_id=receipt.order_id,
+                        )
+                    receipt.debtor_id = None
+                    receipt.debtor_name_snapshot = ""
+                    receipt.legacy_debtor_source_id = None
+                receipt.pay_type = body.pay_type
                 if order is not None:
                     order.pay_type = body.pay_type
+                    order.debtor_id = receipt.debtor_id
                     order.updated_at = self._now_provider()
-                lines = await self._repository.receipt_lines(session, receipt.id)
                 await session.commit()
                 return self._receipt_read(
                     receipt,
@@ -434,6 +512,7 @@ class CashRegisterService:
             legacy_order_source_id=order.legacy_source_id,
             legacy_group_key=None,
             pay_type=order.pay_type,
+            debtor_id=None,
             debtor_name_snapshot="",
             legacy_debtor_source_id=None,
             note=f"Buyurtma #{order.id}",
@@ -443,6 +522,28 @@ class CashRegisterService:
         )
         session.add(receipt)
         await session.flush()
+        if order.pay_type == "qarz":
+            if self._debt_ledger is None or order.debtor_id is None:
+                raise ApiError(
+                    409,
+                    "order_debt_missing",
+                    "Buyurtmaning qarzdori topilmadi.",
+                )
+            debtor, _transaction = (
+                await self._debt_ledger.create_order_debt_in_session(
+                    session,
+                    business_account_id=order.provider_account_id,
+                    order_id=order.id,
+                    debtor_id=order.debtor_id,
+                    amount=order.total_amount,
+                    note=f"Tashqi buyurtma #{order.id}",
+                    actor_staff_id=actor_staff_id,
+                    cash_receipt_id=receipt.id,
+                )
+            )
+            receipt.debtor_id = debtor.id
+            receipt.debtor_name_snapshot = debtor.name
+            receipt.legacy_debtor_source_id = debtor.legacy_source_id
         for item in order_items:
             qty = _quantity(item.qty, item.unit or "dona")
             price = int(
@@ -537,7 +638,6 @@ class CashRegisterService:
             total=sum(line.total for line in lines),
             can_delete=(
                 receipt.source in {"manual", "debt_payment"}
-                and receipt.pay_type != "qarz"
             ),
             can_change_payment=receipt.source == "order",
             lines=[

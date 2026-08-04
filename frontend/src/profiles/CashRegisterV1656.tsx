@@ -7,8 +7,10 @@ import type {
   CashReceipt,
   CashReceiptCreate,
   CashRegister,
+  Debtor,
 } from "../api/types";
 import { money } from "./business-profile-config";
+import { DebtorPickerV1656 } from "./DebtorPickerV1656";
 import "./CashRegisterV1656.css";
 
 
@@ -19,6 +21,8 @@ export type CashRegisterApi = Pick<
   | "createCashReceipt"
   | "deleteCashReceipt"
   | "updateCashOrderPayment"
+  | "getDebtors"
+  | "createDebtor"
 >;
 
 type DraftLine = {
@@ -123,6 +127,11 @@ function ReceiptCard({
               disabled={busy || receipt.pay_type === "karta"}
               onClick={() => onPayment(receipt, "karta")}
             >Karta</button>
+            <button
+              type="button"
+              disabled={busy || receipt.pay_type === "qarz"}
+              onClick={() => onPayment(receipt, "qarz")}
+            >Qarz</button>
           </span>
         ) : null}
         {receipt.can_delete ? (
@@ -153,6 +162,10 @@ export function CashRegisterV1656({
   const [draft, setDraft] = useState<DraftLine[]>([]);
   const [search, setSearch] = useState("");
   const [payType, setPayType] = useState<CashPayType>("naqd");
+  const [debtors, setDebtors] = useState<Debtor[]>([]);
+  const [debtorId, setDebtorId] = useState(0);
+  const [debtorPicker, setDebtorPicker] = useState<"sale" | "payment" | null>(null);
+  const [paymentReceipt, setPaymentReceipt] = useState<CashReceipt | null>(null);
   const [note, setNote] = useState("");
   const [saleDate, setSaleDate] = useState(today());
   const [loading, setLoading] = useState(true);
@@ -193,8 +206,13 @@ export function CashRegisterV1656({
     setBusy(true);
     setError("");
     try {
-      const items = await api.getCashCatalog();
+      const [items, debtorRows] = await Promise.all([
+        api.getCashCatalog(),
+        api.getDebtors(),
+      ]);
       setCatalog(items);
+      setDebtors(debtorRows);
+      setDebtorId(debtorRows[0]?.id ?? 0);
       setDraft([]);
       setSearch("");
       setPayType("naqd");
@@ -271,9 +289,14 @@ export function CashRegisterV1656({
         price: line.price,
       })),
       pay_type: payType,
+      debtor_id: payType === "qarz" ? debtorId : null,
       note: note.trim(),
       sale_date: saleDate || null,
     };
+    if (payType === "qarz" && debtorId <= 0) {
+      setError("Qarzdorni tanlang.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -291,7 +314,7 @@ export function CashRegisterV1656({
 
   async function deleteReceipt(receipt: CashReceipt) {
     const label = receipt.receipt_no ? `Chek #${receipt.receipt_no}` : "Bu savdo";
-    if (!window.confirm(`${label} butun o‘chirilsinmi? Ombor qaytariladi.`)) return;
+    if (!window.confirm(`${label} butun o‘chirilsinmi? Ombor va qarz daftari qaytariladi.`)) return;
     setBusy(true);
     setError("");
     try {
@@ -305,6 +328,11 @@ export function CashRegisterV1656({
   }
 
   async function updatePayment(receipt: CashReceipt, value: CashPayType) {
+    if (value === "qarz") {
+      setPaymentReceipt(receipt);
+      setDebtorPicker("payment");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -314,6 +342,34 @@ export function CashRegisterV1656({
       setError(errorMessage(reason));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function selectDebtor(selectedDebtorId: number) {
+    if (debtorPicker === "sale") {
+      const rows = await api.getDebtors();
+      setDebtors(rows);
+      setDebtorId(selectedDebtorId);
+      setDebtorPicker(null);
+      return;
+    }
+    if (debtorPicker === "payment" && paymentReceipt) {
+      setBusy(true);
+      setError("");
+      try {
+        await api.updateCashOrderPayment(
+          paymentReceipt.id,
+          "qarz",
+          selectedDebtorId,
+        );
+        setDebtorPicker(null);
+        setPaymentReceipt(null);
+        await load(day);
+      } catch (reason) {
+        setError(errorMessage(reason));
+      } finally {
+        setBusy(false);
+      }
     }
   }
 
@@ -377,8 +433,21 @@ export function CashRegisterV1656({
               onChange={(event) => setPayType(event.target.value as CashPayType)}>
               <option value="naqd">Naqd</option>
               <option value="karta">Karta</option>
-              <option value="qarz" disabled>Qarz — keyingi migratsiyada</option>
+              <option value="qarz">Qarz (daftariga yoziladi)</option>
             </select></label>
+            {payType === "qarz" ? (
+              <label>Qarzdor<div className="cash-v1656__debtor-field">
+                <select value={debtorId} onChange={(event) => setDebtorId(Number(event.target.value))}>
+                  <option value={0}>Qarzdorni tanlang</option>
+                  {debtors.map((debtor) => (
+                    <option key={debtor.id} value={debtor.id}>
+                      {debtor.name} · {money(debtor.balance)}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => setDebtorPicker("sale")}>+ Yangi</button>
+              </div></label>
+            ) : null}
             <label>Sana<input type="date" max={today()} value={saleDate}
               onChange={(event) => setSaleDate(event.target.value)} /></label>
             <label className="cash-v1656__wide">Izoh<textarea maxLength={200} value={note}
@@ -389,6 +458,14 @@ export function CashRegisterV1656({
             <button type="button" disabled={busy} onClick={save}>Savdoni saqlash</button>
           </div>
         </section>
+        {debtorPicker ? (
+          <DebtorPickerV1656
+            api={api}
+            title={debtorPicker === "payment" ? "Buyurtmani qarzga yozish" : "Qarzdorni tanlash"}
+            onCancel={() => { setDebtorPicker(null); setPaymentReceipt(null); }}
+            onSelect={(value) => { void selectDebtor(value); }}
+          />
+        ) : null}
       </main>
     );
   }
@@ -435,6 +512,14 @@ export function CashRegisterV1656({
             />
           ))}
         </section>
+      ) : null}
+      {debtorPicker ? (
+        <DebtorPickerV1656
+          api={api}
+          title="Buyurtmani qarzga yozish"
+          onCancel={() => { setDebtorPicker(null); setPaymentReceipt(null); }}
+          onSelect={(value) => { void selectDebtor(value); }}
+        />
       ) : null}
     </main>
   );

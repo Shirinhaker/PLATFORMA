@@ -12,6 +12,8 @@ from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceipt
 from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
 from app.db.base import Base
+from app.debt_ledger.model import Debtor, DebtTransaction
+from app.debt_ledger.service import DebtLedgerService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.inventory.model import (
     InventoryItem,
@@ -103,6 +105,7 @@ def order_store():
             CatalogGroup.__table__,
             CatalogItem.__table__,
             StaffMember.__table__,
+            Debtor.__table__,
             CabinetResource.__table__,
             CabinetRecord.__table__,
             CabinetRecordField.__table__,
@@ -117,6 +120,7 @@ def order_store():
             CashReceiptCounter.__table__,
             CashReceipt.__table__,
             CashReceiptLine.__table__,
+            DebtTransaction.__table__,
             Notification.__table__,
             OutboxEvent.__table__,
         ),
@@ -254,6 +258,30 @@ def order_store():
             created_at=NOW,
             updated_at=NOW,
         ),
+        Debtor(
+            id=701,
+            business_account_id=7,
+            legacy_source_id=301,
+            name="Vali Karimov",
+            phone="+998901112233",
+            note="",
+            due="",
+            created_by_staff_id=None,
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        Debtor(
+            id=801,
+            business_account_id=8,
+            legacy_source_id=302,
+            name="Begona qarzdor",
+            phone="",
+            note="",
+            due="",
+            created_by_staff_id=None,
+            created_at=NOW,
+            updated_at=NOW,
+        ),
         Listing(
             id=21,
             owner_user_account_id=None,
@@ -330,15 +358,18 @@ def service_with_cash(store: AsyncStore) -> OrderService:
         yield store
 
     inventory = InventoryService(sessions, now_provider=lambda: NOW)
+    debts = DebtLedgerService(sessions, now_provider=lambda: NOW)
     cash = CashRegisterService(
         sessions,
         inventory_service=inventory,
+        debt_ledger_service=debts,
         now_provider=lambda: NOW,
     )
     return OrderService(
         sessions,
         lambda key: f"/media/{key}",
         cash_register_service=cash,
+        debt_ledger_service=debts,
     )
 
 
@@ -639,6 +670,112 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
         "order.handed_off",
         "order.completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_accepted_order_debt_is_idempotent_and_links_cash_on_handoff(order_store):
+    service = service_with_cash(order_store)
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(),
+    )
+    await service.change_status(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        body=OrderStatusChange(status="accepted"),
+    )
+
+    with pytest.raises(ApiError) as foreign:
+        await service.set_payment(
+            order_id=created.id,
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+            body=OrderPaymentDecision(status="debt", debtor_id=801),
+        )
+    assert foreign.value.code == "debt_debtor_required"
+
+    preparing = await service.set_payment(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        body=OrderPaymentDecision(status="debt", debtor_id=701),
+    )
+    assert preparing.status == "preparing"
+    assert preparing.payment_status == "confirmed"
+    assert preparing.pay_type == "qarz"
+    assert preparing.debtor_id == 701
+
+    repeated = await service.set_payment(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        body=OrderPaymentDecision(status="debt", debtor_id=701),
+    )
+    assert repeated.pay_type == "qarz"
+    assert order_store.sync.scalar(
+        select(func.count(DebtTransaction.id))
+    ) == 1
+
+    await service.change_status(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        body=OrderStatusChange(status="tayyor"),
+    )
+    await service.handoff(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+    )
+
+    receipt = order_store.sync.scalar(
+        select(CashReceipt).where(CashReceipt.order_id == created.id)
+    )
+    transaction = order_store.sync.scalar(select(DebtTransaction))
+    assert receipt is not None and receipt.pay_type == "qarz"
+    assert receipt.debtor_id == 701
+    assert receipt.debtor_name_snapshot == "Vali Karimov"
+    assert transaction is not None
+    assert transaction.amount == 70_000
+    assert transaction.order_id == created.id
+    assert transaction.cash_receipt_id == receipt.id
+
+
+@pytest.mark.asyncio
+async def test_order_debt_requires_payment_permission_and_accepted_status(order_store):
+    service = service_with_cash(order_store)
+    created = await service.create(
+        account_id=5,
+        account_type=AccountType.USER,
+        body=create_body(),
+    )
+    with pytest.raises(ApiError) as status_error:
+        await service.set_payment(
+            order_id=created.id,
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+            body=OrderPaymentDecision(status="debt", debtor_id=701),
+        )
+    assert status_error.value.code == "order_debt_status_invalid"
+
+    await service.change_status(
+        order_id=created.id,
+        account_id=7,
+        account_type=AccountType.BUSINESS,
+        body=OrderStatusChange(status="accepted"),
+    )
+    with pytest.raises(ApiError) as permission_error:
+        await service.set_payment(
+            order_id=created.id,
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+            body=OrderPaymentDecision(status="debt", debtor_id=701),
+            actor_staff_id=99,
+            permissions=("buyurtma",),
+        )
+    assert permission_error.value.code == "staff_permission_required"
 
 
 @pytest.mark.asyncio

@@ -67,6 +67,15 @@ function cashApi() {
     }),
     deleteCashReceipt: vi.fn().mockResolvedValue(undefined),
     updateCashOrderPayment: vi.fn().mockResolvedValue(receipt),
+    getDebtors: vi.fn().mockResolvedValue([{
+      id: 30,
+      name: "Ali Valiyev",
+      phone: "+998901234567",
+      note: "",
+      due: "",
+      balance: 500,
+    }]),
+    createDebtor: vi.fn().mockResolvedValue({ id: 31 }),
   };
 }
 
@@ -107,6 +116,25 @@ describe("CashRegisterV1656", () => {
           price: 300,
         }],
         pay_type: "naqd",
+      }),
+    ));
+  });
+
+  it("writes a debt sale to the selected debtor", async () => {
+    const user = userEvent.setup();
+    const api = cashApi();
+    render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
+
+    await user.click(await screen.findByRole("button", { name: "+ Savdo yozish" }));
+    await user.click(await screen.findByRole("button", { name: /Omborda: 5 dona/ }));
+    await user.selectOptions(screen.getByLabelText("To‘lov turi"), "qarz");
+    await user.selectOptions(screen.getByLabelText("Qarzdor"), "30");
+    await user.click(screen.getByRole("button", { name: "Savdoni saqlash" }));
+
+    await waitFor(() => expect(api.createCashReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pay_type: "qarz",
+        debtor_id: 30,
       }),
     ));
   });

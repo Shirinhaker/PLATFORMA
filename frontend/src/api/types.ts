@@ -227,6 +227,7 @@ export type CashReceiptCreate = {
     price: number;
   }>;
   pay_type: CashPayType;
+  debtor_id?: number | null;
   note: string;
   sale_date: string | null;
 };
@@ -237,6 +238,51 @@ export type CashReceiptCreated = {
   receipt_no: number;
   count: number;
   total: number;
+};
+
+export type Debtor = {
+  id: number;
+  name: string;
+  phone: string;
+  note: string;
+  due: string;
+  balance: number;
+};
+
+export type DebtTransaction = {
+  id: number;
+  type: "debt" | "payment";
+  amount: number;
+  date: string;
+  note: string;
+  order_id: number | null;
+  cash_receipt_id: number | null;
+  created_at: string;
+};
+
+export type DebtorDetail = Debtor & {
+  tx: DebtTransaction[];
+};
+
+export type DebtorCreate = {
+  name: string;
+  phone: string;
+  note: string;
+  due: string;
+  initial_debt: number;
+};
+
+export type DebtTransactionCreate = {
+  type: "debt" | "payment";
+  amount: number;
+  date?: string | null;
+  note: string;
+};
+
+export type DebtMutation = {
+  ok: true;
+  transaction_id: number;
+  balance: number;
 };
 
 export type UserProfile = {
@@ -784,6 +830,7 @@ export type OrderRead = {
   status: OrderStatus;
   payment_status: OrderPaymentStatus;
   pay_type: string;
+  debtor_id?: number | null;
   receipt_message_id: number | null;
   problem_open: boolean;
   problem_reason: string;

@@ -26,6 +26,7 @@ class CashReceiptCreate(BaseModel):
 
     items: list[CashSaleLineCreate] = Field(min_length=1, max_length=30)
     pay_type: PayType = "naqd"
+    debtor_id: int | None = Field(default=None, gt=0)
     note: str = Field(default="", max_length=200)
     sale_date: date | None = None
 
@@ -39,6 +40,7 @@ class CashPaymentUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pay_type: PayType
+    debtor_id: int | None = Field(default=None, gt=0)
 
 
 class CashCatalogItemRead(BaseModel):

@@ -30,6 +30,10 @@ import {
   type CashRegisterApi,
 } from "./CashRegisterV1656";
 import {
+  DebtLedgerV1656,
+  type DebtLedgerApi,
+} from "./DebtLedgerV1656";
+import {
   StaffManagementV1656,
   type StaffManagementApi,
 } from "./StaffManagementV1656";
@@ -98,6 +102,10 @@ export type BusinessProfileApiV3 = Pick<
   | "createCashReceipt"
   | "deleteCashReceipt"
   | "updateCashOrderPayment"
+  | "getDebtors"
+  | "createDebtor"
+  | "getDebtor"
+  | "addDebtTransaction"
 >>;
 
 type Props = {
@@ -108,7 +116,7 @@ type Props = {
 };
 
 type DataView = { title: string; rows: unknown[] };
-type Screen = "cabinet" | "profile" | "data" | "online" | "staff" | "cash";
+type Screen = "cabinet" | "profile" | "data" | "online" | "staff" | "cash" | "debt";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -206,7 +214,15 @@ function supportsCashRegister(
 ): api is BusinessProfileApiV3 & CashRegisterApi {
   return [
     "getCashRegister", "getCashCatalog", "createCashReceipt",
-    "deleteCashReceipt", "updateCashOrderPayment",
+    "deleteCashReceipt", "updateCashOrderPayment", "getDebtors", "createDebtor",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+}
+
+function supportsDebtLedger(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & DebtLedgerApi {
+  return [
+    "getDebtors", "createDebtor", "getDebtor", "addDebtTransaction",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
@@ -367,6 +383,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
+  if (screen === "debt" && supportsDebtLedger(api)) {
+    return <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />;
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -393,6 +413,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }
     if (menu.view === "sales" && supportsCashRegister(api)) {
       setScreen("cash");
+      return;
+    }
+    if (menu.view === "debtors" && supportsDebtLedger(api)) {
+      setScreen("debt");
       return;
     }
     if (isOnlineMenu(menu)) {

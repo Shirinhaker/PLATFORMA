@@ -51,6 +51,58 @@ describe("ApiClient", () => {
     }
   });
 
+  it("uses the typed K5 debt ledger and order debt payloads", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "debt-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const debtor = {
+      name: "Vali Karimov",
+      phone: "+998901234567",
+      note: "",
+      due: "",
+      initial_debt: 50_000,
+    };
+    const payment = {
+      type: "payment" as const,
+      amount: 20_000,
+      note: "Qisman to‘lov",
+    };
+
+    await client.getDebtors();
+    await client.createDebtor(debtor);
+    await client.getDebtor(31);
+    await client.addDebtTransaction(31, payment);
+    await client.updateCashOrderPayment(9, "qarz", 31);
+    await client.decideOrderPayment(91, "debt", 31);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      ["https://api.example/api/v1/debt-ledger/debtors", "GET", undefined],
+      ["https://api.example/api/v1/debt-ledger/debtors", "POST", JSON.stringify(debtor)],
+      ["https://api.example/api/v1/debt-ledger/debtors/31", "GET", undefined],
+      ["https://api.example/api/v1/debt-ledger/debtors/31/transactions", "POST", JSON.stringify(payment)],
+      ["https://api.example/api/v1/cash-register/receipts/9/payment", "PUT", JSON.stringify({ pay_type: "qarz", debtor_id: 31 })],
+      ["https://api.example/api/v1/orders/91/payment", "POST", JSON.stringify({ status: "debt", debtor_id: 31 })],
+    ]);
+    for (const [, init] of fetcher.mock.calls.slice(2)) {
+      if (init?.method !== "GET") {
+        expect(init?.headers).toMatchObject({ "X-CSRF-Token": "debt-csrf" });
+      }
+    }
+  });
+
   it("uses secure staff login and the live staff management endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

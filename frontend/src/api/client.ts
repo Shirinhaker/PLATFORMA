@@ -19,6 +19,11 @@ import type {
   CashReceiptCreate,
   CashReceiptCreated,
   CashRegister,
+  DebtMutation,
+  DebtTransactionCreate,
+  Debtor,
+  DebtorCreate,
+  DebtorDetail,
   BusinessQueueEntry,
   BusinessQueueOfflineCreate,
   BusinessQueueProvider,
@@ -486,8 +491,17 @@ export class ApiClient {
     return this.request("POST", `/api/v1/orders/${orderId}/payment/submit`, {}, true);
   }
 
-  decideOrderPayment(orderId: number, status: OrderPaymentStatus): Promise<OrderRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/payment`, { status }, true);
+  decideOrderPayment(
+    orderId: number,
+    status: OrderPaymentStatus,
+    debtorId: number | null = null,
+  ): Promise<OrderRead> {
+    return this.request(
+      "POST",
+      `/api/v1/orders/${orderId}/payment`,
+      { status, ...(debtorId ? { debtor_id: debtorId } : {}) },
+      true,
+    );
   }
 
   openOrderProblem(
@@ -653,11 +667,41 @@ export class ApiClient {
   updateCashOrderPayment(
     receiptId: number,
     payType: CashPayType,
+    debtorId: number | null = null,
   ): Promise<CashReceipt> {
     return this.request(
       "PUT",
       `/api/v1/cash-register/receipts/${receiptId}/payment`,
-      { pay_type: payType },
+      { pay_type: payType, ...(debtorId ? { debtor_id: debtorId } : {}) },
+      true,
+    );
+  }
+
+  getDebtors(): Promise<Debtor[]> {
+    return this.request("GET", "/api/v1/debt-ledger/debtors", undefined, true);
+  }
+
+  createDebtor(body: DebtorCreate): Promise<{ id: number }> {
+    return this.request("POST", "/api/v1/debt-ledger/debtors", body, true);
+  }
+
+  getDebtor(debtorId: number): Promise<DebtorDetail> {
+    return this.request(
+      "GET",
+      `/api/v1/debt-ledger/debtors/${debtorId}`,
+      undefined,
+      true,
+    );
+  }
+
+  addDebtTransaction(
+    debtorId: number,
+    body: DebtTransactionCreate,
+  ): Promise<DebtMutation> {
+    return this.request(
+      "POST",
+      `/api/v1/debt-ledger/debtors/${debtorId}/transactions`,
+      body,
       true,
     );
   }
