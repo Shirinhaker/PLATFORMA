@@ -113,6 +113,9 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False)
     payment_status: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     pay_type: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    debtor_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("debtors.id", ondelete="SET NULL")
+    )
     receipt_message_id: Mapped[int | None] = mapped_column(BigInteger)
     problem_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     problem_reason: Mapped[str] = mapped_column(String(40), nullable=False, default="")

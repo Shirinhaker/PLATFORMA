@@ -83,6 +83,10 @@ class CashReceipt(Base):
     pay_type: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=""
     )
+    debtor_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("debtors.id", ondelete="SET NULL"),
+    )
     debtor_name_snapshot: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
@@ -161,6 +165,11 @@ Index(
     CashReceipt.business_account_id,
     CashReceipt.source,
     CashReceipt.created_at.desc(),
+)
+Index(
+    "ix_cash_receipts_debtor",
+    CashReceipt.business_account_id,
+    CashReceipt.debtor_id,
 )
 Index(
     "uq_cash_receipts_legacy_group",

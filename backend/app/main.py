@@ -22,6 +22,8 @@ from app.core.errors import ApiError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
+from app.debt_ledger.router import router as debt_ledger_router
+from app.debt_ledger.service import DebtLedgerService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
 from app.inventory.router import router as inventory_router
@@ -117,14 +119,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.r2.create_download_url,
         )
         app.state.inventory_service = InventoryService(database.session)
+        app.state.debt_ledger_service = DebtLedgerService(database.session)
         app.state.cash_register_service = CashRegisterService(
             database.session,
             inventory_service=app.state.inventory_service,
+            debt_ledger_service=app.state.debt_ledger_service,
         )
         app.state.order_service = OrderService(
             database.session,
             app.state.r2.create_download_url,
             cash_register_service=app.state.cash_register_service,
+            debt_ledger_service=app.state.debt_ledger_service,
         )
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
@@ -170,6 +175,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(staff_router)
     app.include_router(inventory_router)
     app.include_router(cash_register_router)
+    app.include_router(debt_ledger_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

@@ -252,6 +252,38 @@ function profileApi() {
     createCashReceipt: vi.fn(),
     deleteCashReceipt: vi.fn(),
     updateCashOrderPayment: vi.fn(),
+    getDebtors: vi.fn().mockResolvedValue([{
+      id: 3,
+      name: "Vali",
+      phone: "+998901234567",
+      note: "",
+      due: "",
+      balance: 100000,
+    }]),
+    createDebtor: vi.fn().mockResolvedValue({ id: 4 }),
+    getDebtor: vi.fn().mockResolvedValue({
+      id: 3,
+      name: "Vali",
+      phone: "+998901234567",
+      note: "",
+      due: "",
+      balance: 100000,
+      tx: [{
+        id: 4,
+        type: "debt",
+        amount: 100000,
+        date: "2026-08-04",
+        note: "Mahsulot",
+        order_id: null,
+        cash_receipt_id: 19,
+        created_at: "2026-08-04T09:00:00Z",
+      }],
+    }),
+    addDebtTransaction: vi.fn().mockResolvedValue({
+      ok: true,
+      transaction_id: 5,
+      balance: 50000,
+    }),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -487,6 +519,28 @@ describe("profile cabinets", () => {
     await user.click(await screen.findByRole("button", { name: /Kassa/ }));
     expect(await screen.findByText("🧾 Chek #12")).toBeInTheDocument();
     expect(api.getCashRegister).toHaveBeenCalledWith("");
+  });
+
+  it("opens the live typed Qarz daftari instead of the legacy payload list", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    render(
+      <BusinessProfile
+        api={api}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole(
+      "button",
+      { name: /^📒\s*Qarz daftari/ },
+    ));
+    expect(await screen.findByText("Vali")).toBeInTheDocument();
+    expect(screen.getByText("Umumiy qarz").closest("section"))
+      .toHaveTextContent("100 000 so‘m");
+    expect(api.getDebtors).toHaveBeenCalledOnce();
   });
 
   it("opens the v1656 editor and uploads the business logo", async () => {

@@ -153,6 +153,10 @@ async def decide_order_payment(
         account_id=current.account_id,
         account_type=current.account_type,
         body=body,
+        actor_staff_id=current.staff_id,
+        permissions=(
+            current.permissions if current.actor_type == "staff" else None
+        ),
     )
 
 

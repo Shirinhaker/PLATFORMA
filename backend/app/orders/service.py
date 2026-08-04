@@ -14,6 +14,7 @@ from app.catalog.model import CatalogItem
 from app.catalog.repository import build_content_public_id
 from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
+from app.debt_ledger.service import DebtLedgerService
 from app.listings.model import Listing
 from app.notifications.repository import NotificationRepository
 from app.orders.model import Order, OrderItem, OrderMessage
@@ -54,6 +55,7 @@ class OrderService:
         repository: OrderRepository | None = None,
         notification_repository: NotificationRepository | None = None,
         cash_register_service: CashRegisterService | None = None,
+        debt_ledger_service: DebtLedgerService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._image_url_provider = image_url_provider
@@ -62,6 +64,7 @@ class OrderService:
             notification_repository or NotificationRepository()
         )
         self._cash_register_service = cash_register_service
+        self._debt_ledger_service = debt_ledger_service
 
     async def create(
         self, *, account_id: int, account_type: AccountType, body: OrderCreate
@@ -148,6 +151,7 @@ class OrderService:
                     else Decimal("1")
                 ),
                 total_amount=total, status="new", payment_status="", pay_type="",
+                debtor_id=None,
                 receipt_message_id=None, problem_open=False, problem_reason="",
                 problem_note="", problem_solution="", problem_opened_at=None,
                 problem_resolved_at=None, last_event="created",
@@ -399,7 +403,8 @@ class OrderService:
 
     async def set_payment(
         self, *, order_id: int, account_id: int, account_type: AccountType,
-        body: OrderPaymentDecision,
+        body: OrderPaymentDecision, actor_staff_id: int | None = None,
+        permissions: tuple[str, ...] | None = None,
     ) -> OrderRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
@@ -411,9 +416,40 @@ class OrderService:
                     "order_payment_finished",
                     "Yakunlangan buyurtmada to'lovni o'zgartirib bo'lmaydi.",
                 )
+            debt_link = None
             if body.status == "debt":
-                raise ApiError(409, "order_debt_external", "Qarzga yozish bu modulga kirmaydi.")
-            if order.payment_status not in {"submitted", "recheck", "disputed"}:
+                self._require_debt_payment_permission(permissions)
+                already_debt = (
+                    order.pay_type == "qarz" and order.debtor_id is not None
+                )
+                if not already_debt and order.status != "accepted":
+                    raise ApiError(
+                        409,
+                        "order_debt_status_invalid",
+                        "Faqat qabul qilingan buyurtma qarzga yoziladi.",
+                    )
+                debtor_id = order.debtor_id if already_debt else body.debtor_id
+                if self._debt_ledger_service is None or debtor_id is None:
+                    raise ApiError(
+                        400,
+                        "debt_debtor_required",
+                        "Qarz uchun qarzdorni tanlang.",
+                    )
+                debt_link = (
+                    await self._debt_ledger_service.create_order_debt_in_session(
+                        session,
+                        business_account_id=order.provider_account_id,
+                        order_id=order.id,
+                        debtor_id=debtor_id,
+                        amount=order.total_amount,
+                        note=f"Tashqi buyurtma #{order.id}",
+                        actor_staff_id=actor_staff_id,
+                    )
+                )
+                if already_debt:
+                    await session.commit()
+                    return await self._project(session, order, side)
+            elif order.payment_status not in {"submitted", "recheck", "disputed"}:
                 message = (
                     "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini "
                     "yubormagan."
@@ -422,9 +458,20 @@ class OrderService:
                 )
                 raise ApiError(409, "order_payment_transition_invalid", message)
             now = datetime.now(UTC)
-            if body.status == "confirmed":
+            if body.status == "debt":
+                assert debt_link is not None
+                debtor, _transaction = debt_link
+                order.payment_status = "confirmed"
+                order.pay_type = "qarz"
+                order.debtor_id = debtor.id
+                order.status = "preparing"
+                order.problem_open = False
+                order.problem_resolved_at = now
+                topic = "order.debt_confirmed"
+            elif body.status == "confirmed":
                 order.payment_status = "confirmed"
                 order.pay_type = "karta"
+                order.debtor_id = None
                 order.status = "preparing"
                 order.problem_open = False
                 order.problem_resolved_at = now
@@ -440,6 +487,7 @@ class OrderService:
             self._changed(order, side, body.status, now)
             system_text = {
                 "confirmed": "✅ To'lov tasdiqlandi. Rahmat!",
+                "debt": "📒 Buyurtma qarzga rasmiylashtirildi.",
                 "rejected": (
                     "❌ To'lov tasdiqlanmadi. Iltimos, to'lovni tekshiring "
                     "yoki qayta yuboring."
@@ -464,15 +512,37 @@ class OrderService:
             ))
             await session.flush()
             await self._event(session, topic, order, account_id)
-            if body.status == "confirmed":
+            if body.status in {"confirmed", "debt"}:
                 await append_order_notification(
                     session, self._notification_repository, order,
-                    side="customer", event="payment_confirmed",
-                    title="To'lov tasdiqlandi",
+                    side="customer",
+                    event=(
+                        "debt_confirmed"
+                        if body.status == "debt"
+                        else "payment_confirmed"
+                    ),
+                    title=(
+                        "Buyurtma qarzga rasmiylashtirildi"
+                        if body.status == "debt"
+                        else "To'lov tasdiqlandi"
+                    ),
                     body="Buyurtma tayyorlanmoqda.",
                 )
             await session.commit()
             return await self._project(session, order, side)
+
+    @staticmethod
+    def _require_debt_payment_permission(
+        permissions: tuple[str, ...] | None,
+    ) -> None:
+        if permissions is not None and not {
+            "payment_confirm", "payment_review", "kassa",
+        }.intersection(permissions):
+            raise ApiError(
+                403,
+                "staff_permission_required",
+                "Bu bo‘limga vakolatingiz yo‘q.",
+            )
 
     async def open_problem(
         self, *, order_id: int, account_id: int, account_type: AccountType,
@@ -945,7 +1015,8 @@ class OrderService:
                 else ""
             ),
             status=order.status, payment_status=order.payment_status,
-            pay_type=order.pay_type, receipt_message_id=order.receipt_message_id,
+            pay_type=order.pay_type, debtor_id=order.debtor_id,
+            receipt_message_id=order.receipt_message_id,
             problem_open=order.problem_open, problem_reason=order.problem_reason,
             problem_note=order.problem_note, problem_solution=order.problem_solution,
             problem_opened_at=order.problem_opened_at,

@@ -56,6 +56,7 @@ function order(overrides: Partial<OrderRead> = {}): OrderRead {
     status: "accepted",
     payment_status: "pending",
     pay_type: "card",
+    debtor_id: null,
     receipt_message_id: null,
     problem_open: false,
     problem_reason: "",
@@ -149,6 +150,15 @@ function apiFor(rows: OrderRead[]): OrdersApi {
     deleteOrderChatMessage: vi.fn(async (_orderId, messageId) => ({ ...baseMessage, id: messageId, is_deleted: true })),
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn(),
+    getDebtors: vi.fn().mockResolvedValue([{
+      id: 31,
+      name: "Ali Valiyev",
+      phone: "",
+      note: "",
+      due: "",
+      balance: 0,
+    }]),
+    createDebtor: vi.fn().mockResolvedValue({ id: 31 }),
   };
 }
 
@@ -340,6 +350,21 @@ describe("v1656 jonli buyurtma kabineti", () => {
     expect(dialog).toHaveTextContent("To'lovni tasdiqlashni tasdiqlaysizmi?");
     await user.click(within(dialog).getByRole("button", { name: "Tasdiqlash" }));
     expect(api.decideOrderPayment).toHaveBeenCalledWith(91, "confirmed");
+  });
+
+  it("biznes qabul qilingan buyurtmani tanlangan mijoz qarziga yozadi", async () => {
+    const user = userEvent.setup();
+    const accepted = order({ view: "provider", status: "accepted" });
+    const api = apiFor([accepted]);
+    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+
+    await user.click(await screen.findByText("Buyurtma: Turon savdo"));
+    await user.click(screen.getByRole("button", { name: "📒 Qarzga rasmiylashtirish" }));
+    const dialog = await screen.findByRole("dialog", { name: "Tashqi buyurtmani qarzga yozish" });
+    await user.selectOptions(within(dialog).getByLabelText("Qarzdor"), "31");
+    await user.click(within(dialog).getByRole("button", { name: "Qarzga yozish" }));
+
+    await waitFor(() => expect(api.decideOrderPayment).toHaveBeenCalledWith(91, "debt", 31));
   });
 
   it("biznes qabul qilish, muammo ochish va topshirishni jonli endpointlarga yuboradi", async () => {

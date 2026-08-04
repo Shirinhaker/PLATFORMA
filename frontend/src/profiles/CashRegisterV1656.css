@@ -246,6 +246,27 @@
   margin-top: 14px;
 }
 
+.cash-v1656__debtor-field {
+  display: flex;
+  gap: 7px;
+}
+
+.cash-v1656__debtor-field select {
+  min-width: 0;
+  flex: 1;
+}
+
+.cash-v1656__debtor-field button {
+  flex: 0 0 auto;
+  border: 1px solid #2563eb;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .cash-v1656__wide {
   grid-column: 1 / -1;
 }

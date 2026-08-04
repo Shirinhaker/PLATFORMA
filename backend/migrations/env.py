@@ -14,6 +14,7 @@ from app.advertisements import model as advertisements_model  # noqa: F401
 from app.auth import model as auth_model  # noqa: F401
 from app.catalog import model as catalog_model  # noqa: F401
 from app.cash_register import model as cash_register_model  # noqa: F401
+from app.debt_ledger import model as debt_ledger_model  # noqa: F401
 from app.inventory import model as inventory_model  # noqa: F401
 from app.legacy_migration import model as legacy_migration_model  # noqa: F401
 from app.listings import model as listings_model  # noqa: F401

@@ -10,6 +10,7 @@ import type {
   OrderRead,
   OrderStatus,
 } from "../api/types";
+import { DebtorPickerV1656 } from "../profiles/DebtorPickerV1656";
 import "./OrdersV1656.css";
 
 
@@ -32,6 +33,8 @@ export type OrdersApi = Pick<
   | "deleteOrderChatMessage"
   | "createUploadGrant"
   | "uploadGrantedFile"
+  | "getDebtors"
+  | "createDebtor"
 >;
 
 type Props = {
@@ -247,6 +250,7 @@ export function OrdersCabinetV1656({
   const [problemOpen, setProblemOpen] = useState(false);
   const [problemReason, setProblemReason] = useState<OrderProblemReason>("not_received");
   const [problemNote, setProblemNote] = useState("");
+  const [debtPickerOpen, setDebtPickerOpen] = useState(false);
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingImageUrl, setPendingImageUrl] = useState("");
   const [loading, setLoading] = useState(true);
@@ -632,6 +636,7 @@ export function OrdersCabinetV1656({
             <button type="button" className="mini-btn danger" disabled={busy} onClick={() => void changeStatus("rejected")}>Rad etish</button>
           </> : null}
           {side === "provider" && selected.status === "accepted" ? <button type="button" className="mini-btn danger" disabled={busy} onClick={() => void changeStatus("cancelled")}>Bekor qilish</button> : null}
+          {side === "provider" && selected.status === "accepted" ? <button type="button" className="mini-btn warning" disabled={busy} onClick={() => setDebtPickerOpen(true)}>📒 Qarzga rasmiylashtirish</button> : null}
           {side === "provider" && selected.status === "preparing" ? <button type="button" className="mini-btn ok" disabled={busy} onClick={() => void changeStatus("tayyor")}>✅ Buyurtma tayyor</button> : null}
           {side === "provider" && selected.status === "tayyor" && selected.order_type === "delivery" ? <p>Dostavkachi qidirilmoqda</p> : null}
           {side === "provider" && selected.status === "handoff_waiting_seller" ? <button type="button" className="mini-btn ok" onClick={() => setConfirmation("handoff")}>📦 Dostavkachiga topshirdim</button> : null}
@@ -713,6 +718,18 @@ export function OrdersCabinetV1656({
             if (await mutate(() => api.handoffOrder(selected.id))) setConfirmation(null);
           })();
         }} /> : null}
+        {debtPickerOpen ? (
+          <DebtorPickerV1656
+            api={api}
+            title="Tashqi buyurtmani qarzga yozish"
+            onCancel={() => setDebtPickerOpen(false)}
+            onSelect={(debtorId) => { void (async () => {
+              if (await mutate(() => api.decideOrderPayment(selected.id, "debt", debtorId))) {
+                setDebtPickerOpen(false);
+              }
+            })(); }}
+          />
+        ) : null}
       </main>
       </>
     );
