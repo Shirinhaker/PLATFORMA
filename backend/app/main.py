@@ -45,6 +45,8 @@ from app.queues.router import router as queues_router
 from app.queues.service import QueueService
 from app.staff.router import router as staff_router
 from app.staff.service import StaffService
+from app.statistics.router import router as statistics_router
+from app.statistics.service import StatisticsService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -150,6 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
         )
         app.state.staff_service = StaffService(database.session, resolved)
+        app.state.statistics_service = StatisticsService(database.session)
         try:
             yield
         finally:
@@ -191,6 +194,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cash_register_router)
     app.include_router(debt_ledger_router)
     app.include_router(expenses_router)
+    app.include_router(statistics_router)
 
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):

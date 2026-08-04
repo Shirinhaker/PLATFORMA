@@ -101,6 +101,13 @@ class CashReceipt(Base):
     actor_name_snapshot: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
+    waiter_staff_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("staff_members.id", ondelete="SET NULL"),
+    )
+    waiter_name_snapshot: Mapped[str] = mapped_column(
+        String(160), nullable=False, server_default=""
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

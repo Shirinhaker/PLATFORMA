@@ -317,6 +317,62 @@ export type ExpenseCategoryCreate = {
   name: string;
 };
 
+export type StatisticsPeriod = "kun" | "hafta" | "oy" | "chorak" | "yarim" | "yil";
+
+export type StatisticsPayment = {
+  naqd: number;
+  karta: number;
+  qarz: number;
+  order: number;
+};
+
+export type StatisticsSource = { count: number; total: number };
+
+export type StatisticsTrend = {
+  label: string;
+  rev: number;
+  exp: number;
+  cogs: number;
+  profit: number;
+};
+
+export type StatisticsProduct = {
+  name: string;
+  qty: number;
+  unit: string;
+  total: number;
+  cost_total: number;
+  margin: number | null;
+};
+
+export type StatisticsReport = {
+  period: StatisticsPeriod;
+  anchor: string;
+  label: string;
+  revenue: number;
+  cash_in: number;
+  cogs: number;
+  gross_profit: number;
+  expenses: number;
+  inventory_purchases: number;
+  profit: number;
+  qarzpay: number;
+  pay: StatisticsPayment;
+  exp_by_cat: Record<string, number>;
+  trend: StatisticsTrend[];
+  top_products: StatisticsProduct[];
+  low_stock: Array<{ name: string; unit: string; stock_qty: number }>;
+  source_split: {
+    internal: StatisticsSource;
+    external: StatisticsSource;
+    manual: StatisticsSource;
+  };
+  cashiers: Array<{ name: string; checks: number; total: number }>;
+  waiters: Array<{ name: string; orders: number; total: number }>;
+  sales_count: number;
+  can_next: boolean;
+};
+
 export type UserProfile = {
   account_id: number;
   name: string;

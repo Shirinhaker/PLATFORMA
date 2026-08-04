@@ -41,6 +41,10 @@ import {
   StaffManagementV1656,
   type StaffManagementApi,
 } from "./StaffManagementV1656";
+import {
+  StatisticsV1656,
+  type StatisticsApi,
+} from "./StatisticsV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -115,6 +119,8 @@ export type BusinessProfileApiV3 = Pick<
   | "createExpenseCategory"
   | "createExpense"
   | "deleteExpense"
+  | "getStatistics"
+  | "getStatisticsNav"
 >>;
 
 type Props = {
@@ -133,7 +139,8 @@ type Screen =
   | "staff"
   | "cash"
   | "debt"
-  | "expenses";
+  | "expenses"
+  | "statistics";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -254,6 +261,14 @@ function supportsExpenses(
   ));
 }
 
+function supportsStatistics(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & StatisticsApi {
+  return ["getStatistics", "getStatisticsNav"].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
 function visibleMenus(
   profile: BusinessProfileData | null,
   menus: Menu[],
@@ -262,7 +277,9 @@ function visibleMenus(
   if (!profile) return [];
   return menus
     .filter((menu) => (
-      canUseView(identity, menu.view) && (isOnlineMenu(menu)
+      canUseView(identity, menu.view)
+      && !menu.excludedDirections?.includes(profile.direction)
+      && (isOnlineMenu(menu)
         ? isOnlineMenuVisibleForDirection(menu, profile.direction)
         : !menu.directions || menu.directions.includes(profile.direction))
     ))
@@ -419,6 +436,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
+  if (screen === "statistics" && supportsStatistics(api)) {
+    return <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />;
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -453,6 +474,10 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }
     if (menu.view === "expenses" && supportsExpenses(api)) {
       setScreen("expenses");
+      return;
+    }
+    if (menu.view === "statistics" && supportsStatistics(api)) {
+      setScreen("statistics");
       return;
     }
     if (isOnlineMenu(menu)) {

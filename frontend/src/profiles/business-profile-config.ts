@@ -15,6 +15,7 @@ export type Menu = {
   view: string;
   payload?: PayloadSource;
   directions?: readonly string[];
+  excludedDirections?: readonly string[];
 };
 
 export type BusinessDirection = {
@@ -144,6 +145,7 @@ export function isOnlineMenuVisibleForDirection(
   direction: string,
 ): boolean {
   if (menu.directions && !menu.directions.includes(direction)) return false;
+  if (menu.excludedDirections?.includes(direction)) return false;
   return !(ONLINE_DIRECTION_PLANS[direction]?.hide ?? []).includes(menu.view);
 }
 
@@ -404,7 +406,13 @@ export const SYSTEM_MENUS: Menu[] = [
   { icon: "💸", label: "Xarajatlar", caption: "Kunlik xarajatlar hisobi", view: "expenses", payload: "expenses" },
   { icon: "📒", label: "Qarz daftari", caption: "Mijozlar qarzi va tranzaksiyalar", view: "debtors", payload: ["debtors", "qarz_transactions"] },
   { icon: "📦", label: "Ombor", caption: "Qoldiq va kirim-chiqim", view: "warehouse", payload: ["warehouse_items", "warehouse_tx"] },
-  { icon: "📊", label: "Statistika", caption: "Tushum, xarajat va faoliyat", view: "statistics" },
+  {
+    icon: "📊",
+    label: "Statistika",
+    caption: "Tushum, xarajat va faoliyat",
+    view: "statistics",
+    excludedDirections: ["Ta'lim faoliyati", "Ta’lim faoliyati"],
+  },
   { icon: "📄", label: "Hisobotlar", caption: "Ko‘chirilgan davriy ko‘rsatkichlar", view: "reports" },
 ];
 

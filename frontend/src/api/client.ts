@@ -76,6 +76,8 @@ import type {
   StaffMemberWrite,
   StaffSchedule,
   StaffSetup,
+  StatisticsPeriod,
+  StatisticsReport,
   UploadGrant,
   UploadGrantRequest,
   UserProfile,
@@ -733,6 +735,35 @@ export class ApiClient {
     return this.request(
       "DELETE",
       `/api/v1/expenses/${expenseId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getStatistics(period: StatisticsPeriod = "oy", anchor = ""): Promise<StatisticsReport> {
+    const query = new URLSearchParams({ period });
+    if (anchor) query.set("anchor", anchor);
+    return this.request(
+      "GET",
+      `/api/v1/statistics?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  getStatisticsNav(
+    period: StatisticsPeriod,
+    direction: -1 | 1,
+    anchor = "",
+  ): Promise<{ anchor: string }> {
+    const query = new URLSearchParams({
+      period,
+      dir: String(direction),
+    });
+    if (anchor) query.set("anchor", anchor);
+    return this.request(
+      "GET",
+      `/api/v1/statistics/nav?${query.toString()}`,
       undefined,
       true,
     );

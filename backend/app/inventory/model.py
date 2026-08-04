@@ -273,6 +273,14 @@ Index(
     InventoryItem.stock_type,
 )
 Index(
+    "ix_inventory_items_business_stock_qty",
+    InventoryItem.business_account_id,
+    InventoryItem.stock_qty,
+    InventoryItem.id,
+    postgresql_where=text("track_stock IS true"),
+    sqlite_where=text("track_stock = 1"),
+)
+Index(
     "uq_inventory_stock_moves_business_legacy",
     StockMove.business_account_id,
     StockMove.legacy_source_id,
