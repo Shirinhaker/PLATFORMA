@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
 import re
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +29,10 @@ from app.orders.model import Order, OrderItem
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
-UZBEKISTAN_TZ = ZoneInfo("Asia/Tashkent")
+# O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5. Loyihaning qolgan
+# modullari ham shu ko'rinishni ishlatadi va bu `tzdata` paketini
+# talab qilmaydi (u bog'liqliklarda e'lon qilinmagan).
+UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 FRACTIONAL_UNITS = frozenset({"kg", "g", "l", "litr", "ml", "metr", "sm", "m²", "m3", "soat"})
 QUANTITY_STEP = Decimal("0.001")
 PAY_TEXT = {
