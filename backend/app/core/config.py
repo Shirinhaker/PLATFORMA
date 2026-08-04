@@ -17,7 +17,16 @@ class Settings(BaseSettings):
     environment: str = "development"
     legacy_build: str = "v1656"
     database_url: str = "postgresql+asyncpg://koprik:koprik@localhost:5432/koprik"
+    # Har API nusxasi shuncha ulanish ochadi. PostgreSQL'ning `max_connections`
+    # chegarasi barcha nusxalar uchun umumiy, shuning uchun nusxalar soni
+    # oshganda bu qiymatlar muhitdan pasaytiriladi (yoki PgBouncer qo'yiladi).
+    db_pool_size: int = Field(default=10, ge=1, le=100)
+    db_max_overflow: int = Field(default=20, ge=0, le=100)
+    # Pool bo'shashini uzoq kutish yiqilishni butun tizimga tarqatadi —
+    # tez rad etib, yukni orqaga qaytargan ma'qul.
+    db_pool_timeout_seconds: int = Field(default=3, ge=1, le=60)
     redis_url: str = "redis://localhost:6379/0"
+    redis_max_connections: int = Field(default=100, ge=1, le=1000)
     cors_origins: str = ""
     r2_endpoint_url: str = "https://example.r2.cloudflarestorage.com"
     r2_bucket: str = "koprik-development"

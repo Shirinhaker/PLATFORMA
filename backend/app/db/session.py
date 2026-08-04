@@ -15,12 +15,14 @@ class Database:
         self,
         url: str,
         *,
-        pool_size: int = 20,
+        pool_size: int = 10,
         max_overflow: int = 20,
+        pool_timeout: int = 3,
     ) -> None:
         self.url = url
         self.pool_size = pool_size
         self.max_overflow = max_overflow
+        self.pool_timeout = pool_timeout
         self.engine: AsyncEngine | None = None
         self._sessions: async_sessionmaker[AsyncSession] | None = None
 
@@ -30,7 +32,7 @@ class Database:
             pool_pre_ping=True,
             pool_size=self.pool_size,
             max_overflow=self.max_overflow,
-            pool_timeout=10,
+            pool_timeout=self.pool_timeout,
         )
         self._sessions = async_sessionmaker(
             self.engine,
