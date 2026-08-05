@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  PaymentRequestModal,
+  type PaymentRequestApi,
+  type PaymentTarget,
+} from "./PaymentRequestModal";
 
 import type { ApiClient } from "../api/client";
 import type {
   BusinessOnlineRecord,
   BusinessOnlineResource,
 } from "../api/business-online-types";
-import type { BusinessProfile } from "../api/types";
+import type { BusinessProfile, PaymentCatalog } from "../api/types";
 import {
   OwnerListingsV1656,
   type OwnerListingsApi,
@@ -206,6 +211,15 @@ export function BusinessOnlineScreen({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duration, setDuration] = useState(1);
+  // Tarif tanlanganda ochiladigan to'lov oynasi (v1656 oqimi).
+  const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
+  const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
+  useEffect(() => {
+    if (view !== "subscriptions" || catalog) return;
+    const load = (api as Partial<PaymentRequestApi>).getPaymentCatalog;
+    if (!load) return;
+    void load.call(api).then(setCatalog).catch(() => setCatalog(null));
+  }, [api, view, catalog]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("new");
@@ -615,6 +629,24 @@ export function BusinessOnlineScreen({
     );
   }
 
+  const paymentApi = api as Partial<PaymentRequestApi>;
+  const canPay = Boolean(
+    paymentApi.getPaymentCatalog
+    && paymentApi.createPaymentRequest
+    && paymentApi.createUploadGrant
+    && paymentApi.uploadGrantedFile,
+  );
+
+  function openPayment(plan: "plus" | "pro") {
+    if (!canPay) return;
+    setPaymentTarget({
+      priceCode: `subscription_${plan}_${duration}m`,
+      label: `${plan === "plus" ? "Plus" : "Pro"} obuna · ${duration} oy`,
+      planCode: plan,
+      durationMonths: duration,
+    });
+  }
+
   const content = renderContent({
     api,
     view,
@@ -625,6 +657,7 @@ export function BusinessOnlineScreen({
     loading,
     duration,
     setDuration,
+    openPayment,
     query,
     setQuery,
     kind,
@@ -700,6 +733,15 @@ export function BusinessOnlineScreen({
         <div className="business-online__loading">Yuklanmoqda…</div>
       )}
       {content}
+      {paymentTarget && catalog ? (
+        <PaymentRequestModal
+          api={api as PaymentRequestApi}
+          catalog={catalog}
+          target={paymentTarget}
+          onClose={() => setPaymentTarget(null)}
+          onSubmitted={() => void refresh("business_subscriptions")}
+        />
+      ) : null}
     </main>
   );
 }
@@ -715,6 +757,7 @@ type RenderContext = {
   loading: boolean;
   duration: number;
   setDuration: (value: number) => void;
+  openPayment: (plan: "plus" | "pro") => void;
   query: string;
   setQuery: (value: string) => void;
   kind: string;
@@ -773,12 +816,7 @@ function renderContent(context: RenderContext): ReactNode {
           duration={context.duration}
           setDuration={context.setDuration}
           busy={shared.busy}
-          requestPlan={(plan) => shared.action(
-            "business_subscriptions",
-            "request_plan",
-            undefined,
-            { plan, duration_months: context.duration },
-          )}
+          openPayment={context.openPayment}
         />
       );
     case "payments":

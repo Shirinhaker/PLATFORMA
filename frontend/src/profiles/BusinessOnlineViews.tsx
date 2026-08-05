@@ -183,13 +183,14 @@ export function SubscriptionsView({
   duration,
   setDuration,
   busy,
-  requestPlan,
+  openPayment,
 }: {
   rows: BusinessOnlineRecord[];
   duration: number;
   setDuration: (value: number) => void;
   busy: boolean;
-  requestPlan: (plan: string) => Promise<void>;
+  /** Tarif tanlanganda to'lov oynasini ochadi (v1656 oqimi). */
+  openPayment: (plan: "plus" | "pro") => void;
 }) {
   const current = [...rows].reverse().find((row) => (
     ["active", "approved"].includes(recordText(row, "status"))
@@ -322,7 +323,7 @@ export function SubscriptionsView({
               type="button"
               className="subscription-action"
               disabled={busy || plan.key === "free"}
-              onClick={() => void requestPlan(plan.key)}
+              onClick={() => openPayment(plan.key as "plus" | "pro")}
             >
               {plan.key === "free"
                 ? currentPlan === "free"

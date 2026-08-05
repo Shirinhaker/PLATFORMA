@@ -1,0 +1,11 @@
+.payment-request-modal{position:fixed;inset:0;z-index:6000;display:flex;align-items:flex-end;justify-content:center;}
+.payment-request-modal .payment-modal-back{position:absolute;inset:0;background:rgba(0,0,0,.45);}
+.payment-request-modal .payment-modal-card{position:relative;width:100%;max-width:420px;border-radius:18px 18px 0 0;background:var(--bg);padding:16px;display:flex;flex-direction:column;gap:12px;max-height:88vh;overflow:auto;}
+.payment-request-modal .payment-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.payment-request-modal .payment-modal-head h2{margin:0;font-size:16px;}
+.payment-request-modal .payment-modal-close{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;}
+.payment-request-modal .payment-summary{border-radius:13px;padding:12px;background:var(--card);display:flex;flex-direction:column;gap:4px;}
+.payment-request-modal .payment-summary strong{font-size:18px;}
+.payment-request-modal .field{display:flex;flex-direction:column;gap:6px;}
+.payment-request-modal .subscription-action-message{border-radius:13px;padding:10px 12px;font-size:12.5px;line-height:1.45;background:var(--primary-tint);color:var(--primary);}
+.payment-request-modal .subscription-action-message.error{background:#fee2e2;color:#991b1b;}
