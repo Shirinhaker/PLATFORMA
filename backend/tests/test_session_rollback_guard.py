@@ -37,6 +37,7 @@ ROLLBACK_SERVICES = (
     ("app.inventory.service", "InventoryService"),
     ("app.listings.service", "ListingService"),
     ("app.orders.service", "OrderService"),
+    ("app.payments.service", "PaymentService"),
     ("app.profiles.summary_service", "ProfileSummaryService"),
     ("app.public_discovery.service", "PublicDiscoveryService"),
     ("app.queues.service", "QueueService"),
