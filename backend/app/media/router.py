@@ -17,7 +17,7 @@ class UploadGrantRequest(BaseModel):
 
     purpose: Literal[
         "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-        "order_chat_image",
+        "order_chat_image", "payment_receipt",
     ]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
@@ -41,7 +41,8 @@ async def create_upload_grant(
         }.get(body.purpose, ("__business_owner__",))
         require_staff_permission(current, *required)
     allowed = body.purpose in {
-        "listing_photo", "listing_video", "order_chat_image"
+        "listing_photo", "listing_video", "order_chat_image",
+        "payment_receipt",
     } or (
         current.account_type is AccountType.USER
         and body.purpose == "avatar"

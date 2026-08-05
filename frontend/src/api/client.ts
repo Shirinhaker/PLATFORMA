@@ -42,6 +42,10 @@ import type {
   CourseEnrollmentCreate,
   CourseEnrollmentCreated,
   Me,
+  PaymentCatalog,
+  PaymentReceiptRef,
+  PaymentRequestBody,
+  PaymentRequestRecord,
   OrderCreate,
   OrderCreateResponse,
   OrderChatRead,
@@ -919,6 +923,32 @@ export class ApiClient {
       "POST",
       "/api/v1/cabinet/switch",
       { target_type: targetType },
+      true,
+    );
+  }
+
+  getPaymentCatalog(): Promise<PaymentCatalog> {
+    return this.request("GET", "/api/v1/payments/catalog", undefined, true);
+  }
+
+  createPaymentRequest(
+    body: PaymentRequestBody,
+  ): Promise<PaymentRequestRecord> {
+    return this.request("POST", "/api/v1/payments/requests", body, true);
+  }
+
+  getMyPayments(): Promise<PaymentRequestRecord[]> {
+    return this.request("GET", "/api/v1/payments/my", undefined, true);
+  }
+
+  resubmitPayment(
+    paymentId: number,
+    receipt: PaymentReceiptRef,
+  ): Promise<PaymentRequestRecord> {
+    return this.request(
+      "POST",
+      `/api/v1/payments/${paymentId}/resubmit`,
+      { receipt },
       true,
     );
   }
