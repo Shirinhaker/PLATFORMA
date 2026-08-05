@@ -12,6 +12,7 @@ from app.education.model import (
     CourseEnrollment,
     EducationGroup,
     EducationStudent,
+    EducationStudentGroupHistory,
 )
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
@@ -314,6 +315,75 @@ class EducationEnrollmentRepository:
         student: EducationStudent,
     ) -> None:
         session.add(student)
+        await session.flush()
+
+    async def owned_group(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        group_id: int,
+        lock: bool = False,
+    ) -> EducationGroup | None:
+        statement = select(EducationGroup).where(
+            EducationGroup.id == group_id,
+            EducationGroup.business_account_id == business_account_id,
+            EducationGroup.status == "active",
+        )
+        if lock:
+            statement = statement.with_for_update()
+        return await session.scalar(statement)
+
+    async def owned_student(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        student_id: int,
+        lock: bool = False,
+    ) -> EducationStudent | None:
+        statement = select(EducationStudent).where(
+            EducationStudent.id == student_id,
+            EducationStudent.business_account_id == business_account_id,
+            EducationStudent.status == "active",
+        )
+        if lock:
+            statement = statement.with_for_update()
+        return await session.scalar(statement)
+
+    async def add_group(
+        self,
+        session: AsyncSession,
+        group: EducationGroup,
+    ) -> None:
+        session.add(group)
+        await session.flush()
+
+    async def open_group_history(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        student_id: int,
+    ) -> EducationStudentGroupHistory | None:
+        return await session.scalar(
+            select(EducationStudentGroupHistory)
+            .where(
+                EducationStudentGroupHistory.business_account_id
+                == business_account_id,
+                EducationStudentGroupHistory.student_id == student_id,
+                EducationStudentGroupHistory.ended_date == "",
+            )
+            .order_by(EducationStudentGroupHistory.id.desc())
+            .limit(1)
+        )
+
+    async def add_group_history(
+        self,
+        session: AsyncSession,
+        history: EducationStudentGroupHistory,
+    ) -> None:
+        session.add(history)
         await session.flush()
 
     async def touch_enrollment(

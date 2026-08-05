@@ -48,8 +48,10 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
     "medical_doctor_services": ResourceSpec(),
     "medical_queue": ResourceSpec(),
     "medical_queue_history": ResourceSpec(),
-    "education_groups": ResourceSpec(),
-    "education_students": ResourceSpec(),
+    # Yozish amallari relatsion jadvallarga yo'naltiriladi
+    # (`service_relational.py`), JSON payloadga tegmaydi.
+    "education_groups": ResourceSpec(create=True, update=True, delete=True),
+    "education_students": ResourceSpec(create=True, update=True, delete=True),
     "education_enrollments": ResourceSpec(),
 }
 
