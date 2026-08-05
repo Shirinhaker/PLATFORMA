@@ -89,10 +89,26 @@ saqlanadi.
 - `rollback` qo'riqchisi ro'yxatida `PaymentService`;
 - migratsiya buyruqlari qo'riqchisi yashil.
 
+## Frontend ekrani
+
+`SubscriptionsV1656.tsx` — v1656 `cab-subscriptions` ekranining
+ko'chirilgan varianti. Matnlar va tuzilma o'zgarmagan:
+
+- «To'lov tartibi» izohi;
+- muddat tanlash (1 / 3 / 12 oy);
+- uchta tarif kartochkasi (Bepul, Plus, Pro) va ularning imkoniyatlari;
+- «Plus uchun to'lov qilish» tugmasi to'lov oynasini ochadi;
+- oynada to'lov usuli, kvitansiya tanlash va yuborish;
+- «To'lovlarim» ro'yxati va holatlari.
+
+Kvitansiya `media` moduli orqali to'g'ridan-to'g'ri R2'ga yuklanadi,
+so'ng uning kaliti va SHA-256 xesh so'rov bilan yuboriladi. Buning
+uchun `payment_receipt` yuklash turi qo'shildi (maksimum 5 MB,
+JPG/PNG/WEBP).
+
 ## K12 tarkibiga kirmaydi
 
-- **Frontend ekrani** — obuna sahifasi hali React'ga ko'chirilmagan;
-  backend tayyor, ekran alohida bosqichda ulanadi;
+
 - reklama va e'lon to'lovlarining faollashtirilishi — ular o'z
   domenlarida ulanadi (`_activate` hozircha faqat obunani yoqadi);
 - admin paneli — tasdiqlash endpointi biznes egasi huquqi bilan
