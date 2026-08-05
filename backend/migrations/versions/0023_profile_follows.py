@@ -105,22 +105,14 @@ ON CONFLICT (follower_account_id, target_account_id) DO NOTHING
 """
 
 
-RECOUNT_SQL = """
-UPDATE user_profiles AS profile SET
-    followers_count = COALESCE(counts.followers, 0),
-    following_count = COALESCE(counts.following, 0)
-FROM (
-    SELECT
-        account.id AS account_id,
-        (SELECT COUNT(*) FROM profile_follows f
-            WHERE f.target_account_id = account.id) AS followers,
-        (SELECT COUNT(*) FROM profile_follows f
-            WHERE f.follower_account_id = account.id) AS following
-    FROM accounts AS account
-) AS counts
-WHERE counts.account_id = profile.account_id;
+def _recount_sql(profile_table: str) -> str:
+    """Hisoblagichlarni jadvaldan qayta hisoblaydi.
 
-UPDATE business_profiles AS profile SET
+    Har jadval uchun alohida buyruq: asyncpg bitta `execute` ichida
+    bir nechta buyruqni qabul qilmaydi.
+    """
+    return f"""
+UPDATE {profile_table} AS profile SET
     followers_count = COALESCE(counts.followers, 0),
     following_count = COALESCE(counts.following, 0)
 FROM (
@@ -132,7 +124,7 @@ FROM (
             WHERE f.follower_account_id = account.id) AS following
     FROM accounts AS account
 ) AS counts
-WHERE counts.account_id = profile.account_id;
+WHERE counts.account_id = profile.account_id
 """
 
 
@@ -178,7 +170,8 @@ def upgrade() -> None:
 
     op.execute(_backfill_sql("user", "follows", "user_profiles"))
     op.execute(_backfill_sql("business", "following", "business_profiles"))
-    op.execute(RECOUNT_SQL)
+    op.execute(_recount_sql("user_profiles"))
+    op.execute(_recount_sql("business_profiles"))
 
 
 def downgrade() -> None:
