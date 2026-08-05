@@ -26,6 +26,10 @@ import {
 } from "./business-profile-config";
 import { CabinetDataView } from "./CabinetDataView";
 import {
+  BusinessDiningCashV1656,
+  supportsDiningCashApi,
+} from "../dining/BusinessDiningCashV1656";
+import {
   CashRegisterV1656,
   type CashRegisterApi,
 } from "./CashRegisterV1656";
@@ -188,6 +192,7 @@ function menuRows(profile: BusinessProfileData | null, menu: Menu): unknown[] {
 const MENU_PERMISSIONS: Record<string, readonly string[]> = {
   items: ["items"],
   "dining-places": ["dining_places"],
+  "dining-kitchen": ["kitchen"],
   "education-enrollments": ["education_enrollments"],
   "medical-providers": ["service_orders"],
   "medical-queue": ["service_orders"],
@@ -439,7 +444,16 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   }
 
   if (screen === "cash" && supportsCashRegister(api)) {
-    return <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />;
+    // v1656da ovqatlanish yo'nalishida kassa tepasida ichki hisoblar
+    // turadi (`diningCashTabs`); boshqa yo'nalishlarda ko'rinmaydi.
+    const dining = profile?.direction === "Umumiy ovqatlanish"
+      && supportsDiningCashApi(api);
+    return (
+      <>
+        {dining ? <BusinessDiningCashV1656 api={api} /> : null}
+        <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />
+      </>
+    );
   }
 
   if (screen === "debt" && supportsDebtLedger(api)) {

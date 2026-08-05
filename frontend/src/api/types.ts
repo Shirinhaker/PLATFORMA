@@ -1217,6 +1217,7 @@ export type DiningOrder = {
   id: number;
   place_id: number;
   place_name: string;
+  place_kind: DiningPlaceKind;
   kind: "order" | "booking";
   customer_name: string;
   phone: string;

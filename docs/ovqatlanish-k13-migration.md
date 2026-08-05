@@ -1,7 +1,7 @@
 # K13 — Ovqatlanish zanjiri migratsiyasi
 
 **Sana:** 2026-08-05
-**Bosqich:** K13a (backend) — bajarildi. K13b (frontend) — keyingi PR.
+**Bosqich:** K13a (backend) va K13b (frontend) — bajarildi.
 
 ## Nima uchun
 
@@ -180,16 +180,55 @@ Yangi FIFO yoki qarz mantiqi yozilmadi:
 manbaini ruxsat etardi va `waiter_staff_id` / `waiter_name_snapshot`
 ustunlari ham bor edi — kassa jadvali bu domenni kutgan.
 
+## Frontend (K13b)
+
+Uchta ekran. Ikkinchisi va uchinchisi butunlay yangi — ular bo'lmagani
+uchun zanjir uzilgan edi.
+
+| Fayl | Vazifasi |
+|---|---|
+| `src/dining/BusinessDiningV1656.tsx` | Ofitsiant zal rejasi — mavjud ekranni yangi endpointlarga ulaydi |
+| `src/dining/BusinessKitchenV1656.tsx` | Oshpaz ekrani (yangi) |
+| `src/dining/BusinessDiningCashV1656.tsx` | Kassa: Ochiq / Muammoli / Yakunlangan (yangi) |
+
+### Ofitsiant ekrani qayta yozilmadi
+
+`BusinessDiningV1656View.tsx` (1024 qator) o'zgarishsiz qoldi. Yangi
+`BusinessDiningV1656` konteyner `/api/v1/dining` dan olingan ma'lumotni
+eski ekran kutgan `BusinessOnlineRecord` shakliga o'giradi va amallarni
+REST chaqiruvlariga yo'naltiradi. Bu naqsh navbat tizimida
+(`BusinessQueueV1656`) allaqachon ishlatilgan.
+
+Stol bandligi endi zakazlar ro'yxatidan hisoblanadi (v1656 dagi
+`sync_dining_place_activity` bilan bir xil mantiq), ya'ni ofitsiant,
+oshpaz va kassir **bitta manbani** ko'radi.
+
+### Menyu va vakolatlar
+
+- `Oshpaz buyurtmalari` bo'limi `kitchen` vakolati bilan ochiladi
+  (`MENU_PERMISSIONS`), server ham qayta tekshiradi.
+- Kassadagi ovqatlanish bo'limlari faqat "Umumiy ovqatlanish"
+  yo'nalishida ko'rinadi — v1656 dagi `dining_mode` sharti.
+- Menyu (`items`) hali katalog resursidan keladi; faqat `dining_places`
+  va `dining_orders` JSON yo'li o'chirildi.
+
+### v1656 dan farq
+
+**Chek chiqarish tugmasi qo'shilmadi.** v1656 da ochiq hisob ostida
+`🧾 Chek chiqarish` bor (`printDiningReceipt`). Chek shabloni alohida ish
+bo'lgani uchun bu tugma hozircha ko'rsatilmaydi — ishlamaydigan tugma
+qoldirilmasligi kerak (`CLAUDE.md`). Chek raqami to'lov javobida
+qaytadi va Kassa daftarida `🍽️ Ichki buyurtma #N` sifatida ko'rinadi.
+
 ## Eski JSON yo'li
 
-`business_online/service.py` dagi dining amallari o'chirilmadi. K13a
-faqat yangi endpointlarni qo'shadi; mavjud ekran hali eski yo'ldan
-ishlaydi. Frontend K13b da yangi endpointlarga o'tkaziladi — shu
-tartibda ikki PR orasida hech narsa buzilmaydi.
+`business_online/service.py` dagi dining amallari o'chirilmadi —
+migratsiyadan o'tmagan yoki eski frontend ishlatayotgan holatlar uchun
+zaxira bo'lib qoladi.
 
 ## Testlar
 
-`backend/tests/test_dining_chain.py` — 24 ta test.
+### Backend — `backend/tests/test_dining_chain.py`, 24 ta test
 
 Eng muhimi `test_table_cannot_be_cleared_before_kitchen_and_payment`:
 oshxona va to'lov qadamlari bajarilmaguncha stol bo'shamasligini, ikkalasi
@@ -205,6 +244,21 @@ taom, qarz to'lovi, qarzdorsiz qarz (chek yozilmasligi), idempotentlik,
 kassir tahriri va bo'sh hisob taqiqi, bekor qilish, muammoli hisob,
 yakunlash shartlari, xodim vakolatlari, begona biznes, narx manbai,
 ofitsiant ismi.
+
+### Frontend — 34 ta test
+
+| Fayl | Testlar |
+|---|---|
+| `BusinessKitchenV1656Parity.test.tsx` | 11 |
+| `BusinessDiningCashV1656Parity.test.tsx` | 14 |
+| `BusinessDiningV1656Integration.test.tsx` | 10 (bittasi API guard) |
+
+Bu yerda ham buzib tekshirildi:
+
+- oshpaz vakolat sharti va `booking` filtri olib tashlanganda → 2 test
+- to'lov tasdiq oynasi olib tashlanganda va yakunlash tugmasi shartsiz
+  ko'rsatilganda → 4 test
+- stol bandligi zakazlardan emas, boshqa manbadan olinganda → 3 test
 
 ## Tekshirish
 
