@@ -57,6 +57,25 @@ function api() {
     })),
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn(),
+    getPaymentCatalog: vi.fn().mockResolvedValue({
+      prices: [{
+        price_code: "subscription_plus_1m",
+        service_type: "subscription",
+        amount_uzs: 99000,
+        plan_code: "plus",
+        duration_months: 1,
+      }],
+      methods: [{
+        id: 1,
+        method_type: "manual_card",
+        name: "Bank kartasi",
+        recipient_name: "",
+        instructions: "",
+        details: {},
+      }],
+    }),
+    getMyPayments: vi.fn().mockResolvedValue([]),
+    createPaymentRequest: vi.fn(),
     attachBusinessLogo: vi.fn().mockResolvedValue(profile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(profile),
     getBusinessOnlineResource: vi.fn().mockImplementation(async (resource) => ({
@@ -312,6 +331,29 @@ describe("v1656 business profile parity", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ Xodim qo‘shish" }))
       .toBeInTheDocument();
+  });
+
+  it("opens the payment window when a plan is chosen", async () => {
+    const user = userEvent.setup();
+    render(
+      <BusinessProfile
+        api={api()}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Obunalarim/ }));
+    await user.click(
+      await screen.findByRole("button", { name: "Plus uchun to‘lov qilish" }),
+    );
+
+    // Ilgari bu tugma `request_plan` chaqirardi va hech narsa ochilmasdi.
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeVisible();
+    expect(screen.getByText("99 000 so‘m")).toBeVisible();
+    expect(screen.getByLabelText("To‘lov kvitansiyasi")).toBeInTheDocument();
   });
 
   it("opens the live v1656 expense ledger instead of payload rows", async () => {

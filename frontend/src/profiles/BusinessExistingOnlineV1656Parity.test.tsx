@@ -54,7 +54,7 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
         duration={1}
         setDuration={vi.fn()}
         busy={false}
-        requestPlan={vi.fn().mockResolvedValue(undefined)}
+        openPayment={vi.fn()}
       />,
     );
 

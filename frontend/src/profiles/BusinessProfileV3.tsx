@@ -42,10 +42,6 @@ import {
   type ExpensesApi,
 } from "./ExpensesV1656";
 import {
-  SubscriptionsV1656,
-  type SubscriptionsApi,
-} from "./SubscriptionsV1656";
-import {
   StaffManagementV1656,
   type StaffManagementApi,
 } from "./StaffManagementV1656";
@@ -149,7 +145,6 @@ type Screen =
   | "cash"
   | "debt"
   | "expenses"
-  | "subscriptions"
   | "statistics"
   | "education-statistics";
 
@@ -262,18 +257,6 @@ function supportsDebtLedger(
     "getDebtors", "createDebtor", "getDebtor", "addDebtTransaction",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
-
-function supportsSubscriptions(
-  api: BusinessProfileApiV3,
-): api is BusinessProfileApiV3 & SubscriptionsApi {
-  return [
-    "getPaymentCatalog", "getMyPayments", "createPaymentRequest",
-    "createUploadGrant", "uploadGrantedFile",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
-}
-
 
 function supportsExpenses(
   api: BusinessProfileApiV3,
@@ -463,9 +446,6 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
-  if (screen === "subscriptions" && supportsSubscriptions(api)) {
-    return <SubscriptionsV1656 api={api} onBack={() => setScreen("cabinet")} />;
-  }
   if (screen === "expenses" && supportsExpenses(api)) {
     return <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
