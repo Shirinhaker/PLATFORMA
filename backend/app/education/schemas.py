@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -17,3 +19,51 @@ class CourseEnrollmentCreate(BaseModel):
 class CourseEnrollmentCreated(BaseModel):
     ok: bool = True
     id: int = Field(gt=0)
+
+
+EducationStatisticsPeriod = Literal["day", "month", "year"]
+
+
+class EducationStatisticsPeriodRead(BaseModel):
+    type: EducationStatisticsPeriod
+    date: str
+    start: str
+    end: str
+
+
+class EducationStatisticsProcessRead(BaseModel):
+    active_students: int = 0
+    active_groups: int = 0
+    new_enrollments: int = 0
+    attendance_percent: int = 0
+
+
+class EducationStatisticsFinanceRead(BaseModel):
+    calculated: int = 0
+    paid: int = 0
+    debt: int = 0
+
+
+class EducationStatisticsResultRead(BaseModel):
+    other_expenses: int = 0
+    cash_flow: int = 0
+    accrual_result: int = 0
+
+
+class EducationStatisticsGroupRead(BaseModel):
+    id: int
+    name: str
+    active_students: int = 0
+    attendance_percent: int = 0
+    calculated: int = 0
+    paid: int = 0
+    debt: int = 0
+
+
+class EducationStatisticsReportRead(BaseModel):
+    period: EducationStatisticsPeriodRead
+    education: EducationStatisticsProcessRead
+    student_finance: EducationStatisticsFinanceRead
+    teacher_finance: EducationStatisticsFinanceRead
+    result: EducationStatisticsResultRead
+    groups: list[EducationStatisticsGroupRead]

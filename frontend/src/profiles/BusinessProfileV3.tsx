@@ -34,6 +34,10 @@ import {
   type DebtLedgerApi,
 } from "./DebtLedgerV1656";
 import {
+  EducationStatisticsV1656,
+  type EducationStatisticsApi,
+} from "./EducationStatisticsV1656";
+import {
   ExpensesV1656,
   type ExpensesApi,
 } from "./ExpensesV1656";
@@ -121,6 +125,7 @@ export type BusinessProfileApiV3 = Pick<
   | "deleteExpense"
   | "getStatistics"
   | "getStatisticsNav"
+  | "getEducationStatistics"
 >>;
 
 type Props = {
@@ -140,7 +145,8 @@ type Screen =
   | "cash"
   | "debt"
   | "expenses"
-  | "statistics";
+  | "statistics"
+  | "education-statistics";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -197,7 +203,8 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
   expenses: ["expenses"],
   debtors: ["debts"],
   warehouse: ["ombor", "production"],
-  statistics: ["statistics", "education_statistics"],
+  statistics: ["statistics"],
+  "education-statistics": ["education_statistics"],
   reports: ["reports"],
   documents: ["documents"],
   "incoming-documents": ["documents"],
@@ -267,6 +274,12 @@ function supportsStatistics(
   return ["getStatistics", "getStatisticsNav"].every((method) => (
     typeof api[method as keyof BusinessProfileApiV3] === "function"
   ));
+}
+
+function supportsEducationStatistics(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & EducationStatisticsApi {
+  return typeof api.getEducationStatistics === "function";
 }
 
 function visibleMenus(
@@ -440,6 +453,18 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />;
   }
 
+  if (
+    screen === "education-statistics"
+    && supportsEducationStatistics(api)
+  ) {
+    return (
+      <EducationStatisticsV1656
+        api={api}
+        onBack={() => setScreen("cabinet")}
+      />
+    );
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -478,6 +503,13 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }
     if (menu.view === "statistics" && supportsStatistics(api)) {
       setScreen("statistics");
+      return;
+    }
+    if (
+      menu.view === "education-statistics"
+      && supportsEducationStatistics(api)
+    ) {
+      setScreen("education-statistics");
       return;
     }
     if (isOnlineMenu(menu)) {

@@ -163,6 +163,19 @@ describe("ApiClient", () => {
       ]);
   });
 
+  it("uses the typed K9 education statistics endpoint", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+
+    await client.getEducationStatistics("year", "2026-08-04");
+
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/education/statistics"
+        + "?period=year&date=2026-08-04",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("uses secure staff login and the live staff management endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

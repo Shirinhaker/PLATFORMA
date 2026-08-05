@@ -126,6 +126,24 @@ function api() {
       can_next: false,
     }),
     getStatisticsNav: vi.fn().mockResolvedValue({ anchor: "2026-07-01" }),
+    getEducationStatistics: vi.fn().mockResolvedValue({
+      period: {
+        type: "month",
+        date: "2026-08-04",
+        start: "2026-08-01",
+        end: "2026-08-31",
+      },
+      education: {
+        active_students: 2,
+        active_groups: 1,
+        new_enrollments: 1,
+        attendance_percent: 75,
+      },
+      student_finance: { calculated: 1_000, paid: 700, debt: 300 },
+      teacher_finance: { calculated: 400, paid: 250, debt: 150 },
+      result: { other_expenses: 100, cash_flow: 350, accrual_result: 500 },
+      groups: [],
+    }),
     switchCabinet: vi.fn(),
     logout: vi.fn(),
   };
@@ -334,7 +352,8 @@ describe("v1656 business profile parity", () => {
     expect(client.getStatistics).toHaveBeenCalledWith("oy", "");
   });
 
-  it("keeps general statistics out of the education cabinet", async () => {
+  it("replaces general statistics with live education statistics", async () => {
+    const user = userEvent.setup();
     const client = api();
     client.getBusinessProfile.mockResolvedValue({
       ...profile,
@@ -351,8 +370,13 @@ describe("v1656 business profile parity", () => {
 
     expect(await screen.findByRole("heading", { name: "Muhr" }))
       .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Statistika/ }))
+    expect(screen.queryByText("Statistika", { selector: "button b" }))
       .not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Ta'lim statistikasi/ }));
+    expect(await screen.findByRole("heading", { name: "Ta'lim statistikasi" }))
+      .toBeInTheDocument();
+    expect(client.getEducationStatistics)
+      .toHaveBeenCalledWith("month", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
   });
 
   it("shows staff only the sections granted by the server session", async () => {

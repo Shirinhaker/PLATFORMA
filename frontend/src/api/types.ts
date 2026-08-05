@@ -373,6 +373,45 @@ export type StatisticsReport = {
   can_next: boolean;
 };
 
+export type EducationStatisticsPeriod = "day" | "month" | "year";
+
+export type EducationStatisticsFinance = {
+  calculated: number;
+  paid: number;
+  debt: number;
+};
+
+export type EducationStatisticsReport = {
+  period: {
+    type: EducationStatisticsPeriod;
+    date: string;
+    start: string;
+    end: string;
+  };
+  education: {
+    active_students: number;
+    active_groups: number;
+    new_enrollments: number;
+    attendance_percent: number;
+  };
+  student_finance: EducationStatisticsFinance;
+  teacher_finance: EducationStatisticsFinance;
+  result: {
+    other_expenses: number;
+    cash_flow: number;
+    accrual_result: number;
+  };
+  groups: Array<{
+    id: number;
+    name: string;
+    active_students: number;
+    attendance_percent: number;
+    calculated: number;
+    paid: number;
+    debt: number;
+  }>;
+};
+
 export type UserProfile = {
   account_id: number;
   name: string;

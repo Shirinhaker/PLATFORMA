@@ -429,6 +429,7 @@ export const DIRECTION_MENUS: Menu[] = [
   { icon: "👨‍🏫", label: "Ta’lim guruhlari", caption: "Guruh va dars ma’lumotlari", view: "education-groups", payload: "education_groups", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🎓", label: "O‘quvchilar", caption: "O‘quvchi va to‘lov holatlari", view: "education-students", payload: "education_students", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🧑‍🏫", label: "O‘qituvchilar", caption: "O‘qituvchi ma’lumotlari", view: "education-teachers", payload: "education_teachers", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
+  { icon: "📊", label: "Ta'lim statistikasi", caption: "Davomat, to'lovlar, maosh va natija", view: "education-statistics", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
 ];
 
 export const TERMINAL_STATUSES = new Set([
