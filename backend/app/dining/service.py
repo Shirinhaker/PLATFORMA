@@ -307,7 +307,7 @@ class DiningService:
             )
             session.add(order)
             await session.flush()
-            result = self._order_read(order, place.name, [])
+            result = self._order_read(order, place.name, place.kind, [])
             await session.commit()
         return result
 
@@ -367,7 +367,7 @@ class DiningService:
                 amount=order.total,
                 now=now,
             )
-            result = self._order_read(order, place.name, items)
+            result = self._order_read(order, place.name, place.kind, items)
             await session.commit()
         return result
 
@@ -385,7 +385,7 @@ class DiningService:
                 session, business_account_id=business_account_id
             )
             places = {
-                place.id: place.name
+                place.id: (place.name, place.kind)
                 for place in await self._repository.places(
                     session, business_account_id=business_account_id
                 )
@@ -397,7 +397,7 @@ class DiningService:
         return [
             self._order_read(
                 order,
-                places.get(order.place_id, "Stol"),
+                *places.get(order.place_id, ("Stol", "table")),
                 grouped.get(order.id, []),
                 receipt_no=receipts.get(order.id),
             )
@@ -448,7 +448,7 @@ class DiningService:
             # oshxona jarayoni qayta ochiladi.
             order.kitchen_status = "preparing"
             order.updated_at = now
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             await self._notify_added_items(
                 session,
                 business_account_id=business_account_id,
@@ -458,7 +458,7 @@ class DiningService:
                 now=now,
             )
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -496,7 +496,7 @@ class DiningService:
                 )
             order.kitchen_status = body.status
             order.updated_at = now
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             if body.status == "done":
                 await self._notify(
                     session,
@@ -520,7 +520,7 @@ class DiningService:
                     now=now,
                 )
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -761,9 +761,9 @@ class DiningService:
                 )
             order.total = total
             order.updated_at = now
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -784,10 +784,10 @@ class DiningService:
                 order_id=order_id,
                 lock=True,
             )
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             if order.status == "done":
                 items = await self._repository.items(session, order_id=order.id)
-                return self._order_read(order, place_name, items)
+                return self._order_read(order, place_name, place_kind, items)
             if order.problem_open:
                 raise ApiError(
                     409,
@@ -810,7 +810,7 @@ class DiningService:
             order.status = "done"
             order.updated_at = now
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -850,7 +850,7 @@ class DiningService:
             order.problem_reason = "Bekor qilindi"
             order.problem_note = body.reason.strip()
             order.updated_at = now
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             await self._resolve(
                 session,
                 business_account_id=business_account_id,
@@ -871,7 +871,7 @@ class DiningService:
                 requires_action=False,
             )
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -905,7 +905,7 @@ class DiningService:
             order.problem_note = body.note.strip()
             order.problem_opened_at = now
             order.updated_at = now
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             suffix = f" · {order.problem_note}" if order.problem_note else ""
             await self._notify(
                 session,
@@ -919,7 +919,7 @@ class DiningService:
                 now=now,
             )
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -939,10 +939,10 @@ class DiningService:
                 order_id=order_id,
                 lock=True,
             )
-            place_name = await self._place_name(session, order)
+            place_name, place_kind = await self._place_of(session, order)
             if not order.problem_open:
                 items = await self._repository.items(session, order_id=order.id)
-                return self._order_read(order, place_name, items)
+                return self._order_read(order, place_name, place_kind, items)
             order.problem_open = False
             order.updated_at = now
             await self._resolve(
@@ -953,7 +953,7 @@ class DiningService:
                 now=now,
             )
             items = await self._repository.items(session, order_id=order.id)
-            result = self._order_read(order, place_name, items)
+            result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
 
@@ -1008,11 +1008,14 @@ class DiningService:
         )
         return (name or "Xodim")[:80]
 
-    async def _place_name(
+    async def _place_of(
         self, session: AsyncSession, order: DiningOrder
-    ) -> str:
+    ) -> tuple[str, str]:
+        """Stol nomi va turi — oshpaz kartasi ikkalasini ko'rsatadi."""
         place = await session.get(DiningPlace, order.place_id)
-        return place.name if place is not None else "Stol"
+        if place is None:
+            return "Stol", "table"
+        return place.name, place.kind
 
     async def _prepare_items(
         self,
@@ -1259,6 +1262,7 @@ class DiningService:
     def _order_read(
         order: DiningOrder,
         place_name: str,
+        place_kind: str,
         items: list[DiningOrderItem],
         *,
         receipt_no: int | None = None,
@@ -1267,6 +1271,7 @@ class DiningService:
             id=order.id,
             place_id=order.place_id,
             place_name=place_name,
+            place_kind=place_kind,
             kind=order.kind,
             customer_name=order.customer_name,
             phone=order.phone,

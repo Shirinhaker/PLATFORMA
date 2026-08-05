@@ -99,6 +99,7 @@ class DiningOrderRead(BaseModel):
     id: int
     place_id: int
     place_name: str
+    place_kind: str
     kind: str
     customer_name: str
     phone: str
