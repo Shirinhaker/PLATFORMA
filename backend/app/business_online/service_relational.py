@@ -45,6 +45,7 @@ from app.education.repository import (
     STUDENTS as EDUCATION_STUDENTS,
     EducationEnrollmentRepository,
 )
+from app.education.cabinet_service import EducationCabinetService
 from app.education.service import EducationEnrollmentService
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.notifications.repository import NotificationRepository
@@ -60,6 +61,19 @@ RELATIONAL_EDUCATION_RESOURCES = (
     EDUCATION_STUDENTS,
     EDUCATION_ENROLLMENTS,
 )
+# Yaratish/tahrirlash/o'chirish relatsion jadvalga yo'naltiriladigan resurslar.
+RELATIONAL_EDUCATION_WRITES = (EDUCATION_GROUPS, EDUCATION_STUDENTS)
+
+
+def _record_id(value: object) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ApiError(
+            404,
+            "business_online_record_not_found",
+            "Yozuv topilmadi.",
+        ) from None
 
 
 class BusinessOnlineService:
@@ -86,6 +100,9 @@ class BusinessOnlineService:
         self._education = education_repository or EducationEnrollmentRepository()
         self._education_service = education_service or EducationEnrollmentService(
             session_factory,
+            repository=self._education,
+        )
+        self._education_cabinet = EducationCabinetService(
             repository=self._education,
         )
 
@@ -141,6 +158,17 @@ class BusinessOnlineService:
             raise ApiError(422, "empty_record", "Yozuv ma’lumotlari bo‘sh.")
 
         async with self._session_factory() as session:
+            if resource in RELATIONAL_EDUCATION_WRITES and self._education.supported(
+                session
+            ):
+                return await self._education_write(
+                    session,
+                    account_id=account_id,
+                    resource=resource,
+                    operation="create",
+                    record_id=None,
+                    data=clean,
+                )
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
@@ -190,6 +218,17 @@ class BusinessOnlineService:
             raise ApiError(422, "empty_patch", "O‘zgartirish ma’lumotlari bo‘sh.")
 
         async with self._session_factory() as session:
+            if resource in RELATIONAL_EDUCATION_WRITES and self._education.supported(
+                session
+            ):
+                return await self._education_write(
+                    session,
+                    account_id=account_id,
+                    resource=resource,
+                    operation="update",
+                    record_id=record_id,
+                    data=clean,
+                )
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
@@ -231,6 +270,18 @@ class BusinessOnlineService:
             raise operation_forbidden(resource)
 
         async with self._session_factory() as session:
+            if resource in RELATIONAL_EDUCATION_WRITES and self._education.supported(
+                session
+            ):
+                _item, rows = await self._education_write(
+                    session,
+                    account_id=account_id,
+                    resource=resource,
+                    operation="delete",
+                    record_id=record_id,
+                    data={},
+                )
+                return rows
             if resource == "notifications" and self._notifications.supported(session):
                 profile = await session.get(BusinessProfile, account_id)
                 if profile is None:
@@ -358,6 +409,19 @@ class BusinessOnlineService:
                     item = find_resource_record(rows, record_id, resource)
                 await session.commit()
                 return deepcopy(item), deepcopy(rows)
+            if (
+                resource == EDUCATION_STUDENTS
+                and action == "transfer"
+                and self._education.supported(session)
+            ):
+                return await self._education_write(
+                    session,
+                    account_id=account_id,
+                    resource=resource,
+                    operation="transfer",
+                    record_id=record_id,
+                    data=clean,
+                )
             if (
                 resource == EDUCATION_ENROLLMENTS
                 and action in {"accept", "reject"}
@@ -538,6 +602,97 @@ class BusinessOnlineService:
                 resource=resource,
             )
         return resource_rows(profile.cabinet_payload, resource)
+
+    async def _education_write(
+        self,
+        session: AsyncSession,
+        *,
+        account_id: int,
+        resource: str,
+        operation: str,
+        record_id: int | str | None,
+        data: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+        """Guruh/o'quvchi yozuvini relatsion jadvalga yo'naltiradi."""
+        profile = await session.get(BusinessProfile, account_id)
+        if profile is None:
+            raise ApiError(
+                404,
+                "business_profile_not_found",
+                "Biznes profil topilmadi.",
+            )
+        ensure_resource_direction(profile, resource)
+        now = unix_now()
+        target_id = None if record_id is None else _record_id(record_id)
+        is_group = resource == EDUCATION_GROUPS
+
+        if operation == "create":
+            if is_group:
+                target_id = await self._education_cabinet.create_group_in_session(
+                    session,
+                    business_account_id=account_id,
+                    profile=profile,
+                    data=data,
+                    now=now,
+                )
+            else:
+                target_id = await self._education_cabinet.create_student_in_session(
+                    session,
+                    business_account_id=account_id,
+                    data=data,
+                    now=now,
+                )
+        elif operation == "update":
+            if is_group:
+                await self._education_cabinet.update_group_in_session(
+                    session,
+                    business_account_id=account_id,
+                    profile=profile,
+                    group_id=target_id,
+                    data=data,
+                    now=now,
+                )
+            else:
+                await self._education_cabinet.update_student_in_session(
+                    session,
+                    business_account_id=account_id,
+                    student_id=target_id,
+                    data=data,
+                    now=now,
+                )
+        elif operation == "transfer":
+            await self._education_cabinet.transfer_student_in_session(
+                session,
+                business_account_id=account_id,
+                student_id=target_id,
+                group_id=_record_id(data.get("group_id")),
+                note=str(data.get("note") or ""),
+                now=now,
+            )
+        else:
+            if is_group:
+                await self._education_cabinet.delete_group_in_session(
+                    session,
+                    business_account_id=account_id,
+                    group_id=target_id,
+                    now=now,
+                )
+            else:
+                await self._education_cabinet.delete_student_in_session(
+                    session,
+                    business_account_id=account_id,
+                    student_id=target_id,
+                    now=now,
+                )
+
+        payload = await self._hybrid_payload(session, profile)
+        displayed = display_resource_rows(payload, resource)
+        item = next(
+            (row for row in displayed if str(row.get("id")) == str(target_id)),
+            None,
+        )
+        await session.commit()
+        return deepcopy(item), deepcopy(displayed)
 
     async def _apply_enrollment_action(
         self,

@@ -160,6 +160,36 @@ class EducationStudent(Base):
     updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
 
+class EducationStudentGroupHistory(Base):
+    """O'quvchining guruhdan guruhga ko'chishi tarixi.
+
+    v1656da ko'chirish avvalgi yozuvni yopib, yangisini ochadi — shu
+    sababli o'quvchi qaysi oyda qaysi guruhda bo'lganini bilib bo'ladi.
+    """
+
+    __tablename__ = "education_student_group_history"
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        Identity(),
+        primary_key=True,
+    )
+    business_account_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("accounts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
+    student_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    group_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    started_date: Mapped[str] = mapped_column(String(20), nullable=False)
+    ended_date: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=""
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+
 class CourseEnrollment(Base):
     __tablename__ = "course_enrollments"
     __table_args__ = (
@@ -531,6 +561,21 @@ Index(
     "uq_education_teacher_payments_legacy",
     EducationTeacherPayment.business_account_id,
     EducationTeacherPayment.legacy_source_id,
+    unique=True,
+    postgresql_where=text("legacy_source_id IS NOT NULL"),
+    sqlite_where=text("legacy_source_id IS NOT NULL"),
+)
+Index(
+    "ix_education_student_group_history_student",
+    EducationStudentGroupHistory.business_account_id,
+    EducationStudentGroupHistory.student_id,
+    EducationStudentGroupHistory.started_date,
+    EducationStudentGroupHistory.id,
+)
+Index(
+    "uq_education_student_group_history_legacy",
+    EducationStudentGroupHistory.business_account_id,
+    EducationStudentGroupHistory.legacy_source_id,
     unique=True,
     postgresql_where=text("legacy_source_id IS NOT NULL"),
     sqlite_where=text("legacy_source_id IS NOT NULL"),
