@@ -22,6 +22,7 @@ from sqlalchemy.orm import aliased
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogGroup, CatalogItem
+from app.follows.model import ProfileFollow
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
@@ -1166,107 +1167,54 @@ async def load_followed_profiles(
     account_type: str,
     image_url_provider: ImageUrlProvider,
 ) -> list[PublicFollowedProfile]:
-    if account_type == "business":
-        profile = await session.get(BusinessProfile, account_id)
-        resource = "following"
-    else:
-        profile = await session.get(UserProfile, account_id)
-        resource = "follows"
-    if profile is None:
-        return []
+    """Obuna bo'lingan profillar — `profile_follows` jadvalidan.
 
-    rows = await _cabinet_records.read_resource(
-        session,
-        account_id=account_id,
-        account_type=account_type,
-        resource=resource,
-    )
-    if not rows:
-        payload = (
-            profile.cabinet_payload
-            if isinstance(profile.cabinet_payload, dict)
-            else {}
-        )
-        fallback = payload.get(resource, [])
-        rows = fallback if isinstance(fallback, list) else []
-
-    targets: list[tuple[str, int]] = []
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        kind = "business" if row.get("target_kind") == "business" else "user"
-        try:
-            legacy_id = int(row.get("target_id") or 0)
-        except (TypeError, ValueError):
-            continue
-        if legacy_id > 0:
-            targets.append((kind, legacy_id))
-    if not targets:
-        return []
-
-    mapping_rows = list(
-        (
-            await session.scalars(
-                select(LegacyIdMap).where(
-                    or_(
-                        *[
-                            (
-                                LegacyIdMap.entity_type
-                                == f"{kind}_account"
-                            )
-                            & (LegacyIdMap.legacy_id == legacy_id)
-                            for kind, legacy_id in targets
-                        ]
-                    ),
-                    LegacyIdMap.target_id.is_not(None),
-                )
-            )
-        ).all()
-    )
-    target_ids = {
-        (mapping.entity_type.removesuffix("_account"), mapping.legacy_id):
-        mapping.target_id
-        for mapping in mapping_rows
-    }
+    Ilgari ro'yxat kabinet JSON'idan o'qilib, eski identifikatorlar
+    `legacy_id_map` orqali xaritalanardi. Obunalar endi o'z jadvalida,
+    shuning uchun xaritalash kerak emas.
+    """
+    rows = list((await session.scalars(
+        select(ProfileFollow)
+        .where(ProfileFollow.follower_account_id == account_id)
+        .order_by(ProfileFollow.created_at.desc(), ProfileFollow.id.desc())
+        .limit(500)
+    )).all())
     result: list[PublicFollowedProfile] = []
-    for kind, legacy_id in targets:
-        target_id = target_ids.get((kind, legacy_id))
-        if target_id is None:
-            continue
-        if kind == "business":
-            target = await session.get(BusinessProfile, target_id)
-            if target is None:
+    for row in rows:
+        if row.target_kind == "business":
+            business = await session.get(BusinessProfile, row.target_account_id)
+            if business is None:
                 continue
             result.append(
                 PublicFollowedProfile(
                     kind="business",
                     public_id=build_public_id(
                         PublicResultKind.BUSINESS,
-                        target_id,
+                        row.target_account_id,
                     ),
-                    name=target.name,
-                    image_url=image_url_provider(target.logo_object_key),
-                    crop_x=target.logo_x,
-                    crop_y=target.logo_y,
-                    crop_zoom=target.logo_zoom,
+                    name=business.name,
+                    image_url=image_url_provider(business.logo_object_key),
+                    crop_x=business.logo_x,
+                    crop_y=business.logo_y,
+                    crop_zoom=business.logo_zoom,
                 )
             )
-        else:
-            target = await session.get(UserProfile, target_id)
-            if target is None:
-                continue
-            result.append(
-                PublicFollowedProfile(
-                    kind="user",
-                    public_id=build_public_id(
-                        PublicResultKind.USER,
-                        target_id,
-                    ),
-                    name=target.name,
-                    image_url=image_url_provider(target.avatar_object_key),
-                    crop_x=target.avatar_x,
-                    crop_y=target.avatar_y,
-                    crop_zoom=target.avatar_zoom,
-                )
+            continue
+        person = await session.get(UserProfile, row.target_account_id)
+        if person is None:
+            continue
+        result.append(
+            PublicFollowedProfile(
+                kind="user",
+                public_id=build_public_id(
+                    PublicResultKind.USER,
+                    row.target_account_id,
+                ),
+                name=person.name,
+                image_url=image_url_provider(person.avatar_object_key),
+                crop_x=person.avatar_x,
+                crop_y=person.avatar_y,
+                crop_zoom=person.avatar_zoom,
             )
+        )
     return result
