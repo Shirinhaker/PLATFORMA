@@ -31,6 +31,7 @@ ROLLBACK_SERVICES = (
     ("app.cash_register.service", "CashRegisterService"),
     ("app.catalog.service", "CatalogService"),
     ("app.debt_ledger.service", "DebtLedgerService"),
+    ("app.dining.service", "DiningService"),
     ("app.education.service", "EducationEnrollmentService"),
     ("app.expenses.service", "ExpenseService"),
     ("app.follows.service", "FollowService"),
