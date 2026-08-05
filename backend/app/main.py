@@ -26,6 +26,7 @@ from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
+from app.education.statistics_service import EducationStatisticsService
 from app.expenses.router import router as expenses_router
 from app.expenses.service import ExpenseService
 from app.inventory.router import router as inventory_router
@@ -149,6 +150,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
+            database.session,
+        )
+        app.state.education_statistics_service = EducationStatisticsService(
             database.session,
         )
         app.state.staff_service = StaffService(database.session, resolved)

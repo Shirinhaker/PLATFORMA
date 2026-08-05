@@ -28,6 +28,8 @@ import type {
   ExpenseCategoryCreate,
   ExpenseCreate,
   ExpenseDay,
+  EducationStatisticsPeriod,
+  EducationStatisticsReport,
   BusinessQueueEntry,
   BusinessQueueOfflineCreate,
   BusinessQueueProvider,
@@ -764,6 +766,20 @@ export class ApiClient {
     return this.request(
       "GET",
       `/api/v1/statistics/nav?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  getEducationStatistics(
+    period: EducationStatisticsPeriod = "month",
+    selectedDate = "",
+  ): Promise<EducationStatisticsReport> {
+    const query = new URLSearchParams({ period });
+    if (selectedDate) query.set("date", selectedDate);
+    return this.request(
+      "GET",
+      `/api/v1/education/statistics?${query.toString()}`,
       undefined,
       true,
     );
