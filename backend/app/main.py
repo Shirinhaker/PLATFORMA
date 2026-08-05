@@ -42,6 +42,8 @@ from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
+from app.follows.router import router as follows_router
+from app.follows.service import FollowService
 from app.queues.router import router as queues_router
 from app.queues.service import QueueService
 from app.staff.router import router as staff_router
@@ -148,6 +150,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             cash_register_service=app.state.cash_register_service,
             debt_ledger_service=app.state.debt_ledger_service,
         )
+        app.state.follow_service = FollowService(database.session)
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
@@ -191,6 +194,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(advertisements_router)
     app.include_router(listings_router)
     app.include_router(orders_router)
+    app.include_router(follows_router)
     app.include_router(queues_router)
     app.include_router(education_router)
     app.include_router(staff_router)
