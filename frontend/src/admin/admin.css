@@ -401,3 +401,33 @@ th {
     overflow-x: auto;
   }
 }
+
+.audit-json {
+  margin: 4px 0 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #081713;
+  border: 1px solid var(--admin-line);
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.export-link {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line);
+  color: var(--admin-text);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidebar-note {
+  margin-top: 14px;
+  padding: 0 12px;
+  font-size: 11px;
+  color: #8faea4;
+}

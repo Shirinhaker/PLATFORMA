@@ -23,7 +23,10 @@ from app.core.errors import ApiError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
+from app.admin.moderation_service import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
+from app.admin.reports_service import AdminReportsService
+from app.admin.reports_router import router as reports_router
 from app.admin.router import router as admin_router
 from app.admin.service import AdminAuthService
 from app.debt_ledger.router import router as debt_ledger_router
@@ -176,6 +179,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             now=lambda: int(time.time()),
             download_url_provider=app.state.r2.create_download_url,
         )
+        app.state.admin_moderation_service = AdminModerationService(
+            database.session
+        )
+        app.state.admin_reports_service = AdminReportsService(
+            database.session
+        )
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
@@ -222,6 +231,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(follows_router)
     app.include_router(payments_router)
     app.include_router(admin_router)
+    app.include_router(reports_router)
     app.include_router(queues_router)
     app.include_router(education_router)
     app.include_router(staff_router)
