@@ -1,0 +1,403 @@
+/* Admin paneli — v1656 `admin/styles.css` ko'rinishi. */
+
+:root {
+  --admin-bg: #071310;
+  --admin-panel: #0d1f1a;
+  --admin-line: #1c3a31;
+  --admin-text: #e6f4ef;
+  --admin-muted: #8faea4;
+  --admin-accent: #16a34a;
+  --admin-danger: #dc2626;
+}
+
+body {
+  margin: 0;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+.admin-boot {
+  padding: 40px;
+  text-align: center;
+  color: #8faea4;
+}
+
+/* --- kirish --- */
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  justify-content: center;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--admin-accent);
+  color: #041008;
+  font-weight: 800;
+}
+
+.login-brand small {
+  letter-spacing: 2px;
+  color: #8faea4;
+}
+
+.login-card {
+  width: min(380px, 100%);
+  background: var(--admin-panel);
+  border: 1px solid var(--admin-line);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #8faea4;
+}
+
+.login-card h1 {
+  margin: 6px 0 8px;
+  font-size: 22px;
+}
+
+.login-card p {
+  color: #8faea4;
+  margin: 0 0 16px;
+}
+
+label {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 12px;
+  color: #8faea4;
+}
+
+input,
+select {
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line);
+  background: #081713;
+  color: var(--admin-text);
+  font-size: 14px;
+}
+
+button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--admin-accent);
+  color: #041008;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.secondary {
+  background: transparent;
+  border-color: var(--admin-line);
+  color: var(--admin-text);
+}
+
+button.danger {
+  border-color: var(--admin-danger);
+  color: #fca5a5;
+}
+
+button.compact {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #08281c;
+  color: #a7f3d0;
+  font-size: 13px;
+}
+
+.message.error {
+  background: #2a0f0f;
+  color: #fca5a5;
+}
+
+/* --- ilova --- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-brand small {
+  letter-spacing: 2px;
+  color: #8faea4;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-id {
+  color: #8faea4;
+  font-size: 12px;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 58px);
+}
+
+.sidebar {
+  border-right: 1px solid var(--admin-line);
+  padding: 14px 10px;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  color: var(--admin-text);
+  font-weight: 500;
+  text-align: left;
+}
+
+.nav-item.active {
+  background: #102a22;
+  color: #a7f3d0;
+}
+
+.workspace {
+  padding: 18px;
+  overflow-x: auto;
+}
+
+.page-head {
+  margin-bottom: 14px;
+}
+
+.page-head h1 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.filterbar select {
+  width: auto;
+  min-width: 170px;
+}
+
+.panel {
+  background: var(--admin-panel);
+  border: 1px solid var(--admin-line);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--admin-line);
+  white-space: nowrap;
+}
+
+th {
+  color: #8faea4;
+  font-weight: 600;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.detail-grid dt {
+  font-size: 11px;
+  color: #8faea4;
+}
+
+.detail-grid dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.attempts {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.attempt {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #8faea4;
+}
+
+.attempt .reason {
+  color: #fca5a5;
+}
+
+.receipt {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid var(--admin-line);
+}
+
+.decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.settings-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.settings-row > div:first-child {
+  flex: 1 1 140px;
+}
+
+.settings-row input {
+  width: 130px;
+}
+
+.settings-form {
+  display: grid;
+  gap: 4px;
+}
+
+.muted {
+  color: #8faea4;
+  font-size: 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--admin-line);
+  }
+
+  .sidebar nav {
+    grid-auto-flow: column;
+    overflow-x: auto;
+  }
+}
