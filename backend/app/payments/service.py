@@ -81,10 +81,12 @@ class PaymentService:
         *,
         now: Callable[[], int] | None = None,
         activator: Activator | None = None,
+        download_url_provider: Callable[..., str] | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._now = now or (lambda: int(time.time()))
         self._activator = activator
+        self._download_url = download_url_provider
 
     async def catalog(self) -> PaymentCatalogRead:
         async with self._session_factory() as session:
@@ -303,13 +305,22 @@ class PaymentService:
         self,
         *,
         payment_id: int,
-        reviewer_account_id: int,
+        admin_telegram_id: int,
         decision: str,
-        body: PaymentDecision,
+        reason: str = "",
+        internal_note: str = "",
     ) -> PaymentRequestRead:
-        """Tasdiqlash yoki rad etish — v1656 `_review` bilan bir xil."""
-        reason = body.reason.strip()
-        if decision == "rejected" and not reason:
+        """Tasdiqlash, rad etish yoki bekor qilish.
+
+        Faqat admin routeridan chaqiriladi — biznes egasi o'z to'lovini
+        tasdiqlay olmasligi kerak.
+        """
+        reason = reason.strip()
+        if decision not in {"approved", "rejected", "cancelled"}:
+            raise ApiError(
+                400, "payment_decision_invalid", "Qaror turi noto‘g‘ri."
+            )
+        if decision in {"rejected", "cancelled"} and not reason:
             raise ApiError(
                 400,
                 "payment_reason_required",
@@ -334,13 +345,17 @@ class PaymentService:
                 await self._activate(session, request, now)
             previous = request.status
             request.status = decision
-            request.reviewed_by_account_id = reviewer_account_id
+            request.reviewed_by_admin_tg_id = admin_telegram_id
             request.public_reason = reason
+            if internal_note:
+                request.internal_note = internal_note[:1000]
             request.updated_at = now
             if decision == "approved":
                 request.approved_at = now
-            else:
+            elif decision == "rejected":
                 request.rejected_at = now
+            else:
+                request.cancelled_at = now
             await session.execute(
                 PaymentAttempt.__table__.update()
                 .where(
@@ -348,7 +363,9 @@ class PaymentService:
                     PaymentAttempt.review_status == "pending",
                 )
                 .values(
-                    review_status=decision,
+                    review_status=(
+                        "approved" if decision == "approved" else "rejected"
+                    ),
                     reviewed_at=now,
                     review_reason=reason,
                 )
@@ -359,7 +376,7 @@ class PaymentService:
                 from_status=previous,
                 to_status=decision,
                 actor_kind="admin",
-                actor_id=str(reviewer_account_id),
+                actor_id=str(admin_telegram_id),
                 reason=reason,
                 now=now,
             )

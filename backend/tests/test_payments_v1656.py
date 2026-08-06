@@ -23,7 +23,6 @@ from app.payments.model import (
     PlatformPrice,
 )
 from app.payments.schemas import (
-    PaymentDecision,
     PaymentReceipt,
     PaymentRequestCreate,
     PaymentResubmit,
@@ -250,9 +249,8 @@ async def test_approval_activates_the_subscription(payments):
 
     approved = await service.review(
         payment_id=created.id,
-        reviewer_account_id=ADMIN,
+        admin_telegram_id=ADMIN,
         decision="approved",
-        body=PaymentDecision(),
     )
 
     assert approved.status == "approved"
@@ -273,9 +271,9 @@ async def test_rejection_requires_a_reason(payments):
     with pytest.raises(ApiError) as error:
         await service.review(
             payment_id=created.id,
-            reviewer_account_id=ADMIN,
+            admin_telegram_id=ADMIN,
             decision="rejected",
-            body=PaymentDecision(reason="  "),
+            reason="  ",
         )
 
     assert error.value.code == "payment_reason_required"
@@ -287,17 +285,16 @@ async def test_second_review_is_rejected(payments):
     created = await _make_request(service)
     await service.review(
         payment_id=created.id,
-        reviewer_account_id=ADMIN,
+        admin_telegram_id=ADMIN,
         decision="approved",
-        body=PaymentDecision(),
     )
 
     with pytest.raises(ApiError) as error:
         await service.review(
             payment_id=created.id,
-            reviewer_account_id=ADMIN,
+            admin_telegram_id=ADMIN,
             decision="rejected",
-            body=PaymentDecision(reason="xato"),
+            reason="xato",
         )
 
     assert error.value.code == "payment_already_reviewed"
@@ -308,9 +305,9 @@ async def test_resubmit_supersedes_the_old_receipt(payments):
     created = await _make_request(service)
     await service.review(
         payment_id=created.id,
-        reviewer_account_id=ADMIN,
+        admin_telegram_id=ADMIN,
         decision="rejected",
-        body=PaymentDecision(reason="Chek xira"),
+        reason="Chek xira",
     )
 
     again = await service.resubmit(
@@ -338,9 +335,8 @@ async def test_same_plan_extends_the_existing_subscription(payments):
     first = await _make_request(service)
     await service.review(
         payment_id=first.id,
-        reviewer_account_id=ADMIN,
+        admin_telegram_id=ADMIN,
         decision="approved",
-        body=PaymentDecision(),
     )
     with Session(engine) as check:
         first_expiry = check.scalars(
@@ -350,9 +346,8 @@ async def test_same_plan_extends_the_existing_subscription(payments):
     second = await _make_request(service)
     await service.review(
         payment_id=second.id,
-        reviewer_account_id=ADMIN,
+        admin_telegram_id=ADMIN,
         decision="approved",
-        body=PaymentDecision(),
     )
 
     with Session(engine) as check:

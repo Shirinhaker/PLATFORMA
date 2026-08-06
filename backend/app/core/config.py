@@ -64,6 +64,28 @@ class Settings(BaseSettings):
     telegram_resend_seconds: int = 60
     telegram_max_attempts: int = 5
 
+    # Admin paneli. Ro'yxat bo'sh bo'lsa hech kim kira olmaydi — v1656da
+    # standart qiymatga ikkita Telegram ID yozilgan edi, bu xavfli.
+    admin_telegram_ids: str = ""
+    admin_cookie_name: str = "koprik_admin_session"
+    admin_challenge_ttl_seconds: int = 5 * 60
+    admin_challenge_max_attempts: int = 5
+    admin_session_ttl_seconds: int = 8 * 60 * 60
+    # Bo'sh turgan admin sessiyasi shu muddatdan keyin yopiladi.
+    admin_session_idle_seconds: int = 30 * 60
+
+    @property
+    def admin_telegram_id_set(self) -> frozenset[int]:
+        result: set[int] = set()
+        for raw in self.admin_telegram_ids.split(","):
+            try:
+                value = int(raw.strip())
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                result.add(value)
+        return frozenset(result)
+
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:

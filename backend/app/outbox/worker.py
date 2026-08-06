@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from sqlalchemy import and_, delete, or_
 
+from app.admin.model import AdminAuthChallenge
 from app.auth.model import AuthChallenge, AuthSession, PendingRegistration
 from app.auth.security import decrypt_outbox_secret, derive_otp
 from app.auth.telegram import TelegramClient
@@ -64,6 +65,31 @@ async def send_auth_code(
         )
 
 
+async def send_admin_code(
+    settings: Settings,
+    database: Database,
+    telegram: TelegramClient,
+    payload: dict[str, Any],
+) -> None:
+    """Admin kodi bazada ham, navbatda ham saqlanmaydi — qayta hisoblanadi."""
+    async with database.session() as session:
+        challenge = await session.get(
+            AdminAuthChallenge, int(payload["challenge_id"])
+        )
+        if (
+            challenge is None
+            or challenge.consumed_at is not None
+            or challenge.expires_at <= datetime.now(UTC)
+            or challenge.telegram_user_id != int(payload["chat_id"])
+        ):
+            return
+        code = derive_otp(challenge.id, 0, settings.otp_secret)
+        await telegram.send_message(
+            challenge.telegram_user_id,
+            f"Koprik admin tasdiqlash kodi: {code}",
+        )
+
+
 async def send_credentials(
     settings: Settings,
     telegram: TelegramClient,
@@ -96,10 +122,14 @@ def build_handlers(
     async def credentials_handler(payload: dict[str, Any]) -> None:
         await send_credentials(settings, telegram, payload)
 
+    async def admin_code_handler(payload: dict[str, Any]) -> None:
+        await send_admin_code(settings, database, telegram, payload)
+
     return {
         "foundation.echo": foundation_echo,
         "telegram.auth_code.send": auth_code_handler,
         "telegram.credentials.send": credentials_handler,
+        "telegram.admin_code.send": admin_code_handler,
     }
 
 

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,9 @@ from app.core.errors import ApiError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
+from app.admin.payments_service import AdminPaymentService
+from app.admin.router import router as admin_router
+from app.admin.service import AdminAuthService
 from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
@@ -160,7 +164,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.follow_service = FollowService(database.session)
-        app.state.payment_service = PaymentService(database.session)
+        app.state.payment_service = PaymentService(
+            database.session,
+            download_url_provider=app.state.r2.create_download_url,
+        )
+        app.state.admin_auth_service = AdminAuthService(
+            database.session, resolved
+        )
+        app.state.admin_payment_service = AdminPaymentService(
+            database.session,
+            now=lambda: int(time.time()),
+            download_url_provider=app.state.r2.create_download_url,
+        )
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
@@ -206,6 +221,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(orders_router)
     app.include_router(follows_router)
     app.include_router(payments_router)
+    app.include_router(admin_router)
     app.include_router(queues_router)
     app.include_router(education_router)
     app.include_router(staff_router)

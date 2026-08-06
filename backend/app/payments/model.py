@@ -158,6 +158,8 @@ class PaymentRequest(Base):
         String(16), nullable=False, server_default="pending"
     )
     reviewed_by_account_id: Mapped[int | None] = mapped_column(BigInteger)
+    # Adminda akkaunt yo'q — qaror Telegram ID bilan yoziladi.
+    reviewed_by_admin_tg_id: Mapped[int | None] = mapped_column(BigInteger)
     approved_at: Mapped[int] = mapped_column(
         BigInteger, nullable=False, server_default="0"
     )
