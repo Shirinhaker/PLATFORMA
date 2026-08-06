@@ -24,6 +24,16 @@ import type {
   Debtor,
   DebtorCreate,
   DebtorDetail,
+  DiningBookingBody,
+  DiningCashierLine,
+  DiningItemInput,
+  DiningOrder,
+  DiningOrderBody,
+  DiningPaymentBody,
+  DiningPaymentResult,
+  DiningPlace,
+  DiningPlaceMove,
+  DiningPlaceWrite,
   ExpenseCategories,
   ExpenseCategoryCreate,
   ExpenseCreate,
@@ -977,6 +987,134 @@ export class ApiClient {
 
   attachBusinessPaymentQr(body: { object_key: string }): Promise<BusinessProfile> {
     return this.request("PUT", "/api/v1/business-profile/payment-qr", body, true);
+  }
+
+  // --- Ovqatlanish zanjiri (K13) ---
+
+  getDiningPlaces(): Promise<DiningPlace[]> {
+    return this.request("GET", "/api/v1/dining/places", undefined, true);
+  }
+
+  createDiningPlace(body: DiningPlaceWrite): Promise<DiningPlace> {
+    return this.request("POST", "/api/v1/dining/places", body, true);
+  }
+
+  updateDiningPlace(
+    placeId: number,
+    body: DiningPlaceWrite,
+  ): Promise<DiningPlace> {
+    return this.request(
+      "PUT", `/api/v1/dining/places/${placeId}`, body, true,
+    );
+  }
+
+  moveDiningPlace(
+    placeId: number,
+    body: DiningPlaceMove,
+  ): Promise<DiningPlace> {
+    return this.request(
+      "PUT", `/api/v1/dining/places/${placeId}/position`, body, true,
+    );
+  }
+
+  deleteDiningPlace(placeId: number): Promise<void> {
+    return this.request(
+      "DELETE", `/api/v1/dining/places/${placeId}`, undefined, true,
+    );
+  }
+
+  clearDiningPlace(placeId: number): Promise<void> {
+    return this.request(
+      "POST", `/api/v1/dining/places/${placeId}/clear`, undefined, true,
+    );
+  }
+
+  bookDiningPlace(
+    placeId: number,
+    body: DiningBookingBody,
+  ): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/places/${placeId}/booking`, body, true,
+    );
+  }
+
+  createDiningOrder(
+    placeId: number,
+    body: DiningOrderBody,
+  ): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/places/${placeId}/order`, body, true,
+    );
+  }
+
+  getDiningOrders(): Promise<DiningOrder[]> {
+    return this.request("GET", "/api/v1/dining/orders", undefined, true);
+  }
+
+  addDiningOrderItems(
+    orderId: number,
+    items: DiningItemInput[],
+  ): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/orders/${orderId}/items`, { items }, true,
+    );
+  }
+
+  setDiningKitchenStatus(
+    orderId: number,
+    status: "preparing" | "done",
+  ): Promise<DiningOrder> {
+    return this.request(
+      "PUT", `/api/v1/dining/orders/${orderId}/kitchen`, { status }, true,
+    );
+  }
+
+  confirmDiningPayment(
+    orderId: number,
+    body: DiningPaymentBody,
+  ): Promise<DiningPaymentResult> {
+    return this.request(
+      "POST", `/api/v1/dining/orders/${orderId}/payment`, body, true,
+    );
+  }
+
+  updateDiningCashierItems(
+    orderId: number,
+    items: DiningCashierLine[],
+  ): Promise<DiningOrder> {
+    return this.request(
+      "PUT", `/api/v1/dining/orders/${orderId}/cashier-items`, { items }, true,
+    );
+  }
+
+  finalizeDiningOrder(orderId: number): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/orders/${orderId}/finalize`, undefined, true,
+    );
+  }
+
+  cancelDiningOrder(orderId: number, reason: string): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/orders/${orderId}/cancel`, { reason }, true,
+    );
+  }
+
+  openDiningProblem(
+    orderId: number,
+    body: { reason: string; note: string },
+  ): Promise<DiningOrder> {
+    return this.request(
+      "POST", `/api/v1/dining/orders/${orderId}/problem`, body, true,
+    );
+  }
+
+  resolveDiningProblem(orderId: number): Promise<DiningOrder> {
+    return this.request(
+      "POST",
+      `/api/v1/dining/orders/${orderId}/problem/resolve`,
+      undefined,
+      true,
+    );
   }
 }
 

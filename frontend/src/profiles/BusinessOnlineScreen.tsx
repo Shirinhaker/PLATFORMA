@@ -17,6 +17,14 @@ import {
 } from "../listings/OwnerListingsV1656";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
 import {
+  BusinessDiningV1656,
+  supportsDiningApi,
+} from "../dining/BusinessDiningV1656";
+import {
+  BusinessKitchenV1656,
+  supportsDiningKitchenApi,
+} from "../dining/BusinessKitchenV1656";
+import {
   OrdersCabinetV1656,
   type OrdersApi,
 } from "../orders/OrdersCabinetV1656";
@@ -265,7 +273,15 @@ export function BusinessOnlineScreen({
       || (["medical-providers", "medical-queue"].includes(view)
         && supportsBusinessQueueApi(api))
     ) return;
-    const names = viewResources(view, primary);
+    const names = viewResources(view, primary).filter((name) => !(
+      view === "dining-places"
+      && supportsDiningApi(api)
+      // Stollar va zakazlar endi `/api/v1/dining` dan keladi;
+      // menyu (`items`) hali katalog resursida.
+      && (name === "dining_places" || name === "dining_orders")
+    ) && !(
+      view === "dining-kitchen" && supportsDiningKitchenApi(api)
+    ));
     void refresh(...names);
     // API instance App davomida barqaror. View o‘zgarganda serverdan yangilanadi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -847,7 +863,30 @@ function renderContent(context: RenderContext): ReactNode {
           direction={profile.direction}
         />
       );
+    case "dining-kitchen":
+      if (supportsDiningKitchenApi(context.api)) {
+        return (
+          <BusinessKitchenV1656
+            api={context.api}
+            // Bo'limning o'zi `kitchen` vakolati bilan ochiladi
+            // (`MENU_PERMISSIONS`), server ham qayta tekshiradi.
+            permissions={null}
+            onBackHandlerChange={context.setSubscreenBack}
+          />
+        );
+      }
+      return null;
     case "dining-places":
+      if (supportsDiningApi(context.api)) {
+        return (
+          <BusinessDiningV1656
+            api={context.api}
+            menuItems={context.resources.items ?? []}
+            groups={context.resources.item_groups ?? []}
+            onBackHandlerChange={context.setSubscreenBack}
+          />
+        );
+      }
       return (
         <BusinessDiningV1656View
           places={context.resources.dining_places ?? []}

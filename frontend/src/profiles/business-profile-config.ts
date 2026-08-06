@@ -386,6 +386,7 @@ export const ONLINE_MENUS: Menu[] = [
   { icon: "💳", label: "To‘lovlarim", caption: "Yuborilgan to‘lovlar va tarix", view: "payments", payload: "subscription_payments" },
   { icon: "🛍️", label: "Mahsulot va xizmatlar", caption: "Guruhlar va katalog yozuvlari", view: "items", payload: ["item_groups", "items"] },
   { icon: "🍽️", label: "Stollar va xonalar", caption: "Zal rejasini joylashtirish", view: "dining-places", payload: "dining_places", directions: ["Umumiy ovqatlanish"] },
+  { icon: "👨‍🍳", label: "Oshpaz buyurtmalari", caption: "Tayyorlanayotgan ichki zakazlar", view: "dining-kitchen", payload: "dining_orders", directions: ["Umumiy ovqatlanish"] },
   { icon: "📥", label: "Kursga yozilishlar", caption: "Yangi arizalarni guruhga qabul qilish", view: "education-enrollments", payload: "education_enrollments", directions: ["Ta'lim faoliyati"] },
   { icon: "🧑‍💼", label: "Xizmat ko‘rsatuvchilar", caption: "Xizmat ko‘rsatuvchi kartasi, xizmat va ish jadvali", view: "medical-providers", payload: "medical_doctors", directions: QUEUE_DIRECTIONS },
   { icon: "🏥", label: "Navbat boshqaruvi", caption: "Onlayn va oflayn yagona navbat", view: "medical-queue", payload: "medical_queue", directions: QUEUE_DIRECTIONS },

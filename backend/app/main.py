@@ -24,6 +24,8 @@ from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
 from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
+from app.dining.router import router as dining_router
+from app.dining.service import DiningService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
 from app.education.statistics_service import EducationStatisticsService
@@ -152,6 +154,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             cash_register_service=app.state.cash_register_service,
             debt_ledger_service=app.state.debt_ledger_service,
         )
+        app.state.dining_service = DiningService(
+            database.session,
+            inventory=app.state.inventory_service,
+            debt_ledger=app.state.debt_ledger_service,
+        )
         app.state.follow_service = FollowService(database.session)
         app.state.payment_service = PaymentService(database.session)
         app.state.queue_service = QueueService(database.session)
@@ -205,6 +212,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(inventory_router)
     app.include_router(cash_register_router)
     app.include_router(debt_ledger_router)
+    app.include_router(dining_router)
     app.include_router(expenses_router)
     app.include_router(statistics_router)
 
