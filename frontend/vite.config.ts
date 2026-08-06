@@ -38,6 +38,16 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        // Admin paneli alohida sayt: foydalanuvchi ilovasi bilan
+        // bitta JS to'plamda bo'lmaydi.
+        input: {
+          main: "index.html",
+          admin: "admin.html",
+        },
+      },
+    },
     ...(apiTarget ? {
       preview: {
         proxy: {

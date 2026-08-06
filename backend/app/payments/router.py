@@ -4,13 +4,11 @@ from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.dependencies import (
     CurrentAccount,
-    require_business_owner,
     require_csrf,
     require_current_account,
 )
 from app.payments.schemas import (
     PaymentCatalogRead,
-    PaymentDecision,
     PaymentRequestCreate,
     PaymentRequestRead,
     PaymentResubmit,
@@ -80,33 +78,7 @@ async def resubmit_payment(
     )
 
 
-@router.post("/{payment_id}/approve", response_model=PaymentRequestRead)
-async def approve_payment(
-    payment_id: PaymentId,
-    body: PaymentDecision,
-    current: CurrentWrite,
-    service: ServiceDep,
-) -> PaymentRequestRead:
-    require_business_owner(current)
-    return await service.review(
-        payment_id=payment_id,
-        reviewer_account_id=current.account_id,
-        decision="approved",
-        body=body,
-    )
-
-
-@router.post("/{payment_id}/reject", response_model=PaymentRequestRead)
-async def reject_payment(
-    payment_id: PaymentId,
-    body: PaymentDecision,
-    current: CurrentWrite,
-    service: ServiceDep,
-) -> PaymentRequestRead:
-    require_business_owner(current)
-    return await service.review(
-        payment_id=payment_id,
-        reviewer_account_id=current.account_id,
-        decision="rejected",
-        body=body,
-    )
+# Tasdiqlash va rad etish bu yerda emas — `/api/v1/admin/payments/...`
+# ostida, alohida admin sessiyasi bilan. Ilgari ular shu routerda
+# `require_business_owner` bilan turgan edi, ya'ni har qanday biznes
+# egasi o'zining to'lovini o'zi tasdiqlay olardi.

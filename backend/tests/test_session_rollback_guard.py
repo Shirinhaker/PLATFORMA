@@ -27,6 +27,7 @@ import pytest
 
 # `session.rollback()` chaqiradigan barcha servislar.
 ROLLBACK_SERVICES = (
+    ("app.admin.payments_service", "AdminPaymentService"),
     ("app.auth.service", "AuthService"),
     ("app.cash_register.service", "CashRegisterService"),
     ("app.catalog.service", "CatalogService"),
