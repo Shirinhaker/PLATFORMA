@@ -82,6 +82,92 @@ export type AdminMethodRow = {
 
 export type AdminMethodWrite = Omit<AdminMethodRow, "id">;
 
+export type AdminAccountRow = {
+  actor_type: string;
+  account_id: number;
+  login: string;
+  telegram_user_id: number | null;
+  name: string;
+  phone: string;
+  restrictions: string[];
+};
+
+export type AdminRestrictionRow = {
+  id: number;
+  restriction: string;
+  status: string;
+  reason: string;
+  created_by_tg_id: number;
+  created_at: number;
+  revoked_reason: string;
+  revoked_at: number;
+};
+
+export type AdminNoteRow = {
+  id: number;
+  note: string;
+  admin_tg_id: number;
+  created_at: number;
+};
+
+export type AdminAccountDetail = {
+  actor_type: string;
+  account_id: number;
+  login: string;
+  telegram_user_id: number | null;
+  status: string;
+  created_at: number;
+  name: string;
+  phone: string;
+  restrictions: AdminRestrictionRow[];
+  notes: AdminNoteRow[];
+};
+
+export type AdminContentHistory = {
+  status: string;
+  reason: string;
+  changed_by_tg_id: number;
+  created_at: number;
+};
+
+export type AdminContentStatus = {
+  content_kind: string;
+  content_id: number;
+  status: string;
+  history: AdminContentHistory[];
+};
+
+export type ReportRow = {
+  id: number;
+  reporter_account_id: number;
+  content_kind: string;
+  content_id: number;
+  reason_code: string;
+  comment: string;
+  status: string;
+  assigned_admin_tg_id: number | null;
+  resolution: string;
+  created_at: number;
+  updated_at: number;
+};
+
+export type AuditRow = {
+  id: number;
+  admin_tg_id: number;
+  action: string;
+  target_kind: string;
+  target_id: string;
+  reason: string;
+  created_at: number;
+};
+
+export type AuditDetail = AuditRow & {
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  ip_hash: string;
+  user_agent: string;
+};
+
 export type AdminDecision = {
   reason: string;
   internal_note: string;
@@ -202,6 +288,116 @@ export class AdminApiClient {
     return this.request(
       "PUT", `/api/v1/admin/payment-methods/${methodId}`, body,
     );
+  }
+
+  accounts(
+    actorType: "user" | "business",
+    query: string,
+    restriction: string,
+  ): Promise<AdminAccountRow[]> {
+    const search = new URLSearchParams();
+    if (query) search.set("query", query);
+    if (restriction) search.set("restriction", restriction);
+    const suffix = search.toString() ? `?${search}` : "";
+    return this.request("GET", `/api/v1/admin/accounts/${actorType}${suffix}`);
+  }
+
+  account(
+    actorType: string,
+    accountId: number,
+  ): Promise<AdminAccountDetail> {
+    return this.request(
+      "GET", `/api/v1/admin/accounts/${actorType}/${accountId}`,
+    );
+  }
+
+  restrict(
+    actorType: string,
+    accountId: number,
+    body: { restriction: string; reason: string },
+  ): Promise<{ id: number; already_active: boolean }> {
+    return this.request(
+      "POST", `/api/v1/admin/accounts/${actorType}/${accountId}/restrict`, body,
+    );
+  }
+
+  unrestrict(
+    actorType: string,
+    accountId: number,
+    body: { restriction: string; reason: string },
+  ): Promise<{ id: number; already_active: boolean }> {
+    return this.request(
+      "POST",
+      `/api/v1/admin/accounts/${actorType}/${accountId}/unrestrict`,
+      body,
+    );
+  }
+
+  addNote(
+    actorType: string,
+    accountId: number,
+    note: string,
+  ): Promise<AdminNoteRow> {
+    return this.request(
+      "POST", `/api/v1/admin/accounts/${actorType}/${accountId}/notes`,
+      { note },
+    );
+  }
+
+  contentStatus(
+    contentKind: string,
+    contentId: number,
+  ): Promise<AdminContentStatus> {
+    return this.request(
+      "GET", `/api/v1/admin/content/${contentKind}/${contentId}`,
+    );
+  }
+
+  setContentStatus(
+    contentKind: string,
+    contentId: number,
+    action: "hide" | "restore" | "remove",
+    reason: string,
+  ): Promise<unknown> {
+    return this.request(
+      "POST", `/api/v1/admin/content/${contentKind}/${contentId}/${action}`,
+      { reason },
+    );
+  }
+
+  reports(status: string): Promise<ReportRow[]> {
+    const search = status ? `?status=${encodeURIComponent(status)}` : "";
+    return this.request("GET", `/api/v1/admin/reports${search}`);
+  }
+
+  assignReport(reportId: number): Promise<ReportRow> {
+    return this.request(
+      "POST", `/api/v1/admin/reports/${reportId}/assign`,
+    );
+  }
+
+  decideReport(
+    reportId: number,
+    decision: "resolve" | "dismiss",
+    resolution: string,
+  ): Promise<ReportRow> {
+    return this.request(
+      "POST", `/api/v1/admin/reports/${reportId}/${decision}`, { resolution },
+    );
+  }
+
+  audit(action: string): Promise<AuditRow[]> {
+    const search = action ? `?action=${encodeURIComponent(action)}` : "";
+    return this.request("GET", `/api/v1/admin/audit${search}`);
+  }
+
+  auditDetail(auditId: number): Promise<AuditDetail> {
+    return this.request("GET", `/api/v1/admin/audit/${auditId}`);
+  }
+
+  auditExportUrl(action: string): string {
+    const search = action ? `?action=${encodeURIComponent(action)}` : "";
+    return `${this.baseUrl}/api/v1/admin/audit/export.csv${search}`;
   }
 }
 

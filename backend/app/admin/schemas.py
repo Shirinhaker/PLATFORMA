@@ -126,3 +126,146 @@ class AdminMethodWrite(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
     sort_order: int = Field(default=0, ge=0, le=999)
     active: bool = True
+
+
+# --- A2: moderatsiya ---
+
+
+class AdminAccountRow(BaseModel):
+    actor_type: str
+    account_id: int
+    login: str
+    telegram_user_id: int | None
+    name: str
+    phone: str
+    restrictions: list[str]
+
+
+class AdminRestrictionRow(BaseModel):
+    id: int
+    restriction: str
+    status: str
+    reason: str
+    created_by_tg_id: int
+    created_at: int
+    revoked_reason: str
+    revoked_at: int
+
+
+class AdminNoteRow(BaseModel):
+    id: int
+    note: str
+    admin_tg_id: int
+    created_at: int
+
+
+class AdminAccountDetail(BaseModel):
+    actor_type: str
+    account_id: int
+    login: str
+    telegram_user_id: int | None
+    status: str
+    created_at: int
+    name: str
+    phone: str
+    restrictions: list[AdminRestrictionRow]
+    notes: list[AdminNoteRow]
+
+
+class AdminRestrictionWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    restriction: str = Field(
+        pattern="^(content_hidden|account_blocked)$",
+    )
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class AdminRestrictionResult(BaseModel):
+    id: int
+    already_active: bool
+
+
+class AdminNoteWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str = Field(min_length=1, max_length=2000)
+
+
+class AdminContentWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(default="", max_length=2000)
+
+
+class AdminContentHistory(BaseModel):
+    status: str
+    reason: str
+    changed_by_tg_id: int
+    created_at: int
+
+
+class AdminContentStatus(BaseModel):
+    content_kind: str
+    content_id: int
+    status: str
+    history: list[AdminContentHistory] = Field(default_factory=list)
+
+
+class AdminContentResult(BaseModel):
+    content_kind: str
+    content_id: int
+    status: str
+    previous_status: str
+    created_at: int
+
+
+# --- A3: shikoyatlar va audit ---
+
+
+class ReportCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content_kind: str = Field(min_length=1, max_length=32)
+    content_id: int = Field(gt=0)
+    reason_code: str = Field(
+        pattern="^(fraud|spam|illegal|abuse|other)$",
+    )
+    comment: str = Field(default="", max_length=1000)
+
+
+class ReportRow(BaseModel):
+    id: int
+    reporter_account_id: int
+    content_kind: str
+    content_id: int
+    reason_code: str
+    comment: str
+    status: str
+    assigned_admin_tg_id: int | None
+    resolution: str
+    created_at: int
+    updated_at: int
+
+
+class ReportDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resolution: str = Field(min_length=1, max_length=2000)
+
+
+class AuditRow(BaseModel):
+    id: int
+    admin_tg_id: int
+    action: str
+    target_kind: str
+    target_id: str
+    reason: str
+    created_at: int
+
+
+class AuditDetail(AuditRow):
+    before: dict[str, Any] = Field(default_factory=dict)
+    after: dict[str, Any] = Field(default_factory=dict)
+    ip_hash: str
+    user_agent: str
