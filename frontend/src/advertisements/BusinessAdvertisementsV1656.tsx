@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { BusinessOnlineRecord } from "../api/business-online-types";
-import type { Advertisement, AdvertisementTarget } from "../api/types";
+import type {
+  Advertisement,
+  AdvertisementTarget,
+} from "../api/advertisement-types";
 import { CrudEditorView } from "../profiles/BusinessOnlineCrudEditorView";
 import type { PaymentTarget } from "../profiles/PaymentRequestModal";
 

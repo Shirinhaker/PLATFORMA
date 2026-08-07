@@ -127,6 +127,10 @@ yuklab, kalitni qaytaradi (chek bilan bir xil naqsh). Shu sababli
 joylash sxemalari alohida `authoring_schemas.py` ga chiqarildi:
 public fayl toza qoladi, tekshiruv o'z kuchida.
 
+Frontendda ham xuddi shunday: `test_phase3c_content_migration_contract`
+`types.ts` ning oxirini public kontrakt deb tekshiradi, shuning uchun
+joylash tiplari `advertisement-types.ts` ga chiqarildi.
+
 ## Testlar
 
 `backend/tests/test_advertisement_authoring.py` — 13 ta test.

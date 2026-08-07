@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Advertisement } from "../api/types";
+import type { Advertisement } from "../api/advertisement-types";
 import {
   BusinessAdvertisementsV1656,
   paymentTarget,

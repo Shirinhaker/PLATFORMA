@@ -24,11 +24,6 @@ import type {
   Debtor,
   DebtorCreate,
   DebtorDetail,
-  Advertisement,
-  AdvertisementCreate,
-  AdvertisementQuote,
-  AdvertisementQuoteRequest,
-  AdvertisementRates,
   DiningBookingBody,
   DiningCashierLine,
   DiningItemInput,
@@ -109,6 +104,13 @@ import type {
   QueueNotificationRead,
   QueueSlots,
 } from "./types";
+import type {
+  Advertisement,
+  AdvertisementCreate,
+  AdvertisementQuote,
+  AdvertisementQuoteRequest,
+  AdvertisementRates,
+} from "./advertisement-types";
 
 
 type SessionResponse = Omit<SessionIdentity, "name"> & { name?: string };
