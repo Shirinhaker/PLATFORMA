@@ -180,9 +180,13 @@ export class AdminApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher;
 
-  constructor(baseUrl: string, fetcher: Fetcher = fetch) {
+  constructor(baseUrl: string, fetcher?: Fetcher) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
-    this.fetcher = fetcher;
+    // `fetch` obyekt maydonida saqlanganda `this` klient nusxasiga
+    // bog'lanadi va brauzer "Illegal invocation" bilan rad etadi.
+    // Shu sababli bog'lanish shu yerda qilinadi, chaqiruvchiga
+    // qoldirilmaydi.
+    this.fetcher = fetcher ?? globalThis.fetch.bind(globalThis);
   }
 
   private async request<T>(
