@@ -17,6 +17,10 @@ import {
 } from "../listings/OwnerListingsV1656";
 import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
 import {
+  BusinessAdvertisementsV1656,
+  supportsAdvertisementApi,
+} from "../advertisements/BusinessAdvertisementsV1656";
+import {
   BusinessDiningV1656,
   supportsDiningApi,
 } from "../dining/BusinessDiningV1656";
@@ -663,6 +667,12 @@ export function BusinessOnlineScreen({
     });
   }
 
+  /** Reklama kabi tayyor maqsad bilan to'lov oynasini ochadi. */
+  function openPaymentTarget(target: PaymentTarget) {
+    if (!canPay) return;
+    setPaymentTarget(target);
+  }
+
   const content = renderContent({
     api,
     view,
@@ -674,6 +684,7 @@ export function BusinessOnlineScreen({
     duration,
     setDuration,
     openPayment,
+    openPaymentTarget,
     query,
     setQuery,
     kind,
@@ -774,6 +785,7 @@ type RenderContext = {
   duration: number;
   setDuration: (value: number) => void;
   openPayment: (plan: "plus" | "pro") => void;
+  openPaymentTarget: (target: PaymentTarget) => void;
   query: string;
   setQuery: (value: string) => void;
   kind: string;
@@ -1074,6 +1086,14 @@ function renderContent(context: RenderContext): ReactNode {
         />
       );
     case "advertisements":
+      if (supportsAdvertisementApi(context.api)) {
+        return (
+          <BusinessAdvertisementsV1656
+            api={context.api}
+            openPayment={context.openPaymentTarget}
+          />
+        );
+      }
       return (
         <CrudEditorView
           {...shared}

@@ -19,8 +19,14 @@ export type PaymentTarget = {
   /** v1656: `subscription_plus_3m` kabi tarif kodi. */
   priceCode: string;
   label: string;
+  /** Berilmasa obuna deb qaraladi — eski chaqiruvlar o'zgarmaydi. */
+  serviceType?: "subscription" | "advertisement" | "listing";
   planCode?: string;
   durationMonths?: number;
+  /** Reklamada bu tuman-soat soni; summa shunga ko'paytiriladi. */
+  quantity?: number;
+  /** Qaysi reklama yoki e'longa tegishli ekani. */
+  targetId?: number;
 };
 
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -77,6 +83,8 @@ export function PaymentRequestModal({
   const price = catalog.prices.find(
     (row) => row.price_code === target.priceCode,
   );
+  const quantity = Math.max(1, Math.trunc(target.quantity ?? 1));
+  const amount = (price?.amount_uzs ?? 0) * quantity;
   const [methodId, setMethodId] = useState(catalog.methods[0]?.id ?? 0);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,12 +131,14 @@ export function PaymentRequestModal({
         sha256: await fileDigest(receipt),
       };
       await api.createPaymentRequest({
-        service_type: "subscription",
+        service_type: target.serviceType ?? "subscription",
         price_code: price.price_code,
         payment_method_id: methodId,
         receipt: reference,
         plan_code: target.planCode ?? "",
         duration_months: target.durationMonths ?? 0,
+        quantity,
+        target_id: target.targetId,
       });
       onSubmitted();
       onClose();
@@ -161,7 +171,7 @@ export function PaymentRequestModal({
 
         <div className="payment-summary">
           <span>{target.label}</span>
-          <strong>{money(price?.amount_uzs ?? 0)} so‘m</strong>
+          <strong>{money(amount)} so‘m</strong>
           <div className="idesc">Narx server tomonidan hisoblanadi.</div>
         </div>
 

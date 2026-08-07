@@ -104,6 +104,13 @@ import type {
   QueueNotificationRead,
   QueueSlots,
 } from "./types";
+import type {
+  Advertisement,
+  AdvertisementCreate,
+  AdvertisementQuote,
+  AdvertisementQuoteRequest,
+  AdvertisementRates,
+} from "./advertisement-types";
 
 
 type SessionResponse = Omit<SessionIdentity, "name"> & { name?: string };
@@ -1105,6 +1112,34 @@ export class ApiClient {
   ): Promise<DiningOrder> {
     return this.request(
       "POST", `/api/v1/dining/orders/${orderId}/problem`, body, true,
+    );
+  }
+
+  // --- Reklama joylash (K14) ---
+
+  getAdvertisementRates(): Promise<AdvertisementRates> {
+    return this.request(
+      "GET", "/api/v1/advertisements/rates", undefined, true,
+    );
+  }
+
+  quoteAdvertisement(
+    body: AdvertisementQuoteRequest,
+  ): Promise<AdvertisementQuote> {
+    return this.request("POST", "/api/v1/advertisements/price", body, true);
+  }
+
+  createAdvertisement(body: AdvertisementCreate): Promise<Advertisement> {
+    return this.request("POST", "/api/v1/advertisements", body, true);
+  }
+
+  getMyAdvertisements(): Promise<Advertisement[]> {
+    return this.request("GET", "/api/v1/advertisements/my", undefined, true);
+  }
+
+  deleteAdvertisement(advertisementId: number): Promise<void> {
+    return this.request(
+      "DELETE", `/api/v1/advertisements/${advertisementId}`, undefined, true,
     );
   }
 

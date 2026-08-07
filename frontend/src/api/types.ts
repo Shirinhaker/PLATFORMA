@@ -520,6 +520,7 @@ export type CabinetSwitch = {
 export type MediaPurpose = (
   "avatar" | "logo" | "payment_qr" | "listing_photo" | "listing_video"
   | "order_chat_image" | "payment_receipt"
+  | "advertisement_image"
 );
 
 export type UploadGrantRequest = {
