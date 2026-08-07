@@ -15,7 +15,7 @@ from app.advertisements.authoring_schemas import (
     AdvertisementRates,
     AdvertisementRead,
 )
-from app.advertisements.service import AdvertisementService
+from app.advertisements.service import AdvertisementAuthoringService
 from app.auth.dependencies import (
     CurrentAccount,
     require_csrf,
@@ -29,11 +29,11 @@ CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 AdvertisementId = Annotated[int, Path(gt=0)]
 
 
-def authoring_service(request: Request) -> AdvertisementService:
+def authoring_service(request: Request) -> AdvertisementAuthoringService:
     return request.app.state.advertisement_authoring_service
 
 
-ServiceDep = Annotated[AdvertisementService, Depends(authoring_service)]
+ServiceDep = Annotated[AdvertisementAuthoringService, Depends(authoring_service)]
 
 
 @router.get("/rates", response_model=AdvertisementRates)

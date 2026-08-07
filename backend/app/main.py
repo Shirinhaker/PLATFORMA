@@ -10,7 +10,7 @@ from app.advertisements.authoring_router import (
     router as advertisement_authoring_router,
 )
 from app.advertisements.router import router as advertisements_router
-from app.advertisements.service import AdvertisementService
+from app.advertisements.service import AdvertisementAuthoringService
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
@@ -171,7 +171,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.follow_service = FollowService(database.session)
-        app.state.advertisement_authoring_service = AdvertisementService(
+        app.state.advertisement_authoring_service = AdvertisementAuthoringService(
             database.session,
             image_url_provider=app.state.r2.create_download_url,
         )

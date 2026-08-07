@@ -85,7 +85,7 @@ def _targets(raw: Any) -> list[AdvertisementTarget]:
     return result
 
 
-class AdvertisementService:
+class AdvertisementAuthoringService:
     def __init__(
         self,
         session_factory: SessionFactory,

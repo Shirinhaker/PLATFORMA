@@ -25,7 +25,7 @@ from app.advertisements.authoring_schemas import (
     AdvertisementQuoteRequest,
     AdvertisementTarget,
 )
-from app.advertisements.service import AdvertisementService
+from app.advertisements.service import AdvertisementAuthoringService
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.payments.model import PlatformPrice
@@ -125,7 +125,7 @@ def advertisement_context():
         with Session(engine, expire_on_commit=False) as sync:
             yield AsyncStore(sync)
 
-    service = AdvertisementService(
+    service = AdvertisementAuthoringService(
         sessions,
         image_url_provider=lambda key: f"https://r2.test/{key}" if key else "",
         now_provider=lambda: NOW,
