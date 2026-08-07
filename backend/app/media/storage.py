@@ -63,7 +63,7 @@ class R2Storage:
         owner_id: int,
         purpose: Literal[
             "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-            "order_chat_image", "payment_receipt",
+            "order_chat_image", "payment_receipt", "advertisement_image",
         ],
         filename: str,
         content_type: str,
@@ -80,11 +80,14 @@ class R2Storage:
         }
         # To'lov kvitansiyasini ikkala akkaunt turi ham yuklaydi:
         # e'lon va reklama uchun oddiy foydalanuvchi ham to'laydi.
-        if purpose == "payment_receipt":
+        if purpose in {"payment_receipt", "advertisement_image"}:
             listing_purpose = True
         if not profile_purpose and not listing_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
-        if purpose in {"listing_photo", "order_chat_image", "payment_receipt"}:
+        if purpose in {
+            "listing_photo", "order_chat_image", "payment_receipt",
+            "advertisement_image",
+        }:
             if content_type not in LISTING_IMAGE_TYPES:
                 raise UploadRejected("JPG, PNG, WEBP, GIF yoki HEIC fayl tanlang.")
             maximum = (

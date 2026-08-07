@@ -1,7 +1,7 @@
 # K14 — Reklama joylash migratsiyasi
 
 **Sana:** 2026-08-07
-**Bosqich:** K14a (backend) — bajarildi. Frontend keyingi PR'da.
+**Bosqich:** K14a (backend) va K14b (frontend) — bajarildi.
 
 ## Nima uchun
 
@@ -138,8 +138,46 @@ ko'rinmaslik, egalik, ikki marta yoqilmaslik va jadval surilishi.
 Buzib tekshirildi: Toshkent tuzatishi bekor qilinganda va reklama
 darhol `active` qilinganda 8 test qizardi.
 
-## Qolgan ish
+## Frontend (K14b)
 
-Frontend: reklama joylash ekrani — hudud tanlash, davomiylik, narxni
-oldindan ko'rish va to'lov oynasiga o'tish. Hozircha reklama faqat API
-orqali joylanadi.
+Reklama joylash ekrani allaqachon bor edi va ancha to'liq: hudud
+tanlash, davomiylik, kunlik soatlar, rasm tanlash va narxni jonli
+ko'rsatish. Muammo boshqa joyda edi — u **kabinet JSON'iga** yozardi,
+ya'ni public reklamalar o'qiydigan jadvalga tushmasdi.
+
+Shu sababli ekran qayta yozilmadi. `BusinessAdvertisementsV1656`
+konteyneri uni yangi endpointlarga uladi — K13b da ovqatlanish ekrani
+bilan qilinganidek.
+
+### Rasm haqiqatan yuklanmasdi
+
+Forma faqat `file.name` ni draftga yozardi — fayl hech qayerga
+yuklanmasdi. Ya'ni joylangan reklamalarda rasm hech qachon bo'lmagan.
+
+Endi rasm R2'ga yuklanadi: `advertisement_image` grant turi qo'shildi
+(chek bilan bir xil naqsh), forma `uploadImage` orqali kalitni oladi va
+u serverga uzatiladi.
+
+### To'lov
+
+Reklama saqlangach to'lov oynasi darhol ochiladi. To'lov kutayotgan
+reklama qatorida "To'lov qilish" tugmasi ham bor.
+
+Summa server tomonida hisoblanadi: `advertisement_district_hour` tarifi
+× tuman-soat soni. Oyna faqat natijani ko'rsatadi.
+
+To'lov oynasi umumlashtirildi — ilgari u faqat obunani bilardi. Endi
+`serviceType`, `quantity` va `targetId` qabul qiladi; obuna chaqiruvlari
+o'zgarmadi (berilmasa obuna deb qaraladi).
+
+## Ishga tushirishdagi xato
+
+K14a birinchi deploy'da yiqildi: `repository.py` da allaqachon
+`AdvertisementService` bor edi va yangi sinf uni soyalab qo'ydi —
+ilova umuman ko'tarilmadi. Sinf `AdvertisementAuthoringService` deb
+qayta nomlandi.
+
+CI buni ko'rmagan edi, chunki hech bir test `lifespan` ni ishga
+tushirmasdi. `tests/test_app_startup.py` shu bo'shliqni yopadi: u
+lifespan'ni haqiqatan ishga tushirib, har bir servis qurilganini va
+ikkita reklama servisi alohida sinf ekanini tekshiradi.

@@ -135,7 +135,9 @@ export function CrudEditorView({
   empty,
   fields,
   extraAction,
+  rowAction,
   quoteAdvertisement,
+  uploadImage,
   ...actions
 }: SharedActions & {
   resource: BusinessOnlineResource;
@@ -144,9 +146,13 @@ export function CrudEditorView({
   empty: string;
   fields: string[];
   extraAction?: (row: BusinessOnlineRecord, index: number) => ReactNode;
+  /** Har bir reklama qatori ostida chiqadigan amal (masalan to'lov). */
+  rowAction?: (row: BusinessOnlineRecord, index: number) => ReactNode;
   quoteAdvertisement?: (
     request: BusinessOnlineRecord,
   ) => Promise<BusinessOnlineRecord | null | void>;
+  /** Berilsa reklama rasmi R2'ga yuklanadi. */
+  uploadImage?: (file: File) => Promise<string>;
 }) {
   const [openForm, setOpenForm] = useState(false);
   const [draft, setDraft] = useState<BusinessOnlineRecord>({});
@@ -610,6 +616,7 @@ export function CrudEditorView({
                         👁 {Number(row.views ?? 0)} · ↗ {Number(row.clicks ?? 0)}
                       </span>
                     </div>
+                    {rowAction?.(row, index)}
                     {!['cancelled', 'ended'].includes(status) && (
                       <button
                         type="button"
@@ -640,6 +647,7 @@ export function CrudEditorView({
             busy={actions.busy}
             error={validationError}
             quoteAdvertisement={quoteAdvertisement}
+            uploadImage={uploadImage}
             save={saveDraft}
             cancel={() => setOpenForm(false)}
           />
@@ -849,6 +857,7 @@ function AdvertisementForm({
   busy,
   error,
   quoteAdvertisement,
+  uploadImage,
   save,
   cancel,
 }: {
@@ -859,6 +868,8 @@ function AdvertisementForm({
   quoteAdvertisement?: (
     request: BusinessOnlineRecord,
   ) => Promise<BusinessOnlineRecord | null | void>;
+  /** Berilsa rasm R2'ga yuklanib, obyekt kaliti draftga yoziladi. */
+  uploadImage?: (file: File) => Promise<string>;
   save: () => Promise<void>;
   cancel: () => void;
 }) {
@@ -923,7 +934,10 @@ function AdvertisementForm({
     dailyEnd,
   ]);
 
-  function selectImage(file: File | undefined, key: "image_file" | "mobile_image_file") {
+  async function selectImage(
+    file: File | undefined,
+    key: "image_file" | "mobile_image_file",
+  ) {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setFileError("Faqat JPG, PNG yoki WEBP rasm tanlang.");
@@ -934,7 +948,21 @@ function AdvertisementForm({
       return;
     }
     setFileError("");
-    setDraft({ ...draft, [key]: file.name });
+    if (!uploadImage) {
+      // Eski JSON yo'li: faqat nom saqlanadi.
+      setDraft({ ...draft, [key]: file.name });
+      return;
+    }
+    setFileError("Rasm yuklanmoqda...");
+    try {
+      const objectKey = await uploadImage(file);
+      setFileError("");
+      setDraft({ ...draft, [key]: file.name, [`${key}_key`]: objectKey });
+    } catch (reason) {
+      setFileError(
+        reason instanceof Error ? reason.message : "Rasm yuklanmadi.",
+      );
+    }
   }
 
   function targetLabel(target: BusinessOnlineRecord) {
@@ -957,7 +985,9 @@ function AdvertisementForm({
           hidden
           accept="image/jpeg,image/png,image/webp"
           aria-label="Kompyuter uchun rasm"
-          onChange={(event) => selectImage(event.currentTarget.files?.[0], "image_file")}
+          onChange={(event) => void selectImage(
+            event.currentTarget.files?.[0], "image_file",
+          )}
         />
         <button type="button" className="upload" onClick={() => desktopInput.current?.click()}>
           {recordText(draft, "image_file") ? "Rasm tanlandi ✅" : "🖼 Galereyadan rasm tanlash"}
@@ -970,7 +1000,9 @@ function AdvertisementForm({
           hidden
           accept="image/jpeg,image/png,image/webp"
           aria-label="Telefon uchun rasm"
-          onChange={(event) => selectImage(event.currentTarget.files?.[0], "mobile_image_file")}
+          onChange={(event) => void selectImage(
+            event.currentTarget.files?.[0], "mobile_image_file",
+          )}
         />
         <button type="button" className="upload" onClick={() => mobileInput.current?.click()}>
           {recordText(draft, "mobile_image_file") ? "Telefon rasmi tanlandi ✅" : "📱 Telefon rasmini tanlash"}
