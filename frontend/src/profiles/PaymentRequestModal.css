@@ -9,3 +9,16 @@
 .payment-request-modal .field{display:flex;flex-direction:column;gap:6px;}
 .payment-request-modal .subscription-action-message{border-radius:13px;padding:10px 12px;font-size:12.5px;line-height:1.45;background:var(--primary-tint);color:var(--primary);}
 .payment-request-modal .subscription-action-message.error{background:#fee2e2;color:#991b1b;}
+
+/* To'lov rekvizitlari — v1656 `paymentMethodDetails`. */
+.payment-method-details {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+}

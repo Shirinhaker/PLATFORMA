@@ -145,3 +145,31 @@ Majburiy sozlama A1 dagi kabi bitta: `KOPRIK_ADMIN_TELEGRAM_IDS`.
 Admin sayti tugadi. Umuman ko'chirilmagan bo'limlar:
 hujjatlar, kontragentlar, taxi va haydovchi kabineti, mutaxassis xizmat
 takliflari, ish haqi.
+
+## Keyingi tuzatishlar (2026-08-07)
+
+Panelni ishlatib ko'rgach to'rtta kamchilik topildi.
+
+**1. To'lov oynasida rekvizitlar ko'rinmasdi.** Mijoz to'lov usulini
+tanlardi, lekin pulni qayerga yuborishni bilmasdi. v1656
+`paymentMethodText` aynan ko'chirildi: qabul qiluvchi, `details`
+ichidagi qiymatlar (karta raqami) va ko'rsatma. Rekvizit kiritilmagan
+bo'lsa "Rekvizitlar administrator tomonidan kiritiladi." yoziladi.
+
+**2. Rekvizitni tahrirlab bo'lmasdi.** Panelda faqat yoqish/o'chirish
+bor edi. Endi har bir usulda "Tahrirlash" tugmasi bor — v1656 dagi
+kabi.
+
+*v1656 dan farq:* u yerda rekvizitlar xom JSON maydonida tahrirlanadi.
+Bu yerda karta raqamiga alohida katak berildi, chunki eng ko'p
+ishlatiladigan maydon shu. `details` dagi boshqa kalitlar tegilmay
+saqlanadi.
+
+**3. Narx kodlari o'zbekchaga o'girildi.** `subscription_plus_1m`
+o'rniga "Plus obuna · 1 oy". Nom tarif sozlamasidan hosil qilinadi,
+shuning uchun yangi tarif qo'shilganda ham ishlaydi; notanish kod
+bo'lsa kodning o'zi qoladi.
+
+**4. Bitta tugma bosilganda hamma tugma o'chib yonardi.** Sabab: butun
+ekran uchun bitta `busy` holati ishlatilgan edi. Endi faqat bosilgan
+qator kutish holatiga o'tadi.

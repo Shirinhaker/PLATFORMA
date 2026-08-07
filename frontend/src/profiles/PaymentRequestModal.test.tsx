@@ -21,9 +21,9 @@ const CATALOG: PaymentCatalog = {
     id: 1,
     method_type: "manual_card",
     name: "Bank kartasi",
-    recipient_name: "",
-    instructions: "",
-    details: {},
+    recipient_name: "Bunyod Rahimov",
+    instructions: "To‘lovdan keyin chekni yuboring.",
+    details: { card_number: "5614 6819 1868 7751" },
   }],
 };
 
@@ -88,6 +88,50 @@ describe("obuna tarifini sotib olish", () => {
     expect(screen.getByText("Plus obuna · 1 oy")).toBeVisible();
     expect(screen.getByLabelText("To‘lov usuli")).toHaveValue("1");
     expect(screen.getByText("Bank kartasi")).toBeInTheDocument();
+  });
+
+  it("to‘lov rekvizitlari oynada ko‘rinadi", () => {
+    render(
+      <PaymentRequestModal
+        api={makeApi()}
+        catalog={CATALOG}
+        target={TARGET}
+        onClose={vi.fn()}
+        onSubmitted={vi.fn()}
+      />,
+    );
+
+    // v1656 `paymentMethodText`: qabul qiluvchi, rekvizit, ko'rsatma.
+    const details = screen.getByText(/Qabul qiluvchi: Bunyod Rahimov/);
+    expect(details).toBeVisible();
+    expect(details).toHaveTextContent("5614 6819 1868 7751");
+    expect(details).toHaveTextContent("To‘lovdan keyin chekni yuboring.");
+  });
+
+  it("rekvizit kiritilmagan bo‘lsa sabab yoziladi", () => {
+    render(
+      <PaymentRequestModal
+        api={makeApi()}
+        catalog={{
+          ...CATALOG,
+          methods: [{
+            id: 1,
+            method_type: "manual_card",
+            name: "Bank kartasi",
+            recipient_name: "",
+            instructions: "",
+            details: {},
+          }],
+        }}
+        target={TARGET}
+        onClose={vi.fn()}
+        onSubmitted={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Rekvizitlar administrator tomonidan kiritiladi."),
+    ).toBeVisible();
   });
 
   it("kvitansiyasiz yuborilmaydi", () => {

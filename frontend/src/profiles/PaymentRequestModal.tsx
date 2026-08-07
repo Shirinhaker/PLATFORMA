@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type { PaymentCatalog, PaymentReceiptRef } from "../api/types";
+import type {
+  PaymentCatalog,
+  PaymentMethod,
+  PaymentReceiptRef,
+} from "../api/types";
 import "./PaymentRequestModal.css";
 
 
@@ -29,6 +33,24 @@ function money(value: number) {
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
+
+/** v1656 `paymentMethodText` — qabul qiluvchi, rekvizitlar, ko'rsatma. */
+export function paymentMethodText(method: PaymentMethod | undefined) {
+  if (!method) return "To‘lov usulini tanlang.";
+  const lines: string[] = [];
+  if (method.recipient_name) {
+    lines.push(`Qabul qiluvchi: ${method.recipient_name}`);
+  }
+  for (const value of Object.values(method.details ?? {})) {
+    if (value !== null && value !== undefined && value !== "") {
+      lines.push(String(value));
+    }
+  }
+  if (method.instructions) lines.push(method.instructions);
+  return lines.join("\n")
+    || "Rekvizitlar administrator tomonidan kiritiladi.";
+}
+
 
 async function fileDigest(file: File) {
   const buffer = await file.arrayBuffer();
@@ -155,6 +177,11 @@ export function PaymentRequestModal({
               <option key={method.id} value={method.id}>{method.name}</option>
             ))}
           </select>
+          <div className="payment-method-details">
+            {paymentMethodText(
+              catalog.methods.find((row) => row.id === methodId),
+            )}
+          </div>
         </div>
 
         <div className="field">
