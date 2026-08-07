@@ -117,10 +117,10 @@ class Advertisement(Base):
         REVIEW_STATE_ENUM,
         nullable=False,
     )
-    migration_run_id: Mapped[int] = mapped_column(
+    # Faqat ko'chirilgan yozuvlarda to'ladi; yangi reklamada bo'sh.
+    migration_run_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("migration_runs.id", ondelete="RESTRICT"),
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

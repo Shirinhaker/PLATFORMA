@@ -1,3 +1,4 @@
+from pathlib import Path
 from sqlalchemy import JSON, CheckConstraint, Index, UniqueConstraint
 
 from app.advertisements.model import Advertisement
@@ -80,7 +81,24 @@ def test_advertisement_keeps_json_targets_and_historical_integer_counters():
     assert columns.views.type.python_type is int
     assert columns.clicks.type.python_type is int
     assert columns.placement.default.arg == "home"
-    assert columns.migration_run_id.nullable is False
+    # K14: reklama joylash qo'shilgach ustun ixtiyoriy bo'ldi — yangi
+    # reklama migratsiya yozuvidan kelmaydi. Ko'chirilgan yozuvlarda u
+    # baribir to'ladi, buni quyidagi test tekshiradi.
+    assert columns.migration_run_id.nullable is True
+
+
+def test_migrated_advertisements_always_carry_their_run():
+    """Ko'chirish bosqichi har bir yozuvga run id sini yozadi.
+
+    Ustun ixtiyoriy bo'lgani bilan bu shart yo'qolmadi: u endi
+    ma'lumot ko'chiruvchi kodda ta'minlanadi.
+    """
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "app" / "legacy_migration" / "advertisement_stage.py"
+    ).read_text(encoding="utf-8")
+    assert '"migration_run_id": run.id' in source
+    assert "target.migration_run_id = run.id" in source
 
 
 def test_legacy_mapping_is_unique_per_entity_and_legacy_id():

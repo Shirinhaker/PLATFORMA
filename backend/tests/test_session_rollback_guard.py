@@ -30,6 +30,7 @@ ROLLBACK_SERVICES = (
     ("app.admin.moderation_service", "AdminModerationService"),
     ("app.admin.payments_service", "AdminPaymentService"),
     ("app.admin.reports_service", "AdminReportsService"),
+    ("app.advertisements.service", "AdvertisementService"),
     ("app.auth.service", "AuthService"),
     ("app.cash_register.service", "CashRegisterService"),
     ("app.catalog.service", "CatalogService"),
