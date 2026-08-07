@@ -73,6 +73,8 @@ class Settings(BaseSettings):
     admin_session_ttl_seconds: int = 8 * 60 * 60
     # Bo'sh turgan admin sessiyasi shu muddatdan keyin yopiladi.
     admin_session_idle_seconds: int = 30 * 60
+    # Audit jurnalidagi IP xeshi uchun. Berilmasa `csrf_secret` ishlatiladi.
+    admin_audit_ip_secret: str = ""
 
     @property
     def admin_telegram_id_set(self) -> frozenset[int]:

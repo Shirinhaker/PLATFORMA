@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 
 import type { AdminApiClient } from "./admin-client";
+import { AdminAccounts } from "./AdminAccounts";
+import { AdminAudit } from "./AdminAudit";
 import { AdminLogin } from "./AdminLogin";
 import { AdminPayments } from "./AdminPayments";
 import { AdminPricing } from "./AdminPricing";
+import { AdminReports } from "./AdminReports";
 import "./admin.css";
 
 
-type Page = "payments" | "pricing";
+type Page = "payments" | "pricing" | "accounts" | "reports" | "audit";
 
 type Props = { api: AdminApiClient };
 
@@ -15,6 +18,9 @@ type Props = { api: AdminApiClient };
 const PAGES: ReadonlyArray<{ key: Page; icon: string; label: string }> = [
   { key: "payments", icon: "₿", label: "To‘lovlar" },
   { key: "pricing", icon: "₸", label: "Narxlar va usullar" },
+  { key: "accounts", icon: "♙", label: "Profil va bizneslar" },
+  { key: "reports", icon: "⚑", label: "Shikoyatlar" },
+  { key: "audit", icon: "≡", label: "Audit tarixi" },
 ];
 
 
@@ -84,11 +90,17 @@ export function AdminApp({ api }: Props) {
               </button>
             ))}
           </nav>
+          <div className="sidebar-note">
+            Barcha o‘zgarishlar audit tarixiga yoziladi.
+          </div>
         </aside>
 
         <main className="workspace">
           {page === "payments" ? <AdminPayments api={api} /> : null}
           {page === "pricing" ? <AdminPricing api={api} /> : null}
+          {page === "accounts" ? <AdminAccounts api={api} /> : null}
+          {page === "reports" ? <AdminReports api={api} /> : null}
+          {page === "audit" ? <AdminAudit api={api} /> : null}
         </main>
       </div>
     </div>
