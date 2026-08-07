@@ -82,11 +82,13 @@ class PaymentService:
         now: Callable[[], int] | None = None,
         activator: Activator | None = None,
         download_url_provider: Callable[..., str] | None = None,
+        advertisement_service: object | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._now = now or (lambda: int(time.time()))
         self._activator = activator
         self._download_url = download_url_provider
+        self._advertisements = advertisement_service
 
     async def catalog(self) -> PaymentCatalogRead:
         async with self._session_factory() as session:
@@ -395,9 +397,23 @@ class PaymentService:
         if self._activator is not None:
             await self._activator(session, request, now)
             return
+        if request.service_type == "advertisement":
+            if self._advertisements is None or request.target_id is None:
+                raise ApiError(
+                    409,
+                    "advertisement_target_missing",
+                    "To‘lov qaysi reklamaga tegishli ekani noma’lum.",
+                )
+            await self._advertisements.activate_paid(
+                session,
+                advertisement_id=request.target_id,
+                account_id=request.account_id,
+                now=now,
+            )
+            return
         if request.service_type != "subscription":
-            # Reklama va e'lon o'z domenlarida yoqiladi — hozircha
-            # faqat to'lov holati yoziladi.
+            # E'lon to'lovi v1656da ham ishlatilmaydi — narx bor,
+            # lekin hech qanday oqim uni yaratmaydi.
             return
         existing = await session.scalar(
             select(BusinessSubscription).where(

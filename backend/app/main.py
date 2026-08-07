@@ -6,7 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.advertisements.repository import AdvertisementService
+from app.advertisements.authoring_router import (
+    router as advertisement_authoring_router,
+)
 from app.advertisements.router import router as advertisements_router
+from app.advertisements.service import AdvertisementService
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
@@ -167,9 +171,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.follow_service = FollowService(database.session)
+        app.state.advertisement_authoring_service = AdvertisementService(
+            database.session,
+            image_url_provider=app.state.r2.create_download_url,
+        )
         app.state.payment_service = PaymentService(
             database.session,
             download_url_provider=app.state.r2.create_download_url,
+            advertisement_service=app.state.advertisement_authoring_service,
         )
         app.state.admin_auth_service = AdminAuthService(
             database.session, resolved
@@ -226,6 +235,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(public_discovery_router)
     app.include_router(catalog_router)
     app.include_router(advertisements_router)
+    app.include_router(advertisement_authoring_router)
     app.include_router(listings_router)
     app.include_router(orders_router)
     app.include_router(follows_router)
