@@ -116,6 +116,17 @@ Tekshiruv olib tashlanmadi — u yangi shartga o'tkazildi va
 "ko'chirilgan yozuvda run id doim to'ladi" degan qoplama alohida
 testga ko'chirildi.
 
+## Public kontrakt
+
+`scripts/verify_phase3c.py` `advertisements/schemas.py` ni public
+kontrakt deb tekshiradi va unda saqlash kalitlari (`*_object_key`)
+bo'lishini taqiqlaydi.
+
+Reklama yaratishda esa rasm kaliti kerak — mijoz uni grant orqali
+yuklab, kalitni qaytaradi (chek bilan bir xil naqsh). Shu sababli
+joylash sxemalari alohida `authoring_schemas.py` ga chiqarildi:
+public fayl toza qoladi, tekshiruv o'z kuchida.
+
 ## Testlar
 
 `backend/tests/test_advertisement_authoring.py` — 13 ta test.

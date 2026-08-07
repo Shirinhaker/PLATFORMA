@@ -33,7 +33,7 @@ from app.advertisements.pricing import (
     schedule_end_at,
     shift_schedule_start,
 )
-from app.advertisements.schemas import (
+from app.advertisements.authoring_schemas import (
     AdvertisementCreate,
     AdvertisementQuote,
     AdvertisementQuoteRequest,

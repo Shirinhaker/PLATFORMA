@@ -20,7 +20,7 @@ from app.advertisements.pricing import (
     calculate_ad_price,
     normalize_ad_region,
 )
-from app.advertisements.schemas import (
+from app.advertisements.authoring_schemas import (
     AdvertisementCreate,
     AdvertisementQuoteRequest,
     AdvertisementTarget,

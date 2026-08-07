@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
 
-from app.advertisements.schemas import (
+from app.advertisements.authoring_schemas import (
     AdvertisementCreate,
     AdvertisementQuote,
     AdvertisementQuoteRequest,
