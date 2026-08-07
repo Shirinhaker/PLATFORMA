@@ -57,6 +57,8 @@ export function AdminPayments({ api, onChanged }: Props) {
   const [reason, setReason] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [loading, setLoading] = useState(true);
+  // Faqat ochilayotgan qator kutish holatida bo'ladi.
+  const [opening, setOpening] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [failed, setFailed] = useState(false);
@@ -79,7 +81,7 @@ export function AdminPayments({ api, onChanged }: Props) {
   }, [load]);
 
   async function open(paymentId: number) {
-    setBusy(true);
+    setOpening(paymentId);
     setReceiptUrl("");
     setReason("");
     setInternalNote("");
@@ -91,7 +93,7 @@ export function AdminPayments({ api, onChanged }: Props) {
       setFailed(true);
       setNote(message(error));
     } finally {
-      setBusy(false);
+      setOpening(null);
     }
   }
 
@@ -212,6 +214,7 @@ export function AdminPayments({ api, onChanged }: Props) {
                   <button
                     type="button"
                     className="secondary compact"
+                    disabled={opening === row.id}
                     onClick={() => void open(row.id)}
                   >
                     Ko‘rish

@@ -39,6 +39,7 @@ export function AdminAccounts({ api }: Props) {
   const [selected, setSelected] = useState<AdminAccountDetail | null>(null);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const [opening, setOpening] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [searched, setSearched] = useState(false);
   const [text, setText] = useState("");
@@ -60,7 +61,7 @@ export function AdminAccounts({ api }: Props) {
   }
 
   async function open(row: AdminAccountRow) {
-    setBusy(true);
+    setOpening(row.account_id);
     setReason("");
     setNote("");
     try {
@@ -70,7 +71,7 @@ export function AdminAccounts({ api }: Props) {
       setFailed(true);
       setText(message(error));
     } finally {
-      setBusy(false);
+      setOpening(null);
     }
   }
 
@@ -211,6 +212,7 @@ export function AdminAccounts({ api }: Props) {
                   <button
                     type="button"
                     className="secondary compact"
+                    disabled={opening === row.account_id}
                     onClick={() => void open(row)}
                   >
                     Ko‘rish
