@@ -226,12 +226,36 @@ export function BusinessOnlineScreen({
   // Tarif tanlanganda ochiladigan to'lov oynasi (v1656 oqimi).
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+  // Katalog obuna ekranida oldindan, boshqa joyda esa to'lov oynasi
+  // so'ralganda yuklanadi. Ilgari u faqat obuna ekranida yuklanardi,
+  // shuning uchun reklama to'lovi bosilganda oyna jimgina ochilmasdi.
   useEffect(() => {
-    if (view !== "subscriptions" || catalog) return;
+    const needed = view === "subscriptions" || paymentTarget !== null;
+    if (!needed || catalog) return;
     const load = (api as Partial<PaymentRequestApi>).getPaymentCatalog;
     if (!load) return;
-    void load.call(api).then(setCatalog).catch(() => setCatalog(null));
-  }, [api, view, catalog]);
+    let active = true;
+    void load.call(api)
+      .then((value) => { if (active) setCatalog(value); })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setCatalog(null);
+        setPaymentTarget(null);
+        setPaymentError(
+          reason instanceof Error
+            ? reason.message
+            : "To‘lov ma’lumotlari yuklanmadi.",
+        );
+      });
+    return () => { active = false; };
+  }, [api, view, catalog, paymentTarget]);
+
+  useEffect(() => {
+    if (!paymentError) return;
+    const timeout = window.setTimeout(() => setPaymentError(""), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [paymentError]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("new");
@@ -760,6 +784,9 @@ export function BusinessOnlineScreen({
         <div className="business-online__loading">Yuklanmoqda…</div>
       )}
       {content}
+      {paymentError ? (
+        <div className="payment-load-error" role="status">{paymentError}</div>
+      ) : null}
       {paymentTarget && catalog ? (
         <PaymentRequestModal
           api={api as PaymentRequestApi}
