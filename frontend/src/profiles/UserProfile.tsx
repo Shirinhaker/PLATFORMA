@@ -20,6 +20,10 @@ import {
   MyQueuesV1656,
   type MyQueuesApi,
 } from "../queues/MyQueuesV1656";
+import {
+  OwnerStoriesV1656,
+  type OwnerStoriesApi,
+} from "../stories/OwnerStoriesV1656";
 
 
 export type UserProfileApi = Pick<
@@ -58,6 +62,12 @@ export type UserProfileApi = Pick<
   | "getMyQueues"
   | "cancelMyQueue"
   | "markQueueNotificationRead"
+  | "getMyStories"
+  | "createStory"
+  | "recordStoryView"
+  | "getStoryViewers"
+  | "deleteStory"
+  | "reportStory"
 >>;
 
 type Props = {
@@ -156,6 +166,14 @@ const SECTIONS: Section[] = [
   },
   { icon: "⚙️", label: "Sozlamalar", view: "settings" },
 ];
+
+
+function supportsOwnerStories(api: UserProfileApi): api is UserProfileApi & OwnerStoriesApi {
+  return [
+    "getMyStories", "createStory", "recordStoryView", "getStoryViewers",
+    "deleteStory", "reportStory", "createUploadGrant", "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Yangi",
@@ -472,6 +490,17 @@ export function UserProfile({
       <OwnerListingsV1656
         actor="user"
         api={api}
+        onBack={() => setView("dashboard")}
+      />
+    );
+  }
+
+  if (view === "stories" && supportsOwnerStories(api)) {
+    return (
+      <OwnerStoriesV1656
+        actor="user"
+        api={api}
+        ownerName={profile.name}
         onBack={() => setView("dashboard")}
       />
     );

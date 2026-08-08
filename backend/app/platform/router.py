@@ -29,7 +29,7 @@ async def public_features(request: Request) -> dict[str, bool]:
     settings = request.app.state.settings
     return {
         "listings": settings.listings_enabled,
-        "stories": False,
+        "stories": settings.stories_enabled,
         "chat": False,
         "systemization": False,
         "taxi": False,

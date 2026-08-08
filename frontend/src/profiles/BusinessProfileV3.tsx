@@ -130,6 +130,12 @@ export type BusinessProfileApiV3 = Pick<
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"
+  | "getMyStories"
+  | "createStory"
+  | "recordStoryView"
+  | "getStoryViewers"
+  | "deleteStory"
+  | "reportStory"
 >>;
 
 type Props = {

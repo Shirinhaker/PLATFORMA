@@ -41,6 +41,7 @@ EXPECTED_SERVICES = (
     "public_discovery_service",
     "queue_service",
     "staff_service",
+    "story_service",
 )
 
 

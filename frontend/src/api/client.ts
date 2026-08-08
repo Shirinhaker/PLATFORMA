@@ -94,6 +94,13 @@ import type {
   StaffSetup,
   StatisticsPeriod,
   StatisticsReport,
+  ManagedStoryRead,
+  StoryCreate,
+  StoryCreated,
+  StoryGroup,
+  StoryRead,
+  StoryViewer,
+  StoryViewResult,
   UploadGrant,
   UploadGrantRequest,
   UserProfile,
@@ -493,6 +500,70 @@ export class ApiClient {
     return this.request(
       "GET",
       `/api/v1/public/profiles/${kind}/${encodeURIComponent(publicId)}`,
+    );
+  }
+
+  getStoryFeed(params: { lat?: number; lng?: number } = {}): Promise<StoryGroup[]> {
+    const query = new URLSearchParams();
+    if (params.lat !== undefined) query.set("lat", String(params.lat));
+    if (params.lng !== undefined) query.set("lng", String(params.lng));
+    const suffix = query.size ? `?${query.toString()}` : "";
+    return this.request("GET", `/api/v1/stories/feed${suffix}`);
+  }
+
+  getMyStories(
+    state: "active" | "archived" | "all" = "all",
+  ): Promise<ManagedStoryRead[]> {
+    return this.request(
+      "GET",
+      `/api/v1/stories/mine?state=${state}`,
+      undefined,
+      true,
+    );
+  }
+
+  getOwnerStories(
+    kind: "user" | "business",
+    publicId: string,
+  ): Promise<StoryRead[]> {
+    return this.request(
+      "GET",
+      `/api/v1/stories/owner/${kind}/${encodeURIComponent(publicId)}`,
+    );
+  }
+
+  createStory(body: StoryCreate): Promise<StoryCreated> {
+    return this.request("POST", "/api/v1/stories", body, true);
+  }
+
+  recordStoryView(storyId: number): Promise<StoryViewResult> {
+    return this.request("POST", `/api/v1/stories/${storyId}/view`, {}, true);
+  }
+
+  getStoryViewers(storyId: number): Promise<StoryViewer[]> {
+    return this.request(
+      "GET",
+      `/api/v1/stories/${storyId}/viewers`,
+      undefined,
+      true,
+    );
+  }
+
+  deleteStory(storyId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/stories/${storyId}`,
+      undefined,
+      true,
+    );
+  }
+
+  reportStory(storyId: number, reason: string): Promise<{ ok: true }> {
+    return this.request(
+      "POST",
+      `/api/v1/stories/${storyId}/reports`,
+      { reason },
+      true,
     );
   }
 

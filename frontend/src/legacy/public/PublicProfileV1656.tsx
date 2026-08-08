@@ -10,6 +10,8 @@ import {
 } from "../../orders/order-store";
 import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
 import type { CourseEnrollmentTarget } from "../../education/CourseEnrollmentV1656";
+import { PublicProfileStoriesV1656 } from "../../stories/PublicProfileStoriesV1656";
+import type { StoryViewerApi } from "../../stories/StoryFeedV1656";
 
 
 interface PublicProfileV1656Props {
@@ -31,6 +33,7 @@ interface PublicProfileV1656Props {
   onOpenCart?(): void;
   onTitleChange?(title: string): void;
   onOpenListing?(publicId: string): void;
+  storyApi?: StoryViewerApi & Pick<ApiClient, "getOwnerStories">;
 }
 
 const QUEUE_DIRECTIONS = new Set([
@@ -90,6 +93,7 @@ export function PublicProfileV1656({
   onOpenCart,
   onTitleChange,
   onOpenListing,
+  storyApi,
 }: PublicProfileV1656Props) {
   const [profile, setProfile] = useState<PublicProfileDetail | null>(null);
   const [error, setError] = useState("");
@@ -267,6 +271,20 @@ export function PublicProfileV1656({
           >👥 Bugungi jami navbat: {queueTotal} ta</div>
         ) : null}
       </section>
+
+      {storyApi ? (
+        <PublicProfileStoriesV1656
+          avatarUrl={profile.image_url}
+          deleteStory={storyApi.deleteStory}
+          getOwnerStories={storyApi.getOwnerStories}
+          getStoryViewers={storyApi.getStoryViewers}
+          kind={kind}
+          name={profile.name}
+          publicId={publicId}
+          recordStoryView={storyApi.recordStoryView}
+          reportStory={storyApi.reportStory}
+        />
+      ) : null}
 
       {profile.specialist ? (
         <section className="specialist-card">

@@ -21,6 +21,10 @@ import { HomeMapV1656 } from "./home/HomeMapV1656";
 import { HomeSearchResultsV1656 } from "./home/HomeSearchResultsV1656";
 import { findLocationCenter } from "./location-centers";
 import type { HomeLocation } from "./location-storage";
+import {
+  StoryFeedV1656,
+  type StoryViewerApi,
+} from "../../stories/StoryFeedV1656";
 
 
 interface HomeScreenProps {
@@ -42,6 +46,7 @@ interface HomeScreenProps {
   recordAdvertisementClick?: ApiClient["recordAdvertisementClick"];
   recordAdvertisementViews?: ApiClient["recordAdvertisementViews"];
   searchPublic?: ApiClient["searchPublic"];
+  storyApi?: StoryViewerApi & Pick<ApiClient, "getStoryFeed">;
 }
 
 
@@ -85,6 +90,7 @@ export function HomeScreen({
   recordAdvertisementClick,
   recordAdvertisementViews,
   searchPublic,
+  storyApi,
 }: HomeScreenProps) {
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -111,6 +117,13 @@ export function HomeScreen({
       latitude: location.latitude,
       longitude: location.longitude,
     } : findLocationCenter(location?.region || "", location?.district || "");
+  const loadStories = useCallback(() => {
+    if (!storyApi) return Promise.resolve([]);
+    return storyApi.getStoryFeed({
+      ...(locationCenter?.latitude === undefined ? {} : { lat: locationCenter.latitude }),
+      ...(locationCenter?.longitude === undefined ? {} : { lng: locationCenter.longitude }),
+    });
+  }, [locationCenter?.latitude, locationCenter?.longitude, storyApi]);
 
   useEffect(() => {
     let active = true;
@@ -300,6 +313,15 @@ export function HomeScreen({
 
   return (
     <main className="screen active public-home-v1656" data-screen="home">
+      {storyApi ? (
+        <StoryFeedV1656
+          deleteStory={storyApi.deleteStory}
+          getStoryViewers={storyApi.getStoryViewers}
+          load={loadStories}
+          recordStoryView={storyApi.recordStoryView}
+          reportStory={storyApi.reportStory}
+        />
+      ) : null}
       <HomeFollowedProfilesV1656
         items={followedProfiles}
         onOpenProfile={openResult}

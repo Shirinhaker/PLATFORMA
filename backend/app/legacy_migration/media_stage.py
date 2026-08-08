@@ -25,6 +25,7 @@ from app.legacy_migration.model import (
 from app.legacy_migration.reconcile import StageResult
 from app.listings.model import ListingMedia
 from app.media.storage import R2Storage
+from app.stories.model import Story
 
 
 CONTENT_TYPE_SUFFIXES = {
@@ -253,6 +254,9 @@ async def migrate_media(
                 MediaMigrationState.FAILED,
                 "media.r2_verification_failed",
             )
+            await _mark_story_media_failure(
+                session, run, record, "story.media_verification_failed"
+            )
             counters["updated"] += 1
             continue
         record.attempts += 1
@@ -260,6 +264,9 @@ async def migrate_media(
         reference = _source_reference(source, record)
         if not reference:
             _mark_failure(record, MediaMigrationState.MISSING, "media.missing")
+            await _mark_story_media_failure(
+                session, run, record, "story.media_missing"
+            )
             continue
         resolver = _resolver_for_reference(
             record,
@@ -278,6 +285,9 @@ async def migrate_media(
                 else MediaMigrationState.FAILED
             )
             _mark_failure(record, state, resolution.code)
+            await _mark_story_media_failure(
+                session, run, record, "story.media_missing"
+            )
             continue
         await _copy_media(session, storage, run, record, resolution.media)
         if record.state is MediaMigrationState.COPIED:
@@ -317,6 +327,9 @@ async def _copy_media(
             record,
             MediaMigrationState.FAILED,
             "media.r2_verification_failed",
+        )
+        await _mark_story_media_failure(
+            session, run, record, "story.media_verification_failed"
         )
         return
     record.destination_object_key = stored.object_key
@@ -370,6 +383,22 @@ async def _set_target_object_key(
                 else "desktop_image_object_key"
             )
             setattr(target, field, object_key)
+    elif record.entity_type == "story":
+        target = await session.get(Story, mapping.target_id)
+        if target is not None:
+            if record.slot == "thumbnail":
+                target.thumbnail_object_key = object_key
+            else:
+                target.media_object_key = object_key
+                if target.media_type == "image":
+                    target.thumbnail_object_key = object_key
+            if (
+                target.media_object_key
+                and (target.media_type == "image" or target.thumbnail_object_key)
+                and target.deleted_at is None
+                and target.status != "failed"
+            ):
+                target.status = "active"
 
 
 def _source_reference(
@@ -384,6 +413,8 @@ def _source_reference(
             "advertisements",
             "mobile_image_file",
         ),
+        ("story", "primary"): ("stories", "media_filename"),
+        ("story", "thumbnail"): ("stories", "thumbnail_filename"),
     }.get((record.entity_type, record.slot), ("", ""))
     if not table:
         return ""
@@ -407,12 +438,44 @@ def _resolver_for_reference(
     local,
     telegram,
 ):
-    if record.entity_type != "listing_media":
+    if record.entity_type not in {"listing_media"}:
         return local
     normalized = reference.replace("\\", "/")
     if normalized.startswith("/") or "/" in normalized:
         return local
     return telegram
+
+
+async def _mark_story_media_failure(
+    session: AsyncSession,
+    run: MigrationRun,
+    record: MediaMigration,
+    issue_code: str,
+) -> None:
+    if record.entity_type != "story":
+        return
+    mapping = await session.scalar(
+        select(LegacyIdMap).where(
+            LegacyIdMap.entity_type == "story",
+            LegacyIdMap.legacy_id == record.legacy_id,
+        )
+    )
+    if mapping is not None:
+        mapping.mapping_status = "quarantined"
+        mapping.review_reason = issue_code
+        if mapping.target_id is not None:
+            story = await session.get(Story, mapping.target_id)
+            if story is not None:
+                story.status = "failed"
+    from app.legacy_migration.reconcile import _ensure_issue
+
+    await _ensure_issue(
+        session,
+        run,
+        entity_type="story",
+        legacy_id=record.legacy_id,
+        issue_code=issue_code,
+    )
 
 
 def _media_roots(value: str) -> tuple[Path, ...]:

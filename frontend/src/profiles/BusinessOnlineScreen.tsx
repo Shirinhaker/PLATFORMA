@@ -59,6 +59,10 @@ import {
   type SharedActions,
   SubscriptionsView,
 } from "./BusinessOnlineViews";
+import {
+  OwnerStoriesV1656,
+  type OwnerStoriesApi,
+} from "../stories/OwnerStoriesV1656";
 import "./BusinessOnlineScreen.css";
 import "./BusinessExistingOnlineV1656.css";
 
@@ -100,6 +104,12 @@ type OnlineApi = Partial<Pick<
   | "createBusinessOfflineQueue"
   | "changeBusinessQueueStatus"
   | "swapBusinessQueues"
+  | "getMyStories"
+  | "createStory"
+  | "recordStoryView"
+  | "getStoryViewers"
+  | "deleteStory"
+  | "reportStory"
 >>;
 
 type Props = {
@@ -198,6 +208,13 @@ function supportsOrders(api: OnlineApi): api is OnlineApi & OrdersApi {
     "getOrderChat", "sendOrderChatMessage", "sendOrderChatImage",
     "editOrderChatMessage", "deleteOrderChatMessage", "createUploadGrant",
     "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof OnlineApi] === "function");
+}
+
+function supportsOwnerStories(api: OnlineApi): api is OnlineApi & OwnerStoriesApi {
+  return [
+    "getMyStories", "createStory", "recordStoryView", "getStoryViewers",
+    "deleteStory", "reportStory", "createUploadGrant", "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
@@ -658,6 +675,18 @@ export function BusinessOnlineScreen({
         actor="business"
         api={api}
         onBack={() => { void onBack(); }}
+      />
+    );
+  }
+
+  if (view === "stories" && supportsOwnerStories(api)) {
+    return (
+      <OwnerStoriesV1656
+        actor="business"
+        api={api}
+        ownerAvatar={profile.logo_url}
+        ownerName={profile.name}
+        onBack={() => void onBack()}
       />
     );
   }
