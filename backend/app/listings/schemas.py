@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 ListingCategory = Literal["uy", "ish", "moshina", "hayvon", "texnika", "boshqa"]
 ListingVisibility = Literal["all", "own"]
-ListingStatus = Literal["active", "inactive"]
+# `payment_pending` — to'lov tasdiqlanmaguncha e'lon ko'rinmaydi.
+ListingStatus = Literal["active", "inactive", "payment_pending"]
 ListingMediaType = Literal["photo", "video"]
 
 
