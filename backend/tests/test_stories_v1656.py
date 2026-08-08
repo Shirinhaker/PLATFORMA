@@ -176,7 +176,7 @@ def test_stories_router_service_and_metadata_are_registered():
     assert "from app.stories import model as stories_model" in env_source
 
 
-def test_stories_feature_flag_is_configurable_and_defaults_closed():
+def test_stories_feature_flag_can_be_explicitly_closed_or_opened():
     closed = create_app(Settings(environment="test", stories_enabled=False))
     opened = create_app(Settings(environment="test", stories_enabled=True))
 

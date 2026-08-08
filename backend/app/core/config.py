@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     )
     legacy_snapshot_root: str = ""
     listings_enabled: bool = False
-    stories_enabled: bool = False
+    stories_enabled: bool = True
     phase3c_public_enabled: bool = False
     telegram_link_ttl_seconds: int = 10 * 60
     telegram_code_ttl_seconds: int = 5 * 60
