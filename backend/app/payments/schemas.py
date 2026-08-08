@@ -56,6 +56,9 @@ class PaymentRequestCreate(BaseModel):
     duration_months: int = Field(default=0, ge=0, le=60)
     quantity: int = Field(default=1, ge=1, le=10000)
     target_id: int | None = Field(default=None, gt=0)
+    # E'lon ichki raqami ochiq kontraktda yo'q — mijoz `l_…` kalitini
+    # yuboradi, server uni egalik bilan birga tekshirib yechadi.
+    target_public_id: str = Field(default="", max_length=64)
 
 
 class PaymentAttemptRead(BaseModel):

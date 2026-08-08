@@ -38,6 +38,8 @@ export type UserProfileApi = Pick<
   | "createListing"
   | "deleteListing"
   | "getSavedListings"
+  | "getPaymentCatalog"
+  | "createPaymentRequest"
   | "getMyOrders"
   | "getOrderInbox"
   | "markOrderSeen"

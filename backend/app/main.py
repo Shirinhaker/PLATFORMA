@@ -44,6 +44,7 @@ from app.expenses.router import router as expenses_router
 from app.expenses.service import ExpenseService
 from app.inventory.router import router as inventory_router
 from app.inventory.service import InventoryService
+from app.listings.activation import ListingActivationService
 from app.listings.router import router as listings_router
 from app.listings.service import ListingService
 from app.media.router import router as media_router
@@ -171,6 +172,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.follow_service = FollowService(database.session)
+        app.state.listing_activation_service = ListingActivationService(
+            database.session
+        )
         app.state.advertisement_authoring_service = AdvertisementAuthoringService(
             database.session,
             image_url_provider=app.state.r2.create_download_url,
@@ -179,6 +183,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             download_url_provider=app.state.r2.create_download_url,
             advertisement_service=app.state.advertisement_authoring_service,
+            listing_service=app.state.listing_activation_service,
         )
         app.state.admin_auth_service = AdminAuthService(
             database.session, resolved

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type { ListingCreate, ListingRead } from "../api/types";
+import type { ListingCreate, ListingRead, PaymentCatalog } from "../api/types";
+import {
+  PaymentRequestModal,
+  type PaymentRequestApi,
+} from "../profiles/PaymentRequestModal";
 import { ListingFormV1656 } from "./ListingFormV1656";
 import "./ListingsV1656.css";
 
@@ -13,7 +17,7 @@ export type OwnerListingsApi = Pick<
   | "deleteListing"
   | "createUploadGrant"
   | "uploadGrantedFile"
->;
+> & Partial<Pick<ApiClient, "getPaymentCatalog" | "createPaymentRequest">>;
 
 type Props = {
   actor: "user" | "business";
@@ -25,6 +29,14 @@ const ICONS: Record<string, string> = {
   uy: "🏠", ish: "💼", moshina: "🚙", hayvon: "🐾", texnika: "📱", boshqa: "📦",
 };
 
+/** v1656 `payments.py:57` dagi tarif kodi. */
+const LISTING_PRICE_CODE = "listing_publish";
+
+function statusText(status: ListingRead["status"]) {
+  if (status === "payment_pending") return "To‘lov kutilmoqda";
+  return status === "active" ? "Faol" : "O'chiq";
+}
+
 
 export function OwnerListingsV1656({ actor, api, onBack }: Props) {
   const [rows, setRows] = useState<ListingRead[]>([]);
@@ -34,6 +46,26 @@ export function OwnerListingsV1656({ actor, api, onBack }: Props) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // To'lov oynasi: e'lon joylangach yoki "To'lov qilish" bosilganda.
+  const [payFor, setPayFor] = useState<ListingRead | null>(null);
+  const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
+  const canPay = Boolean(api.getPaymentCatalog && api.createPaymentRequest);
+
+  // Katalog aynan to'lov so'ralganda yuklanadi — ekran ochilishida emas.
+  useEffect(() => {
+    if (!payFor || catalog || !api.getPaymentCatalog) return;
+    let active = true;
+    void api.getPaymentCatalog()
+      .then((value) => { if (active) setCatalog(value); })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        setPayFor(null);
+        setError(reason instanceof Error
+          ? reason.message
+          : "To‘lov ma’lumotlari yuklanmadi.");
+      });
+    return () => { active = false; };
+  }, [api, payFor, catalog]);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +85,13 @@ export function OwnerListingsV1656({ actor, api, onBack }: Props) {
       const created = await api.createListing(body);
       setRows((current) => [created, ...current]);
       setForm(false);
+      if (created.status === "payment_pending") {
+        // To'lovsiz e'lon ro'yxatlarga tushmaydi, shuning uchun oyna
+        // darhol ochiladi — foydalanuvchi qadamni o'tkazib yubormaydi.
+        setNotice("E'lon saqlandi. To'lovdan so'ng ko'rinadi.");
+        if (canPay) setPayFor(created);
+        return;
+      }
       setNotice("E'lon joylandi ✅");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "E'lon joylanmadi.");
@@ -130,9 +169,18 @@ export function OwnerListingsV1656({ actor, api, onBack }: Props) {
                   <div className="li-price">{row.price}</div>
                   <div className="li-meta">
                     {row.visibility === "own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma"}
-                    {` · ${row.status === "active" ? "Faol" : "O'chiq"}`}
+                    {` · ${statusText(row.status)}`}
                     {row.media.length ? ` · 📎 ${row.media.length}` : ""}
                   </div>
+                  {row.status === "payment_pending" && canPay ? (
+                    <button
+                      className="btn btn-primary listing-pay-btn"
+                      type="button"
+                      onClick={() => { setError(""); setPayFor(row); }}
+                    >
+                      To‘lov qilish
+                    </button>
+                  ) : null}
                 </div>
                 <button
                   aria-label="E'lonni o'chirish"
@@ -157,6 +205,22 @@ export function OwnerListingsV1656({ actor, api, onBack }: Props) {
           </>
         )}
       </section>
+      {payFor && catalog ? (
+        <PaymentRequestModal
+          api={api as PaymentRequestApi}
+          catalog={catalog}
+          target={{
+            serviceType: "listing",
+            priceCode: LISTING_PRICE_CODE,
+            label: `E'lon joylash · ${payFor.title}`,
+            targetPublicId: payFor.public_id,
+          }}
+          onClose={() => setPayFor(null)}
+          onSubmitted={() => setNotice(
+            "To'lov so'rovi yuborildi. Admin tasdiqlagach e'lon ko'rinadi.",
+          )}
+        />
+      ) : null}
       {confirmId ? (
         <>
           <button

@@ -25,8 +25,10 @@ export type PaymentTarget = {
   durationMonths?: number;
   /** Reklamada bu tuman-soat soni; summa shunga ko'paytiriladi. */
   quantity?: number;
-  /** Qaysi reklama yoki e'longa tegishli ekani. */
+  /** Qaysi reklamaga tegishli ekani. */
   targetId?: number;
+  /** E'lon uchun `l_…` kaliti — ichki raqam ochiq kontraktda yo'q. */
+  targetPublicId?: string;
 };
 
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -139,6 +141,7 @@ export function PaymentRequestModal({
         duration_months: target.durationMonths ?? 0,
         quantity,
         target_id: target.targetId,
+        target_public_id: target.targetPublicId,
       });
       onSubmitted();
       onClose();

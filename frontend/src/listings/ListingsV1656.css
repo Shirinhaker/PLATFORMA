@@ -21,6 +21,7 @@
 .public-listings-v1656 .chev.down { transform: rotate(90deg); }
 .public-listings-v1656 .vbadge { position: absolute; right: 5px; bottom: 5px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; background: rgb(0 0 0 / 60%); font-size: 9px !important; }
 .listing-category-empty { padding: 24px 16px; }
+.owner-listings-v1656 .listing-pay-btn { height: 32px; margin-top: 7px; padding: 0 14px; font-size: 12.5px; }
 .el-detail { padding: 12px; margin-top: -11px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 16px 16px; background: var(--card); box-shadow: var(--shadow); animation: elopen .2s ease; }
 @keyframes elopen { from { opacity: 0; } to { opacity: 1; } }
 .listing-media-grid { display: grid; grid-auto-flow: column; grid-auto-columns: min(82vw,420px); gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 10px; margin: 0 0 10px; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }

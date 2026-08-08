@@ -75,6 +75,8 @@ type OnlineApi = Partial<Pick<
   | "deleteListing"
   | "createUploadGrant"
   | "uploadGrantedFile"
+  | "getPaymentCatalog"
+  | "createPaymentRequest"
   | "getMyOrders"
   | "getOrderInbox"
   | "markOrderSeen"

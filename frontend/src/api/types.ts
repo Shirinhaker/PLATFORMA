@@ -1067,7 +1067,8 @@ export type ListingRead = {
   lat: number | null;
   lng: number | null;
   visibility: "all" | "own";
-  status: "active" | "inactive";
+  // `payment_pending` — to'lov tasdiqlanmaguncha faqat egasi ko'radi.
+  status: "active" | "inactive" | "payment_pending";
   created_at: string;
   media: ListingMedia[];
   owner_kind: "user" | "business";
@@ -1141,6 +1142,8 @@ export type PaymentRequestBody = {
   duration_months?: number;
   quantity?: number;
   target_id?: number;
+  /** E'lon uchun — ichki raqam ochiq kontraktda yo'q. */
+  target_public_id?: string;
 };
 
 export type PaymentAttempt = {
