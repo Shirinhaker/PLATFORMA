@@ -71,14 +71,14 @@ def test_public_search_cache_ttl_defaults_to_thirty_seconds():
     assert settings.public_search_cache_ttl_seconds == 30
 
 
-def test_phase3c_media_settings_are_safe_by_default():
+def test_phase3c_media_settings_have_expected_defaults():
     settings = Settings(environment="test")
 
     assert settings.legacy_media_roots == ""
     assert settings.legacy_media_max_bytes == 100 * 1024 * 1024
     assert settings.legacy_snapshot_root == ""
     assert settings.listings_enabled is False
-    assert settings.stories_enabled is False
+    assert settings.stories_enabled is True
     assert settings.phase3c_public_enabled is False
 
 
