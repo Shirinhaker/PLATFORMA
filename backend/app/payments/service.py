@@ -83,12 +83,14 @@ class PaymentService:
         activator: Activator | None = None,
         download_url_provider: Callable[..., str] | None = None,
         advertisement_service: object | None = None,
+        listing_service: object | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._now = now or (lambda: int(time.time()))
         self._activator = activator
         self._download_url = download_url_provider
         self._advertisements = advertisement_service
+        self._listings = listing_service
 
     async def catalog(self) -> PaymentCatalogRead:
         async with self._session_factory() as session:
@@ -177,6 +179,20 @@ class PaymentService:
                     "To'lov usuli faol emas.",
                 )
 
+            target_id = body.target_id
+            if body.service_type == "listing":
+                if self._listings is None or not body.target_public_id:
+                    raise ApiError(
+                        400,
+                        "listing_target_required",
+                        "To‘lov qaysi e’longa tegishli ekani ko‘rsatilmagan.",
+                    )
+                target_id = await self._listings.resolve_owned(
+                    session,
+                    public_id=body.target_public_id,
+                    account_id=account_id,
+                )
+
             now = self._now()
             amount = price.amount_uzs * body.quantity
             request = PaymentRequest(
@@ -185,7 +201,7 @@ class PaymentService:
                 actor_type=account_type.value,
                 account_id=account_id,
                 service_type=body.service_type,
-                target_id=body.target_id,
+                target_id=target_id,
                 plan_code=body.plan_code,
                 duration_months=body.duration_months,
                 quantity=body.quantity,
@@ -411,9 +427,21 @@ class PaymentService:
                 now=now,
             )
             return
+        if request.service_type == "listing":
+            if self._listings is None or request.target_id is None:
+                raise ApiError(
+                    409,
+                    "listing_target_missing",
+                    "To‘lov qaysi e’longa tegishli ekani noma’lum.",
+                )
+            await self._listings.activate_paid(
+                session,
+                listing_id=request.target_id,
+                account_id=request.account_id,
+                now=now,
+            )
+            return
         if request.service_type != "subscription":
-            # E'lon to'lovi v1656da ham ishlatilmaydi — narx bor,
-            # lekin hech qanday oqim uni yaratmaydi.
             return
         existing = await session.scalar(
             select(BusinessSubscription).where(

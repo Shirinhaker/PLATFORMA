@@ -222,6 +222,38 @@ async def test_business_cabinet_listing_is_live_synced_to_public_table(listing_s
 
 
 @pytest.mark.asyncio
+async def _activate(store, account_id: int) -> None:
+    """To'lov tasdiqlangan holatni taqlid qiladi.
+
+    E'lon endi `payment_pending` bilan yaratiladi va to'lovsiz public
+    ro'yxatlarda ko'rinmaydi (v1656 `listing_publish` tarifi).
+    """
+    from sqlalchemy import or_, select as _select
+
+    from app.listings.activation import ListingActivationService
+    from app.listings.model import Listing
+
+    @asynccontextmanager
+    async def sessions():
+        yield store
+
+    service = ListingActivationService(sessions)
+    rows = list((await store.scalars(
+        _select(Listing).where(
+            Listing.status == "payment_pending",
+            or_(
+                Listing.owner_user_account_id == account_id,
+                Listing.owner_business_account_id == account_id,
+            ),
+        )
+    )).all())
+    for row in rows:
+        await service.activate_paid(
+            store, listing_id=row.id, account_id=account_id, now=1_785_000_000,
+        )
+    await store.commit()
+
+
 async def test_user_can_create_save_and_delete_listing_with_real_media(listing_store):
     @asynccontextmanager
     async def sessions():
@@ -249,6 +281,13 @@ async def test_user_can_create_save_and_delete_listing_with_real_media(listing_s
 
     assert created.visibility == "all"
     assert created.media[0].url.endswith("listing_photo/a.webp")
+    # To'lovsiz e'lon public ro'yxatga tushmaydi.
+    assert created.status == "payment_pending"
+    assert await service.list_public(
+        category="moshina", query="Nexia", current_account_id=5,
+    ) == []
+
+    await _activate(listing_store, 5)
     assert (await service.list_public(
         category="moshina",
         query="Nexia",
@@ -334,6 +373,8 @@ async def test_business_mode_saves_to_its_linked_user_cabinet(listing_store):
         ),
     )
 
+    # Saqlash uchun e'lon public bo'lishi kerak — to'lov tasdiqlanadi.
+    await _activate(listing_store, 5)
     assert await service.toggle_save(
         public_id=created.public_id,
         account_id=7,

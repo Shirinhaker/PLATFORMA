@@ -30,6 +30,11 @@ PUBLIC_ID_RE = re.compile(r"^l_[0-9a-f]{16}$")
 CATEGORIES = {"uy", "ish", "moshina", "hayvon", "texnika", "boshqa"}
 
 
+def _listing_status(value: str) -> str:
+    """Egasiga haqiqiy holat ko'rsatiladi, boshqasi `active` deb qaraladi."""
+    return value if value in {"inactive", "payment_pending"} else "active"
+
+
 class ListingService:
     def __init__(
         self,
@@ -150,7 +155,9 @@ class ListingService:
                 visibility=(
                     body.visibility if account_type is AccountType.BUSINESS else "all"
                 ),
-                status="active",
+                # To'lov tasdiqlanmaguncha e'lon public ro'yxatlarga
+                # tushmaydi — ular `status == "active"` bo'yicha filtrlaydi.
+                status="payment_pending",
                 review_state=ReviewState.READY,
                 migration_run_id=None,
                 created_at=now,
@@ -373,7 +380,7 @@ class ListingService:
                 lat=row.latitude,
                 lng=row.longitude,
                 visibility=("own" if row.visibility == "own" else "all"),
-                status=("inactive" if row.status == "inactive" else "active"),
+                status=_listing_status(row.status),
                 created_at=row.created_at,
                 media=[
                     ListingMediaRead(
