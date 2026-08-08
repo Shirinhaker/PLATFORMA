@@ -13,6 +13,7 @@ from app.db.session import Database
 from app.legacy_migration.advertisement_stage import import_advertisements
 from app.legacy_migration.catalog_stage import import_catalog
 from app.legacy_migration.listing_stage import import_listings
+from app.legacy_migration.story_stage import import_stories
 from app.legacy_migration.media_stage import migrate_media
 from app.legacy_migration.model import (
     MigrationEnvironment,
@@ -356,6 +357,17 @@ def build_database_runner(
                 finally:
                     source.close()
 
+    async def import_listings_and_stories(session, source, run):
+        listings = await import_listings(session, source, run)
+        stories = await import_stories(session, source, run)
+        return StageResult(
+            created=listings.created + stories.created,
+            reused=listings.reused + stories.reused,
+            updated=listings.updated + stories.updated,
+            quarantined=listings.quarantined + stories.quarantined,
+            issues=listings.issues + stories.issues,
+        )
+
     handlers: dict[MigrationStage, StageHandler] = {
         MigrationStage.INVENTORY: inventory_handler,
         MigrationStage.ACCOUNTS: lambda snapshot, run: transaction_stage(
@@ -376,7 +388,7 @@ def build_database_runner(
         MigrationStage.LISTINGS: lambda snapshot, run: transaction_stage(
             snapshot,
             run,
-            import_listings,
+            import_listings_and_stories,
         ),
         MigrationStage.ADVERTISEMENTS: (
             lambda snapshot, run: transaction_stage(

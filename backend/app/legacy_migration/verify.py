@@ -18,6 +18,7 @@ from app.legacy_migration.model import (
 from app.legacy_migration.source import inventory_source
 from app.listings.model import Listing
 from app.profiles.model import BusinessProfile, UserProfile
+from app.stories.model import Story, StoryReport, StoryView
 
 
 EXPLICIT_DEMO_FLAGS = (
@@ -90,6 +91,12 @@ class VerificationInput:
     forbidden_public_fields: tuple[str, ...]
     cabinet_demo_rows: int = 0
     cabinet_sensitive_fields: int = 0
+    source_stories: int = 0
+    target_stories: int = 0
+    source_story_views: int = 0
+    target_story_views: int = 0
+    source_story_reports: int = 0
+    target_story_reports: int = 0
 
 
 def evaluate_gates(values: VerificationInput) -> VerificationReport:
@@ -114,6 +121,17 @@ def evaluate_gates(values: VerificationInput) -> VerificationReport:
             "advertisement_count",
             values.target_advertisements,
             values.source_advertisements,
+        ),
+        _equal("story_count", values.target_stories, values.source_stories),
+        _equal(
+            "story_view_count",
+            values.target_story_views,
+            values.source_story_views,
+        ),
+        _equal(
+            "story_report_count",
+            values.target_story_reports,
+            values.source_story_reports,
         ),
         _zero("broken_foreign_keys", values.broken_foreign_keys),
         _zero("identity_conflicts", values.identity_conflicts),
@@ -162,7 +180,11 @@ async def verify_migration(
         "listing",
         "listing_media",
         "advertisement",
+        "story",
     )
+    source_stories = _safe_source_count(source, "stories")
+    source_story_views = _safe_source_count(source, "story_views")
+    source_story_reports = _safe_source_count(source, "story_reports")
     source_rows = sum(
         inventory[table]["total"]
         for table in (
@@ -174,7 +196,7 @@ async def verify_migration(
             "listing_media",
             "advertisements",
         )
-    )
+    ) + source_stories
     mapped_rows = int(
         await session.scalar(
             select(func.count(LegacyIdMap.id)).where(
@@ -273,6 +295,24 @@ async def verify_migration(
         forbidden_public_fields=forbidden_public_fields,
         cabinet_demo_rows=cabinet_demo_rows,
         cabinet_sensitive_fields=cabinet_sensitive_fields,
+        source_stories=source_stories,
+        target_stories=(
+            await _count_for_run(session, Story, run.id)
+            if source_stories
+            else 0
+        ),
+        source_story_views=source_story_views,
+        target_story_views=(
+            await _count_story_children_for_run(session, StoryView, run.id)
+            if source_story_views
+            else 0
+        ),
+        source_story_reports=source_story_reports,
+        target_story_reports=(
+            await _count_story_children_for_run(session, StoryReport, run.id)
+            if source_story_reports
+            else 0
+        ),
     )
     return evaluate_gates(values)
 
@@ -405,6 +445,17 @@ async def _count_for_run(session, model, run_id: int) -> int:
     )
 
 
+async def _count_story_children_for_run(session, model, run_id: int) -> int:
+    return int(
+        await session.scalar(
+            select(func.count(model.id))
+            .join(Story, Story.id == model.story_id)
+            .where(Story.migration_run_id == run_id)
+        )
+        or 0
+    )
+
+
 async def _broken_mappings(
     session: AsyncSession,
     entity_types: tuple[str, ...],
@@ -423,6 +474,7 @@ async def _broken_mappings(
         "catalog_item": CatalogItem,
         "listing": Listing,
         "advertisement": Advertisement,
+        "story": Story,
     }
     broken = 0
     for mapping in mappings:
@@ -445,6 +497,10 @@ def _source_media_references(source) -> int:
         "WHERE TRIM(COALESCE(image_file, '')) != ''",
         "SELECT COUNT(*) FROM advertisements "
         "WHERE TRIM(COALESCE(mobile_image_file, '')) != ''",
+        "SELECT COUNT(*) FROM stories "
+        "WHERE TRIM(COALESCE(media_filename, '')) != ''",
+        "SELECT COUNT(*) FROM stories "
+        "WHERE TRIM(COALESCE(thumbnail_filename, '')) != ''",
     )
     for query in queries:
         try:
@@ -452,6 +508,13 @@ def _source_media_references(source) -> int:
         except Exception:
             continue
     return total
+
+
+def _safe_source_count(source, table: str) -> int:
+    try:
+        return int(source.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0])
+    except Exception:
+        return 0
 
 
 def _equal(code: str, actual: object, expected: object) -> GateResult:

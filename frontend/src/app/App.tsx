@@ -69,6 +69,12 @@ type PublicSearchApi = Pick<
   | "getPublicListings"
   | "getPublicListing"
   | "toggleListingSave"
+  | "getStoryFeed"
+  | "getOwnerStories"
+  | "recordStoryView"
+  | "getStoryViewers"
+  | "deleteStory"
+  | "reportStory"
 >;
 type OrderApi = Pick<ApiClient, "createOrder">;
 type AppApi = (
@@ -225,6 +231,23 @@ export function App({ api }: { api: AppApi }) {
           getListingCounts: api.getListingCounts.bind(api),
           getPublicListings: api.getPublicListings.bind(api),
           toggleListingSave: api.toggleListingSave.bind(api),
+        }
+      : undefined
+  ), [api]);
+  const storyApi = useMemo(() => (
+    typeof api.getStoryFeed === "function"
+    && typeof api.getOwnerStories === "function"
+    && typeof api.recordStoryView === "function"
+    && typeof api.getStoryViewers === "function"
+    && typeof api.deleteStory === "function"
+    && typeof api.reportStory === "function"
+      ? {
+          getStoryFeed: api.getStoryFeed.bind(api),
+          getOwnerStories: api.getOwnerStories.bind(api),
+          recordStoryView: api.recordStoryView.bind(api),
+          getStoryViewers: api.getStoryViewers.bind(api),
+          deleteStory: api.deleteStory.bind(api),
+          reportStory: api.reportStory.bind(api),
         }
       : undefined
   ), [api]);
@@ -513,6 +536,7 @@ export function App({ api }: { api: AppApi }) {
           }}
           onQueueMessage={showQueueMessage}
           onTitleChange={updateOpenedProfileTitle}
+          storyApi={publicFeatures.stories ? storyApi : undefined}
         />
       );
     }
@@ -612,6 +636,7 @@ export function App({ api }: { api: AppApi }) {
             onResultsActiveChange={setHomeSearchResultsActive}
             recordAdvertisementClick={recordAdvertisementClick}
             recordAdvertisementViews={recordAdvertisementViews}
+            storyApi={publicFeatures.stories ? storyApi : undefined}
           />
         );
     }

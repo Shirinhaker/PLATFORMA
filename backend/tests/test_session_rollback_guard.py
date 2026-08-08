@@ -47,6 +47,7 @@ ROLLBACK_SERVICES = (
     ("app.public_discovery.service", "PublicDiscoveryService"),
     ("app.queues.service", "QueueService"),
     ("app.staff.service", "StaffService"),
+    ("app.stories.service", "StoryService"),
 )
 
 

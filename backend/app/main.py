@@ -66,6 +66,8 @@ from app.staff.router import router as staff_router
 from app.staff.service import StaffService
 from app.statistics.router import router as statistics_router
 from app.statistics.service import StatisticsService
+from app.stories.router import router as stories_router
+from app.stories.service import StoryService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -172,6 +174,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.follow_service = FollowService(database.session)
+        app.state.story_service = StoryService(
+            database.session,
+            app.state.r2,
+        )
         app.state.listing_activation_service = ListingActivationService(
             database.session
         )
@@ -242,6 +248,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(advertisements_router)
     app.include_router(advertisement_authoring_router)
     app.include_router(listings_router)
+    app.include_router(stories_router)
     app.include_router(orders_router)
     app.include_router(follows_router)
     app.include_router(payments_router)
