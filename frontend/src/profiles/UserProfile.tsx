@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
+  NotificationRead,
   SessionIdentity,
   UserProfile as UserProfileData,
   UserProfilePatch,
@@ -32,6 +33,11 @@ import {
   ReceivedReviewsV1656,
   type ReceivedReviewsApi,
 } from "../reviews/ReviewsV1656";
+import {
+  ActionNotificationsV1656,
+  NotificationsV1656,
+  type NotificationsApi,
+} from "../notifications/NotificationsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -85,6 +91,16 @@ export type UserProfileApi = Pick<
   | "getMessageUnreadCount"
   | "getReceivedReviews"
   | "replyToReview"
+  | "getNotifications"
+  | "getActionNotifications"
+  | "markNotificationRead"
+  | "markAllNotificationsRead"
+  | "getNotificationPreference"
+  | "saveNotificationPreference"
+  | "getNotificationFilters"
+  | "createNotificationFilter"
+  | "deleteNotificationFilter"
+  | "getPushStatus"
 >>;
 
 type Props = {
@@ -285,6 +301,19 @@ function supportsReceivedReviews(
     .every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
+function supportsNotifications(
+  api: UserProfileApi,
+): api is UserProfileApi & NotificationsApi {
+  return [
+    "getNotifications", "getActionNotifications", "markNotificationRead",
+    "markAllNotificationsRead", "getNotificationPreference",
+    "saveNotificationPreference", "getNotificationFilters",
+    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
+  ].every((method) => (
+    typeof api[method as keyof UserProfileApi] === "function"
+  ));
+}
+
 
 export function UserProfile({
   api,
@@ -302,6 +331,7 @@ export function UserProfile({
   const [specialist, setSpecialist] = useState<Record<string, unknown>>({});
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
   const [messageUnread, setMessageUnread] = useState(0);
+  const [notificationUnread, setNotificationUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
   const [queueTarget, setQueueTarget] = useState<number | null>(null);
 
@@ -309,6 +339,7 @@ export function UserProfile({
     setProfile(value);
     setBaseline(value);
     setSpecialist({ ...(value.specialist_profile ?? {}) });
+    setNotificationUnread(value.dashboard_snapshot?.unread ?? 0);
   }
 
   async function load() {
@@ -347,6 +378,15 @@ export function UserProfile({
         product: rows.filter((row) => !isServiceOrder(row) && row.is_unread).length,
         service: rows.filter((row) => isServiceOrder(row) && row.is_unread).length,
       });
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [api]);
+
+  useEffect(() => {
+    if (!supportsNotifications(api)) return;
+    let active = true;
+    api.getNotifications().then((value) => {
+      if (active) setNotificationUnread(value.unread);
     }).catch(() => undefined);
     return () => { active = false; };
   }, [api]);
@@ -489,7 +529,7 @@ export function UserProfile({
     }
   }
 
-  function markNotificationRead(notificationId: number) {
+  function markLegacyNotificationRead(notificationId: number) {
     setProfile((current) => {
       if (!current) return current;
       const payload = { ...(current.cabinet_payload ?? {}) };
@@ -508,6 +548,7 @@ export function UserProfile({
         && typeof value === "object"
         && !Boolean(Number((value as Record<string, unknown>).is_read ?? 0))
       )).length;
+      setNotificationUnread(unread);
       return {
         ...current,
         cabinet_payload: payload,
@@ -527,53 +568,94 @@ export function UserProfile({
     );
   }
 
+  async function openNotification(notification: NotificationRead) {
+    if (notification.listing_public_id && onOpenPublicListing) {
+      onOpenPublicListing(notification.listing_public_id);
+      return;
+    }
+    if (notification.medical_queue_id) {
+      setQueueTarget(notification.medical_queue_id);
+      setView("service-orders");
+      return;
+    }
+    if (notification.order_id && typeof api.getMyOrders === "function") {
+      const orders = await api.getMyOrders();
+      const target = orders.find((order) => order.id === notification.order_id);
+      if (target) {
+        setOrderTarget(notification.order_id);
+        setView(isServiceOrder(target) ? "service-orders" : "orders");
+        return;
+      }
+    }
+    if (notification.ride_id) setView("rides");
+  }
+
+  const actionBanner = supportsNotifications(api) ? (
+    <ActionNotificationsV1656
+      api={api}
+      onOpenNotification={openNotification}
+    />
+  ) : null;
+  const withActionBanner = (content: ReactNode) => <>{actionBanner}{content}</>;
+
   if (view === "listings" && supportsOwnerListings(api)) {
-    return (
+    return withActionBanner(
       <OwnerListingsV1656
         actor="user"
         api={api}
         onBack={() => setView("dashboard")}
-      />
+      />,
     );
   }
 
   if (view === "stories" && supportsOwnerStories(api)) {
-    return (
+    return withActionBanner(
       <OwnerStoriesV1656
         actor="user"
         api={api}
         ownerName={profile.name}
         onBack={() => setView("dashboard")}
-      />
+      />,
     );
   }
 
   if (view === "saved" && getSavedListings) {
-    return (
+    return withActionBanner(
       <SavedListingsV1656
         getSavedListings={getSavedListings}
         legacyRows={selectedRows}
         onBack={() => setView("dashboard")}
         onOpenListing={(publicId) => onOpenPublicListing?.(publicId)}
-      />
+      />,
     );
   }
 
   if (view === "messages" && supportsMessages(api)) {
-    return (
+    return withActionBanner(
       <MessagesV1656
         api={api}
         onBack={() => setView("dashboard")}
-      />
+      />,
     );
   }
 
   if (view === "specialist-reviews" && supportsReceivedReviews(api)) {
-    return (
+    return withActionBanner(
       <ReceivedReviewsV1656
         api={api}
         onBack={() => setView("specialist")}
-      />
+      />,
+    );
+  }
+
+  if (["notifications", "notify-filters"].includes(view) && supportsNotifications(api)) {
+    return withActionBanner(
+      <NotificationsV1656
+        api={api}
+        onBack={() => setView("dashboard")}
+        onOpenNotification={openNotification}
+        onUnreadChange={setNotificationUnread}
+      />,
     );
   }
 
@@ -588,7 +670,7 @@ export function UserProfile({
         <h2 className="queue-orders-v1656__heading">Boshqa xizmat buyurtmalari</h2>
       </>
     ) : null;
-    return (
+    return withActionBanner(
       <OrdersCabinetV1656
         key={view}
         api={api}
@@ -601,12 +683,12 @@ export function UserProfile({
           ...current,
           [view === "service-orders" ? "service" : "product"]: count,
         }))}
-      />
+      />,
     );
   }
 
   if (selectedSection?.payload) {
-    return (
+    return withActionBanner(
       <CabinetDataView
         title={selectedSection.label}
         rows={selectedRows}
@@ -623,14 +705,14 @@ export function UserProfile({
                 && typeof api.markQueueNotificationRead === "function"
               ) {
                 void api.markQueueNotificationRead(notificationId)
-                  .then(() => markNotificationRead(notificationId))
+                  .then(() => markLegacyNotificationRead(notificationId))
                   .catch((reason) => setError(message(reason)));
               }
               return;
             }
             const id = Number(row.order_id ?? 0);
             if (!id || typeof api.getMyOrders !== "function") return;
-            void api.getMyOrders!().then((orders) => {
+            void api.getMyOrders().then((orders) => {
               const target = orders.find((order) => order.id === id);
               if (!target) return;
               setOrderTarget(id);
@@ -638,13 +720,13 @@ export function UserProfile({
             }).catch(() => undefined);
           }
           : undefined}
-      />
+      />,
     );
   }
 
   if (view === "specialist") {
     const field = (name: string) => String(specialist[name] ?? "");
-    return (
+    return withActionBanner(
       <main className="profile-shell">
         <header className="profile-heading">
           <h1>Mutaxassisligim va xizmatlarim</h1>
@@ -702,12 +784,12 @@ export function UserProfile({
           {saved && <p className="form-success" role="status">Saqlandi</p>}
           <button type="submit" disabled={busy}>Saqlash</button>
         </form>
-      </main>
+      </main>,
     );
   }
 
   if (view === "profile" || view === "settings") {
-    return (
+    return withActionBanner(
       <main className="profile-shell">
         <header className="profile-heading">
           <div>
@@ -738,7 +820,7 @@ export function UserProfile({
           {saved && <p className="form-success" role="status">Saqlandi</p>}
           <button type="submit" disabled={busy}>Saqlash</button>
         </form>
-      </main>
+      </main>,
     );
   }
 
@@ -753,7 +835,7 @@ export function UserProfile({
     .filter(Boolean)
     .join(", ");
 
-  return (
+  return withActionBanner(
     <main className="user-cabinet">
       <section className="user-cabinet__panel">
         <header className="user-cabinet__identity">
@@ -788,7 +870,7 @@ export function UserProfile({
             ["Faol buyurtmalar", snapshot.active_orders ?? 0, "Joriy buyurtmalar", "orders"],
             ["Obunalar", snapshot.following ?? followingCount, "Kuzatilayotgan profillar", "follows"],
             ["Saqlanganlar", snapshot.saved ?? 0, "E’lon va bizneslar", "saved"],
-            ["Bildirishnomalar", snapshot.unread ?? 0, "O‘qilmagan xabarlar", "notifications"],
+            ["Bildirishnomalar", notificationUnread, "O‘qilmagan xabarlar", "notifications"],
           ].map(([label, value, sub, target], index) => (
             <button
               type="button"
@@ -826,6 +908,9 @@ export function UserProfile({
                   ) : null}
                   {section.view === "messages" && messageUnread > 0 ? (
                     <em className="order-badge">{messageUnread > 99 ? "99+" : messageUnread}</em>
+                  ) : null}
+                  {section.view === "notifications" && notificationUnread > 0 ? (
+                    <em className="order-badge">{notificationUnread > 99 ? "99+" : notificationUnread}</em>
                   ) : null}
                 </button>
               ))}
@@ -882,6 +967,6 @@ export function UserProfile({
           </aside>
         </div>
       </section>
-    </main>
+    </main>,
   );
 }

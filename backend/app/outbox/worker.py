@@ -22,6 +22,10 @@ from app.outbox.repository import (
     mark_failed,
     mark_processed,
 )
+from app.notifications.push_worker import (
+    build_firebase_sender,
+    process_push_batch,
+)
 
 
 Handler = Callable[[dict[str, Any]], Awaitable[None]]
@@ -235,6 +239,7 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     last_cleanup: datetime | None = None
     try:
+        push_sender = build_firebase_sender(settings)
         async with httpx.AsyncClient(timeout=10) as http:
             telegram = TelegramClient(settings.telegram_bot_token, http)
             handlers = build_handlers(settings, database, telegram)
@@ -251,6 +256,8 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
                     worker_id,
                     handlers=handlers,
                 )
+                if push_sender is not None:
+                    count += await process_push_batch(database, push_sender)
                 if once:
                     return
                 if count == 0:

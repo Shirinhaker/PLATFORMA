@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     otp_secret: str = Field(default="")
     csrf_secret: str = Field(default="")
     outbox_encryption_key: str = Field(default="")
+    firebase_service_account_json: str = Field(default="")
+    firebase_service_account_path: str = Field(default="")
     auth_cookie_name: str = "koprik_session"
     session_ttl_seconds: int = 30 * 24 * 60 * 60
     session_cache_ttl_seconds: int = Field(default=30, ge=5, le=300)

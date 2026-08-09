@@ -506,6 +506,11 @@ export function App({ api }: { api: AppApi }) {
           api={api}
           identity={session.identity}
           onLogout={logout}
+          onOpenPublicListing={(publicId) => {
+            setOpenedProfile(null);
+            setOpenedListing({ publicId, title: "E’lon" });
+            dispatch({ type: "GO_HOME" });
+          }}
           onSwitched={switched}
         />
       );

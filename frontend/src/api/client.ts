@@ -120,6 +120,13 @@ import type {
   ReviewRead,
   ReviewTargetKind,
   ReviewWrite,
+  ActionNotificationListRead,
+  NotificationFilterRead,
+  NotificationFilterWrite,
+  NotificationListRead,
+  NotificationPreference,
+  PushDeviceWrite,
+  PushStatusRead,
 } from "./types";
 import type {
   Advertisement,
@@ -668,6 +675,103 @@ export class ApiClient {
       "PUT",
       `/api/v1/reviews/${reviewId}/reply`,
       { reply },
+      true,
+    );
+  }
+
+  getNotifications(): Promise<NotificationListRead> {
+    return this.request("GET", "/api/v1/notifications", undefined, true);
+  }
+
+  getActionNotifications(): Promise<ActionNotificationListRead> {
+    return this.request(
+      "GET",
+      "/api/v1/notifications/actions",
+      undefined,
+      true,
+    );
+  }
+
+  markNotificationRead(notificationId: number): Promise<{ ok: true; read_at: number }> {
+    return this.request(
+      "PUT",
+      `/api/v1/notifications/${notificationId}/read`,
+      {},
+      true,
+    );
+  }
+
+  markAllNotificationsRead(): Promise<{ ok: true; read_at: number }> {
+    return this.request("PUT", "/api/v1/notifications/read-all", {}, true);
+  }
+
+  getNotificationPreference(): Promise<NotificationPreference> {
+    return this.request(
+      "GET",
+      "/api/v1/notifications/preferences",
+      undefined,
+      true,
+    );
+  }
+
+  saveNotificationPreference(
+    body: NotificationPreference,
+  ): Promise<NotificationPreference> {
+    return this.request(
+      "PUT",
+      "/api/v1/notifications/preferences",
+      body,
+      true,
+    );
+  }
+
+  getNotificationFilters(): Promise<NotificationFilterRead[]> {
+    return this.request(
+      "GET",
+      "/api/v1/notifications/filters",
+      undefined,
+      true,
+    );
+  }
+
+  createNotificationFilter(
+    body: NotificationFilterWrite,
+  ): Promise<NotificationFilterRead> {
+    return this.request(
+      "POST",
+      "/api/v1/notifications/filters",
+      body,
+      true,
+    );
+  }
+
+  deleteNotificationFilter(filterId: number): Promise<{ ok: true }> {
+    return this.request(
+      "DELETE",
+      `/api/v1/notifications/filters/${filterId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getPushStatus(): Promise<PushStatusRead> {
+    return this.request(
+      "GET",
+      "/api/v1/notifications/push-status",
+      undefined,
+      true,
+    );
+  }
+
+  registerPushDevice(body: PushDeviceWrite): Promise<{ ok: true; device_id: number }> {
+    return this.request("POST", "/api/v1/notifications/devices", body, true);
+  }
+
+  unregisterPushDevice(token: string): Promise<{ ok: true }> {
+    return this.request(
+      "DELETE",
+      "/api/v1/notifications/devices",
+      { token },
       true,
     );
   }

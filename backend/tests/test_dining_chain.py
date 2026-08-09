@@ -46,9 +46,14 @@ from app.inventory.model import (
 from app.inventory.service import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
-from app.notifications.model import Notification
+from app.notifications.model import (
+    Notification,
+    NotificationPreference,
+    PushDevice,
+    PushOutbox,
+)
 from app.orders.model import Order, OrderItem
-from app.profiles.model import BusinessProfile
+from app.profiles.model import BusinessProfile, ProfileLink
 from app.staff.model import StaffMember
 
 
@@ -165,6 +170,10 @@ def dining_context():
             CashReceiptLine.__table__,
             DebtTransaction.__table__,
             Notification.__table__,
+            NotificationPreference.__table__,
+            ProfileLink.__table__,
+            PushDevice.__table__,
+            PushOutbox.__table__,
             DiningPlace.__table__,
             DiningOrder.__table__,
             DiningOrderItem.__table__,

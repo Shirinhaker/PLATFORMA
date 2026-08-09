@@ -23,7 +23,12 @@ from app.inventory.model import (
 )
 from app.inventory.service import InventoryService
 from app.listings.model import Listing
-from app.notifications.model import Notification
+from app.notifications.model import (
+    Notification,
+    NotificationPreference,
+    PushDevice,
+    PushOutbox,
+)
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.orders.repository import OrderRepository
 from app.orders.router import router as orders_router
@@ -38,7 +43,7 @@ from app.orders.schemas import (
 )
 from app.orders.service import OrderService
 from app.outbox.model import OutboxEvent
-from app.profiles.model import BusinessProfile, UserProfile
+from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
 from app.catalog.repository import build_content_public_id
@@ -122,6 +127,10 @@ def order_store():
             CashReceiptLine.__table__,
             DebtTransaction.__table__,
             Notification.__table__,
+            NotificationPreference.__table__,
+            ProfileLink.__table__,
+            PushDevice.__table__,
+            PushOutbox.__table__,
             OutboxEvent.__table__,
         ),
     )

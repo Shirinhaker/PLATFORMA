@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 import time
 
 from fastapi import FastAPI, Request
@@ -51,6 +52,8 @@ from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
 from app.messages.router import router as messages_router
 from app.messages.service import MessageService
+from app.notifications.router import router as notifications_router
+from app.notifications.service import NotificationService
 from app.orders.router import router as orders_router
 from app.orders.service import OrderService
 from app.platform.router import router as platform_router
@@ -177,6 +180,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.r2.create_download_url,
         )
         app.state.review_service = ReviewService(database.session)
+        app.state.notification_service = NotificationService(
+            database.session,
+            push_configured=bool(
+                resolved.firebase_service_account_json
+                or resolved.firebase_service_account_path
+                or os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+                or os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH")
+            ),
+        )
         app.state.dining_service = DiningService(
             database.session,
             inventory=app.state.inventory_service,
@@ -188,7 +200,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.r2,
         )
         app.state.listing_activation_service = ListingActivationService(
-            database.session
+            database.session,
+            notification_service=app.state.notification_service,
         )
         app.state.advertisement_authoring_service = AdvertisementAuthoringService(
             database.session,
@@ -260,6 +273,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(stories_router)
     app.include_router(messages_router)
     app.include_router(reviews_router)
+    app.include_router(notifications_router)
     app.include_router(orders_router)
     app.include_router(follows_router)
     app.include_router(payments_router)
