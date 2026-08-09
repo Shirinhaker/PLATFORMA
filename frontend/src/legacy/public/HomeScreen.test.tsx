@@ -233,7 +233,7 @@ describe("HomeScreen", () => {
     expect(getFollowedProfiles).toHaveBeenCalledOnce();
   });
 
-  it("opens followed stories from the single square profile strip", async () => {
+  it("opens own and followed stories from the single square profile strip", async () => {
     const followedStory = {
       id: 7,
       owner_type: "business" as const,
@@ -286,11 +286,24 @@ describe("HomeScreen", () => {
     const storyButton = await screen.findByRole("button", {
       name: "Qumqo‘rg‘on ustalari istoriyasini ko‘rish",
     });
+    const ownStoryButton = screen.getByRole("button", {
+      name: "Sizning istoriyangizni ko‘rish",
+    });
     expect(document.querySelectorAll("#followedProfileStrip")).toHaveLength(1);
     expect(document.querySelector(".story-rail-v1656")).not.toBeInTheDocument();
+    expect(ownStoryButton).toHaveClass("story-card", "unseen");
+    expect(ownStoryButton.querySelector(".story-thumb")).toBeInTheDocument();
+    expect(ownStoryButton.querySelector(".story-name")).toHaveTextContent("Siz");
     expect(storyButton).toHaveClass("story-card", "unseen");
     expect(storyButton.querySelector(".story-thumb")).toBeInTheDocument();
     expect(screen.queryByText("Mening istoriyam")).not.toBeInTheDocument();
+
+    await userEvent.click(ownStoryButton);
+
+    expect(screen.getByRole("dialog", { name: "Istoriya ko‘ruvchisi" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Mening istoriyam")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Yopish" }));
 
     await userEvent.click(storyButton);
 
