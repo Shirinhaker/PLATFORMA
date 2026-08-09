@@ -64,6 +64,8 @@ from app.payments.router import router as payments_router
 from app.payments.service import PaymentService
 from app.queues.router import router as queues_router
 from app.queues.service import QueueService
+from app.reviews.router import router as reviews_router
+from app.reviews.service import ReviewService
 from app.staff.router import router as staff_router
 from app.staff.service import StaffService
 from app.statistics.router import router as statistics_router
@@ -174,6 +176,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2.create_download_url,
         )
+        app.state.review_service = ReviewService(database.session)
         app.state.dining_service = DiningService(
             database.session,
             inventory=app.state.inventory_service,
@@ -256,6 +259,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(listings_router)
     app.include_router(stories_router)
     app.include_router(messages_router)
+    app.include_router(reviews_router)
     app.include_router(orders_router)
     app.include_router(follows_router)
     app.include_router(payments_router)

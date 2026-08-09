@@ -6,6 +6,59 @@ import { PublicProfileV1656 } from "./PublicProfileV1656";
 
 
 describe("PublicProfileV1656", () => {
+  it("embeds relational reviews in a business public profile", async () => {
+    const getReviews = vi.fn().mockResolvedValue({
+      reviews: [{
+        id: 31,
+        stars: 5,
+        comment: "Ishonchli do‘kon",
+        user_name: "Ali",
+        created_at: "2026-08-10T08:00:00Z",
+        owner_reply: "Rahmat",
+        owner_replied_at: "2026-08-10T09:00:00Z",
+      }],
+      avg: 5,
+      count: 1,
+      can_review: false,
+      my_review: null,
+    });
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_turon",
+      name: "Turon savdo",
+      public_username: "",
+      description: "",
+      direction: "Savdo",
+      activity_type: "Do‘kon",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [],
+      listings: [],
+    });
+
+    render(
+      <PublicProfileV1656
+        kind="business"
+        publicId="b_turon"
+        getPublicProfile={getPublicProfile}
+        reviewApi={{
+          getReviews,
+          saveReview: vi.fn(),
+          deleteReview: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(await screen.findByText("Ishonchli do‘kon")).toBeInTheDocument();
+    expect(getReviews).toHaveBeenCalledWith("business", "b_turon");
+  });
+
   it("opens general chat from the profile and sends guests to login", async () => {
     const user = userEvent.setup();
     const onMessage = vi.fn();

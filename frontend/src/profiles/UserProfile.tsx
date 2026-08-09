@@ -28,6 +28,10 @@ import {
   MessagesV1656,
   type MessagesApi,
 } from "../messages/MessagesV1656";
+import {
+  ReceivedReviewsV1656,
+  type ReceivedReviewsApi,
+} from "../reviews/ReviewsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -79,6 +83,8 @@ export type UserProfileApi = Pick<
   | "editMessage"
   | "deleteMessage"
   | "getMessageUnreadCount"
+  | "getReceivedReviews"
+  | "replyToReview"
 >>;
 
 type Props = {
@@ -270,6 +276,13 @@ function supportsMessages(api: UserProfileApi): api is UserProfileApi & Messages
     "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
+function supportsReceivedReviews(
+  api: UserProfileApi,
+): api is UserProfileApi & ReceivedReviewsApi {
+  return ["getReceivedReviews", "replyToReview"]
+    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
 
@@ -555,6 +568,15 @@ export function UserProfile({
     );
   }
 
+  if (view === "specialist-reviews" && supportsReceivedReviews(api)) {
+    return (
+      <ReceivedReviewsV1656
+        api={api}
+        onBack={() => setView("specialist")}
+      />
+    );
+  }
+
   if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
     const queueSection = view === "service-orders" && supportsMyQueues(api) ? (
       <>
@@ -635,6 +657,13 @@ export function UserProfile({
           </button>
         </header>
         <form className="profile-form" onSubmit={saveSpecialist}>
+          {supportsReceivedReviews(api) ? (
+            <button
+              className="button-secondary"
+              type="button"
+              onClick={() => setView("specialist-reviews")}
+            >💬 Mijoz fikrlari</button>
+          ) : null}
           {SPECIALIST_FIELDS.map(([key, label]) => (
             <label key={key}>
               {label}
