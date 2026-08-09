@@ -41,6 +41,22 @@ const followedStory: StoryGroup = {
   }],
 };
 
+const ownStory: StoryGroup = {
+  ...followedStory,
+  owner_type: "user",
+  owner_public_id: "u_self",
+  name: "Savdo",
+  avatar_url: "/media/my-avatar.webp",
+  is_own: true,
+  is_followed: false,
+  stories: [{
+    ...followedStory.stories[0]!,
+    id: 8,
+    owner_type: "user",
+    owner_public_id: "u_self",
+  }],
+};
+
 
 describe("HomeFollowedProfilesV1656", () => {
   it("keeps the v1656 hidden mount when there are no followed profiles", () => {
@@ -93,6 +109,47 @@ describe("HomeFollowedProfilesV1656", () => {
     await userEvent.click(button);
     expect(onOpenStory).toHaveBeenCalledWith(0);
     expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+
+  it("shows the own story first even when there are no followed profiles", async () => {
+    const onOpenProfile = vi.fn();
+    const onOpenStory = vi.fn();
+    render(
+      <HomeFollowedProfilesV1656
+        items={[]}
+        storyGroups={[followedStory, ownStory]}
+        onOpenProfile={onOpenProfile}
+        onOpenStory={onOpenStory}
+      />,
+    );
+
+    expect(document.querySelector("#followedProfileStrip"))
+      .not.toHaveAttribute("hidden");
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAccessibleName("Sizning istoriyangizni ko‘rish");
+    expect(buttons[0]).toHaveClass("story-card", "unseen");
+    expect(buttons[0]?.querySelector(".story-thumb img"))
+      .toHaveAttribute("src", "/media/my-avatar.webp");
+    expect(buttons[0]?.querySelector(".story-name")).toHaveTextContent("Siz");
+    await userEvent.click(buttons[0]!);
+    expect(onOpenStory).toHaveBeenCalledWith(1);
+    expect(onOpenProfile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the own story before followed profile cards", () => {
+    render(
+      <HomeFollowedProfilesV1656
+        items={[followedBusiness]}
+        storyGroups={[ownStory, followedStory]}
+        onOpenProfile={vi.fn()}
+        onOpenStory={vi.fn()}
+      />,
+    );
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons[0]).toHaveAccessibleName("Sizning istoriyangizni ko‘rish");
+    expect(buttons[1]).toHaveAccessibleName("Nafis salon istoriyasini ko‘rish");
   });
 
   it("does not add cards for story owners outside the followed list", () => {
