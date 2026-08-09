@@ -501,6 +501,9 @@ def _source_media_references(source) -> int:
         "WHERE TRIM(COALESCE(media_filename, '')) != ''",
         "SELECT COUNT(*) FROM stories "
         "WHERE TRIM(COALESCE(thumbnail_filename, '')) != ''",
+        "SELECT COUNT(*) FROM messages "
+        "WHERE media_type = 'photo' "
+        "AND TRIM(COALESCE(media_url, '')) != ''",
     )
     for query in queries:
         try:

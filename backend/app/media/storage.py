@@ -78,7 +78,7 @@ class R2Storage:
         owner_id: int,
         purpose: Literal[
             "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-            "order_chat_image", "payment_receipt", "advertisement_image",
+            "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
             "story_image", "story_video",
         ],
         filename: str,
@@ -93,7 +93,7 @@ class R2Storage:
         )
         listing_purpose = purpose in {
             "listing_photo", "listing_video", "order_chat_image",
-            "story_image", "story_video",
+            "chat_image", "story_image", "story_video",
         }
         # To'lov kvitansiyasini ikkala akkaunt turi ham yuklaydi:
         # e'lon va reklama uchun oddiy foydalanuvchi ham to'laydi.
@@ -102,7 +102,7 @@ class R2Storage:
         if not profile_purpose and not listing_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
         if purpose in {
-            "listing_photo", "order_chat_image", "payment_receipt",
+            "listing_photo", "order_chat_image", "chat_image", "payment_receipt",
             "advertisement_image", "story_image",
         }:
             allowed_images = (
@@ -114,7 +114,7 @@ class R2Storage:
                 raise UploadRejected("JPG, PNG, WEBP, GIF yoki HEIC fayl tanlang.")
             maximum = (
                 MAX_PROFILE_IMAGE_BYTES
-                if purpose in {"order_chat_image", "payment_receipt"}
+                if purpose in {"order_chat_image", "chat_image", "payment_receipt"}
                 else (
                     MAX_STORY_IMAGE_BYTES
                     if purpose == "story_image"
@@ -122,7 +122,7 @@ class R2Storage:
                 )
             )
             if not 1 <= size_bytes <= maximum:
-                limit = 8 if purpose == "order_chat_image" else 10
+                limit = 8 if purpose in {"order_chat_image", "chat_image"} else 10
                 raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
             suffix = allowed_images[content_type]
         elif purpose in {"listing_video", "story_video"}:

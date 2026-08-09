@@ -6,6 +6,57 @@ import { PublicProfileV1656 } from "./PublicProfileV1656";
 
 
 describe("PublicProfileV1656", () => {
+  it("opens general chat from the profile and sends guests to login", async () => {
+    const user = userEvent.setup();
+    const onMessage = vi.fn();
+    const onNeedLogin = vi.fn();
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_turon",
+      name: "Turon savdo",
+      public_username: "",
+      description: "",
+      direction: "Savdo",
+      activity_type: "Do‘kon",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [],
+      listings: [],
+    });
+    const rendered = render(
+      <PublicProfileV1656
+        kind="business"
+        publicId="b_turon"
+        getPublicProfile={getPublicProfile}
+        onMessage={onMessage}
+        onNeedLogin={onNeedLogin}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "✍️ Xabar yozish" }));
+    expect(onNeedLogin).toHaveBeenCalledOnce();
+    expect(onMessage).not.toHaveBeenCalled();
+
+    rendered.rerender(
+      <PublicProfileV1656
+        authenticated
+        kind="business"
+        publicId="b_turon"
+        getPublicProfile={getPublicProfile}
+        onMessage={onMessage}
+        onNeedLogin={onNeedLogin}
+      />,
+    );
+    await user.click(await screen.findByRole("button", { name: "✍️ Xabar yozish" }));
+    expect(onMessage).toHaveBeenCalledWith("business", "b_turon", "Turon savdo");
+  });
+
   it("renders the v1656 public business profile returned by its public id", async () => {
     const getPublicProfile = vi.fn().mockResolvedValue({
       kind: "business",

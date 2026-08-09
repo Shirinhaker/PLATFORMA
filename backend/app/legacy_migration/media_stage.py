@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.advertisements.model import Advertisement
 from app.catalog.model import CatalogItem
 from app.core.config import Settings
+from app.legacy_migration.catalog_stage import ensure_media_mapping
 from app.legacy_migration.model import (
     LegacyIdMap,
     MediaMigration,
@@ -25,6 +26,7 @@ from app.legacy_migration.model import (
 from app.legacy_migration.reconcile import StageResult
 from app.listings.model import ListingMedia
 from app.media.storage import R2Storage
+from app.messages.model import Message
 from app.stories.model import Story
 
 
@@ -223,6 +225,7 @@ async def migrate_media(
         settings.telegram_bot_token,
         max_bytes=settings.legacy_media_max_bytes,
     )
+    await _ensure_message_media_mappings(session, source, run)
     counters = {"created": 0, "reused": 0, "updated": 0}
     records = (
         await session.scalars(
@@ -355,6 +358,17 @@ async def _set_target_object_key(
     record: MediaMigration,
     object_key: str,
 ) -> None:
+    if record.entity_type == "message":
+        target = (
+            await session.scalars(
+                select(Message).where(
+                    Message.legacy_source_id == record.legacy_id
+                )
+            )
+        ).one_or_none()
+        if target is not None:
+            target.media_object_key = object_key
+        return
     mapping = (
         await session.scalars(
             select(LegacyIdMap).where(
@@ -415,6 +429,7 @@ def _source_reference(
         ),
         ("story", "primary"): ("stories", "media_filename"),
         ("story", "thumbnail"): ("stories", "thumbnail_filename"),
+        ("message", "primary"): ("messages", "media_url"),
     }.get((record.entity_type, record.slot), ("", ""))
     if not table:
         return ""
@@ -429,6 +444,35 @@ def _source_reference(
         return ""
     value = row[0]
     return str(value).strip() if value is not None else ""
+
+
+async def _ensure_message_media_mappings(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    run: MigrationRun,
+) -> None:
+    """Eski umumiy chat rasmlarini shu media bosqichida R2 ga tayyorlaydi."""
+    try:
+        rows = source.execute(
+            """SELECT id, media_url FROM messages
+               WHERE media_type = 'photo'
+                 AND TRIM(COALESCE(media_url, '')) != ''"""
+        ).fetchall()
+    except sqlite3.Error:
+        return
+    for row in rows:
+        try:
+            legacy_id = int(row[0])
+        except (TypeError, ValueError):
+            continue
+        await ensure_media_mapping(
+            session,
+            run=run,
+            entity_type="message",
+            legacy_id=legacy_id,
+            slot="primary",
+            source_reference=str(row[1] or "").strip(),
+        )
 
 
 def _resolver_for_reference(

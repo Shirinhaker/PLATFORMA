@@ -53,6 +53,10 @@ import {
   StatisticsV1656,
   type StatisticsApi,
 } from "./StatisticsV1656";
+import {
+  MessagesV1656,
+  type MessagesApi,
+} from "../messages/MessagesV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -136,6 +140,13 @@ export type BusinessProfileApiV3 = Pick<
   | "getStoryViewers"
   | "deleteStory"
   | "reportStory"
+  | "getMessageConversations"
+  | "getMessageThread"
+  | "sendMessage"
+  | "sendMessageImage"
+  | "editMessage"
+  | "deleteMessage"
+  | "getMessageUnreadCount"
 >>;
 
 type Props = {
@@ -294,6 +305,16 @@ function supportsEducationStatistics(
   return typeof api.getEducationStatistics === "function";
 }
 
+function supportsMessages(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & MessagesApi {
+  return [
+    "getMessageConversations", "getMessageThread", "sendMessage",
+    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+}
+
 function visibleMenus(
   profile: BusinessProfileData | null,
   menus: Menu[],
@@ -324,6 +345,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   const [onlineMenu, setOnlineMenu] = useState<Menu | null>(null);
   const [dataView, setDataView] = useState<DataView>({ title: "", rows: [] });
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
+  const [messageUnread, setMessageUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
 
   useEffect(() => {
@@ -360,6 +382,18 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     }).catch(() => undefined);
     return () => { active = false; };
   }, [api, identity]);
+
+  useEffect(() => {
+    if (
+      typeof api.getMessageUnreadCount !== "function"
+      || !canUseView(identity, "messages")
+    ) return;
+    let active = true;
+    api.getMessageUnreadCount().then(({ count }) => {
+      if (active) setMessageUnread(count);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [api, identity, screen]);
 
   const metrics = useMemo(
     () => (profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS)
@@ -399,6 +433,17 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   }
 
   if (screen === "online" && onlineMenu) {
+    if (onlineMenu.view === "messages" && supportsMessages(api)) {
+      return (
+        <MessagesV1656
+          api={api}
+          onBack={() => {
+            setOnlineMenu(null);
+            setScreen("cabinet");
+          }}
+        />
+      );
+    }
     return (
       <BusinessOnlineScreen
         api={api}
@@ -609,7 +654,8 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           {menus.map((menu) => {
             const liveUnread = menu.view === "orders"
               ? orderUnread.product
-              : menu.view === "service-orders" ? orderUnread.service : 0;
+              : menu.view === "service-orders" ? orderUnread.service
+                : menu.view === "messages" ? messageUnread : 0;
             const count = liveUnread || (menu.payload ? menuRows(loadedProfile, menu).length : 0);
             return (
               <button

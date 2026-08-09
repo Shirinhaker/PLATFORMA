@@ -74,6 +74,21 @@ def test_order_chat_image_grant_uses_private_owner_prefix_and_eight_mb_limit(s3_
         )
 
 
+def test_general_chat_image_grant_uses_its_own_private_prefix(s3_client):
+    storage = R2Storage(s3_client, bucket="koprik-test")
+    grant = storage.create_upload_grant(
+        owner_type=AccountType.USER,
+        owner_id=42,
+        purpose="chat_image",
+        filename="photo.webp",
+        content_type="image/webp",
+        size_bytes=1024,
+    )
+
+    assert grant.object_key.startswith("private/user/42/chat_image/")
+    assert grant.object_key.endswith(".webp")
+
+
 def test_user_cannot_create_logo_grant(s3_client):
     storage = R2Storage(s3_client, bucket="koprik-test")
     with pytest.raises(UploadRejected, match="akkauntga mos emas"):

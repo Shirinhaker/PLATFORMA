@@ -17,7 +17,7 @@ class UploadGrantRequest(BaseModel):
 
     purpose: Literal[
         "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-        "order_chat_image", "payment_receipt", "advertisement_image",
+        "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
         "story_image", "story_video",
     ]
     filename: str = Field(min_length=1, max_length=255)
@@ -41,10 +41,11 @@ async def create_upload_grant(
                 "buyurtma", "service_orders", "dining_internal",
                 "dining_external", "kitchen",
             ),
+            "chat_image": ("chats",),
         }.get(body.purpose, ("__business_owner__",))
         require_staff_permission(current, *required)
     allowed = body.purpose in {
-        "listing_photo", "listing_video", "order_chat_image",
+        "listing_photo", "listing_video", "order_chat_image", "chat_image",
         "story_image", "story_video",
         # Reklamani oddiy foydalanuvchi ham joylashi mumkin.
         "payment_receipt", "advertisement_image",

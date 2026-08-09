@@ -30,7 +30,7 @@ async def public_features(request: Request) -> dict[str, bool]:
     return {
         "listings": settings.listings_enabled,
         "stories": settings.stories_enabled,
-        "chat": False,
+        "chat": settings.chat_enabled,
         "systemization": False,
         "taxi": False,
     }
