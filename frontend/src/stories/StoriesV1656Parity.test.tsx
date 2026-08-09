@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApiClient } from "../api/client";
+import { OwnerStoriesV1656 } from "./OwnerStoriesV1656";
 import { StoryComposerV1656 } from "./StoryComposerV1656";
 import { StoryRailV1656 } from "./StoryRailV1656";
 import { StoryViewerV1656 } from "./StoryViewerV1656";
@@ -33,6 +35,14 @@ const group: StoryGroup = {
   distance_km: null,
   stories: [story],
 };
+
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 
 describe("v1656 Istoriyalar pariteti", () => {
@@ -82,5 +92,69 @@ describe("v1656 Istoriyalar pariteti", () => {
 
     expect(screen.getByText("0 / 200")).toBeInTheDocument();
     expect(screen.getByText(/Video 60 soniyadan oshmasin/i)).toBeInTheDocument();
+  });
+
+  it("owner composer ApiClient metodlarini obyektga bog‘langan holda chaqiradi", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/v1/auth/session")) {
+        return jsonResponse({
+          account_id: 7,
+          account_type: "user",
+          name: "Ali",
+          login: "ali",
+          csrf_token: "story-csrf",
+          expires_at: "2026-09-08T08:00:00Z",
+        });
+      }
+      if (url.includes("/api/v1/stories/mine")) return jsonResponse([]);
+      if (url.endsWith("/api/v1/media/upload-grants")) {
+        return jsonResponse({
+          object_key: "private/user/7/story/key.webp",
+          upload_url: "https://r2.example/story-upload",
+          method: "PUT",
+          headers: { "Content-Type": "image/webp" },
+          expires_in_seconds: 900,
+        });
+      }
+      if (url === "https://r2.example/story-upload") {
+        return new Response(null, { status: 200 });
+      }
+      if (url.endsWith("/api/v1/stories")) {
+        return jsonResponse({ ok: true, story });
+      }
+      return jsonResponse({ message: "Topilmadi." }, 404);
+    });
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+
+    render(
+      <OwnerStoriesV1656
+        actor="user"
+        api={client}
+        ownerName="Ali"
+        onBack={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Istoriya" }));
+    fireEvent.change(screen.getByLabelText("Rasm yoki video"), {
+      target: {
+        files: [new File(["image"], "story.webp", { type: "image/webp" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Joylash" }));
+
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      "https://api.example/api/v1/media/upload-grants",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      "https://r2.example/story-upload",
+      expect.objectContaining({ method: "PUT" }),
+    ));
+    await waitFor(() => expect(screen.queryByRole("dialog", {
+      name: "Istoriya yaratish",
+    })).not.toBeInTheDocument());
   });
 });

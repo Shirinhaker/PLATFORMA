@@ -41,6 +41,15 @@ export function OwnerStoriesV1656({
   const [composer, setComposer] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const actions = useMemo(() => ({
+    createStory: api.createStory.bind(api),
+    createUploadGrant: api.createUploadGrant.bind(api),
+    uploadGrantedFile: api.uploadGrantedFile.bind(api),
+    recordStoryView: api.recordStoryView.bind(api),
+    getStoryViewers: api.getStoryViewers.bind(api),
+    deleteStory: api.deleteStory.bind(api),
+    reportStory: api.reportStory.bind(api),
+  }), [api]);
 
   const load = useCallback(async () => {
     try {
@@ -95,22 +104,22 @@ export function OwnerStoriesV1656({
       ) : <p className="owner-stories__empty">Bu bo‘limda istoriya yo‘q.</p>}
       {composer ? (
         <StoryComposerV1656
-          createStory={api.createStory}
-          createUploadGrant={api.createUploadGrant}
-          uploadGrantedFile={api.uploadGrantedFile}
+          createStory={actions.createStory}
+          createUploadGrant={actions.createUploadGrant}
+          uploadGrantedFile={actions.uploadGrantedFile}
           onClose={() => setComposer(false)}
           onCreated={load}
         />
       ) : null}
       {viewerIndex !== null && visible.length ? (
         <StoryViewerV1656
-          deleteStory={api.deleteStory}
-          getViewers={api.getStoryViewers}
+          deleteStory={actions.deleteStory}
+          getViewers={actions.getStoryViewers}
           groups={[group]}
           initialGroupIndex={0}
           initialStoryIndex={viewerIndex}
-          recordView={api.recordStoryView}
-          reportStory={api.reportStory}
+          recordView={actions.recordStoryView}
+          reportStory={actions.reportStory}
           onClose={() => setViewerIndex(null)}
           onDeleted={(storyId) => setStories((current) => current.filter((item) => item.id !== storyId))}
         />
