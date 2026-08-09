@@ -15,19 +15,19 @@ export function StoryRailV1656({ groups, onOpen }: Props) {
       {groups.map((group, index) => (
         <button
           aria-label={`${group.name} istoriyasini ko‘rish`}
-          className={`story-card ${group.has_unseen ? "story-card--unseen" : "story-card--seen"}`}
+          className={`story-rail-card-v1656 ${group.has_unseen ? "story-rail-card-v1656--unseen" : "story-rail-card-v1656--seen"}`}
           key={`${group.owner_type}:${group.owner_public_id}`}
           type="button"
           onClick={() => onOpen(index)}
         >
-          <span className="story-card__ring">
+          <span className="story-rail-card-v1656__ring">
             {group.avatar_url || group.stories[0]?.thumbnail_url ? (
               <img alt="" src={group.avatar_url || group.stories[0]?.thumbnail_url} />
             ) : (
               <span aria-hidden="true">{group.name.trim().charAt(0).toUpperCase()}</span>
             )}
           </span>
-          <span className="story-card__name">{group.is_own ? "Siz" : group.name}</span>
+          <span className="story-rail-card-v1656__name">{group.is_own ? "Siz" : group.name}</span>
         </button>
       ))}
     </section>
