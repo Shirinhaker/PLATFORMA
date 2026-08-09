@@ -208,7 +208,7 @@ def test_public_features_expose_server_flags_without_authentication():
     assert response.json() == {
         "listings": True,
         "stories": True,
-        "chat": False,
+        "chat": True,
         "systemization": False,
         "taxi": False,
     }

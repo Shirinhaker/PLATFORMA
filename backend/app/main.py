@@ -49,6 +49,8 @@ from app.listings.router import router as listings_router
 from app.listings.service import ListingService
 from app.media.router import router as media_router
 from app.media.storage import build_r2_storage
+from app.messages.router import router as messages_router
+from app.messages.service import MessageService
 from app.orders.router import router as orders_router
 from app.orders.service import OrderService
 from app.platform.router import router as platform_router
@@ -168,6 +170,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             cash_register_service=app.state.cash_register_service,
             debt_ledger_service=app.state.debt_ledger_service,
         )
+        app.state.message_service = MessageService(
+            database.session,
+            app.state.r2.create_download_url,
+        )
         app.state.dining_service = DiningService(
             database.session,
             inventory=app.state.inventory_service,
@@ -249,6 +255,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(advertisement_authoring_router)
     app.include_router(listings_router)
     app.include_router(stories_router)
+    app.include_router(messages_router)
     app.include_router(orders_router)
     app.include_router(follows_router)
     app.include_router(payments_router)

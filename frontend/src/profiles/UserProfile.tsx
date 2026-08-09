@@ -24,6 +24,10 @@ import {
   OwnerStoriesV1656,
   type OwnerStoriesApi,
 } from "../stories/OwnerStoriesV1656";
+import {
+  MessagesV1656,
+  type MessagesApi,
+} from "../messages/MessagesV1656";
 
 
 export type UserProfileApi = Pick<
@@ -68,6 +72,13 @@ export type UserProfileApi = Pick<
   | "getStoryViewers"
   | "deleteStory"
   | "reportStory"
+  | "getMessageConversations"
+  | "getMessageThread"
+  | "sendMessage"
+  | "sendMessageImage"
+  | "editMessage"
+  | "deleteMessage"
+  | "getMessageUnreadCount"
 >>;
 
 type Props = {
@@ -253,6 +264,14 @@ function supportsMyQueues(api: UserProfileApi): api is UserProfileApi & MyQueues
     .every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
+function supportsMessages(api: UserProfileApi): api is UserProfileApi & MessagesApi {
+  return [
+    "getMessageConversations", "getMessageThread", "sendMessage",
+    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
 
 export function UserProfile({
   api,
@@ -269,6 +288,7 @@ export function UserProfile({
   const [saved, setSaved] = useState(false);
   const [specialist, setSpecialist] = useState<Record<string, unknown>>({});
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
+  const [messageUnread, setMessageUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
   const [queueTarget, setQueueTarget] = useState<number | null>(null);
 
@@ -295,6 +315,15 @@ export function UserProfile({
       active = false;
     };
   }, [api]);
+
+  useEffect(() => {
+    if (typeof api.getMessageUnreadCount !== "function") return;
+    let active = true;
+    api.getMessageUnreadCount().then(({ count }) => {
+      if (active) setMessageUnread(count);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [api, view]);
 
   useEffect(() => {
     if (typeof api.getMyOrders !== "function") return;
@@ -513,6 +542,15 @@ export function UserProfile({
         legacyRows={selectedRows}
         onBack={() => setView("dashboard")}
         onOpenListing={(publicId) => onOpenPublicListing?.(publicId)}
+      />
+    );
+  }
+
+  if (view === "messages" && supportsMessages(api)) {
+    return (
+      <MessagesV1656
+        api={api}
+        onBack={() => setView("dashboard")}
       />
     );
   }
@@ -756,6 +794,9 @@ export function UserProfile({
                   ) : null}
                   {section.view === "service-orders" && orderUnread.service > 0 ? (
                     <em className="order-badge">{orderUnread.service > 99 ? "99+" : orderUnread.service}</em>
+                  ) : null}
+                  {section.view === "messages" && messageUnread > 0 ? (
+                    <em className="order-badge">{messageUnread > 99 ? "99+" : messageUnread}</em>
                   ) : null}
                 </button>
               ))}

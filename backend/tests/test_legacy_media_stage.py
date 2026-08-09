@@ -7,6 +7,7 @@ import httpx
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
+from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.core.config import Settings
 from app.db.base import Base
@@ -30,6 +31,7 @@ from app.legacy_migration.model import (
     ReviewState,
 )
 from app.media.storage import StoredObject
+from app.messages.model import Message, MessageConversation
 
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
@@ -74,6 +76,9 @@ def store():
             MigrationRun.__table__,
             LegacyIdMap.__table__,
             MediaMigration.__table__,
+            Account.__table__,
+            MessageConversation.__table__,
+            Message.__table__,
             CatalogGroup.__table__,
             CatalogItem.__table__,
         ),
@@ -153,6 +158,13 @@ def legacy_source(reference="uploads/mebel.png"):
     )
     connection.execute(
         "CREATE TABLE listing_media(id INTEGER PRIMARY KEY, tg_file_id TEXT)"
+    )
+    connection.execute(
+        """CREATE TABLE messages(
+            id INTEGER PRIMARY KEY,
+            media_type TEXT,
+            media_url TEXT
+        )"""
     )
     connection.execute(
         """
@@ -263,6 +275,87 @@ async def test_valid_media_is_uploaded_and_verified(store):
     assert media.destination_object_key.startswith("migration/1/")
     assert storage.verified == [media.destination_object_key]
     assert item.image_object_key == media.destination_object_key
+
+
+@pytest.mark.asyncio
+async def test_general_chat_image_is_copied_to_its_relational_message(store):
+    db, run = store
+    source = legacy_source()
+    source.execute(
+        "INSERT INTO messages(id, media_type, media_url) VALUES (55, 'photo', ?)",
+        ("/uploads/chat/photo.png",),
+    )
+    source.commit()
+    db.sync.add_all([
+        Account(
+            id=21,
+            account_type=AccountType.USER,
+            login="chat-user",
+            password_hash="hash",
+            telegram_user_id=None,
+            status="active",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        Account(
+            id=22,
+            account_type=AccountType.BUSINESS,
+            login="chat-business",
+            password_hash="hash",
+            telegram_user_id=None,
+            status="active",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        MessageConversation(
+            id=30,
+            low_account_id=21,
+            high_account_id=22,
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        Message(
+            id=40,
+            legacy_source_id=55,
+            conversation_id=30,
+            sender_account_id=21,
+            receiver_account_id=22,
+            text="",
+            media_type="photo",
+            media_object_key="",
+            legacy_media_url="/uploads/chat/photo.png",
+            file_name="photo.png",
+            reply_to_id=None,
+            edited_at=None,
+            deleted_at=None,
+            read_at=None,
+            is_deleted=False,
+            created_at=NOW,
+        ),
+    ])
+    db.sync.commit()
+    resolver = StaticResolver(resolved_png())
+
+    result = await migrate_media(
+        db,
+        source,
+        FakeStorage(),
+        Settings(environment="test"),
+        run,
+        local_resolver=resolver,
+        telegram_resolver=resolver,
+    )
+
+    message = db.sync.get(Message, 40)
+    media = db.sync.scalar(
+        select(MediaMigration).where(MediaMigration.entity_type == "message")
+    )
+    assert result.created == 2
+    assert media is not None
+    assert media.state is MediaMigrationState.COPIED
+    assert resolver.references[-1] == "/uploads/chat/photo.png"
+    assert message.media_object_key == media.destination_object_key
+    assert message.legacy_media_url == "/uploads/chat/photo.png"
 
 
 @pytest.mark.asyncio

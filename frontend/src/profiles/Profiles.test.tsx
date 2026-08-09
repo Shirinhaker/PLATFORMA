@@ -169,6 +169,21 @@ function profileApi() {
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(businessProfile),
+    getMessageConversations: vi.fn().mockResolvedValue([{
+      target_kind: "user" as const,
+      target_public_id: "u_1234567890abcdef",
+      name: "Vali",
+      avatar_url: "",
+      last: "Salom",
+      created_at: "2026-08-09T12:00:00Z",
+      unread: 2,
+    }]),
+    getMessageThread: vi.fn(),
+    sendMessage: vi.fn(),
+    sendMessageImage: vi.fn(),
+    editMessage: vi.fn(),
+    deleteMessage: vi.fn(),
+    getMessageUnreadCount: vi.fn().mockResolvedValue({ count: 2 }),
     getMyListings: vi.fn().mockResolvedValue([listing]),
     getSavedListings: vi.fn().mockResolvedValue([{ ...listing, is_saved: true }]),
     createListing: vi.fn().mockResolvedValue(listing),
@@ -310,6 +325,40 @@ async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>)
 
 
 describe("profile cabinets", () => {
+  it("opens the shared relational Suhbatlar flow from both cabinets", async () => {
+    const user = userEvent.setup();
+    const userApi = profileApi();
+    const userCabinet = render(
+      <UserProfile
+        api={userApi}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Suhbatlar/ }));
+    expect(await screen.findByRole("button", { name: /Vali: Salom/ }))
+      .toBeInTheDocument();
+    expect(userApi.getMessageConversations).toHaveBeenCalledOnce();
+
+    userCabinet.unmount();
+    const businessApi = profileApi();
+    render(
+      <BusinessProfile
+        api={businessApi}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Suhbatlar/ }));
+    expect(await screen.findByRole("button", { name: /Vali: Salom/ }))
+      .toBeInTheDocument();
+    expect(businessApi.getMessageConversations).toHaveBeenCalledOnce();
+  });
+
   it("renders migrated user counts, activity and real section data", async () => {
     const user = userEvent.setup();
     render(

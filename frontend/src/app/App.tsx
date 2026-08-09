@@ -49,6 +49,11 @@ import {
   type QueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBookingV1656";
+import {
+  MessagesV1656,
+  type MessagePeer,
+  type MessagesApi,
+} from "../messages/MessagesV1656";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -85,6 +90,7 @@ type AppApi = (
   & Partial<OrderApi>
   & Partial<QueueBookingApi>
   & Partial<CourseEnrollmentApi>
+  & Partial<MessagesApi>
 );
 
 
@@ -111,6 +117,14 @@ function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
     "attachBusinessLogo",
     "switchCabinet",
     "logout",
+  ].every((method) => typeof api[method as keyof AppApi] === "function");
+}
+
+function supportsMessages(api: AppApi): api is AppApi & MessagesApi {
+  return [
+    "getMessageConversations", "getMessageThread", "sendMessage",
+    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
 
@@ -141,6 +155,7 @@ export function App({ api }: { api: AppApi }) {
     publicId: string;
     title: string;
   } | null>(null);
+  const [openedChat, setOpenedChat] = useState<MessagePeer | null>(null);
   const [carts, setCarts] = useState<CartState>({});
   const [cartFilter, setCartFilter] = useState<string | null>(null);
   const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
@@ -354,6 +369,7 @@ export function App({ api }: { api: AppApi }) {
   function openHome() {
     setOpenedProfile(null);
     setOpenedListing(null);
+    setOpenedChat(null);
     setCartFilter(null);
     setQueueBooking(null);
     setCourseEnrollment(null);
@@ -367,6 +383,7 @@ export function App({ api }: { api: AppApi }) {
   ) => {
     if ((kind === "user" || kind === "business") && getPublicProfile) {
       setOpenedListing(null);
+      setOpenedChat(null);
       setOpenedProfile({ kind, publicId, title: "Profil" });
       setHomeSearchResultsActive(false);
     } else if (kind === "listing" && getPublicListing) {
@@ -490,6 +507,24 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function renderPublicContent() {
+    if (
+      navigation.view === "home"
+      && openedChat
+      && supportsMessages(api)
+    ) {
+      return (
+        <MessagesV1656
+          api={api}
+          initialPeer={openedChat}
+          onBack={() => setOpenedChat(null)}
+          onOpenProfile={(kind, publicId) => {
+            setOpenedChat(null);
+            setOpenedListing(null);
+            setOpenedProfile({ kind, publicId, title: "Profil" });
+          }}
+        />
+      );
+    }
     if (navigation.view === "home" && openedListing && getPublicListing) {
       return (
         <ListingPageV1656
@@ -524,6 +559,11 @@ export function App({ api }: { api: AppApi }) {
           onBookQueue={openQueueBooking}
           onEnrollCourse={openCourseEnrollment}
           onNeedLogin={() => openAuth()}
+          onMessage={publicFeatures.chat && supportsMessages(api)
+            ? (kind, publicId, name) => {
+              setOpenedChat({ kind, publicId, name });
+            }
+            : undefined}
           onNeedCourseLogin={() => openAuth("Kursga yozilish")}
           onNeedQueueLogin={() => openAuth("Navbat olish")}
           onOpenCart={() => {
@@ -645,10 +685,10 @@ export function App({ api }: { api: AppApi }) {
   return (
     <AppShell
       authenticated={authenticated}
-      title={(openedProfile || openedListing) && navigation.view === "home"
-        ? openedProfile?.title ?? openedListing?.title
+      title={(openedChat || openedProfile || openedListing) && navigation.view === "home"
+        ? openedChat ? "Suhbat" : openedProfile?.title ?? openedListing?.title
         : title}
-      isHome={navigation.view === "home" && !openedProfile && !openedListing}
+      isHome={navigation.view === "home" && !openedChat && !openedProfile && !openedListing}
       searchResultsActive={(
         navigation.view === "home" && homeSearchResultsActive
       )}
@@ -657,11 +697,13 @@ export function App({ api }: { api: AppApi }) {
       theme={theme}
       onHome={openHome}
       onLocation={() => {
+        setOpenedChat(null);
         setOpenedProfile(null);
         setOpenedListing(null);
         dispatch({ type: "OPEN_LOCATION" });
       }}
       onAccount={() => {
+        setOpenedChat(null);
         setOpenedProfile(null);
         setOpenedListing(null);
         setAuthReason("");
@@ -678,6 +720,10 @@ export function App({ api }: { api: AppApi }) {
           dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
           return;
         }
+        if (openedChat) {
+          setOpenedChat(null);
+          return;
+        }
         if (openedListing) {
           setOpenedListing(null);
           return;
@@ -689,11 +735,13 @@ export function App({ api }: { api: AppApi }) {
         dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
       }}
       onListings={() => {
+        setOpenedChat(null);
         setOpenedProfile(null);
         setOpenedListing(null);
         dispatch({ type: "OPEN_LISTINGS" });
       }}
       onCart={() => {
+        setOpenedChat(null);
         setOpenedProfile(null);
         setOpenedListing(null);
         setCartFilter(null);

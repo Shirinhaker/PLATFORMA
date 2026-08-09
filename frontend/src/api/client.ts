@@ -95,6 +95,11 @@ import type {
   StatisticsPeriod,
   StatisticsReport,
   ManagedStoryRead,
+  MessageConversationRead,
+  MessageCreate,
+  MessageImageCreate,
+  MessageRead,
+  MessageThreadRead,
   StoryCreate,
   StoryCreated,
   StoryGroup,
@@ -563,6 +568,62 @@ export class ApiClient {
       "POST",
       `/api/v1/stories/${storyId}/reports`,
       { reason },
+      true,
+    );
+  }
+
+  getMessageConversations(): Promise<MessageConversationRead[]> {
+    return this.request(
+      "GET",
+      "/api/v1/messages/conversations",
+      undefined,
+      true,
+    );
+  }
+
+  getMessageThread(
+    kind: AccountType,
+    publicId: string,
+  ): Promise<MessageThreadRead> {
+    return this.request(
+      "GET",
+      `/api/v1/messages/with/${kind}/${encodeURIComponent(publicId)}`,
+      undefined,
+      true,
+    );
+  }
+
+  sendMessage(body: MessageCreate): Promise<MessageRead> {
+    return this.request("POST", "/api/v1/messages/send", body, true);
+  }
+
+  sendMessageImage(body: MessageImageCreate): Promise<MessageRead> {
+    return this.request("POST", "/api/v1/messages/image", body, true);
+  }
+
+  editMessage(messageId: number, text: string): Promise<MessageRead> {
+    return this.request(
+      "PUT",
+      `/api/v1/messages/${messageId}`,
+      { text },
+      true,
+    );
+  }
+
+  deleteMessage(messageId: number): Promise<MessageRead> {
+    return this.request(
+      "DELETE",
+      `/api/v1/messages/${messageId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getMessageUnreadCount(): Promise<{ count: number }> {
+    return this.request(
+      "GET",
+      "/api/v1/messages/unread-count",
+      undefined,
       true,
     );
   }

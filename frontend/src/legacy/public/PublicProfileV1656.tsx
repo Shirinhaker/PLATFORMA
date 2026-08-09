@@ -25,6 +25,7 @@ interface PublicProfileV1656Props {
     provider: { public_id: string; name: string },
   ): void;
   onNeedLogin?(): void;
+  onMessage?(kind: "user" | "business", publicId: string, name: string): void;
   onNeedQueueLogin?(): void;
   onBookQueue?(target: QueueBookingTarget): void;
   onEnrollCourse?(target: CourseEnrollmentTarget): void;
@@ -85,6 +86,7 @@ export function PublicProfileV1656({
   cart,
   onAddCartItem,
   onNeedLogin,
+  onMessage,
   onNeedQueueLogin,
   onBookQueue,
   onEnrollCourse,
@@ -262,6 +264,19 @@ export function PublicProfileV1656({
         ) : null}
         {profile.description ? (
           <div className="biz-desc">{profile.description}</div>
+        ) : null}
+        {onMessage ? (
+          <button
+            type="button"
+            className="btn btn-block public-profile-message"
+            onClick={() => {
+              if (!authenticated) {
+                onNeedLogin?.();
+                return;
+              }
+              onMessage(kind, publicId, profile.name);
+            }}
+          >✍️ Xabar yozish</button>
         ) : null}
         {queueSupported && (queueTotal > 0 || hasQueueService) ? (
           <div

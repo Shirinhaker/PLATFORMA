@@ -496,6 +496,75 @@ describe("App", () => {
     );
   });
 
+  it("opens the relational general chat from an authenticated public profile", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const api = {
+      ...profileApi(),
+      getPublicFeatures: vi.fn().mockResolvedValue({
+        listings: true,
+        stories: true,
+        chat: true,
+        systemization: false,
+        taxi: false,
+      }),
+      getFollowedProfiles: vi.fn().mockResolvedValue([{
+        kind: "business",
+        public_id: "b_turon",
+        name: "Turon savdo",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+      }]),
+      getPublicProfile: vi.fn().mockResolvedValue({
+        kind: "business",
+        public_id: "b_turon",
+        name: "Turon savdo",
+        public_username: "turonsavdo",
+        description: "",
+        direction: "Savdo",
+        activity_type: "Do‘kon",
+        address: "",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 2,
+        specialist: null,
+        items: [],
+        listings: [],
+      }),
+      getMessageConversations: vi.fn().mockResolvedValue([]),
+      getMessageThread: vi.fn().mockResolvedValue({
+        other: {
+          kind: "business",
+          public_id: "b_turon",
+          name: "Turon savdo",
+          avatar_url: "",
+        },
+        messages: [],
+      }),
+      sendMessage: vi.fn(),
+      sendMessageImage: vi.fn(),
+      editMessage: vi.fn(),
+      deleteMessage: vi.fn(),
+    };
+
+    render(<App api={api} />);
+    await user.click(await screen.findByRole("button", {
+      name: "Turon savdo profilini ochish",
+    }));
+    await user.click(await screen.findByRole("button", {
+      name: "✍️ Xabar yozish",
+    }));
+
+    expect(await screen.findByPlaceholderText("Xabar yozing..."))
+      .toBeInTheDocument();
+    expect(api.getMessageThread).toHaveBeenCalledWith("business", "b_turon");
+  });
+
   it("opens and submits the course enrollment flow from a public profile", async () => {
     const user = userEvent.setup();
     saveHomeLocation();
