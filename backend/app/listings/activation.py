@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.listings.model import Listing
+from app.notifications.service import NotificationService
 
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -27,9 +28,11 @@ class ListingActivationService:
         session_factory: SessionFactory,
         *,
         now_provider: Callable[[], datetime] = lambda: datetime.now(UTC),
+        notification_service: NotificationService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._now = now_provider
+        self._notifications = notification_service
 
     async def resolve_owned(
         self,
@@ -87,3 +90,9 @@ class ListingActivationService:
             )
         listing.status = "active"
         listing.updated_at = datetime.fromtimestamp(now, UTC)
+        if self._notifications is not None:
+            await self._notifications.notify_listing_published(
+                session,
+                listing=listing,
+                now=now,
+            )

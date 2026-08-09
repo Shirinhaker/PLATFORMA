@@ -19,6 +19,7 @@ dependencies = [
   "argon2-cffi>=23.1,<26",
   "cryptography>=44,<47",
   "python-json-logger>=3,<4",
+  "firebase-admin==7.5.0",
 ]
 
 [project.optional-dependencies]

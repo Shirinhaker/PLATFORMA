@@ -24,9 +24,14 @@ from app.core.errors import ApiError
 from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing, ListingMedia
-from app.notifications.model import Notification
+from app.notifications.model import (
+    Notification,
+    NotificationPreference,
+    PushDevice,
+    PushOutbox,
+)
 from app.orders.model import Order
-from app.profiles.model import BusinessProfile, UserProfile
+from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import load_public_profile
 from app.public_ids import build_content_public_id, build_profile_public_id
 from app.queues.model import (
@@ -159,6 +164,10 @@ def queue_store():
             ListingMedia.__table__,
             Order.__table__,
             Notification.__table__,
+            NotificationPreference.__table__,
+            ProfileLink.__table__,
+            PushDevice.__table__,
+            PushOutbox.__table__,
             QueueProvider.__table__,
             QueueProviderService.__table__,
             QueueEntry.__table__,

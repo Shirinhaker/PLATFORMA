@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
   BusinessProfile as BusinessProfileData,
   CabinetActivity,
+  NotificationRead,
   SessionIdentity,
 } from "../api/types";
 import { BusinessOnlineScreen } from "./BusinessOnlineScreen";
@@ -57,6 +58,10 @@ import {
   MessagesV1656,
   type MessagesApi,
 } from "../messages/MessagesV1656";
+import {
+  ActionNotificationsV1656,
+  type NotificationsApi,
+} from "../notifications/NotificationsV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -149,12 +154,23 @@ export type BusinessProfileApiV3 = Pick<
   | "getMessageUnreadCount"
   | "getReceivedReviews"
   | "replyToReview"
+  | "getNotifications"
+  | "getActionNotifications"
+  | "markNotificationRead"
+  | "markAllNotificationsRead"
+  | "getNotificationPreference"
+  | "saveNotificationPreference"
+  | "getNotificationFilters"
+  | "createNotificationFilter"
+  | "deleteNotificationFilter"
+  | "getPushStatus"
 >>;
 
 type Props = {
   api: BusinessProfileApiV3;
   identity: SessionIdentity;
   onLogout: () => void;
+  onOpenPublicListing?: (publicId: string) => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -317,6 +333,19 @@ function supportsMessages(
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
+function supportsNotifications(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & NotificationsApi {
+  return [
+    "getNotifications", "getActionNotifications", "markNotificationRead",
+    "markAllNotificationsRead", "getNotificationPreference",
+    "saveNotificationPreference", "getNotificationFilters",
+    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
+  ].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
 function visibleMenus(
   profile: BusinessProfileData | null,
   menus: Menu[],
@@ -338,7 +367,13 @@ function isOnlineMenu(menu: Menu) {
   return ONLINE_MENUS.some((candidate) => candidate.view === menu.view);
 }
 
-export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props) {
+export function BusinessProfileV3({
+  api,
+  identity,
+  onLogout,
+  onOpenPublicListing,
+  onSwitched,
+}: Props) {
   const [profile, setProfile] = useState<BusinessProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -348,6 +383,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
   const [dataView, setDataView] = useState<DataView>({ title: "", rows: [] });
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
   const [messageUnread, setMessageUnread] = useState(0);
+  const [notificationUnread, setNotificationUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
 
   useEffect(() => {
@@ -397,6 +433,15 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     return () => { active = false; };
   }, [api, identity, screen]);
 
+  useEffect(() => {
+    if (!supportsNotifications(api) || !canUseView(identity, "notifications")) return;
+    let active = true;
+    api.getNotifications().then((value) => {
+      if (active) setNotificationUnread(value.unread);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [api, identity]);
+
   const metrics = useMemo(
     () => (profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS)
       .filter((metric) => canUseView(identity, metric.view)),
@@ -415,8 +460,51 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     );
   }
 
+  async function openNotification(notification: NotificationRead) {
+    if (notification.listing_public_id && onOpenPublicListing) {
+      onOpenPublicListing(notification.listing_public_id);
+      return;
+    }
+    if (notification.order_id && typeof api.getOrderInbox === "function") {
+      const rows = await api.getOrderInbox();
+      const target = rows.find((row) => row.id === notification.order_id);
+      if (target) {
+        const targetView = isService(target) ? "service-orders" : "orders";
+        const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+          (candidate) => candidate.view === targetView,
+        );
+        if (menu) {
+          setOrderTarget(notification.order_id);
+          setOnlineMenu(menu);
+          setScreen("online");
+          return;
+        }
+      }
+    }
+    const targetView = notification.medical_queue_id
+      ? "medical-queue"
+      : notification.dining_order_id ? "orders"
+        : notification.ride_id ? "orders" : "notifications";
+    const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+      (candidate) => candidate.view === targetView,
+    );
+    if (menu) {
+      setOnlineMenu(menu);
+      setScreen("online");
+    }
+  }
+
+  const actionBanner = supportsNotifications(api)
+    && canUseView(identity, "notifications") ? (
+      <ActionNotificationsV1656
+        api={api}
+        onOpenNotification={openNotification}
+      />
+    ) : null;
+  const withActionBanner = (content: ReactNode) => <>{actionBanner}{content}</>;
+
   if (screen === "profile") {
-    return (
+    return withActionBanner(
       <BusinessProfileEditor
         api={api}
         profile={profile}
@@ -430,29 +518,31 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           setOnlineMenu(menu);
           setScreen("online");
         }}
-      />
+      />,
     );
   }
 
   if (screen === "online" && onlineMenu) {
     if (onlineMenu.view === "messages" && supportsMessages(api)) {
-      return (
+      return withActionBanner(
         <MessagesV1656
           api={api}
           onBack={() => {
             setOnlineMenu(null);
             setScreen("cabinet");
           }}
-        />
+        />,
       );
     }
-    return (
+    return withActionBanner(
       <BusinessOnlineScreen
         api={api}
         profile={profile}
         view={onlineMenu.view}
         title={onlineMenu.label}
         initialOrderId={orderTarget}
+        onOpenNotification={openNotification}
+        onNotificationUnreadChange={setNotificationUnread}
         onOpenOrder={async (orderId) => {
           if (typeof api.getOrderInbox !== "function") return;
           const rows = await api.getOrderInbox();
@@ -475,17 +565,17 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           setOnlineMenu(null);
           setScreen("cabinet");
         }}
-      />
+      />,
     );
   }
 
   if (screen === "data") {
-    return (
+    return withActionBanner(
       <CabinetDataView
         title={dataView.title}
         rows={dataView.rows}
         onBack={() => setScreen("cabinet")}
-      />
+      />,
     );
   }
 
@@ -493,7 +583,9 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     screen === "staff"
     && supportsStaffManagement(api)
   ) {
-    return <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />;
+    return withActionBanner(
+      <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />,
+    );
   }
 
   if (screen === "cash" && supportsCashRegister(api)) {
@@ -501,35 +593,41 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     // turadi (`diningCashTabs`); boshqa yo'nalishlarda ko'rinmaydi.
     const dining = profile?.direction === "Umumiy ovqatlanish"
       && supportsDiningCashApi(api);
-    return (
+    return withActionBanner(
       <>
         {dining ? <BusinessDiningCashV1656 api={api} /> : null}
         <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />
-      </>
+      </>,
     );
   }
 
   if (screen === "debt" && supportsDebtLedger(api)) {
-    return <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />;
+    return withActionBanner(
+      <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />,
+    );
   }
 
   if (screen === "expenses" && supportsExpenses(api)) {
-    return <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />;
+    return withActionBanner(
+      <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />,
+    );
   }
 
   if (screen === "statistics" && supportsStatistics(api)) {
-    return <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />;
+    return withActionBanner(
+      <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
+    );
   }
 
   if (
     screen === "education-statistics"
     && supportsEducationStatistics(api)
   ) {
-    return (
+    return withActionBanner(
       <EducationStatisticsV1656
         api={api}
         onBack={() => setScreen("cabinet")}
-      />
+      />,
     );
   }
 
@@ -657,7 +755,8 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
             const liveUnread = menu.view === "orders"
               ? orderUnread.product
               : menu.view === "service-orders" ? orderUnread.service
-                : menu.view === "messages" ? messageUnread : 0;
+                : menu.view === "messages" ? messageUnread
+                  : menu.view === "notifications" ? notificationUnread : 0;
             const count = liveUnread || (menu.payload ? menuRows(loadedProfile, menu).length : 0);
             return (
               <button
@@ -692,7 +791,7 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
     );
   }
 
-  return (
+  return withActionBanner(
     <main className="business-cabinet" data-account={identity.account_id}>
       <section className="business-cabinet__panel">
         <header className="business-cabinet__identity">
@@ -818,6 +917,6 @@ export function BusinessProfileV3({ api, identity, onLogout, onSwitched }: Props
           </aside>
         </div>
       </section>
-    </main>
+    </main>,
   );
 }

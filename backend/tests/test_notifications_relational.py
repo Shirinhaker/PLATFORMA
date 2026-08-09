@@ -13,9 +13,15 @@ from app.cabinet_records.model import (
     CabinetResource,
 )
 from app.db.base import Base
-from app.notifications.model import Notification
+from app.notifications.model import (
+    Notification,
+    NotificationPreference,
+    PushDevice,
+    PushOutbox,
+)
 from app.notifications.repository import NotificationRepository
 from app.orders.model import Order as _Order  # noqa: F401
+from app.profiles.model import ProfileLink
 from app.profiles.router import (
     assembled_cabinet_payload,
     dashboard_with_notification_count,
@@ -72,6 +78,10 @@ def notification_store():
             CabinetRecord.__table__,
             CabinetRecordField.__table__,
             Notification.__table__,
+            NotificationPreference.__table__,
+            ProfileLink.__table__,
+            PushDevice.__table__,
+            PushOutbox.__table__,
         ),
     )
     session = Session(engine, expire_on_commit=False)
@@ -197,8 +207,12 @@ async def test_append_is_one_indexed_insert_and_duplicate_event_is_idempotent(
         event.remove(engine, "before_cursor_execute", capture)
 
     assert store.sync.scalar(select(func.count(Notification.id))) == 1
-    assert len(statements) == 2
-    assert all("INSERT INTO notifications" in statement for statement in statements)
+    notification_inserts = [
+        statement
+        for statement in statements
+        if "INSERT INTO notifications" in statement
+    ]
+    assert len(notification_inserts) == 2
     assert all("user_profiles" not in statement for statement in statements)
     assert all("business_profiles" not in statement for statement in statements)
     assert all("cabinet_" not in statement for statement in statements)

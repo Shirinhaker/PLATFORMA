@@ -10,7 +10,7 @@ import type {
   BusinessOnlineRecord,
   BusinessOnlineResource,
 } from "../api/business-online-types";
-import type { BusinessProfile, PaymentCatalog } from "../api/types";
+import type { BusinessProfile, NotificationRead, PaymentCatalog } from "../api/types";
 import {
   OwnerListingsV1656,
   type OwnerListingsApi,
@@ -67,6 +67,10 @@ import {
   ReceivedReviewsV1656,
   type ReceivedReviewsApi,
 } from "../reviews/ReviewsV1656";
+import {
+  NotificationsV1656,
+  type NotificationsApi,
+} from "../notifications/NotificationsV1656";
 import "./BusinessOnlineScreen.css";
 import "./BusinessExistingOnlineV1656.css";
 
@@ -116,6 +120,16 @@ type OnlineApi = Partial<Pick<
   | "reportStory"
   | "getReceivedReviews"
   | "replyToReview"
+  | "getNotifications"
+  | "getActionNotifications"
+  | "markNotificationRead"
+  | "markAllNotificationsRead"
+  | "getNotificationPreference"
+  | "saveNotificationPreference"
+  | "getNotificationFilters"
+  | "createNotificationFilter"
+  | "deleteNotificationFilter"
+  | "getPushStatus"
 >>;
 
 type Props = {
@@ -126,6 +140,10 @@ type Props = {
   onBack: () => void | Promise<void>;
   initialOrderId?: number | null;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
+  onOpenNotification?: (
+    notification: NotificationRead,
+  ) => void | Promise<void>;
+  onNotificationUnreadChange?: (count: number) => void;
 };
 
 type ResourceState = Partial<Record<
@@ -231,6 +249,17 @@ function supportsReceivedReviews(
     .every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
+function supportsNotifications(
+  api: OnlineApi,
+): api is OnlineApi & NotificationsApi {
+  return [
+    "getNotifications", "getActionNotifications", "markNotificationRead",
+    "markAllNotificationsRead", "getNotificationPreference",
+    "saveNotificationPreference", "getNotificationFilters",
+    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
+  ].every((method) => typeof api[method as keyof OnlineApi] === "function");
+}
+
 
 export function BusinessOnlineScreen({
   api,
@@ -240,6 +269,8 @@ export function BusinessOnlineScreen({
   onBack,
   initialOrderId,
   onOpenOrder,
+  onOpenNotification,
+  onNotificationUnreadChange,
 }: Props) {
   const primary = VIEW_RESOURCE[view];
   const [resources, setResources] = useState<ResourceState>(() => ({
@@ -330,6 +361,7 @@ export function BusinessOnlineScreen({
       || !api.getBusinessOnlineResource
       || (view === "listings" && supportsOwnerListings(api))
       || (view === "reviews" && supportsReceivedReviews(api))
+      || (view === "notifications" && supportsNotifications(api))
       || (["orders", "service-orders"].includes(view) && supportsOrders(api))
       || (["medical-providers", "medical-queue"].includes(view)
         && supportsBusinessQueueApi(api))
@@ -710,6 +742,17 @@ export function BusinessOnlineScreen({
         ownerAvatar={profile.logo_url}
         ownerName={profile.name}
         onBack={() => void onBack()}
+      />
+    );
+  }
+
+  if (view === "notifications" && supportsNotifications(api)) {
+    return (
+      <NotificationsV1656
+        api={api}
+        onBack={() => { void onBack(); }}
+        onOpenNotification={onOpenNotification}
+        onUnreadChange={onNotificationUnreadChange}
       />
     );
   }
