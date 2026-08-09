@@ -79,6 +79,33 @@ describe("v1656 Istoriyalar pariteti", () => {
     expect(await screen.findByText("Vali")).toBeInTheDocument();
   });
 
+  it("viewer yuqori chapdagi kartochkadan story egasining profilini ochadi", () => {
+    const onClose = vi.fn();
+    const onOpenOwner = vi.fn();
+    render(
+      <StoryViewerV1656
+        groups={[group]}
+        initialGroupIndex={0}
+        onClose={onClose}
+        onOpenOwner={onOpenOwner}
+        recordView={vi.fn()}
+        getViewers={vi.fn()}
+        deleteStory={vi.fn()}
+        reportStory={vi.fn()}
+      />,
+    );
+
+    const ownerCard = screen.getByRole("button", {
+      name: "Ali profilini ochish",
+    });
+    expect(ownerCard.querySelector(".story-viewer__owner-avatar"))
+      .toHaveTextContent("A");
+    fireEvent.click(ownerCard);
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onOpenOwner).toHaveBeenCalledWith("user", "u_0123456789abcdef");
+  });
+
   it("composer 200 belgi va 60 soniya qoidalarini ko‘rsatadi", () => {
     render(
       <StoryComposerV1656

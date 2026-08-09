@@ -9,6 +9,7 @@ type Props = {
   initialGroupIndex: number;
   initialStoryIndex?: number;
   onClose(): void;
+  onOpenOwner?(kind: StoryGroup["owner_type"], publicId: string): void;
   recordView(storyId: number): Promise<unknown>;
   getViewers(storyId: number): Promise<StoryViewer[]>;
   deleteStory(storyId: number): Promise<unknown>;
@@ -23,6 +24,7 @@ export function StoryViewerV1656({
   initialGroupIndex,
   initialStoryIndex,
   onClose,
+  onOpenOwner,
   recordView,
   getViewers,
   deleteStory,
@@ -84,6 +86,27 @@ export function StoryViewerV1656({
 
   if (!group || !story) return null;
   const storyId = story.id;
+  const ownerName = group.name || "Profil";
+  const ownerCard = (
+    <>
+      <span className="story-viewer__owner-avatar">
+        {group.avatar_url ? <img alt="" src={group.avatar_url} /> : (
+          <span>{ownerName.trim().charAt(0) || "K"}</span>
+        )}
+      </span>
+      <span className="story-viewer__owner-main">
+        <strong>{ownerName}</strong>
+        <time dateTime={story.created_at}>
+          {new Date(story.created_at).toLocaleString("uz-UZ", {
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            month: "short",
+          })}
+        </time>
+      </span>
+    </>
+  );
 
   async function showViewers() {
     setError("");
@@ -129,8 +152,24 @@ export function StoryViewerV1656({
           ))}
         </div>
         <header className="story-viewer__header">
-          <strong>{group.name}</strong>
-          <button aria-label="Yopish" type="button" onClick={onClose}>×</button>
+          {onOpenOwner ? (
+            <button
+              aria-label={`${ownerName} profilini ochish`}
+              className="story-viewer__owner"
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenOwner(group.owner_type, group.owner_public_id);
+              }}
+            >
+              {ownerCard}
+            </button>
+          ) : (
+            <div className="story-viewer__owner">
+              {ownerCard}
+            </div>
+          )}
+          <button aria-label="Yopish" className="story-viewer__close" type="button" onClick={onClose}>×</button>
         </header>
         <div className="story-viewer__media">
           {story.media_type === "video" ? (

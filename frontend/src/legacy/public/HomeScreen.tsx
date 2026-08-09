@@ -334,6 +334,7 @@ export function HomeScreen({
           recordStoryView={storyApi.recordStoryView}
           renderRail={renderFollowedProfiles}
           reportStory={storyApi.reportStory}
+          onOpenOwner={openResult}
         />
       ) : (
         <HomeFollowedProfilesV1656
