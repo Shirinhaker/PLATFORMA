@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -5,9 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import type { ApiClient } from "../../api/client";
 import { HomeScreen } from "./HomeScreen";
 
+type HomeStoryApi = NonNullable<ComponentProps<typeof HomeScreen>["storyApi"]>;
+
 function renderHome(
   currentDistrict?: string,
-  overrides: { searchPublic?: ApiClient["searchPublic"] } = {},
+  overrides: {
+    searchPublic?: ApiClient["searchPublic"];
+    storyApi?: HomeStoryApi;
+  } = {},
 ) {
   const actions = {
     onSearch: vi.fn(),
@@ -80,6 +86,7 @@ function renderHome(
       total: 1,
       pages: 1,
     }),
+    storyApi: overrides.storyApi,
   };
 
   render(
@@ -224,6 +231,73 @@ describe("HomeScreen", () => {
       district: "Qumqo‘rg‘on tumani",
     });
     expect(getFollowedProfiles).toHaveBeenCalledOnce();
+  });
+
+  it("opens followed stories from the single square profile strip", async () => {
+    const followedStory = {
+      id: 7,
+      owner_type: "business" as const,
+      owner_public_id: "biz_41",
+      media_type: "image" as const,
+      media_url: "/media/story.webp",
+      thumbnail_url: "/media/story.webp",
+      caption: "Yangi xizmat",
+      duration_seconds: 0,
+      created_at: "2026-08-08T08:00:00Z",
+      expires_at: "2026-08-09T08:00:00Z",
+      viewed: false,
+      state: "active" as const,
+    };
+    const storyApi: HomeStoryApi = {
+      getStoryFeed: vi.fn().mockResolvedValue([{
+        owner_type: "user",
+        owner_public_id: "u_self",
+        name: "Men",
+        avatar_url: "",
+        is_own: true,
+        is_followed: false,
+        has_unseen: true,
+        distance_km: null,
+        stories: [{
+          ...followedStory,
+          id: 6,
+          owner_type: "user",
+          owner_public_id: "u_self",
+          caption: "Mening istoriyam",
+        }],
+      }, {
+        owner_type: "business",
+        owner_public_id: "biz_41",
+        name: "Qumqo‘rg‘on ustalari",
+        avatar_url: "",
+        is_own: false,
+        is_followed: true,
+        has_unseen: true,
+        distance_km: null,
+        stories: [followedStory],
+      }]),
+      recordStoryView: vi.fn().mockResolvedValue({ ok: true, counted: true }),
+      getStoryViewers: vi.fn().mockResolvedValue([]),
+      deleteStory: vi.fn().mockResolvedValue({ ok: true }),
+      reportStory: vi.fn().mockResolvedValue({ ok: true }),
+    };
+    const { onOpenPublicResult } = renderHome(undefined, { storyApi });
+
+    const storyButton = await screen.findByRole("button", {
+      name: "Qumqo‘rg‘on ustalari istoriyasini ko‘rish",
+    });
+    expect(document.querySelectorAll("#followedProfileStrip")).toHaveLength(1);
+    expect(document.querySelector(".story-rail-v1656")).not.toBeInTheDocument();
+    expect(storyButton).toHaveClass("story-card", "unseen");
+    expect(storyButton.querySelector(".story-thumb")).toBeInTheDocument();
+    expect(screen.queryByText("Mening istoriyam")).not.toBeInTheDocument();
+
+    await userEvent.click(storyButton);
+
+    expect(screen.getByRole("dialog", { name: "Istoriya ko‘ruvchisi" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Yangi xizmat")).toBeInTheDocument();
+    expect(onOpenPublicResult).not.toHaveBeenCalled();
   });
 
   it("keeps search results on Home and updates the exact count", async () => {

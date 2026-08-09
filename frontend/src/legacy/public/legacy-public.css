@@ -1364,6 +1364,8 @@
 .story-rail::-webkit-scrollbar { display: none; }
 .story-card { width: 80px; flex: 0 0 80px; padding: 0; border: 0; color: var(--ink); background: transparent; font: inherit; text-align: center; cursor: pointer; scroll-snap-align: start; }
 .story-thumb { position: relative; display: grid; overflow: hidden; width: 80px; height: 80px; place-items: center; border: 2px solid var(--line); border-radius: 18px; background: var(--card); box-shadow: var(--shadow); font-weight: 900; }
+.story-card.unseen .story-thumb { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-tint); }
+.story-card.seen .story-thumb { border-color: var(--line); opacity: .86; }
 .story-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .story-fallback { color: var(--primary); font: 900 23px var(--font-d); }
 .story-name { display: block; overflow: hidden; margin-top: 5px; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }

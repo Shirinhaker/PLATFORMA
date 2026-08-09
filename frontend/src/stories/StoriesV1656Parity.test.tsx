@@ -51,7 +51,7 @@ describe("v1656 Istoriyalar pariteti", () => {
     render(<StoryRailV1656 groups={[group]} onOpen={open} />);
 
     const button = screen.getByRole("button", { name: /Ali istoriyasini ko‘rish/i });
-    expect(button).toHaveClass("story-card--unseen");
+    expect(button).toHaveClass("story-rail-card-v1656--unseen");
     fireEvent.click(button);
     expect(open).toHaveBeenCalledWith(0);
   });

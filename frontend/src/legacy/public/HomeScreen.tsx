@@ -12,6 +12,7 @@ import type {
   PublicFollowedProfile,
   PublicHomeMapResponse,
   PublicSearchItem,
+  StoryGroup,
 } from "../../api/types";
 import { AppToastV1656 } from "./AppToastV1656";
 import { HomeAdvertisements } from "./HomeAdvertisements";
@@ -205,6 +206,18 @@ export function HomeScreen({
     onOpenPublicResult(kind, publicId);
   }, [onOpenPublicResult]);
 
+  const renderFollowedProfiles = useCallback((
+    groups: StoryGroup[],
+    onOpenStory: (index: number) => void,
+  ) => (
+    <HomeFollowedProfilesV1656
+      items={followedProfiles}
+      storyGroups={groups}
+      onOpenProfile={openResult}
+      onOpenStory={onOpenStory}
+    />
+  ), [followedProfiles, openResult]);
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedQuery = query.trim();
@@ -319,13 +332,15 @@ export function HomeScreen({
           getStoryViewers={storyApi.getStoryViewers}
           load={loadStories}
           recordStoryView={storyApi.recordStoryView}
+          renderRail={renderFollowedProfiles}
           reportStory={storyApi.reportStory}
         />
-      ) : null}
-      <HomeFollowedProfilesV1656
-        items={followedProfiles}
-        onOpenProfile={openResult}
-      />
+      ) : (
+        <HomeFollowedProfilesV1656
+          items={followedProfiles}
+          onOpenProfile={openResult}
+        />
+      )}
 
       <div className="home-discovery" id="homeDiscovery">
         <div className={`home-search-card${searchFocused ? " mobile-search-focused" : ""}`}>
