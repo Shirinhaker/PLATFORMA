@@ -15,6 +15,7 @@ export type StoryViewerApi = Pick<ApiClient,
 
 type Props = StoryViewerApi & {
   load(): Promise<StoryGroup[]>;
+  onOpenOwner?(kind: StoryGroup["owner_type"], publicId: string): void;
   renderRail?(groups: StoryGroup[], onOpen: (index: number) => void): ReactNode;
 };
 
@@ -25,6 +26,7 @@ export function StoryFeedV1656({
   getStoryViewers,
   deleteStory,
   reportStory,
+  onOpenOwner,
   renderRail,
 }: Props) {
   const [groups, setGroups] = useState<StoryGroup[]>([]);
@@ -56,6 +58,7 @@ export function StoryFeedV1656({
           recordView={recordStoryView}
           reportStory={reportStory}
           onClose={() => setOpenIndex(null)}
+          onOpenOwner={onOpenOwner}
           onViewed={(storyId) => setGroups((current) => current.map((group) => {
             const stories = group.stories.map((story) => (
               story.id === storyId ? { ...story, viewed: true } : story

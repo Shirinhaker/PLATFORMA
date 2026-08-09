@@ -311,6 +311,14 @@ describe("HomeScreen", () => {
       .toBeInTheDocument();
     expect(screen.getByText("Yangi xizmat")).toBeInTheDocument();
     expect(onOpenPublicResult).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", {
+      name: "Qumqo‘rg‘on ustalari profilini ochish",
+    }));
+
+    expect(screen.queryByRole("dialog", { name: "Istoriya ko‘ruvchisi" }))
+      .not.toBeInTheDocument();
+    expect(onOpenPublicResult).toHaveBeenCalledWith("business", "biz_41");
   });
 
   it("keeps search results on Home and updates the exact count", async () => {
