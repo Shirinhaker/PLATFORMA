@@ -51,6 +51,12 @@ class UserProfile(Base):
     avatar_zoom: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     followers_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     following_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    specialist_rating_sum: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    specialist_rating_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
     has_business: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     dashboard_snapshot: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False, default=dict

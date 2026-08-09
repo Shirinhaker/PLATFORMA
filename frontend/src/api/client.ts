@@ -115,6 +115,11 @@ import type {
   QueueOptions,
   QueueNotificationRead,
   QueueSlots,
+  ReviewListRead,
+  ReviewMutationRead,
+  ReviewRead,
+  ReviewTargetKind,
+  ReviewWrite,
 } from "./types";
 import type {
   Advertisement,
@@ -624,6 +629,45 @@ export class ApiClient {
       "GET",
       "/api/v1/messages/unread-count",
       undefined,
+      true,
+    );
+  }
+
+  getReviews(
+    targetKind: ReviewTargetKind,
+    targetPublicId: string,
+  ): Promise<ReviewListRead> {
+    return this.request(
+      "GET",
+      `/api/v1/reviews/${targetKind}/${encodeURIComponent(targetPublicId)}`,
+    );
+  }
+
+  saveReview(body: ReviewWrite): Promise<ReviewMutationRead> {
+    return this.request("POST", "/api/v1/reviews", body, true);
+  }
+
+  deleteReview(
+    targetKind: ReviewTargetKind,
+    targetPublicId: string,
+  ): Promise<ReviewMutationRead> {
+    return this.request(
+      "DELETE",
+      `/api/v1/reviews/${targetKind}/${encodeURIComponent(targetPublicId)}`,
+      undefined,
+      true,
+    );
+  }
+
+  getReceivedReviews(): Promise<ReviewListRead> {
+    return this.request("GET", "/api/v1/reviews/received", undefined, true);
+  }
+
+  replyToReview(reviewId: number, reply: string): Promise<ReviewRead> {
+    return this.request(
+      "PUT",
+      `/api/v1/reviews/${reviewId}/reply`,
+      { reply },
       true,
     );
   }

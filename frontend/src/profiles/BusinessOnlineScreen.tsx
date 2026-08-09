@@ -63,6 +63,10 @@ import {
   OwnerStoriesV1656,
   type OwnerStoriesApi,
 } from "../stories/OwnerStoriesV1656";
+import {
+  ReceivedReviewsV1656,
+  type ReceivedReviewsApi,
+} from "../reviews/ReviewsV1656";
 import "./BusinessOnlineScreen.css";
 import "./BusinessExistingOnlineV1656.css";
 
@@ -110,6 +114,8 @@ type OnlineApi = Partial<Pick<
   | "getStoryViewers"
   | "deleteStory"
   | "reportStory"
+  | "getReceivedReviews"
+  | "replyToReview"
 >>;
 
 type Props = {
@@ -218,6 +224,13 @@ function supportsOwnerStories(api: OnlineApi): api is OnlineApi & OwnerStoriesAp
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
+function supportsReceivedReviews(
+  api: OnlineApi,
+): api is OnlineApi & ReceivedReviewsApi {
+  return ["getReceivedReviews", "replyToReview"]
+    .every((method) => typeof api[method as keyof OnlineApi] === "function");
+}
+
 
 export function BusinessOnlineScreen({
   api,
@@ -316,6 +329,7 @@ export function BusinessOnlineScreen({
       !primary
       || !api.getBusinessOnlineResource
       || (view === "listings" && supportsOwnerListings(api))
+      || (view === "reviews" && supportsReceivedReviews(api))
       || (["orders", "service-orders"].includes(view) && supportsOrders(api))
       || (["medical-providers", "medical-queue"].includes(view)
         && supportsBusinessQueueApi(api))
@@ -673,6 +687,15 @@ export function BusinessOnlineScreen({
     return (
       <OwnerListingsV1656
         actor="business"
+        api={api}
+        onBack={() => { void onBack(); }}
+      />
+    );
+  }
+
+  if (view === "reviews" && supportsReceivedReviews(api)) {
+    return (
+      <ReceivedReviewsV1656
         api={api}
         onBack={() => { void onBack(); }}
       />

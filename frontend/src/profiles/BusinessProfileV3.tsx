@@ -147,6 +147,8 @@ export type BusinessProfileApiV3 = Pick<
   | "editMessage"
   | "deleteMessage"
   | "getMessageUnreadCount"
+  | "getReceivedReviews"
+  | "replyToReview"
 >>;
 
 type Props = {

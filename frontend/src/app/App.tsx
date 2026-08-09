@@ -54,6 +54,7 @@ import {
   type MessagePeer,
   type MessagesApi,
 } from "../messages/MessagesV1656";
+import type { PublicReviewsApi } from "../reviews/ReviewsV1656";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -91,6 +92,7 @@ type AppApi = (
   & Partial<QueueBookingApi>
   & Partial<CourseEnrollmentApi>
   & Partial<MessagesApi>
+  & Partial<PublicReviewsApi>
 );
 
 
@@ -126,6 +128,11 @@ function supportsMessages(api: AppApi): api is AppApi & MessagesApi {
     "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
+}
+
+function supportsPublicReviews(api: AppApi): api is AppApi & PublicReviewsApi {
+  return ["getReviews", "saveReview", "deleteReview"]
+    .every((method) => typeof api[method as keyof AppApi] === "function");
 }
 
 
@@ -576,6 +583,7 @@ export function App({ api }: { api: AppApi }) {
           }}
           onQueueMessage={showQueueMessage}
           onTitleChange={updateOpenedProfileTitle}
+          reviewApi={supportsPublicReviews(api) ? api : undefined}
           storyApi={publicFeatures.stories ? storyApi : undefined}
         />
       );

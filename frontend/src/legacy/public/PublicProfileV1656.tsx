@@ -12,6 +12,10 @@ import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
 import type { CourseEnrollmentTarget } from "../../education/CourseEnrollmentV1656";
 import { PublicProfileStoriesV1656 } from "../../stories/PublicProfileStoriesV1656";
 import type { StoryViewerApi } from "../../stories/StoryFeedV1656";
+import {
+  PublicReviewsV1656,
+  type PublicReviewsApi,
+} from "../../reviews/ReviewsV1656";
 
 
 interface PublicProfileV1656Props {
@@ -35,6 +39,7 @@ interface PublicProfileV1656Props {
   onTitleChange?(title: string): void;
   onOpenListing?(publicId: string): void;
   storyApi?: StoryViewerApi & Pick<ApiClient, "getOwnerStories">;
+  reviewApi?: PublicReviewsApi;
 }
 
 const QUEUE_DIRECTIONS = new Set([
@@ -96,6 +101,7 @@ export function PublicProfileV1656({
   onTitleChange,
   onOpenListing,
   storyApi,
+  reviewApi,
 }: PublicProfileV1656Props) {
   const [profile, setProfile] = useState<PublicProfileDetail | null>(null);
   const [error, setError] = useState("");
@@ -409,6 +415,14 @@ export function PublicProfileV1656({
             </button>
           ))}
         </section>
+      ) : null}
+
+      {reviewApi && (business || profile.specialist) ? (
+        <PublicReviewsV1656
+          api={reviewApi}
+          targetKind={business ? "business" : "specialist"}
+          targetPublicId={publicId}
+        />
       ) : null}
 
       {!profile.items.length && !profile.listings.length && !profile.specialist ? (

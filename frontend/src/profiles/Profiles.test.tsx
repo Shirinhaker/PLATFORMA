@@ -184,6 +184,30 @@ function profileApi() {
     editMessage: vi.fn(),
     deleteMessage: vi.fn(),
     getMessageUnreadCount: vi.fn().mockResolvedValue({ count: 2 }),
+    getReceivedReviews: vi.fn().mockResolvedValue({
+      reviews: [{
+        id: 22,
+        stars: 5,
+        comment: "A’lo xizmat",
+        user_name: "Vali",
+        created_at: "2026-08-10T08:00:00Z",
+        owner_reply: "",
+        owner_replied_at: null,
+      }],
+      avg: 5,
+      count: 1,
+      can_review: false,
+      my_review: null,
+    }),
+    replyToReview: vi.fn().mockResolvedValue({
+      id: 22,
+      stars: 5,
+      comment: "A’lo xizmat",
+      user_name: "Vali",
+      created_at: "2026-08-10T08:00:00Z",
+      owner_reply: "Rahmat",
+      owner_replied_at: "2026-08-10T09:00:00Z",
+    }),
     getMyListings: vi.fn().mockResolvedValue([listing]),
     getSavedListings: vi.fn().mockResolvedValue([{ ...listing, is_saved: true }]),
     createListing: vi.fn().mockResolvedValue(listing),
@@ -325,6 +349,42 @@ async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>)
 
 
 describe("profile cabinets", () => {
+  it("opens relational customer reviews from business and specialist cabinets", async () => {
+    const user = userEvent.setup();
+    const userApi = profileApi();
+    const userCabinet = render(
+      <UserProfile
+        api={userApi}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole(
+      "button",
+      { name: "Mutaxassisligim va xizmatlarim" },
+    ));
+    await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
+    expect(await screen.findByText("A’lo xizmat")).toBeInTheDocument();
+    expect(userApi.getReceivedReviews).toHaveBeenCalledOnce();
+
+    userCabinet.unmount();
+    const businessApi = profileApi();
+    render(
+      <BusinessProfile
+        api={businessApi}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Mijoz fikrlari/ }));
+    expect(await screen.findByText("A’lo xizmat")).toBeInTheDocument();
+    expect(businessApi.getReceivedReviews).toHaveBeenCalledOnce();
+  });
+
   it("opens the shared relational Suhbatlar flow from both cabinets", async () => {
     const user = userEvent.setup();
     const userApi = profileApi();
