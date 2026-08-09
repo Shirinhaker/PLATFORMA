@@ -188,7 +188,7 @@ def test_stories_feature_flag_can_be_explicitly_closed_or_opened():
 
 def test_story_schemas_keep_automatic_archive_and_unique_view_contract():
     schemas = _stories_module("schemas")
-    created = datetime(2026, 8, 8, 8, 0, tzinfo=UTC)
+    created = datetime.now(UTC)
     story = schemas.StoryRead(
         id=7,
         owner_type=AccountType.USER,
