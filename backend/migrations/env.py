@@ -18,6 +18,7 @@ from app.catalog import model as catalog_model  # noqa: F401
 from app.cash_register import model as cash_register_model  # noqa: F401
 from app.debt_ledger import model as debt_ledger_model  # noqa: F401
 from app.dining import model as dining_model  # noqa: F401
+from app.documents import model as documents_model  # noqa: F401
 from app.education import model as education_model  # noqa: F401
 from app.expenses import model as expenses_model  # noqa: F401
 from app.follows import model as follows_model  # noqa: F401

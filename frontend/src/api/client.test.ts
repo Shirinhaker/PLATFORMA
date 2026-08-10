@@ -141,6 +141,79 @@ describe("ApiClient", () => {
     }
   });
 
+  it("uses the typed documents and counterparties endpoints", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "documents-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const counterparty = {
+      name: "Olma Savdo",
+      ctype: "Mijoz",
+      director: "",
+      phone: "",
+      address: "",
+      inn: "309333444",
+      account: "",
+      bank: "",
+      mfo: "",
+      note: "",
+    };
+    const document = {
+      direction: "chiquvchi" as const,
+      doc_type: "Shartnoma",
+      title: "Yetkazib berish",
+      number: "7",
+      doc_date: "2026-08-10",
+      contractor_id: 9,
+      body: "Shartnoma matni",
+    };
+
+    await client.getDocumentCounterparties();
+    await client.createDocumentCounterparty(counterparty);
+    await client.updateDocumentCounterparty(9, counterparty);
+    await client.deleteDocumentCounterparty(9);
+    await client.getDocuments("chiquvchi");
+    await client.getDocument(31);
+    await client.createDocument(document);
+    await client.updateDocument(31, document);
+    await client.deleteDocument(31);
+    await client.sendDocument(31, "309333444");
+    await client.respondDocument(32, "qabul");
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      ["https://api.example/api/v1/documents/counterparties", "GET", undefined],
+      ["https://api.example/api/v1/documents/counterparties", "POST", JSON.stringify(counterparty)],
+      ["https://api.example/api/v1/documents/counterparties/9", "PUT", JSON.stringify(counterparty)],
+      ["https://api.example/api/v1/documents/counterparties/9", "DELETE", undefined],
+      ["https://api.example/api/v1/documents?direction=chiquvchi", "GET", undefined],
+      ["https://api.example/api/v1/documents/31", "GET", undefined],
+      ["https://api.example/api/v1/documents", "POST", JSON.stringify(document)],
+      ["https://api.example/api/v1/documents/31", "PUT", JSON.stringify(document)],
+      ["https://api.example/api/v1/documents/31", "DELETE", undefined],
+      ["https://api.example/api/v1/documents/31/send", "POST", JSON.stringify({ receiver_inn: "309333444" })],
+      ["https://api.example/api/v1/documents/32/respond", "POST", JSON.stringify({ action: "qabul" })],
+    ]);
+    for (const [, init] of fetcher.mock.calls.slice(2)) {
+      if (init?.method !== "GET") {
+        expect(init?.headers).toMatchObject({
+          "X-CSRF-Token": "documents-csrf",
+        });
+      }
+    }
+  });
+
   it("uses the typed K8 statistics report and navigation endpoints", async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
     const client = new ApiClient("https://api.example", fetcher, { kind: "web" });

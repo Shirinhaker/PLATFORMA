@@ -64,6 +64,10 @@ import {
   type WarehouseApi,
 } from "../inventory/WarehouseV1656";
 import {
+  DocumentsV1656,
+  type DocumentsApi,
+} from "../documents/DocumentsV1656";
+import {
   MessagesV1656,
   type MessagesApi,
 } from "../messages/MessagesV1656";
@@ -162,6 +166,17 @@ export type BusinessProfileApiV3 = Pick<
   | "getWarehouseMoves"
   | "getWarehouseRecipe"
   | "getWarehouseProduction"
+  | "getDocumentCounterparties"
+  | "createDocumentCounterparty"
+  | "updateDocumentCounterparty"
+  | "deleteDocumentCounterparty"
+  | "getDocuments"
+  | "getDocument"
+  | "createDocument"
+  | "updateDocument"
+  | "deleteDocument"
+  | "sendDocument"
+  | "respondDocument"
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"
@@ -245,6 +260,7 @@ type Screen =
   | "debt"
   | "expenses"
   | "warehouse"
+  | "documents"
   | "statistics"
   | "education-management"
   | "education-statistics";
@@ -317,11 +333,8 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
   statistics: ["statistics"],
   "education-statistics": ["education_statistics"],
   reports: ["reports"],
+  "my-documents": [],
   documents: ["documents"],
-  "incoming-documents": ["documents"],
-  "outgoing-documents": ["documents"],
-  "internal-documents": ["documents"],
-  counterparties: ["documents"],
   "education-groups": ["education_groups"],
   "education-students": ["education_students"],
   "education-schedule": ["education_schedule"],
@@ -333,6 +346,7 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
 
 const OWNER_ONLY_VIEWS = new Set([
   "profile", "subscriptions", "payments", "followers", "following", "staff",
+  "my-documents",
 ]);
 
 function canUseView(identity: SessionIdentity, view: string) {
@@ -397,6 +411,20 @@ function supportsWarehouse(
   return [
     "getWarehouseItems", "createWarehouseMove", "deleteWarehouseMove",
     "getWarehouseMoves", "getWarehouseRecipe", "getWarehouseProduction",
+  ].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
+function supportsDocuments(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & DocumentsApi {
+  return [
+    "getDocumentCounterparties", "createDocumentCounterparty",
+    "updateDocumentCounterparty", "deleteDocumentCounterparty",
+    "getDocuments", "getDocument", "createDocument", "updateDocument",
+    "deleteDocument", "sendDocument", "respondDocument",
+    "updateBusinessProfile",
   ].every((method) => (
     typeof api[method as keyof BusinessProfileApiV3] === "function"
   ));
@@ -494,6 +522,7 @@ export function BusinessProfileV3({
     "education-schedule",
   );
   const [initialItemDraft, setInitialItemDraft] = useState<Record<string, unknown> | null>(null);
+  const [documentsInitialView, setDocumentsInitialView] = useState<"profile" | "center">("center");
 
   useEffect(() => {
     let mounted = true;
@@ -823,6 +852,19 @@ export function BusinessProfileV3({
     );
   }
 
+  if (screen === "documents" && supportsDocuments(api)) {
+    return withActionBanner(
+      <DocumentsV1656
+        api={api}
+        profile={profile}
+        initialView={documentsInitialView}
+        canManageCounterparties={identity.actor_type !== "staff"}
+        onProfile={setProfile}
+        onBack={() => setScreen("cabinet")}
+      />,
+    );
+  }
+
   if (screen === "statistics" && supportsStatistics(api)) {
     return withActionBanner(
       <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
@@ -890,6 +932,14 @@ export function BusinessProfileV3({
     }
     if (menu.view === "warehouse" && supportsWarehouse(api)) {
       setScreen("warehouse");
+      return;
+    }
+    if (
+      (menu.view === "documents" || menu.view === "my-documents")
+      && supportsDocuments(api)
+    ) {
+      setDocumentsInitialView(menu.view === "my-documents" ? "profile" : "center");
+      setScreen("documents");
       return;
     }
     if (menu.view === "statistics" && supportsStatistics(api)) {
