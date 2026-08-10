@@ -1,0 +1,1 @@
+"""Typed specialist profile domain."""
