@@ -145,6 +145,15 @@ export type BusinessProfileApiV3 = Pick<
   | "getStatisticsNav"
   | "getEducationStatistics"
   | "getEducationGroups"
+  | "createEducationGroup"
+  | "updateEducationGroup"
+  | "deleteEducationGroup"
+  | "getEducationStudents"
+  | "createEducationStudent"
+  | "updateEducationStudent"
+  | "deleteEducationStudent"
+  | "getEducationStudentCard"
+  | "transferEducationStudent"
   | "getEducationAttendance"
   | "saveEducationAttendance"
   | "getEducationPaymentControl"
@@ -351,7 +360,11 @@ function supportsEducationManagement(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & EducationManagementApi {
   return [
-    "getEducationGroups", "getEducationAttendance", "saveEducationAttendance",
+    "getBusinessOnlineResource", "getEducationGroups", "createEducationGroup",
+    "updateEducationGroup", "deleteEducationGroup", "getEducationStudents",
+    "createEducationStudent", "updateEducationStudent",
+    "deleteEducationStudent", "getEducationStudentCard",
+    "transferEducationStudent", "getEducationAttendance", "saveEducationAttendance",
     "getEducationPaymentControl", "getEducationPayments",
     "createEducationPayment", "voidEducationPayment", "getEducationTeachers",
     "createEducationTeacher", "updateEducationTeacher",
@@ -726,6 +739,8 @@ export function BusinessProfileV3({
     }
     if (
       [
+        "education-groups",
+        "education-students",
         "education-schedule",
         "education-attendance",
         "education-payments",

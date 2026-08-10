@@ -41,6 +41,7 @@ import type {
   EducationAttendance,
   EducationAttendanceWrite,
   EducationGroup,
+  EducationGroupWrite,
   EducationPaymentControl,
   EducationPaymentCreate,
   EducationPaymentMonth,
@@ -48,6 +49,9 @@ import type {
   EducationPayrollCreate,
   EducationStatisticsPeriod,
   EducationStatisticsReport,
+  EducationStudent,
+  EducationStudentCard,
+  EducationStudentWrite,
   EducationTeacher,
   EducationTeacherWrite,
   BusinessQueueEntry,
@@ -1098,6 +1102,81 @@ export class ApiClient {
 
   getEducationGroups(): Promise<EducationGroup[]> {
     return this.request("GET", "/api/v1/education/groups", undefined, true);
+  }
+
+  createEducationGroup(
+    body: EducationGroupWrite,
+  ): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/education/groups", body, true);
+  }
+
+  updateEducationGroup(
+    groupId: number,
+    body: EducationGroupWrite,
+  ): Promise<{ ok: true }> {
+    return this.request("PUT", `/api/v1/education/groups/${groupId}`, body, true);
+  }
+
+  deleteEducationGroup(groupId: number): Promise<void> {
+    return this.request("DELETE", `/api/v1/education/groups/${groupId}`, undefined, true);
+  }
+
+  getEducationStudents(groupId = 0): Promise<EducationStudent[]> {
+    const query = new URLSearchParams({ group_id: String(groupId) });
+    return this.request(
+      "GET",
+      `/api/v1/education/students?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  createEducationStudent(
+    body: EducationStudentWrite,
+  ): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/education/students", body, true);
+  }
+
+  updateEducationStudent(
+    studentId: number,
+    body: EducationStudentWrite,
+  ): Promise<{ ok: true }> {
+    return this.request(
+      "PUT",
+      `/api/v1/education/students/${studentId}`,
+      body,
+      true,
+    );
+  }
+
+  deleteEducationStudent(studentId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/education/students/${studentId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getEducationStudentCard(studentId: number): Promise<EducationStudentCard> {
+    return this.request(
+      "GET",
+      `/api/v1/education/students/${studentId}/card`,
+      undefined,
+      true,
+    );
+  }
+
+  transferEducationStudent(
+    studentId: number,
+    body: { group_id: number; transfer_date: string; note: string },
+  ): Promise<{ ok: true; group_id: number; group_name: string }> {
+    return this.request(
+      "POST",
+      `/api/v1/education/students/${studentId}/transfer`,
+      body,
+      true,
+    );
   }
 
   getEducationAttendance(

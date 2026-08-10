@@ -20,16 +20,20 @@ from app.education.model import (
     EducationGroup,
     EducationPayment,
     EducationStudent,
+    EducationStudentGroupHistory,
     EducationTeacher,
     EducationTeacherPayment,
 )
 from app.education.schemas import (
     EducationAttendanceEntryWrite,
     EducationAttendanceWrite,
+    EducationGroupWrite,
     EducationPaymentCreate,
     EducationPaymentVoid,
     EducationPayrollCreate,
     EducationTeacherWrite,
+    EducationStudentTransferWrite,
+    EducationStudentWrite,
 )
 from app.expenses.model import Expense
 from app.inventory.model import InventoryItem, StockMove
@@ -146,6 +150,7 @@ def management():
             EducationTeacher.__table__,
             EducationGroup.__table__,
             EducationStudent.__table__,
+            EducationStudentGroupHistory.__table__,
             EducationAttendance.__table__,
             CashReceiptCounter.__table__,
             CashReceipt.__table__,
@@ -253,6 +258,81 @@ async def test_schedule_and_attendance_are_relational_and_tenant_scoped(manageme
     assert read.students[0].attendance_status == "present"
     with Session(engine) as check:
         assert check.scalars(select(EducationAttendance)).one().business_account_id == BUSINESS_ID
+
+
+async def test_group_student_crud_card_and_transfer_are_typed(management):
+    service, engine = management
+    created_group = await service.create_group(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        body=EducationGroupWrite(
+            name="Intermediate",
+            weekdays=["tue", "thu"],
+            lesson_from="11:00",
+            lesson_to="12:00",
+        ),
+    )
+    created_student = await service.create_student(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        body=EducationStudentWrite(
+            full_name="Laylo Karimova",
+            group_id=1,
+            joined_date="2026-08-01",
+            payment_start_date="2026-08-01",
+            monthly_fee=700,
+        ),
+    )
+    students = await service.list_students(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+    )
+    assert any(row.id == created_student.id and row.group_name == "Starter" for row in students)
+
+    moved = await service.transfer_student(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        student_id=created_student.id,
+        body=EducationStudentTransferWrite(
+            group_id=created_group.id,
+            transfer_date=date(2026, 8, 10),
+            note="Yuqori bosqich",
+        ),
+    )
+    assert moved.group_name == "Intermediate"
+    card = await service.student_card(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        student_id=created_student.id,
+    )
+    assert card.student.group_name == "Intermediate"
+    assert [row.group_name for row in card.group_history] == ["Intermediate", "Starter"]
+
+    with pytest.raises(ApiError) as direct_group_change:
+        await service.update_student(
+            business_account_id=BUSINESS_ID,
+            permissions=None,
+            student_id=created_student.id,
+            body=EducationStudentWrite(
+                full_name="Laylo Karimova",
+                group_id=1,
+            ),
+        )
+    assert direct_group_change.value.code == "education_student_transfer_required"
+
+    await service.delete_student(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        student_id=created_student.id,
+    )
+    await service.delete_group(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        group_id=created_group.id,
+    )
+    with Session(engine) as check:
+        assert check.get(EducationStudent, created_student.id).status == "deleted"
+        assert check.get(EducationGroup, created_group.id).status == "deleted"
 
 
 async def test_student_payment_creates_cash_receipt_and_owner_can_void(management):

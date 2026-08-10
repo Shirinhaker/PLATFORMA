@@ -16,9 +16,15 @@ import type {
   EducationTeacherWrite,
 } from "../api/types";
 import "./EducationManagementV1656.css";
+import {
+  EducationGroupsV1656,
+  EducationStudentsV1656,
+} from "./EducationDirectoryV1656";
 
 
 export type EducationManagementView =
+  | "education-groups"
+  | "education-students"
   | "education-schedule"
   | "education-attendance"
   | "education-payments"
@@ -27,7 +33,17 @@ export type EducationManagementView =
 
 export type EducationManagementApi = Pick<
   ApiClient,
+  | "getBusinessOnlineResource"
   | "getEducationGroups"
+  | "createEducationGroup"
+  | "updateEducationGroup"
+  | "deleteEducationGroup"
+  | "getEducationStudents"
+  | "createEducationStudent"
+  | "updateEducationStudent"
+  | "deleteEducationStudent"
+  | "getEducationStudentCard"
+  | "transferEducationStudent"
   | "getEducationAttendance"
   | "saveEducationAttendance"
   | "getEducationPaymentControl"
@@ -561,6 +577,8 @@ function PayrollView({ api, onBack }: { api: EducationManagementApi; onBack: () 
 }
 
 export function EducationManagementV1656({ api, view, onBack, canVoidPayments = true }: { api: EducationManagementApi; view: EducationManagementView; onBack: () => void; canVoidPayments?: boolean }) {
+  if (view === "education-groups") return <EducationGroupsV1656 api={api} onBack={onBack} />;
+  if (view === "education-students") return <EducationStudentsV1656 api={api} onBack={onBack} />;
   if (view === "education-schedule") return <ScheduleView api={api} onBack={onBack} />;
   if (view === "education-attendance") return <AttendanceView api={api} onBack={onBack} />;
   if (view === "education-payments") return <PaymentsView api={api} onBack={onBack} canVoid={canVoidPayments} />;

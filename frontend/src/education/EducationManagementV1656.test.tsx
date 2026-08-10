@@ -31,7 +31,17 @@ const group = {
 
 function api(): EducationManagementApi {
   return {
+    getBusinessOnlineResource: vi.fn().mockResolvedValue({ resource: "items", items: [] }),
     getEducationGroups: vi.fn().mockResolvedValue([group]),
+    createEducationGroup: vi.fn().mockResolvedValue({ ok: true, id: 2 }),
+    updateEducationGroup: vi.fn().mockResolvedValue({ ok: true }),
+    deleteEducationGroup: vi.fn().mockResolvedValue(undefined),
+    getEducationStudents: vi.fn().mockResolvedValue([]),
+    createEducationStudent: vi.fn().mockResolvedValue({ ok: true, id: 2 }),
+    updateEducationStudent: vi.fn().mockResolvedValue({ ok: true }),
+    deleteEducationStudent: vi.fn().mockResolvedValue(undefined),
+    getEducationStudentCard: vi.fn(),
+    transferEducationStudent: vi.fn().mockResolvedValue({ ok: true, group_id: 1, group_name: "Starter" }),
     getEducationAttendance: vi.fn().mockResolvedValue({
       group,
       lesson_date: "2026-08-10",
@@ -66,6 +76,53 @@ function open(view: EducationManagementView, client = api()) {
 }
 
 describe("EducationManagementV1656", () => {
+  it("guruhni typed modul orqali tahrirlaydi", async () => {
+    const user = userEvent.setup();
+    const client = open("education-groups");
+    await screen.findByText(/Ingliz tili/);
+    await user.click(screen.getByRole("button", { name: "Tahrirlash" }));
+    const name = screen.getByLabelText("Guruh nomi");
+    await user.clear(name);
+    await user.type(name, "Starter Plus");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+    await waitFor(() => expect(client.updateEducationGroup).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ name: "Starter Plus", weekdays: ["mon", "wed", "fri"] }),
+    ));
+  });
+
+  it("o'quvchi kartasini ochib, guruh ko'chirishini saqlaydi", async () => {
+    const user = userEvent.setup();
+    const client = api();
+    const second = { ...group, id: 2, name: "Intermediate", student_count: 0 };
+    const student = {
+      id: 9, full_name: "Ali Valiyev", group_id: 1, group_name: "Starter",
+      course_name: "Ingliz tili", phone: "+99890", parent_name: "Vali",
+      parent_phone: "+99891", birth_date: "", joined_date: "2026-08-01",
+      monthly_fee: 500_000, payment_start_date: "2026-08-01",
+      lesson_package_override: 0, note: "",
+    };
+    vi.mocked(client.getEducationGroups).mockResolvedValue([group, second]);
+    vi.mocked(client.getEducationStudents).mockResolvedValue([student]);
+    vi.mocked(client.getEducationStudentCard).mockResolvedValue({
+      student,
+      attendance: { total: 4, attended: 3, percent: 75, counts: { present: 2, late: 1, excused: 0, absent: 1 } },
+      payment: { expected: 500_000, paid: 200_000, debt: 300_000, total_paid: 200_000 },
+      payments: [],
+      group_history: [{ id: 1, group_id: 1, group_name: "Starter", started_date: "2026-08-01", ended_date: "", note: "Boshlang'ich guruh" }],
+    });
+    open("education-students", client);
+    await user.click(await screen.findByRole("button", { name: "To'liq kartani ochish" }));
+    expect(await screen.findByText("75%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Guruhga ko'chirish" }));
+    await user.selectOptions(screen.getByLabelText("Yangi guruh"), "2");
+    await user.click(screen.getByRole("button", { name: "Ko'chirish" }));
+    await waitFor(() => expect(client.transferEducationStudent).toHaveBeenCalledWith(
+      9,
+      expect.objectContaining({ group_id: 2 }),
+    ));
+  });
+
   it("guruh ma'lumotidan haftalik dars jadvalini tuzadi", async () => {
     const client = open("education-schedule");
     await screen.findAllByText("Starter");

@@ -36,6 +36,15 @@ def test_all_remaining_education_management_routes_are_typed():
     }
     expected = {
         ("/api/v1/education/groups", "GET"),
+        ("/api/v1/education/groups", "POST"),
+        ("/api/v1/education/groups/{group_id}", "PUT"),
+        ("/api/v1/education/groups/{group_id}", "DELETE"),
+        ("/api/v1/education/students", "GET"),
+        ("/api/v1/education/students", "POST"),
+        ("/api/v1/education/students/{student_id}", "PUT"),
+        ("/api/v1/education/students/{student_id}", "DELETE"),
+        ("/api/v1/education/students/{student_id}/card", "GET"),
+        ("/api/v1/education/students/{student_id}/transfer", "POST"),
         ("/api/v1/education/attendance", "GET"),
         ("/api/v1/education/attendance", "PUT"),
         ("/api/v1/education/payment-control", "GET"),

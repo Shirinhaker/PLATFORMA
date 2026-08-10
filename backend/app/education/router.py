@@ -18,7 +18,9 @@ from app.education.schemas import (
     EducationAttendanceRead,
     EducationAttendanceSaved,
     EducationAttendanceWrite,
+    EducationCreated,
     EducationGroupRead,
+    EducationGroupWrite,
     EducationPaymentControlRead,
     EducationPaymentCreate,
     EducationPaymentCreated,
@@ -33,6 +35,12 @@ from app.education.schemas import (
     EducationTeacherRead,
     EducationTeacherUpdated,
     EducationTeacherWrite,
+    EducationStudentCardRead,
+    EducationStudentRead,
+    EducationStudentTransferred,
+    EducationStudentTransferWrite,
+    EducationStudentWrite,
+    EducationUpdated,
 )
 from app.education.management_service import EducationManagementService
 from app.education.service import EducationEnrollmentService
@@ -97,6 +105,142 @@ async def get_education_groups(
         business_account_id=_business_id(current),
         permissions=_permissions(current),
     )
+
+
+@router.post(
+    "/groups",
+    response_model=EducationCreated,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_education_group(
+    body: EducationGroupWrite,
+    current: CurrentWrite,
+    request: Request,
+) -> EducationCreated:
+    return await management_service(request).create_group(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        body=body,
+    )
+
+
+@router.put("/groups/{group_id}", response_model=EducationUpdated)
+async def update_education_group(
+    group_id: int,
+    body: EducationGroupWrite,
+    current: CurrentWrite,
+    request: Request,
+) -> EducationUpdated:
+    return await management_service(request).update_group(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        group_id=group_id,
+        body=body,
+    )
+
+
+@router.delete("/groups/{group_id}", status_code=204)
+async def delete_education_group(
+    group_id: int,
+    current: CurrentWrite,
+    request: Request,
+) -> Response:
+    await management_service(request).delete_group(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        group_id=group_id,
+    )
+    return Response(status_code=204)
+
+
+@router.get("/students", response_model=list[EducationStudentRead])
+async def get_education_students(
+    current: CurrentRead,
+    request: Request,
+    group_id: Annotated[int, Query(ge=0)] = 0,
+) -> list[EducationStudentRead]:
+    return await management_service(request).list_students(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        group_id=group_id,
+    )
+
+
+@router.post(
+    "/students",
+    response_model=EducationCreated,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_education_student(
+    body: EducationStudentWrite,
+    current: CurrentWrite,
+    request: Request,
+) -> EducationCreated:
+    return await management_service(request).create_student(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        body=body,
+    )
+
+
+@router.get("/students/{student_id}/card", response_model=EducationStudentCardRead)
+async def get_education_student_card(
+    student_id: int,
+    current: CurrentRead,
+    request: Request,
+) -> EducationStudentCardRead:
+    return await management_service(request).student_card(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        student_id=student_id,
+    )
+
+
+@router.post(
+    "/students/{student_id}/transfer",
+    response_model=EducationStudentTransferred,
+)
+async def transfer_education_student(
+    student_id: int,
+    body: EducationStudentTransferWrite,
+    current: CurrentWrite,
+    request: Request,
+) -> EducationStudentTransferred:
+    return await management_service(request).transfer_student(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        student_id=student_id,
+        body=body,
+    )
+
+
+@router.put("/students/{student_id}", response_model=EducationUpdated)
+async def update_education_student(
+    student_id: int,
+    body: EducationStudentWrite,
+    current: CurrentWrite,
+    request: Request,
+) -> EducationUpdated:
+    return await management_service(request).update_student(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        student_id=student_id,
+        body=body,
+    )
+
+
+@router.delete("/students/{student_id}", status_code=204)
+async def delete_education_student(
+    student_id: int,
+    current: CurrentWrite,
+    request: Request,
+) -> Response:
+    await management_service(request).delete_student(
+        business_account_id=_business_id(current),
+        permissions=_permissions(current),
+        student_id=student_id,
+    )
+    return Response(status_code=204)
 
 
 @router.get("/attendance", response_model=EducationAttendanceRead)

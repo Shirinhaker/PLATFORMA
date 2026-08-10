@@ -432,6 +432,65 @@ export type EducationGroup = {
   student_count: number;
 };
 
+export type EducationGroupWrite = Omit<
+  EducationGroup,
+  "id" | "course_name" | "student_count" | "weekdays"
+> & { weekdays: string[] };
+
+export type EducationStudentWrite = {
+  full_name: string;
+  group_id: number | null;
+  phone: string;
+  parent_name: string;
+  parent_phone: string;
+  birth_date: string;
+  joined_date: string;
+  monthly_fee: number;
+  payment_start_date: string;
+  lesson_package_override: number;
+  note: string;
+};
+
+export type EducationStudent = EducationStudentWrite & {
+  id: number;
+  group_name: string;
+  course_name: string;
+};
+
+export type EducationStudentCard = {
+  student: EducationStudent;
+  attendance: {
+    total: number;
+    attended: number;
+    percent: number;
+    counts: Record<EducationAttendanceStatus, number>;
+  };
+  payment: {
+    expected: number;
+    paid: number;
+    debt: number;
+    total_paid: number;
+  };
+  payments: Array<{
+    id: number;
+    payment_month: string;
+    amount: number;
+    pay_type: "naqd" | "karta";
+    note: string;
+    voided_at: string | null;
+    void_reason: string;
+    created_at: string;
+  }>;
+  group_history: Array<{
+    id: number;
+    group_id: number;
+    group_name: string;
+    started_date: string;
+    ended_date: string;
+    note: string;
+  }>;
+};
+
 export type EducationAttendanceStatus = "present" | "late" | "excused" | "absent";
 
 export type EducationAttendanceStudent = {
