@@ -46,6 +46,10 @@ import {
   PaymentsV1656,
   supportsPaymentsApi,
 } from "../payments/SubscriptionsPaymentsV1656";
+import {
+  SpecialistV1656,
+  type SpecialistApi,
+} from "../specialists/SpecialistV1656";
 
 
 export type UserProfileApi = Pick<
@@ -113,6 +117,15 @@ export type UserProfileApi = Pick<
   | "getFollowing"
   | "getMyPayments"
   | "resubmitPayment"
+  | "getMySpecialist"
+  | "updateMySpecialist"
+  | "addSpecialistCredential"
+  | "deleteSpecialistCredential"
+  | "createSpecialistOffer"
+  | "updateSpecialistOffer"
+  | "deleteSpecialistOffer"
+  | "addSpecialistPortfolio"
+  | "deleteSpecialistPortfolio"
 >>;
 
 type Props = {
@@ -155,18 +168,6 @@ const EDITABLE_FIELDS = [
   "longitude",
   "location_exact",
 ] as const;
-
-const SPECIALIST_FIELDS: ReadonlyArray<readonly [string, string]> = [
-  ["kasb", "Kasb/mutaxassislik"],
-  ["descr", "Tavsif"],
-  ["narx", "Narx"],
-  ["hudud", "Xizmat hududi"],
-  ["org", "Tashkilot"],
-  ["dept", "Bo‘lim"],
-  ["lavozim", "Lavozim"],
-  ["work_hours", "Ish vaqti"],
-  ["after_hours", "Ishdan tashqari vaqt"],
-];
 
 const SECTIONS: Section[] = [
   { icon: "👤", label: "Profilim", view: "profile" },
@@ -338,6 +339,16 @@ function supportsFollowLists(
   ));
 }
 
+function supportsSpecialist(api: UserProfileApi): api is UserProfileApi & SpecialistApi {
+  return [
+    "getMySpecialist", "updateMySpecialist", "addSpecialistCredential",
+    "deleteSpecialistCredential", "createSpecialistOffer",
+    "updateSpecialistOffer", "deleteSpecialistOffer",
+    "addSpecialistPortfolio", "deleteSpecialistPortfolio",
+    "createUploadGrant", "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
 
 export function UserProfile({
   api,
@@ -353,7 +364,6 @@ export function UserProfile({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [specialist, setSpecialist] = useState<Record<string, unknown>>({});
   const [orderUnread, setOrderUnread] = useState({ product: 0, service: 0 });
   const [messageUnread, setMessageUnread] = useState(0);
   const [notificationUnread, setNotificationUnread] = useState(0);
@@ -363,7 +373,6 @@ export function UserProfile({
   function applyLoaded(value: UserProfileData) {
     setProfile(value);
     setBaseline(value);
-    setSpecialist({ ...(value.specialist_profile ?? {}) });
     setNotificationUnread(value.dashboard_snapshot?.unread ?? 0);
   }
 
@@ -471,23 +480,6 @@ export function UserProfile({
         });
       }
       applyLoaded(value);
-      setSaved(true);
-    } catch (reason) {
-      setError(message(reason));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveSpecialist(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setSaved(false);
-    try {
-      applyLoaded(await api.updateUserProfile({
-        specialist_profile: specialist,
-      }));
       setSaved(true);
     } catch (reason) {
       setError(message(reason));
@@ -783,66 +775,23 @@ export function UserProfile({
   }
 
   if (view === "specialist") {
-    const field = (name: string) => String(specialist[name] ?? "");
+    if (supportsSpecialist(api)) {
+      return withActionBanner(
+        <SpecialistV1656
+          api={api}
+          onBack={() => setView("dashboard")}
+          onReviews={supportsReceivedReviews(api)
+            ? () => setView("specialist-reviews")
+            : undefined}
+        />,
+      );
+    }
     return withActionBanner(
-      <main className="profile-shell">
-        <header className="profile-heading">
-          <h1>Mutaxassisligim va xizmatlarim</h1>
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => setView("dashboard")}
-          >
-            Kabinetga qaytish
-          </button>
-        </header>
-        <form className="profile-form" onSubmit={saveSpecialist}>
-          {supportsReceivedReviews(api) ? (
-            <button
-              className="button-secondary"
-              type="button"
-              onClick={() => setView("specialist-reviews")}
-            >💬 Mijoz fikrlari</button>
-          ) : null}
-          {SPECIALIST_FIELDS.map(([key, label]) => (
-            <label key={key}>
-              {label}
-              <input
-                value={field(key)}
-                onChange={(event) => setSpecialist((current) => ({
-                  ...current,
-                  [key]: event.currentTarget.value,
-                }))}
-              />
-            </label>
-          ))}
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={Boolean(specialist.visible)}
-              onChange={(event) => setSpecialist((current) => ({
-                ...current,
-                visible: event.currentTarget.checked,
-              }))}
-            />
-            Qidiruvda ko‘rinish
-          </label>
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={specialist.available !== false}
-              onChange={(event) => setSpecialist((current) => ({
-                ...current,
-                available: event.currentTarget.checked,
-              }))}
-            />
-            Xizmat uchun bo‘shman
-          </label>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {saved && <p className="form-success" role="status">Saqlandi</p>}
-          <button type="submit" disabled={busy}>Saqlash</button>
-        </form>
-      </main>,
+      <CabinetDataView
+        title="Mutaxassisligim"
+        rows={[]}
+        onBack={() => setView("dashboard")}
+      />,
     );
   }
 
