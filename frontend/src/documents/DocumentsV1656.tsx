@@ -30,7 +30,7 @@ export type DocumentsApi = Pick<
   | "sendDocument"
   | "respondDocument"
   | "updateBusinessProfile"
-> & Partial<Pick<ApiClient, "generateAIDocumentDraft">>;
+>;
 
 type Props = {
   api: DocumentsApi;
@@ -166,7 +166,6 @@ export function DocumentsV1656({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [aiPrompt, setAiPrompt] = useState("");
 
   const selectedCounterparty = useMemo(
     () => counterparties.find((row) => row.id === compose.contractor_id),
@@ -340,40 +339,6 @@ export function DocumentsV1656({
         counterparty: selectedCounterparty,
       }),
     }));
-  }
-
-  async function generateAIDraft() {
-    clearMessage();
-    if (!aiPrompt.trim() || !api.generateAIDocumentDraft) {
-      setError("AI uchun hujjat topshirig‘ini yozing.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const result = await api.generateAIDocumentDraft({
-        prompt: aiPrompt,
-        direction: compose.direction,
-        doc_type: compose.doc_type,
-        title: compose.title,
-        number: compose.number,
-        doc_date: compose.doc_date,
-        contractor_id: compose.contractor_id,
-      });
-      setCompose((current) => ({
-        ...current,
-        direction: result.direction as DocumentDirection,
-        doc_type: result.doc_type,
-        title: result.title,
-        number: result.number,
-        doc_date: result.doc_date,
-        body: result.body,
-      }));
-      setNotice(result.note);
-    } catch (reason) {
-      setError(errorText(reason));
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function saveNewDocument() {
@@ -720,10 +685,6 @@ export function DocumentsV1656({
             </label>
           ) : null}
           <button type="button" className="documents-v1656__soft" onClick={generateTemplate}>📄 Shablonni yuklash</button>
-          {api.generateAIDocumentDraft ? <>
-            <label>AI uchun topshiriq<textarea rows={3} value={aiPrompt} maxLength={4000} placeholder="Masalan: Mijoz bilan xizmat ko‘rsatish shartnomasi draftini yoz" onChange={(event) => setAiPrompt(event.target.value)} /></label>
-            <button type="button" className="documents-v1656__soft" disabled={busy || !aiPrompt.trim()} onClick={generateAIDraft}>🤖 AI draft yaratish</button>
-          </> : null}
           <label>
             Hujjat matni
             <textarea

@@ -6,7 +6,7 @@ from app.legacy_migration.profile_parity_v7 import (
 from app.legacy_migration.real_source_v7 import open_real_snapshot
 
 
-MIGRATION_SCHEMA_VERSION = "0006_phase3c_complete_cabinet_v1"
+MIGRATION_SCHEMA_VERSION = "0007_phase3c_ai_assistant_v1"
 
 
 def build_database_runner(database, settings, storage):

@@ -267,6 +267,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await app.state.ai_assistant_service.close()
             await redis_client.stop()
             await database.stop()
 

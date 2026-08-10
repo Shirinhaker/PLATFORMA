@@ -1984,6 +1984,9 @@ export type AIDocumentDraftRequest = {
   number?: string;
   doc_date?: string;
   contractor_id?: number | null;
+  firm_name?: string;
+  director?: string;
+  inn?: string;
 };
 export type AIDocumentDraft = {
   ok: boolean;

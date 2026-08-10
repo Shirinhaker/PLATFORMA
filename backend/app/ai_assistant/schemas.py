@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class AIChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    message: str = Field(min_length=1, max_length=1000)
+    message: str = Field(max_length=1000)
 
 
 class AIChatMessageRead(BaseModel):
@@ -35,13 +35,16 @@ class AIStatusRead(BaseModel):
 
 class AIDocumentDraftRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    prompt: str = Field(min_length=1, max_length=4000)
+    prompt: str = Field(max_length=4000)
     direction: str = Field(default="", max_length=16)
     doc_type: str = Field(default="", max_length=60)
     title: str = Field(default="", max_length=200)
     number: str = Field(default="", max_length=40)
     doc_date: str = Field(default="", max_length=20)
     contractor_id: int | None = Field(default=None, gt=0)
+    firm_name: str = Field(default="", max_length=120)
+    director: str = Field(default="", max_length=160)
+    inn: str = Field(default="", max_length=32)
 
 
 class AIDocumentDraftRead(BaseModel):

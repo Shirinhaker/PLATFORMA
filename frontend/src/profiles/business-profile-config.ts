@@ -415,7 +415,7 @@ export const SYSTEM_MENUS: Menu[] = [
     excludedDirections: ["Ta'lim faoliyati", "Ta’lim faoliyati"],
   },
   { icon: "📄", label: "Hisobotlar", caption: "Ko‘chirilgan davriy ko‘rsatkichlar", view: "reports" },
-  { icon: "🤖", label: "AI yordamchi", caption: "Savdo, ombor, qarz bo‘yicha savol bering", view: "ai-assistant" },
+  { icon: "🤖", label: "AI yordamchi", caption: "Savdo, ombor, qarz bo'yicha savol bering", view: "ai-assistant" },
 ];
 
 export const ADMIN_MENUS: Menu[] = [
