@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     listings_enabled: bool = False
     stories_enabled: bool = True
     chat_enabled: bool = True
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_timeout_seconds: int = Field(default=45, ge=5, le=120)
     phase3c_public_enabled: bool = False
     telegram_link_ttl_seconds: int = 10 * 60
     telegram_code_ttl_seconds: int = 5 * 60

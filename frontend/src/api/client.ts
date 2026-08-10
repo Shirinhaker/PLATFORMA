@@ -108,6 +108,11 @@ import type {
   RegistrationStart,
   ReverseGeocodeResult,
   SessionIdentity,
+  AIChatHistory,
+  AIChatAnswer,
+  AIStatus,
+  AIDocumentDraft,
+  AIDocumentDraftRequest,
   StaffAccessWrite,
   StaffAttendance,
   StaffMember,
@@ -1848,6 +1853,22 @@ export class ApiClient {
     return this.request(
       "POST", `/api/v1/dining/orders/${orderId}/cancel`, { reason }, true,
     );
+  }
+
+  getAIChatHistory(limit = 30): Promise<AIChatHistory> {
+    return this.request("GET", `/api/v1/ai-assistant/history?limit=${limit}`);
+  }
+
+  sendAIChatMessage(message: string): Promise<AIChatAnswer> {
+    return this.request("POST", "/api/v1/ai-assistant/chat", { message }, true);
+  }
+
+  getAIStatus(): Promise<AIStatus> {
+    return this.request("GET", "/api/v1/ai-assistant/status");
+  }
+
+  generateAIDocumentDraft(body: AIDocumentDraftRequest): Promise<AIDocumentDraft> {
+    return this.request("POST", "/api/v1/ai-assistant/documents/draft", body, true);
   }
 
   openDiningProblem(

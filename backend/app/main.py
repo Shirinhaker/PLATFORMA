@@ -15,6 +15,9 @@ from app.advertisements.service import AdvertisementAuthoringService
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
+from app.ai_assistant.provider import OpenAIResponsesProvider
+from app.ai_assistant.router import router as ai_assistant_router
+from app.ai_assistant.service import AIAssistantService
 from app.business_online.router import router as business_online_router
 from app.business_online.service_relational import BusinessOnlineService
 from app.cash_register.router import router as cash_register_router
@@ -200,6 +203,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             debt_ledger=app.state.debt_ledger_service,
         )
         app.state.document_service = DocumentService(database.session)
+        app.state.ai_assistant_service = AIAssistantService(
+            database.session,
+            OpenAIResponsesProvider(
+                api_key=resolved.openai_api_key or os.environ.get("OPENAI_API_KEY", ""),
+                model=os.environ.get("OPENAI_MODEL", resolved.openai_model),
+                timeout_seconds=resolved.openai_timeout_seconds,
+            ),
+        )
         app.state.follow_service = FollowService(
             database.session,
             image_url_provider=app.state.r2.create_download_url,
@@ -305,6 +316,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(debt_ledger_router)
     app.include_router(dining_router)
     app.include_router(documents_router)
+    app.include_router(ai_assistant_router)
     app.include_router(expenses_router)
     app.include_router(statistics_router)
 
