@@ -39,6 +39,7 @@ from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
 from app.dining.service import DiningService
 from app.education.router import router as education_router
+from app.education.management_service import EducationManagementService
 from app.education.service import EducationEnrollmentService
 from app.education.statistics_service import EducationStatisticsService
 from app.expenses.router import router as expenses_router
@@ -232,6 +233,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
         )
         app.state.education_statistics_service = EducationStatisticsService(
+            database.session,
+        )
+        app.state.education_management_service = EducationManagementService(
             database.session,
         )
         app.state.staff_service = StaffService(database.session, resolved)

@@ -38,8 +38,18 @@ import type {
   ExpenseCategoryCreate,
   ExpenseCreate,
   ExpenseDay,
+  EducationAttendance,
+  EducationAttendanceWrite,
+  EducationGroup,
+  EducationPaymentControl,
+  EducationPaymentCreate,
+  EducationPaymentMonth,
+  EducationPayroll,
+  EducationPayrollCreate,
   EducationStatisticsPeriod,
   EducationStatisticsReport,
+  EducationTeacher,
+  EducationTeacherWrite,
   BusinessQueueEntry,
   BusinessQueueOfflineCreate,
   BusinessQueueProvider,
@@ -1081,6 +1091,137 @@ export class ApiClient {
     return this.request(
       "GET",
       `/api/v1/education/statistics?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  getEducationGroups(): Promise<EducationGroup[]> {
+    return this.request("GET", "/api/v1/education/groups", undefined, true);
+  }
+
+  getEducationAttendance(
+    groupId: number,
+    lessonDate: string,
+  ): Promise<EducationAttendance> {
+    const query = new URLSearchParams({
+      group_id: String(groupId),
+      lesson_date: lessonDate,
+    });
+    return this.request(
+      "GET",
+      `/api/v1/education/attendance?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  saveEducationAttendance(
+    body: EducationAttendanceWrite,
+  ): Promise<{ ok: true; saved: number }> {
+    return this.request("PUT", "/api/v1/education/attendance", body, true);
+  }
+
+  getEducationPaymentControl(groupId = 0): Promise<EducationPaymentControl> {
+    const query = new URLSearchParams({ group_id: String(groupId) });
+    return this.request(
+      "GET",
+      `/api/v1/education/payment-control?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  getEducationPayments(
+    paymentMonth: string,
+    groupId = 0,
+  ): Promise<EducationPaymentMonth> {
+    const query = new URLSearchParams({
+      payment_month: paymentMonth,
+      group_id: String(groupId),
+    });
+    return this.request(
+      "GET",
+      `/api/v1/education/payments?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  createEducationPayment(
+    body: EducationPaymentCreate,
+  ): Promise<{ ok: true; id: number; receipt_no: number }> {
+    return this.request("POST", "/api/v1/education/payments", body, true);
+  }
+
+  voidEducationPayment(
+    paymentId: number,
+    reason: string,
+  ): Promise<{ ok: true; voided: true }> {
+    return this.request(
+      "POST",
+      `/api/v1/education/payments/${paymentId}/void`,
+      { reason },
+      true,
+    );
+  }
+
+  getEducationTeachers(): Promise<EducationTeacher[]> {
+    return this.request("GET", "/api/v1/education/teachers", undefined, true);
+  }
+
+  createEducationTeacher(
+    body: EducationTeacherWrite,
+  ): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/education/teachers", body, true);
+  }
+
+  updateEducationTeacher(
+    teacherId: number,
+    body: EducationTeacherWrite,
+  ): Promise<{ ok: true }> {
+    return this.request(
+      "PUT",
+      `/api/v1/education/teachers/${teacherId}`,
+      body,
+      true,
+    );
+  }
+
+  deleteEducationTeacher(teacherId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/education/teachers/${teacherId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getEducationPayroll(paymentMonth: string): Promise<EducationPayroll> {
+    const query = new URLSearchParams({ payment_month: paymentMonth });
+    return this.request(
+      "GET",
+      `/api/v1/education/teacher-payroll?${query.toString()}`,
+      undefined,
+      true,
+    );
+  }
+
+  createEducationPayroll(
+    body: EducationPayrollCreate,
+  ): Promise<{ ok: true; id: number }> {
+    return this.request(
+      "POST",
+      "/api/v1/education/teacher-payroll",
+      body,
+      true,
+    );
+  }
+
+  deleteEducationPayroll(paymentId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/education/teacher-payroll/${paymentId}`,
       undefined,
       true,
     );
