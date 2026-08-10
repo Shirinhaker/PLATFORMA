@@ -78,6 +78,8 @@ from app.statistics.router import router as statistics_router
 from app.statistics.service import StatisticsService
 from app.stories.router import router as stories_router
 from app.stories.service import StoryService
+from app.specialists.router import router as specialists_router
+from app.specialists.service import SpecialistService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -206,6 +208,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             app.state.r2,
         )
+        app.state.specialist_service = SpecialistService(
+            database.session,
+            image_url_provider=app.state.r2.create_download_url,
+            object_deleter=app.state.r2.delete_object,
+        )
         app.state.listing_activation_service = ListingActivationService(
             database.session,
             notification_service=app.state.notification_service,
@@ -281,6 +288,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(advertisement_authoring_router)
     app.include_router(listings_router)
     app.include_router(stories_router)
+    app.include_router(specialists_router)
     app.include_router(messages_router)
     app.include_router(reviews_router)
     app.include_router(notifications_router)
