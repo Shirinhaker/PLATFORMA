@@ -19,6 +19,7 @@ from app.orders.model import Order
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
 from app.reviews.model import Review
+from app.specialists.model import SpecialistProfile
 from app.reviews.schemas import ReviewReplyWrite, ReviewTargetKind, ReviewWrite
 from app.reviews.service import ReviewService
 
@@ -292,6 +293,7 @@ async def test_review_service_upserts_replies_deletes_and_recomputes_rating():
             ProfileLink.__table__,
             Order.__table__,
             Review.__table__,
+            SpecialistProfile.__table__,
         ),
     )
     sync = Session(engine, expire_on_commit=False)
@@ -303,6 +305,25 @@ async def test_review_service_upserts_replies_deletes_and_recomputes_rating():
         _account(8, AccountType.BUSINESS),
         _user(70, "Ali"),
         _user(71, "Usta", specialist=True),
+        SpecialistProfile(
+            user_account_id=71,
+            profession="Usta",
+            description="",
+            price_text="",
+            service_area="",
+            is_government=False,
+            organization="",
+            department="",
+            position="",
+            work_hours="",
+            after_hours="",
+            visible=True,
+            available=True,
+            latitude=None,
+            longitude=None,
+            created_at=NOW,
+            updated_at=NOW,
+        ),
         _user(72, "Vali"),
         _business(7),
         _business(8),
