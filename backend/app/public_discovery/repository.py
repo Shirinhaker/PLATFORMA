@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     Float,
     String,
+    and_,
     case,
     cast,
     func,
@@ -26,6 +27,12 @@ from app.follows.model import ProfileFollow
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
+from app.specialists.model import (
+    SpecialistCredential,
+    SpecialistOffer,
+    SpecialistPortfolio,
+    SpecialistProfile,
+)
 from app.public_ids import (
     build_listing_public_id as _build_listing_public_id,
     build_profile_public_id,
@@ -43,6 +50,9 @@ from app.public_discovery.schemas import (
     PublicProfileItem,
     PublicProfileListing,
     PublicSpecialistSummary,
+    PublicSpecialistCredential,
+    PublicSpecialistOffer,
+    PublicSpecialistPortfolio,
     PublicResultKind,
     PublicResultType,
     PublicSearchItem,
@@ -112,7 +122,7 @@ def _user_query(params: PublicSearchParams):
             Account.id.label("account_id"),
             UserProfile.name.label("name"),
             UserProfile.public_username.label("public_username"),
-            _empty("description"),
+            func.coalesce(SpecialistProfile.description, "").label("description"),
             _empty("direction"),
             _empty("activity_type"),
             UserProfile.region.label("region"),
@@ -131,6 +141,13 @@ def _user_query(params: PublicSearchParams):
             literal(None).cast(String).label("map_owner_kind"),
         )
         .join(UserProfile, UserProfile.account_id == Account.id)
+        .outerjoin(
+            SpecialistProfile,
+            and_(
+                SpecialistProfile.user_account_id == UserProfile.account_id,
+                SpecialistProfile.visible.is_(True),
+            ),
+        )
         .where(Account.status == "active")
     )
 
@@ -139,6 +156,8 @@ def _user_query(params: PublicSearchParams):
             or_(
                 _contains(UserProfile.name, params.q),
                 _contains(UserProfile.public_username, params.q),
+                _contains(SpecialistProfile.profession, params.q),
+                _contains(SpecialistProfile.description, params.q),
             )
         )
     statement = statement.where(*_location_constraints(
@@ -623,21 +642,9 @@ async def load_public_home_map(
         )
         .order_by(func.lower(BusinessProfile.name), BusinessProfile.account_id)
     )
-    user_statement = (
-        select(UserProfile)
-        .join(Account, Account.id == UserProfile.account_id)
-        .where(
-            Account.status == "active",
-            UserProfile.latitude.is_not(None),
-            UserProfile.longitude.is_not(None),
-            _contains(UserProfile.district, district),
-        )
-        .order_by(func.lower(UserProfile.name), UserProfile.account_id)
-    )
     business_profiles = list(
         (await session.scalars(business_statement)).all()
     )
-    user_profiles = list((await session.scalars(user_statement)).all())
 
     followed = (
         await load_followed_profiles(
@@ -655,6 +662,41 @@ async def load_public_home_map(
     followed_users = {
         item.public_id for item in followed if item.kind == "user"
     }
+
+    specialist_profiles = []
+    user_profiles_by_id: dict[int, UserProfile] = {}
+    if followed_users:
+        specialist_profiles = list((await session.scalars(
+            select(SpecialistProfile)
+            .join(
+                UserProfile,
+                UserProfile.account_id == SpecialistProfile.user_account_id,
+            )
+            .join(Account, Account.id == UserProfile.account_id)
+            .where(
+                Account.status == "active",
+                SpecialistProfile.visible.is_(True),
+                SpecialistProfile.latitude.is_not(None),
+                SpecialistProfile.longitude.is_not(None),
+                _contains(UserProfile.district, district),
+            )
+            .order_by(
+                func.lower(UserProfile.name),
+                SpecialistProfile.user_account_id,
+            )
+        )).all())
+        specialist_user_ids = {
+            row.user_account_id for row in specialist_profiles
+        }
+        if specialist_user_ids:
+            user_profiles_by_id = {
+                row.account_id: row
+                for row in (await session.scalars(
+                    select(UserProfile).where(
+                        UserProfile.account_id.in_(specialist_user_ids),
+                    )
+                )).all()
+            }
 
     businesses = [
         PublicHomeBusinessPin(
@@ -686,33 +728,25 @@ async def load_public_home_map(
         )
     ]
     specialists = []
-    for profile in user_profiles:
-        specialist = (
-            profile.specialist_profile
-            if isinstance(profile.specialist_profile, dict)
-            else {}
-        )
-        if not specialist:
+    for specialist in specialist_profiles:
+        profile = user_profiles_by_id.get(specialist.user_account_id)
+        if profile is None:
             continue
         public_id = build_public_id(
             PublicResultKind.USER,
             profile.account_id,
         )
-        if not bool(specialist.get("visible")) or public_id not in followed_users:
+        if public_id not in followed_users:
             continue
         specialists.append(
             PublicHomeSpecialistPin(
                 user_id=profile.account_id,
                 public_id=public_id,
                 name=profile.name or "Foydalanuvchi",
-                kasb=str(
-                    specialist.get("profession")
-                    or specialist.get("kasb")
-                    or "Mutaxasis"
-                ),
-                is_gov=bool(specialist.get("is_gov")),
-                lat=profile.latitude,
-                lng=profile.longitude,
+                kasb=specialist.profession or "Mutaxasis",
+                is_gov=specialist.is_government,
+                lat=specialist.latitude,
+                lng=specialist.longitude,
                 avatar_file=image_url_provider(profile.avatar_object_key),
                 avatar_x=profile.avatar_x,
                 avatar_y=profile.avatar_y,
@@ -833,24 +867,59 @@ async def load_public_profile(
         profile = await session.get(UserProfile, account_id)
         if profile is None:
             return None
-        specialist_payload = (
-            profile.specialist_profile
-            if isinstance(profile.specialist_profile, dict)
-            else {}
-        )
         specialist = None
-        if specialist_payload and bool(specialist_payload.get("visible")):
+        specialist_profile = await session.get(SpecialistProfile, account_id)
+        if specialist_profile is not None and specialist_profile.visible:
+            credentials = list((await session.scalars(
+                select(SpecialistCredential)
+                .where(SpecialistCredential.user_account_id == account_id)
+                .order_by(SpecialistCredential.position, SpecialistCredential.id)
+            )).all())
+            offers = list((await session.scalars(
+                select(SpecialistOffer)
+                .where(SpecialistOffer.user_account_id == account_id)
+                .order_by(SpecialistOffer.created_at, SpecialistOffer.id)
+            )).all())
+            portfolio = list((await session.scalars(
+                select(SpecialistPortfolio)
+                .where(SpecialistPortfolio.user_account_id == account_id)
+                .order_by(SpecialistPortfolio.created_at, SpecialistPortfolio.id)
+            )).all())
             specialist = PublicSpecialistSummary(
-                profession=str(
-                    specialist_payload.get("profession")
-                    or specialist_payload.get("kasb")
-                    or ""
-                ),
-                description=str(
-                    specialist_payload.get("description")
-                    or specialist_payload.get("descr")
-                    or ""
-                ),
+                profession=specialist_profile.profession,
+                description=specialist_profile.description,
+                credentials=[
+                    PublicSpecialistCredential(
+                        id=row.id,
+                        image_url=(
+                            image_url_provider(row.object_key)
+                            if row.object_key else row.legacy_media_url
+                        ),
+                    ) for row in credentials
+                ],
+                offers=[
+                    PublicSpecialistOffer(
+                        id=row.id,
+                        kind=row.kind,
+                        name=row.name,
+                        price_text=row.price_text,
+                        note=row.note,
+                        image_url=(
+                            image_url_provider(row.image_object_key)
+                            if row.image_object_key else row.legacy_image_url
+                        ),
+                    ) for row in offers
+                ],
+                portfolio=[
+                    PublicSpecialistPortfolio(
+                        id=row.id,
+                        media_type=row.media_type,
+                        media_url=(
+                            image_url_provider(row.object_key)
+                            if row.object_key else row.legacy_media_url
+                        ),
+                    ) for row in portfolio
+                ],
             )
         return PublicProfileDetail(
             kind="user",
