@@ -848,6 +848,23 @@ export type ReviewMutationRead = {
   count: number;
 };
 
+export type FollowProfileRead = {
+  kind: "user" | "business";
+  public_id: string;
+  name: string;
+  info: string;
+  image_url: string;
+  crop_x: number;
+  crop_y: number;
+  crop_zoom: number;
+  followed_at: number;
+};
+
+export type FollowListRead = {
+  items: FollowProfileRead[];
+  count: number;
+};
+
 export type NotificationRead = {
   id: number;
   title: string;
@@ -855,6 +872,8 @@ export type NotificationRead = {
   order_id: number | null;
   listing_id: number | null;
   listing_public_id: string;
+  profile_kind?: "user" | "business" | null;
+  profile_public_id?: string;
   dining_order_id: number | null;
   medical_queue_id: number | null;
   ride_id: number | null;

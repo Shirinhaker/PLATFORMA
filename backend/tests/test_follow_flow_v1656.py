@@ -30,6 +30,25 @@ SHOP = 7             # biznes
 READER_SHOP = 8      # READER ga bog'langan biznes
 
 
+class FakeNotificationRepository:
+    def __init__(self) -> None:
+        self.rows: list[dict[str, object]] = []
+
+    async def append(
+        self,
+        _session,
+        *,
+        account_id: int,
+        account_type: str,
+        row: dict[str, object],
+    ) -> None:
+        self.rows.append({
+            "account_id": account_id,
+            "account_type": account_type,
+            **row,
+        })
+
+
 class AsyncStore:
     def __init__(self, sync: Session) -> None:
         self.sync = sync
@@ -185,7 +204,13 @@ def follows():
         with Session(engine, expire_on_commit=False) as sync:
             yield AsyncStore(sync)
 
-    yield FollowService(sessions, now=lambda: STAMP), engine
+    notifications = FakeNotificationRepository()
+    yield FollowService(
+        sessions,
+        now=lambda: STAMP,
+        image_url_provider=lambda key: f"https://cdn.example/{key}" if key else "",
+        notification_repository=notifications,
+    ), engine
     engine.dispose()
 
 
@@ -325,3 +350,76 @@ async def test_is_following_reports_state(follows):
     assert followed is True
     assert guest is False
     assert other is False
+
+
+async def test_following_list_comes_from_relational_table_in_newest_order(follows):
+    service, _engine = follows
+    await service.toggle(account_id=READER, body=_body("business", SHOP))
+    await service.toggle(account_id=READER, body=_body("user", AUTHOR))
+
+    result = await service.following(account_id=READER)
+
+    assert result.count == 2
+    assert [(row.kind, row.name) for row in result.items] == [
+        ("user", "Vali"),
+        ("business", "Turon Savdo"),
+    ]
+    assert result.items[0].public_id == build_profile_public_id("user", AUTHOR)
+    assert result.items[1].public_id == build_profile_public_id("business", SHOP)
+    assert result.items[1].info == "Savdo"
+
+
+async def test_followers_list_contains_user_and_business_profiles(follows):
+    service, _engine = follows
+    await service.toggle(account_id=READER, body=_body("business", SHOP))
+    await service.toggle(account_id=READER_SHOP, body=_body("business", SHOP))
+
+    result = await service.followers(account_id=SHOP)
+
+    assert result.count == 2
+    # v1656 avval oddiy, so'ng biznes obunachilarni chiqaradi.
+    assert [row.kind for row in result.items] == ["user", "business"]
+    assert result.items[0].public_id == build_profile_public_id(
+        "user", READER
+    )
+    assert result.items[1].public_id == build_profile_public_id(
+        "business", READER_SHOP
+    )
+    # Oddiy foydalanuvchining tumani ro'yxat API'siga chiqarilmaydi.
+    assert result.items[0].info == "@user70"
+
+
+async def test_inactive_profile_is_not_returned_from_follow_lists(follows):
+    service, engine = follows
+    await service.toggle(account_id=READER, body=_body("business", SHOP))
+    with Session(engine) as update:
+        update.get(Account, SHOP).status = "inactive"
+        update.commit()
+
+    result = await service.following(account_id=READER)
+
+    assert result.count == 0
+    assert result.items == []
+
+
+async def test_new_follow_creates_profile_notification_only_on_follow(follows):
+    service, _engine = follows
+
+    await service.toggle(account_id=READER, body=_body("business", SHOP))
+    await service.toggle(account_id=READER, body=_body("business", SHOP))
+
+    rows = service._notifications.rows
+    assert len(rows) == 1
+    assert rows[0] == {
+        "account_id": SHOP,
+        "account_type": "business",
+        "event_key": "profile_follow:1",
+        "title": "Yangi obunachi",
+        "body": "Ali sizga obuna bo'ldi.",
+        "action_type": "view_profile",
+        "requires_action": 0,
+        "is_read": 0,
+        "created_at": STAMP,
+        "profile_kind": "user",
+        "profile_public_id": build_profile_public_id("user", READER),
+    }

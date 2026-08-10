@@ -90,8 +90,8 @@ hash, ichki identifikator tashqariga chiqmaydi.
 - TypeScript toza;
 - `rollback` qo'riqchisi ro'yxatida `FollowService`.
 
-## K11 tarkibiga kirmaydi
+## K11 tarkibiga kirmagan qism
 
 Obunachilar ro'yxatini kabinetda ko'rsatish hali JSON resursidan
-(`followers`) o'qiladi — u alohida bosqichda jadvalga o'tkaziladi.
-Obuna bildirishnomalari ham shu bosqichda ulanadi.
+(`followers`) o'qilar edi. Bu ro'yxat va obuna bildirishnomalari K22da
+typed follow domeniga ko'chirildi: [K22 hujjati](obunachilar-k22-migration.md).

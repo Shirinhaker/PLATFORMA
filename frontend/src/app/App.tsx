@@ -499,6 +499,11 @@ export function App({ api }: { api: AppApi }) {
             setOpenedListing({ publicId, title: "E’lon" });
             dispatch({ type: "GO_HOME" });
           }}
+          onOpenPublicProfile={(kind, publicId) => {
+            setOpenedListing(null);
+            setOpenedProfile({ kind, publicId, title: "Profil" });
+            dispatch({ type: "GO_HOME" });
+          }}
           onSwitched={switched}
         />
       ) : (
@@ -509,6 +514,11 @@ export function App({ api }: { api: AppApi }) {
           onOpenPublicListing={(publicId) => {
             setOpenedProfile(null);
             setOpenedListing({ publicId, title: "E’lon" });
+            dispatch({ type: "GO_HOME" });
+          }}
+          onOpenPublicProfile={(kind, publicId) => {
+            setOpenedListing(null);
+            setOpenedProfile({ kind, publicId, title: "Profil" });
             dispatch({ type: "GO_HOME" });
           }}
           onSwitched={switched}

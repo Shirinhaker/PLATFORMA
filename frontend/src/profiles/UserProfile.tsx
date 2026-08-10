@@ -38,6 +38,10 @@ import {
   NotificationsV1656,
   type NotificationsApi,
 } from "../notifications/NotificationsV1656";
+import {
+  FollowListsV1656,
+  type FollowListsApi,
+} from "../follows/FollowListsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -101,6 +105,8 @@ export type UserProfileApi = Pick<
   | "createNotificationFilter"
   | "deleteNotificationFilter"
   | "getPushStatus"
+  | "getFollowers"
+  | "getFollowing"
 >>;
 
 type Props = {
@@ -108,6 +114,10 @@ type Props = {
   identity: SessionIdentity;
   onLogout: () => void;
   onOpenPublicListing?: (publicId: string) => void;
+  onOpenPublicProfile?: (
+    kind: "user" | "business",
+    publicId: string,
+  ) => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -314,12 +324,21 @@ function supportsNotifications(
   ));
 }
 
+function supportsFollowLists(
+  api: UserProfileApi,
+): api is UserProfileApi & FollowListsApi {
+  return ["getFollowers", "getFollowing"].every((method) => (
+    typeof api[method as keyof UserProfileApi] === "function"
+  ));
+}
+
 
 export function UserProfile({
   api,
   identity,
   onLogout,
   onOpenPublicListing,
+  onOpenPublicProfile,
   onSwitched,
 }: Props) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
@@ -569,6 +588,17 @@ export function UserProfile({
   }
 
   async function openNotification(notification: NotificationRead) {
+    if (
+      notification.profile_kind
+      && notification.profile_public_id
+      && onOpenPublicProfile
+    ) {
+      onOpenPublicProfile(
+        notification.profile_kind,
+        notification.profile_public_id,
+      );
+      return;
+    }
     if (notification.listing_public_id && onOpenPublicListing) {
       onOpenPublicListing(notification.listing_public_id);
       return;
@@ -615,6 +645,19 @@ export function UserProfile({
         api={api}
         ownerName={profile.name}
         onBack={() => setView("dashboard")}
+      />,
+    );
+  }
+
+  if (["followers", "follows"].includes(view) && supportsFollowLists(api)) {
+    return withActionBanner(
+      <FollowListsV1656
+        api={api}
+        kind={view === "followers" ? "followers" : "following"}
+        onBack={() => setView("dashboard")}
+        onOpenProfile={(kind, publicId) => {
+          onOpenPublicProfile?.(kind, publicId);
+        }}
       />,
     );
   }

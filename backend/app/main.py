@@ -195,7 +195,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             inventory=app.state.inventory_service,
             debt_ledger=app.state.debt_ledger_service,
         )
-        app.state.follow_service = FollowService(database.session)
+        app.state.follow_service = FollowService(
+            database.session,
+            image_url_provider=app.state.r2.create_download_url,
+        )
         app.state.story_service = StoryService(
             database.session,
             app.state.r2,
