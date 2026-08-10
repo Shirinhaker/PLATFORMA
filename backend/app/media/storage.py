@@ -37,6 +37,7 @@ MAX_LISTING_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_LISTING_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_STORY_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_STORY_VIDEO_BYTES = 100 * 1024 * 1024
+MAX_SPECIALIST_PORTFOLIO_BYTES = 30 * 1024 * 1024
 
 
 class UploadRejected(ValueError):
@@ -80,6 +81,8 @@ class R2Storage:
             "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
             "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
             "story_image", "story_video",
+            "specialist_credential", "specialist_offer_image",
+            "specialist_portfolio_image", "specialist_portfolio_video",
         ],
         filename: str,
         content_type: str,
@@ -99,9 +102,37 @@ class R2Storage:
         # e'lon va reklama uchun oddiy foydalanuvchi ham to'laydi.
         if purpose in {"payment_receipt", "advertisement_image"}:
             listing_purpose = True
-        if not profile_purpose and not listing_purpose:
+        specialist_purpose = (
+            owner_type is AccountType.USER
+            and purpose in {
+                "specialist_credential", "specialist_offer_image",
+                "specialist_portfolio_image", "specialist_portfolio_video",
+            }
+        )
+        if not profile_purpose and not listing_purpose and not specialist_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
         if purpose in {
+            "specialist_credential", "specialist_offer_image",
+            "specialist_portfolio_image",
+        }:
+            if content_type not in STORY_IMAGE_TYPES:
+                raise UploadRejected("JPG, PNG yoki WEBP fayl tanlang.")
+            maximum = (
+                MAX_SPECIALIST_PORTFOLIO_BYTES
+                if purpose == "specialist_portfolio_image"
+                else MAX_PROFILE_IMAGE_BYTES
+            )
+            if not 1 <= size_bytes <= maximum:
+                limit = 30 if purpose == "specialist_portfolio_image" else 8
+                raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
+            suffix = STORY_IMAGE_TYPES[content_type]
+        elif purpose == "specialist_portfolio_video":
+            if content_type not in LISTING_VIDEO_TYPES:
+                raise UploadRejected("MP4, WEBM yoki MOV fayl tanlang.")
+            if not 1 <= size_bytes <= MAX_SPECIALIST_PORTFOLIO_BYTES:
+                raise UploadRejected("Fayl hajmi 30 MB dan oshmasin.")
+            suffix = LISTING_VIDEO_TYPES[content_type]
+        elif purpose in {
             "listing_photo", "order_chat_image", "chat_image", "payment_receipt",
             "advertisement_image", "story_image",
         }:
