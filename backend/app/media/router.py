@@ -19,6 +19,8 @@ class UploadGrantRequest(BaseModel):
         "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
         "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
         "story_image", "story_video",
+        "specialist_credential", "specialist_offer_image",
+        "specialist_portfolio_image", "specialist_portfolio_video",
     ]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
@@ -51,7 +53,10 @@ async def create_upload_grant(
         "payment_receipt", "advertisement_image",
     } or (
         current.account_type is AccountType.USER
-        and body.purpose == "avatar"
+        and body.purpose in {
+            "avatar", "specialist_credential", "specialist_offer_image",
+            "specialist_portfolio_image", "specialist_portfolio_video",
+        }
     ) or (
         current.account_type is AccountType.BUSINESS
         and body.purpose in {"logo", "payment_qr"}
