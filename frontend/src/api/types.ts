@@ -1628,6 +1628,23 @@ export type PaymentRequestRecord = {
   attempts: PaymentAttempt[];
 };
 
+export type BusinessSubscriptionRecord = {
+  id: number | null;
+  plan_code: "free" | "plus" | "pro";
+  duration_months: number;
+  starts_at: number;
+  expires_at: number;
+  status: "active" | "superseded" | "expired";
+  is_demo: boolean;
+  is_virtual: boolean;
+  created_at: number;
+};
+
+export type BusinessSubscriptionSummary = {
+  current: BusinessSubscriptionRecord;
+  history: BusinessSubscriptionRecord[];
+};
+
 // --- Ovqatlanish zanjiri (K13) ---
 
 export type DiningPlaceKind = "table" | "room";

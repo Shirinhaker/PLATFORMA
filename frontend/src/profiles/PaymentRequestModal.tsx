@@ -4,8 +4,8 @@ import type { ApiClient } from "../api/client";
 import type {
   PaymentCatalog,
   PaymentMethod,
-  PaymentReceiptRef,
 } from "../api/types";
+import { uploadPaymentReceipt } from "../payments/payment-receipt";
 import "./PaymentRequestModal.css";
 
 
@@ -60,15 +60,6 @@ export function paymentMethodText(method: PaymentMethod | undefined) {
 }
 
 
-async function fileDigest(file: File) {
-  const buffer = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-
 export function PaymentRequestModal({
   api,
   catalog,
@@ -119,19 +110,7 @@ export function PaymentRequestModal({
     setFailed(false);
     setNote("Kvitansiya xavfsiz yuklanmoqda...");
     try {
-      const grant = await api.createUploadGrant({
-        purpose: "payment_receipt",
-        filename: receipt.name,
-        content_type: receipt.type,
-        size_bytes: receipt.size,
-      });
-      await api.uploadGrantedFile(grant, receipt);
-      const reference: PaymentReceiptRef = {
-        object_key: grant.object_key,
-        filename: receipt.name,
-        mime: receipt.type,
-        sha256: await fileDigest(receipt),
-      };
+      const reference = await uploadPaymentReceipt(api, receipt);
       await api.createPaymentRequest({
         service_type: target.serviceType ?? "subscription",
         price_code: price.price_code,

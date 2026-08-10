@@ -918,4 +918,22 @@ describe("ApiClient", () => {
       }),
     );
   });
+
+  it("uses the typed K23 subscription and payment history endpoints", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getBusinessSubscription();
+    await client.getMyPayments();
+
+    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method]))
+      .toEqual([
+        ["https://api.example/api/v1/payments/subscription", "GET"],
+        ["https://api.example/api/v1/payments/my", "GET"],
+      ]);
+  });
 });

@@ -332,6 +332,11 @@ Index(
     BusinessSubscription.status,
     BusinessSubscription.expires_at,
 )
+Index(
+    "ix_business_subscriptions_history",
+    BusinessSubscription.business_account_id,
+    BusinessSubscription.id,
+)
 # Bir to'lov faqat bir marta obunaga aylanadi.
 Index(
     "uq_business_subscriptions_payment",

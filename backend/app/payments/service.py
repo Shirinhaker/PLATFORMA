@@ -31,6 +31,8 @@ from app.payments.model import (
     PlatformPrice,
 )
 from app.payments.schemas import (
+    BusinessSubscriptionRead,
+    BusinessSubscriptionSummary,
     PaymentAttemptRead,
     PaymentCatalogRead,
     PaymentDecision,
@@ -71,6 +73,34 @@ def _row(request: PaymentRequest, attempts: list[PaymentAttempt]) -> PaymentRequ
             )
             for attempt in attempts
         ],
+    )
+
+
+def _subscription_row(row: BusinessSubscription) -> BusinessSubscriptionRead:
+    return BusinessSubscriptionRead(
+        id=row.id,
+        plan_code=row.plan_code,
+        duration_months=row.duration_months,
+        starts_at=row.starts_at,
+        expires_at=row.expires_at,
+        status=row.status,
+        is_demo=bool(row.is_demo),
+        is_virtual=False,
+        created_at=row.created_at,
+    )
+
+
+def _virtual_free_subscription() -> BusinessSubscriptionRead:
+    return BusinessSubscriptionRead(
+        id=None,
+        plan_code="free",
+        duration_months=0,
+        starts_at=0,
+        expires_at=0,
+        status="active",
+        is_demo=False,
+        is_virtual=True,
+        created_at=0,
     )
 
 
@@ -139,6 +169,15 @@ class PaymentService:
         account_type: AccountType,
         body: PaymentRequestCreate,
     ) -> PaymentRequestRead:
+        if (
+            body.service_type == "subscription"
+            and account_type is not AccountType.BUSINESS
+        ):
+            raise ApiError(
+                403,
+                "business_account_required",
+                "Biznes tarifini faqat biznes kabineti sotib oladi.",
+            )
         async with self._session_factory() as session:
             price = await session.scalar(
                 select(PlatformPrice).where(
@@ -262,6 +301,55 @@ class PaymentService:
                 for request in requests
             ]
             await session.rollback()
+            return response
+
+    async def subscription(
+        self,
+        *,
+        account_id: int,
+        account_type: AccountType,
+    ) -> BusinessSubscriptionSummary:
+        """Biznesning joriy obunasi va v1656 tartibidagi tarixi."""
+        if account_type is not AccountType.BUSINESS:
+            raise ApiError(
+                403,
+                "business_account_required",
+                "Bu bo'lim faqat biznes kabinetida mavjud.",
+            )
+        async with self._session_factory() as session:
+            now = self._now()
+            expired = await session.execute(
+                BusinessSubscription.__table__.update()
+                .where(
+                    BusinessSubscription.business_account_id == account_id,
+                    BusinessSubscription.status == "active",
+                    BusinessSubscription.expires_at > 0,
+                    BusinessSubscription.expires_at <= now,
+                )
+                .values(status="expired")
+            )
+            rows = list((await session.scalars(
+                select(BusinessSubscription)
+                .where(BusinessSubscription.business_account_id == account_id)
+                .order_by(BusinessSubscription.id.desc())
+            )).all())
+            current = next((row for row in rows if row.status == "active"), None)
+            response = BusinessSubscriptionSummary(
+                current=(
+                    _subscription_row(current)
+                    if current is not None
+                    else _virtual_free_subscription()
+                ),
+                history=[
+                    _subscription_row(row)
+                    for row in rows
+                    if row.status != "active"
+                ],
+            )
+            if expired.rowcount:
+                await session.commit()
+            else:
+                await session.rollback()
             return response
 
     async def resubmit(

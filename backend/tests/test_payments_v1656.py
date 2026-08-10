@@ -226,6 +226,19 @@ async def test_plan_parameters_must_match_the_price_code(payments):
     assert error.value.code == "payment_price_mismatch"
 
 
+async def test_user_account_cannot_buy_a_business_subscription(payments):
+    service, _engine = payments
+
+    with pytest.raises(ApiError) as error:
+        await service.create(
+            account_id=SHOP,
+            account_type=AccountType.USER,
+            body=_body(),
+        )
+
+    assert error.value.code == "business_account_required"
+
+
 async def test_inactive_price_is_rejected(payments):
     service, engine = payments
     with Session(engine) as seed:
@@ -368,6 +381,88 @@ async def test_my_payments_lists_newest_first(payments):
     assert len(rows) == 2
     assert rows[0].id > rows[1].id
     assert all(row.attempts for row in rows)
+
+
+async def test_subscription_summary_starts_with_virtual_free(payments):
+    """v1656: faol pullik tarif bo'lmasa virtual Bepul qaytadi."""
+    service, _engine = payments
+
+    summary = await service.subscription(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+    )
+
+    assert summary.current.plan_code == "free"
+    assert summary.current.is_virtual is True
+    assert summary.current.id is None
+    assert summary.history == []
+
+
+async def test_subscription_summary_returns_current_and_id_desc_history(payments):
+    """v1656: current alohida, qolgan obunalar id DESC tarixda."""
+    service, _engine = payments
+    first = await _make_request(service)
+    await service.review(
+        payment_id=first.id,
+        admin_telegram_id=ADMIN,
+        decision="approved",
+    )
+    second = await _make_request(service)
+    await service.review(
+        payment_id=second.id,
+        admin_telegram_id=ADMIN,
+        decision="approved",
+    )
+
+    summary = await service.subscription(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+    )
+
+    assert summary.current.id is not None
+    assert summary.current.status == "active"
+    assert [row.status for row in summary.history] == ["superseded"]
+    assert summary.current.id > summary.history[0].id
+
+
+async def test_expired_subscription_moves_to_history_on_read(payments):
+    """Monolit kabi muddati tugagan faol tarif o'qishda tarixga o'tadi."""
+    service, engine = payments
+    with Session(engine) as seed:
+        seed.add(BusinessSubscription(
+            business_account_id=SHOP,
+            legacy_source_id=None,
+            plan_code="pro",
+            duration_months=1,
+            starts_at=STAMP - 100,
+            expires_at=STAMP,
+            status="active",
+            is_demo=0,
+            payment_request_id=None,
+            created_at=STAMP - 100,
+        ))
+        seed.commit()
+
+    summary = await service.subscription(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+    )
+
+    assert summary.current.plan_code == "free"
+    assert summary.current.is_virtual is True
+    assert [row.status for row in summary.history] == ["expired"]
+
+
+async def test_user_account_cannot_read_business_subscription(payments):
+    service, _engine = payments
+
+    with pytest.raises(ApiError) as error:
+        await service.subscription(
+            account_id=SHOP,
+            account_type=AccountType.USER,
+        )
+
+    assert error.value.code == "business_account_required"
 
 
 async def test_other_account_cannot_resubmit(payments):
