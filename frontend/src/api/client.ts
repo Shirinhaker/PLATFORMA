@@ -39,6 +39,12 @@ import type {
   ExpenseCategoryCreate,
   ExpenseCreate,
   ExpenseDay,
+  BusinessDocument,
+  BusinessDocumentList,
+  BusinessDocumentWrite,
+  DocumentCounterpartyList,
+  DocumentCounterpartyWrite,
+  DocumentDirection,
   FollowListRead,
   EducationAttendance,
   EducationAttendanceWrite,
@@ -1080,6 +1086,100 @@ export class ApiClient {
       "DELETE",
       `/api/v1/expenses/${expenseId}`,
       undefined,
+      true,
+    );
+  }
+
+  getDocumentCounterparties(): Promise<DocumentCounterpartyList> {
+    return this.request(
+      "GET",
+      "/api/v1/documents/counterparties",
+      undefined,
+      true,
+    );
+  }
+
+  createDocumentCounterparty(
+    body: DocumentCounterpartyWrite,
+  ): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/documents/counterparties", body, true);
+  }
+
+  updateDocumentCounterparty(
+    counterpartyId: number,
+    body: DocumentCounterpartyWrite,
+  ): Promise<{ ok: true }> {
+    return this.request(
+      "PUT",
+      `/api/v1/documents/counterparties/${counterpartyId}`,
+      body,
+      true,
+    );
+  }
+
+  deleteDocumentCounterparty(counterpartyId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/documents/counterparties/${counterpartyId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getDocuments(direction?: DocumentDirection): Promise<BusinessDocumentList> {
+    const suffix = direction ? `?direction=${encodeURIComponent(direction)}` : "";
+    return this.request("GET", `/api/v1/documents${suffix}`, undefined, true);
+  }
+
+  getDocument(documentId: number): Promise<BusinessDocument> {
+    return this.request(
+      "GET",
+      `/api/v1/documents/${documentId}`,
+      undefined,
+      true,
+    );
+  }
+
+  createDocument(body: BusinessDocumentWrite): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/documents", body, true);
+  }
+
+  updateDocument(
+    documentId: number,
+    body: BusinessDocumentWrite,
+  ): Promise<{ ok: true }> {
+    return this.request("PUT", `/api/v1/documents/${documentId}`, body, true);
+  }
+
+  deleteDocument(documentId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/documents/${documentId}`,
+      undefined,
+      true,
+    );
+  }
+
+  sendDocument(
+    documentId: number,
+    receiverInn: string,
+  ): Promise<{ ok: true; receiver_name: string }> {
+    return this.request(
+      "POST",
+      `/api/v1/documents/${documentId}/send`,
+      { receiver_inn: receiverInn },
+      true,
+    );
+  }
+
+  respondDocument(
+    documentId: number,
+    action: "qabul" | "rad",
+  ): Promise<{ ok: true; status: string }> {
+    return this.request(
+      "POST",
+      `/api/v1/documents/${documentId}/respond`,
+      { action },
       true,
     );
   }

@@ -38,6 +38,8 @@ from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
 from app.dining.service import DiningService
+from app.documents.router import router as documents_router
+from app.documents.service import DocumentService
 from app.education.router import router as education_router
 from app.education.management_service import EducationManagementService
 from app.education.service import EducationEnrollmentService
@@ -195,6 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             inventory=app.state.inventory_service,
             debt_ledger=app.state.debt_ledger_service,
         )
+        app.state.document_service = DocumentService(database.session)
         app.state.follow_service = FollowService(
             database.session,
             image_url_provider=app.state.r2.create_download_url,
@@ -293,6 +296,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cash_register_router)
     app.include_router(debt_ledger_router)
     app.include_router(dining_router)
+    app.include_router(documents_router)
     app.include_router(expenses_router)
     app.include_router(statistics_router)
 

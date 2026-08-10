@@ -419,11 +419,8 @@ export const SYSTEM_MENUS: Menu[] = [
 
 export const ADMIN_MENUS: Menu[] = [
   { icon: "👨‍💼", label: "Xodimlar", caption: "Xodim va kirish ma’lumotlari", view: "staff", payload: ["staff", "business_staff", "employees"] },
-  { icon: "🗃️", label: "Mening hujjatlarim", caption: "Biznesga tegishli hujjatlar", view: "documents", payload: ["documents", "business_documents"] },
-  { icon: "📥", label: "Kiruvchi hujjatlar", caption: "Qabul qilingan hujjatlar", view: "incoming-documents", payload: "incoming_documents" },
-  { icon: "📤", label: "Chiquvchi hujjatlar", caption: "Yuborilgan hujjatlar", view: "outgoing-documents", payload: "outgoing_documents" },
-  { icon: "📝", label: "Ichki hujjatlar", caption: "Ichki buyruq va yozuvlar", view: "internal-documents", payload: "internal_documents" },
-  { icon: "🤝", label: "Kontragentlar", caption: "Hamkor va ta’minotchilar", view: "counterparties", payload: "counterparties" },
+  { icon: "🪪", label: "Mening hujjatlarim", caption: "Rahbar va STIR ma’lumotlari", view: "my-documents" },
+  { icon: "📄", label: "Hujjatlar", caption: "Kiruvchi, chiquvchi, ichki, kontragentlar", view: "documents" },
 ];
 
 export const DIRECTION_MENUS: Menu[] = [

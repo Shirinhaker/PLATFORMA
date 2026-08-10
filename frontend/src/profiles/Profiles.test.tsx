@@ -340,6 +340,51 @@ function profileApi() {
       transaction_id: 5,
       balance: 50000,
     }),
+    getDocumentCounterparties: vi.fn().mockResolvedValue({
+      counterparties: [{
+        id: 16,
+        name: "Ta’minotchi",
+        ctype: "Yetkazib beruvchi",
+        director: "",
+        phone: "",
+        address: "",
+        inn: "309333444",
+        account: "",
+        bank: "",
+        mfo: "",
+        note: "",
+        created_at: "2026-08-10T09:00:00Z",
+      }],
+      count: 1,
+      types: ["Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa"],
+    }),
+    createDocumentCounterparty: vi.fn(),
+    updateDocumentCounterparty: vi.fn(),
+    deleteDocumentCounterparty: vi.fn(),
+    getDocuments: vi.fn().mockResolvedValue({
+      documents: [{
+        id: 12,
+        direction: "chiquvchi" as const,
+        doc_type: "Shartnoma",
+        title: "",
+        number: "1",
+        doc_date: "2026-08-10",
+        contractor_id: 16,
+        contractor_name: "Ta’minotchi",
+        body: "Shartnoma matni",
+        sender_name: "",
+        receiver_inn: "",
+        status: "",
+        created_at: "2026-08-10T09:00:00Z",
+      }],
+      count: 1,
+    }),
+    getDocument: vi.fn(),
+    createDocument: vi.fn(),
+    updateDocument: vi.fn(),
+    deleteDocument: vi.fn(),
+    sendDocument: vi.fn(),
+    respondDocument: vi.fn(),
     getWarehouseItems: vi.fn().mockResolvedValue({
       items: [{
         id: 17,
@@ -747,8 +792,17 @@ describe("profile cabinets", () => {
       "button",
       { name: /Mening hujjatlarim/ },
     ));
+    expect(await screen.findByLabelText("Rahbar F.I.Sh.")).toBeInTheDocument();
+    expect(screen.getByLabelText("STIR (INN)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Orqaga/ }));
+    await user.click(screen.getByRole(
+      "button",
+      { name: /Hujjatlar Kiruvchi/ },
+    ));
+    await user.click(await screen.findByRole("button", { name: /Chiquvchi/ }));
     expect(await screen.findByText("Shartnoma")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    await user.click(screen.getByRole("button", { name: /Orqaga/ }));
+    await user.click(screen.getByRole("button", { name: /Orqaga/ }));
     const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
     await user.click(warehouseButtons.at(-1)!);
     expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);

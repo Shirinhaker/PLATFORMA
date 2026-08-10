@@ -317,6 +317,56 @@ export type ExpenseCategoryCreate = {
   name: string;
 };
 
+export type DocumentDirection = "ichki" | "kiruvchi" | "chiquvchi";
+
+export type DocumentCounterpartyWrite = {
+  name: string;
+  ctype: string;
+  director: string;
+  phone: string;
+  address: string;
+  inn: string;
+  account: string;
+  bank: string;
+  mfo: string;
+  note: string;
+};
+
+export type DocumentCounterparty = DocumentCounterpartyWrite & {
+  id: number;
+  created_at: string;
+};
+
+export type DocumentCounterpartyList = {
+  counterparties: DocumentCounterparty[];
+  count: number;
+  types: string[];
+};
+
+export type BusinessDocumentWrite = {
+  direction: DocumentDirection;
+  doc_type: string;
+  title: string;
+  number: string;
+  doc_date: string;
+  contractor_id: number | null;
+  body: string;
+};
+
+export type BusinessDocument = BusinessDocumentWrite & {
+  id: number;
+  contractor_name: string;
+  sender_name: string;
+  receiver_inn: string;
+  status: "" | "yuborilgan" | "kutilmoqda" | "qabul qilindi" | "rad etildi";
+  created_at: string;
+};
+
+export type BusinessDocumentList = {
+  documents: BusinessDocument[];
+  count: number;
+};
+
 export type WarehouseStockType = "ready_food" | "raw_material";
 
 export type WarehouseItem = {
