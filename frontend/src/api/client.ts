@@ -114,6 +114,9 @@ import type {
   StaffMemberWrite,
   StaffSchedule,
   StaffSetup,
+  SpecialistOfferWrite,
+  SpecialistProfile,
+  SpecialistProfileWrite,
   StatisticsPeriod,
   StatisticsReport,
   ManagedStoryRead,
@@ -992,6 +995,53 @@ export class ApiClient {
 
   updateUserProfile(body: UserProfilePatch): Promise<UserProfile> {
     return this.request("PUT", "/api/v1/user-profile", body, true);
+  }
+
+  getMySpecialist(): Promise<SpecialistProfile> {
+    return this.request("GET", "/api/v1/specialists/me", undefined, true);
+  }
+
+  updateMySpecialist(body: SpecialistProfileWrite): Promise<SpecialistProfile> {
+    return this.request("PUT", "/api/v1/specialists/me", body, true);
+  }
+
+  addSpecialistCredential(objectKey: string): Promise<{ ok: true; id: number }> {
+    return this.request(
+      "POST", "/api/v1/specialists/me/credentials",
+      { object_key: objectKey }, true,
+    );
+  }
+
+  deleteSpecialistCredential(id: number): Promise<void> {
+    return this.request(
+      "DELETE", `/api/v1/specialists/me/credentials/${id}`, undefined, true,
+    );
+  }
+
+  createSpecialistOffer(body: SpecialistOfferWrite): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/specialists/me/offers", body, true);
+  }
+
+  updateSpecialistOffer(id: number, body: SpecialistOfferWrite): Promise<{ ok: true }> {
+    return this.request("PUT", `/api/v1/specialists/me/offers/${id}`, body, true);
+  }
+
+  deleteSpecialistOffer(id: number): Promise<void> {
+    return this.request(
+      "DELETE", `/api/v1/specialists/me/offers/${id}`, undefined, true,
+    );
+  }
+
+  addSpecialistPortfolio(
+    body: { media_type: "photo" | "video"; object_key: string },
+  ): Promise<{ ok: true; id: number }> {
+    return this.request("POST", "/api/v1/specialists/me/portfolio", body, true);
+  }
+
+  deleteSpecialistPortfolio(id: number): Promise<void> {
+    return this.request(
+      "DELETE", `/api/v1/specialists/me/portfolio/${id}`, undefined, true,
+    );
   }
 
   getBusinessProfile(): Promise<BusinessProfile> {
