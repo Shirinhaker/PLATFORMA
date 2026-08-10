@@ -71,6 +71,12 @@ import {
   FollowListsV1656,
   type FollowListsApi,
 } from "../follows/FollowListsV1656";
+import {
+  BusinessSubscriptionsV1656,
+  PaymentsV1656,
+  supportsBusinessSubscriptionsApi,
+  supportsPaymentsApi,
+} from "../payments/SubscriptionsPaymentsV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -198,6 +204,11 @@ export type BusinessProfileApiV3 = Pick<
   | "getPushStatus"
   | "getFollowers"
   | "getFollowing"
+  | "getBusinessSubscription"
+  | "getPaymentCatalog"
+  | "createPaymentRequest"
+  | "getMyPayments"
+  | "resubmitPayment"
 >>;
 
 type Props = {
@@ -608,6 +619,36 @@ export function BusinessProfileV3({
   }
 
   if (screen === "online" && onlineMenu) {
+    if (
+      onlineMenu.view === "subscriptions"
+      && supportsBusinessSubscriptionsApi(api)
+    ) {
+      return withActionBanner(
+        <BusinessSubscriptionsV1656
+          api={api}
+          onBack={() => {
+            setOnlineMenu(null);
+            setScreen("cabinet");
+          }}
+          onOpenPayments={() => {
+            const payments = visibleMenus(profile, ONLINE_MENUS, identity)
+              .find((menu) => menu.view === "payments");
+            if (payments) setOnlineMenu(payments);
+          }}
+        />,
+      );
+    }
+    if (onlineMenu.view === "payments" && supportsPaymentsApi(api)) {
+      return withActionBanner(
+        <PaymentsV1656
+          api={api}
+          onBack={() => {
+            setOnlineMenu(null);
+            setScreen("cabinet");
+          }}
+        />,
+      );
+    }
     if (
       HEADER_ONLINE_VIEWS.has(onlineMenu.view)
       && supportsFollowLists(api)

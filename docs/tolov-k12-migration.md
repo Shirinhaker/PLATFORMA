@@ -113,3 +113,7 @@ JPG/PNG/WEBP).
   domenlarida ulanadi (`_activate` hozircha faqat obunani yoqadi);
 - admin paneli — tasdiqlash endpointi biznes egasi huquqi bilan
   himoyalangan, alohida admin roli keyingi bosqichda.
+
+Kabinetdagi umumiy JSON o‘qish yo‘lini olib tashlash va `Obunalarim` /
+`To‘lovlarim` ekranlarini typed domenga ulash K23da yakunlandi:
+[K23 hujjati](obuna-tolov-k23-migration.md).

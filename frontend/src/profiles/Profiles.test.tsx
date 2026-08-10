@@ -169,6 +169,23 @@ function profileApi() {
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(businessProfile),
+    getMyPayments: vi.fn().mockResolvedValue([{
+      id: 81,
+      request_code: "PAY-TYPED",
+      service_type: "listing",
+      status: "approved",
+      plan_code: "",
+      duration_months: 0,
+      quantity: 1,
+      amount: 25_000,
+      currency: "UZS",
+      price_code: "listing_publish",
+      public_reason: "",
+      created_at: 1_785_000_000,
+      updated_at: 1_785_000_000,
+      attempts: [],
+    }]),
+    resubmitPayment: vi.fn(),
     getMessageConversations: vi.fn().mockResolvedValue([{
       target_kind: "user" as const,
       target_public_id: "u_1234567890abcdef",
@@ -349,6 +366,25 @@ async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>)
 
 
 describe("profile cabinets", () => {
+  it("opens typed To‘lovlarim instead of legacy cabinet payload", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    render(
+      <UserProfile
+        api={api}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "To‘lovlarim" }));
+
+    expect(await screen.findByText(/PAY-TYPED/)).toBeInTheDocument();
+    expect(api.getMyPayments).toHaveBeenCalledOnce();
+    expect(screen.queryByText("10 000")).not.toBeInTheDocument();
+  });
+
   it("opens relational customer reviews from business and specialist cabinets", async () => {
     const user = userEvent.setup();
     const userApi = profileApi();

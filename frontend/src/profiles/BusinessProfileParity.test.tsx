@@ -75,7 +75,22 @@ function api() {
       }],
     }),
     getMyPayments: vi.fn().mockResolvedValue([]),
+    getBusinessSubscription: vi.fn().mockResolvedValue({
+      current: {
+        id: null,
+        plan_code: "free",
+        duration_months: 0,
+        starts_at: 0,
+        expires_at: 0,
+        status: "active",
+        is_demo: false,
+        is_virtual: true,
+        created_at: 0,
+      },
+      history: [],
+    }),
     createPaymentRequest: vi.fn(),
+    resubmitPayment: vi.fn(),
     attachBusinessLogo: vi.fn().mockResolvedValue(profile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(profile),
     getBusinessOnlineResource: vi.fn().mockImplementation(async (resource) => ({

@@ -95,6 +95,31 @@ class PaymentResubmit(BaseModel):
     receipt: PaymentReceipt
 
 
+class BusinessSubscriptionRead(BaseModel):
+    """v1656 biznes obunasi; virtual Bepul tarifda `id` bo'lmaydi."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int | None
+    plan_code: Literal["free", "plus", "pro"]
+    duration_months: int = Field(ge=0)
+    starts_at: int = Field(ge=0)
+    expires_at: int = Field(ge=0)
+    status: Literal["active", "superseded", "expired"]
+    is_demo: bool = False
+    is_virtual: bool = False
+    created_at: int = Field(ge=0)
+
+
+class BusinessSubscriptionSummary(BaseModel):
+    """Monolitdagi `{current, history}` tartibining typed kontrakti."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    current: BusinessSubscriptionRead
+    history: list[BusinessSubscriptionRead]
+
+
 class PaymentDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

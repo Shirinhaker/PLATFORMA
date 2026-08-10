@@ -42,6 +42,10 @@ import {
   FollowListsV1656,
   type FollowListsApi,
 } from "../follows/FollowListsV1656";
+import {
+  PaymentsV1656,
+  supportsPaymentsApi,
+} from "../payments/SubscriptionsPaymentsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -107,6 +111,8 @@ export type UserProfileApi = Pick<
   | "getPushStatus"
   | "getFollowers"
   | "getFollowing"
+  | "getMyPayments"
+  | "resubmitPayment"
 >>;
 
 type Props = {
@@ -658,6 +664,15 @@ export function UserProfile({
         onOpenProfile={(kind, publicId) => {
           onOpenPublicProfile?.(kind, publicId);
         }}
+      />,
+    );
+  }
+
+  if (view === "payments" && supportsPaymentsApi(api)) {
+    return withActionBanner(
+      <PaymentsV1656
+        api={api}
+        onBack={() => setView("dashboard")}
       />,
     );
   }

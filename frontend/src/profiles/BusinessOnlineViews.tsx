@@ -491,13 +491,19 @@ export function PaymentsView({
                         setMessage("Yangi kvitansiyani tanlang.");
                         return;
                       }
-                      await resubmit?.(id, file);
-                      setReceipts((current) => {
-                        const next = { ...current };
-                        delete next[String(id)];
-                        return next;
-                      });
-                      setMessage("Kvitansiya qayta yuborildi ✅");
+                      try {
+                        await resubmit?.(id, file);
+                        setReceipts((current) => {
+                          const next = { ...current };
+                          delete next[String(id)];
+                          return next;
+                        });
+                        setMessage("Kvitansiya qayta yuborildi ✅");
+                      } catch (error) {
+                        setMessage(error instanceof Error
+                          ? error.message
+                          : "So‘rov bajarilmadi.");
+                      }
                     }}
                   >
                     Qayta yuborish

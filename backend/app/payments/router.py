@@ -6,8 +6,11 @@ from app.auth.dependencies import (
     CurrentAccount,
     require_csrf,
     require_current_account,
+    require_business_owner,
 )
+from app.core.errors import ApiError
 from app.payments.schemas import (
+    BusinessSubscriptionSummary,
     PaymentCatalogRead,
     PaymentRequestCreate,
     PaymentRequestRead,
@@ -27,6 +30,29 @@ def payment_service(request: Request) -> PaymentService:
 
 
 ServiceDep = Annotated[PaymentService, Depends(payment_service)]
+
+
+def require_payment_owner(current: CurrentAccount) -> None:
+    """To'lovlar foydalanuvchi yoki biznes egasining shaxsiy bo'limi."""
+    if current.actor_type != "owner" or current.staff_id is not None:
+        raise ApiError(
+            403,
+            "payment_owner_required",
+            "Bu bo'lim faqat akkaunt egasi uchun.",
+        )
+
+
+@router.get("/subscription", response_model=BusinessSubscriptionSummary)
+async def business_subscription(
+    current: CurrentRead,
+    service: ServiceDep,
+) -> BusinessSubscriptionSummary:
+    """Biznesning joriy tarifi va avvalgi obunalari."""
+    require_business_owner(current)
+    return await service.subscription(
+        account_id=current.account_id,
+        account_type=current.account_type,
+    )
 
 
 @router.get("/catalog", response_model=PaymentCatalogRead)
@@ -49,6 +75,7 @@ async def create_payment_request(
     current: CurrentWrite,
     service: ServiceDep,
 ) -> PaymentRequestRead:
+    require_payment_owner(current)
     return await service.create(
         account_id=current.account_id,
         account_type=current.account_type,
@@ -61,6 +88,7 @@ async def my_payments(
     current: CurrentRead,
     service: ServiceDep,
 ) -> list[PaymentRequestRead]:
+    require_payment_owner(current)
     return await service.list_mine(account_id=current.account_id)
 
 
@@ -71,6 +99,7 @@ async def resubmit_payment(
     current: CurrentWrite,
     service: ServiceDep,
 ) -> PaymentRequestRead:
+    require_payment_owner(current)
     return await service.resubmit(
         account_id=current.account_id,
         payment_id=payment_id,

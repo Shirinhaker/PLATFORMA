@@ -11,6 +11,7 @@ import type {
   ApiErrorBody,
   Authenticated,
   BuildInfo,
+  BusinessSubscriptionSummary,
   BusinessProfile,
   BusinessProfilePatch,
   CashCatalogItem,
@@ -1475,6 +1476,15 @@ export class ApiClient {
 
   getMyPayments(): Promise<PaymentRequestRecord[]> {
     return this.request("GET", "/api/v1/payments/my", undefined, true);
+  }
+
+  getBusinessSubscription(): Promise<BusinessSubscriptionSummary> {
+    return this.request(
+      "GET",
+      "/api/v1/payments/subscription",
+      undefined,
+      true,
+    );
   }
 
   resubmitPayment(
