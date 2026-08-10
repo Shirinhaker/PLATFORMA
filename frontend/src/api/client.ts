@@ -143,6 +143,13 @@ import type {
   NotificationPreference,
   PushDeviceWrite,
   PushStatusRead,
+  WarehouseItem,
+  WarehouseList,
+  WarehouseMove,
+  WarehouseMoveCreate,
+  WarehouseMoveResult,
+  WarehouseProductionBatch,
+  WarehouseRecipeIngredient,
 } from "./types";
 import type {
   Advertisement,
@@ -1072,6 +1079,64 @@ export class ApiClient {
     return this.request(
       "DELETE",
       `/api/v1/expenses/${expenseId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getWarehouseItems(): Promise<WarehouseList> {
+    return this.request("GET", "/api/v1/warehouse/items", undefined, true);
+  }
+
+  configureWarehouseItem(
+    catalogItemId: number,
+    body: { track_stock: boolean; stock_type: "ready_food" | "raw_material"; min_qty: number },
+  ): Promise<WarehouseItem> {
+    return this.request(
+      "PUT",
+      `/api/v1/warehouse/items/${catalogItemId}`,
+      body,
+      true,
+    );
+  }
+
+  createWarehouseMove(body: WarehouseMoveCreate): Promise<WarehouseMoveResult> {
+    return this.request("POST", "/api/v1/warehouse/moves", body, true);
+  }
+
+  deleteWarehouseMove(moveId: number): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/api/v1/warehouse/moves/${moveId}`,
+      undefined,
+      true,
+    );
+  }
+
+  getWarehouseMoves(inventoryItemId: number): Promise<WarehouseMove[]> {
+    return this.request(
+      "GET",
+      `/api/v1/warehouse/items/${inventoryItemId}/moves`,
+      undefined,
+      true,
+    );
+  }
+
+  getWarehouseRecipe(
+    inventoryItemId: number,
+  ): Promise<WarehouseRecipeIngredient[]> {
+    return this.request(
+      "GET",
+      `/api/v1/warehouse/items/${inventoryItemId}/recipe`,
+      undefined,
+      true,
+    );
+  }
+
+  getWarehouseProduction(limit = 50): Promise<WarehouseProductionBatch[]> {
+    return this.request(
+      "GET",
+      `/api/v1/warehouse/production?limit=${limit}`,
       undefined,
       true,
     );

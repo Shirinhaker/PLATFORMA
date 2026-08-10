@@ -47,6 +47,7 @@ from app.education.repository import (
 )
 from app.education.cabinet_service import EducationCabinetService
 from app.education.service import EducationEnrollmentService
+from app.inventory.live_sync import sync_business_inventory
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, UserProfile
@@ -55,6 +56,7 @@ from app.profiles.model import BusinessProfile, UserProfile
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 CatalogSync = Callable[..., Awaitable[None]]
 ListingSync = Callable[..., Awaitable[None]]
+InventorySync = Callable[..., Awaitable[None]]
 # Ta'lim domenidan o'z jadvaliga ko'chirilgan resurslar.
 RELATIONAL_EDUCATION_RESOURCES = (
     EDUCATION_GROUPS,
@@ -86,6 +88,7 @@ class BusinessOnlineService:
         *,
         catalog_sync: CatalogSync = sync_business_catalog,
         listing_sync: ListingSync = sync_business_listings,
+        inventory_sync: InventorySync = sync_business_inventory,
         catalog_cache_epoch: CatalogCacheEpoch | None = None,
         notification_repository: NotificationRepository | None = None,
         education_repository: EducationEnrollmentRepository | None = None,
@@ -95,6 +98,7 @@ class BusinessOnlineService:
         self._repository = repository or CabinetRecordRepository()
         self._catalog_sync = catalog_sync
         self._listing_sync = listing_sync
+        self._inventory_sync = inventory_sync
         self._catalog_cache_epoch = catalog_cache_epoch
         self._notifications = notification_repository or NotificationRepository()
         self._education = education_repository or EducationEnrollmentRepository()
@@ -800,6 +804,12 @@ class BusinessOnlineService:
                 session,
                 account_id=account_id,
                 owner_name=owner_name,
+                payload=payload,
+                changed_resources=resources,
+            )
+            await self._inventory_sync(
+                session,
+                account_id=account_id,
                 payload=payload,
                 changed_resources=resources,
             )
