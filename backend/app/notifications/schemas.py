@@ -18,6 +18,8 @@ class NotificationRead(BaseModel):
     order_id: int | None = None
     listing_id: int | None = None
     listing_public_id: str = ""
+    profile_kind: Literal["user", "business"] | None = None
+    profile_public_id: str = ""
     dining_order_id: int | None = None
     medical_queue_id: int | None = None
     ride_id: int | None = None

@@ -38,6 +38,7 @@ import type {
   ExpenseCategoryCreate,
   ExpenseCreate,
   ExpenseDay,
+  FollowListRead,
   EducationAttendance,
   EducationAttendanceWrite,
   EducationGroup,
@@ -519,6 +520,24 @@ export class ApiClient {
     return this.request(
       "GET",
       "/api/v1/public/home/followed-profiles",
+      undefined,
+      true,
+    );
+  }
+
+  getFollowers(): Promise<FollowListRead> {
+    return this.request(
+      "GET",
+      "/api/v1/follows/followers",
+      undefined,
+      true,
+    );
+  }
+
+  getFollowing(): Promise<FollowListRead> {
+    return this.request(
+      "GET",
+      "/api/v1/follows/following",
       undefined,
       true,
     );

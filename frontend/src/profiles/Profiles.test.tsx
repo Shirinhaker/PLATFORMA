@@ -440,6 +440,87 @@ describe("profile cabinets", () => {
       .toBeInTheDocument();
   });
 
+  it("opens typed follow lists and routes their cards to public profiles", async () => {
+    const user = userEvent.setup();
+    const onOpenUserProfile = vi.fn();
+    const userApi = {
+      ...profileApi(),
+      getFollowers: vi.fn().mockResolvedValue({
+        count: 1,
+        items: [{
+          kind: "user" as const,
+          public_id: "u_1234567890abcdef",
+          name: "Vali",
+          info: "@vali",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+          followed_at: 1_785_200_000,
+        }],
+      }),
+      getFollowing: vi.fn().mockResolvedValue({ items: [], count: 0 }),
+    };
+    const userCabinet = render(
+      <UserProfile
+        api={userApi}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onOpenPublicProfile={onOpenUserProfile}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "3 obunachi" }));
+    await user.click(await screen.findByRole("button", { name: /Vali profilini/ }));
+    expect(userApi.getFollowers).toHaveBeenCalledOnce();
+    expect(onOpenUserProfile).toHaveBeenCalledWith(
+      "user",
+      "u_1234567890abcdef",
+    );
+
+    userCabinet.unmount();
+    const onOpenBusinessProfile = vi.fn();
+    const businessApi = {
+      ...profileApi(),
+      getFollowers: vi.fn().mockResolvedValue({ items: [], count: 0 }),
+      getFollowing: vi.fn().mockResolvedValue({
+        count: 1,
+        items: [{
+          kind: "business" as const,
+          public_id: "b_1234567890abcdef",
+          name: "Hamkor biznes",
+          info: "Xizmat ko'rsatish",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+          followed_at: 1_785_200_000,
+        }],
+      }),
+    };
+    render(
+      <BusinessProfile
+        api={businessApi}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onOpenPublicProfile={onOpenBusinessProfile}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Biznes obunalari" }));
+    await user.click(await screen.findByRole(
+      "button",
+      { name: /Hamkor biznes profilini/ },
+    ));
+    expect(businessApi.getFollowing).toHaveBeenCalledOnce();
+    expect(onOpenBusinessProfile).toHaveBeenCalledWith(
+      "business",
+      "b_1234567890abcdef",
+    );
+  });
+
   it("opens migrated driver, ride and notification-filter data", async () => {
     const user = userEvent.setup();
     render(

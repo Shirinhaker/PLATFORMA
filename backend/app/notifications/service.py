@@ -482,6 +482,12 @@ class NotificationService:
             order_id=int(row.get("order_id") or 0) or None,
             listing_id=int(row.get("listing_id") or 0) or None,
             listing_public_id=str(row.get("listing_public_id") or ""),
+            profile_kind=(
+                str(row.get("profile_kind"))
+                if row.get("profile_kind") in {"user", "business"}
+                else None
+            ),
+            profile_public_id=str(row.get("profile_public_id") or ""),
             dining_order_id=int(row.get("dining_order_id") or 0) or None,
             medical_queue_id=int(row.get("medical_queue_id") or 0) or None,
             ride_id=int(row.get("ride_id") or 0) or None,

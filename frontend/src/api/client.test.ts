@@ -814,6 +814,27 @@ describe("ApiClient", () => {
     ]);
   });
 
+  it("loads typed followers and following lists with the current session", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ items: [], count: 0 }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getFollowers();
+    await client.getFollowing();
+
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      "https://api.example/api/v1/follows/followers",
+      "https://api.example/api/v1/follows/following",
+    ]);
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      credentials: "include",
+    });
+  });
+
   it("records advertisement views and clicks without CSRF", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, {
       status: 204,

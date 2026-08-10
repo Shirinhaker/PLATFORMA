@@ -237,6 +237,8 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
             "body": "Buyurtma #11",
             "order_id": None,
             "action_type": "view_order",
+            "profile_kind": "user",
+            "profile_public_id": "u_1234567890abcdef",
             "requires_action": 1,
             "created_at": int(NOW.timestamp()),
         },
@@ -249,6 +251,8 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
     )
     assert listed.unread == 1
     assert listed.items[0].title == "Yangi buyurtma"
+    assert listed.items[0].profile_kind == "user"
+    assert listed.items[0].profile_public_id == "u_1234567890abcdef"
     assert (await service.actions(
         account_id=7,
         account_type=AccountType.BUSINESS,

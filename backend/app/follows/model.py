@@ -65,6 +65,7 @@ Index(
 Index(
     "ix_profile_follows_target",
     ProfileFollow.target_account_id,
+    ProfileFollow.created_at,
     ProfileFollow.id,
 )
 # "Men kimga obuna bo'lganman" ro'yxati uchun.

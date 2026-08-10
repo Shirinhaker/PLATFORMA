@@ -67,6 +67,10 @@ import {
   ActionNotificationsV1656,
   type NotificationsApi,
 } from "../notifications/NotificationsV1656";
+import {
+  FollowListsV1656,
+  type FollowListsApi,
+} from "../follows/FollowListsV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -192,6 +196,8 @@ export type BusinessProfileApiV3 = Pick<
   | "createNotificationFilter"
   | "deleteNotificationFilter"
   | "getPushStatus"
+  | "getFollowers"
+  | "getFollowing"
 >>;
 
 type Props = {
@@ -199,6 +205,10 @@ type Props = {
   identity: SessionIdentity;
   onLogout: () => void;
   onOpenPublicListing?: (publicId: string) => void;
+  onOpenPublicProfile?: (
+    kind: "user" | "business",
+    publicId: string,
+  ) => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -220,6 +230,14 @@ const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
+}
+
+function supportsFollowLists(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & FollowListsApi {
+  return ["getFollowers", "getFollowing"].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -424,6 +442,7 @@ export function BusinessProfileV3({
   identity,
   onLogout,
   onOpenPublicListing,
+  onOpenPublicProfile,
   onSwitched,
 }: Props) {
   const [profile, setProfile] = useState<BusinessProfileData | null>(null);
@@ -516,6 +535,17 @@ export function BusinessProfileV3({
   }
 
   async function openNotification(notification: NotificationRead) {
+    if (
+      notification.profile_kind
+      && notification.profile_public_id
+      && onOpenPublicProfile
+    ) {
+      onOpenPublicProfile(
+        notification.profile_kind,
+        notification.profile_public_id,
+      );
+      return;
+    }
     if (notification.listing_public_id && onOpenPublicListing) {
       onOpenPublicListing(notification.listing_public_id);
       return;
@@ -578,6 +608,29 @@ export function BusinessProfileV3({
   }
 
   if (screen === "online" && onlineMenu) {
+    if (
+      HEADER_ONLINE_VIEWS.has(onlineMenu.view)
+      && supportsFollowLists(api)
+    ) {
+      return withActionBanner(
+        <FollowListsV1656
+          api={api}
+          kind={onlineMenu.view as "followers" | "following"}
+          onOpenProfile={(kind, publicId) => {
+            onOpenPublicProfile?.(kind, publicId);
+          }}
+          onBack={async () => {
+            try {
+              setProfile(await api.getBusinessProfile());
+            } catch {
+              // Hisoblagich keyingi kabinet refreshida yangilanadi.
+            }
+            setOnlineMenu(null);
+            setScreen("cabinet");
+          }}
+        />,
+      );
+    }
     if (onlineMenu.view === "messages" && supportsMessages(api)) {
       return withActionBanner(
         <MessagesV1656
