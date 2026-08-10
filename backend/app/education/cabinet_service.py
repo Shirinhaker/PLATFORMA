@@ -377,6 +377,10 @@ class EducationCabinetService:
 
         raw_teacher = value("teacher_id", current.teacher_id if current else None)
         teacher_id = None
+        teacher_name = _text(
+            value("teacher_name", current.teacher_name if current else ""),
+            160,
+        )
         if raw_teacher not in (None, "", 0, "0"):
             try:
                 teacher_id = int(raw_teacher)
@@ -386,15 +390,24 @@ class EducationCabinetService:
                     "education_teacher_invalid",
                     "O'qituvchi noto'g'ri tanlangan.",
                 ) from None
+            teacher = await self._repository.owned_teacher(
+                session,
+                business_account_id=business_account_id,
+                teacher_id=teacher_id,
+            )
+            if teacher is None:
+                raise ApiError(
+                    400,
+                    "education_teacher_not_found",
+                    "Tanlangan o'qituvchi topilmadi.",
+                )
+            teacher_name = teacher.full_name
 
         return {
             "name": name,
             "course_item_id": course_item_id,
             "teacher_id": teacher_id,
-            "teacher_name": _text(
-                value("teacher_name", current.teacher_name if current else ""),
-                160,
-            ),
+            "teacher_name": teacher_name,
             "room_name": _text(
                 value("room_name", current.room_name if current else ""), 80
             ),

@@ -43,6 +43,11 @@ import {
   type EducationStatisticsApi,
 } from "./EducationStatisticsV1656";
 import {
+  EducationManagementV1656,
+  type EducationManagementApi,
+  type EducationManagementView,
+} from "../education/EducationManagementV1656";
+import {
   ExpensesV1656,
   type ExpensesApi,
 } from "./ExpensesV1656";
@@ -139,6 +144,20 @@ export type BusinessProfileApiV3 = Pick<
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"
+  | "getEducationGroups"
+  | "getEducationAttendance"
+  | "saveEducationAttendance"
+  | "getEducationPaymentControl"
+  | "getEducationPayments"
+  | "createEducationPayment"
+  | "voidEducationPayment"
+  | "getEducationTeachers"
+  | "createEducationTeacher"
+  | "updateEducationTeacher"
+  | "deleteEducationTeacher"
+  | "getEducationPayroll"
+  | "createEducationPayroll"
+  | "deleteEducationPayroll"
   | "getMyStories"
   | "createStory"
   | "recordStoryView"
@@ -185,6 +204,7 @@ type Screen =
   | "debt"
   | "expenses"
   | "statistics"
+  | "education-management"
   | "education-statistics";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
@@ -254,7 +274,11 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
   counterparties: ["documents"],
   "education-groups": ["education_groups"],
   "education-students": ["education_students"],
+  "education-schedule": ["education_schedule"],
+  "education-attendance": ["education_attendance"],
+  "education-payments": ["education_payments"],
   "education-teachers": ["education_teachers"],
+  "education-payroll": ["education_payroll"],
 };
 
 const OWNER_ONLY_VIEWS = new Set([
@@ -323,6 +347,21 @@ function supportsEducationStatistics(
   return typeof api.getEducationStatistics === "function";
 }
 
+function supportsEducationManagement(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & EducationManagementApi {
+  return [
+    "getEducationGroups", "getEducationAttendance", "saveEducationAttendance",
+    "getEducationPaymentControl", "getEducationPayments",
+    "createEducationPayment", "voidEducationPayment", "getEducationTeachers",
+    "createEducationTeacher", "updateEducationTeacher",
+    "deleteEducationTeacher", "getEducationPayroll",
+    "createEducationPayroll", "deleteEducationPayroll",
+  ].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
 function supportsMessages(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & MessagesApi {
@@ -385,6 +424,9 @@ export function BusinessProfileV3({
   const [messageUnread, setMessageUnread] = useState(0);
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
+  const [educationView, setEducationView] = useState<EducationManagementView>(
+    "education-schedule",
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -619,6 +661,17 @@ export function BusinessProfileV3({
     );
   }
 
+  if (screen === "education-management" && supportsEducationManagement(api)) {
+    return withActionBanner(
+      <EducationManagementV1656
+        api={api}
+        view={educationView}
+        canVoidPayments={identity.actor_type !== "staff"}
+        onBack={() => setScreen("cabinet")}
+      />,
+    );
+  }
+
   if (
     screen === "education-statistics"
     && supportsEducationStatistics(api)
@@ -669,6 +722,20 @@ export function BusinessProfileV3({
     }
     if (menu.view === "statistics" && supportsStatistics(api)) {
       setScreen("statistics");
+      return;
+    }
+    if (
+      [
+        "education-schedule",
+        "education-attendance",
+        "education-payments",
+        "education-teachers",
+        "education-payroll",
+      ].includes(menu.view)
+      && supportsEducationManagement(api)
+    ) {
+      setEducationView(menu.view as EducationManagementView);
+      setScreen("education-management");
       return;
     }
     if (

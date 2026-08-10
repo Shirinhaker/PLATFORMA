@@ -13,6 +13,7 @@ from app.education.model import (
     EducationGroup,
     EducationStudent,
     EducationStudentGroupHistory,
+    EducationTeacher,
 )
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
@@ -49,7 +50,9 @@ def _group_row(row: EducationGroup) -> dict[str, Any]:
         "id": row.id,
         "course_item_id": row.course_item_id or 0,
         "name": row.name,
-        "teacher_id": row.legacy_teacher_id or row.teacher_id or 0,
+        # Yangi typed ekranlar relatsion o'qituvchi ID sini ishlatadi.
+        # Legacy ID faqat bog'lanmagan eski yozuv uchun fallback bo'lib qoladi.
+        "teacher_id": row.teacher_id or row.legacy_teacher_id or 0,
         "teacher_name": row.teacher_name,
         "room_name": row.room_name,
         "capacity": row.capacity,
@@ -350,6 +353,21 @@ class EducationEnrollmentRepository:
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement)
+
+    async def owned_teacher(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        teacher_id: int,
+    ) -> EducationTeacher | None:
+        return await session.scalar(
+            select(EducationTeacher).where(
+                EducationTeacher.id == teacher_id,
+                EducationTeacher.business_account_id == business_account_id,
+                EducationTeacher.status == "active",
+            )
+        )
 
     async def add_group(
         self,

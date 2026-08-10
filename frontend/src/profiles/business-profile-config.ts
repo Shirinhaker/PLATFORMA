@@ -367,10 +367,10 @@ export const METRICS: Record<string, Metric[]> = {
     { label: "Ombor ogohlantirishi", key: "low_stock", sub: "Kam qolgan masalliqlar", view: "warehouse" },
   ],
   "Ta'lim faoliyati": [
-    { label: "Bugungi darslar", key: "today_lessons", sub: "Bugungi jadval", view: "education-groups" },
+    { label: "Bugungi darslar", key: "today_lessons", sub: "Bugungi jadval", view: "education-schedule" },
     { label: "Guruhlar", key: "groups", sub: "Faol guruhlar", view: "education-groups" },
     { label: "O‘quvchilar", key: "students", sub: "Faol o‘quvchilar", view: "education-students" },
-    { label: "Muddati o‘tgan to‘lov", key: "debt_total", sub: "To‘lov nazoratidagi qarz", view: "debtors", money: true },
+    { label: "Muddati o‘tgan to‘lov", key: "debt_total", sub: "To‘lov nazoratidagi qarz", view: "education-payments", money: true },
   ],
   "Tibbiy xizmatlar": [
     { label: "Bugungi qabullar", key: "service_today", sub: "Bugungi yozilishlar", view: "service-orders" },
@@ -429,7 +429,11 @@ export const ADMIN_MENUS: Menu[] = [
 export const DIRECTION_MENUS: Menu[] = [
   { icon: "👨‍🏫", label: "Ta’lim guruhlari", caption: "Guruh va dars ma’lumotlari", view: "education-groups", payload: "education_groups", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🎓", label: "O‘quvchilar", caption: "O‘quvchi va to‘lov holatlari", view: "education-students", payload: "education_students", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
+  { icon: "🗓️", label: "Dars jadvali", caption: "Haftalik guruh va o‘qituvchilar jadvali", view: "education-schedule", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
+  { icon: "✅", label: "Davomat", caption: "O‘quvchilarning darsga qatnashuvi", view: "education-attendance", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
+  { icon: "💳", label: "To‘lov nazorati", caption: "Muddati kelgan va yaqin to‘lovlar", view: "education-payments", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "🧑‍🏫", label: "O‘qituvchilar", caption: "O‘qituvchi ma’lumotlari", view: "education-teachers", payload: "education_teachers", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
+  { icon: "💰", label: "O‘qituvchi maoshi", caption: "Hisoblangan va to‘langan maoshlar", view: "education-payroll", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
   { icon: "📊", label: "Ta'lim statistikasi", caption: "Davomat, to'lovlar, maosh va natija", view: "education-statistics", directions: ["Ta'lim faoliyati", "Ta’lim faoliyati"] },
 ];
 

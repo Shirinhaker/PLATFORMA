@@ -299,6 +299,10 @@ class EducationPayment(Base):
     )
     note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     legacy_sale_id: Mapped[int | None] = mapped_column(BigInteger)
+    cash_receipt_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("cash_receipts.id", ondelete="SET NULL"),
+    )
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     legacy_voided_by: Mapped[int | None] = mapped_column(BigInteger)
     void_reason: Mapped[str] = mapped_column(
@@ -529,6 +533,13 @@ Index(
     unique=True,
     postgresql_where=text("legacy_source_id IS NOT NULL"),
     sqlite_where=text("legacy_source_id IS NOT NULL"),
+)
+Index(
+    "uq_education_payments_cash_receipt",
+    EducationPayment.cash_receipt_id,
+    unique=True,
+    postgresql_where=text("cash_receipt_id IS NOT NULL"),
+    sqlite_where=text("cash_receipt_id IS NOT NULL"),
 )
 Index(
     "ix_education_teachers_business",
