@@ -95,6 +95,140 @@ class EducationGroupRead(BaseModel):
     student_count: int = 0
 
 
+class EducationGroupWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=80)
+    course_item_id: int | None = None
+    teacher_id: int | None = None
+    teacher_name: str = Field(default="", max_length=160)
+    room_name: str = Field(default="", max_length=80)
+    capacity: int = Field(default=0, ge=0, le=10_000)
+    weekdays: list[str] = Field(default_factory=list, max_length=7)
+    lesson_from: str = Field(default="", max_length=5)
+    lesson_to: str = Field(default="", max_length=5)
+    start_date: str = Field(default="", max_length=10)
+    end_date: str = Field(default="", max_length=10)
+    billing_type: Literal["monthly", "attendance"] = "monthly"
+    package_lessons: int = Field(default=0, ge=0, le=1000)
+    package_price: int = Field(default=0, ge=0, le=10**12)
+
+    @field_validator(
+        "name", "teacher_name", "room_name", "lesson_from", "lesson_to",
+        "start_date", "end_date", mode="before",
+    )
+    @classmethod
+    def normalize_group_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class EducationCreated(BaseModel):
+    ok: bool = True
+    id: int = Field(gt=0)
+
+
+class EducationUpdated(BaseModel):
+    ok: bool = True
+
+
+class EducationStudentWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str = Field(min_length=1, max_length=120)
+    group_id: int | None = None
+    phone: str = Field(default="", max_length=40)
+    parent_name: str = Field(default="", max_length=160)
+    parent_phone: str = Field(default="", max_length=40)
+    birth_date: str = Field(default="", max_length=10)
+    joined_date: str = Field(default="", max_length=10)
+    monthly_fee: int = Field(default=0, ge=0, le=10**12)
+    payment_start_date: str = Field(default="", max_length=10)
+    lesson_package_override: int = Field(default=0, ge=0, le=1000)
+    note: str = Field(default="", max_length=2000)
+
+    @field_validator(
+        "full_name", "phone", "parent_name", "parent_phone", "birth_date",
+        "joined_date", "payment_start_date", "note", mode="before",
+    )
+    @classmethod
+    def normalize_student_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class EducationStudentRead(EducationStudentWrite):
+    id: int
+    group_name: str = ""
+    course_name: str = ""
+
+
+class EducationStudentAttendanceCounts(BaseModel):
+    present: int = 0
+    late: int = 0
+    excused: int = 0
+    absent: int = 0
+
+
+class EducationStudentAttendanceSummary(BaseModel):
+    total: int = 0
+    attended: int = 0
+    percent: int = 0
+    counts: EducationStudentAttendanceCounts
+
+
+class EducationStudentPaymentSummary(BaseModel):
+    expected: int = 0
+    paid: int = 0
+    debt: int = 0
+    total_paid: int = 0
+
+
+class EducationStudentPaymentRead(BaseModel):
+    id: int
+    payment_month: str
+    amount: int
+    pay_type: EducationPayType
+    note: str = ""
+    voided_at: datetime | None = None
+    void_reason: str = ""
+    created_at: datetime
+
+
+class EducationStudentGroupHistoryRead(BaseModel):
+    id: int
+    group_id: int
+    group_name: str = ""
+    started_date: str
+    ended_date: str = ""
+    note: str = ""
+
+
+class EducationStudentCardRead(BaseModel):
+    student: EducationStudentRead
+    attendance: EducationStudentAttendanceSummary
+    payment: EducationStudentPaymentSummary
+    payments: list[EducationStudentPaymentRead]
+    group_history: list[EducationStudentGroupHistoryRead]
+
+
+class EducationStudentTransferWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    group_id: int = Field(gt=0)
+    transfer_date: date
+    note: str = Field(default="", max_length=300)
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def normalize_transfer_note(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class EducationStudentTransferred(BaseModel):
+    ok: bool = True
+    group_id: int
+    group_name: str
+
+
 class EducationAttendanceStudentRead(BaseModel):
     student_id: int
     full_name: str

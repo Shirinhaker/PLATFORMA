@@ -11,6 +11,7 @@ from app.education.model import (
     EducationGroup,
     EducationPayment,
     EducationStudent,
+    EducationStudentGroupHistory,
     EducationTeacher,
     EducationTeacherPayment,
 )
@@ -111,6 +112,54 @@ class EducationManagementRepository:
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement)
+
+    async def student_payments(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        student_id: int,
+    ) -> list[EducationPayment]:
+        return list((await session.scalars(
+            select(EducationPayment)
+            .where(
+                EducationPayment.business_account_id == business_account_id,
+                EducationPayment.student_id == student_id,
+            )
+            .order_by(
+                EducationPayment.payment_month.desc(),
+                EducationPayment.id.desc(),
+            )
+            .limit(300)
+        )).all())
+
+    async def student_group_history(
+        self,
+        session: AsyncSession,
+        *,
+        business_account_id: int,
+        student_id: int,
+    ):
+        return (await session.execute(
+            select(EducationStudentGroupHistory, EducationGroup.name)
+            .outerjoin(
+                EducationGroup,
+                (EducationGroup.id == EducationStudentGroupHistory.group_id)
+                & (
+                    EducationGroup.business_account_id
+                    == EducationStudentGroupHistory.business_account_id
+                ),
+            )
+            .where(
+                EducationStudentGroupHistory.business_account_id
+                == business_account_id,
+                EducationStudentGroupHistory.student_id == student_id,
+            )
+            .order_by(
+                EducationStudentGroupHistory.started_date.desc(),
+                EducationStudentGroupHistory.id.desc(),
+            )
+        )).all()
 
     async def attendance_for_day(
         self,

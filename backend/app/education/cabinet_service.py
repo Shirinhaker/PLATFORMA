@@ -10,6 +10,7 @@ Tekshiruvlar v1656 (`api.py:_education_group_payload`,
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -249,6 +250,7 @@ class EducationCabinetService:
         business_account_id: int,
         student_id: int,
         group_id: int,
+        transfer_date: str = "",
         note: str,
         now: int,
     ) -> None:
@@ -282,11 +284,41 @@ class EducationCabinetService:
                 "education_student_same_group",
                 "O'quvchi allaqachon shu guruhda.",
             )
+        transfer_date = transfer_date or _day(now)
+        try:
+            transfer_day = date.fromisoformat(transfer_date)
+        except ValueError:
+            raise ApiError(
+                400,
+                "education_transfer_date_invalid",
+                "O'tkazish sanasini tanlang.",
+            ) from None
+        open_history = await self._repository.open_group_history(
+            session,
+            business_account_id=business_account_id,
+            student_id=student.id,
+        )
+        if open_history is not None and transfer_date < open_history.started_date:
+            raise ApiError(
+                400,
+                "education_transfer_date_invalid",
+                "O'tkazish sanasi joriy guruh boshlangan sanadan oldin bo'lmaydi.",
+            )
+        if open_history is None and student.group_id:
+            await self._start_history(
+                session,
+                business_account_id=business_account_id,
+                student=student,
+                group_id=student.group_id,
+                note="Boshlang'ich guruh",
+                now=now,
+            )
         await self._close_history(
             session,
             business_account_id=business_account_id,
             student_id=student.id,
             now=now,
+            ended_date=(transfer_day - timedelta(days=1)).isoformat(),
         )
         student.group_id = group.id
         student.updated_at = now
@@ -297,6 +329,7 @@ class EducationCabinetService:
             group_id=group.id,
             note=_text(note, 500) or "Guruhga ko'chirildi",
             now=now,
+            started_date=transfer_date,
         )
 
     async def _group_values(
@@ -533,6 +566,7 @@ class EducationCabinetService:
         group_id: int,
         note: str,
         now: int,
+        started_date: str = "",
     ) -> None:
         await self._repository.add_group_history(
             session,
@@ -541,7 +575,7 @@ class EducationCabinetService:
                 legacy_source_id=None,
                 student_id=student.id,
                 group_id=group_id,
-                started_date=student.joined_date or _day(now),
+                started_date=started_date or student.joined_date or _day(now),
                 ended_date="",
                 note=note,
                 created_at=now,
@@ -555,6 +589,7 @@ class EducationCabinetService:
         business_account_id: int,
         student_id: int,
         now: int,
+        ended_date: str = "",
     ) -> None:
         open_row = await self._repository.open_group_history(
             session,
@@ -562,7 +597,7 @@ class EducationCabinetService:
             student_id=student_id,
         )
         if open_row is not None:
-            open_row.ended_date = _day(now)
+            open_row.ended_date = ended_date or _day(now)
 
 
 def _day(now: int) -> str:

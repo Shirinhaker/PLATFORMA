@@ -666,6 +666,7 @@ class BusinessOnlineService:
                 business_account_id=account_id,
                 student_id=target_id,
                 group_id=_record_id(data.get("group_id")),
+                transfer_date=str(data.get("transfer_date") or ""),
                 note=str(data.get("note") or ""),
                 now=now,
             )
