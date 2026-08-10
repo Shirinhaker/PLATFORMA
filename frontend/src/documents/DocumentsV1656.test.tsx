@@ -122,6 +122,29 @@ beforeEach(() => {
 });
 
 describe("DocumentsV1656", () => {
+  it("does not add an AI draft control that v1656 did not render", async () => {
+    const user = userEvent.setup();
+    const api = {
+      ...documentsApi(),
+      generateAIDocumentDraft: vi.fn(),
+    };
+    render(
+      <DocumentsV1656
+        api={api}
+        profile={profile}
+        initialView="center"
+        canManageCounterparties
+        onProfile={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Chiquvchi/ }));
+    await user.click(await screen.findByRole("button", { name: /Shartnoma/ }));
+    expect(screen.queryByText("AI uchun topshiriq")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "🤖 AI draft yaratish" })).not.toBeInTheDocument();
+  });
+
   it("saves the monolith My Documents director and STIR fields", async () => {
     const user = userEvent.setup();
     const api = documentsApi();

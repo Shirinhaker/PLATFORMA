@@ -184,7 +184,6 @@ export type BusinessProfileApiV3 = Pick<
   | "getAIChatHistory"
   | "sendAIChatMessage"
   | "getAIStatus"
-  | "generateAIDocumentDraft"
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"

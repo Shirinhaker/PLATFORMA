@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai_assistant.legacy_import import import_ai_chat_history
 from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.reconcile import StageResult, _find_mapping
 from app.legacy_migration.reconcile_v6 import (
@@ -121,8 +122,15 @@ async def reconcile_businesses(
 ) -> StageResult:
     result = await reconcile_businesses_v6(session, source, run)
     await enrich_business_cabinets(session, source)
+    ai_result = await import_ai_chat_history(session, source, run)
     await session.flush()
-    return result
+    return StageResult(
+        created=result.created + ai_result.created,
+        reused=result.reused + ai_result.reused,
+        updated=result.updated + ai_result.updated,
+        quarantined=result.quarantined + ai_result.quarantined,
+        issues=result.issues + ai_result.issues,
+    )
 
 
 async def enrich_user_cabinets(

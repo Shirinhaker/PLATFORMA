@@ -5,6 +5,13 @@ import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai_assistant.documents import (
+    build_document_context,
+    contractor_snapshot,
+    document_prompt_context,
+    local_document_body,
+    pick_document_type,
+)
 from app.ai_assistant.model import AIChatMessage
 from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.repository import AIAssistantRepository
@@ -17,7 +24,7 @@ UZ_TZ = timezone(timedelta(hours=5))
 
 
 def _money(value: int) -> str:
-    return f"{value:,}".replace(",", " ") + " so‘m"
+    return f"{value:,}".replace(",", " ") + " so'm"
 
 
 class AIAssistantService:
@@ -29,6 +36,9 @@ class AIAssistantService:
     @property
     def openai_enabled(self) -> bool:
         return self._provider.enabled
+
+    async def close(self) -> None:
+        await self._provider.close()
 
     async def history(self, business_id: int, limit: int) -> AIChatHistoryRead:
         async with self._session_factory() as session:
@@ -50,10 +60,22 @@ class AIAssistantService:
             if business is None:
                 raise ApiError(404, "business_not_found", "Biznes profili topilmadi.")
             context = await self._repository.context(session, business_id, start, end)
-            context["business"] = {"name": business.name, "direction": business.direction, "activity_type": business.activity_type}
+            context["today"] = local_day.isoformat()
+            context["business"] = {
+                "id": business_id,
+                "name": business.name,
+                "yon": business.direction,
+                "tur": business.activity_type,
+                "director": business.director,
+                "inn": business.tax_id,
+                "address": business.address,
+                "phone": business.phone,
+            }
             await session.rollback()
         answer = await self._provider.answer(
-            "Sen Koprik biznes kabinetidagi AI yordamchisan. O‘zbek tilida sodda va aniq javob ber. Faqat berilgan biznes kontekstiga asoslan. Hech qanday ma’lumotni o‘zgartirma.",
+            "Sen Platforma biznes kabinetidagi AI yordamchisan. O'zbek "
+            "tilida, sodda va aniq javob ber. Faqat berilgan biznes "
+            "kontekstiga asoslan.",
             "Biznes konteksti:\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n\nSavol:\n" + message,
             max_output_tokens=1200,
         )
@@ -69,39 +91,128 @@ class AIAssistantService:
             return AIChatAnswerRead(answer=answer, source=source)
 
     async def document_draft(self, business_id: int, body: AIDocumentDraftRequest) -> AIDocumentDraftRead:
+        user_prompt = body.prompt.strip()
+        if not user_prompt:
+            raise ApiError(
+                400,
+                "ai_document_prompt_required",
+                "AI uchun hujjat topshirig'ini yozing.",
+            )
+        today = datetime.now(UZ_TZ).date().isoformat()
         async with self._session_factory() as session:
             business = await self._repository.business(session, business_id)
             if business is None:
                 raise ApiError(404, "business_not_found", "Biznes profili topilmadi.")
-            direction, doc_type = self._doc_type(body.prompt, body.direction, body.doc_type)
-            business_snapshot = {"name": business.name, "director": business.director, "tax_id": business.tax_id, "address": business.address}
+            direction, doc_type = self._doc_type(
+                user_prompt,
+                body.direction,
+                body.doc_type,
+            )
+            contractor = (
+                await self._repository.contractor(
+                    session,
+                    business_id,
+                    body.contractor_id,
+                )
+                if body.contractor_id is not None
+                else None
+            )
+            context = build_document_context(
+                business,
+                body,
+                contractor,
+                today=today,
+            )
+            contractor_data = contractor_snapshot(contractor)
             await session.rollback()
-        prompt = json.dumps({"business": business_snapshot, "direction": direction, "doc_type": doc_type, "number": body.number, "date": body.doc_date, "task": body.prompt}, ensure_ascii=False)
-        text = await self._provider.answer("O‘zbek tilida rasmiy, tahrirlashga tayyor DRAFT hujjat yoz. Yetishmagan rekvizitlarga [..] joy qoldir. Faqat hujjat matnini qaytar.", prompt, max_output_tokens=2200)
+        prompt_context = document_prompt_context(
+            context,
+            contractor_data,
+            direction=direction,
+            doc_type=doc_type,
+            prompt=user_prompt,
+        )
+        prompt = (
+            "Kontekst:\n"
+            + json.dumps(prompt_context, ensure_ascii=False, indent=2)
+            + "\n\nShu topshiriq bo'yicha hujjat draftini yoz."
+        )
+        text = await self._provider.answer(
+            "Sen Platforma ilovasidagi AI hujjat generatorisan. "
+            "Faqat o'zbek tilida rasmiy, sodda, tahrirlashga tayyor DRAFT "
+            "hujjat matni yoz. Hujjatni yakuniy huquqiy maslahat deb "
+            "ko'rsatma; foydalanuvchi tekshirishi kerak. Rekvizitlar "
+            "yetishmasa [..] ko'rinishida joy qoldir. Faqat hujjat matnini "
+            "qaytar.",
+            prompt,
+            max_output_tokens=2200,
+        )
         source = "openai" if text else "local"
         if not text:
-            text = f"{business_snapshot['name']}\n\n{doc_type.upper()}\n\n{body.prompt}\n\nRahbar: ____________________ {business_snapshot['director'] or '[F.I.Sh.]'}\nM.O‘."
-        return AIDocumentDraftRead(source=source, direction=direction, doc_type=doc_type, title=body.title or body.prompt[:70], number=body.number, doc_date=body.doc_date or datetime.now(UZ_TZ).date().isoformat(), body=text)
+            text = local_document_body(user_prompt, direction, doc_type, context)
+        title = body.title.strip() or (
+            user_prompt[:70] + ("..." if len(user_prompt) > 70 else "")
+        )
+        return AIDocumentDraftRead(
+            source=source,
+            direction=direction,
+            doc_type=doc_type,
+            title=title,
+            number=body.number.strip(),
+            doc_date=body.doc_date.strip() or today,
+            body=text.strip(),
+        )
 
     @staticmethod
     def _doc_type(prompt: str, direction: str, doc_type: str) -> tuple[str, str]:
-        if doc_type and doc_type != "Erkin shakldagi hujjat":
-            return direction or "ichki", doc_type
-        lowered = prompt.lower()
-        for token, resolved_direction, resolved_type in (("shartnoma", "chiquvchi", "Shartnoma"), ("hisob", "chiquvchi", "Hisob-faktura"), ("akt", "chiquvchi", "Akt"), ("buyruq", "ichki", "Buyruq"), ("ariza", "ichki", "Ariza"), ("dalolatnoma", direction or "ichki", "Dalolatnoma")):
-            if token in lowered:
-                return resolved_direction, resolved_type
-        return direction or "ichki", "Erkin shakldagi hujjat"
+        return pick_document_type(prompt, direction, doc_type)
 
     @staticmethod
     def _local_answer(message: str, context: dict) -> str:
-        lowered = message.lower(); summary = context["today_summary"]
+        lowered = message.lower()
+        summary = context["today_summary"]
+        if any(word in lowered for word in ("savdo", "tushum", "foyda", "statistika")):
+            return (
+                "📊 Bugungi xulosa:\n"
+                "• Tushum: " + _money(summary["revenue"]) + "\n"
+                "• Xarajat: " + _money(summary["expenses"]) + "\n"
+                "• Sof foyda: " + _money(summary["profit"])
+            )
         if any(word in lowered for word in ("ombor", "qoldiq", "kam")):
             rows = context["low_stock"]
-            return "📦 Hozir kam qolgan tovar topilmadi." if not rows else "📦 Kam qolgan tovarlar:\n" + "\n".join(f"• {row['name']} — {row['qty']:g} {row['unit']}" for row in rows[:6])
+            return (
+                "📦 Hozir kam qolgan tovar topilmadi."
+                if not rows
+                else "📦 Kam qolgan tovarlar:\n"
+                + "\n".join(
+                    f"• {row['name'] or 'Nomsiz'} — "
+                    f"{row['qty'] or 0} {row['unit'] or 'dona'}"
+                    for row in rows[:6]
+                )
+            )
         if any(word in lowered for word in ("qarz", "debitor")):
-            return "📒 Umumiy qarz qoldig‘i: " + _money(context["debt_total"]) + "."
+            return "📒 Umumiy qarz qoldig'i: " + _money(context["debt_total"]) + "."
         if any(word in lowered for word in ("buyurtma", "zakaz")):
             rows = context["orders_by_status"]
             return "📥 Hozir buyurtmalar statistikasi topilmadi." if not rows else "📥 Buyurtmalar holati:\n" + "\n".join(f"• {key}: {value}" for key, value in rows.items())
-        return "📊 Bugungi xulosa:\n• Tushum: " + _money(summary["revenue"]) + "\n• Xarajat: " + _money(summary["expenses"]) + "\n• Sof foyda: " + _money(summary["profit"]) + "\n• Qarz qoldig‘i: " + _money(context["debt_total"])
+        if any(
+            word in lowered
+            for word in ("eng ko'p", "eng ko‘p", "ko'p sot", "ko‘p sot", "top")
+        ):
+            rows = context.get("top_products") or []
+            if not rows:
+                return "🛒 Bugun sotilgan mahsulotlar topilmadi."
+            return "🛒 Eng ko'p sotilganlar:\n" + "\n".join(
+                f"• {row['name']} — {row['qty']:g} {row['unit']} · {_money(row['total'])}"
+                for row in rows[:6]
+            )
+        return (
+            "🤖 Bugungi qisqa xulosa:\n"
+            "• Tushum: " + _money(summary["revenue"]) + "\n"
+            "• Xarajat: " + _money(summary["expenses"]) + "\n"
+            "• Sof foyda: " + _money(summary["profit"]) + "\n"
+            "• Qarz qoldig'i: " + _money(context["debt_total"]) + "\n"
+            "• Kam qolgan tovarlar: " + str(len(context.get("low_stock") or []))
+            + " ta\n\nOmbor, qarz, buyurtma yoki savdo bo'yicha aniqroq "
+            "so'rasangiz, batafsil aytaman."
+        )

@@ -214,6 +214,50 @@ describe("ApiClient", () => {
     }
   });
 
+  it("uses the typed AI assistant endpoints and protects writes with csrf", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7,
+        account_type: "business",
+        name: "Turon",
+        login: "b_turon",
+        csrf_token: "ai-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const draft = {
+      prompt: "Xizmat shartnomasi yoz",
+      contractor_id: 9,
+      firm_name: "Turon Savdo",
+      director: "Ali Valiyev",
+      inn: "309111222",
+    };
+
+    await client.getAIChatHistory(30);
+    await client.sendAIChatMessage("Bugungi xulosa");
+    await client.getAIStatus();
+    await client.generateAIDocumentDraft(draft);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [
+      url,
+      init?.method,
+      init?.body,
+    ])).toEqual([
+      ["https://api.example/api/v1/ai-assistant/history?limit=30", "GET", undefined],
+      ["https://api.example/api/v1/ai-assistant/chat", "POST", JSON.stringify({ message: "Bugungi xulosa" })],
+      ["https://api.example/api/v1/ai-assistant/status", "GET", undefined],
+      ["https://api.example/api/v1/ai-assistant/documents/draft", "POST", JSON.stringify(draft)],
+    ]);
+    expect(fetcher.mock.calls[2]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "ai-csrf",
+    });
+    expect(fetcher.mock.calls[4]?.[1]?.headers).toMatchObject({
+      "X-CSRF-Token": "ai-csrf",
+    });
+  });
+
   it("uses the typed K8 statistics report and navigation endpoints", async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
     const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
