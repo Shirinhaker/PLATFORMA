@@ -8,9 +8,22 @@ from app.orders.model import Order
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.reviews.model import Review
 from app.reviews.schemas import ReviewTargetKind
+from app.specialists.model import SpecialistProfile
 
 
 class ReviewRepository:
+    async def has_specialist(
+        self,
+        session: AsyncSession,
+        *,
+        user_account_id: int,
+    ) -> bool:
+        return bool(await session.scalar(
+            select(SpecialistProfile.user_account_id).where(
+                SpecialistProfile.user_account_id == user_account_id,
+            )
+        ))
+
     async def target(
         self,
         session: AsyncSession,
