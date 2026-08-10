@@ -497,6 +497,8 @@ export function ItemsEditorView({
                         group_id: block.id,
                         unit: "dona",
                         track_stock: 0,
+                        stock_type: "ready_food",
+                        min_qty: 0,
                       });
                       actions.setForm(itemNew);
                     }}

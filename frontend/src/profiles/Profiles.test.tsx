@@ -340,6 +340,30 @@ function profileApi() {
       transaction_id: 5,
       balance: 50000,
     }),
+    getWarehouseItems: vi.fn().mockResolvedValue({
+      items: [{
+        id: 17,
+        catalog_item_id: 2,
+        name: "Qog‘oz",
+        price: "15000",
+        unit: "dona",
+        stock_qty: 20,
+        cost_price: 9000,
+        fifo_next_cost: 8500,
+        fifo_value: 180000,
+        min_qty: 5,
+        image_url: "",
+        group_id: null,
+        group_name: "",
+        stock_type: "ready_food" as const,
+        low_stock: false,
+      }],
+    }),
+    createWarehouseMove: vi.fn(),
+    deleteWarehouseMove: vi.fn(),
+    getWarehouseMoves: vi.fn().mockResolvedValue([]),
+    getWarehouseRecipe: vi.fn().mockResolvedValue([]),
+    getWarehouseProduction: vi.fn().mockResolvedValue([]),
     switchCabinet: vi.fn().mockResolvedValue({
       account_id: 7,
       account_type: "business",
@@ -705,7 +729,7 @@ describe("profile cabinets", () => {
       .toBeInTheDocument();
   });
 
-  it("opens live staff management, migrated documents and combined warehouse data", async () => {
+  it("opens live staff management, migrated documents and typed warehouse data", async () => {
     const user = userEvent.setup();
     render(
       <BusinessProfile
@@ -728,6 +752,7 @@ describe("profile cabinets", () => {
     const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
     await user.click(warehouseButtons.at(-1)!);
     expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Keyingi FIFO")).toBeInTheDocument();
   });
 
   it("opens the live typed Kassa instead of the legacy payload list", async () => {

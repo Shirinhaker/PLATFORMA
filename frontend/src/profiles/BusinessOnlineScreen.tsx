@@ -144,6 +144,8 @@ type Props = {
     notification: NotificationRead,
   ) => void | Promise<void>;
   onNotificationUnreadChange?: (count: number) => void;
+  initialItemDraft?: BusinessOnlineRecord | null;
+  onInitialItemDraftConsumed?: () => void;
 };
 
 type ResourceState = Partial<Record<
@@ -271,6 +273,8 @@ export function BusinessOnlineScreen({
   onOpenOrder,
   onOpenNotification,
   onNotificationUnreadChange,
+  initialItemDraft,
+  onInitialItemDraftConsumed,
 }: Props) {
   const primary = VIEW_RESOURCE[view];
   const [resources, setResources] = useState<ResourceState>(() => ({
@@ -329,6 +333,13 @@ export function BusinessOnlineScreen({
   const [replyText, setReplyText] = useState("");
   const [subscreenBack, setSubscreenBack] = useState<(() => void) | null>(null);
   const [subscreenTitle, setSubscreenTitle] = useState("");
+
+  useEffect(() => {
+    if (view !== "items" || !initialItemDraft) return;
+    setDraft({ ...initialItemDraft });
+    setForm("items:new");
+    onInitialItemDraftConsumed?.();
+  }, [initialItemDraft, onInitialItemDraftConsumed, view]);
 
   const items = primary ? resources[primary] ?? [] : [];
   const groups = resources.item_groups ?? [];

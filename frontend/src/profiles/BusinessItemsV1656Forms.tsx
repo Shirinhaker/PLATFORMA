@@ -130,6 +130,7 @@ export function ItemForm({
   ));
   const kind = selectedGroup ? rowKind(selectedGroup) : rowKind(draft);
   const trackStock = Boolean(Number(draft.track_stock ?? 0));
+  const dining = direction === "Umumiy ovqatlanish";
   const note = String(draft.note ?? draft.description ?? "");
   const queueVisible = kind === "service" && QUEUE_DIRECTIONS.some(
     (value) => value === direction,
@@ -205,6 +206,55 @@ export function ItemForm({
               <option value="1">Ha — qoldiq yuritiladi</option>
             </select>
           </label>
+          {trackStock && dining && (
+            <label className="field">
+              Ombor turi
+              <select
+                className="input"
+                aria-label="Ombor turi"
+                value={String(draft.stock_type ?? "ready_food")}
+                onChange={(event) => setDraft({
+                  ...draft,
+                  stock_type: event.currentTarget.value,
+                })}
+              >
+                <option value="ready_food">Tayyor taom</option>
+                <option value="raw_material">Xomashyo</option>
+              </select>
+            </label>
+          )}
+          {trackStock && !editing && (
+            <label className="field">
+              Boshlang‘ich qoldiq
+              <input
+                className="input"
+                aria-label="Boshlang‘ich qoldiq"
+                inputMode="decimal"
+                value={String(draft.stock_qty ?? "")}
+                placeholder="0"
+                onChange={(event) => setDraft({
+                  ...draft,
+                  stock_qty: event.currentTarget.value,
+                })}
+              />
+            </label>
+          )}
+          {trackStock && (
+            <label className="field">
+              Minimal qoldiq
+              <input
+                className="input"
+                aria-label="Minimal qoldiq"
+                inputMode="decimal"
+                value={String(draft.min_qty ?? "")}
+                placeholder="0"
+                onChange={(event) => setDraft({
+                  ...draft,
+                  min_qty: event.currentTarget.value,
+                })}
+              />
+            </label>
+          )}
         </>
       )}
       <label className="field">

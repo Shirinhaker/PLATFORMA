@@ -936,4 +936,26 @@ describe("ApiClient", () => {
         ["https://api.example/api/v1/payments/my", "GET"],
       ]);
   });
+
+  it("uses the typed K24 warehouse endpoints", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+
+    await client.getWarehouseItems();
+    await client.getWarehouseMoves(7);
+    await client.getWarehouseRecipe(7);
+    await client.getWarehouseProduction(25);
+
+    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method]))
+      .toEqual([
+        ["https://api.example/api/v1/warehouse/items", "GET"],
+        ["https://api.example/api/v1/warehouse/items/7/moves", "GET"],
+        ["https://api.example/api/v1/warehouse/items/7/recipe", "GET"],
+        ["https://api.example/api/v1/warehouse/production?limit=25", "GET"],
+      ]);
+  });
 });

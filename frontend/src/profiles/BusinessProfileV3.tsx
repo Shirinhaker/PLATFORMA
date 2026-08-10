@@ -60,6 +60,10 @@ import {
   type StatisticsApi,
 } from "./StatisticsV1656";
 import {
+  WarehouseV1656,
+  type WarehouseApi,
+} from "../inventory/WarehouseV1656";
+import {
   MessagesV1656,
   type MessagesApi,
 } from "../messages/MessagesV1656";
@@ -151,6 +155,13 @@ export type BusinessProfileApiV3 = Pick<
   | "createExpenseCategory"
   | "createExpense"
   | "deleteExpense"
+  | "getWarehouseItems"
+  | "configureWarehouseItem"
+  | "createWarehouseMove"
+  | "deleteWarehouseMove"
+  | "getWarehouseMoves"
+  | "getWarehouseRecipe"
+  | "getWarehouseProduction"
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"
@@ -233,6 +244,7 @@ type Screen =
   | "cash"
   | "debt"
   | "expenses"
+  | "warehouse"
   | "statistics"
   | "education-management"
   | "education-statistics";
@@ -379,6 +391,17 @@ function supportsStatistics(
   ));
 }
 
+function supportsWarehouse(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & WarehouseApi {
+  return [
+    "getWarehouseItems", "createWarehouseMove", "deleteWarehouseMove",
+    "getWarehouseMoves", "getWarehouseRecipe", "getWarehouseProduction",
+  ].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
 function supportsEducationStatistics(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & EducationStatisticsApi {
@@ -470,6 +493,7 @@ export function BusinessProfileV3({
   const [educationView, setEducationView] = useState<EducationManagementView>(
     "education-schedule",
   );
+  const [initialItemDraft, setInitialItemDraft] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -692,6 +716,8 @@ export function BusinessProfileV3({
         initialOrderId={orderTarget}
         onOpenNotification={openNotification}
         onNotificationUnreadChange={setNotificationUnread}
+        initialItemDraft={initialItemDraft}
+        onInitialItemDraftConsumed={() => setInitialItemDraft(null)}
         onOpenOrder={async (orderId) => {
           if (typeof api.getOrderInbox !== "function") return;
           const rows = await api.getOrderInbox();
@@ -762,6 +788,41 @@ export function BusinessProfileV3({
     );
   }
 
+  if (screen === "warehouse" && supportsWarehouse(api)) {
+    const permissions = identity.permissions ?? [];
+    const owner = identity.actor_type !== "staff";
+    const canManage = owner || permissions.includes("ombor");
+    const canProduce = canManage || permissions.includes("production");
+    const canViewCosts = owner || permissions.some((permission) => (
+      permission === "expenses" || permission === "statistics"
+    ));
+    return withActionBanner(
+      <WarehouseV1656
+        api={api}
+        direction={profile.direction}
+        canManage={canManage}
+        canProduce={canProduce}
+        canViewCosts={canViewCosts}
+        onAddProduct={canUseView(identity, "items") ? (nextStockType) => {
+          const itemsMenu = visibleMenus(profile, ONLINE_MENUS, identity)
+            .find((menu) => menu.view === "items");
+          if (!itemsMenu) return;
+          setInitialItemDraft({
+            kind: "product",
+            unit: "dona",
+            track_stock: 1,
+            stock_type: nextStockType,
+            stock_qty: "",
+            min_qty: 0,
+          });
+          setOnlineMenu(itemsMenu);
+          setScreen("online");
+        } : undefined}
+        onBack={() => setScreen("cabinet")}
+      />,
+    );
+  }
+
   if (screen === "statistics" && supportsStatistics(api)) {
     return withActionBanner(
       <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
@@ -825,6 +886,10 @@ export function BusinessProfileV3({
     }
     if (menu.view === "expenses" && supportsExpenses(api)) {
       setScreen("expenses");
+      return;
+    }
+    if (menu.view === "warehouse" && supportsWarehouse(api)) {
+      setScreen("warehouse");
       return;
     }
     if (menu.view === "statistics" && supportsStatistics(api)) {

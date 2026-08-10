@@ -142,6 +142,25 @@ class FakeCatalogSync:
         })
 
 
+class FakeInventorySync:
+    def __init__(self):
+        self.calls = []
+
+    async def __call__(
+        self,
+        session,
+        *,
+        account_id,
+        payload,
+        changed_resources,
+    ):
+        self.calls.append({
+            "account_id": account_id,
+            "payload": deepcopy(payload),
+            "changed_resources": set(changed_resources),
+        })
+
+
 def profile() -> BusinessProfile:
     return BusinessProfile(
         account_id=7,
@@ -221,10 +240,12 @@ async def test_create_uses_relational_primary_store_and_syncs_json_fallback():
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
     catalog_sync = FakeCatalogSync()
+    inventory_sync = FakeInventorySync()
     service = BusinessOnlineService(
         database.session,
         repository,
         catalog_sync=catalog_sync,
+        inventory_sync=inventory_sync,
     )
 
     item, rows = await service.create_record(
@@ -245,6 +266,8 @@ async def test_create_uses_relational_primary_store_and_syncs_json_fallback():
     assert catalog_sync.calls[0]["owner_name"] == "Muhr"
     assert catalog_sync.calls[0]["changed_resources"] == {"items"}
     assert catalog_sync.calls[0]["payload"]["items"] == rows
+    assert inventory_sync.calls[0]["account_id"] == 7
+    assert inventory_sync.calls[0]["changed_resources"] == {"items"}
 
 
 @pytest.mark.asyncio

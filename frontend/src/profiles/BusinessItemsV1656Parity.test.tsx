@@ -223,6 +223,31 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     }));
   });
 
+  it("v1656 Ombor maydonlarini yangi mahsulotda to‘liq saqlaydi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "Guruch", track_stock: 1 }}
+        actions={{ create }}
+        direction="Umumiy ovqatlanish"
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Ombor turi"), "raw_material");
+    await user.type(screen.getByLabelText("Boshlang‘ich qoldiq"), "25.5");
+    await user.type(screen.getByLabelText("Minimal qoldiq"), "4");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      track_stock: 1,
+      stock_type: "raw_material",
+      stock_qty: "25.5",
+      min_qty: "4",
+    }));
+  });
+
   it("bo'sh guruh nomida monolitdagi xatoni ko'rsatadi", async () => {
     const user = userEvent.setup();
     const create = vi.fn().mockResolvedValue(undefined);
