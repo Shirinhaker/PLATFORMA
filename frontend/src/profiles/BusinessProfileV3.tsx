@@ -68,6 +68,10 @@ import {
   type DocumentsApi,
 } from "../documents/DocumentsV1656";
 import {
+  AIAssistantV1656,
+  type AIAssistantApi,
+} from "../ai-assistant/AIAssistantV1656";
+import {
   MessagesV1656,
   type MessagesApi,
 } from "../messages/MessagesV1656";
@@ -177,6 +181,10 @@ export type BusinessProfileApiV3 = Pick<
   | "deleteDocument"
   | "sendDocument"
   | "respondDocument"
+  | "getAIChatHistory"
+  | "sendAIChatMessage"
+  | "getAIStatus"
+  | "generateAIDocumentDraft"
   | "getStatistics"
   | "getStatisticsNav"
   | "getEducationStatistics"
@@ -261,6 +269,7 @@ type Screen =
   | "expenses"
   | "warehouse"
   | "documents"
+  | "ai-assistant"
   | "statistics"
   | "education-management"
   | "education-statistics";
@@ -275,6 +284,14 @@ function supportsFollowLists(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & FollowListsApi {
   return ["getFollowers", "getFollowing"].every((method) => (
+    typeof api[method as keyof BusinessProfileApiV3] === "function"
+  ));
+}
+
+function supportsAIAssistant(
+  api: BusinessProfileApiV3,
+): api is BusinessProfileApiV3 & AIAssistantApi {
+  return ["getAIChatHistory", "sendAIChatMessage"].every((method) => (
     typeof api[method as keyof BusinessProfileApiV3] === "function"
   ));
 }
@@ -865,6 +882,12 @@ export function BusinessProfileV3({
     );
   }
 
+  if (screen === "ai-assistant" && supportsAIAssistant(api)) {
+    return withActionBanner(
+      <AIAssistantV1656 api={api} onBack={() => setScreen("cabinet")} />,
+    );
+  }
+
   if (screen === "statistics" && supportsStatistics(api)) {
     return withActionBanner(
       <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
@@ -944,6 +967,10 @@ export function BusinessProfileV3({
     }
     if (menu.view === "statistics" && supportsStatistics(api)) {
       setScreen("statistics");
+      return;
+    }
+    if (menu.view === "ai-assistant" && supportsAIAssistant(api)) {
+      setScreen("ai-assistant");
       return;
     }
     if (
