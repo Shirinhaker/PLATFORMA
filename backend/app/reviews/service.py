@@ -270,9 +270,9 @@ class ReviewService:
             raise ApiError(404, "review_target_not_found", "Obyekt topilmadi.")
         if (
             kind is ReviewTargetKind.SPECIALIST
-            and (
-                not isinstance(target.specialist_profile, dict)
-                or not target.specialist_profile
+            and not await self._repository.has_specialist(
+                session,
+                user_account_id=target.account_id,
             )
         ):
             raise ApiError(404, "review_target_not_found", "Obyekt topilmadi.")
