@@ -194,6 +194,25 @@ async def test_user_cannot_request_business_logo(media_clients):
     assert response.json()["code"] == "media_purpose_forbidden"
 
 
+async def test_only_user_receives_specialist_media_grant(media_clients):
+    response = await media_clients.user.post(
+        "/api/v1/media/upload-grants",
+        headers={"X-CSRF-Token": media_clients.user.csrf},
+        json=upload_request("specialist_offer_image"),
+    )
+    assert response.status_code == 200
+    assert response.json()["object_key"].startswith(
+        "private/user/42/specialist_offer_image/"
+    )
+
+    forbidden = await media_clients.business.post(
+        "/api/v1/media/upload-grants",
+        headers={"X-CSRF-Token": media_clients.business.csrf},
+        json=upload_request("specialist_offer_image"),
+    )
+    assert forbidden.status_code == 403
+
+
 async def test_business_receives_only_logo_prefix(media_clients):
     response = await media_clients.business.post(
         "/api/v1/media/upload-grants",
