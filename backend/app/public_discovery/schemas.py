@@ -217,11 +217,40 @@ class PublicProfileListing(BaseModel):
     image_url: str = Field(default="", max_length=2048)
 
 
+class PublicSpecialistCredential(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    image_url: str = Field(default="", max_length=2048)
+
+
+class PublicSpecialistOffer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    kind: str = Field(pattern="^(service|product)$")
+    name: str = Field(min_length=1, max_length=160)
+    price_text: str = Field(default="", max_length=120)
+    note: str = Field(default="", max_length=1000)
+    image_url: str = Field(default="", max_length=2048)
+
+
+class PublicSpecialistPortfolio(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    media_type: str = Field(pattern="^(photo|video)$")
+    media_url: str = Field(default="", max_length=2048)
+
+
 class PublicSpecialistSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    profession: str = Field(default="", max_length=160)
-    description: str = Field(default="", max_length=2000)
+    profession: str = Field(default="", max_length=180)
+    description: str = Field(default="", max_length=3000)
+    credentials: list[PublicSpecialistCredential] = Field(default_factory=list)
+    offers: list[PublicSpecialistOffer] = Field(default_factory=list)
+    portfolio: list[PublicSpecialistPortfolio] = Field(default_factory=list)
 
 
 class PublicProfileDetail(BaseModel):

@@ -148,8 +148,6 @@ class UserProfilePatch(ProfilePatch):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_exact: bool | None = None
-    specialist_profile: dict[str, Any] | None = None
-
     @field_validator("public_username", mode="before")
     @classmethod
     def validate_public_username(cls, value):

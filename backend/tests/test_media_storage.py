@@ -102,6 +102,50 @@ def test_user_cannot_create_logo_grant(s3_client):
         )
 
 
+def test_specialist_media_uses_exact_v1656_formats_and_limits(s3_client):
+    storage = R2Storage(s3_client, bucket="koprik-test")
+    credential = storage.create_upload_grant(
+        owner_type=AccountType.USER,
+        owner_id=42,
+        purpose="specialist_credential",
+        filename="diplom.webp",
+        content_type="image/webp",
+        size_bytes=1024,
+    )
+    assert credential.object_key.startswith(
+        "private/user/42/specialist_credential/"
+    )
+    video = storage.create_upload_grant(
+        owner_type=AccountType.USER,
+        owner_id=42,
+        purpose="specialist_portfolio_video",
+        filename="work.mp4",
+        content_type="video/mp4",
+        size_bytes=30 * 1024 * 1024,
+    )
+    assert video.object_key.startswith(
+        "private/user/42/specialist_portfolio_video/"
+    )
+    with pytest.raises(UploadRejected, match="30 MB"):
+        storage.create_upload_grant(
+            owner_type=AccountType.USER,
+            owner_id=42,
+            purpose="specialist_portfolio_video",
+            filename="large.mp4",
+            content_type="video/mp4",
+            size_bytes=30 * 1024 * 1024 + 1,
+        )
+    with pytest.raises(UploadRejected, match="JPG, PNG yoki WEBP"):
+        storage.create_upload_grant(
+            owner_type=AccountType.USER,
+            owner_id=42,
+            purpose="specialist_offer_image",
+            filename="animated.gif",
+            content_type="image/gif",
+            size_bytes=1024,
+        )
+
+
 def test_migration_upload_sets_checksum_metadata_and_verifies_head():
     class RecordingClient:
         def __init__(self):
