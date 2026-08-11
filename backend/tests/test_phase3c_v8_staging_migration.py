@@ -112,3 +112,34 @@ def test_v8_rollout_script_preserves_the_required_order():
         < second_run
         < normalization
     )
+
+
+def test_v8_production_promotion_requires_exact_verified_candidate():
+    script = (
+        Path(__file__).parents[2]
+        / "scripts/Koprik-Phase3C-Promote-Cabinet-Production-V8.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "MIGRATION_MODE=PROMOTE_VERIFIED_V8_CANDIDATE" in script
+    assert "candidate_environment_must_remain_staging_before_cutover" in script
+    assert "phase3c_public_flag_must_be_disabled" in script
+    assert "candidate_database_not_at_current_head" in script
+    assert "approved_staging_run_not_found" in script
+    assert "approved_staging_verification_failed" in script
+    assert "media_pending" in script
+    assert "media_missing" in script
+    assert "media_invalid" in script
+    assert "media_failed" in script
+    assert "PRODUCTION_V8_BACKUP_CONFIRMATION_REQUIRED" in script
+    assert "PRODUCTION_V8_MAINTENANCE_CONFIRMATION_REQUIRED" in script
+    assert "PRODUCTION_V8_SOURCE_WRITES_STOPPED_CONFIRMATION_REQUIRED" in script
+    assert "--environment production" in script
+    assert "--confirm-environment production" in script
+    assert "--confirm-snapshot-sha256" in script
+    assert "--maintenance-enabled" in script
+    assert "--approved-staging-run-id" in script
+    assert "PHASE3C_V8_PRODUCTION_PROMOTION_COMPLETE" in script
+    assert "TRAFFIC_NOT_CHANGED=1" in script
+    # Production bosqichida sxema qayta qurilmaydi: u V8 stagingdan o'tgan
+    # aynan o'sha candidate DB'ni promote qiladi.
+    assert "alembic upgrade head" not in script
