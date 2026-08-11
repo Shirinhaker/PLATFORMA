@@ -743,6 +743,7 @@ describe("ApiClient", () => {
       }))
       .mockResolvedValueOnce(jsonResponse({
         account_id: 7,
+        public_id: "u_1234567890abcdef",
         name: "Yangi ism",
         phone: "",
         public_username: "",
@@ -753,6 +754,7 @@ describe("ApiClient", () => {
         longitude: null,
         location_exact: false,
         avatar_object_key: "",
+        avatar_url: "",
         avatar_x: 50,
         avatar_y: 50,
         avatar_zoom: 1,

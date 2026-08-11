@@ -36,6 +36,7 @@ const provider: BusinessQueueProvider = {
 
 const baseProfile: UserProfileData = {
   account_id: 5,
+  public_id: "u_1234567890abcdef",
   name: "Ali",
   phone: "+998901234567",
   public_username: "ali",
@@ -46,6 +47,7 @@ const baseProfile: UserProfileData = {
   longitude: null,
   location_exact: false,
   avatar_object_key: "",
+  avatar_url: "",
   avatar_x: 50,
   avatar_y: 50,
   avatar_zoom: 1,
@@ -247,7 +249,7 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
     );
 
     await user.click(await screen.findByRole("button", {
-      name: "Bildirishnomalarim",
+      name: /Bildirishnomalarim/,
     }));
     await user.click(await screen.findByText("Navbatingiz keldi"));
 

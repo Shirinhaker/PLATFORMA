@@ -76,6 +76,7 @@ class UserProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     account_id: int
+    public_id: str = ""
     name: str
     phone: str
     public_username: str
@@ -86,6 +87,7 @@ class UserProfileRead(BaseModel):
     longitude: float | None
     location_exact: bool
     avatar_object_key: str
+    avatar_url: str = ""
     avatar_x: float
     avatar_y: float
     avatar_zoom: float
@@ -96,6 +98,11 @@ class UserProfileRead(BaseModel):
     recent_activity: list[CabinetActivity] = Field(default_factory=list)
     specialist_profile: dict[str, Any] = Field(default_factory=dict)
     cabinet_payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("public_id", mode="before")
+    @classmethod
+    def normalize_public_id(cls, value):
+        return "" if value is None else value
 
     @field_validator("latitude", "longitude", mode="before")
     @classmethod

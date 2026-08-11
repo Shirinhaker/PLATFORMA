@@ -387,6 +387,11 @@ async def test_user_avatar_update_invalidates_cached_me(profile_clients):
     )
 
     assert updated.status_code == 200
+    assert updated.json()["avatar_url"]
+    assert (
+        "private/user/1/avatar/0123456789abcdef0123456789abcdef.webp"
+        in updated.json()["avatar_url"]
+    )
     assert await profile_clients.redis.get(cache_key) is None
     after = await profile_clients.first_user.get("/api/v1/me")
     assert after.status_code == 200

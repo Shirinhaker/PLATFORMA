@@ -797,6 +797,7 @@ export type EducationPayrollCreate = {
 
 export type UserProfile = {
   account_id: number;
+  public_id: string;
   name: string;
   phone: string;
   public_username: string;
@@ -807,6 +808,7 @@ export type UserProfile = {
   longitude: number | null;
   location_exact: boolean;
   avatar_object_key: string;
+  avatar_url: string;
   avatar_x: number;
   avatar_y: number;
   avatar_zoom: number;
