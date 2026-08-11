@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
 
-import type { SessionIdentity } from "../api/types";
+import type { AccountType, SessionIdentity } from "../api/types";
 import type { AuthApi } from "./AuthFlow";
+import { openTelegramLink, refreshPendingAuth } from "./auth-pending";
 
 
 type Props = {
   api: AuthApi;
   purpose: "login" | "register";
+  accountType?: AccountType;
   requestId: number;
   deepLink: string;
   codeSent: boolean;
   resendAfter: number;
   onAuthenticated: (identity: SessionIdentity) => void;
+  onVerified?: () => void;
   onBack?: () => void;
 };
 
 type Credentials = {
   login: string;
   password: string;
+  accountType: AccountType;
   identity: SessionIdentity;
 };
 
@@ -30,11 +34,12 @@ function errorMessage(error: unknown) {
 export function TelegramCodeForm({
   api,
   purpose,
+  accountType,
   requestId,
   deepLink,
-  codeSent,
   resendAfter,
   onAuthenticated,
+  onVerified,
   onBack,
 }: Props) {
   const [code, setCode] = useState("");
@@ -45,16 +50,16 @@ export function TelegramCodeForm({
 
   useEffect(() => {
     if (countdown <= 0) return;
-    const timer = window.setInterval(() => {
+    const timer = window.setTimeout(() => {
       setCountdown((value) => Math.max(0, value - 1));
     }, 1000);
-    return () => window.clearInterval(timer);
-  }, [countdown > 0]);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
 
   async function verify(event: React.FormEvent) {
     event.preventDefault();
     if (!/^\d{6}$/.test(code)) {
-      setError("6 xonali kodni to‘liq kiriting.");
+      setError("6 xonali kodni kiriting.");
       return;
     }
     setBusy(true);
@@ -63,11 +68,12 @@ export function TelegramCodeForm({
       const body = {
         request_id: requestId,
         code,
-        device_name: navigator.userAgent.slice(0, 200),
+        device_name: navigator.userAgent.slice(0, 100),
       };
       const result = purpose === "register"
         ? await api.verifyRegistration(body)
         : await api.verifyLogin(body);
+      onVerified?.();
       const identity = await api.getSession();
       if (purpose === "register") {
         if (!result.login || !result.password) {
@@ -76,13 +82,14 @@ export function TelegramCodeForm({
         setCredentials({
           login: result.login,
           password: result.password,
+          accountType: result.account_type ?? accountType ?? identity.account_type,
           identity,
         });
       } else {
         onAuthenticated(identity);
       }
-    } catch (reason) {
-      setError(errorMessage(reason));
+    } catch (requestError) {
+      setError(errorMessage(requestError));
     } finally {
       setBusy(false);
     }
@@ -93,93 +100,111 @@ export function TelegramCodeForm({
     setError("");
     try {
       const result = await api.resendChallenge(requestId);
+      refreshPendingAuth(result);
       setCountdown(result.resend_after);
-    } catch (reason) {
-      setError(errorMessage(reason));
+      openTelegramLink(deepLink);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
     } finally {
       setBusy(false);
     }
   }
 
-  async function copyCredentials() {
-    if (!credentials) return;
-    await navigator.clipboard?.writeText(
-      `Login: ${credentials.login}\nParol: ${credentials.password}`,
+  if (credentials) {
+    const business = credentials.accountType === "business";
+    return (
+      <main className="koprik-auth-stage">
+        <section className="koprik-flow-shell koprik-auth-shell auth-v1656 credential-card">
+          <h1 className="lead">
+            {business ? "Biznes profilingiz ochildi! ✅" : "Ro'yxatdan o'tdingiz! ✅"}
+          </h1>
+          <p className="lead-sub">
+            {business
+              ? "Biznes kabinet uchun yagona login va parolni xavfsiz joyda saqlab qo'ying."
+              : "Quyidagi login va parolni xavfsiz joyda saqlab qo'ying."}
+          </p>
+          <dl className="cred-box">
+            <div><dt>🔑 Login</dt><dd>{credentials.login}</dd></div>
+            <div><dt>🔐 Parol</dt><dd>{credentials.password}</dd></div>
+          </dl>
+          <button
+            className="btn btn-primary btn-block"
+            type="button"
+            onClick={() => onAuthenticated(credentials.identity)}
+          >
+            Kabinetga kirish
+          </button>
+        </section>
+      </main>
     );
   }
 
-  if (credentials) {
-    return (
-      <section className="auth-card credential-card">
-        <p className="session-panel__eyebrow">Akkaunt yaratildi</p>
-        <h1>Login va parolni saqlang</h1>
-        <p role="alert">
-          Bu ma’lumotlar shu ekranda faqat bir marta ko‘rsatiladi.
-        </p>
-        <dl>
-          <div><dt>Login</dt><dd>{credentials.login}</dd></div>
-          <div><dt>Parol</dt><dd>{credentials.password}</dd></div>
-        </dl>
-        <button type="button" className="button-secondary" onClick={copyCredentials}>
-          Nusxalash
-        </button>
-        <button
-          type="button"
-          onClick={() => onAuthenticated(credentials.identity)}
-        >
-          Kabinetga kirish
-        </button>
-      </section>
-    );
-  }
+  const resendLabel = purpose === "register" ? "Yangi kod olish" : "Kodni qayta yuborish";
+  const backLabel = purpose === "register"
+    ? "Ma'lumotlarni o'zgartirish"
+    : "← Login va parolga qaytish";
 
   return (
-    <form className="auth-card auth-form" onSubmit={verify}>
-      <div>
-        <p className="session-panel__eyebrow">Telegram tasdiqlashi</p>
-        <h1>6 xonali kod</h1>
-        {codeSent ? (
-          <p>Kod bog‘langan Telegram akkauntingizga yuborildi.</p>
-        ) : (
-          <p>
-            Botni ochib tasdiqlashni boshlang.{" "}
-            <a href={deepLink} target="_blank" rel="noreferrer">
-              Telegramni ochish
-            </a>
-          </p>
-        )}
-      </div>
-      <label>
-        6 xonali kod
-        <input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="\d{6}"
-          maxLength={6}
-          required
-          value={code}
-          onChange={(event) => setCode(
-            event.currentTarget.value.replace(/\D/g, "").slice(0, 6),
-          )}
-        />
-      </label>
-      {error && <p className="form-error" role="alert">{error}</p>}
-      <button type="submit" disabled={busy || code.length !== 6}>
-        {busy ? "Tekshirilmoqda…" : "Tasdiqlash"}
-      </button>
-      <button
-        type="button"
-        className="button-secondary"
-        disabled={busy || countdown > 0}
-        onClick={resend}
-      >
-        {countdown > 0 ? `Qayta yuborish (${countdown})` : "Qayta yuborish"}
-      </button>
-      {onBack && (
-        <button type="button" className="button-link" onClick={onBack}>
-          Orqaga
+    <main className="koprik-auth-stage">
+      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={verify}>
+        <h1 className="lead">Telegram orqali tasdiqlash</h1>
+        <p className="lead-sub">Telegram bot yuborgan 6 xonali kodni kiriting.</p>
+        <label className="field">
+          <span>Tasdiqlash kodi</span>
+          <input
+            className="input"
+            autoFocus
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            placeholder="000000"
+            required
+            value={code}
+            onChange={(event) => setCode(
+              event.currentTarget.value.replace(/\D/g, "").slice(0, 6),
+            )}
+          />
+        </label>
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <button
+          className="btn btn-primary btn-block"
+          type="submit"
+          disabled={busy || code.length !== 6}
+        >
+          {busy ? "Tekshirilmoqda..." : "Tasdiqlash va kirish"}
         </button>
-      )}
-    </form>
+        {deepLink ? (
+          <button
+            className="btn btn-soft btn-block"
+            type="button"
+            onClick={() => openTelegramLink(deepLink)}
+          >
+            ✈️ Telegramni ochish
+          </button>
+        ) : null}
+        <button
+          className="btn btn-outline btn-block"
+          type="button"
+          disabled={busy || countdown > 0}
+          onClick={resend}
+        >
+          {countdown > 0 ? `${resendLabel} (${countdown})` : resendLabel}
+        </button>
+        {onBack ? (
+          purpose === "login" ? (
+            <p className="form-foot">
+              <button className="form-foot__action" type="button" onClick={onBack}>
+                {backLabel}
+              </button>
+            </p>
+          ) : (
+            <button className="btn btn-outline btn-block" type="button" onClick={onBack}>
+              {backLabel}
+            </button>
+          )
+        ) : null}
+      </form>
+    </main>
   );
 }

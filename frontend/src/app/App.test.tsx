@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 
@@ -129,8 +129,12 @@ function profileApi(identity = userIdentity) {
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.sessionStorage.clear();
     window.history.replaceState({}, "", "/");
+    vi.spyOn(window, "open").mockReturnValue(null);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it("requires a district before opening Home for the first time", async () => {
     render(<App api={guestApi()} />);
@@ -140,7 +144,7 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Kabinet" }))
       .not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Koprik’ga kirish" }))
+    expect(screen.queryByRole("heading", { name: "Kabinetga kirish" }))
       .not.toBeInTheDocument();
   });
 
@@ -284,7 +288,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
 
     expect(
-      screen.getByRole("heading", { name: "Koprik’ga kirish" }),
+      screen.getByRole("heading", { name: "Kabinetga kirish" }),
     ).toBeInTheDocument();
   });
 
@@ -315,14 +319,13 @@ describe("App", () => {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
-    await user.click(
-      screen.getAllByRole("button", { name: "Kirish" }).at(-1)!,
-    );
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", { name: "Davom etish" }));
-    await user.type(await screen.findByLabelText("6 xonali kod"), "123456");
-    await user.click(screen.getByRole("button", { name: "Tasdiqlash" }));
+    await user.click(screen.getByRole("button", {
+      name: "Telegram orqali tasdiqlash",
+    }));
+    await user.type(await screen.findByLabelText("Tasdiqlash kodi"), "123456");
+    await user.click(screen.getByRole("button", { name: "Tasdiqlash va kirish" }));
 
     expect(
       await screen.findByRole("heading", { name: "Biznes kabinet" }),
