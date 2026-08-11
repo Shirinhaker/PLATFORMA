@@ -55,6 +55,7 @@ import {
   type DriverCabinetApi,
 } from "../taxi/DriverCabinetV1656";
 import { MyRidesV1656 } from "../taxi/MyRidesV1656";
+import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -69,6 +70,8 @@ export type UserProfileApi = Pick<
   | "logout"
 > & Partial<Pick<
   ApiClient,
+  | "getBusinessCredentials"
+  | "updateBusinessCredentials"
   | "getMyListings"
   | "createListing"
   | "deleteListing"
@@ -776,6 +779,21 @@ export function UserProfile({
     );
   }
 
+  if (view === "settings") {
+    return withActionBanner(
+      <AccountSettingsV1656
+        api={api}
+        identity={identity}
+        canManageBusinessCredentials={Boolean(profile.has_business)}
+        onBack={() => setView("dashboard")}
+        onNotifications={supportsNotifications(api)
+          ? () => setView("notifications")
+          : undefined}
+        onLogout={logout}
+      />,
+    );
+  }
+
   if (selectedSection?.payload) {
     return withActionBanner(
       <CabinetDataView
@@ -834,13 +852,13 @@ export function UserProfile({
     );
   }
 
-  if (view === "profile" || view === "settings") {
+  if (view === "profile") {
     return withActionBanner(
       <main className="profile-shell">
         <header className="profile-heading">
           <div>
             <p className="session-panel__eyebrow">{identity.login}</p>
-            <h1>{view === "settings" ? "Sozlamalar" : "Profilim"}</h1>
+            <h1>Profilim</h1>
           </div>
           <button
             type="button"

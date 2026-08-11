@@ -184,6 +184,14 @@ function profileApi() {
     deleteSpecialistPortfolio: vi.fn(),
     getBusinessProfile: vi.fn().mockResolvedValue(businessProfile),
     updateBusinessProfile: vi.fn().mockResolvedValue(businessProfile),
+    getBusinessCredentials: vi.fn().mockResolvedValue({
+      ok: true,
+      login: "b_turon",
+    }),
+    updateBusinessCredentials: vi.fn().mockResolvedValue({
+      ok: true,
+      login: "b_turon",
+    }),
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
@@ -674,6 +682,38 @@ describe("profile cabinets", () => {
       { name: "Bildirishnoma filtrlari" },
     ));
     expect(await screen.findByText("Qumqo‘rg‘on")).toBeInTheDocument();
+  });
+
+  it("opens the shared v1656 settings screen from both cabinets", async () => {
+    const user = userEvent.setup();
+    const userCabinet = render(
+      <UserProfile
+        api={profileApi()}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Sozlamalar" }));
+    expect(screen.getByRole("heading", { name: "Sozlamalar" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Ism")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Login va parol/ }));
+    expect(await screen.findByText("b_turon")).toBeInTheDocument();
+
+    userCabinet.unmount();
+    render(
+      <BusinessProfile
+        api={profileApi()}
+        identity={businessIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Sozlamalar/ }));
+    await user.click(screen.getByRole("button", { name: /Login va parol/ }));
+    expect(await screen.findByText("b_turon")).toBeInTheDocument();
   });
 
   it("loads saved E'lonlar from the relational save API", async () => {

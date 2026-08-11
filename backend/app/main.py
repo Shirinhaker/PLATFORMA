@@ -12,6 +12,8 @@ from app.advertisements.authoring_router import (
 )
 from app.advertisements.router import router as advertisements_router
 from app.advertisements.service import AdvertisementAuthoringService
+from app.account_settings.router import router as account_settings_router
+from app.account_settings.service import AccountSettingsService
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
@@ -135,6 +137,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             database.session,
             redis_client,
             resolved,
+        )
+        app.state.account_settings_service = AccountSettingsService(
+            database.session,
         )
         app.state.profile_summary_service = ProfileSummaryService(
             database.session,
@@ -297,6 +302,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     _remove_legacy_login_start_route()
     app.include_router(shared_login_router)
     app.include_router(auth_router)
+    app.include_router(account_settings_router)
     app.include_router(profiles_router)
     app.include_router(business_online_router)
     app.include_router(public_discovery_router)

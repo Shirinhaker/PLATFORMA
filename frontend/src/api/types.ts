@@ -24,6 +24,16 @@ export type SessionIdentity = {
   permissions?: string[];
 };
 
+export type BusinessCredentials = {
+  ok: boolean;
+  login: string;
+};
+
+export type BusinessCredentialsUpdate = {
+  new_login: string;
+  new_password: string;
+};
+
 export type StaffScheduleDay = {
   on: boolean;
   start: string;
