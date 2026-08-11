@@ -9,6 +9,9 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.core.config import Settings
+# Domenlararo tashqi kalitlar yechilishi uchun barcha modellar kerak
+# (`stories.created_by_staff_id` → `staff_members.id`).
+from app.db import all_models  # noqa: F401
 from app.db.session import Database
 from app.legacy_migration.model import MigrationIssue, MigrationRun
 from app.legacy_migration.report import (

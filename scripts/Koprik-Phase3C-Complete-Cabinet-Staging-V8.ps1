@@ -40,7 +40,11 @@ function Invoke-RemoteBash {
     $Utf8NoBom = New-Object Text.UTF8Encoding($false)
 
     try {
-        [IO.File]::WriteAllText($InputPath, $Script, $Utf8NoBom)
+        # Windows nusxasida bu fayl CRLF bilan olinadi va here-string ham
+        # CRLF saqlaydi. Masofaviy bash uchun `pipefail\r` — mavjud bo'lmagan
+        # parametr, ya'ni skript hech qachon ishlamaydi. LF ga keltiriladi.
+        $UnixScript = $Script -replace "`r`n", "`n" -replace "`r", "`n"
+        [IO.File]::WriteAllText($InputPath, $UnixScript, $Utf8NoBom)
         $Process = Start-Process `
             -FilePath "ssh.exe" `
             -ArgumentList @($SshTarget, "bash -s") `
@@ -262,6 +266,12 @@ MANIFEST="$SNAPSHOT_DIR/media-manifest.json"
 test -f "$SOURCE" || fail "source_database_not_found_after_extract"
 test -d "$MEDIA" || fail "media_directory_not_found_after_extract"
 
+# v1616 demo yozuvlari migratsiya doirasidan chiqariladi (egasining qarori).
+# Tozalash arxivdan chiqarilgan **vaqtinchalik nusxada** bajariladi — jonli
+# v1656 bazasiga tegilmaydi. Snapshot shundan keyin olinadi, shuning uchun
+# barmoq izi va barcha gate sanoqlari o'z-o'zidan mos bo'ladi.
+python -m app.legacy_migration.demo_prune "$SOURCE"
+
 koprik-migrate-legacy snapshot \
   --source "$SOURCE" \
   --output "$SNAPSHOT_DIR" \
@@ -272,9 +282,15 @@ test -f "$SNAPSHOT_DB" || fail "snapshot_database_not_created"
 test -f "$MANIFEST" || fail "media_manifest_not_created"
 export KOPRIK_LEGACY_MEDIA_ROOTS="$MEDIA"
 
-# Hozirgi UserProfile modelida 0032da yaratiladigan ikkita ustun bor. Bazaviy
-# 0005 import faqat account/profile payload yozadi; shu ikki ustun vaqtincha
-# qo'shilib, rasmiy Alembic zanjiri boshlanishidan oldin yana olib tashlanadi.
+# Bazaviy import 0005 sxemasida bajariladi, lekin uni bajaradigan kod bugungi
+# modellarga tayanadi. SQLAlchemy INSERT'ga mapperdagi **barcha** ustunlarni
+# nomlaydi, shuning uchun 0005 da hali mavjud bo'lmagan har bir ustun importni
+# yiqitadi. Ular vaqtincha qo'shilib, rasmiy Alembic zanjiri boshlanishidan
+# oldin yana olib tashlanadi — zanjir o'zi to'ldiradi:
+#   - `public_id` (0010) — `_backfill_public_ids` barcha qatorlarga
+#     `blake2s(kind:account_id)` dan deterministik qiymat yozadi, ya'ni
+#     bu yerda tashlab ketilgani bilan aynan o'sha qiymat qaytadi;
+#   - `specialist_rating_*` (0032) — nol qiymatdan boshlanadi.
 python - <<'PY'
 import asyncio
 from sqlalchemy import text
@@ -295,6 +311,14 @@ async def main():
                 await session.execute(text(
                     "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
                     "specialist_rating_count INTEGER NOT NULL DEFAULT 0"
+                ))
+                await session.execute(text(
+                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
+                    "public_id VARCHAR(18)"
+                ))
+                await session.execute(text(
+                    "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS "
+                    "public_id VARCHAR(18)"
                 ))
     finally:
         await database.stop()
@@ -345,6 +369,14 @@ async def main():
                 await session.execute(text(
                     "ALTER TABLE user_profiles "
                     "DROP COLUMN specialist_rating_sum"
+                ))
+                # `public_id` ni 0010 qayta yaratadi va deterministik
+                # to'ldiradi — bu yerda tashlanishi ma'lumot yo'qotmaydi.
+                await session.execute(text(
+                    "ALTER TABLE user_profiles DROP COLUMN public_id"
+                ))
+                await session.execute(text(
+                    "ALTER TABLE business_profiles DROP COLUMN public_id"
                 ))
     finally:
         await database.stop()
@@ -481,8 +513,15 @@ async def main():
             businesses = int(
                 await session.scalar(select(func.count(BusinessProfile.account_id))) or 0
             )
-            assert links >= 20, links
-            assert linked_users >= 20, linked_users
+            # Ilgari bu yerda `>= 20` turardi — o'sha raqam demo yozuvlar
+            # ham ko'chirilgan davrga moslangan edi. Demo chiqarilgach
+            # (`demo_prune`) real biznes 3 ta, ya'ni chegara ma'nosini
+            # yo'qotadi. O'rniga aniq moslik tekshiriladi: har bir biznes
+            # egasiga bog'langan bo'lishi shart. Bu kuchliroq shart —
+            # `>= 20` bir nechta bog'lanmagan biznesni sezmasdan o'tkazardi.
+            assert businesses > 0, businesses
+            assert links == businesses, (links, businesses)
+            assert 0 < linked_users <= businesses, (linked_users, businesses)
             print(
                 "CABINET_LINKS_OK "
                 f"LINKS={links} LINKED_USERS={linked_users} "
