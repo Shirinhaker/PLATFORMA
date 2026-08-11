@@ -14,11 +14,13 @@ interface HomeMapV1656Props {
   district: string;
   resultItems: PublicSearchItem[] | null;
   specialists: PublicHomeSpecialistPin[];
+  taxiEnabled?: boolean;
   onCloseResults(): void;
   onOpenResult(
     kind: "user" | "business" | "product" | "service" | "listing",
     publicId: string,
   ): void;
+  onTaxiCall?: () => void;
 }
 
 type MapPoint = {
@@ -168,8 +170,10 @@ export function HomeMapV1656({
   district,
   resultItems,
   specialists,
+  taxiEnabled = false,
   onCloseResults,
   onOpenResult,
+  onTaxiCall,
 }: HomeMapV1656Props) {
   const mapElement = useRef<HTMLDivElement>(null);
 
@@ -317,7 +321,7 @@ export function HomeMapV1656({
           </div>
         )}
         <button
-          hidden
+          hidden={!taxiEnabled}
           aria-label="Chaqiruv"
           className="icon-btn"
           data-feature="taxi"
@@ -330,6 +334,7 @@ export function HomeMapV1656({
             fontSize: 19,
           }}
           type="button"
+          onClick={onTaxiCall}
         >
           🚖
         </button>

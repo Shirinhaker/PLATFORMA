@@ -14,6 +14,8 @@ export type PublicNavigationAction =
   | { type: "OPEN_CART" }
   | { type: "OPEN_AUTH" }
   | { type: "OPEN_CABINET" }
+  | { type: "OPEN_TAXI_CALL" }
+  | { type: "OPEN_TAXI_DRIVER" }
   | { type: "GO_HOME" }
   | { type: "BACK" };
 
@@ -67,6 +69,18 @@ export function publicNavigationReducer(
     case "OPEN_CABINET":
       return {
         view: "cabinet",
+        query: "",
+        categoryId: null,
+      };
+    case "OPEN_TAXI_CALL":
+      return {
+        view: "taxi-call",
+        query: "",
+        categoryId: null,
+      };
+    case "OPEN_TAXI_DRIVER":
+      return {
+        view: "taxidrv",
         query: "",
         categoryId: null,
       };

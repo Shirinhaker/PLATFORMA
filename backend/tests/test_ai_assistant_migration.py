@@ -18,4 +18,4 @@ def test_complete_cabinet_migration_runs_the_typed_ai_history_import():
         encoding="utf-8",
     )
     assert "import_ai_chat_history" in profile_source
-    assert 'MIGRATION_SCHEMA_VERSION = "0007_phase3c_ai_assistant_v1"' in runner_source
+    assert 'MIGRATION_SCHEMA_VERSION = "0008_phase3c_taxi_v1"' in runner_source

@@ -7,10 +7,11 @@ import { AdminLogin } from "./AdminLogin";
 import { AdminPayments } from "./AdminPayments";
 import { AdminPricing } from "./AdminPricing";
 import { AdminReports } from "./AdminReports";
+import { AdminTaxiDrivers } from "./AdminTaxiDrivers";
 import "./admin.css";
 
 
-type Page = "payments" | "pricing" | "accounts" | "reports" | "audit";
+type Page = "payments" | "pricing" | "accounts" | "reports" | "taxi" | "audit";
 
 type Props = { api: AdminApiClient };
 
@@ -20,6 +21,7 @@ const PAGES: ReadonlyArray<{ key: Page; icon: string; label: string }> = [
   { key: "pricing", icon: "₸", label: "Narxlar va usullar" },
   { key: "accounts", icon: "♙", label: "Profil va bizneslar" },
   { key: "reports", icon: "⚑", label: "Shikoyatlar" },
+  { key: "taxi", icon: "🚖", label: "Haydovchilar" },
   { key: "audit", icon: "≡", label: "Audit tarixi" },
 ];
 
@@ -100,6 +102,7 @@ export function AdminApp({ api }: Props) {
           {page === "pricing" ? <AdminPricing api={api} /> : null}
           {page === "accounts" ? <AdminAccounts api={api} /> : null}
           {page === "reports" ? <AdminReports api={api} /> : null}
+          {page === "taxi" ? <AdminTaxiDrivers api={api} /> : null}
           {page === "audit" ? <AdminAudit api={api} /> : null}
         </main>
       </div>

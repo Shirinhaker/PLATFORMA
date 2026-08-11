@@ -91,7 +91,7 @@ async def test_complete_cabinet_runner_does_not_reuse_profile_parity_run(
 
     current = await runner.load_or_create(info, "staging", None)
 
-    assert MIGRATION_SCHEMA_VERSION == "0007_phase3c_ai_assistant_v1"
+    assert MIGRATION_SCHEMA_VERSION == "0008_phase3c_taxi_v1"
     assert current is not previous
     assert current.schema_version == MIGRATION_SCHEMA_VERSION
     assert current.stage is MigrationStage.SNAPSHOT

@@ -12,6 +12,58 @@ function jsonResponse(body: unknown, status = 200) {
 
 
 describe("ApiClient", () => {
+  it("uses the typed Taxi and driver endpoints with CSRF on writes", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 7, account_type: "user", name: "Ali", login: "ali",
+        csrf_token: "taxi-csrf", expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValue(jsonResponse({}));
+    const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
+    await client.getSession();
+    const driver = {
+      phone: "+998901234567", car_model: "Cobalt", car_color: "oq",
+      car_plate: "01 A 123 BC", service: "both" as const,
+    };
+    const ride = {
+      kind: "taxi" as const, from_addr: "A", to_addr: "B",
+      from_lat: 41.3, from_lng: 69.2, to_lat: 41.31, to_lng: 69.21,
+      dist_km: 3.6, dur_min: 8, ozim: false, cargo: "", car_type: "", note: "",
+    };
+
+    await client.getTaxiPricing();
+    await client.getTaxiDriver();
+    await client.saveTaxiDriver(driver);
+    await client.setTaxiDriverAvailable(true);
+    await client.createTaxiRide(ride);
+    await client.getMyTaxiRides();
+    await client.cancelTaxiRide(12);
+    await client.getPendingTaxiRides();
+    await client.acceptTaxiRide(12);
+    await client.setTaxiRideStatus(12, "arrived");
+    await client.updateTaxiRideProgress(12, 1.4);
+
+    expect(fetcher.mock.calls.slice(1).map(([url, init]) => [url, init?.method, init?.body]))
+      .toEqual([
+        ["https://api.example/api/v1/taxi/pricing", "GET", undefined],
+        ["https://api.example/api/v1/taxi/driver", "GET", undefined],
+        ["https://api.example/api/v1/taxi/driver", "POST", JSON.stringify(driver)],
+        ["https://api.example/api/v1/taxi/driver/available", "PUT", JSON.stringify({ available: true })],
+        ["https://api.example/api/v1/taxi/rides", "POST", JSON.stringify(ride)],
+        ["https://api.example/api/v1/taxi/rides/my", "GET", undefined],
+        ["https://api.example/api/v1/taxi/rides/12/cancel", "POST", undefined],
+        ["https://api.example/api/v1/taxi/rides/pending", "GET", undefined],
+        ["https://api.example/api/v1/taxi/rides/12/accept", "POST", undefined],
+        ["https://api.example/api/v1/taxi/rides/12/status", "POST", JSON.stringify({ status: "arrived" })],
+        ["https://api.example/api/v1/taxi/rides/12/progress", "POST", JSON.stringify({ km: 1.4 })],
+      ]);
+    for (const [, init] of fetcher.mock.calls.slice(1)) {
+      if (init?.method !== "GET") {
+        expect(init?.headers).toMatchObject({ "X-CSRF-Token": "taxi-csrf" });
+      }
+    }
+  });
+
   it("uses the typed K2-K4 cash register endpoints", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({

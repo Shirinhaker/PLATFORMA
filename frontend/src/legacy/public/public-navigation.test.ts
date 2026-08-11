@@ -52,6 +52,8 @@ describe("publicNavigationReducer", () => {
     ["OPEN_CABINET", "cabinet"],
     ["OPEN_LISTINGS", "listings"],
     ["OPEN_CART", "cart"],
+    ["OPEN_TAXI_CALL", "taxi-call"],
+    ["OPEN_TAXI_DRIVER", "taxidrv"],
   ] as const)("%s opens %s", (type, view) => {
     expect(publicNavigationReducer(initialPublicNavigationState, { type })).toEqual({
       view,
@@ -90,7 +92,7 @@ describe("publicNavigationReducer", () => {
     });
   });
 
-  it.each(["catalog", "listings", "location", "cart", "auth", "cabinet"] as const)(
+  it.each(["catalog", "listings", "location", "cart", "auth", "cabinet", "taxi-call", "taxidrv"] as const)(
     "returns from %s to a clean home",
     (view) => {
       expect(

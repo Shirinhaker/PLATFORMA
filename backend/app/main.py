@@ -83,6 +83,9 @@ from app.stories.router import router as stories_router
 from app.stories.service import StoryService
 from app.specialists.router import router as specialists_router
 from app.specialists.service import SpecialistService
+from app.taxi.admin_router import router as taxi_admin_router
+from app.taxi.router import router as taxi_router
+from app.taxi.service import TaxiService
 
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
@@ -177,11 +180,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             inventory_service=app.state.inventory_service,
             debt_ledger_service=app.state.debt_ledger_service,
         )
+        app.state.taxi_service = TaxiService(database.session)
         app.state.order_service = OrderService(
             database.session,
             app.state.r2.create_download_url,
             cash_register_service=app.state.cash_register_service,
             debt_ledger_service=app.state.debt_ledger_service,
+            taxi_service=app.state.taxi_service,
         )
         app.state.message_service = MessageService(
             database.session,
@@ -305,9 +310,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(reviews_router)
     app.include_router(notifications_router)
     app.include_router(orders_router)
+    app.include_router(taxi_router)
     app.include_router(follows_router)
     app.include_router(payments_router)
     app.include_router(admin_router)
+    app.include_router(taxi_admin_router)
     app.include_router(reports_router)
     app.include_router(queues_router)
     app.include_router(education_router)

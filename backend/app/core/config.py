@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     listings_enabled: bool = False
     stories_enabled: bool = True
     chat_enabled: bool = True
+    taxi_enabled: bool = True
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     openai_timeout_seconds: int = Field(default=45, ge=5, le=120)

@@ -55,6 +55,8 @@ import {
   type MessagesApi,
 } from "../messages/MessagesV1656";
 import type { PublicReviewsApi } from "../reviews/ReviewsV1656";
+import { TaxiCallV1656 } from "../taxi/TaxiCallV1656";
+import { DriverCabinetV1656 } from "../taxi/DriverCabinetV1656";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -83,6 +85,21 @@ type PublicSearchApi = Pick<
   | "reportStory"
 >;
 type OrderApi = Pick<ApiClient, "createOrder">;
+type TaxiAppApi = Pick<
+  ApiClient,
+  | "getTaxiPricing"
+  | "getTaxiDriver"
+  | "saveTaxiDriver"
+  | "setTaxiDriverAvailable"
+  | "createTaxiRide"
+  | "getMyTaxiRides"
+  | "cancelTaxiRide"
+  | "getPendingTaxiRides"
+  | "acceptTaxiRide"
+  | "setTaxiRideStatus"
+  | "updateTaxiRideProgress"
+  | "reverseGeocode"
+>;
 type AppApi = (
   SessionApi
   & Partial<AuthApi>
@@ -93,6 +110,7 @@ type AppApi = (
   & Partial<CourseEnrollmentApi>
   & Partial<MessagesApi>
   & Partial<PublicReviewsApi>
+  & Partial<TaxiAppApi>
 );
 
 
@@ -370,6 +388,8 @@ export function App({ api }: { api: AppApi }) {
     listings: "E’lonlar",
     location: "Manzil",
     cart: "Savat",
+    "taxi-call": "Taxi chaqirish",
+    taxidrv: "Haydovchi kabineti",
   };
   const title = titles[navigation.view];
 
@@ -679,6 +699,32 @@ export function App({ api }: { api: AppApi }) {
             onNeedLogin={() => openAuth()}
           />
         );
+      case "taxi-call":
+        return (
+          <TaxiCallV1656
+            api={api}
+            authenticated={session.status === "user"}
+            center={{
+              latitude: homeLocation?.latitude ?? 41.3111,
+              longitude: homeLocation?.longitude ?? 69.2797,
+            }}
+            onBack={() => dispatch({ type: "GO_HOME" })}
+            onNeedLogin={(reason) => {
+              if (session.status === "business") {
+                showQueueMessage("Avval oddiy profilga o'ting.");
+              } else {
+                openAuth(reason);
+              }
+            }}
+          />
+        );
+      case "taxidrv":
+        return session.status === "user" ? (
+          <DriverCabinetV1656
+            api={api}
+            onBack={() => dispatch({ type: "OPEN_CABINET" })}
+          />
+        ) : renderAccount();
       case "auth":
       case "cabinet":
         return renderAccount();
@@ -700,6 +746,8 @@ export function App({ api }: { api: AppApi }) {
             recordAdvertisementClick={recordAdvertisementClick}
             recordAdvertisementViews={recordAdvertisementViews}
             storyApi={publicFeatures.stories ? storyApi : undefined}
+            taxiEnabled={publicFeatures.taxi}
+            onTaxiCall={() => dispatch({ type: "OPEN_TAXI_CALL" })}
           />
         );
     }
@@ -769,6 +817,20 @@ export function App({ api }: { api: AppApi }) {
         setOpenedListing(null);
         setCartFilter(null);
         dispatch({ type: "OPEN_CART" });
+      }}
+      onTaxi={() => {
+        setOpenedChat(null);
+        setOpenedProfile(null);
+        setOpenedListing(null);
+        if (session.status === "guest") {
+          openAuth("Taxi bo'limi");
+          return;
+        }
+        if (session.status !== "user") {
+          showQueueMessage("Avval oddiy profilga o'ting.");
+          return;
+        }
+        dispatch({ type: "OPEN_TAXI_DRIVER" });
       }}
       onToggleTheme={toggleTheme}
     >

@@ -164,6 +164,15 @@ import type {
   WarehouseMoveResult,
   WarehouseProductionBatch,
   WarehouseRecipeIngredient,
+  TaxiDriver,
+  TaxiDriverRides,
+  TaxiDriverWrite,
+  TaxiMyRides,
+  TaxiPricing,
+  TaxiRide,
+  TaxiRideAccepted,
+  TaxiRideCreate,
+  TaxiRideMutation,
 } from "./types";
 import type {
   Advertisement,
@@ -1869,6 +1878,63 @@ export class ApiClient {
 
   generateAIDocumentDraft(body: AIDocumentDraftRequest): Promise<AIDocumentDraft> {
     return this.request("POST", "/api/v1/ai-assistant/documents/draft", body, true);
+  }
+
+  getTaxiPricing(): Promise<TaxiPricing> {
+    return this.request("GET", "/api/v1/taxi/pricing", undefined, true);
+  }
+
+  getTaxiDriver(): Promise<TaxiDriver> {
+    return this.request("GET", "/api/v1/taxi/driver", undefined, true);
+  }
+
+  saveTaxiDriver(body: TaxiDriverWrite): Promise<TaxiDriver> {
+    return this.request("POST", "/api/v1/taxi/driver", body, true);
+  }
+
+  setTaxiDriverAvailable(available: boolean): Promise<TaxiDriver> {
+    return this.request(
+      "PUT", "/api/v1/taxi/driver/available", { available }, true,
+    );
+  }
+
+  createTaxiRide(body: TaxiRideCreate): Promise<TaxiRide> {
+    return this.request("POST", "/api/v1/taxi/rides", body, true);
+  }
+
+  getMyTaxiRides(): Promise<TaxiMyRides> {
+    return this.request("GET", "/api/v1/taxi/rides/my", undefined, true);
+  }
+
+  cancelTaxiRide(rideId: number): Promise<TaxiRideMutation> {
+    return this.request(
+      "POST", `/api/v1/taxi/rides/${rideId}/cancel`, undefined, true,
+    );
+  }
+
+  getPendingTaxiRides(): Promise<TaxiDriverRides> {
+    return this.request("GET", "/api/v1/taxi/rides/pending", undefined, true);
+  }
+
+  acceptTaxiRide(rideId: number): Promise<TaxiRideAccepted> {
+    return this.request(
+      "POST", `/api/v1/taxi/rides/${rideId}/accept`, undefined, true,
+    );
+  }
+
+  setTaxiRideStatus(
+    rideId: number,
+    status: TaxiRide["status"],
+  ): Promise<TaxiRideMutation> {
+    return this.request(
+      "POST", `/api/v1/taxi/rides/${rideId}/status`, { status }, true,
+    );
+  }
+
+  updateTaxiRideProgress(rideId: number, km: number): Promise<TaxiRide> {
+    return this.request(
+      "POST", `/api/v1/taxi/rides/${rideId}/progress`, { km }, true,
+    );
   }
 
   openDiningProblem(

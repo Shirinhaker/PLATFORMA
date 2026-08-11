@@ -14,6 +14,7 @@ from app.legacy_migration.reconcile_v6 import (
     reconcile_businesses as reconcile_businesses_v6,
 )
 from app.profiles.model import BusinessProfile, UserProfile
+from app.taxi.legacy_import import import_taxi_domain
 
 
 EXPLICIT_DEMO_FLAGS = (
@@ -111,8 +112,15 @@ async def reconcile_accounts(
 ) -> StageResult:
     result = await reconcile_accounts_v6(session, source, run)
     await enrich_user_cabinets(session, source)
+    taxi_result = await import_taxi_domain(session, source, run)
     await session.flush()
-    return result
+    return StageResult(
+        created=result.created + taxi_result.created,
+        reused=result.reused + taxi_result.reused,
+        updated=result.updated + taxi_result.updated,
+        quarantined=result.quarantined + taxi_result.quarantined,
+        issues=result.issues + taxi_result.issues,
+    )
 
 
 async def reconcile_businesses(
