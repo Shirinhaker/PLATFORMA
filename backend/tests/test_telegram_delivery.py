@@ -236,6 +236,44 @@ async def test_worker_decrypts_credentials_only_for_delivery():
     ]
 
 
+async def test_worker_sends_exact_v1656_business_credentials_message():
+    key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+    class FakeDatabase:
+        pass
+
+    class FakeTelegram:
+        def __init__(self):
+            self.messages = []
+
+        async def send_message(self, chat_id, text):
+            self.messages.append((chat_id, text))
+
+    telegram = FakeTelegram()
+    handlers = build_handlers(
+        Settings(environment="test", outbox_encryption_key=key),
+        FakeDatabase(),
+        telegram,
+    )
+    await handlers["telegram.business_credentials.send"]({
+        "account_id": 17,
+        "chat_id": 42,
+        "encrypted_credentials": encrypt_outbox_secret(
+            {"login": "b_turon", "password": "one-time-secret"},
+            key,
+        ),
+    })
+
+    assert telegram.messages == [(
+        42,
+        "🏪 Biznes kabinetingiz ochildi!\n\n"
+        "Biznes login: b_turon\n"
+        "Biznes parol: one-time-secret\n\n"
+        "Bu login/parol bilan biznes kabinetingizga alohida kirishingiz "
+        "mumkin. Saqlab qo'ying.",
+    )]
+
+
 async def test_processed_credentials_are_scrubbed_from_outbox_payload():
     event = OutboxEvent(
         id=1,

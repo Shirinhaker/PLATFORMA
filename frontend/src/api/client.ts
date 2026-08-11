@@ -14,6 +14,8 @@ import type {
   BusinessSubscriptionSummary,
   BusinessCredentials,
   BusinessCredentialsUpdate,
+  BusinessOpeningRead,
+  BusinessOpeningWrite,
   BusinessProfile,
   BusinessProfilePatch,
   CashCatalogItem,
@@ -1711,6 +1713,15 @@ export class ApiClient {
       "POST",
       "/api/v1/cabinet/switch",
       { target_type: targetType },
+      true,
+    );
+  }
+
+  openBusiness(body: BusinessOpeningWrite): Promise<BusinessOpeningRead> {
+    return this.request(
+      "POST",
+      "/api/v1/business-opening",
+      body,
       true,
     );
   }
