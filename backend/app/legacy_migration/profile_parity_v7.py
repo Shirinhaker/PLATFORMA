@@ -4,6 +4,7 @@ from collections import defaultdict
 import sqlite3
 from typing import Any, Iterable
 
+from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai_assistant.legacy_import import import_ai_chat_history
@@ -112,7 +113,9 @@ async def reconcile_accounts(
 ) -> StageResult:
     result = await reconcile_accounts_v6(session, source, run)
     await enrich_user_cabinets(session, source)
-    taxi_result = await import_taxi_domain(session, source, run)
+    taxi_result = StageResult()
+    if await _target_tables_exist(session, "taxi_drivers", "taxi_rides"):
+        taxi_result = await import_taxi_domain(session, source, run)
     await session.flush()
     return StageResult(
         created=result.created + taxi_result.created,
@@ -130,7 +133,9 @@ async def reconcile_businesses(
 ) -> StageResult:
     result = await reconcile_businesses_v6(session, source, run)
     await enrich_business_cabinets(session, source)
-    ai_result = await import_ai_chat_history(session, source, run)
+    ai_result = StageResult()
+    if await _target_tables_exist(session, "ai_chat_messages"):
+        ai_result = await import_ai_chat_history(session, source, run)
     await session.flush()
     return StageResult(
         created=result.created + ai_result.created,
@@ -139,6 +144,41 @@ async def reconcile_businesses(
         quarantined=result.quarantined + ai_result.quarantined,
         issues=result.issues + ai_result.issues,
     )
+
+
+async def import_late_typed_domains(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    run: MigrationRun,
+) -> StageResult:
+    """0005 bazaviy importidan keyin yaratiladigan typed domenlarni to'ldir."""
+    required = ("ai_chat_messages", "taxi_drivers", "taxi_rides")
+    if not await _target_tables_exist(session, *required):
+        raise RuntimeError("late_typed_domain_tables_missing")
+
+    ai_result = await import_ai_chat_history(session, source, run)
+    taxi_result = await import_taxi_domain(session, source, run)
+    await session.flush()
+    return StageResult(
+        created=ai_result.created + taxi_result.created,
+        reused=ai_result.reused + taxi_result.reused,
+        updated=ai_result.updated + taxi_result.updated,
+        quarantined=ai_result.quarantined + taxi_result.quarantined,
+        issues=ai_result.issues + taxi_result.issues,
+    )
+
+
+async def _target_tables_exist(
+    session: AsyncSession,
+    *table_names: str,
+) -> bool:
+    connection = await session.connection()
+
+    def inspect_tables(sync_connection) -> bool:
+        inspector = sqlalchemy_inspect(sync_connection)
+        return all(inspector.has_table(name) for name in table_names)
+
+    return bool(await connection.run_sync(inspect_tables))
 
 
 async def enrich_user_cabinets(

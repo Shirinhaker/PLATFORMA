@@ -1,23 +1,27 @@
 param(
-    [switch]$Execute
+    [Parameter(Mandatory = $true)]
+    [string]$Archive,
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedArchiveSha256,
+    [Parameter(Mandatory = $true)]
+    [string]$SshTarget,
+    [switch]$Execute,
+    [switch]$BackupConfirmed,
+    [ValidateRange(1, 1000)]
+    [int]$NormalizationBatchSize = 100
 )
-
-throw "PHASE3C_V7_SUPERSEDED_USE_FRESH_V8_STAGING_SCRIPT"
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$BackupDir = "C:\Users\55555555\Downloads\koprik-phase3c-backup"
-$Archive = Join-Path $BackupDir "koprik-phase3c-source-final.tar.gz"
-$ExpectedArchiveSha256 = "a1d7e6e1d287a0f7b8fb9bd0b43bb0bc88418538b5e98b1d570e5f9be1e291ff"
-$ExpectedSchema = "0006_phase3c_complete_cabinet_v1"
-$ExpectedAlembicHead = "0005_profile_cabinet_parity"
-$RemoteRoot = "/tmp/koprik-phase3c-v7-input"
+$ExpectedSchema = "0008_phase3c_taxi_v1"
+$ExpectedInitialHead = "0005_profile_cabinet_parity"
+$ExpectedFinalHead = "0041_taxi_driver_domain"
+$RemoteRoot = "/tmp/koprik-phase3c-v8-input"
 $RemoteArchive = "$RemoteRoot/koprik-phase3c-source-final.tar.gz"
-$SshTarget = "koprik-api-staging"
 
-Write-Host "SCRIPT_VERSION=7"
-Write-Host "MIGRATION_MODE=COMPLETE_REAL_CABINETS"
+Write-Host "SCRIPT_VERSION=8"
+Write-Host "MIGRATION_MODE=FRESH_CURRENT_TYPED_CABINETS"
 Write-Host ("EXECUTE={0}" -f $Execute.IsPresent)
 
 function Invoke-RemoteBash {
@@ -30,9 +34,9 @@ function Invoke-RemoteBash {
 
     $Token = [Guid]::NewGuid().ToString("N")
     $TempRoot = [IO.Path]::GetTempPath()
-    $InputPath = Join-Path $TempRoot "koprik-v7-$Token.sh"
-    $OutputPath = Join-Path $TempRoot "koprik-v7-$Token.out"
-    $ErrorPath = Join-Path $TempRoot "koprik-v7-$Token.err"
+    $InputPath = Join-Path $TempRoot "koprik-v8-$Token.sh"
+    $OutputPath = Join-Path $TempRoot "koprik-v8-$Token.out"
+    $ErrorPath = Join-Path $TempRoot "koprik-v8-$Token.err"
     $Utf8NoBom = New-Object Text.UTF8Encoding($false)
 
     try {
@@ -72,12 +76,12 @@ function Invoke-RemoteBash {
 }
 
 if (-not (Test-Path -LiteralPath $Archive -PathType Leaf)) {
-    throw "BACKUP_ARCHIVE_NOT_FOUND"
+    throw "SOURCE_ARCHIVE_NOT_FOUND"
 }
 $ActualArchiveSha256 = (
     Get-FileHash -LiteralPath $Archive -Algorithm SHA256
 ).Hash.ToLowerInvariant()
-if ($ActualArchiveSha256 -ne $ExpectedArchiveSha256) {
+if ($ActualArchiveSha256 -ne $ExpectedArchiveSha256.ToLowerInvariant()) {
     throw "LOCAL_ARCHIVE_SHA256_MISMATCH"
 }
 Write-Host "LOCAL_ARCHIVE_SHA256_OK"
@@ -86,7 +90,7 @@ $PreflightScript = @'
 set -Eeuo pipefail
 
 fail() {
-  printf 'PHASE3C_V7_ERROR=%s\n' "$1" >&2
+  printf 'PHASE3C_V8_ERROR=%s\n' "$1" >&2
   exit 1
 }
 
@@ -118,20 +122,29 @@ from app.legacy_migration.runner_v6 import MIGRATION_SCHEMA_VERSION
 print(MIGRATION_SCHEMA_VERSION)
 PY
 )"
-test "$DEPLOYED_SCHEMA" = "0006_phase3c_complete_cabinet_v1" \
-  || fail "complete_cabinet_code_not_deployed"
+test "$DEPLOYED_SCHEMA" = "0008_phase3c_taxi_v1" \
+  || fail "current_complete_cabinet_code_not_deployed"
 command -v koprik-migrate-legacy >/dev/null \
   || fail "migration_cli_not_installed"
+command -v koprik-migrate-late-domains >/dev/null \
+  || fail "late_domain_cli_not_installed"
+python -c 'import app.cabinet_records.cli' \
+  || fail "cabinet_normalization_cli_not_installed"
 
 ALEMBIC_CURRENT="$(python -m alembic current)"
+ALEMBIC_HEADS="$(python -m alembic heads)"
 printf '%s\n' "$ALEMBIC_CURRENT"
+printf '%s\n' "$ALEMBIC_HEADS"
 printf '%s' "$ALEMBIC_CURRENT" | grep -q "0005_profile_cabinet_parity" \
-  || fail "unexpected_alembic_head"
+  || fail "fresh_migration_database_must_start_at_0005"
+printf '%s' "$ALEMBIC_HEADS" | grep -q "0041_taxi_driver_domain" \
+  || fail "current_alembic_head_not_deployed"
 
 python - <<'PY'
 from app.legacy_migration.profile_parity_v7 import (
     BUSINESS_MODULE_TABLES,
     EXPLICIT_DEMO_FLAGS,
+    import_late_typed_domains,
 )
 assert "staff" in BUSINESS_MODULE_TABLES
 assert "documents" in BUSINESS_MODULE_TABLES
@@ -139,28 +152,38 @@ assert "warehouse_items" in BUSINESS_MODULE_TABLES
 assert "education_students" in BUSINESS_MODULE_TABLES
 assert "medical_appointments" in BUSINESS_MODULE_TABLES
 assert "is_demo" in EXPLICIT_DEMO_FLAGS
-print("COMPLETE_CABINET_CODE_GUARD_OK")
+assert callable(import_late_typed_domains)
+print("CURRENT_TYPED_CABINET_CODE_GUARD_OK")
 PY
 
-printf 'STAGING_V7_GUARD_OK SCHEMA=%s BACKEND=%s\n' \
-  "$DEPLOYED_SCHEMA" "$BACKEND_DIR"
+printf 'STAGING_V8_GUARD_OK SCHEMA=%s INITIAL_HEAD=%s FINAL_HEAD=%s BACKEND=%s\n' \
+  "$DEPLOYED_SCHEMA" "0005_profile_cabinet_parity" \
+  "0041_taxi_driver_domain" "$BACKEND_DIR"
 '@
 
 $PreflightOutput = Invoke-RemoteBash `
     -Script $PreflightScript `
-    -FailureCode "STAGING_V7_PREFLIGHT_FAILED"
+    -FailureCode "STAGING_V8_PREFLIGHT_FAILED"
 $PreflightText = $PreflightOutput -join "`n"
-if ($PreflightText -notmatch "STAGING_V7_GUARD_OK") {
-    throw "STAGING_V7_GUARD_CONFIRMATION_MISSING"
+if ($PreflightText -notmatch "STAGING_V8_GUARD_OK") {
+    throw "STAGING_V8_GUARD_CONFIRMATION_MISSING"
 }
 if ($PreflightText -notmatch [Regex]::Escape("SCHEMA=$ExpectedSchema")) {
-    throw "STAGING_V7_SCHEMA_CONFIRMATION_MISMATCH"
+    throw "STAGING_V8_SCHEMA_CONFIRMATION_MISMATCH"
+}
+if ($PreflightText -notmatch [Regex]::Escape("INITIAL_HEAD=$ExpectedInitialHead")) {
+    throw "STAGING_V8_INITIAL_HEAD_CONFIRMATION_MISMATCH"
+}
+if ($PreflightText -notmatch [Regex]::Escape("FINAL_HEAD=$ExpectedFinalHead")) {
+    throw "STAGING_V8_FINAL_HEAD_CONFIRMATION_MISMATCH"
 }
 
 if (-not $Execute.IsPresent) {
     Write-Host "DRY_RUN_COMPLETE DATABASE_WRITES=0 FILE_UPLOADS=0"
-    Write-Host "V7 code, staging environment and Alembic head are ready."
     exit 0
+}
+if (-not $BackupConfirmed.IsPresent) {
+    throw "STAGING_BACKUP_CONFIRMATION_REQUIRED"
 }
 
 & ssh.exe $SshTarget "mkdir -p $RemoteRoot"
@@ -176,7 +199,7 @@ $ExecuteScript = @'
 set -Eeuo pipefail
 
 fail() {
-  printf 'PHASE3C_V7_ERROR=%s\n' "$1" >&2
+  printf 'PHASE3C_V8_ERROR=%s\n' "$1" >&2
   exit 1
 }
 
@@ -188,11 +211,13 @@ case "${KOPRIK_PHASE3C_PUBLIC_ENABLED:-false}" in
     ;;
 esac
 
-ARCHIVE="/tmp/koprik-phase3c-v7-input/koprik-phase3c-source-final.tar.gz"
-EXPECTED_ARCHIVE_SHA256="a1d7e6e1d287a0f7b8fb9bd0b43bb0bc88418538b5e98b1d570e5f9be1e291ff"
-EXPECTED_SCHEMA="0006_phase3c_complete_cabinet_v1"
-EXPECTED_ALEMBIC_HEAD="0005_profile_cabinet_parity"
-WORK="/tmp/koprik-phase3c-v7-$(date +%Y%m%d-%H%M%S)"
+ARCHIVE="/tmp/koprik-phase3c-v8-input/koprik-phase3c-source-final.tar.gz"
+EXPECTED_ARCHIVE_SHA256="__EXPECTED_ARCHIVE_SHA256__"
+EXPECTED_SCHEMA="0008_phase3c_taxi_v1"
+EXPECTED_INITIAL_HEAD="0005_profile_cabinet_parity"
+EXPECTED_FINAL_HEAD="0041_taxi_driver_domain"
+NORMALIZATION_BATCH_SIZE="__NORMALIZATION_BATCH_SIZE__"
+WORK="/tmp/koprik-phase3c-v8-$(date +%Y%m%d-%H%M%S)"
 
 test -f "$ARCHIVE" || fail "archive_not_found"
 ACTUAL_ARCHIVE_SHA256="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
@@ -220,13 +245,11 @@ print(MIGRATION_SCHEMA_VERSION)
 PY
 )"
 test "$DEPLOYED_SCHEMA" = "$EXPECTED_SCHEMA" \
-  || fail "complete_cabinet_code_not_deployed"
+  || fail "current_complete_cabinet_code_not_deployed"
 
-python -m alembic upgrade head
 ALEMBIC_CURRENT="$(python -m alembic current)"
-printf '%s\n' "$ALEMBIC_CURRENT"
-printf '%s' "$ALEMBIC_CURRENT" | grep -q "$EXPECTED_ALEMBIC_HEAD" \
-  || fail "unexpected_alembic_head"
+printf '%s' "$ALEMBIC_CURRENT" | grep -q "$EXPECTED_INITIAL_HEAD" \
+  || fail "fresh_migration_database_must_start_at_0005"
 
 mkdir -p "$WORK"
 tar -xzf "$ARCHIVE" -C "$WORK"
@@ -249,12 +272,43 @@ test -f "$SNAPSHOT_DB" || fail "snapshot_database_not_created"
 test -f "$MANIFEST" || fail "media_manifest_not_created"
 export KOPRIK_LEGACY_MEDIA_ROOTS="$MEDIA"
 
+# Hozirgi UserProfile modelida 0032da yaratiladigan ikkita ustun bor. Bazaviy
+# 0005 import faqat account/profile payload yozadi; shu ikki ustun vaqtincha
+# qo'shilib, rasmiy Alembic zanjiri boshlanishidan oldin yana olib tashlanadi.
+python - <<'PY'
+import asyncio
+from sqlalchemy import text
+
+from app.core.config import Settings
+from app.db.session import Database
+
+async def main():
+    database = Database(Settings().database_url)
+    await database.start()
+    try:
+        async with database.session() as session:
+            async with session.begin():
+                await session.execute(text(
+                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
+                    "specialist_rating_sum INTEGER NOT NULL DEFAULT 0"
+                ))
+                await session.execute(text(
+                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
+                    "specialist_rating_count INTEGER NOT NULL DEFAULT 0"
+                ))
+    finally:
+        await database.stop()
+
+asyncio.run(main())
+PY
+
 koprik-migrate-legacy run \
   --snapshot "$SNAPSHOT_DB" \
   --environment staging \
-  | tee "$WORK/run-1.json"
+  --until-stage businesses \
+  | tee "$WORK/run-1-base.json"
 
-RUN_ID="$(python - "$WORK/run-1.json" <<'PY'
+RUN_ID="$(python - "$WORK/run-1-base.json" <<'PY'
 import json
 import sys
 for line in reversed(open(sys.argv[1], encoding="utf-8").read().splitlines()):
@@ -269,10 +323,69 @@ else:
     raise SystemExit("run_id_not_found")
 PY
 )"
-
 test -n "$RUN_ID" || fail "run_id_missing"
+
+python - <<'PY'
+import asyncio
+from sqlalchemy import text
+
+from app.core.config import Settings
+from app.db.session import Database
+
+async def main():
+    database = Database(Settings().database_url)
+    await database.start()
+    try:
+        async with database.session() as session:
+            async with session.begin():
+                await session.execute(text(
+                    "ALTER TABLE user_profiles "
+                    "DROP COLUMN specialist_rating_count"
+                ))
+                await session.execute(text(
+                    "ALTER TABLE user_profiles "
+                    "DROP COLUMN specialist_rating_sum"
+                ))
+    finally:
+        await database.stop()
+
+asyncio.run(main())
+PY
+
+python -m alembic upgrade head
+ALEMBIC_CURRENT="$(python -m alembic current)"
+printf '%s' "$ALEMBIC_CURRENT" | grep -q "$EXPECTED_FINAL_HEAD" \
+  || fail "final_alembic_head_mismatch"
+
+koprik-migrate-legacy run \
+  --snapshot "$SNAPSHOT_DB" \
+  --environment staging \
+  | tee "$WORK/run-1-complete.json"
+RUN_ID_COMPLETE="$(python - "$WORK/run-1-complete.json" <<'PY'
+import json
+import sys
+for line in reversed(open(sys.argv[1], encoding="utf-8").read().splitlines()):
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if "run_id" in payload:
+        print(int(payload["run_id"]))
+        break
+else:
+    raise SystemExit("run_id_not_found")
+PY
+)"
+test "$RUN_ID_COMPLETE" = "$RUN_ID" \
+  || fail "schema_upgrade_resume_created_new_migration"
 koprik-migrate-legacy verify --run-id "$RUN_ID" \
-  | tee "$WORK/verify-1.json"
+  | tee "$WORK/verify-complete.json"
+
+koprik-migrate-late-domains \
+  --snapshot "$SNAPSHOT_DB" \
+  --run-id "$RUN_ID" \
+  --environment staging \
+  | tee "$WORK/late-domains.json"
 
 koprik-migrate-legacy run \
   --snapshot "$SNAPSHOT_DB" \
@@ -296,9 +409,15 @@ PY
 test "$RUN_ID_2" = "$RUN_ID" || fail "second_run_created_new_migration"
 
 koprik-migrate-legacy verify --run-id "$RUN_ID" \
-  | tee "$WORK/verify-2.json"
+  | tee "$WORK/verify-final.json"
 koprik-migrate-legacy report --run-id "$RUN_ID" --format json \
   > "$WORK/final-report.json"
+
+python -m app.cabinet_records.cli \
+  --execute --batch-size "$NORMALIZATION_BATCH_SIZE" \
+  | tee "$WORK/cabinet-normalization.json"
+python -m app.cabinet_records.cli --verify-only \
+  | tee "$WORK/cabinet-normalization-verify.json"
 
 python - "$WORK/final-report.json" <<'PY'
 import json
@@ -306,17 +425,16 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     report = json.load(handle)
-assert report["schema_version"] == "0006_phase3c_complete_cabinet_v1"
+assert report["schema_version"] == "0008_phase3c_taxi_v1"
 assert report["environment"] == "staging"
 assert report["status"] == "completed"
 assert report["stage"] == "verify"
 assert report["verification"]["passed"] is True
-failed = [
+assert [
     gate["code"]
     for gate in report["verification"]["gates"]
     if not gate["passed"]
-]
-assert failed == [], failed
+] == []
 required = {
     "mapping_coverage",
     "identity_conflicts",
@@ -328,11 +446,13 @@ required = {
 actual = {gate["code"] for gate in report["verification"]["gates"]}
 assert required <= actual, sorted(required - actual)
 assert int(report["counters"].get("idempotency_created", -1)) == 0
+late = report["counters"].get("late_typed_domains") or {}
+assert int(late.get("quarantined", -1)) == 0
 for stage in ("accounts", "businesses"):
     counters = report["counters"].get(stage) or {}
     assert int(counters.get("quarantined", -1)) == 0
 print(
-    "COMPLETE_CABINET_REPORT_OK "
+    "CURRENT_TYPED_CABINET_REPORT_OK "
     f"RUN_ID={report['run_id']} IDEMPOTENCY_CREATED=0"
 )
 PY
@@ -358,22 +478,15 @@ async def main():
                     )
                 ) or 0
             )
-            user_payloads = (
-                await session.scalars(
-                    select(UserProfile).where(UserProfile.has_business.is_(True))
-                )
-            ).all()
-            business_payloads = (
-                await session.scalars(select(BusinessProfile))
-            ).all()
+            businesses = int(
+                await session.scalar(select(func.count(BusinessProfile.account_id))) or 0
+            )
             assert links >= 20, links
             assert linked_users >= 20, linked_users
-            assert all(isinstance(row.cabinet_payload, dict) for row in user_payloads)
-            assert all(isinstance(row.cabinet_payload, dict) for row in business_payloads)
             print(
                 "CABINET_LINKS_OK "
                 f"LINKS={links} LINKED_USERS={linked_users} "
-                f"BUSINESSES={len(business_payloads)}"
+                f"BUSINESSES={businesses}"
             )
     finally:
         await database.stop()
@@ -381,12 +494,20 @@ async def main():
 asyncio.run(main())
 PY
 
-printf 'PHASE3C_V7_STAGING_COMPLETE RUN_ID=%s WORK=%s\n' "$RUN_ID" "$WORK"
+printf 'PHASE3C_V8_STAGING_COMPLETE RUN_ID=%s WORK=%s\n' "$RUN_ID" "$WORK"
 '@
+
+$ExecuteScript = $ExecuteScript.Replace(
+    "__EXPECTED_ARCHIVE_SHA256__",
+    $ExpectedArchiveSha256.ToLowerInvariant()
+).Replace(
+    "__NORMALIZATION_BATCH_SIZE__",
+    $NormalizationBatchSize.ToString()
+)
 
 Invoke-RemoteBash `
     -Script $ExecuteScript `
-    -FailureCode "STAGING_V7_MIGRATION_FAILED" | Out-Null
+    -FailureCode "STAGING_V8_MIGRATION_FAILED" | Out-Null
 
-Write-Host "Phase 3C V7 complete-cabinet staging migration finished."
+Write-Host "Phase 3C V8 fresh staging data migration finished."
 Write-Host "Production migration was not started."
