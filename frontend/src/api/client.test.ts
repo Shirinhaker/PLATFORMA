@@ -1127,4 +1127,48 @@ describe("ApiClient", () => {
         ["https://api.example/api/v1/warehouse/production?limit=25", "GET"],
       ]);
   });
+
+  it("opens a v1656 business through the typed CSRF-protected endpoint", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        account_id: 5,
+        account_type: "user",
+        name: "Ali",
+        login: "u_ali",
+        csrf_token: "opening-csrf",
+        expires_at: "2026-08-27T08:00:00Z",
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        ok: true,
+        business_account_id: 17,
+        biz_login: "b_turon",
+        biz_password: "maxfiy-parol",
+      }));
+    const client = new ApiClient(
+      "https://api.example",
+      fetcher,
+      { kind: "web" },
+    );
+    const body = {
+      name: "Turon do‘koni",
+      direction: "Savdo",
+      activity_type: "Oziq-ovqat do'koni",
+      phone: "+998 90 111 22 33",
+      address: "Qumqo‘rg‘on",
+    };
+
+    await client.getSession();
+    await client.openBusiness(body);
+
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "https://api.example/api/v1/business-opening",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: expect.objectContaining({
+          "X-CSRF-Token": "opening-csrf",
+        }),
+      }),
+    );
+  });
 });

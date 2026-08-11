@@ -899,6 +899,21 @@ export type CabinetSwitch = {
   expires_at: string;
 };
 
+export type BusinessOpeningWrite = {
+  name: string;
+  direction: string;
+  activity_type: string;
+  phone: string;
+  address: string;
+};
+
+export type BusinessOpeningRead = {
+  ok: true;
+  business_account_id: number;
+  biz_login: string;
+  biz_password: string;
+};
+
 export type MediaPurpose = (
   "avatar" | "logo" | "payment_qr" | "listing_photo" | "listing_video"
   | "order_chat_image" | "chat_image" | "payment_receipt"

@@ -22,6 +22,8 @@ from app.ai_assistant.router import router as ai_assistant_router
 from app.ai_assistant.service import AIAssistantService
 from app.business_online.router import router as business_online_router
 from app.business_online.service_relational import BusinessOnlineService
+from app.business_opening.router import router as business_opening_router
+from app.business_opening.service import BusinessOpeningService
 from app.cash_register.router import router as cash_register_router
 from app.cash_register.service import CashRegisterService
 from app.cache.client import RedisClient
@@ -140,6 +142,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         app.state.account_settings_service = AccountSettingsService(
             database.session,
+        )
+        app.state.business_opening_service = BusinessOpeningService(
+            database.session,
+            resolved,
         )
         app.state.profile_summary_service = ProfileSummaryService(
             database.session,
@@ -303,6 +309,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(shared_login_router)
     app.include_router(auth_router)
     app.include_router(account_settings_router)
+    app.include_router(business_opening_router)
     app.include_router(profiles_router)
     app.include_router(business_online_router)
     app.include_router(public_discovery_router)

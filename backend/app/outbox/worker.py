@@ -115,6 +115,30 @@ async def send_credentials(
         credentials.clear()
 
 
+async def send_business_credentials(
+    settings: Settings,
+    telegram: TelegramClient,
+    payload: dict[str, Any],
+) -> None:
+    credentials = decrypt_outbox_secret(
+        str(payload["encrypted_credentials"]),
+        settings.outbox_encryption_key,
+    )
+    try:
+        await telegram.send_message(
+            int(payload["chat_id"]),
+            (
+                "🏪 Biznes kabinetingiz ochildi!\n\n"
+                f"Biznes login: {credentials['login']}\n"
+                f"Biznes parol: {credentials['password']}\n\n"
+                "Bu login/parol bilan biznes kabinetingizga alohida "
+                "kirishingiz mumkin. Saqlab qo'ying."
+            ),
+        )
+    finally:
+        credentials.clear()
+
+
 def build_handlers(
     settings: Settings,
     database: Database,
@@ -126,6 +150,9 @@ def build_handlers(
     async def credentials_handler(payload: dict[str, Any]) -> None:
         await send_credentials(settings, telegram, payload)
 
+    async def business_credentials_handler(payload: dict[str, Any]) -> None:
+        await send_business_credentials(settings, telegram, payload)
+
     async def admin_code_handler(payload: dict[str, Any]) -> None:
         await send_admin_code(settings, database, telegram, payload)
 
@@ -133,6 +160,7 @@ def build_handlers(
         "foundation.echo": foundation_echo,
         "telegram.auth_code.send": auth_code_handler,
         "telegram.credentials.send": credentials_handler,
+        "telegram.business_credentials.send": business_credentials_handler,
         "telegram.admin_code.send": admin_code_handler,
     }
 
@@ -178,7 +206,10 @@ async def process_batch(
             async with database.session() as session:
                 async with session.begin():
                     sanitized_payload = None
-                    if event.topic == "telegram.credentials.send":
+                    if event.topic in {
+                        "telegram.credentials.send",
+                        "telegram.business_credentials.send",
+                    }:
                         sanitized_payload = {
                             "account_id": event.payload.get("account_id"),
                             "delivery": "telegram",

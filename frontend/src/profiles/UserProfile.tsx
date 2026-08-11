@@ -56,6 +56,7 @@ import {
 } from "../taxi/DriverCabinetV1656";
 import { MyRidesV1656 } from "../taxi/MyRidesV1656";
 import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
+import { BusinessOpeningV1656 } from "../business-opening/BusinessOpeningV1656";
 
 
 export type UserProfileApi = Pick<
@@ -72,6 +73,7 @@ export type UserProfileApi = Pick<
   ApiClient,
   | "getBusinessCredentials"
   | "updateBusinessCredentials"
+  | "openBusiness"
   | "getMyListings"
   | "createListing"
   | "deleteListing"
@@ -376,6 +378,12 @@ function supportsSpecialist(api: UserProfileApi): api is UserProfileApi & Specia
     "addSpecialistPortfolio", "deleteSpecialistPortfolio",
     "createUploadGrant", "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
+function supportsBusinessOpening(
+  api: UserProfileApi,
+): api is UserProfileApi & Required<Pick<UserProfileApi, "openBusiness">> {
+  return typeof api.openBusiness === "function";
 }
 
 
@@ -794,6 +802,19 @@ export function UserProfile({
     );
   }
 
+  if (view === "business-opening" && supportsBusinessOpening(api)) {
+    return withActionBanner(
+      <BusinessOpeningV1656
+        api={api}
+        onBack={() => setView("dashboard")}
+        onOpened={() => setProfile((current) => (
+          current ? { ...current, has_business: true } : current
+        ))}
+        onSwitch={switchBusiness}
+      />,
+    );
+  }
+
   if (selectedSection?.payload) {
     return withActionBanner(
       <CabinetDataView
@@ -985,7 +1006,7 @@ export function UserProfile({
                 </button>
               ))}
             </div>
-            {(profile.has_business ?? false) && (
+            {(profile.has_business ?? false) ? (
               <button
                 type="button"
                 className="user-cabinet__switch"
@@ -994,7 +1015,16 @@ export function UserProfile({
               >
                 🏢 Biznes kabinetga o‘tish
               </button>
-            )}
+            ) : supportsBusinessOpening(api) ? (
+              <button
+                type="button"
+                className="user-cabinet__switch"
+                disabled={busy}
+                onClick={() => setView("business-opening")}
+              >
+                🏪 Biznes ochish
+              </button>
+            ) : null}
             {error && <p className="user-cabinet__notice" role="alert">{error}</p>}
           </section>
 

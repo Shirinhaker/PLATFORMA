@@ -192,6 +192,12 @@ function profileApi() {
       ok: true,
       login: "b_turon",
     }),
+    openBusiness: vi.fn().mockResolvedValue({
+      ok: true,
+      business_account_id: 7,
+      biz_login: "b_turon",
+      biz_password: "maxfiy-parol",
+    }),
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
@@ -779,6 +785,26 @@ describe("profile cabinets", () => {
     expect(api.switchCabinet).toHaveBeenCalledWith("business");
     expect(api.logout).not.toHaveBeenCalled();
     expect(onSwitched).toHaveBeenCalledWith(businessIdentity);
+  });
+
+  it("offers v1656 business opening when the user has no linked business", async () => {
+    const user = userEvent.setup();
+    const api = profileApi();
+    api.getUserProfile.mockResolvedValue({ ...userProfile, has_business: false });
+    render(
+      <UserProfile
+        api={api}
+        identity={userIdentity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", {
+      name: "🏪 Biznes ochish",
+    }));
+    expect(screen.getByRole("heading", { name: "Biznes ochish" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Biznes nomi *")).toBeInTheDocument();
   });
 
   it("renders migrated business dashboard and merged real items", async () => {
