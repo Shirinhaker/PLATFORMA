@@ -40,6 +40,21 @@ afterEach(() => {
 
 
 describe("admin API klienti", () => {
+  it("uses the isolated admin Taxi balance endpoints", async () => {
+    const responses = [
+      { ok: true, status: 200, json: async () => [] } as Response,
+      { ok: true, status: 200, json: async () => ({ id: 7, balance: 6000 }) } as Response,
+    ];
+    const fetcher = vi.fn().mockImplementation(async () => responses.shift()!);
+    const api = new AdminApiClient("https://api.test", fetcher);
+    await api.taxiDrivers();
+    await api.topupTaxiDriver(7, 5000, "Bank o'tkazmasi");
+    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method, init?.body]))
+      .toEqual([
+        ["https://api.test/api/v1/admin/taxi/drivers", "GET", undefined],
+        ["https://api.test/api/v1/admin/taxi/drivers/7/topup", "POST", JSON.stringify({ amount: 5000, reason: "Bank o'tkazmasi" })],
+      ]);
+  });
   it("fetch window bilan chaqiriladi (Illegal invocation bo'lmaydi)", async () => {
     const calls = installWindowBoundFetch({ telegram_user_id: 42 });
 

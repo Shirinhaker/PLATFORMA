@@ -50,6 +50,11 @@ import {
   SpecialistV1656,
   type SpecialistApi,
 } from "../specialists/SpecialistV1656";
+import {
+  DriverCabinetV1656,
+  type DriverCabinetApi,
+} from "../taxi/DriverCabinetV1656";
+import { MyRidesV1656 } from "../taxi/MyRidesV1656";
 
 
 export type UserProfileApi = Pick<
@@ -126,6 +131,15 @@ export type UserProfileApi = Pick<
   | "deleteSpecialistOffer"
   | "addSpecialistPortfolio"
   | "deleteSpecialistPortfolio"
+  | "getTaxiPricing"
+  | "getTaxiDriver"
+  | "saveTaxiDriver"
+  | "setTaxiDriverAvailable"
+  | "getMyTaxiRides"
+  | "getPendingTaxiRides"
+  | "acceptTaxiRide"
+  | "setTaxiRideStatus"
+  | "updateTaxiRideProgress"
 >>;
 
 type Props = {
@@ -222,6 +236,17 @@ function supportsOwnerStories(api: UserProfileApi): api is UserProfileApi & Owne
   return [
     "getMyStories", "createStory", "recordStoryView", "getStoryViewers",
     "deleteStory", "reportStory", "createUploadGrant", "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
+
+function supportsTaxi(
+  api: UserProfileApi,
+): api is UserProfileApi & DriverCabinetApi & Required<Pick<UserProfileApi, "getMyTaxiRides">> {
+  return [
+    "getTaxiDriver", "getTaxiPricing", "saveTaxiDriver",
+    "setTaxiDriverAvailable", "getMyTaxiRides", "getPendingTaxiRides",
+    "acceptTaxiRide", "setTaxiRideStatus", "updateTaxiRideProgress",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
@@ -734,6 +759,18 @@ export function UserProfile({
           [view === "service-orders" ? "service" : "product"]: count,
         }))}
       />,
+    );
+  }
+
+  if (view === "drivers" && supportsTaxi(api)) {
+    return withActionBanner(
+      <DriverCabinetV1656 api={api} onBack={() => setView("dashboard")} />,
+    );
+  }
+
+  if (view === "rides" && supportsTaxi(api)) {
+    return withActionBanner(
+      <MyRidesV1656 api={api} onBack={() => setView("dashboard")} />,
     );
   }
 

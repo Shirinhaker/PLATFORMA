@@ -134,6 +134,9 @@ button.compact {
   font-size: 12px;
 }
 
+.admin-taxi-topup { max-width: 560px; margin-bottom: 18px; }
+.admin-taxi-topup button { width: 100%; margin-top: 14px; }
+
 .message {
   margin-top: 12px;
   padding: 10px 12px;

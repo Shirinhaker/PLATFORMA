@@ -210,7 +210,7 @@ def test_public_features_expose_server_flags_without_authentication():
         "stories": True,
         "chat": True,
         "systemization": False,
-        "taxi": False,
+        "taxi": True,
     }
 
 

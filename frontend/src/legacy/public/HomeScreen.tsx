@@ -48,6 +48,8 @@ interface HomeScreenProps {
   recordAdvertisementViews?: ApiClient["recordAdvertisementViews"];
   searchPublic?: ApiClient["searchPublic"];
   storyApi?: StoryViewerApi & Pick<ApiClient, "getStoryFeed">;
+  taxiEnabled?: boolean;
+  onTaxiCall?: () => void;
 }
 
 
@@ -92,6 +94,8 @@ export function HomeScreen({
   recordAdvertisementViews,
   searchPublic,
   storyApi,
+  taxiEnabled = false,
+  onTaxiCall,
 }: HomeScreenProps) {
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -395,8 +399,10 @@ export function HomeScreen({
           district={districtLabel}
           resultItems={results}
           specialists={homeMap.specialists}
+          taxiEnabled={taxiEnabled}
           onCloseResults={closeResults}
           onOpenResult={openResult}
+          onTaxiCall={onTaxiCall}
         />
       </div>
 

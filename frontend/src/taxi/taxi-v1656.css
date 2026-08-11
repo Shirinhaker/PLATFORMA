@@ -1,0 +1,31 @@
+.taxi-call-v1656 { position: relative; min-height: calc(100vh - 64px); padding: 0 0 24px; }
+.taxi-call-v1656__map-wrap { position: relative; height: min(52vh, 520px); min-height: 280px; }
+.taxi-call-v1656__map { position: absolute; inset: 0; z-index: 1; }
+.taxi-call-v1656__center-pin { position: absolute; left: 50%; top: 50%; z-index: 500; font-size: 36px; pointer-events: none; transform: translate(-50%, -100%); filter: drop-shadow(0 3px 4px rgba(0,0,0,.3)); }
+.taxi-call-v1656 .call-panel { position: relative; z-index: 600; width: min(620px, calc(100% - 24px)); margin: -28px auto 0; }
+.taxi-call-v1656__centered { text-align: center; padding: 24px 14px; }
+.taxi-call-v1656 .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--primary); border-radius: 50%; margin: 0 auto 12px; animation: taxi-spin .7s linear infinite; }
+@keyframes taxi-spin { to { transform: rotate(360deg); } }
+.taxi-call-v1656__tabs { padding-bottom: 10px; }
+.taxi-call-v1656__input-button { width: 100%; text-align: left; cursor: pointer; }
+.taxi-call-v1656__driver-card { margin-top: 14px; }
+.taxi-call-v1656__driver-row, .taxi-driver-v1656__account { display: flex; gap: 12px; align-items: center; }
+.taxi-call-v1656__actions { display: flex; gap: 9px; margin-top: 12px; }
+.taxi-call-v1656__actions > * { flex: 1; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.taxi-call-v1656__price { color: var(--primary); font-weight: 700; }
+.taxi-driver-v1656 { width: min(760px, calc(100% - 24px)); margin: 0 auto; padding: 18px 0 40px; }
+.taxi-driver-v1656 .panel-card { margin-bottom: 10px; }
+.taxi-driver-v1656__balance { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: 12px 0; }
+.taxi-driver-v1656__balance strong { display: block; color: var(--primary); font-size: 20px; }
+.taxi-driver-v1656__balance p { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--soft); }
+.taxi-driver-v1656__balance.low { border-color: #F0B8B8; }
+.taxi-v1656__error { color: #DC2626 !important; font-weight: 700; }
+.taxi-driver-v1656 .vis-card { width: 100%; text-align: left; }
+.taxi-driver-v1656__orders-head { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 8px; }
+.taxi-driver-v1656__orders-head h2 { margin: 0; font-size: 17px; }
+.taxi-driver-v1656__ride-lines { margin: 6px 0; }
+.taxi-driver-v1656__current { border: 1.5px solid var(--primary) !important; }
+.taxi-driver-v1656__meter { margin-top: 8px; padding: 9px 11px; background: var(--primary-tint); border-radius: 10px; color: var(--primary); font-weight: 700; }
+.taxi-driver-v1656__map { height: 220px; margin: 10px 0 8px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.taxi-route-pin { font-size: 20px; }
+@media (max-width: 700px) { .taxi-call-v1656__map-wrap { height: 46vh; } .taxi-driver-v1656 { padding-top: 10px; } }

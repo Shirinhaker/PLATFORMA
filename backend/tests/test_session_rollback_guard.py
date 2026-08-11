@@ -52,6 +52,7 @@ ROLLBACK_SERVICES = (
     ("app.stories.service", "StoryService"),
     ("app.specialists.service", "SpecialistService"),
     ("app.ai_assistant.service", "AIAssistantService"),
+    ("app.taxi.service", "TaxiService"),
 )
 
 

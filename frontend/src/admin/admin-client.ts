@@ -173,6 +173,17 @@ export type AdminDecision = {
   internal_note: string;
 };
 
+export type AdminTaxiDriver = {
+  id: number;
+  name: string;
+  phone: string;
+  balance: number;
+  service: "taxi" | "dostavka" | "both";
+  available: boolean;
+};
+
+export type AdminTaxiTopup = { id: number; balance: number };
+
 type Fetcher = typeof fetch;
 
 
@@ -233,6 +244,22 @@ export class AdminApiClient {
 
   logout(): Promise<void> {
     return this.request("POST", "/api/v1/admin/auth/logout");
+  }
+
+  taxiDrivers(): Promise<AdminTaxiDriver[]> {
+    return this.request("GET", "/api/v1/admin/taxi/drivers");
+  }
+
+  topupTaxiDriver(
+    driverId: number,
+    amount: number,
+    reason: string,
+  ): Promise<AdminTaxiTopup> {
+    return this.request(
+      "POST",
+      `/api/v1/admin/taxi/drivers/${driverId}/topup`,
+      { amount, reason },
+    );
   }
 
   payments(

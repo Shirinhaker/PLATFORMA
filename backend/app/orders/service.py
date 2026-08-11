@@ -5,6 +5,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
 import re
+from typing import Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +47,14 @@ ImageUrlProvider = Callable[[str], str]
 FRACTIONAL_UNITS = frozenset({"kg", "g", "litr", "ml", "metr", "sm", "m²", "soat"})
 
 
+class TaxiOrderLink(Protocol):
+    async def after_order_ready(self, session: AsyncSession, order: Order) -> None: ...
+
+    async def after_order_handoff(self, session: AsyncSession, order_id: int) -> None: ...
+
+    async def after_order_received(self, session: AsyncSession, order_id: int) -> None: ...
+
+
 class OrderService:
     def __init__(
         self,
@@ -56,6 +65,7 @@ class OrderService:
         notification_repository: NotificationRepository | None = None,
         cash_register_service: CashRegisterService | None = None,
         debt_ledger_service: DebtLedgerService | None = None,
+        taxi_service: TaxiOrderLink | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._image_url_provider = image_url_provider
@@ -65,6 +75,7 @@ class OrderService:
         )
         self._cash_register_service = cash_register_service
         self._debt_ledger_service = debt_ledger_service
+        self._taxi_service = taxi_service
 
     async def create(
         self, *, account_id: int, account_type: AccountType, body: OrderCreate
@@ -335,6 +346,8 @@ class OrderService:
                     action_type="make_payment",
                 )
             elif side == "provider" and body.status == "tayyor":
+                if self._taxi_service is not None:
+                    await self._taxi_service.after_order_ready(session, order)
                 await append_order_notification(
                     session, self._notification_repository, order,
                     side="customer", event="ready",
@@ -662,6 +675,8 @@ class OrderService:
                 except Exception:
                     await session.rollback()
                     raise
+            if order.order_type == "delivery" and self._taxi_service is not None:
+                await self._taxi_service.after_order_handoff(session, order.id)
             await session.commit()
             return await self._project(session, order, side)
 
@@ -690,6 +705,8 @@ class OrderService:
                 title="Buyurtma qabul qilindi",
                 body="Buyurtmachi buyurtmani olganini tasdiqladi.",
             )
+            if order.order_type == "delivery" and self._taxi_service is not None:
+                await self._taxi_service.after_order_received(session, order.id)
             await session.commit()
             return await self._project(session, order, side)
 

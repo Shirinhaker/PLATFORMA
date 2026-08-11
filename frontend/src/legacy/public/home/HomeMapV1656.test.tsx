@@ -1,4 +1,5 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { HomeMapV1656 } from "./HomeMapV1656";
@@ -101,6 +102,24 @@ describe("HomeMapV1656", () => {
     expect(image).toHaveAttribute("src", "/media/logo.webp");
     expect(image?.getAttribute("style")).toContain("width:120%");
     expect(image?.getAttribute("style")).toContain("left:-24.4%");
+  });
+
+  it("shows the map Taxi call action only when enabled", async () => {
+    const onTaxiCall = vi.fn();
+    render(
+      <HomeMapV1656
+        businesses={[]}
+        district="Qumqo‘rg‘on"
+        resultItems={null}
+        specialists={[]}
+        taxiEnabled
+        onCloseResults={vi.fn()}
+        onOpenResult={vi.fn()}
+        onTaxiCall={onTaxiCall}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Chaqiruv" }));
+    expect(onTaxiCall).toHaveBeenCalledOnce();
   });
 
   it("uses government specialist color, initial, avatar, and exact attribution", async () => {
