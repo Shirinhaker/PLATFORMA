@@ -372,6 +372,55 @@ describe("App", () => {
       .toBeInTheDocument();
   });
 
+  it("opens the driver cabinet as its own v1656 screen", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const api = {
+      ...profileApi(),
+      getTaxiDriver: vi.fn().mockResolvedValue({
+        exists: false,
+        id: null,
+        name: "Ali",
+        phone: "",
+        car_model: "",
+        car_color: "",
+        car_plate: "",
+        service: "taxi" as const,
+        available: true,
+        busy: false,
+        rating_sum: 0,
+        rating_count: 0,
+        balance: 0,
+        commission: 1000,
+        status: "active",
+      }),
+      getTaxiPricing: vi.fn().mockResolvedValue({
+        pricing: {
+          taxi: { base: 5000, per_km: 2000, min: 9000 },
+          dostavka: { base: 10000, per_km: 2500, min: 15000 },
+        },
+        commission: 1000,
+      }),
+    };
+    render(<App api={api} />);
+
+    await screen.findByRole("heading", {
+      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+    });
+    await user.click(screen.getByRole("button", { name: "Kabinet" }));
+    await user.click(await screen.findByRole("button", {
+      name: "Haydovchilik profilim",
+    }));
+
+    expect(await screen.findByText("Taxi — haydovchi")).toBeInTheDocument();
+    expect(await screen.findByText("Akkaunt ismingiz — shu ishlatiladi"))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Haydovchi kabineti" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kabinetga qaytish" }))
+      .not.toBeInTheDocument();
+  });
+
   it("keeps Home search results inline", async () => {
     const user = userEvent.setup();
     saveHomeLocation();
