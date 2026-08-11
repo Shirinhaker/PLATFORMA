@@ -141,7 +141,7 @@ uchun testlar avvalo "nima o'chmasligi kerak" ni tekshiradi.
 | Haydovchi | 1 | 1 |
 | Kassa | 66 savdo | 35 chek + 66 qator |
 
-## Ochiq muammo: katalog ikkilanmoqda
+## Katalog ikkilanishi — topildi va tuzatildi
 
 Run yashil tugadi, lekin gate'lar sezmagan nuqson bor:
 
@@ -158,8 +158,36 @@ import CATALOG bosqichi (snapshot'dan).
 `migration_run_id == run.id` bo'lgan qatorlarni sanaydi, backfill
 yaratganlari (`run=None`) uning ko'zidan yashirin.
 
-Bildirishnomalarda ham shu naqsh shubhasi bor: manbada 84, yangi bazada
-132.
+### Tuzatish
 
-**Bu tuzatilmaguncha produksiyaga o'tilmaydi.** Gate ham tuzatilishi
-kerak — jami sanashi shart, aks holda nuqson yana yashirinadi.
+**Gate:** `catalog_kind_count` endi jami sanaydi. Nishon baza migratsiya
+uchun toza yaratiladi, ya'ni undagi har bir qator manbadan kelgan bo'lishi
+shart. Filtr borligida nuqson yashirinardi — gate to'g'ri bo'lganida u
+birinchi runda chiqardi, to'qqizinchida emas.
+
+**Sabab:** `_adopt_backfilled_target` — import yangi qator yaratishdan
+oldin `(business_account_id, source_record_key)` bo'yicha mavjudini
+qidiradi va topsa o'zlashtiradi. Ikkala yo'l ham bir xil kalitni biladi:
+backfill eski `id` ni `source_record_key` ga yozadi, import esa o'sha
+raqamni `legacy_id` sifatida ishlatadi.
+
+Natija: `catalog_items` 3 ta qator, manbadagi 3 ta bilan teng, dublikat
+yo'q.
+
+## Bildirishnomalar — nuqson emas
+
+Manbada 84, yangi bazada 132. Tekshiruv:
+
+```
+account_type = user       84   ← manba bilan aynan teng
+account_type = business   48
+bir xil (akkaunt + tur + event_key) ortiqcha:  0
+ham foydalanuvchi, ham biznesga ketgan event:  48
+```
+
+v1656 da bitta qator `target_staff_id` / `target_perm` orqali ikki tomonga
+xizmat qilardi. Yangi sxema qabul qiluvchi bo'yicha kalitlanadi, shuning
+uchun ikkala tomon ham o'z qatorini oladi. Dublikat nol.
+
+Dastlabki bahoyimda "91 ortiqcha" chiqqan edi — u `(akkaunt, matn)`
+kaliti bo'yicha sanalgan, bir xil matnli xabar esa qonuniy takrorlanadi.

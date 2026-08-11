@@ -377,3 +377,109 @@ async def test_reused_catalog_targets_move_to_current_migration_run(store):
     assert group.migration_run_id == current_run.id
     assert item.migration_run_id == current_run.id
     assert media.migration_run_id == current_run.id
+
+
+@pytest.mark.asyncio
+async def test_backfilled_row_is_adopted_instead_of_duplicated(store):
+    """`0007_catalog_live_sync` yaratgan qator ikkilanmasligi kerak.
+
+    V8 tartibida migratsiya zanjiri importdan oldin yuradi va `0007`
+    `cabinet_payload` dan katalog qatorlarini yaratadi. Ular to'g'ridan-
+    to'g'ri SQL bilan yoziladi, ya'ni `legacy_id_map` da yozuvi bo'lmaydi.
+    Import mavjudlikni faqat xarita orqali tekshirgani uchun ularni ko'rmay
+    ikkinchi nusxa yaratardi — staging runida 3 ta xizmat 6 ta qator
+    bo'lgan.
+    """
+    db, run = store
+    seed_owner(db, run)
+    # Backfill yaratgan qator: `source_record_key` bor, xarita yo'q.
+    db.sync.add(
+        CatalogItem(
+            id=901,
+            business_account_id=30,
+            source_record_key="8",
+            owner_name_snapshot="Turon Savdo",
+            name="Eski nom",
+            price_text="",
+            note="",
+            kind="product",
+            queue_enabled=False,
+            image_object_key="",
+            status="active",
+            owner_state=OwnerState.LINKED,
+            review_state=ReviewState.READY,
+            migration_run_id=None,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db.sync.commit()
+
+    result = await import_catalog(db, source_with(group={}, item={}), run)
+
+    # `.one()` — ikkinchi nusxa yaratilmaganini bildiradi.
+    item = (await db.scalars(select(CatalogItem))).one()
+    assert item.id == 901, "backfill qatori o'zlashtirilishi kerak"
+    assert item.source_record_key == "8"
+    assert item.name == "Mebel"
+    assert item.migration_run_id == run.id
+    # Yaratilgan yagona narsa — guruh; mahsulot o'zlashtirildi.
+    assert result.created == 1
+    assert result.updated == 1
+
+
+@pytest.mark.asyncio
+async def test_backfilled_row_of_another_business_is_not_adopted(store):
+    """Kalit boshqa biznesnikida bir xil bo'lsa, o'zlashtirilmaydi."""
+    db, run = store
+    seed_owner(db, run)
+    db.sync.add(
+        Account(
+            id=31,
+            account_type=AccountType.BUSINESS,
+            login="b_other",
+            password_hash="hash",
+            telegram_user_id=None,
+            status="active",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db.sync.commit()
+    db.sync.add(
+        CatalogItem(
+            id=902,
+            business_account_id=31,
+            source_record_key="8",
+            owner_name_snapshot="Boshqa biznes",
+            name="Tegilmasin",
+            price_text="",
+            note="",
+            kind="product",
+            queue_enabled=False,
+            image_object_key="",
+            status="active",
+            owner_state=OwnerState.LINKED,
+            review_state=ReviewState.READY,
+            migration_run_id=None,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db.sync.commit()
+
+    await import_catalog(db, source_with(group={}, item={}), run)
+
+    other = (
+        await db.scalars(
+            select(CatalogItem).where(CatalogItem.business_account_id == 31)
+        )
+    ).one()
+    assert other.name == "Tegilmasin"
+    assert (
+        await db.scalar(
+            select(func.count(CatalogItem.id)).where(
+                CatalogItem.business_account_id == 30
+            )
+        )
+    ) == 1
