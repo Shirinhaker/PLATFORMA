@@ -84,11 +84,26 @@ PHASE3C_V8_STAGING_COMPLETE RUN_ID=<id> WORK=<remote-path>
 - `cabinet_demo_rows=0`;
 - `cabinet_sensitive_fields=0`;
 - `media_failed=0`;
+- `media_terminal_count` manba media soniga teng;
+- `copied_media_verification=0`;
 - `idempotency_created=0`;
 - `public_schema_leak=0`;
 - late AI/Taxi `quarantined=0`;
+- account va business importida `quarantined=0`;
 - cabinet normalization `VERIFY_OK=1`;
-- kamida 20 ta oddiy ↔ biznes profil bog‘lanishi.
+- real biznes profillari uchun `links == businesses`;
+- `0 < linked_users <= businesses`.
+
+Oldingi `>=20` link talabi v1616 demo ma’lumotlariga bog‘liq edi va endi
+ishlatilmaydi. Demo qatorlar V8 snapshot olinmasidan oldin vaqtinchalik source
+nusxadan chiqariladi; jonli v1656 ga tegilmaydi.
+
+Staging verifier `MISSING` yoki `INVALID` media holatini terminal deb sanashi
+mumkin. Bu diagnostik staging runni tugatishga imkon beradi, lekin **production
+promotion uchun yetarli emas**. `Koprik-Phase3C-Promote-Cabinet-Production-V8.ps1`
+production oldidan qo‘shimcha qat’iy media guard qo‘yadi:
+`pending=0`, `missing=0`, `invalid=0`, `failed=0` va barcha manba media
+`copied` bo‘lishi shart.
 
 Bitta gate yiqilsa run production approval hisoblanmaydi. Snapshot, media va
 partial staging yozuvlari diagnostika uchun saqlanadi; production ochilmaydi.
