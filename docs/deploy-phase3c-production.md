@@ -1,6 +1,9 @@
 # Phase 3C production cutover va rollback
 
-Production migratsiyasi PR merge bilan avtomatik bajarilmaydi. Approved staging run, bir xil schema version va kelishilgan maintenance oynasi majburiy.
+Production migratsiyasi PR merge bilan avtomatik bajarilmaydi. Approved V8
+staging run, bir xil `0008_phase3c_taxi_v1` schema version va kelishilgan
+maintenance oynasi majburiy. Eski V5/V7 run ID production approval sifatida
+qabul qilinmaydi.
 
 ## Cutover
 
@@ -37,4 +40,3 @@ Production migratsiyasi PR merge bilan avtomatik bajarilmaydi. Approved staging 
 7. Xatoni tuzating va aynan o‘sha snapshot bilan idempotent qayta ishga tushiring.
 
 Rollback’dan keyin ham foydalanuvchi ma’lumoti o‘chirilmaydi. Production ochilmaguncha monolith yagona yozish manbai bo‘lib qoladi.
-
