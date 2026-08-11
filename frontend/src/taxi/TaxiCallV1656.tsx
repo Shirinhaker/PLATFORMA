@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
@@ -23,6 +23,7 @@ type Props = {
   api: TaxiApi;
   authenticated: boolean;
   center: { latitude: number; longitude: number };
+  district?: string;
   onBack(): void;
   onNeedLogin(reason: string): void;
 };
@@ -79,6 +80,7 @@ export function TaxiCallV1656({
   api,
   authenticated,
   center,
+  district = "",
   onBack,
   onNeedLogin,
 }: Props) {
@@ -97,12 +99,15 @@ export function TaxiCallV1656({
   const [pricing, setPricing] = useState(DEFAULT_PRICING);
   const [ride, setRide] = useState<TaxiRide | null>(null);
   const [error, setError] = useState("");
+  const [mapReady, setMapReady] = useState(false);
   const mapHost = useRef<HTMLDivElement>(null);
   const map = useRef<import("leaflet").Map | null>(null);
   const leaflet = useRef<typeof import("leaflet") | null>(null);
   const routeLayer = useRef<import("leaflet").Layer | null>(null);
+  const fromMarker = useRef<import("leaflet").Layer | null>(null);
   const skipMove = useRef(false);
   const userMovedMap = useRef(false);
+  const geolocationRequestId = useRef(0);
   const pickRef = useRef(pickMode);
   const ozimRef = useRef(ozim);
   const reverseGeocode = api.reverseGeocode;
@@ -114,6 +119,36 @@ export function TaxiCallV1656({
     [from, ozim, routeDistance, to],
   );
   const estimatedPrice = price(kind, distance, pricing);
+
+  const requestCurrentLocation = useCallback((force: boolean) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    const requestId = geolocationRequestId.current + 1;
+    geolocationRequestId.current = requestId;
+    navigator.geolocation.getCurrentPosition((position) => {
+      if (requestId !== geolocationRequestId.current || (!force && userMovedMap.current)) return;
+      const point = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      setFrom(point);
+      setFromAddr("📍 Joriy manzilim");
+      if (map.current) {
+        skipMove.current = true;
+        map.current.setView([point.latitude, point.longitude]);
+        window.setTimeout(() => { skipMove.current = false; }, 800);
+      }
+      if (reverseGeocode) {
+        void reverseGeocode(point.latitude, point.longitude).then((value) => {
+          if (requestId !== geolocationRequestId.current) return;
+          setFromAddr(value.address || value.district || value.region || "Joriy manzilim");
+        }).catch(() => undefined);
+      }
+    }, () => undefined, {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 60000,
+    });
+  }, [reverseGeocode]);
 
   useEffect(() => {
     let active = true;
@@ -133,33 +168,9 @@ export function TaxiCallV1656({
   }, [api, authenticated]);
 
   useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    let cancelled = false;
-    navigator.geolocation.getCurrentPosition((position) => {
-      if (cancelled || userMovedMap.current) return;
-      const point = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      setFrom(point);
-      setFromAddr("📍 Joriy manzilim");
-      if (map.current) {
-        skipMove.current = true;
-        map.current.setView([point.latitude, point.longitude]);
-        window.setTimeout(() => { skipMove.current = false; }, 800);
-      }
-      if (reverseGeocode) {
-        void reverseGeocode(point.latitude, point.longitude).then((value) => {
-          setFromAddr(value.address || value.district || value.region || "Joriy manzilim");
-        }).catch(() => undefined);
-      }
-    }, () => undefined, {
-      enableHighAccuracy: true,
-      timeout: 8000,
-      maximumAge: 60000,
-    });
-    return () => { cancelled = true; };
-  }, [reverseGeocode]);
+    requestCurrentLocation(false);
+    return () => { geolocationRequestId.current += 1; };
+  }, [requestCurrentLocation]);
 
   useEffect(() => {
     if (!mapHost.current) return undefined;
@@ -177,6 +188,7 @@ export function TaxiCallV1656({
       }).addTo(instance);
       instance.on("dragstart", () => {
         userMovedMap.current = true;
+        geolocationRequestId.current += 1;
       });
       instance.on("moveend", () => {
         if (skipMove.current) {
@@ -206,14 +218,33 @@ export function TaxiCallV1656({
         }
       });
       map.current = instance;
+      setMapReady(true);
       window.setTimeout(() => instance.invalidateSize(), 120);
     }).catch(() => undefined);
     return () => {
       disposed = true;
+      setMapReady(false);
       map.current?.remove();
       map.current = null;
+      leaflet.current = null;
+      routeLayer.current = null;
+      fromMarker.current = null;
     };
   }, [center.latitude, center.longitude, reverseGeocode]);
+
+  useEffect(() => {
+    const instance = map.current;
+    const module = leaflet.current;
+    if (!mapReady || !instance || !module) return;
+    if (fromMarker.current) instance.removeLayer(fromMarker.current);
+    const icon = module.divIcon({
+      className: "taxi-call-v1656__origin-icon",
+      html: '<span aria-hidden="true"></span>',
+      iconAnchor: [20, 20],
+      iconSize: [40, 40],
+    });
+    fromMarker.current = module.marker([from.latitude, from.longitude], { icon }).addTo(instance);
+  }, [from.latitude, from.longitude, mapReady]);
 
   useEffect(() => {
     if (ozim || !to) {
@@ -265,6 +296,7 @@ export function TaxiCallV1656({
   function choosePick(mode: "from" | "to") {
     if (mode === "to" && ozim) return;
     userMovedMap.current = true;
+    geolocationRequestId.current += 1;
     setPickMode(mode);
     const point = mode === "from" ? from : to;
     if (point && map.current) {
@@ -328,68 +360,87 @@ export function TaxiCallV1656({
 
   return (
     <main className="screen active taxi-call-v1656" data-screen="taxi-call">
-      <div className="taxi-call-v1656__map-wrap">
-        <div className="taxi-call-v1656__map" id="taxiCallMap" ref={mapHost} />
-        {phase === "form" ? <div className="taxi-call-v1656__center-pin">📍</div> : null}
-      </div>
-      <section className="call-panel" id="callPanel">
-        {phase === "search" ? (
-          <div className="panel-card taxi-call-v1656__centered">
-            <div className="spinner" />
-            <b>Haydovchi qidirilmoqda...</b>
-            <div className="list-sub">Yaqin atrofdagi bo'sh haydovchilarga yuborildi</div>
-            <button className="btn btn-outline btn-block" type="button" onClick={cancel}>Bekor qilish</button>
-          </div>
-        ) : phase === "found" && ride ? (
-          <>
+      <div className="taxi-call-v1656__shell">
+        <section className="call-panel" id="callPanel">
+          {phase === "search" ? (
             <div className="panel-card taxi-call-v1656__centered">
-              <b>{statusLabel(ride)}</b>
-              <button aria-label="Bekor qilish" className="panel-x" type="button" onClick={cancel}>✕</button>
+              <div className="spinner" />
+              <b>Haydovchi qidirilmoqda...</b>
+              <div className="list-sub">Yaqin atrofdagi bo'sh haydovchilarga yuborildi</div>
+              <button className="btn btn-outline btn-block" type="button" onClick={cancel}>Bekor qilish</button>
             </div>
-            <DriverCard ride={ride} onCancel={cancel} />
-          </>
-        ) : (
-          <div className="panel-card">
-            <button aria-label="Yopish" className="panel-x" type="button" onClick={onBack}>✕</button>
-            <div className="call-price">
-              {ozim
-                ? "Manzil og'zaki aytiladi — narx bosib o'tilgan masofa bo'yicha, safar oxirida 🧭"
-                : estimatedPrice
-                  ? <><strong>~{money(estimatedPrice)} so'm</strong><br /><small>{distance?.toFixed(1)} km · naqd, haydovchiga</small></>
-                  : to ? "Narx hisoblanmoqda..." : "Boradigan joyni belgilang — narx shu yerda chiqadi"}
+          ) : phase === "found" && ride ? (
+            <>
+              <div className="panel-card taxi-call-v1656__centered">
+                <b>{statusLabel(ride)}</b>
+                <button aria-label="Bekor qilish" className="panel-x" type="button" onClick={cancel}>✕</button>
+              </div>
+              <DriverCard ride={ride} onCancel={cancel} />
+            </>
+          ) : (
+            <div className="panel-card">
+              <button aria-label="Yopish" className="panel-x" type="button" onClick={onBack}>✕</button>
+              <div className="call-price">
+                {ozim
+                  ? "Manzil og'zaki aytiladi — narx bosib o'tilgan masofa bo'yicha, safar oxirida 🧭"
+                  : estimatedPrice
+                    ? <><strong>~{money(estimatedPrice)} so'm</strong><br /><small>{distance?.toFixed(1)} km · naqd, haydovchiga</small></>
+                    : to ? "Narx hisoblanmoqda..." : "Boradigan joyni belgilang — narx shu yerda chiqadi"}
+              </div>
+              <div className="sort-row taxi-call-v1656__tabs">
+                <button className={`sort-chip${kind === "taxi" ? " on" : ""}`} type="button" onClick={() => setKind("taxi")}>🚖 Taxi</button>
+                <button className={`sort-chip${kind === "dostavka" ? " on" : ""}`} type="button" onClick={() => setKind("dostavka")}>📦 Dostavka</button>
+              </div>
+              <div className="field">
+                <span className="taxi-call-v1656__field-label">Qayerdan{pickMode === "from" ? <em> — xaritani suring</em> : null}</span>
+                <div className="taxi-call-v1656__from-row">
+                  <button className={`input taxi-call-v1656__input-button${pickMode === "from" ? " is-active" : ""}`} type="button" onClick={() => choosePick("from")}>{fromAddr}</button>
+                  <button aria-label="Joriy joylashuvni olish" className="taxi-call-v1656__gps" type="button" onClick={() => requestCurrentLocation(true)}>📍 GPS</button>
+                </div>
+              </div>
+              <div className="field">
+                <span className="taxi-call-v1656__field-label">Qayerga{pickMode === "to" && !ozim ? <em> — xaritani suring</em> : null}</span>
+                <button disabled={ozim} className={`input taxi-call-v1656__input-button${pickMode === "to" && !ozim ? " is-active" : ""}`} type="button" onClick={() => choosePick("to")}>{toAddr || "Bu maydonni tanlab xaritani suring"}</button>
+              </div>
+              <button className={`sort-chip taxi-call-v1656__say-it${ozim ? " on" : ""}`} type="button" onClick={() => {
+                setOzim((current) => !current);
+                setTo(null);
+                setToAddr("");
+              }}>🗣 O'zim aytaman</button>
+              {kind === "dostavka" ? (
+                <>
+                  <fieldset className="field taxi-call-v1656__vehicle-field">
+                    <legend>Mashina turi</legend>
+                    <div className="taxi-call-v1656__vehicle-options">
+                      {(["Yengil yuk", "Katta yuk"] as const).map((option) => (
+                        <button
+                          aria-pressed={carType === option}
+                          className={`sort-chip${carType === option ? " on" : ""}`}
+                          key={option}
+                          type="button"
+                          onClick={() => setCarType(option)}
+                        >{option}</button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="field taxi-call-v1656__cargo-field">
+                    <span className="taxi-call-v1656__field-label">Yuk turi</span>
+                    <input aria-label="Yuk turi" className="input" placeholder="Masalan: mebel, quti, texnika" value={cargo} onChange={(event) => setCargo(event.currentTarget.value)} />
+                  </label>
+                </>
+              ) : null}
+              {error ? <p className="elon-hint" role="alert">{error}</p> : null}
+              <button className="btn btn-primary btn-block" type="button" onClick={() => void submit()}>Zakaz qilish</button>
             </div>
-            <div className="sort-row taxi-call-v1656__tabs">
-              <button className={`sort-chip${kind === "taxi" ? " on" : ""}`} type="button" onClick={() => setKind("taxi")}>🚖 Taxi</button>
-              <button className={`sort-chip${kind === "dostavka" ? " on" : ""}`} type="button" onClick={() => setKind("dostavka")}>📦 Dostavka</button>
-            </div>
-            <label className="field">Qayerdan{pickMode === "from" ? " — xaritani suring" : ""}
-              <button className="input taxi-call-v1656__input-button" type="button" onClick={() => choosePick("from")}>{fromAddr}</button>
-            </label>
-            <label className="field">Qayerga{pickMode === "to" && !ozim ? " — xaritani suring" : ""}
-              <button disabled={ozim} className="input taxi-call-v1656__input-button" type="button" onClick={() => choosePick("to")}>{toAddr || "Bu maydonni tanlab xaritani suring"}</button>
-            </label>
-            <button className={`sort-chip${ozim ? " on" : ""}`} type="button" onClick={() => {
-              setOzim((current) => !current);
-              setTo(null);
-              setToAddr("");
-            }}>🗣 O'zim aytaman</button>
-            {kind === "dostavka" ? (
-              <>
-                <label className="field">Mashina turi
-                  <select aria-label="Mashina turi" className="input" value={carType} onChange={(event) => setCarType(event.currentTarget.value)}>
-                    <option>Yengil yuk</option><option>Katta yuk</option>
-                  </select>
-                </label>
-                <label className="field">Yuk turi
-                  <input aria-label="Yuk turi" className="input" placeholder="Masalan: mebel, quti, texnika" value={cargo} onChange={(event) => setCargo(event.currentTarget.value)} />
-                </label>
-              </>
-            ) : null}
-            {error ? <p className="elon-hint" role="alert">{error}</p> : null}
-            <button className="btn btn-primary btn-block" type="button" onClick={() => void submit()}>Zakaz qilish</button>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+        <div className="taxi-call-v1656__map-wrap">
+          <div className="taxi-call-v1656__map" id="taxiCallMap" ref={mapHost} />
+          {phase === "form" ? <div className="taxi-call-v1656__center-pin">📍</div> : null}
+          {district ? <div className="taxi-call-v1656__map-chip">⌾ {district}</div> : null}
+          <button aria-label="Taxi oynasidan chiqish" className="taxi-call-v1656__map-action" type="button" onClick={onBack}>🚖</button>
+        </div>
+      </div>
     </main>
   );
 }
