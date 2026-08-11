@@ -708,6 +708,7 @@ export function App({ api }: { api: AppApi }) {
               latitude: homeLocation?.latitude ?? 41.3111,
               longitude: homeLocation?.longitude ?? 69.2797,
             }}
+            district={homeLocation?.district}
             onBack={() => dispatch({ type: "GO_HOME" })}
             onNeedLogin={(reason) => {
               if (session.status === "business") {
