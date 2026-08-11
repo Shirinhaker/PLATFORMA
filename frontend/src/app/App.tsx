@@ -389,7 +389,7 @@ export function App({ api }: { api: AppApi }) {
     location: "Manzil",
     cart: "Savat",
     "taxi-call": "Taxi chaqirish",
-    taxidrv: "Haydovchi kabineti",
+    taxidrv: "Taxi — haydovchi",
   };
   const title = titles[navigation.view];
 
@@ -514,6 +514,7 @@ export function App({ api }: { api: AppApi }) {
           api={api}
           identity={session.identity}
           onLogout={logout}
+          onOpenDriverCabinet={() => dispatch({ type: "OPEN_TAXI_DRIVER" })}
           onOpenPublicListing={(publicId) => {
             setOpenedProfile(null);
             setOpenedListing({ publicId, title: "E’lon" });
@@ -721,10 +722,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "taxidrv":
         return session.status === "user" ? (
-          <DriverCabinetV1656
-            api={api}
-            onBack={() => dispatch({ type: "OPEN_CABINET" })}
-          />
+          <DriverCabinetV1656 api={api} />
         ) : renderAccount();
       case "auth":
       case "cabinet":
