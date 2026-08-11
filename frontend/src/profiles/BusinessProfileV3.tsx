@@ -89,6 +89,7 @@ import {
   supportsBusinessSubscriptionsApi,
   supportsPaymentsApi,
 } from "../payments/SubscriptionsPaymentsV1656";
+import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
 import "./Cabinet.css";
 import "./BusinessFollowCounts.css";
 
@@ -105,6 +106,8 @@ export type BusinessProfileApiV3 = Pick<
   | "logout"
 > & Partial<Pick<
   ApiClient,
+  | "getBusinessCredentials"
+  | "updateBusinessCredentials"
   | "attachBusinessPaymentQr"
   | "reverseGeocode"
   | "getBusinessOnlineResource"
@@ -271,7 +274,8 @@ type Screen =
   | "ai-assistant"
   | "statistics"
   | "education-management"
-  | "education-statistics";
+  | "education-statistics"
+  | "settings";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
 
@@ -362,7 +366,7 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
 
 const OWNER_ONLY_VIEWS = new Set([
   "profile", "subscriptions", "payments", "followers", "following", "staff",
-  "my-documents",
+  "my-documents", "settings",
 ]);
 
 function canUseView(identity: SessionIdentity, view: string) {
@@ -916,6 +920,27 @@ export function BusinessProfileV3({
     );
   }
 
+  if (screen === "settings") {
+    const notificationsMenu = visibleMenus(profile, ONLINE_MENUS, identity)
+      .find((menu) => menu.view === "notifications");
+    return withActionBanner(
+      <AccountSettingsV1656
+        api={api}
+        identity={identity}
+        onBack={() => setScreen("cabinet")}
+        onNotifications={
+          notificationsMenu && supportsNotifications(api)
+            ? () => {
+              setOnlineMenu(notificationsMenu);
+              setScreen("online");
+            }
+            : undefined
+        }
+        onLogout={logout}
+      />,
+    );
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -932,6 +957,10 @@ export function BusinessProfileV3({
   const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);
 
   function openMenu(menu: Menu) {
+    if (menu.view === "settings") {
+      setScreen("settings");
+      return;
+    }
     if (menu.view === "staff") {
       setScreen("staff");
       return;
