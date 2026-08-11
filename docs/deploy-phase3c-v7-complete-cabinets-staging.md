@@ -1,5 +1,9 @@
 # Phase 3C V7 — v1656 oddiy va biznes kabinetlarini stagingga ko‘chirish
 
+> **Arxivlangan:** bu V7 runbook va uning eski `0005` skripti qayta
+> ishlatilmaydi. Hozirgi `main` uchun yangi, alohida staging bazasida
+> [Phase 3C V8 runbook](deploy-phase3c-v8-current-cabinets-staging.md) ishlatiladi.
+
 ## Maqsad
 
 v1656 immutable snapshotidagi haqiqiy oddiy va biznes kabinetlarini yangi modulli tizimga to‘liq bog‘lash. Profilga tegishli mavjud ma’lumotlar kabinet bo‘limlarida saqlanadi; aniq demo/test belgili yozuvlar va maxfiy credential maydonlari chiqarib tashlanadi.
