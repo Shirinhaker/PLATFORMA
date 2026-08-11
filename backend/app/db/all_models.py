@@ -1,22 +1,30 @@
-from __future__ import annotations
+"""Barcha model modullarini `Base.metadata` ga yuklaydi.
 
-import asyncio
-from logging.config import fileConfig
+Modellar orasida domenlararo tashqi kalitlar bor — masalan
+`stories.created_by_staff_id` → `staff_members.id`. SQLAlchemy bunday
+kalitni faqat **ikkala** model yuklangandagina yechadi. Ilova ishlaganda
+muammo ko'rinmaydi, chunki `app.main` hammasini import qiladi; alohida
+kirish nuqtalari (migratsiya CLI, alembic) esa o'zi yuklashi kerak edi va
+yuklamagani uchun quyidagicha yiqilardi:
 
-from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
+    sqlalchemy.exc.NoReferencedTableError: Foreign key associated with
+    column 'stories.created_by_staff_id' could not find table
+    'staff_members'
 
-from app.core.config import get_settings
-from app.db.base import Base
+Ro'yxat ochiq yozilgan (loyihadagi uslub). `tests/test_all_models.py`
+uni `app/*/model*.py` fayllari bilan solishtiradi, ya'ni yangi domen
+qo'shilib bu yerga yozilmasa test ogohlantiradi.
+"""
+
 from app.accounts import model as accounts_model  # noqa: F401
 from app.admin import model as admin_model  # noqa: F401
 from app.admin import moderation_model as admin_moderation_model  # noqa: F401
 from app.advertisements import model as advertisements_model  # noqa: F401
+from app.ai_assistant import model as ai_assistant_model  # noqa: F401
 from app.auth import model as auth_model  # noqa: F401
 from app.cabinet_records import model as cabinet_records_model  # noqa: F401
-from app.catalog import model as catalog_model  # noqa: F401
 from app.cash_register import model as cash_register_model  # noqa: F401
+from app.catalog import model as catalog_model  # noqa: F401
 from app.debt_ledger import model as debt_ledger_model  # noqa: F401
 from app.dining import model as dining_model  # noqa: F401
 from app.documents import model as documents_model  # noqa: F401
@@ -34,54 +42,7 @@ from app.payments import model as payments_model  # noqa: F401
 from app.profiles import model as profiles_model  # noqa: F401
 from app.queues import model as queues_model  # noqa: F401
 from app.reviews import model as reviews_model  # noqa: F401
+from app.specialists import model as specialists_model  # noqa: F401
 from app.staff import model as staff_model  # noqa: F401
 from app.stories import model as stories_model  # noqa: F401
-from app.specialists import model as specialists_model  # noqa: F401
-from app.ai_assistant import model as ai_assistant_model  # noqa: F401
 from app.taxi import model as taxi_model  # noqa: F401
-
-
-config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
-target_metadata = Base.metadata
-
-
-def run_migrations_offline() -> None:
-    context.configure(
-        url=config.get_main_option("sqlalchemy.url"),
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,
-    )
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-def do_run_migrations(connection) -> None:
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-    )
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
-
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    asyncio.run(run_async_migrations())
