@@ -168,6 +168,10 @@ function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
 
 export function App({ api }: { api: AppApi }) {
   const initialLocation = useMemo(() => readHomeLocation(), []);
+  const sharedUserId = useMemo(() => {
+    const value = new URLSearchParams(window.location.search).get("user") ?? "";
+    return /^u_[0-9a-f]{16}$/.test(value) ? value : "";
+  }, []);
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
@@ -241,6 +245,16 @@ export function App({ api }: { api: AppApi }) {
       ? api.getPublicProfile.bind(api)
       : undefined
   ), [api]);
+  useEffect(() => {
+    if (!sharedUserId || !getPublicProfile) return;
+    setOpenedListing(null);
+    setOpenedProfile({
+      kind: "user",
+      publicId: sharedUserId,
+      title: "Profil",
+    });
+    dispatch({ type: "GO_HOME" });
+  }, [getPublicProfile, sharedUserId]);
   const recordAdvertisementViews = useMemo(() => (
     typeof api.recordAdvertisementViews === "function"
       ? api.recordAdvertisementViews.bind(api)

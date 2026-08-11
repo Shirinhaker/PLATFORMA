@@ -24,6 +24,7 @@ const businessIdentity = {
 };
 const userProfile = {
   account_id: 5,
+  public_id: "u_1234567890abcdef",
   name: "Ali",
   phone: "",
   public_username: "ali",
@@ -34,6 +35,7 @@ const userProfile = {
   longitude: null,
   location_exact: false,
   avatar_object_key: "",
+  avatar_url: "",
   avatar_x: 50,
   avatar_y: 50,
   avatar_zoom: 1,
@@ -455,8 +457,8 @@ function profileApi() {
 }
 
 async function openUserProfileForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "Profilim" }));
-  return screen.findByLabelText("Ism");
+  await user.click(await screen.findByRole("button", { name: /Profilim Ism/ }));
+  return screen.findByLabelText("Ism familiya");
 }
 
 async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>) {
@@ -481,7 +483,7 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: "To‘lovlarim" }));
+    await user.click(await screen.findByRole("button", { name: /To‘lovlarim/ }));
 
     expect(await screen.findByText(/PAY-TYPED/)).toBeInTheDocument();
     expect(api.getMyPayments).toHaveBeenCalledOnce();
@@ -502,7 +504,7 @@ describe("profile cabinets", () => {
 
     await user.click(await screen.findByRole(
       "button",
-      { name: "Mutaxassisligim va xizmatlarim" },
+      { name: /Mutaxassisligim va xizmatlarim/ },
     ));
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
     expect(await screen.findByText("A’lo xizmat")).toBeInTheDocument();
@@ -571,9 +573,9 @@ describe("profile cabinets", () => {
 
     expect(await screen.findByRole("heading", { name: "Ali" }))
       .toBeInTheDocument();
-    expect(screen.getByText("3 obunachi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 obunachi" })).toBeInTheDocument();
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "E’lonlarim" }));
+    await user.click(screen.getByRole("button", { name: /Reklamalarim/ }));
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
       .toBeInTheDocument();
@@ -660,7 +662,7 @@ describe("profile cabinets", () => {
     );
   });
 
-  it("opens migrated driver, ride and notification-filter data", async () => {
+  it("opens migrated notification data from the v1656 cabinet", async () => {
     const user = userEvent.setup();
     render(
       <UserProfile
@@ -673,21 +675,9 @@ describe("profile cabinets", () => {
 
     await user.click(await screen.findByRole(
       "button",
-      { name: "Haydovchilik profilim" },
+      { name: /Bildirishnomalarim/ },
     ));
-    expect(await screen.findByText("Cobalt")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
-    await user.click(screen.getByRole(
-      "button",
-      { name: "Taxi va dostavka buyurtmalarim" },
-    ));
-    expect(await screen.findByText("Bozor")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
-    await user.click(screen.getByRole(
-      "button",
-      { name: "Bildirishnoma filtrlari" },
-    ));
-    expect(await screen.findByText("Qumqo‘rg‘on")).toBeInTheDocument();
+    expect(await screen.findByText("Yangi xabar")).toBeInTheDocument();
   });
 
   it("opens the shared v1656 settings screen from both cabinets", async () => {
@@ -701,7 +691,7 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Sozlamalar" }));
+    await user.click(await screen.findByRole("button", { name: /Sozlamalar/ }));
     expect(screen.getByRole("heading", { name: "Sozlamalar" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Ism")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Login va parol/ }));
@@ -734,7 +724,9 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Saqlanganlar" }));
+    await user.click(await screen.findByRole("button", {
+      name: /Saqlanganlar Saqlangan e'lon va bizneslar/,
+    }));
 
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
     expect(screen.getByText("2 ta saqlangan")).toBeInTheDocument();
@@ -762,7 +754,7 @@ describe("profile cabinets", () => {
     }));
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
     expect(api.updateUserProfile).toHaveBeenCalledWith({ name: "Yangi ism" });
-    expect(await screen.findByText("Saqlandi")).toBeInTheDocument();
+    expect(await screen.findByText("Saqlandi ✅")).toBeInTheDocument();
   });
 
   it("switches directly to linked business cabinet without logout", async () => {

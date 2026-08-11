@@ -25,6 +25,7 @@ const businessIdentity = {
 
 const userProfile = {
   account_id: 5,
+  public_id: "u_1234567890abcdef",
   name: "Ali",
   phone: "",
   public_username: "",
@@ -35,6 +36,7 @@ const userProfile = {
   longitude: null,
   location_exact: false,
   avatar_object_key: "",
+  avatar_url: "",
   avatar_x: 50,
   avatar_y: 50,
   avatar_zoom: 1,
@@ -127,6 +129,7 @@ function profileApi(identity = userIdentity) {
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.replaceState({}, "", "/");
   });
 
   it("requires a district before opening Home for the first time", async () => {
@@ -360,7 +363,8 @@ describe("App", () => {
     });
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
     await screen.findByRole("heading", { name: "Ali" });
-    await user.click(screen.getByRole("button", { name: "Chiqish" }));
+    await user.click(screen.getByRole("button", { name: /Sozlamalar/ }));
+    await user.click(screen.getByRole("button", { name: /Tizimdan chiqish/ }));
 
     expect(api.logout).toHaveBeenCalledOnce();
     expect(
@@ -401,15 +405,21 @@ describe("App", () => {
         },
         commission: 1000,
       }),
+      getPublicFeatures: vi.fn().mockResolvedValue({
+        listings: false,
+        stories: false,
+        chat: false,
+        systemization: false,
+        taxi: true,
+      }),
     };
     render(<App api={api} />);
 
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(screen.getByRole("button", { name: "Kabinet" }));
     await user.click(await screen.findByRole("button", {
-      name: "Haydovchilik profilim",
+      name: "Taxi bo'limi",
     }));
 
     expect(await screen.findByText("Taxi — haydovchi")).toBeInTheDocument();
@@ -542,6 +552,41 @@ describe("App", () => {
     expect(api.getPublicProfile).toHaveBeenCalledWith(
       "business",
       "b_second",
+    );
+  });
+
+  it("opens a shared user profile from the v1656 user query", async () => {
+    saveHomeLocation();
+    window.history.replaceState({}, "", "/?user=u_0123456789abcdef");
+    const api = {
+      ...guestApi(),
+      getPublicProfile: vi.fn().mockResolvedValue({
+        kind: "user",
+        public_id: "u_0123456789abcdef",
+        name: "Ali Valiyev",
+        public_username: "ali",
+        description: "",
+        direction: "",
+        activity_type: "",
+        address: "Qumqo‘rg‘on",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 3,
+        specialist: null,
+        items: [],
+        listings: [],
+      }),
+    };
+
+    render(<App api={api} />);
+
+    expect((await screen.findAllByText("Ali Valiyev")).length).toBeGreaterThan(0);
+    expect(api.getPublicProfile).toHaveBeenCalledWith(
+      "user",
+      "u_0123456789abcdef",
     );
   });
 

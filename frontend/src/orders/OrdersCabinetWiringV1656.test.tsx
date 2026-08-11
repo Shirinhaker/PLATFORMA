@@ -34,6 +34,7 @@ const business = {
 
 const userProfile = {
   account_id: 5,
+  public_id: "u_1234567890abcdef",
   name: "Ali",
   phone: "",
   public_username: "ali",
@@ -44,6 +45,7 @@ const userProfile = {
   longitude: null,
   location_exact: false,
   avatar_object_key: "",
+  avatar_url: "",
   avatar_x: 50,
   avatar_y: 50,
   avatar_zoom: 1,
@@ -153,7 +155,7 @@ describe("v1656 order kabinet wiring", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Bildirishnomalarim" }));
+    await user.click(await screen.findByRole("button", { name: /Bildirishnomalarim/ }));
     await user.click(await screen.findByText("Navbatingiz yaqinlashdi"));
 
     expect(api.markQueueNotificationRead).toHaveBeenCalledWith(8);

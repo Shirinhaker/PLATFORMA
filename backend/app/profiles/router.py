@@ -39,6 +39,7 @@ from app.profiles.schemas import (
     UserProfileRead,
 )
 from app.profiles.summary_service import ProfileSummaryService
+from app.public_ids import build_profile_public_id
 from app.business_online.service_relational import (
     RELATIONAL_EDUCATION_RESOURCES,
 )
@@ -185,7 +186,11 @@ def business_profile_read(
     return BusinessProfileRead.model_validate(profile).model_copy(update=updates)
 
 
-async def user_profile_read(session: AsyncSession, profile) -> UserProfileRead:
+async def user_profile_response(
+    request: Request,
+    session: AsyncSession,
+    profile,
+) -> UserProfileRead:
     payload = await assembled_cabinet_payload(
         session,
         account_id=profile.account_id,
@@ -194,6 +199,13 @@ async def user_profile_read(session: AsyncSession, profile) -> UserProfileRead:
     )
     return UserProfileRead.model_validate(profile).model_copy(
         update={
+            "public_id": profile.public_id or build_profile_public_id(
+                "user",
+                profile.account_id,
+            ),
+            "avatar_url": request.app.state.r2.create_download_url(
+                profile.avatar_object_key
+            ),
             "cabinet_payload": payload,
             "dashboard_snapshot": dashboard_with_notification_count(
                 profile,
@@ -244,15 +256,20 @@ async def get_me(
 
 
 @router.get("/user-profile", response_model=UserProfileRead)
-async def read_user_profile(current: CurrentRead, session: ProfileSession):
+async def read_user_profile(
+    request: Request,
+    current: CurrentRead,
+    session: ProfileSession,
+):
     require_account_type(current, AccountType.USER)
     profile = await get_user_profile(session, current.account_id)
-    return await user_profile_read(session, profile)
+    return await user_profile_response(request, session, profile)
 
 
 @router.put("/user-profile", response_model=UserProfileRead)
 async def update_user_profile(
     body: UserProfilePatch,
+    request: Request,
     current: CurrentWrite,
     session: ProfileSession,
     summaries: ProfileSummary,
@@ -263,7 +280,7 @@ async def update_user_profile(
         await patch_user_profile(session, profile, body)
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await user_profile_read(session, profile)
+        return await user_profile_response(request, session, profile)
     except Exception:
         await session.rollback()
         raise
@@ -385,6 +402,7 @@ async def switch_cabinet(
 @router.put("/user-profile/avatar", response_model=UserProfileRead)
 async def attach_user_avatar(
     body: ProfileImageAttachment,
+    request: Request,
     current: CurrentWrite,
     session: ProfileSession,
     summaries: ProfileSummary,
@@ -405,7 +423,7 @@ async def attach_user_avatar(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await user_profile_read(session, profile)
+        return await user_profile_response(request, session, profile)
     except Exception:
         await session.rollback()
         raise
