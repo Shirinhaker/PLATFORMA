@@ -151,6 +151,7 @@ type Props = {
     kind: "user" | "business",
     publicId: string,
   ) => void;
+  onOpenDriverCabinet?: () => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -379,6 +380,7 @@ export function UserProfile({
   api,
   identity,
   onLogout,
+  onOpenDriverCabinet,
   onOpenPublicListing,
   onOpenPublicProfile,
   onSwitched,
@@ -940,7 +942,13 @@ export function UserProfile({
                 <button
                   type="button"
                   key={section.view}
-                  onClick={() => setView(section.view)}
+                  onClick={() => {
+                    if (section.view === "drivers" && onOpenDriverCabinet) {
+                      onOpenDriverCabinet();
+                      return;
+                    }
+                    setView(section.view);
+                  }}
                 >
                   <span aria-hidden="true">{section.icon}</span>
                   <strong>{section.label}</strong>
