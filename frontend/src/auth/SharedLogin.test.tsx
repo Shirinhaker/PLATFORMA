@@ -6,30 +6,43 @@ import { LoginForm } from "./LoginForm";
 
 
 describe("shared-login cabinet selection", () => {
-  it("sends the selected business cabinet type", async () => {
+  it("asks for cabinet type only when the API reports an ambiguous login", async () => {
     const user = userEvent.setup();
-    const startLogin = vi.fn().mockResolvedValue({
-      request_id: 18,
-      deep_link: "https://t.me/koprik_bot?start=shared",
-      code_sent: false,
-      expires_in: 600,
-      resend_after: 60,
-    });
+    const ambiguous = Object.assign(
+      new Error("Oddiy yoki biznes kabinetini tanlang."),
+      { code: "account_type_required" },
+    );
+    const startLogin = vi.fn()
+      .mockRejectedValueOnce(ambiguous)
+      .mockResolvedValueOnce({
+        request_id: 18,
+        deep_link: "https://t.me/koprik_bot?start=shared",
+        code_sent: false,
+        expires_in: 600,
+        resend_after: 60,
+      });
     const api = { startLogin } as never;
 
-    render(
-      <LoginForm api={api} onStarted={vi.fn()} onBack={vi.fn()} />,
-    );
+    render(<LoginForm api={api} onStarted={vi.fn()} onStaff={vi.fn()} onRegister={vi.fn()} />);
 
-    await user.selectOptions(
-      screen.getByLabelText("Kabinet turi"),
-      "business",
-    );
+    expect(screen.queryByLabelText("Kabinet turi")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Login"), "shared_owner");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", { name: "Davom etish" }));
+    await user.click(screen.getByRole("button", {
+      name: "Telegram orqali tasdiqlash",
+    }));
 
-    expect(startLogin).toHaveBeenCalledWith({
+    expect(await screen.findByLabelText("Kabinet turi")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Kabinet turi"), "business");
+    await user.click(screen.getByRole("button", {
+      name: "Telegram orqali tasdiqlash",
+    }));
+
+    expect(startLogin).toHaveBeenNthCalledWith(1, {
+      login: "shared_owner",
+      password: "secret-42",
+    });
+    expect(startLogin).toHaveBeenNthCalledWith(2, {
       login: "shared_owner",
       password: "secret-42",
       cabinet_type: "business",

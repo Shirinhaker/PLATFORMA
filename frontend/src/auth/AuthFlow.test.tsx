@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthFlow } from "./AuthFlow";
 import { TelegramCodeForm } from "./TelegramCodeForm";
@@ -53,8 +53,18 @@ function authApi() {
 }
 
 
-describe("AuthFlow", () => {
-  it("shows the exact v1656 reason when queue booking requires login", () => {
+describe("AuthFlow v1656 parity", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    vi.spyOn(window, "open").mockReturnValue(null);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("opens directly on the exact v1656 login screen", () => {
     render(
       <AuthFlow
         api={authApi()}
@@ -63,61 +73,119 @@ describe("AuthFlow", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Kabinetga kirish" }))
+      .toBeInTheDocument();
+    expect(screen.getByText(
+      "Ro'yxatdan o'tganda berilgan login va parolni kiriting.",
+    )).toBeInTheDocument();
     expect(screen.getByText(
       "🔒 Navbat olish uchun tizimga kiring yoki ro'yxatdan o'ting.",
     )).toHaveAttribute("id", "loginReason");
+    expect(screen.getByPlaceholderText("Login")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Parol")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Kabinet turi")).not.toBeInTheDocument();
   });
 
-  it("registers a separate business account through telegram code", async () => {
+  it("logs in without asking for an account type and opens Telegram", async () => {
     const user = userEvent.setup();
     const api = authApi();
     render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
 
-    await user.click(
-      screen.getByRole("button", { name: "Ro‘yxatdan o‘tish" }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Biznes akkaunt" }),
-    );
-    await user.type(screen.getByLabelText("Biznes nomi"), "Turon Savdo");
-    await user.click(
-      screen.getByRole(
-        "button",
-        { name: "Telegram orqali tasdiqlash" },
-      ),
-    );
-
-    expect(api.startRegistration).toHaveBeenCalledWith(
-      expect.objectContaining({
-        account_type: "business",
-        name: "Turon Savdo",
-      }),
-    );
-    expect(await screen.findByLabelText("6 xonali kod"))
-      .toBeInTheDocument();
-  });
-
-  it("logs in without asking for account type", async () => {
-    const user = userEvent.setup();
-    const api = authApi();
-    render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
-
-    expect(screen.queryByText("Koprik Phase 2")).not.toBeInTheDocument();
-    expect(screen.getByText("Koprik")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Kirish" }));
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", { name: "Davom etish" }));
+    await user.click(screen.getByRole("button", {
+      name: "Telegram orqali tasdiqlash",
+    }));
 
     expect(api.startLogin).toHaveBeenCalledWith({
       login: "b_turon",
       password: "secret-42",
     });
-    expect(screen.queryByText("Akkaunt turini tanlang"))
-      .not.toBeInTheDocument();
+    expect(window.open).toHaveBeenCalledWith(
+      "https://t.me/koprik_bot?start=login-token",
+      "_blank",
+    );
+    expect(await screen.findByLabelText("Tasdiqlash kodi"))
+      .toHaveAttribute("placeholder", "000000");
+    expect(screen.getByRole("button", { name: "Tasdiqlash va kirish" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✈️ Telegramni ochish" }))
+      .toBeInTheDocument();
   });
 
-  it("lets staff sign in with firm-scoped credentials", async () => {
+  it("shows the exact role cards and all twenty v1656 directions", async () => {
+    const user = userEvent.setup();
+    render(<AuthFlow api={authApi()} onAuthenticated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Ro'yxatdan o'tish" }));
+    expect(screen.getByText("Kim sifatida ro'yxatdan o'tmoqchisiz?"))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Biznes Mahsulot/ }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Oddiy foydalanuvchi Bizneslarni/ }))
+      .toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Biznes Mahsulot/ }));
+    expect(screen.getByRole("heading", { name: "Biznes ro'yxati" }))
+      .toBeInTheDocument();
+    const directions = screen.getByLabelText("Faoliyat yo'nalishi");
+    expect(within(directions).getAllByRole("option")).toHaveLength(21);
+    expect(within(directions).getByRole("option", { name: "🛒 Savdo" }))
+      .toBeInTheDocument();
+    expect(within(directions).getByRole("option", { name: "🚢 Import-eksport" }))
+      .toBeInTheDocument();
+  });
+
+  it("preserves registration fields when returning from Telegram code", async () => {
+    const user = userEvent.setup();
+    const api = authApi();
+    render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Ro'yxatdan o'tish" }));
+    await user.click(screen.getByRole("button", { name: /Biznes Mahsulot/ }));
+    await user.type(screen.getByLabelText("Biznes nomi"), "Turon Savdo");
+    await user.selectOptions(screen.getByLabelText("Faoliyat yo'nalishi"), "Savdo");
+    await user.type(screen.getByLabelText("Manzil"), "Qumqo'rg'on");
+    await user.type(screen.getByLabelText("Telefon raqami — ixtiyoriy"), "+998901234567");
+    await user.click(screen.getByRole("button", {
+      name: "✈️ Telegram orqali kod olish",
+    }));
+
+    expect(api.startRegistration).toHaveBeenCalledWith({
+      account_type: "business",
+      name: "Turon Savdo",
+      phone: "+998901234567",
+      direction: "Savdo",
+      address: "Qumqo'rg'on",
+    });
+    await user.click(screen.getByRole("button", {
+      name: "Ma'lumotlarni o'zgartirish",
+    }));
+    expect(screen.getByLabelText("Biznes nomi")).toHaveValue("Turon Savdo");
+    expect(screen.getByLabelText("Faoliyat yo'nalishi")).toHaveValue("Savdo");
+    expect(screen.getByLabelText("Manzil")).toHaveValue("Qumqo'rg'on");
+  });
+
+  it("restores a live Telegram challenge after the flow remounts", async () => {
+    const user = userEvent.setup();
+    const api = authApi();
+    const first = render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
+    await user.type(screen.getByLabelText("Login"), "b_turon");
+    await user.type(screen.getByLabelText("Parol"), "secret-42");
+    await user.click(screen.getByRole("button", {
+      name: "Telegram orqali tasdiqlash",
+    }));
+    await screen.findByLabelText("Tasdiqlash kodi");
+
+    first.unmount();
+    render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
+
+    expect(screen.getByLabelText("Tasdiqlash kodi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✈️ Telegramni ochish" }))
+      .toBeInTheDocument();
+  });
+
+  it("lets staff sign in with the exact firm-scoped screen", async () => {
     const user = userEvent.setup();
     const api = {
       ...authApi(),
@@ -136,7 +204,15 @@ describe("AuthFlow", () => {
     const authenticated = vi.fn();
     render(<AuthFlow api={api} onAuthenticated={authenticated} />);
 
-    await user.click(screen.getByRole("button", { name: "Xodimlar uchun kirish" }));
+    await user.click(screen.getByRole("button", { name: "👥 Xodimlar uchun kirish" }));
+    expect(screen.getByRole("heading", { name: "Xodim kirishi" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("Do'kon rahbari bergan login va parol bilan kiring."))
+      .toBeInTheDocument();
+    expect(screen.getByPlaceholderText("masalan: biz123456"))
+      .toBeInTheDocument();
+    expect(screen.getByPlaceholderText("masalan: vali01"))
+      .toBeInTheDocument();
     await user.type(screen.getByLabelText("Firma logini"), "b_turon");
     await user.type(screen.getByLabelText("Xodim logini"), "ali01");
     await user.type(screen.getByLabelText("Xodim paroli"), "safe-pass-42");
@@ -154,7 +230,7 @@ describe("AuthFlow", () => {
     }));
   });
 
-  it("shows generated credentials once after registration", async () => {
+  it("shows the exact generated credentials screen once", async () => {
     const user = userEvent.setup();
     const api = authApi();
     const onAuthenticated = vi.fn();
@@ -162,6 +238,7 @@ describe("AuthFlow", () => {
       <TelegramCodeForm
         api={api}
         purpose="register"
+        accountType="user"
         requestId={12}
         deepLink="https://t.me/koprik_bot?start=token"
         codeSent={false}
@@ -170,14 +247,16 @@ describe("AuthFlow", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("6 xonali kod"), "123456");
-    await user.click(screen.getByRole("button", { name: "Tasdiqlash" }));
+    await user.type(screen.getByLabelText("Tasdiqlash kodi"), "123456");
+    await user.click(screen.getByRole("button", { name: "Tasdiqlash va kirish" }));
 
-    expect(await screen.findByText("u_test")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ro'yxatdan o'tdingiz! ✅" }))
+      .toBeInTheDocument();
+    expect(screen.getByText("🔑 Login")).toBeInTheDocument();
+    expect(screen.getByText("u_test")).toBeInTheDocument();
+    expect(screen.getByText("🔐 Parol")).toBeInTheDocument();
     expect(screen.getByText("generated-pass")).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", { name: "Kabinetga kirish" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Kabinetga kirish" }));
     expect(onAuthenticated).toHaveBeenCalledTimes(1);
   });
 });

@@ -28,58 +28,75 @@ export function StaffLoginForm({
     setError("");
     try {
       onAuthenticated(await api.loginStaff({
-        firm_login: firmLogin,
-        login,
+        firm_login: firmLogin.trim().toLowerCase(),
+        login: login.trim().toLowerCase(),
         password,
       }));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Kirish amalga oshmadi.");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Kirish amalga oshmadi.",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="auth-card">
-      <p className="session-panel__eyebrow">Xodim kirishi</p>
-      <h1>Firma kabinetiga kirish</h1>
-      <p>Rahbar bergan firma logini, shaxsiy login va yangi parolni kiriting.</p>
-      <form onSubmit={(event) => void submit(event)}>
-        <label>
-          Firma logini
+    <main className="koprik-auth-stage">
+      <form
+        className="koprik-flow-shell koprik-auth-shell koprik-staff-shell auth-v1656"
+        onSubmit={(event) => void submit(event)}
+      >
+        <div className="koprik-staff-shell__heading">
+          <div className="koprik-staff-shell__icon" aria-hidden="true">🏪</div>
+          <h1 className="lead">Xodim kirishi</h1>
+          <p className="idesc">Do'kon rahbari bergan login va parol bilan kiring.</p>
+        </div>
+        <label className="field">
+          <span>Firma logini</span>
           <input
-            autoComplete="organization"
+            className="input auth-v1656__lowercase"
+            autoComplete="off"
+            placeholder="masalan: biz123456"
             value={firmLogin}
-            onChange={(event) => setFirmLogin(event.target.value.toLowerCase())}
+            onChange={(event) => setFirmLogin(event.currentTarget.value.toLowerCase())}
             required
           />
         </label>
-        <label>
-          Xodim logini
+        <label className="field">
+          <span>Xodim logini</span>
           <input
+            className="input auth-v1656__lowercase"
             autoComplete="username"
+            placeholder="masalan: vali01"
             value={login}
-            onChange={(event) => setLogin(event.target.value.toLowerCase())}
+            onChange={(event) => setLogin(event.currentTarget.value.toLowerCase())}
             required
           />
         </label>
-        <label>
-          Xodim paroli
+        <label className="field">
+          <span>Xodim paroli</span>
           <input
+            className="input"
             type="password"
             autoComplete="current-password"
+            placeholder="Parol"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => setPassword(event.currentTarget.value)}
             required
           />
         </label>
-        {error && <p className="form-error" role="alert">{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? "Kirilmoqda…" : "Kirish"}
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+          {busy ? "Kirilmoqda..." : "Kirish"}
         </button>
-        <button type="button" className="button-secondary" onClick={onBack}>
-          Orqaga
-        </button>
+        <p className="form-foot">
+          <button className="form-foot__action" type="button" onClick={onBack}>
+            ← Oddiy kirishga qaytish
+          </button>
+        </p>
       </form>
     </main>
   );

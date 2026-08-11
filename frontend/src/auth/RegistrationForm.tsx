@@ -5,14 +5,18 @@ import type {
   ChallengeStarted,
   RegistrationStart,
 } from "../api/types";
+import { CATALOG_DIRECTIONS } from "../legacy/public/catalog-data";
 import type { AuthApi } from "./AuthFlow";
 
 
 type Props = {
   api: AuthApi;
   accountType: AccountType;
-  onStarted: (challenge: ChallengeStarted) => void;
-  onBack: () => void;
+  initialValue?: RegistrationStart;
+  onStarted: (
+    challenge: ChallengeStarted,
+    registration: RegistrationStart,
+  ) => void;
 };
 
 
@@ -24,13 +28,13 @@ function errorMessage(error: unknown) {
 export function RegistrationForm({
   api,
   accountType,
+  initialValue,
   onStarted,
-  onBack,
 }: Props) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [direction, setDirection] = useState("");
-  const [address, setAddress] = useState("");
+  const [name, setName] = useState(initialValue?.name ?? "");
+  const [phone, setPhone] = useState(initialValue?.phone ?? "");
+  const [direction, setDirection] = useState(initialValue?.direction ?? "");
+  const [address, setAddress] = useState(initialValue?.address ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const business = accountType === "business";
@@ -41,73 +45,91 @@ export function RegistrationForm({
     setError("");
     const body: RegistrationStart = {
       account_type: accountType,
-      name,
-      phone,
-      ...(business ? { direction, address } : {}),
+      name: name.trim(),
+      phone: phone.trim(),
+      ...(business ? {
+        direction,
+        address: address.trim(),
+      } : {}),
     };
     try {
-      onStarted(await api.startRegistration(body));
-    } catch (reason) {
-      setError(errorMessage(reason));
+      onStarted(await api.startRegistration(body), body);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form className="auth-card auth-form" onSubmit={submit}>
-      <div>
-        <p className="session-panel__eyebrow">Ro‘yxatdan o‘tish</p>
-        <h1>{business ? "Biznes akkaunt" : "Oddiy akkaunt"}</h1>
-      </div>
-      <label>
-        {business ? "Biznes nomi" : "Ism"}
-        <input
-          autoComplete={business ? "organization" : "name"}
-          minLength={2}
-          maxLength={120}
-          required
-          value={name}
-          onChange={(event) => setName(event.currentTarget.value)}
-        />
-      </label>
-      <label>
-        Telefon
-        <input
-          type="tel"
-          autoComplete="tel"
-          maxLength={32}
-          value={phone}
-          onChange={(event) => setPhone(event.currentTarget.value)}
-        />
-      </label>
-      {business && (
-        <>
-          <label>
-            Yo‘nalish
-            <input
-              maxLength={120}
-              value={direction}
-              onChange={(event) => setDirection(event.currentTarget.value)}
-            />
-          </label>
-          <label>
-            Manzil
-            <textarea
-              maxLength={300}
-              value={address}
-              onChange={(event) => setAddress(event.currentTarget.value)}
-            />
-          </label>
-        </>
-      )}
-      {error && <p className="form-error" role="alert">{error}</p>}
-      <button type="submit" disabled={busy}>
-        {busy ? "Yuborilmoqda…" : "Telegram orqali tasdiqlash"}
-      </button>
-      <button type="button" className="button-secondary" onClick={onBack}>
-        Orqaga
-      </button>
-    </form>
+    <main className="koprik-auth-stage">
+      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={submit}>
+        <h1 className="lead">
+          {business ? "Biznes ro'yxati" : "Foydalanuvchi ro'yxati"}
+        </h1>
+        <p className="lead-sub">
+          Ma'lumotlarni kiriting. Tasdiqlash kodi Ko‘prik Telegram boti orqali yuboriladi.
+        </p>
+        <label className="field">
+          <span>{business ? "Biznes nomi" : "Ism familiya"}</span>
+          <input
+            className="input"
+            autoComplete={business ? "organization" : "name"}
+            minLength={2}
+            maxLength={120}
+            placeholder={business ? "Masalan: Anvar Market" : "Ismingiz"}
+            required
+            value={name}
+            onChange={(event) => setName(event.currentTarget.value)}
+          />
+        </label>
+        {business ? (
+          <>
+            <label className="field">
+              <span>Faoliyat yo'nalishi</span>
+              <select
+                className="input"
+                value={direction}
+                onChange={(event) => setDirection(event.currentTarget.value)}
+              >
+                <option value="">Yo'nalishni tanlang</option>
+                {CATALOG_DIRECTIONS.map((item) => (
+                  <option key={item.id} value={item.name}>
+                    {item.icon} {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Manzil</span>
+              <input
+                className="input"
+                maxLength={300}
+                placeholder="Tuman, mahalla, ko'cha"
+                value={address}
+                onChange={(event) => setAddress(event.currentTarget.value)}
+              />
+            </label>
+          </>
+        ) : null}
+        <label className="field">
+          <span>Telefon raqami — ixtiyoriy</span>
+          <input
+            className="input"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            maxLength={32}
+            placeholder="+998 90 123 45 67"
+            value={phone}
+            onChange={(event) => setPhone(event.currentTarget.value)}
+          />
+        </label>
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
+          {busy ? "Telegram tayyorlanmoqda..." : "✈️ Telegram orqali kod olish"}
+        </button>
+      </form>
+    </main>
   );
 }
