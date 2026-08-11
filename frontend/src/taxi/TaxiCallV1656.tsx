@@ -102,6 +102,7 @@ export function TaxiCallV1656({
   const leaflet = useRef<typeof import("leaflet") | null>(null);
   const routeLayer = useRef<import("leaflet").Layer | null>(null);
   const skipMove = useRef(false);
+  const userMovedMap = useRef(false);
   const pickRef = useRef(pickMode);
   const ozimRef = useRef(ozim);
   const reverseGeocode = api.reverseGeocode;
@@ -133,7 +134,9 @@ export function TaxiCallV1656({
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    let cancelled = false;
     navigator.geolocation.getCurrentPosition((position) => {
+      if (cancelled || userMovedMap.current) return;
       const point = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -155,6 +158,7 @@ export function TaxiCallV1656({
       timeout: 8000,
       maximumAge: 60000,
     });
+    return () => { cancelled = true; };
   }, [reverseGeocode]);
 
   useEffect(() => {
@@ -171,6 +175,9 @@ export function TaxiCallV1656({
         attribution: "© OpenStreetMap",
         maxZoom: 19,
       }).addTo(instance);
+      instance.on("dragstart", () => {
+        userMovedMap.current = true;
+      });
       instance.on("moveend", () => {
         if (skipMove.current) {
           skipMove.current = false;
@@ -234,12 +241,6 @@ export function TaxiCallV1656({
         routeLayer.current = module.geoJSON(route.geometry, {
           style: { color: "#2563EB", weight: 5, opacity: 0.85 },
         }).addTo(instance);
-        skipMove.current = true;
-        instance.fitBounds([
-          [from.latitude, from.longitude],
-          [to.latitude, to.longitude],
-        ], { padding: [45, 45] });
-        window.setTimeout(() => { skipMove.current = false; }, 800);
       })
       .catch(() => undefined);
     return () => controller.abort();
@@ -263,6 +264,7 @@ export function TaxiCallV1656({
 
   function choosePick(mode: "from" | "to") {
     if (mode === "to" && ozim) return;
+    userMovedMap.current = true;
     setPickMode(mode);
     const point = mode === "from" ? from : to;
     if (point && map.current) {
