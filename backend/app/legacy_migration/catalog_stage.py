@@ -242,6 +242,37 @@ async def ensure_media_mapping(
     return media
 
 
+async def _adopt_backfilled_target(
+    session: AsyncSession,
+    model,
+    *,
+    legacy_id: int,
+    business_account_id: object,
+):
+    """`0007_catalog_live_sync` backfilli yaratgan qatorni topadi.
+
+    Backfill qatorlarni to'g'ridan-to'g'ri SQL bilan yozadi, ya'ni ularning
+    `legacy_id_map` da yozuvi bo'lmaydi. Import esa mavjudlikni faqat
+    xarita orqali tekshiradi, shuning uchun ularni ko'rmay ikkinchi nusxa
+    yaratardi — V8 staging runida 3 ta xizmat bazada 6 ta qator bo'lgan.
+
+    Ikkala yo'l ham bir xil kalitni biladi: backfill eski `id` ni
+    `source_record_key` ga yozadi, import esa o'sha raqamni `legacy_id`
+    sifatida ishlatadi. Shu bo'yicha topilgan qator o'zlashtiriladi —
+    maydonlari yangilanadi va xaritaga bog'lanadi.
+    """
+    if business_account_id is None:
+        return None
+    return await session.scalar(
+        select(model)
+        .where(
+            model.business_account_id == business_account_id,
+            model.source_record_key == str(legacy_id),
+        )
+        .limit(1)
+    )
+
+
 async def _upsert_catalog_target(
     session: AsyncSession,
     *,
@@ -260,6 +291,13 @@ async def _upsert_catalog_target(
         if mapping is not None and mapping.target_id is not None
         else None
     )
+    if target is None:
+        target = await _adopt_backfilled_target(
+            session,
+            model,
+            legacy_id=legacy_id,
+            business_account_id=values.get("business_account_id"),
+        )
     if target is None:
         target = model(**values)
         session.add(target)

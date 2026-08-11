@@ -206,12 +206,17 @@ async def verify_migration(
         )
         or 0
     )
+    # Jami sanaladi, `migration_run_id` bo'yicha emas. Ilgari faqat shu
+    # runda yaratilgan qatorlar sanalardi va `0007_catalog_live_sync`
+    # backfilli yaratgan nusxalar (`migration_run_id IS NULL`) gate ko'zidan
+    # yashirin qolardi: 3 ta xizmat bazada 6 ta qator bo'lsa ham gate 3/3
+    # deb yashil chiqardi. Nishon baza migratsiya uchun toza yaratiladi,
+    # shuning uchun undagi har bir qator manbadan kelgan bo'lishi shart.
     target_catalog = {
         str(kind): int(count)
         for kind, count in (
             await session.execute(
                 select(CatalogItem.kind, func.count(CatalogItem.id))
-                .where(CatalogItem.migration_run_id == run.id)
                 .group_by(CatalogItem.kind)
             )
         ).all()

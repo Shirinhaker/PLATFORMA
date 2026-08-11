@@ -17,6 +17,8 @@ from app.legacy_migration.model import (
     MigrationRun,
     MigrationStage,
     MigrationStatus,
+    OwnerState,
+    ReviewState,
 )
 from app.listings.model import Listing
 from app.legacy_migration.verify import (
@@ -232,3 +234,78 @@ async def test_verification_ignores_evidence_from_previous_run():
         engine.dispose()
 
     assert report.passed is True
+
+
+@pytest.mark.asyncio
+async def test_catalog_gate_counts_rows_created_outside_the_run():
+    """Backfill yaratgan qator ham sanalishi shart.
+
+    `0007_catalog_live_sync` katalog qatorlarini to'g'ridan-to'g'ri SQL
+    bilan yozadi, ya'ni ularda `migration_run_id` bo'lmaydi. Gate faqat
+    o'z runidagi qatorlarni sanaganida bu nusxalar ko'rinmasdi: bazada
+    3 ta xizmat o'rniga 6 ta qator bo'lsa ham gate 3/3 deb yashil chiqardi.
+    """
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(
+        engine,
+        tables=(
+            MigrationRun.__table__,
+            LegacyIdMap.__table__,
+            MigrationIssue.__table__,
+            MediaMigration.__table__,
+            CatalogItem.__table__,
+            Listing.__table__,
+            Advertisement.__table__,
+        ),
+    )
+    session = Session(engine, expire_on_commit=False)
+    now = datetime(2026, 7, 29, tzinfo=UTC)
+    run = MigrationRun(
+        id=1,
+        source_database_sha256="a" * 64,
+        media_manifest_sha256="b" * 64,
+        schema_version="0003_phase3c_dual_accounts_v2",
+        environment=MigrationEnvironment.STAGING,
+        stage=MigrationStage.VERIFY,
+        status=MigrationStatus.RUNNING,
+        counters_json={},
+        error_count=0,
+        started_at=now,
+    )
+    session.add_all([
+        run,
+        CatalogItem(
+            id=1,
+            business_account_id=30,
+            source_record_key="8",
+            owner_name_snapshot="",
+            name="Backfill nusxasi",
+            price_text="",
+            note="",
+            kind="product",
+            queue_enabled=False,
+            image_object_key="",
+            status="active",
+            owner_state=OwnerState.LINKED,
+            review_state=ReviewState.READY,
+            migration_run_id=None,
+            created_at=now,
+            updated_at=now,
+        ),
+    ])
+    session.commit()
+
+    source = empty_source()
+    try:
+        report = await verify_migration(AsyncStore(session), source, run)
+    finally:
+        source.close()
+        session.close()
+        engine.dispose()
+
+    catalog_gate = next(
+        gate for gate in report.gates if gate.code == "catalog_kind_count"
+    )
+    assert catalog_gate.passed is False
+    assert catalog_gate.actual == {"product": 1, "service": 0}
+    assert report.passed is False
