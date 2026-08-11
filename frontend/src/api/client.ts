@@ -12,6 +12,8 @@ import type {
   Authenticated,
   BuildInfo,
   BusinessSubscriptionSummary,
+  BusinessCredentials,
+  BusinessCredentialsUpdate,
   BusinessProfile,
   BusinessProfilePatch,
   CashCatalogItem,
@@ -997,6 +999,26 @@ export class ApiClient {
   async logout(): Promise<void> {
     await this.request<void>("POST", "/api/v1/auth/logout", undefined, true);
     this.csrfToken = "";
+  }
+
+  getBusinessCredentials(): Promise<BusinessCredentials> {
+    return this.request(
+      "GET",
+      "/api/v1/account-settings/business-credentials",
+      undefined,
+      true,
+    );
+  }
+
+  updateBusinessCredentials(
+    body: BusinessCredentialsUpdate,
+  ): Promise<BusinessCredentials> {
+    return this.request(
+      "PUT",
+      "/api/v1/account-settings/business-credentials",
+      body,
+      true,
+    );
   }
 
   getMe(): Promise<Me> {
