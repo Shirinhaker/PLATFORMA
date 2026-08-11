@@ -24,7 +24,7 @@ o‘tgan candidate DB promote qilinadi.
 
 ## 1-bosqich — final snapshot va V8 candidate rehearsal
 
-1. Maintenance oynasini boshlang va v1656 monolith write endpointlari hamda
+1. Maintenance oynasini `/maintenance.html` orqali boshlang va v1656 monolith write endpointlari hamda
    worker yozuvlarini to‘xtating.
 2. Yangi yozuv kelmayotganini tekshiring.
 3. Yakuniy SQLite backup va source archive oling; archive SHA-256 ni yozib qo‘ying.
@@ -116,7 +116,7 @@ NEXT_STEP=manual_smoke_then_explicit_route_cutover
 
 1. Maintenance routing faol holda candidate API `/readyz` va frontendni tekshiring.
 2. Eski haqiqiy oddiy foydalanuvchi loginini tekshiring — qayta ro‘yxatdan
-   o‘tmasligi kerak.
+   o‘tmasligi kerak; mavjud akkaunt bilan qayta kir ishlashi shart.
 3. Haqiqiy biznes kabinet, katalog, navbat/buyurtma, chat, media va asosiy
    onlaynlashtirish ekranlarini smoke-test qiling.
 4. Katalogda demo profil/mahsulot/xizmat yo‘qligini va duplicate yo‘qligini
@@ -136,7 +136,7 @@ Agar production promotion yoki smoke-test trafik ochilishidan oldin yiqilsa:
 3. Routingni v1656 monolith’da qoldiring.
 4. Candidate PostgreSQL partial/production runlarini o‘chirmang.
 5. SQLite, source archive, V8 snapshot, manifest va R2 media obyektlarini
-   o‘chirmang — ular dalil va idempotent retry uchun kerak.
+   o‘chirmang — ular dalil va idempotent retry uchun kerak. **do not delete**.
 6. Muammoni tuzating. Agar v1656 write qayta yoqilsa, keyingi urinish uchun
    **yangi final snapshot va yangi V8 staging rehearsal** oling.
 
