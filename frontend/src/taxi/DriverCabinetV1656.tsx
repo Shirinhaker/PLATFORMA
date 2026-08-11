@@ -24,7 +24,7 @@ export type DriverCabinetApi = Partial<Pick<
   | "updateTaxiRideProgress"
 >>;
 
-type Props = { api: DriverCabinetApi; onBack(): void };
+type Props = { api: DriverCabinetApi; onBack?: () => void };
 
 const EMPTY_ORDERS: TaxiDriverRides = { available: false, current: null, pending: [] };
 const DEFAULT_PRICING: TaxiPricing = {
@@ -275,19 +275,19 @@ export function DriverCabinetV1656({ api, onBack }: Props) {
     const carRequired = ["taxi", "both"].includes(service);
     return (
       <main className="screen active taxi-driver-v1656" data-screen="taxidrv">
-        <header className="profile-heading"><h1>Haydovchi kabineti</h1><button className="button-secondary" type="button" onClick={onBack}>Kabinetga qaytish</button></header>
-        <div className="biz-desc">Ma'lumotlaringizni to'ldiring. Tasdiqlangach, yaqin zakazlar sizga ko'rinadi. To'lov mijoz bilan naqd.</div>
-        <div className="panel-card taxi-driver-v1656__account"><div className="cab-logo">👤</div><div><b>{driver.name}</b><div className="list-sub">Akkaunt ismingiz — shu ishlatiladi</div></div></div>
-        <label className="field">Telefon<input className="input" value={phone} onChange={(event) => setPhone(event.currentTarget.value)} placeholder="+998 ..." /></label>
-        <div className="field"><label>Nima bilan ishlaysiz</label><div className="sort-row">
+        {onBack ? <header className="profile-heading"><h1>Haydovchi kabineti</h1><button className="button-secondary" type="button" onClick={onBack}>Kabinetga qaytish</button></header> : null}
+        <div className="biz-desc taxi-driver-v1656__intro">Ma'lumotlaringizni to'ldiring. Tasdiqlangach, yaqin zakazlar sizga ko'rinadi. To'lov mijoz bilan naqd.</div>
+        <div className="taxi-driver-v1656__account"><div className="cab-logo">👤</div><div><b>{driver.name}</b><div className="list-sub">Akkaunt ismingiz — shu ishlatiladi</div></div></div>
+        <div className="field"><label htmlFor="driver-phone">Telefon</label><input id="driver-phone" className="input" value={phone} onChange={(event) => setPhone(event.currentTarget.value)} placeholder="+998 ..." /></div>
+        <div className="field"><label>Nima bilan ishlaysiz</label><div className="sort-row taxi-driver-v1656__service-row">
           <button className={`sort-chip${service === "taxi" ? " on" : ""}`} type="button" onClick={() => setService("taxi")}>🚖 Taxi</button>
           <button className={`sort-chip${service === "dostavka" ? " on" : ""}`} type="button" onClick={() => setService("dostavka")}>📦 Dostavka</button>
           <button className={`sort-chip${service === "both" ? " on" : ""}`} type="button" onClick={() => setService("both")}>Ikkalasi</button>
         </div></div>
-        <label className="field">Mashina rusumi {carRequired ? "*" : ""}<input className="input" value={model} onChange={(event) => setModel(event.currentTarget.value)} placeholder="Masalan: Cobalt" /></label>
-        <label className="field">Davlat raqami {carRequired ? "*" : ""}<input className="input" value={plate} onChange={(event) => setPlate(event.currentTarget.value)} placeholder="01 A 123 BC" /></label>
-        <label className="field">Rangi {carRequired ? "*" : ""}<input className="input" value={color} onChange={(event) => setColor(event.currentTarget.value)} placeholder="Masalan: oq" /></label>
-        <div className="elon-hint">{carRequired ? "Taxi uchun mashina rusumi, raqami va rangi majburiy." : "Faqat dostavka — mashina ma'lumoti ixtiyoriy."}</div>
+        <div className="field"><label htmlFor="driver-model">Mashina rusumi {carRequired ? <span className="dreq">*</span> : null}</label><input id="driver-model" className="input" value={model} onChange={(event) => setModel(event.currentTarget.value)} placeholder="Masalan: Cobalt" /></div>
+        <div className="field"><label htmlFor="driver-plate">Davlat raqami {carRequired ? <span className="dreq">*</span> : null}</label><input id="driver-plate" className="input" value={plate} onChange={(event) => setPlate(event.currentTarget.value)} placeholder="01 A 123 BC" /></div>
+        <div className="field"><label htmlFor="driver-color">Rangi {carRequired ? <span className="dreq">*</span> : null}</label><input id="driver-color" className="input" value={color} onChange={(event) => setColor(event.currentTarget.value)} placeholder="Masalan: oq" /></div>
+        <div className="elon-hint taxi-driver-v1656__car-note">{carRequired ? "Taxi uchun mashina rusumi, raqami va rangi majburiy." : "Faqat dostavka — mashina ma'lumoti ixtiyoriy."}</div>
         {error ? <p role="alert" className="elon-hint taxi-v1656__error">{error}</p> : null}
         <button disabled={busy} className="btn btn-primary btn-block" type="button" onClick={() => void save()}>{driver.exists ? "Saqlash" : "Ro'yxatdan o'tish"}</button>
       </main>
@@ -298,7 +298,7 @@ export function DriverCabinetV1656({ api, onBack }: Props) {
   const serviceLabel = driver.service === "both" ? "🚖 Taxi · 📦 Dostavka" : driver.service === "dostavka" ? "📦 Dostavka" : "🚖 Taxi";
   return (
     <main className="screen active taxi-driver-v1656" data-screen="taxidrv">
-      <header className="profile-heading"><h1>Haydovchi kabineti</h1><button className="button-secondary" type="button" onClick={onBack}>Kabinetga qaytish</button></header>
+      {onBack ? <header className="profile-heading"><h1>Haydovchi kabineti</h1><button className="button-secondary" type="button" onClick={onBack}>Kabinetga qaytish</button></header> : null}
       <div className="cab-head"><div className="cab-logo">🚖</div><div><div className="cab-name">{driver.name}</div><div className="cab-status">{driver.car_model ? `${driver.car_model}, ${driver.car_color} · ${driver.car_plate} · ` : ""}{serviceLabel}</div></div></div>
       <div className={`panel-card taxi-driver-v1656__balance${driver.balance < driver.commission ? " low" : ""}`}>
         <div><small>💳 Balansingiz</small><strong>{money(driver.balance)} so'm</strong></div>

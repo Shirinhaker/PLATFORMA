@@ -339,8 +339,7 @@
   margin-top: 14px !important;
 }
 
-.taxi-call-v1656__driver-row,
-.taxi-driver-v1656__account {
+.taxi-call-v1656__driver-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -365,13 +364,294 @@
   font-weight: 700;
 }
 
-.taxi-driver-v1656 {
-  width: min(760px, calc(100% - 24px));
+.screen.taxi-driver-v1656 {
+  width: min(100%, 1440px);
   margin: 0 auto;
-  padding: 18px 0 40px;
+  padding: 22px 34px 42px;
 }
 
-.taxi-driver-v1656 .panel-card { margin-bottom: 10px; }
+.taxi-driver-v1656 .biz-desc {
+  padding: 13px;
+  border: 1px solid var(--line, var(--koprik-line));
+  border-radius: 14px;
+  color: var(--ink, var(--koprik-ink));
+  background: var(--card, var(--koprik-card));
+  box-shadow: var(--shadow, var(--koprik-shadow));
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.taxi-driver-v1656__intro {
+  margin-bottom: 14px;
+  color: var(--soft, var(--koprik-soft)) !important;
+  font-size: 12.5px !important;
+}
+
+.taxi-driver-v1656__account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line, var(--koprik-line));
+  border-radius: 12px;
+}
+
+.taxi-driver-v1656 .cab-logo {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  flex: none;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--primary-tint, var(--koprik-primary-tint));
+  font-size: 26px;
+}
+
+.taxi-driver-v1656__account .cab-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.taxi-driver-v1656 .cab-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 4px 0 16px;
+  padding: 16px;
+  border: 1px solid var(--line, var(--koprik-line));
+  border-radius: 18px;
+  background: var(--card, var(--koprik-card));
+  box-shadow: var(--shadow, var(--koprik-shadow));
+}
+
+.taxi-driver-v1656 .cab-name {
+  font: 800 17px var(--font-d, var(--koprik-font-display));
+}
+
+.taxi-driver-v1656 .cab-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--primary, var(--koprik-primary));
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.taxi-driver-v1656 .cab-status::before {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--primary, var(--koprik-primary));
+  content: "";
+}
+
+.taxi-driver-v1656 .field {
+  display: block;
+  margin: 0 0 14px;
+}
+
+.taxi-driver-v1656 .field > label {
+  display: block;
+  margin: 0 2px 7px;
+  color: var(--ink, var(--koprik-ink));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.taxi-driver-v1656 .input {
+  width: 100%;
+  height: 50px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line, var(--koprik-line));
+  border-radius: 13px;
+  outline: 0;
+  color: var(--ink, var(--koprik-ink));
+  background: var(--card, var(--koprik-card));
+  font: inherit;
+  font-size: 15px;
+}
+
+.taxi-driver-v1656 .input:focus {
+  border-color: var(--primary, var(--koprik-primary));
+}
+
+.taxi-driver-v1656 .dreq {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.taxi-driver-v1656 .sort-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 12px;
+  scrollbar-width: none;
+}
+
+.taxi-driver-v1656 .sort-row::-webkit-scrollbar {
+  display: none;
+}
+
+.taxi-driver-v1656__service-row {
+  padding-bottom: 0 !important;
+}
+
+.taxi-driver-v1656 .sort-chip {
+  width: auto;
+  height: 34px;
+  flex: none;
+  padding: 0 14px;
+  border: 1.5px solid var(--line, var(--koprik-line));
+  border-radius: 10px;
+  color: var(--ink, var(--koprik-ink));
+  background: var(--card, var(--koprik-card));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.taxi-driver-v1656 .sort-chip.on {
+  border-color: var(--primary, var(--koprik-primary));
+  color: var(--primary, var(--koprik-primary));
+  background: var(--primary-tint, var(--koprik-primary-tint));
+}
+
+.taxi-driver-v1656 .panel-card {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--line, var(--koprik-line));
+  border-radius: 18px;
+  background: var(--card, var(--koprik-card));
+  box-shadow: var(--shadow, var(--koprik-shadow));
+}
+
+.taxi-driver-v1656 .btn {
+  display: flex;
+  height: 50px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  font: 700 15px var(--font-d, var(--koprik-font-display));
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.taxi-driver-v1656 .btn-primary {
+  color: var(--primary-ink, var(--koprik-primary-ink));
+  background: var(--primary, var(--koprik-primary));
+  box-shadow: 0 6px 16px rgba(14, 140, 132, .3);
+}
+
+.taxi-driver-v1656 .btn-soft {
+  color: var(--primary, var(--koprik-primary));
+  background: var(--primary-tint, var(--koprik-primary-tint));
+}
+
+.taxi-driver-v1656 .btn-block {
+  width: 100%;
+}
+
+.taxi-driver-v1656 .btn:disabled,
+.taxi-driver-v1656 .sort-chip:disabled,
+.taxi-driver-v1656 .vis-card:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.taxi-driver-v1656 .elon-hint {
+  margin: -6px 4px 12px;
+  color: var(--soft, var(--koprik-soft));
+  font-size: 12.5px;
+}
+
+.taxi-driver-v1656__car-note {
+  margin: 0 2px 14px !important;
+}
+
+.taxi-driver-v1656 .list-sub {
+  margin: 4px 4px 12px;
+  color: var(--soft, var(--koprik-soft));
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.taxi-driver-v1656__account .list-sub {
+  margin-bottom: 0;
+}
+
+.taxi-driver-v1656 .vis-card {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 11px;
+  margin-bottom: 10px;
+  padding: 13px;
+  border: 1.5px solid var(--line, var(--koprik-line));
+  border-radius: 14px;
+  color: var(--ink, var(--koprik-ink));
+  background: var(--card, var(--koprik-card));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.taxi-driver-v1656 .vis-card.on {
+  border-color: var(--primary, var(--koprik-primary));
+  background: var(--primary-tint, var(--koprik-primary-tint));
+}
+
+.taxi-driver-v1656 .vis-card .v-ic {
+  flex: none;
+  font-size: 20px;
+}
+
+.taxi-driver-v1656 .vis-card h5 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.taxi-driver-v1656 .vis-card p {
+  margin: 2px 0 0;
+  color: var(--soft, var(--koprik-soft));
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.taxi-driver-v1656 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.taxi-driver-v1656 .empty h3 {
+  margin: 0 0 6px;
+  font: 700 17px var(--font-d, var(--koprik-font-display));
+}
+
+.taxi-driver-v1656 .empty p {
+  max-width: 240px;
+  margin: 0;
+  color: var(--soft, var(--koprik-soft));
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
 .taxi-driver-v1656__balance { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: 12px 0; }
 .taxi-driver-v1656__balance strong { display: block; color: var(--primary); font-size: 20px; }
 .taxi-driver-v1656__balance p { grid-column: 1 / -1; margin: 0; color: var(--soft); font-size: 12px; }
@@ -404,7 +684,8 @@
     padding-inline: 11px;
   }
 
-  .taxi-driver-v1656 {
-    padding-top: 10px;
+  .screen.taxi-driver-v1656 {
+    width: 100%;
+    padding: 10px 14px 40px;
   }
 }
