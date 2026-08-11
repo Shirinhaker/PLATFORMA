@@ -2,6 +2,8 @@ param(
     [switch]$Execute
 )
 
+throw "PHASE3C_V7_SUPERSEDED_USE_FRESH_V8_STAGING_SCRIPT"
+
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
