@@ -9,7 +9,7 @@ from app.legacy_migration.business_subscription_stage import (
 from app.legacy_migration.demo_prune import prune_demo_records
 from app.legacy_migration.model import LegacyIdMap
 from app.legacy_migration.profile_parity_v7 import enrich_business_cabinets
-from app.legacy_migration.real_source_v9 import copy_real_source
+from app.legacy_migration.real_source_v9 import copy_real_source, open_real_snapshot
 from app.payments.model import BusinessSubscription
 
 
@@ -137,6 +137,29 @@ def test_v9_real_source_preserves_real_business_demo_activated_subscription():
         assert subscription["plan_code"] == "plus"
         assert subscription["is_demo"] == 1
         assert copied.execute("SELECT * FROM advertisements").fetchall() == []
+    finally:
+        copied.close()
+
+
+def test_v9_real_source_accepts_cli_string_path(tmp_path):
+    snapshot_path = tmp_path / "platforma.snapshot.db"
+    source = legacy_source()
+    try:
+        snapshot = sqlite3.connect(snapshot_path)
+        try:
+            source.backup(snapshot)
+        finally:
+            snapshot.close()
+    finally:
+        source.close()
+
+    copied = open_real_snapshot(str(snapshot_path))
+    try:
+        subscription = copied.execute(
+            "SELECT * FROM business_subscriptions WHERE id = 11"
+        ).fetchone()
+        assert subscription is not None
+        assert subscription["plan_code"] == "plus"
     finally:
         copied.close()
 
