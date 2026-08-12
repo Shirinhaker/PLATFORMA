@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
+from app.admin.payments_service import AdminPaymentService
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.payments.model import (
@@ -210,6 +211,33 @@ async def test_request_stores_price_snapshot_and_first_attempt(payments):
         assert request.unit_price_snapshot == 99_000
         assert attempt.receipt_object_key == RECEIPT.object_key
         assert event.to_status == "pending"
+
+
+async def test_admin_can_open_payment_detail_with_receipt_attempt(payments):
+    """Admin tafsiloti chek urinishining barcha majburiy maydonini qaytaradi."""
+    service, engine = payments
+    created = await _make_request(service)
+
+    @asynccontextmanager
+    async def sessions():
+        with Session(engine, expire_on_commit=False) as sync:
+            yield AsyncStore(sync)
+
+    admin = AdminPaymentService(
+        sessions,
+        now=lambda: STAMP,
+        download_url_provider=lambda key, **_kwargs: f"https://r2.test/{key}",
+    )
+
+    detail = await admin.detail(created.id)
+
+    assert detail.request_code == created.request_code
+    assert len(detail.attempts) == 1
+    assert detail.attempts[0].reviewed_at == 0
+
+    receipt_link = await admin.receipt_link(created.id)
+
+    assert receipt_link.url == f"https://r2.test/{RECEIPT.object_key}"
 
 
 async def test_plan_parameters_must_match_the_price_code(payments):

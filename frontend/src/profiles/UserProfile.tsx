@@ -61,6 +61,13 @@ import {
   type UserCabinetSectionV1656,
 } from "./UserCabinetDashboardV1656";
 import { UserProfileEditorV1656 } from "./UserProfileEditorV1656";
+import {
+  supportsAdvertisementApi,
+} from "../advertisements/BusinessAdvertisementsV1656";
+import {
+  UserAdvertisementsV1656,
+  type UserAdvertisementsApi,
+} from "../advertisements/UserAdvertisementsV1656";
 
 
 export type UserProfileApi = Pick<
@@ -81,6 +88,10 @@ export type UserProfileApi = Pick<
   | "getMyListings"
   | "createListing"
   | "deleteListing"
+  | "getMyAdvertisements"
+  | "createAdvertisement"
+  | "deleteAdvertisement"
+  | "quoteAdvertisement"
   | "getSavedListings"
   | "getPaymentCatalog"
   | "createPaymentRequest"
@@ -174,7 +185,7 @@ type Section = UserCabinetSectionV1656 & {
 const SECTIONS: Section[] = [
   { icon: "👤", label: "Profilim", caption: "Ism, telefon, yashash tumani", view: "profile" },
   { icon: "💳", label: "To‘lovlarim", caption: "Reklama to‘lovlari va tekshiruv holati", view: "payments", payload: "payments" },
-  { icon: "📢", label: "Reklamalarim", caption: "Bosh sahifa reklamalarini boshqarish", view: "listings", payload: "listings" },
+  { icon: "📢", label: "Reklamalarim", caption: "Bosh sahifa reklamalarini boshqarish", view: "advertisements" },
   { icon: "🎞️", label: "Istoriya arxivi", caption: "Faol va arxivdagi shaxsiy istoriyalar", view: "stories", payload: "stories" },
   { icon: "💬", label: "Suhbatlar", caption: "Xabarlar va chatlar", view: "messages", payload: "messages" },
   {
@@ -249,6 +260,15 @@ function payloadRows(
 function supportsOwnerListings(api: UserProfileApi): api is UserProfileApi & OwnerListingsApi {
   return ["getMyListings", "createListing", "deleteListing"]
     .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+}
+
+function supportsUserAdvertisements(
+  api: UserProfileApi,
+): api is UserProfileApi & UserAdvertisementsApi {
+  return supportsAdvertisementApi(api) && [
+    "getPaymentCatalog", "createPaymentRequest",
+    "createUploadGrant", "uploadGrantedFile",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
 function supportsOrders(api: UserProfileApi): api is UserProfileApi & OrdersApi {
@@ -514,6 +534,17 @@ export function UserProfile({
         actor="user"
         api={api}
         onBack={() => setView("dashboard")}
+        onOpenAdvertisements={() => setView("advertisements")}
+      />,
+    );
+  }
+
+  if (view === "advertisements" && supportsUserAdvertisements(api)) {
+    return withActionBanner(
+      <UserAdvertisementsV1656
+        api={api}
+        onBack={() => setView("dashboard")}
+        onOpenListings={() => setView("listings")}
       />,
     );
   }

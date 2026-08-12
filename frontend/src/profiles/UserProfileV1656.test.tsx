@@ -53,6 +53,55 @@ const profile = {
   cabinet_payload: {},
 } satisfies UserProfileData;
 
+const advertisement = {
+  id: 12,
+  title: "Oddiy profil reklamasi",
+  caption: "Yangi taklif",
+  targets: [{
+    level: "district" as const,
+    region: "Surxondaryo viloyati",
+    district: "Qumqo‘rg‘on tumani",
+  }],
+  placement: "home",
+  status: "payment_pending",
+  daily_all_day: true,
+  daily_start: "00:00",
+  daily_end: "00:00",
+  duration_days: 1,
+  district_count: 1,
+  hours_per_day: 24,
+  district_hour_rate: 20_000,
+  billable_district_hours: 24,
+  price: 480_000,
+  price_code: "advertisement_district_hour",
+  start_at: 1_786_000_000,
+  end_at: 1_786_086_400,
+  views: 0,
+  clicks: 0,
+  desktop_image_url: "https://media.example/ad.webp",
+  mobile_image_url: "",
+  created_at: 1_785_000_000,
+};
+
+const listing = {
+  public_id: "l_1234567890abcdef",
+  cat: "uy" as const,
+  title: "Oddiy profil e'loni",
+  price: "Kelishilgan",
+  descr: "Tafsilot",
+  address: "Qumqo‘rg‘on",
+  lat: 37.82,
+  lng: 67.58,
+  visibility: "all" as const,
+  status: "active" as const,
+  created_at: "2026-08-02T10:00:00Z",
+  media: [],
+  owner_kind: "user" as const,
+  owner_public_id: "u_1234567890abcdef",
+  owner_name: "Ali Valiyev",
+  is_saved: false,
+};
+
 
 function profileApi() {
   return {
@@ -85,6 +134,75 @@ function profileApi() {
 
 
 describe("v1656 user cabinet and profile parity", () => {
+  it("switches ordinary profile advertisements and listings tabs both ways", async () => {
+    const user = userEvent.setup();
+    const api = {
+      ...profileApi(),
+      getMyAdvertisements: vi.fn().mockResolvedValue([advertisement]),
+      createAdvertisement: vi.fn().mockResolvedValue(advertisement),
+      deleteAdvertisement: vi.fn().mockResolvedValue(undefined),
+      quoteAdvertisement: vi.fn(),
+      getMyListings: vi.fn().mockResolvedValue([listing]),
+      createListing: vi.fn(),
+      deleteListing: vi.fn(),
+      getPaymentCatalog: vi.fn().mockResolvedValue({
+        prices: [{
+          price_code: "advertisement_district_hour",
+          service_type: "advertisement" as const,
+          amount_uzs: 20_000,
+          currency: "UZS",
+          plan_code: "",
+          duration_months: 0,
+          config: {},
+        }],
+        methods: [{
+          id: 1,
+          method_type: "manual_card",
+          name: "Bank kartasi",
+          recipient_name: "Koprik",
+          instructions: "",
+          details: { card: "8600" },
+        }],
+      }),
+      createPaymentRequest: vi.fn(),
+    };
+    render(
+      <UserProfile
+        api={api}
+        identity={identity}
+        onLogout={vi.fn()}
+        onSwitched={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", {
+      name: /Reklamalarim Bosh sahifa reklamalarini boshqarish/,
+    }));
+    expect(await screen.findByText("Oddiy profil reklamasi"))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reklamalarim" }))
+      .toHaveClass("on");
+    expect(api.getPaymentCatalog).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "To‘lov qilish" }));
+    expect(await screen.findByRole("dialog", {
+      name: "To‘lov so‘rovini yuborish",
+    })).toBeInTheDocument();
+    expect(screen.getByText("480 000 so‘m")).toBeInTheDocument();
+    expect(api.getPaymentCatalog).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: "Yopish" }));
+
+    await user.click(screen.getByRole("button", { name: "E'lonlarim" }));
+    expect(await screen.findByText("Oddiy profil e'loni"))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "E'lonlarim" }))
+      .toHaveClass("on");
+
+    await user.click(screen.getByRole("button", { name: "Reklamalarim" }));
+    expect(await screen.findByText("Oddiy profil reklamasi"))
+      .toBeInTheDocument();
+  });
+
   it("renders the exact v1656 dashboard labels and descriptions", async () => {
     render(
       <UserProfile

@@ -138,12 +138,17 @@ export function PaymentRequestModal({
   }
 
   return (
-    <div className="payment-request-modal on" role="dialog" aria-modal="true">
+    <div
+      className="payment-request-modal on"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payment-request-title"
+    >
       <div className="payment-modal-back" onClick={onClose} />
       <div className="payment-modal-card">
         <div className="payment-modal-head">
           <div>
-            <h2>To‘lov so‘rovini yuborish</h2>
+            <h2 id="payment-request-title">To‘lov so‘rovini yuborish</h2>
             <div className="idesc">Xizmat ma’lumotlari</div>
           </div>
           <button
