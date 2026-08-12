@@ -138,6 +138,7 @@ type Props = {
   view: string;
   title: string;
   onBack: () => void | Promise<void>;
+  onViewChange?: (view: string) => void;
   initialOrderId?: number | null;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
   onOpenNotification?: (
@@ -269,6 +270,7 @@ export function BusinessOnlineScreen({
   view,
   title,
   onBack,
+  onViewChange,
   initialOrderId,
   onOpenOrder,
   onOpenNotification,
@@ -732,6 +734,7 @@ export function BusinessOnlineScreen({
         actor="business"
         api={api}
         onBack={() => { void onBack(); }}
+        onOpenAdvertisements={() => onViewChange?.("advertisements")}
       />
     );
   }
@@ -838,6 +841,7 @@ export function BusinessOnlineScreen({
     action,
     setSubscreenBack: handleSubscreenBack,
     onOpenOrder,
+    onViewChange,
   });
   const exactV1656 = Boolean(primary);
 
@@ -869,6 +873,24 @@ export function BusinessOnlineScreen({
           </button>
         )}
       </header>
+      {onViewChange && ["dining-places", "dining-kitchen"].includes(view) ? (
+        <div className="ad-tabs" aria-label="Ovqatlanish boshqaruvi">
+          <button
+            type="button"
+            className={view === "dining-places" ? "ad-tab on" : "ad-tab"}
+            onClick={() => onViewChange("dining-places")}
+          >
+            Stollar va xonalar
+          </button>
+          <button
+            type="button"
+            className={view === "dining-kitchen" ? "ad-tab on" : "ad-tab"}
+            onClick={() => onViewChange("dining-kitchen")}
+          >
+            Oshpaz buyurtmalari
+          </button>
+        </div>
+      ) : null}
       {error && ([
         "dining-places",
         "medical-providers",
@@ -960,6 +982,7 @@ type RenderContext = {
     title?: string,
   ) => void;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
+  onViewChange?: (view: string) => void;
 };
 
 function renderContent(context: RenderContext): ReactNode {
@@ -1142,6 +1165,7 @@ function renderContent(context: RenderContext): ReactNode {
           addLabel="+ E’lon"
           empty="Hozircha e’lon yo‘q."
           fields={["title", "description", "price", "category"]}
+          onPromotionChange={context.onViewChange}
         />
       );
     case "orders":
@@ -1226,6 +1250,7 @@ function renderContent(context: RenderContext): ReactNode {
           <BusinessAdvertisementsV1656
             api={context.api}
             openPayment={context.openPaymentTarget}
+            onOpenListings={() => context.onViewChange?.("listings")}
           />
         );
       }
@@ -1253,6 +1278,7 @@ function renderContent(context: RenderContext): ReactNode {
               request,
             )
             : undefined}
+          onPromotionChange={context.onViewChange}
         />
       );
     case "stories":

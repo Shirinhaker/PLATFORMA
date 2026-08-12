@@ -41,6 +41,7 @@ type Props = {
   api: BusinessAdvertisementsApi;
   /** To'lov oynasini ochadi; reklama tasdiqlangach faol bo'ladi. */
   openPayment: (target: PaymentTarget) => void;
+  onOpenListings?: () => void;
 };
 
 
@@ -99,7 +100,11 @@ function record(row: Advertisement): BusinessOnlineRecord {
 }
 
 
-export function BusinessAdvertisementsV1656({ api, openPayment }: Props) {
+export function BusinessAdvertisementsV1656({
+  api,
+  openPayment,
+  onOpenListings,
+}: Props) {
   const [rows, setRows] = useState<Advertisement[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -227,6 +232,9 @@ export function BusinessAdvertisementsV1656({ api, openPayment }: Props) {
         action={async () => undefined}
         quoteAdvertisement={quote}
         uploadImage={uploadImage}
+        onPromotionChange={(view) => {
+          if (view === "listings") onOpenListings?.();
+        }}
         rowAction={(row) => (
           text(row.status) === "payment_pending" ? (
             <button

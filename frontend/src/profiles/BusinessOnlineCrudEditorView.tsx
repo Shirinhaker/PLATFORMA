@@ -138,6 +138,7 @@ export function CrudEditorView({
   rowAction,
   quoteAdvertisement,
   uploadImage,
+  onPromotionChange,
   ...actions
 }: SharedActions & {
   resource: BusinessOnlineResource;
@@ -153,6 +154,8 @@ export function CrudEditorView({
   ) => Promise<BusinessOnlineRecord | null | void>;
   /** Berilsa reklama rasmi R2'ga yuklanadi. */
   uploadImage?: (file: File) => Promise<string>;
+  /** v1656 reklama/e'lon tablari orasida kabinet route'ini almashtiradi. */
+  onPromotionChange?: (view: "advertisements" | "listings") => void;
 }) {
   const [openForm, setOpenForm] = useState(false);
   const [draft, setDraft] = useState<BusinessOnlineRecord>({});
@@ -482,7 +485,7 @@ export function CrudEditorView({
   if (resource === "listings") {
     return (
       <section className="promotion-v1656">
-        <PromotionTabs active="listings" />
+        <PromotionTabs active="listings" onChange={onPromotionChange} />
         {!openForm ? (
           <div className="biz-listings-pane">
             <button
@@ -553,7 +556,7 @@ export function CrudEditorView({
   if (resource === "advertisements") {
     return (
       <section className="promotion-v1656">
-        <PromotionTabs active="ads" />
+        <PromotionTabs active="ads" onChange={onPromotionChange} />
         {!openForm ? (
           <div className="biz-ads-pane">
             <div className="ad-info">
@@ -674,13 +677,27 @@ export function CrudEditorView({
   );
 }
 
-function PromotionTabs({ active }: { active: "ads" | "listings" }) {
+function PromotionTabs({
+  active,
+  onChange,
+}: {
+  active: "ads" | "listings";
+  onChange?: (view: "advertisements" | "listings") => void;
+}) {
   return (
     <div className="ad-tabs">
-      <button type="button" className={active === "ads" ? "ad-tab on" : "ad-tab"}>
+      <button
+        type="button"
+        className={active === "ads" ? "ad-tab on" : "ad-tab"}
+        onClick={() => onChange?.("advertisements")}
+      >
         Reklamalarim
       </button>
-      <button type="button" className={active === "listings" ? "ad-tab on" : "ad-tab"}>
+      <button
+        type="button"
+        className={active === "listings" ? "ad-tab on" : "ad-tab"}
+        onClick={() => onChange?.("listings")}
+      >
         E'lonlarim
       </button>
     </div>

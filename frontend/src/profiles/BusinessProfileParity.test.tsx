@@ -186,7 +186,7 @@ function api() {
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole(
     "button",
-    { name: /Profil ma’lumotlari/ },
+    { name: /Profil \/ Mening sahifam/ },
   ));
   return screen.findByRole("heading", { name: "Profil / Mening sahifam" });
 }
@@ -341,6 +341,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
+    await user.click(await screen.findByRole("button", { name: /Ma'muriyat/ }));
     await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
     expect(await screen.findByRole("heading", { name: "Xodimlar" }))
       .toBeInTheDocument();
@@ -359,7 +360,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: /Obuna va tarifim/ }));
+    await user.click(await screen.findByRole("button", { name: /Obunalarim/ }));
     await user.click(
       await screen.findByRole("button", { name: "Plus uchun to‘lov qilish" }),
     );
@@ -401,7 +402,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: /Kassa tahlili/ }));
+    await user.click(await screen.findByRole("button", { name: /Statistika/ }));
     expect(await screen.findByRole("heading", { name: "Statistika" }))
       .toBeInTheDocument();
     expect(screen.getByText("Haqiqiy pul tushumi").closest("article"))
@@ -461,7 +462,7 @@ describe("v1656 business profile parity", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Xodimlar/ }))
       .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Profil ma’lumotlari/ }))
+    expect(screen.queryByRole("button", { name: /Profil \/ Mening sahifam/ }))
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }))
       .not.toBeInTheDocument();

@@ -263,6 +263,7 @@ type Props = {
 type DataView = { title: string; rows: unknown[] };
 type Screen =
   | "cabinet"
+  | "administration"
   | "profile"
   | "data"
   | "online"
@@ -279,6 +280,52 @@ type Screen =
   | "settings";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
+
+const MAIN_ONLINE_ORDER = [
+  "profile",
+  "subscriptions",
+  "payments",
+  "items",
+  "dining-places",
+  "medical-providers",
+  "medical-queue",
+  "education-enrollments",
+  "orders",
+  "service-orders",
+  "messages",
+  "reviews",
+  "advertisements",
+  "stories",
+  "notifications",
+] as const;
+
+type MenuHubProps = {
+  menus: Menu[];
+  onBack: () => void;
+  onOpen: (menu: Menu) => void;
+};
+
+function BusinessCabinetMenuHub({ menus, onBack, onOpen }: MenuHubProps) {
+  return (
+    <main className="business-online business-cabinet-menu-hub">
+      <header className="business-online__heading">
+        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
+        <div><h1>Ma’muriyat</h1></div>
+      </header>
+      <section className="business-cabinet__menu-grid" aria-label="Ma’muriyat bo‘limlari">
+        {menus.map((menu) => (
+          <button type="button" key={menu.view} onClick={() => onOpen(menu)}>
+            <span>{menu.icon}</span>
+            <span>
+              <b>{menu.label}</b>
+              <small>{menu.caption}</small>
+            </span>
+          </button>
+        ))}
+      </section>
+    </main>
+  );
+}
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
@@ -763,6 +810,12 @@ export function BusinessProfileV3({
         profile={profile}
         view={onlineMenu.view}
         title={onlineMenu.label}
+        onViewChange={(view) => {
+          const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+            (candidate) => candidate.view === view,
+          );
+          if (menu) setOnlineMenu(menu);
+        }}
         initialOrderId={orderTarget}
         onOpenNotification={openNotification}
         onNotificationUnreadChange={setNotificationUnread}
@@ -809,7 +862,7 @@ export function BusinessProfileV3({
     && supportsStaffManagement(api)
   ) {
     return withActionBanner(
-      <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <StaffManagementV1656 api={api} onBack={() => setScreen("administration")} />,
     );
   }
 
@@ -881,7 +934,7 @@ export function BusinessProfileV3({
         initialView={documentsInitialView}
         canManageCounterparties={identity.actor_type !== "staff"}
         onProfile={setProfile}
-        onBack={() => setScreen("cabinet")}
+        onBack={() => setScreen("administration")}
       />,
     );
   }
@@ -942,6 +995,29 @@ export function BusinessProfileV3({
     );
   }
 
+  const administrationMenus = visibleMenus(profile, ADMIN_MENUS, identity);
+  if (screen === "administration") {
+    return withActionBanner(
+      <BusinessCabinetMenuHub
+        menus={administrationMenus}
+        onBack={() => setScreen("cabinet")}
+        onOpen={(menu) => {
+          if (menu.view === "staff" && supportsStaffManagement(api)) {
+            setScreen("staff");
+            return;
+          }
+          if (
+            (menu.view === "documents" || menu.view === "my-documents")
+            && supportsDocuments(api)
+          ) {
+            setDocumentsInitialView(menu.view === "my-documents" ? "profile" : "center");
+            setScreen("documents");
+          }
+        }}
+      />,
+    );
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -956,40 +1032,9 @@ export function BusinessProfileV3({
   const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
   const followingMenu = onlineMenus.find((menu) => menu.view === "following");
 
-  const onlineLabels: Record<string, string> = {
-    profile: "Profil ma’lumotlari",
-    subscriptions: "Obuna va tarifim",
-    payments: "To‘lovlar",
-    items: "Mahsulot / Xizmatlar",
-    orders: "Buyurtmalarim",
-    "service-orders": "Xizmat buyurtmalari",
-    messages: "Suhbatlar",
-    reviews: "Mijoz fikrlari",
-    advertisements: "Reklamalarim",
-    stories: "Istoriyalar",
-    notifications: "Bildirishnomalar",
-  };
-  const onlineOrder = [
-    "profile",
-    "subscriptions",
-    "payments",
-    "items",
-    "dining-places",
-    "medical-providers",
-    "medical-queue",
-    "education-enrollments",
-    "orders",
-    "service-orders",
-    "messages",
-    "reviews",
-    "advertisements",
-    "stories",
-    "notifications",
-  ];
-  const onlineMenuCards = onlineOrder
+  const onlineMenuCards = MAIN_ONLINE_ORDER
     .map((view) => onlineMenus.find((menu) => menu.view === view))
-    .filter((menu): menu is Menu => Boolean(menu))
-    .map((menu) => ({ ...menu, label: onlineLabels[menu.view] ?? menu.label }));
+    .filter((menu): menu is Menu => Boolean(menu));
 
   const systemCard = (menus: Menu[], view: string, label: string): Menu | null => {
     const menu = menus.find((candidate) => candidate.view === view);
@@ -997,15 +1042,10 @@ export function BusinessProfileV3({
   };
   const baseSystemCards: Array<Menu | null> = [
     systemCard(systemMenus, "sales", "Kassa"),
-    systemCard(systemMenus, "statistics", "Kassa tahlili"),
-    systemCard(onlineMenus, "medical-queue", "Navbat"),
-    systemCard(adminMenus, "staff", "Xodimlar"),
-    systemCard(onlineMenus, "orders", "Buyurtmalar"),
-    systemCard(systemMenus, "warehouse", "Ombor"),
     systemCard(systemMenus, "expenses", "Xarajatlar"),
-    systemCard(systemMenus, "debtors", "Qarz"),
-    systemCard(onlineMenus, "stories", "Istoriyalar"),
-    systemCard(adminMenus, "documents", "Hujjatlar"),
+    systemCard(systemMenus, "debtors", "Qarz daftari"),
+    systemCard(systemMenus, "warehouse", "Ombor"),
+    systemCard(systemMenus, "statistics", "Statistika"),
   ];
   const representedSystemViews = new Set(
     baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),
@@ -1018,11 +1058,23 @@ export function BusinessProfileV3({
     ...inlineDirectionMenus,
     ...[
       systemCard(systemMenus, "ai-assistant", "AI yordamchi"),
-      systemCard(systemMenus, "settings", "Ma’muriyat"),
+      identity.actor_type !== "staff" && adminMenus.length ? {
+        icon: "🛡️",
+        label: "Ma'muriyat",
+        caption: "Xodimlar va hujjatlar",
+        view: "administration",
+      } : null,
+      identity.actor_type !== "staff"
+        ? systemCard(systemMenus, "settings", "Sozlamalar")
+        : null,
     ].filter((menu): menu is Menu => Boolean(menu)),
   ];
 
   function openMenu(menu: Menu) {
+    if (menu.view === "administration") {
+      setScreen("administration");
+      return;
+    }
     if (menu.view === "settings") {
       setScreen("settings");
       return;
