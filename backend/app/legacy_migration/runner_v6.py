@@ -1,8 +1,6 @@
 from app.legacy_migration import runner as base_runner
-from app.legacy_migration.profile_parity_v7 import (
-    reconcile_accounts,
-    reconcile_businesses,
-)
+from app.legacy_migration.cabinet_parity_v8 import reconcile_accounts
+from app.legacy_migration.profile_parity_v7 import reconcile_businesses
 from app.legacy_migration.real_source_v7 import open_real_snapshot
 
 
