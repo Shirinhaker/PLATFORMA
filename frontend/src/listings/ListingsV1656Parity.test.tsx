@@ -155,6 +155,33 @@ describe("v1656 public E'lonlar", () => {
 
 
 describe("v1656 owner E'lonlar", () => {
+  it("opens a placed listing without requiring it to be public", async () => {
+    const user = userEvent.setup();
+    render(
+      <OwnerListingsV1656
+        api={{
+          getMyListings: vi.fn().mockResolvedValue([listing]),
+          createListing: vi.fn(),
+          deleteListing: vi.fn(),
+          createUploadGrant: vi.fn(),
+          uploadGrantedFile: vi.fn(),
+        }}
+        actor="user"
+        onBack={vi.fn()}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", {
+      name: "3 xonali kvartira e'lonini ko'rish",
+    }));
+
+    expect(screen.getByText("Markazda, barcha qulayliklar bor"))
+      .toBeInTheDocument();
+    expect(screen.getByText("📍 Qumqo‘rg‘on")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rasmni katta ko‘rish" }))
+      .toBeInTheDocument();
+  });
+
   it("keeps user form texts, required-title message and delete confirmation", async () => {
     const user = userEvent.setup();
     const api = {
