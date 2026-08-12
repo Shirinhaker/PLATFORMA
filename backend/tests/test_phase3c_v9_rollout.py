@@ -13,6 +13,11 @@ from app.legacy_migration.model import (
     MigrationStatus,
 )
 from app.legacy_migration.runner_v9 import MIGRATION_SCHEMA_VERSION
+from app.legacy_migration.production_guard_v9 import (
+    validate_promotion_media_rows,
+)
+from app.legacy_migration.model import MediaMigrationState
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -153,6 +158,11 @@ def test_v9_production_promotion_requires_exact_verified_candidate():
     assert "app.legacy_migration.profile_media_verify_v9" in script
     assert "PROFILE_MEDIA_V9_VERIFY_OK" in script
     assert "REAL_BUSINESS_SUBSCRIPTIONS_PRODUCTION_GUARD_OK" in script
+    assert "validate_media_for_promotion" in script
+    assert "EXPIRED_STORY_MEDIA_MISSING" in script
+    assert "terminal_media = copied + media_guard.expired_story_missing" in script
+    assert 'export KOPRIK_LEGACY_MEDIA_ROOTS="$MEDIA"' in script
+    assert 'approved_media_root_not_found' in script
     assert "candidate_environment_must_remain_staging_before_cutover" in script
     assert "phase3c_public_flag_must_be_disabled" in script
     assert "candidate_database_not_at_current_head" in script
@@ -176,6 +186,107 @@ def test_v9_production_promotion_requires_exact_verified_candidate():
     final_guard = script.index("PRODUCTION_V9_PROMOTION_GUARD_OK")
     production_write = script.index("koprik-migrate-legacy run")
     assert profile_gate < subscription_gate < final_guard < production_write
+
+
+def test_v9_promotion_allows_only_expired_failed_story_media():
+    now = datetime(2026, 8, 13, tzinfo=UTC)
+    rows = [
+        SimpleNamespace(
+            id=1,
+            entity_type="catalog_item",
+            legacy_id=11,
+            state=MediaMigrationState.COPIED,
+        ),
+        SimpleNamespace(
+            id=2,
+            entity_type="story",
+            legacy_id=21,
+            state=MediaMigrationState.MISSING,
+        ),
+    ]
+    stories = {
+        21: SimpleNamespace(
+            migration_run_id=7,
+            status="failed",
+            expires_at=datetime(2026, 8, 12, tzinfo=UTC),
+            deleted_at=None,
+        )
+    }
+
+    result = validate_promotion_media_rows(
+        rows,
+        stories,
+        {21},
+        run_id=7,
+        now=now,
+    )
+
+    assert result.copied == 1
+    assert result.expired_story_missing == 1
+
+
+@pytest.mark.parametrize(
+    ("row", "story", "issues", "error"),
+    [
+        (
+            SimpleNamespace(
+                id=2,
+                entity_type="catalog_item",
+                legacy_id=21,
+                state=MediaMigrationState.MISSING,
+            ),
+            None,
+            set(),
+            "promotion_non_story_media_missing",
+        ),
+        (
+            SimpleNamespace(
+                id=2,
+                entity_type="story",
+                legacy_id=21,
+                state=MediaMigrationState.MISSING,
+            ),
+            SimpleNamespace(
+                migration_run_id=7,
+                status="failed",
+                expires_at=datetime(2026, 8, 14, tzinfo=UTC),
+                deleted_at=None,
+            ),
+            {21},
+            "promotion_active_story_media_missing",
+        ),
+        (
+            SimpleNamespace(
+                id=2,
+                entity_type="story",
+                legacy_id=21,
+                state=MediaMigrationState.MISSING,
+            ),
+            SimpleNamespace(
+                migration_run_id=7,
+                status="failed",
+                expires_at=datetime(2026, 8, 12, tzinfo=UTC),
+                deleted_at=None,
+            ),
+            set(),
+            "promotion_missing_story_issue_not_found",
+        ),
+    ],
+)
+def test_v9_promotion_rejects_unsafe_missing_media(
+    row,
+    story,
+    issues,
+    error,
+):
+    with pytest.raises(RuntimeError, match=error):
+        validate_promotion_media_rows(
+            [row],
+            {21: story} if story is not None else {},
+            issues,
+            run_id=7,
+            now=datetime(2026, 8, 13, tzinfo=UTC),
+        )
 
 
 def test_v9_production_embedded_bash_blocks_parse():
