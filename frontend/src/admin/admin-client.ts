@@ -37,6 +37,7 @@ export type AdminPaymentAttempt = {
   review_status: string;
   review_reason: string;
   submitted_at: number;
+  reviewed_at: number;
   receipt_mime: string;
   receipt_sha256: string;
   has_receipt: boolean;
