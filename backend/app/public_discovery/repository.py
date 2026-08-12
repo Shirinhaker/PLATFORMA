@@ -616,7 +616,10 @@ async def search_public_profiles(
     )
 
 
-def _has_legacy_active_pro_subscription(profile: BusinessProfile) -> bool:
+def _has_legacy_active_subscription(
+    profile: BusinessProfile,
+    eligible_plan_codes: frozenset[str],
+) -> bool:
     payload = (
         profile.cabinet_payload
         if isinstance(profile.cabinet_payload, dict)
@@ -635,45 +638,66 @@ def _has_legacy_active_pro_subscription(profile: BusinessProfile) -> bool:
             continue
         if (
             str(row.get("status") or "") == "active"
-            and str(row.get("plan_code") or "") == "pro"
+            and str(row.get("plan_code") or "") in eligible_plan_codes
             and expires_at > now
-            and not bool(row.get("is_demo"))
         ):
             return True
     return False
 
 
-async def _active_pro_business_ids(
+async def _active_subscription_business_ids(
     session: AsyncSession,
     account_ids: set[int],
+    eligible_plan_codes: frozenset[str],
 ) -> set[int]:
-    """Yangi jadvaldan faol, haqiqiy Pro bizneslarni bir so'rovda oladi."""
-    if not account_ids:
+    """Faol Plus/Pro bizneslarni yangi jadvaldan bir so'rovda oladi."""
+    if not account_ids or not eligible_plan_codes:
         return set()
     rows = await session.scalars(
         select(BusinessSubscription.business_account_id)
         .where(
             BusinessSubscription.business_account_id.in_(account_ids),
-            BusinessSubscription.plan_code == "pro",
+            BusinessSubscription.plan_code.in_(sorted(eligible_plan_codes)),
             BusinessSubscription.status == "active",
             BusinessSubscription.expires_at > int(time.time()),
-            # `is_demo` tarixiy sxemada INTEGER (0/1). PostgreSQL INTEGER
-            # ustuniga `IS false` qo'llamaydi; Railway'da bu so'rov 500
-            # qaytarardi. 0 bilan solishtirish SQLite va PostgreSQLda bir xil.
-            BusinessSubscription.is_demo == 0,
         )
         .distinct()
     )
     return {int(account_id) for account_id in rows.all()}
 
 
-def _has_active_pro_subscription(
+async def _active_pro_business_ids(
+    session: AsyncSession,
+    account_ids: set[int],
+) -> set[int]:
+    """Xarita v1656 qoidasi: faol Pro bizneslar."""
+    return await _active_subscription_business_ids(
+        session,
+        account_ids,
+        frozenset({"pro"}),
+    )
+
+
+async def _active_home_offer_business_ids(
+    session: AsyncSession,
+    account_ids: set[int],
+) -> set[int]:
+    """Tuman kartalari v1656 qoidasi: Plus va Pro teng huquqli."""
+    return await _active_subscription_business_ids(
+        session,
+        account_ids,
+        frozenset({"plus", "pro"}),
+    )
+
+
+def _has_active_subscription(
     profile: BusinessProfile,
     active_business_ids: set[int],
+    eligible_plan_codes: frozenset[str],
 ) -> bool:
     return (
         profile.account_id in active_business_ids
-        or _has_legacy_active_pro_subscription(profile)
+        or _has_legacy_active_subscription(profile, eligible_plan_codes)
     )
 
 
@@ -794,9 +818,10 @@ async def load_public_home_map(
         ) in followed_businesses
         or (
             profile.map_visible
-            and _has_active_pro_subscription(
+            and _has_active_subscription(
                 profile,
                 active_pro_business_ids,
+                frozenset({"pro"}),
             )
         )
     ]
@@ -1214,7 +1239,7 @@ async def load_public_district_offers(
         )
         listing_rows = list((await session.execute(listing_statement)).all())
 
-    active_pro_business_ids = await _active_pro_business_ids(
+    active_home_offer_business_ids = await _active_home_offer_business_ids(
         session,
         {
             business.account_id
@@ -1222,9 +1247,10 @@ async def load_public_district_offers(
         },
     )
     for catalog_item, business in catalog_rows:
-        if not _has_active_pro_subscription(
+        if not _has_active_subscription(
             business,
-            active_pro_business_ids,
+            active_home_offer_business_ids,
+            frozenset({"plus", "pro"}),
         ):
             continue
         grouped.setdefault(business.account_id, (business, []))[1].append(
@@ -1233,9 +1259,10 @@ async def load_public_district_offers(
 
     if include_listings:
         for listing, business in listing_rows:
-            if not _has_active_pro_subscription(
+            if not _has_active_subscription(
                 business,
-                active_pro_business_ids,
+                active_home_offer_business_ids,
+                frozenset({"plus", "pro"}),
             ):
                 continue
             grouped.setdefault(
