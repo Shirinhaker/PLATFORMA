@@ -2,10 +2,20 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolvePreviewApiTarget } from "../../vite.config";
+import {
+  KOPRIK_PREVIEW_ALLOWED_HOSTS,
+  resolvePreviewApiTarget,
+} from "../../vite.config";
 
 
 describe("resolvePreviewApiTarget", () => {
+  it("allows both Railway smoke traffic and Koprik production domains", () => {
+    expect(KOPRIK_PREVIEW_ALLOWED_HOSTS).toEqual([
+      ".railway.app",
+      ".koprik.uz",
+    ]);
+  });
+
   it("uses the Railway API origin for the same-origin preview proxy", () => {
     expect(resolvePreviewApiTarget({
       VITE_API_BASE_URL: "https://api-staging.example/",

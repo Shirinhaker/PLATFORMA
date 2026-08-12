@@ -6,6 +6,12 @@ import { defineConfig } from "vitest/config";
 type PreviewEnvironment = Record<string, string | undefined>;
 
 
+export const KOPRIK_PREVIEW_ALLOWED_HOSTS = Object.freeze([
+  ".railway.app",
+  ".koprik.uz",
+]);
+
+
 export function resolvePreviewApiTarget(
   environment: PreviewEnvironment,
 ): string {
@@ -50,6 +56,7 @@ export default defineConfig(({ mode }) => {
     },
     ...(apiTarget ? {
       preview: {
+        allowedHosts: [...KOPRIK_PREVIEW_ALLOWED_HOSTS],
         proxy: {
           "/api": {
             target: apiTarget,
