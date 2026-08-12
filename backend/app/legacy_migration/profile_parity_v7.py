@@ -8,6 +8,9 @@ from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai_assistant.legacy_import import import_ai_chat_history
+from app.legacy_migration.business_subscription_stage import (
+    import_business_subscriptions,
+)
 from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.reconcile import StageResult, _find_mapping
 from app.legacy_migration.reconcile_v6 import (
@@ -152,19 +155,49 @@ async def import_late_typed_domains(
     run: MigrationRun,
 ) -> StageResult:
     """0005 bazaviy importidan keyin yaratiladigan typed domenlarni to'ldir."""
-    required = ("ai_chat_messages", "taxi_drivers", "taxi_rides")
+    required = (
+        "ai_chat_messages",
+        "business_subscriptions",
+        "taxi_drivers",
+        "taxi_rides",
+    )
     if not await _target_tables_exist(session, *required):
         raise RuntimeError("late_typed_domain_tables_missing")
 
     ai_result = await import_ai_chat_history(session, source, run)
+    subscription_result = await import_business_subscriptions(
+        session,
+        source,
+        run,
+    )
     taxi_result = await import_taxi_domain(session, source, run)
     await session.flush()
     return StageResult(
-        created=ai_result.created + taxi_result.created,
-        reused=ai_result.reused + taxi_result.reused,
-        updated=ai_result.updated + taxi_result.updated,
-        quarantined=ai_result.quarantined + taxi_result.quarantined,
-        issues=ai_result.issues + taxi_result.issues,
+        created=(
+            ai_result.created
+            + subscription_result.created
+            + taxi_result.created
+        ),
+        reused=(
+            ai_result.reused
+            + subscription_result.reused
+            + taxi_result.reused
+        ),
+        updated=(
+            ai_result.updated
+            + subscription_result.updated
+            + taxi_result.updated
+        ),
+        quarantined=(
+            ai_result.quarantined
+            + subscription_result.quarantined
+            + taxi_result.quarantined
+        ),
+        issues=(
+            ai_result.issues
+            + subscription_result.issues
+            + taxi_result.issues
+        ),
     )
 
 
@@ -363,7 +396,11 @@ async def enrich_business_cabinets(
         "booking_id",
     )
     module_rows = {
-        table: _real_rows(_rows(source, table))
+        table: (
+            _rows(source, table)
+            if table == "business_subscriptions"
+            else _real_rows(_rows(source, table))
+        )
         for table in BUSINESS_MODULE_TABLES
     }
 
@@ -465,6 +502,9 @@ async def enrich_business_cabinets(
                     dining_items,
                     "items",
                 )
+            elif table == "business_subscriptions":
+                if matched or table in payload:
+                    payload[table] = _safe_subscription_rows(matched)
             elif matched or table in payload:
                 payload[table] = _safe_rows(matched)
 
@@ -733,14 +773,32 @@ def _safe_rows(rows: Iterable[object]) -> list[dict[str, Any]]:
     return result
 
 
+def _safe_subscription_rows(
+    rows: Iterable[object],
+) -> list[dict[str, Any]]:
+    """Sanitize entitlements without treating activation method as identity."""
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sanitized = _safe_value(row, preserve_demo_marker=True)
+        if isinstance(sanitized, dict):
+            result.append(sanitized)
+    return result
+
+
 def _safe_row(row: dict[str, object]) -> dict[str, Any]:
     sanitized = _safe_value(row)
     return sanitized if isinstance(sanitized, dict) else {}
 
 
-def _safe_value(value: object) -> Any:
+def _safe_value(
+    value: object,
+    *,
+    preserve_demo_marker: bool = False,
+) -> Any:
     if isinstance(value, dict):
-        if _is_explicit_demo(value):
+        if not preserve_demo_marker and _is_explicit_demo(value):
             return _DROP
         result: dict[str, Any] = {}
         for key, item in value.items():
