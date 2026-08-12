@@ -95,7 +95,7 @@ describe("v1656 user dashboard parity", () => {
       name: /Bildirishnomalar 0 O‘qilmagan xabarlar/,
     })).toBeInTheDocument();
     expect(screen.getByRole("button", {
-      name: "🏪 Biznes kabinetga o'tish",
+      name: "🏪 Biznes kabinetga o‘tish",
     })).toBeInTheDocument();
     expect(screen.queryByText("5")).not.toBeInTheDocument();
   });
