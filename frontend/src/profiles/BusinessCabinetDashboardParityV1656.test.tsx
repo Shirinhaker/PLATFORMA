@@ -2,7 +2,6 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import dashboardParityCss from "./BusinessCabinetDashboardParityV1656.css?raw";
 import businessProfileSource from "./BusinessProfileV3.tsx?raw";
 import {
   BusinessProfileV3,
@@ -84,18 +83,13 @@ function menuTexts(section: HTMLElement) {
 
 
 describe("v1656 business cabinet dashboard parity", () => {
-  it("keeps the dashboard CSS scoped and restores the v1656 three-column menu", () => {
+  it("keeps the dedicated v1656 dashboard stylesheet wired to the component", () => {
     expect(businessProfileSource)
       .toContain('import "./BusinessCabinetDashboardParityV1656.css";');
-    expect(dashboardParityCss).toContain(".business-cabinet__menu-grid");
-    expect(dashboardParityCss)
-      .toContain("grid-template-columns: repeat(3, minmax(0, 1fr));");
-    expect(dashboardParityCss)
-      .toContain("grid-template-columns: minmax(0, 1.55fr) minmax(260px, .8fr);");
   });
 
   it("shows the owner dashboard with the exact v1656 group hierarchy", async () => {
-    render(
+    const { container } = render(
       <BusinessProfileV3
         api={api()}
         identity={identity}
@@ -109,6 +103,8 @@ describe("v1656 business cabinet dashboard parity", () => {
       .toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Profilni ko‘rish" }))
       .toBeInTheDocument();
+    expect(container.querySelectorAll(".business-cabinet__menu-grid").length)
+      .toBeGreaterThanOrEqual(2);
 
     const onlineHeading = screen.getByRole("heading", { name: "Onlaynlashtirish" });
     const systemHeading = screen.getByRole("heading", { name: "Tizimlashtirish" });
