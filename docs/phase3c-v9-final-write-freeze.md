@@ -1,4 +1,4 @@
-# Phase 3C V8 final write-freeze
+# Phase 3C V9 final write-freeze
 
 Bu hujjat final production snapshot oldidan v1656 source bazaga yangi yozuv kelishini
 to‘liq to‘xtatish uchun ishlatiladi.
@@ -37,13 +37,14 @@ Shu tekshiruvlar o‘tmaguncha final archive/snapshot olinmaydi.
 ## 2. Final source archive
 
 Write-freeze tasdiqlangandan keyin final SQLite backup va source archive olinadi.
-Archive SHA-256 saqlanadi. Shu archive V8 final staging rehearsal uchun yagona
+Archive SHA-256 saqlanadi. Shu archive V9 final staging rehearsal uchun yagona
 source hisoblanadi.
 
-V8 staging skripti arxivni vaqtinchalik ish katalogiga chiqaradi va snapshotdan
-OLDIN `app.legacy_migration.demo_prune` ni ishlatadi. Shuning uchun v1616 demo
-akkauntlari va ularga tegishli demo biznes/listing/itemlar modular candidate
-snapshotga kirmaydi.
+`Koprik-Phase3C-Complete-Cabinet-Staging-V9-Verified.ps1` arxivni vaqtinchalik
+ish katalogiga chiqaradi va snapshotdan OLDIN `app.legacy_migration.demo_prune`
+ni ishlatadi. Shuning uchun v1616 demo akkauntlari va ularga tegishli demo
+biznes/listing/itemlar modular candidate snapshotga kirmaydi. Wrapper V9
+rehearsal tugagach profil media gate’ini ham majburiy tekshiradi.
 
 Muhim: `demo_prune` live v1656 SQLite faylini o‘chirmaydi yoki tahrirlamaydi.
 Demo yozuvlar eski source bazada rollback dalili sifatida qolishi mumkin, ammo
