@@ -25,6 +25,8 @@ export type PaymentTarget = {
   durationMonths?: number;
   /** Reklamada bu tuman-soat soni; summa shunga ko'paytiriladi. */
   quantity?: number;
+  /** Reklama yaratilganda backend hisoblagan yakuniy summa. */
+  expectedAmountUzs?: number;
   /** Qaysi reklamaga tegishli ekani. */
   targetId?: number;
   /** E'lon uchun `l_…` kaliti — ichki raqam ochiq kontraktda yo'q. */
@@ -77,7 +79,10 @@ export function PaymentRequestModal({
     (row) => row.price_code === target.priceCode,
   );
   const quantity = Math.max(1, Math.trunc(target.quantity ?? 1));
-  const amount = (price?.amount_uzs ?? 0) * quantity;
+  const catalogAmount = (price?.amount_uzs ?? 0) * quantity;
+  const amount = Number.isFinite(target.expectedAmountUzs)
+    ? Math.max(0, Number(target.expectedAmountUzs))
+    : catalogAmount;
   const [methodId, setMethodId] = useState(catalog.methods[0]?.id ?? 0);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);

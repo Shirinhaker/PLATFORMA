@@ -26,6 +26,7 @@ from app.catalog.model import CatalogGroup, CatalogItem
 from app.follows.model import ProfileFollow
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
+from app.payments.model import BusinessSubscription
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.specialists.model import (
     SpecialistCredential,
@@ -88,6 +89,36 @@ def _empty(label: str):
 
 def _contains(column, value: str):
     return func.lower(column).contains(value.casefold())
+
+
+_LOCATION_APOSTROPHES = ("‘", "’", "ʻ", "ʼ", "`", "´", "ʹ")
+_LOCATION_SUFFIXES = (" viloyati", " tumani", " shahri")
+
+
+def _location_key(value: str) -> str:
+    key = " ".join(str(value or "").casefold().strip().split())
+    for apostrophe in _LOCATION_APOSTROPHES:
+        key = key.replace(apostrophe, "'")
+    for suffix in _LOCATION_SUFFIXES:
+        if key.endswith(suffix):
+            key = key[: -len(suffix)].rstrip()
+            break
+    return key
+
+
+def _location_contains(column, value: str):
+    """Eski va yangi o'zbekcha apostrof yozuvlarini SQLda birga qidiradi."""
+    key = _location_key(value)
+    variants = {key}
+    variants.update(
+        key.replace("'", apostrophe)
+        for apostrophe in _LOCATION_APOSTROPHES
+    )
+    return or_(*(
+        func.lower(column).contains(variant)
+        for variant in sorted(variants)
+        if variant
+    ))
 
 
 def _location_constraints(
@@ -585,7 +616,7 @@ async def search_public_profiles(
     )
 
 
-def _has_active_pro_subscription(profile: BusinessProfile) -> bool:
+def _has_legacy_active_pro_subscription(profile: BusinessProfile) -> bool:
     payload = (
         profile.cabinet_payload
         if isinstance(profile.cabinet_payload, dict)
@@ -606,9 +637,41 @@ def _has_active_pro_subscription(profile: BusinessProfile) -> bool:
             str(row.get("status") or "") == "active"
             and str(row.get("plan_code") or "") == "pro"
             and expires_at > now
+            and not bool(row.get("is_demo"))
         ):
             return True
     return False
+
+
+async def _active_pro_business_ids(
+    session: AsyncSession,
+    account_ids: set[int],
+) -> set[int]:
+    """Yangi jadvaldan faol, haqiqiy Pro bizneslarni bir so'rovda oladi."""
+    if not account_ids:
+        return set()
+    rows = await session.scalars(
+        select(BusinessSubscription.business_account_id)
+        .where(
+            BusinessSubscription.business_account_id.in_(account_ids),
+            BusinessSubscription.plan_code == "pro",
+            BusinessSubscription.status == "active",
+            BusinessSubscription.expires_at > int(time.time()),
+            BusinessSubscription.is_demo.is_(False),
+        )
+        .distinct()
+    )
+    return {int(account_id) for account_id in rows.all()}
+
+
+def _has_active_pro_subscription(
+    profile: BusinessProfile,
+    active_business_ids: set[int],
+) -> bool:
+    return (
+        profile.account_id in active_business_ids
+        or _has_legacy_active_pro_subscription(profile)
+    )
 
 
 async def load_public_home_map(
@@ -638,12 +701,16 @@ async def load_public_home_map(
             Account.status == "active",
             BusinessProfile.latitude.is_not(None),
             BusinessProfile.longitude.is_not(None),
-            _contains(business_owner.district, district),
+            _location_contains(business_owner.district, district),
         )
         .order_by(func.lower(BusinessProfile.name), BusinessProfile.account_id)
     )
     business_profiles = list(
         (await session.scalars(business_statement)).all()
+    )
+    active_pro_business_ids = await _active_pro_business_ids(
+        session,
+        {profile.account_id for profile in business_profiles},
     )
 
     followed = (
@@ -678,7 +745,7 @@ async def load_public_home_map(
                 SpecialistProfile.visible.is_(True),
                 SpecialistProfile.latitude.is_not(None),
                 SpecialistProfile.longitude.is_not(None),
-                _contains(UserProfile.district, district),
+                _location_contains(UserProfile.district, district),
             )
             .order_by(
                 func.lower(UserProfile.name),
@@ -724,7 +791,10 @@ async def load_public_home_map(
         ) in followed_businesses
         or (
             profile.map_visible
-            and _has_active_pro_subscription(profile)
+            and _has_active_pro_subscription(
+                profile,
+                active_pro_business_ids,
+            )
         )
     ]
     specialists = []
@@ -1098,15 +1168,11 @@ async def load_public_district_offers(
             CatalogItem.status == "active",
             CatalogItem.review_state == ReviewState.READY,
             CatalogItem.business_account_id.is_not(None),
-            _contains(business_owner.district, district),
+            _location_contains(business_owner.district, district),
         )
         .order_by(CatalogItem.id)
     )
-    catalog_rows = [
-        row
-        for row in (await session.execute(statement)).all()
-        if _has_active_pro_subscription(row[1])
-    ]
+    catalog_rows = list((await session.execute(statement)).all())
     grouped: dict[
         int,
         tuple[
@@ -1114,11 +1180,7 @@ async def load_public_district_offers(
             list[tuple[str, CatalogItem | Listing]],
         ],
     ] = {}
-    for catalog_item, business in catalog_rows:
-        grouped.setdefault(business.account_id, (business, []))[1].append(
-            (catalog_item.kind, catalog_item)
-        )
-
+    listing_rows: list[tuple[Listing, BusinessProfile]] = []
     if include_listings:
         listing_statement = (
             select(Listing, BusinessProfile)
@@ -1143,16 +1205,36 @@ async def load_public_district_offers(
                 Listing.visibility == "all",
                 Listing.review_state == ReviewState.READY,
                 Listing.owner_business_account_id.is_not(None),
-                _contains(business_owner.district, district),
+                _location_contains(business_owner.district, district),
             )
             .order_by(Listing.id)
         )
-        listing_rows = [
-            row
-            for row in (await session.execute(listing_statement)).all()
-            if _has_active_pro_subscription(row[1])
-        ]
+        listing_rows = list((await session.execute(listing_statement)).all())
+
+    active_pro_business_ids = await _active_pro_business_ids(
+        session,
+        {
+            business.account_id
+            for _, business in [*catalog_rows, *listing_rows]
+        },
+    )
+    for catalog_item, business in catalog_rows:
+        if not _has_active_pro_subscription(
+            business,
+            active_pro_business_ids,
+        ):
+            continue
+        grouped.setdefault(business.account_id, (business, []))[1].append(
+            (catalog_item.kind, catalog_item)
+        )
+
+    if include_listings:
         for listing, business in listing_rows:
+            if not _has_active_pro_subscription(
+                business,
+                active_pro_business_ids,
+            ):
+                continue
             grouped.setdefault(
                 business.account_id,
                 (business, []),

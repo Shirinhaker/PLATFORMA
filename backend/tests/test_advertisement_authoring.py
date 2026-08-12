@@ -6,7 +6,7 @@ sahifada chiqmasdi.
 """
 
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -20,6 +20,7 @@ from app.advertisements.pricing import (
     calculate_ad_price,
     normalize_ad_region,
 )
+from app.advertisements.repository import select_active_advertisements
 from app.advertisements.authoring_schemas import (
     AdvertisementCreate,
     AdvertisementQuoteRequest,
@@ -349,6 +350,17 @@ async def test_payment_activates_and_shifts_the_schedule(
         assert row.end_at.replace(tzinfo=UTC) - start == (
             datetime(2026, 1, 8, tzinfo=UTC) - datetime(2026, 1, 1, tzinfo=UTC)
         )
+
+    async with sessions() as session:
+        public_items = await select_active_advertisements(
+            session,
+            now=start + timedelta(minutes=1),
+            placement="home",
+            region="Toshkent shahri",
+            district="Chilonzor tumani",
+            image_url_provider=lambda key: f"https://r2.test/{key}",
+        )
+    assert [item.title for item in public_items] == ["Choyxona ochildi"]
 
 
 async def test_activation_is_refused_twice(advertisement_context):

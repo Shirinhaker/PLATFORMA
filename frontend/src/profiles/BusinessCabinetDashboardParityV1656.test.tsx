@@ -151,6 +151,7 @@ describe("v1656 business cabinet dashboard parity", () => {
       "Qarz daftari",
       "Ombor",
       "Statistika",
+      "Hisobotlar",
       "AI yordamchi",
       "Ma'muriyat",
       "Sozlamalar",
@@ -177,11 +178,21 @@ describe("v1656 business cabinet dashboard parity", () => {
 
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
     await user.click(await screen.findByRole("button", { name: /Reklamalarim/ }));
+    const promotionHeading = screen.getByRole("heading", {
+      name: "E'lonlarim va reklamalarim",
+    });
+    expect(promotionHeading).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("ad-tab", "on");
     await user.click(screen.getByRole("button", { name: "E'lonlarim" }));
-    expect(await screen.findByRole("heading", { name: "E’lonlarim" }))
-      .toBeInTheDocument();
+    expect(await screen.findByRole("heading", {
+      name: "E'lonlarim va reklamalarim",
+    })).toBe(promotionHeading);
     expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass("ad-tab", "on");
+    await user.click(screen.getByRole("button", { name: "Reklamalarim" }));
+    expect(await screen.findByRole("heading", {
+      name: "E'lonlarim va reklamalarim",
+    })).toBe(promotionHeading);
+    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("ad-tab", "on");
   });
 
   it("keeps the dining kitchen reachable without a separate main-grid card", async () => {

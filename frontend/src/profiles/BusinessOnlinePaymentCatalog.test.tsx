@@ -106,13 +106,28 @@ describe("to'lov katalogi obuna ekranidan tashqarida ham yuklanadi", () => {
     expect(screen.getByText("Reklama · 1 tuman · 7 kun")).toBeVisible();
   });
 
-  it("summa tarif × tuman-soat bo'lib ko'rsatiladi", async () => {
+  it("backend hisoblagan reklama summasi ko'rsatiladi", async () => {
     renderScreen(makeApi());
     fireEvent.click(
       await screen.findByRole("button", { name: "To‘lov qilish" }),
     );
 
-    // 20 000 × 168 = 3 360 000
+    // Reklama yozuvida saqlangan yakuniy summa — to'lovning aniq manbasi.
+    expect(await screen.findByText("3 360 000 so‘m")).toBeVisible();
+  });
+
+  it("katalog narxi yo'q bo'lsa ham reklamaning hisoblangan summasi yo'qolmaydi", async () => {
+    const api = makeApi({
+      getPaymentCatalog: vi.fn().mockResolvedValue({
+        ...CATALOG,
+        prices: [],
+      }),
+    });
+    renderScreen(api);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "To‘lov qilish" }),
+    );
+
     expect(await screen.findByText("3 360 000 so‘m")).toBeVisible();
   });
 

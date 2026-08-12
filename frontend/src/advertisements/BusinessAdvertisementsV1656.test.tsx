@@ -107,6 +107,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       priceCode: "advertisement_district_hour",
       label: "Reklama · 1 tuman · 7 kun",
       quantity: 168,
+      expectedAmountUzs: 3_360_000,
       targetId: 12,
     });
   });
