@@ -265,6 +265,12 @@ function profileApi() {
     getSavedListings: vi.fn().mockResolvedValue([{ ...listing, is_saved: true }]),
     createListing: vi.fn().mockResolvedValue(listing),
     deleteListing: vi.fn().mockResolvedValue(undefined),
+    getMyAdvertisements: vi.fn().mockResolvedValue([]),
+    createAdvertisement: vi.fn(),
+    deleteAdvertisement: vi.fn().mockResolvedValue(undefined),
+    quoteAdvertisement: vi.fn(),
+    getPaymentCatalog: vi.fn().mockResolvedValue({ prices: [], methods: [] }),
+    createPaymentRequest: vi.fn(),
     getStaffSetup: vi.fn().mockResolvedValue({
       active: [{
         id: 11,
@@ -576,6 +582,7 @@ describe("profile cabinets", () => {
     expect(screen.getByRole("button", { name: "3 obunachi" })).toBeInTheDocument();
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Reklamalarim/ }));
+    await user.click(await screen.findByRole("button", { name: "E'lonlarim" }));
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
       .toBeInTheDocument();
