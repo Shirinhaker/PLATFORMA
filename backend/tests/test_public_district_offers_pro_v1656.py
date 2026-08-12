@@ -20,7 +20,7 @@ from app.payments.model import (
 )
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import (
-    _active_pro_business_ids,
+    _active_home_offer_business_ids,
     load_public_district_offers,
 )
 
@@ -131,22 +131,29 @@ def business_profile(account_id: int) -> BusinessProfile:
 
 
 @pytest.mark.asyncio
-async def test_active_pro_filter_uses_postgresql_integer_comparison():
+async def test_home_offer_filter_matches_v1656_plus_pro_policy_on_postgresql():
     session = StatementCapture()
 
-    assert await _active_pro_business_ids(session, {21}) == set()
+    assert await _active_home_offer_business_ids(session, {21}) == set()
     assert session.statement is not None
     sql = str(session.statement.compile(
         dialect=postgresql.dialect(),
         compile_kwargs={"literal_binds": True},
     ))
 
-    assert "business_subscriptions.is_demo = 0" in sql
-    assert "business_subscriptions.is_demo IS false" not in sql
+    assert "business_subscriptions.plan_code IN ('plus', 'pro')" in sql
+    assert "business_subscriptions.is_demo" not in sql
 
 
 @pytest.mark.asyncio
-async def test_native_active_pro_subscription_shows_home_product_card():
+@pytest.mark.parametrize(
+    ("plan_code", "is_demo"),
+    (("plus", True), ("pro", False)),
+)
+async def test_native_paid_subscription_shows_home_product_card(
+    plan_code,
+    is_demo,
+):
     engine = create_engine("sqlite://")
     Base.metadata.create_all(
         engine,
@@ -200,12 +207,12 @@ async def test_native_active_pro_subscription_shows_home_product_card():
                 id=301,
                 business_account_id=21,
                 legacy_source_id=None,
-                plan_code="pro",
+                plan_code=plan_code,
                 duration_months=12,
                 starts_at=int(NOW.timestamp()),
                 expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
                 status="active",
-                is_demo=False,
+                is_demo=is_demo,
                 payment_request_id=None,
                 created_at=int(NOW.timestamp()),
             ),
