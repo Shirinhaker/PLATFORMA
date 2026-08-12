@@ -1,0 +1,82 @@
+name: tmp-business-cabinet-v1656-apply
+
+on:
+  push:
+    branches:
+      - fix/business-cabinet-v1656-parity
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/business-cabinet-v1656-parity
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact BusinessProfileV3 parity patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/profiles/BusinessProfileV3.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count == 0 and new in text:
+                  print(f'{label}: already applied')
+                  return
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one old block, found {count}')
+              text = text.replace(old, new, 1)
+              print(f'{label}: applied')
+
+          replace_once(
+              'import "./Cabinet.css";\nimport "./BusinessFollowCounts.css";',
+              'import "./Cabinet.css";\nimport "./BusinessCabinetDashboardParityV1656.css";\nimport "./BusinessFollowCounts.css";',
+              'css-import',
+          )
+
+          old_menus = '''  const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);\n  const onlineMenuCards = onlineMenus.filter((menu) => !HEADER_ONLINE_VIEWS.has(menu.view));\n  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");\n  const followingMenu = onlineMenus.find((menu) => menu.view === "following");\n  const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS, identity);\n  const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS, identity);\n  const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);'''
+          new_menus = '''  const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);\n  const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS, identity);\n  const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS, identity);\n  const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);\n  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");\n  const followingMenu = onlineMenus.find((menu) => menu.view === "following");\n\n  const onlineLabels: Record<string, string> = {\n    profile: "Profil ma’lumotlari",\n    subscriptions: "Obuna va tarifim",\n    payments: "To‘lovlar",\n    items: "Mahsulot / Xizmatlar",\n    orders: "Buyurtmalarim",\n    "service-orders": "Xizmat buyurtmalari",\n    messages: "Suhbatlar",\n    reviews: "Mijoz fikrlari",\n    advertisements: "Reklamalarim",\n    stories: "Istoriyalar",\n    notifications: "Bildirishnomalar",\n  };\n  const onlineOrder = [\n    "profile",\n    "subscriptions",\n    "payments",\n    "items",\n    "dining-places",\n    "medical-providers",\n    "medical-queue",\n    "education-enrollments",\n    "orders",\n    "service-orders",\n    "messages",\n    "reviews",\n    "advertisements",\n    "stories",\n    "notifications",\n  ];\n  const onlineMenuCards = onlineOrder\n    .map((view) => onlineMenus.find((menu) => menu.view === view))\n    .filter((menu): menu is Menu => Boolean(menu))\n    .map((menu) => ({ ...menu, label: onlineLabels[menu.view] ?? menu.label }));\n\n  const systemCard = (\n    menus: Menu[],\n    view: string,\n    label: string,\n  ): Menu | null => {\n    const menu = menus.find((candidate) => candidate.view === view);\n    return menu ? { ...menu, label } : null;\n  };\n  const baseSystemCards: Array<Menu | null> = [\n    systemCard(systemMenus, "sales", "Kassa"),\n    systemCard(systemMenus, "statistics", "Kassa tahlili"),\n    systemCard(onlineMenus, "medical-queue", "Navbat"),\n    systemCard(adminMenus, "staff", "Xodimlar"),\n    systemCard(onlineMenus, "orders", "Buyurtmalar"),\n    systemCard(systemMenus, "warehouse", "Ombor"),\n    systemCard(systemMenus, "expenses", "Xarajatlar"),\n    systemCard(systemMenus, "debtors", "Qarz"),\n    systemCard(onlineMenus, "stories", "Istoriyalar"),\n    systemCard(adminMenus, "documents", "Hujjatlar"),\n  ];\n  const representedSystemViews = new Set(\n    baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),\n  );\n  const inlineDirectionMenus = directionMenus.filter(\n    (menu) => !representedSystemViews.has(menu.view),\n  );\n  const systemMenuCards: Menu[] = [\n    ...baseSystemCards.filter((menu): menu is Menu => Boolean(menu)),\n    ...inlineDirectionMenus,\n    ...[\n      systemCard(systemMenus, "ai-assistant", "AI yordamchi"),\n      systemCard(systemMenus, "settings", "Ma’muriyat"),\n    ].filter((menu): menu is Menu => Boolean(menu)),\n  ];'''
+          replace_once(old_menus, new_menus, 'visual-menus')
+
+          old_identity = '''          <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>'''
+          new_identity = '''          {identity.actor_type === "staff" ? (\n            <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>\n          ) : (\n            <button\n              type="button"\n              className="business-cabinet__user-switch-top"\n              disabled={busy}\n              onClick={() => void switchToUser()}\n            >\n              Oddiy kabinet\n            </button>\n          )}'''
+          replace_once(old_identity, new_identity, 'identity-action')
+
+          old_metric = '''                const menu = [...onlineMenus, ...systemMenus, ...directionMenus]\n                  .find((candidate) => candidate.view === metric.view);'''
+          new_metric = '''                const menu = [...onlineMenus, ...systemMenus, ...adminMenus, ...directionMenus]\n                  .find((candidate) => candidate.view === metric.view);'''
+          replace_once(old_metric, new_metric, 'metric-menu-lookup')
+
+          old_content = '''        <div className="business-cabinet__content">\n          <div>\n            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}\n            {group("Tizimlashtirish", "Hisob-kitob, ombor va boshqaruv", systemMenus)}\n            {group("Ma’muriyat", "Xodimlar, hujjatlar va hamkorlar", adminMenus)}\n            {directionMenus.length > 0 && group(\n              "Yo‘nalishga xos bo‘limlar",\n              `${loadedProfile.direction} uchun maxsus boshqaruv`,\n              directionMenus,\n            )}\n            {identity.actor_type !== "staff" && <button\n              type="button"\n              className="business-cabinet__switch"\n              disabled={busy}\n              onClick={() => void switchToUser()}\n            >\n              👤 Oddiy kabinetga qaytish\n            </button>}\n          </div>'''
+          new_content = '''        <div className="business-cabinet__content">\n          <div className="business-cabinet__menu-panel">\n            <div className="business-cabinet__section-heading">\n              <div>\n                <h2>Boshqaruv bo‘limlari</h2>\n                <p>{`${loadedProfile.direction || "Biznes"} bo‘yicha kerakli bo‘limlar`}</p>\n              </div>\n              <button type="button" onClick={() => setScreen("profile")}>\n                Profilni ko‘rish\n              </button>\n            </div>\n            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}\n            {group("Tizimlashtirish", "Biznes ish jarayonlari", systemMenuCards)}\n          </div>'''
+          replace_once(old_content, new_content, 'dashboard-groups')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Verify focused tests and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --run src/profiles/BusinessCabinetDashboardParityV1656.test.tsx src/profiles/BusinessProfileParity.test.tsx
+          npm run build
+      - name: Commit implementation
+        run: |
+          if git diff --quiet -- frontend/src/profiles/BusinessProfileV3.tsx; then
+            echo 'No implementation diff to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/profiles/BusinessProfileV3.tsx
+          git commit -m 'fix: match business cabinet dashboard to v1656'
+          git push origin HEAD:fix/business-cabinet-v1656-parity
