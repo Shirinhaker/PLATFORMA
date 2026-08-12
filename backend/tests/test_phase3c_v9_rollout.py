@@ -1,6 +1,7 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from datetime import UTC, datetime
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -26,6 +27,12 @@ VERIFIED_SCRIPT = (
     ROOT
     / "scripts/Koprik-Phase3C-Complete-Cabinet-Staging-V9-Verified.ps1"
 )
+PRODUCTION_SCRIPT = (
+    ROOT
+    / "scripts/Koprik-Phase3C-Promote-Cabinet-Production-V9.ps1"
+)
+PRODUCTION_RUNBOOK = ROOT / "docs/deploy-phase3c-production.md"
+WRITE_FREEZE_RUNBOOK = ROOT / "docs/phase3c-v9-final-write-freeze.md"
 
 
 def _migration():
@@ -132,3 +139,79 @@ def test_verified_v9_wrapper_uses_v9_profile_media_gate():
     assert 'report["schema_version"] == "0009_phase3c_real_subscriptions_v1"' in script
     assert "PHASE3C_V9_VERIFIED_COMPLETE" in script
     assert "Production migration was not started." in script
+
+
+def test_v9_production_promotion_requires_exact_verified_candidate():
+    script = PRODUCTION_SCRIPT.read_text(encoding="utf-8")
+
+    assert 'Write-Host "SCRIPT_VERSION=9"' in script
+    assert "MIGRATION_MODE=PROMOTE_VERIFIED_V9_CANDIDATE" in script
+    assert '$ExpectedSchema = "0009_phase3c_real_subscriptions_v1"' in script
+    assert '$ExpectedHead = "0042_real_business_subscriptions"' in script
+    assert "koprik-phase3c-v9-" in script
+    assert "app.legacy_migration.runner_v9" in script
+    assert "app.legacy_migration.profile_media_verify_v9" in script
+    assert "PROFILE_MEDIA_V9_VERIFY_OK" in script
+    assert "REAL_BUSINESS_SUBSCRIPTIONS_PRODUCTION_GUARD_OK" in script
+    assert "candidate_environment_must_remain_staging_before_cutover" in script
+    assert "phase3c_public_flag_must_be_disabled" in script
+    assert "candidate_database_not_at_current_head" in script
+    assert "approved_staging_run_not_found" in script
+    assert "approved_staging_verification_failed" in script
+    assert "PRODUCTION_V9_BACKUP_CONFIRMATION_REQUIRED" in script
+    assert "PRODUCTION_V9_MAINTENANCE_CONFIRMATION_REQUIRED" in script
+    assert "PRODUCTION_V9_SOURCE_WRITES_STOPPED_CONFIRMATION_REQUIRED" in script
+    assert "--environment production" in script
+    assert "--confirm-environment production" in script
+    assert "--confirm-snapshot-sha256" in script
+    assert "--maintenance-enabled" in script
+    assert "--approved-staging-run-id" in script
+    assert "PHASE3C_V9_PRODUCTION_PROMOTION_COMPLETE" in script
+    assert "TRAFFIC_NOT_CHANGED=1" in script
+    assert "alembic upgrade head" not in script
+    profile_gate = script.index("PROFILE_MEDIA_V9_VERIFY_OK")
+    subscription_gate = script.index(
+        "REAL_BUSINESS_SUBSCRIPTIONS_PRODUCTION_GUARD_OK"
+    )
+    final_guard = script.index("PRODUCTION_V9_PROMOTION_GUARD_OK")
+    production_write = script.index("koprik-migrate-legacy run")
+    assert profile_gate < subscription_gate < final_guard < production_write
+
+
+def test_v9_production_embedded_bash_blocks_parse():
+    script = PRODUCTION_SCRIPT.read_text(encoding="utf-8")
+
+    for variable in ("PreflightScript", "ExecuteScript"):
+        marker = f"${variable} = @'\n"
+        start = script.index(marker) + len(marker)
+        end = script.index("\n'@", start)
+        result = subprocess.run(
+            ["bash", "-n"],
+            input=script[start:end],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+
+
+def test_production_runbooks_point_to_v9_only():
+    runbook = PRODUCTION_RUNBOOK.read_text(encoding="utf-8")
+    freeze = WRITE_FREEZE_RUNBOOK.read_text(encoding="utf-8")
+
+    assert "Phase 3C V9 production cutover" in runbook
+    assert "Koprik-Phase3C-Complete-Cabinet-Staging-V9-Verified.ps1" in runbook
+    assert "Koprik-Phase3C-Promote-Cabinet-Production-V9.ps1" in runbook
+    assert "0009_phase3c_real_subscriptions_v1" in runbook
+    assert "0042_real_business_subscriptions" in runbook
+    assert "Phase 3C V9 final write-freeze" in freeze
+    assert "V9 final staging rehearsal" in freeze
+    for obsolete_reference in (
+        "Complete-Cabinet-Staging-V8",
+        "Promote-Cabinet-Production-V8",
+        "koprik-phase3c-v8-",
+        "V8 snapshot",
+        "V8 staging rehearsal",
+    ):
+        assert obsolete_reference not in runbook
+    assert "V8" not in freeze
