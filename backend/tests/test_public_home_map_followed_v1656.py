@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
 from app.db.base import Base
+from app.payments.model import (
+    BusinessSubscription,
+    PaymentMethod,
+    PaymentRequest,
+)
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import build_public_id, load_public_home_map
 from app.public_discovery.schemas import PublicFollowedProfile, PublicResultKind
@@ -168,6 +173,62 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
             "Biznes 21",
             "Biznes 22",
         ]
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_native_demo_pro_keeps_real_business_visible_on_home_map():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(
+        engine,
+        tables=(
+            Account.__table__,
+            UserProfile.__table__,
+            BusinessProfile.__table__,
+            ProfileLink.__table__,
+            PaymentMethod.__table__,
+            PaymentRequest.__table__,
+            BusinessSubscription.__table__,
+        ),
+    )
+    session = Session(engine, expire_on_commit=False)
+    try:
+        session.add_all((
+            account(11, AccountType.USER),
+            account(21, AccountType.BUSINESS),
+            owner_profile(11),
+            business_profile(21, map_visible=True),
+            ProfileLink(
+                user_account_id=11,
+                business_account_id=21,
+                created_at=NOW,
+            ),
+            BusinessSubscription(
+                id=301,
+                business_account_id=21,
+                legacy_source_id=None,
+                plan_code="pro",
+                duration_months=12,
+                starts_at=int(NOW.timestamp()),
+                expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
+                status="active",
+                # v1656 demo-activation haqiqiy biznes profilini demo qilmaydi.
+                is_demo=True,
+                payment_request_id=None,
+                created_at=int(NOW.timestamp()),
+            ),
+        ))
+        session.commit()
+
+        payload = await load_public_home_map(
+            AsyncStore(session),
+            district="Qumqo‘rg‘on",
+            image_url_provider=lambda value: value,
+        )
+
+        assert [item.name for item in payload.businesses] == ["Biznes 21"]
     finally:
         session.close()
         engine.dispose()
