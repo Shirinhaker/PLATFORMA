@@ -164,6 +164,9 @@ from app.legacy_migration.model import (
     MigrationStatus,
 )
 from app.legacy_migration.runner_v9 import MIGRATION_SCHEMA_VERSION
+from app.legacy_migration.production_guard_v9 import (
+    validate_media_for_promotion,
+)
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 
 run_id = int(sys.argv[1])
@@ -193,31 +196,18 @@ async def main():
             late = run.counters_json.get("late_typed_domains") or {}
             assert int(late.get("quarantined", -1)) == 0, late
 
-            states = {
-                state: int(count)
-                for state, count in (
-                    await session.execute(
-                        select(MediaMigration.state, func.count(MediaMigration.id))
-                        .where(MediaMigration.migration_run_id == run.id)
-                        .group_by(MediaMigration.state)
-                    )
-                ).all()
-            }
-            copied = states.get(MediaMigrationState.COPIED, 0)
-            pending = states.get(MediaMigrationState.PENDING, 0)
-            missing = states.get(MediaMigrationState.MISSING, 0)
-            invalid = states.get(MediaMigrationState.INVALID, 0)
-            failed = states.get(MediaMigrationState.FAILED, 0)
-            assert pending == 0, ("media_pending", pending)
-            assert missing == 0, ("media_missing", missing)
-            assert invalid == 0, ("media_invalid", invalid)
-            assert failed == 0, ("media_failed", failed)
+            media_guard = await validate_media_for_promotion(session, run.id)
+            copied = media_guard.copied
             media_gate = next(
                 (g for g in verify.get("gates", []) if g.get("code") == "media_terminal_count"),
                 None,
             )
             assert media_gate is not None, "media_terminal_gate_missing"
-            assert copied == int(media_gate.get("expected", -1)), (copied, media_gate)
+            terminal_media = copied + media_guard.expired_story_missing
+            assert terminal_media == int(media_gate.get("expected", -1)), (
+                terminal_media,
+                media_gate,
+            )
 
             businesses = int(
                 await session.scalar(select(func.count(BusinessProfile.account_id))) or 0
@@ -238,6 +228,8 @@ async def main():
             print(
                 "PRODUCTION_V9_BASE_GUARD_OK "
                 f"STAGING_RUN_ID={run.id} MEDIA_COPIED={copied} "
+                f"EXPIRED_STORY_MEDIA_MISSING="
+                f"{media_guard.expired_story_missing} "
                 f"BUSINESSES={businesses} LINKS={links}"
             )
     finally:
@@ -440,13 +432,16 @@ EXPECTED_SNAPSHOT_SHA256="__EXPECTED_SNAPSHOT_SHA256__"
 EXPECTED_MANIFEST_SHA256="__EXPECTED_MANIFEST_SHA256__"
 APPROVED_STAGING_RUN_ID="__APPROVED_STAGING_RUN_ID__"
 WORK="$(dirname "$(dirname "$SNAPSHOT")")"
+MEDIA="$WORK/uploads"
 
 test -f "$SNAPSHOT" || fail "approved_snapshot_not_found"
 test -f "$MANIFEST" || fail "approved_manifest_not_found"
+test -d "$MEDIA" || fail "approved_media_root_not_found"
 test "$(sha256sum "$SNAPSHOT" | awk '{print $1}')" = "$EXPECTED_SNAPSHOT_SHA256" \
   || fail "approved_snapshot_sha256_changed"
 test "$(sha256sum "$MANIFEST" | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256" \
   || fail "approved_manifest_sha256_changed"
+export KOPRIK_LEGACY_MEDIA_ROOTS="$MEDIA"
 
 koprik-migrate-legacy run \
   --snapshot "$SNAPSHOT" \
@@ -487,7 +482,10 @@ from sqlalchemy import func, select
 
 from app.core.config import Settings
 from app.db.session import Database
-from app.legacy_migration.model import MediaMigration, MediaMigrationState, MigrationRun
+from app.legacy_migration.model import MigrationRun
+from app.legacy_migration.production_guard_v9 import (
+    validate_media_for_promotion,
+)
 
 report_path = sys.argv[1]
 approved_staging_run_id = int(sys.argv[2])
@@ -534,24 +532,13 @@ async def main():
             assert run.approved_staging_run_id == approved_staging_run_id
             assert run.source_database_sha256 == expected_snapshot
             assert run.media_manifest_sha256 == expected_manifest
-            states = {
-                state: int(count)
-                for state, count in (
-                    await session.execute(
-                        select(MediaMigration.state, func.count(MediaMigration.id))
-                        .where(MediaMigration.migration_run_id == run.id)
-                        .group_by(MediaMigration.state)
-                    )
-                ).all()
-            }
-            assert states.get(MediaMigrationState.PENDING, 0) == 0, states
-            assert states.get(MediaMigrationState.MISSING, 0) == 0, states
-            assert states.get(MediaMigrationState.INVALID, 0) == 0, states
-            assert states.get(MediaMigrationState.FAILED, 0) == 0, states
+            media_guard = await validate_media_for_promotion(session, run.id)
             print(
                 "PRODUCTION_V9_REPORT_OK "
                 f"RUN_ID={run.id} APPROVED_STAGING_RUN_ID={approved_staging_run_id} "
-                f"CREATED=0 MEDIA_COPIED={states.get(MediaMigrationState.COPIED, 0)}"
+                f"CREATED=0 MEDIA_COPIED={media_guard.copied} "
+                f"EXPIRED_STORY_MEDIA_MISSING="
+                f"{media_guard.expired_story_missing}"
             )
     finally:
         await database.stop()

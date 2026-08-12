@@ -76,7 +76,10 @@ Dry-run quyidagilarni yozuvsiz tekshiradi:
 - account/business/late-domain quarantine = 0;
 - idempotent rerunda created = 0;
 - profil linklari bizneslar bilan mos;
-- media `pending = 0`, `missing = 0`, `invalid = 0`, `failed = 0`;
+- media `pending = 0`, `invalid = 0`, `failed = 0`;
+- `missing` faqat manba fayli monolitda ham yo‘q, muddati tugagan yoki
+  o‘chirilgan va targetda `failed` bo‘lgan story uchun dalil sifatida qolishi
+  mumkin; faol story yoki boshqa turdagi media uchun `missing = 0`;
 - barcha manba media yozuvlari `copied` holatda;
 - profil rasmlari V9 profile-media gate’dan qayta o‘tgan;
 - haqiqiy Plus/Pro biznes obunalari legacy ID va barcha maydonlari bilan
@@ -104,8 +107,10 @@ majburiy tekshiradi:
 - production verification gate’lari barchasi PASS;
 - production run `approved_staging_run_id` bilan bog‘langan;
 - production pass yangi core/late qator yaratmaydi (`created = 0`);
-- media production runida ham `pending/missing/invalid/failed = 0`;
+- media production runida ham yuqoridagi qat’iy terminal qoida saqlanadi;
 - snapshot va manifest o‘zgarmagan.
+- production idempotent media tekshiruvi aynan approved V9 ish katalogidagi
+  `uploads` ildizidan foydalanadi.
 
 Muvaffaqiyat belgisi:
 
