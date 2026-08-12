@@ -186,7 +186,7 @@ function api() {
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole(
     "button",
-    { name: /Profil \/ Mening sahifam/ },
+    { name: /Profil ma’lumotlari/ },
   ));
   return screen.findByRole("heading", { name: "Profil / Mening sahifam" });
 }
@@ -359,7 +359,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: /Obunalarim/ }));
+    await user.click(await screen.findByRole("button", { name: /Obuna va tarifim/ }));
     await user.click(
       await screen.findByRole("button", { name: "Plus uchun to‘lov qilish" }),
     );
@@ -401,7 +401,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: /Statistika/ }));
+    await user.click(await screen.findByRole("button", { name: /Kassa tahlili/ }));
     expect(await screen.findByRole("heading", { name: "Statistika" }))
       .toBeInTheDocument();
     expect(screen.getByText("Haqiqiy pul tushumi").closest("article"))
@@ -461,7 +461,7 @@ describe("v1656 business profile parity", () => {
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Xodimlar/ }))
       .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Profil \/ Mening sahifam/ }))
+    expect(screen.queryByRole("button", { name: /Profil ma’lumotlari/ }))
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }))
       .not.toBeInTheDocument();

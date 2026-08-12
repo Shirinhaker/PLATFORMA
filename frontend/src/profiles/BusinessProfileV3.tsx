@@ -91,6 +91,7 @@ import {
 } from "../payments/SubscriptionsPaymentsV1656";
 import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
 import "./Cabinet.css";
+import "./BusinessCabinetDashboardParityV1656.css";
 import "./BusinessFollowCounts.css";
 
 
@@ -949,12 +950,77 @@ export function BusinessProfileV3({
     followers: loadedProfile.followers_count,
   };
   const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);
-  const onlineMenuCards = onlineMenus.filter((menu) => !HEADER_ONLINE_VIEWS.has(menu.view));
-  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
-  const followingMenu = onlineMenus.find((menu) => menu.view === "following");
   const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS, identity);
   const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS, identity);
   const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);
+  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
+  const followingMenu = onlineMenus.find((menu) => menu.view === "following");
+
+  const onlineLabels: Record<string, string> = {
+    profile: "Profil ma’lumotlari",
+    subscriptions: "Obuna va tarifim",
+    payments: "To‘lovlar",
+    items: "Mahsulot / Xizmatlar",
+    orders: "Buyurtmalarim",
+    "service-orders": "Xizmat buyurtmalari",
+    messages: "Suhbatlar",
+    reviews: "Mijoz fikrlari",
+    advertisements: "Reklamalarim",
+    stories: "Istoriyalar",
+    notifications: "Bildirishnomalar",
+  };
+  const onlineOrder = [
+    "profile",
+    "subscriptions",
+    "payments",
+    "items",
+    "dining-places",
+    "medical-providers",
+    "medical-queue",
+    "education-enrollments",
+    "orders",
+    "service-orders",
+    "messages",
+    "reviews",
+    "advertisements",
+    "stories",
+    "notifications",
+  ];
+  const onlineMenuCards = onlineOrder
+    .map((view) => onlineMenus.find((menu) => menu.view === view))
+    .filter((menu): menu is Menu => Boolean(menu))
+    .map((menu) => ({ ...menu, label: onlineLabels[menu.view] ?? menu.label }));
+
+  const systemCard = (menus: Menu[], view: string, label: string): Menu | null => {
+    const menu = menus.find((candidate) => candidate.view === view);
+    return menu ? { ...menu, label } : null;
+  };
+  const baseSystemCards: Array<Menu | null> = [
+    systemCard(systemMenus, "sales", "Kassa"),
+    systemCard(systemMenus, "statistics", "Kassa tahlili"),
+    systemCard(onlineMenus, "medical-queue", "Navbat"),
+    systemCard(adminMenus, "staff", "Xodimlar"),
+    systemCard(onlineMenus, "orders", "Buyurtmalar"),
+    systemCard(systemMenus, "warehouse", "Ombor"),
+    systemCard(systemMenus, "expenses", "Xarajatlar"),
+    systemCard(systemMenus, "debtors", "Qarz"),
+    systemCard(onlineMenus, "stories", "Istoriyalar"),
+    systemCard(adminMenus, "documents", "Hujjatlar"),
+  ];
+  const representedSystemViews = new Set(
+    baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),
+  );
+  const inlineDirectionMenus = directionMenus.filter(
+    (menu) => !representedSystemViews.has(menu.view),
+  );
+  const systemMenuCards: Menu[] = [
+    ...baseSystemCards.filter((menu): menu is Menu => Boolean(menu)),
+    ...inlineDirectionMenus,
+    ...[
+      systemCard(systemMenus, "ai-assistant", "AI yordamchi"),
+      systemCard(systemMenus, "settings", "Ma’muriyat"),
+    ].filter((menu): menu is Menu => Boolean(menu)),
+  ];
 
   function openMenu(menu: Menu) {
     if (menu.view === "settings") {
@@ -1178,7 +1244,18 @@ export function BusinessProfileV3({
               </button>
             </div>}
           </div>
-          <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          {identity.actor_type === "staff" ? (
+            <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          ) : (
+            <button
+              type="button"
+              className="business-cabinet__user-switch-top"
+              disabled={busy}
+              onClick={() => void switchToUser()}
+            >
+              Oddiy kabinet
+            </button>
+          )}
         </header>
 
         <div className="business-cabinet__stats">
@@ -1190,7 +1267,7 @@ export function BusinessProfileV3({
                 : "business-cabinet__stat"}
               key={metric.key}
               onClick={() => {
-                const menu = [...onlineMenus, ...systemMenus, ...directionMenus]
+                const menu = [...onlineMenus, ...systemMenus, ...adminMenus, ...directionMenus]
                   .find((candidate) => candidate.view === metric.view);
                 if (menu) openMenu(menu);
               }}
@@ -1207,23 +1284,18 @@ export function BusinessProfileV3({
         {error && <p className="business-cabinet__error" role="alert">{error}</p>}
 
         <div className="business-cabinet__content">
-          <div>
+          <div className="business-cabinet__menu-panel">
+            <div className="business-cabinet__section-heading">
+              <div>
+                <h2>Boshqaruv bo‘limlari</h2>
+                <p>{`${loadedProfile.direction || "Biznes"} bo‘yicha kerakli bo‘limlar`}</p>
+              </div>
+              <button type="button" onClick={() => setScreen("profile")}>
+                Profilni ko‘rish
+              </button>
+            </div>
             {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}
-            {group("Tizimlashtirish", "Hisob-kitob, ombor va boshqaruv", systemMenus)}
-            {group("Ma’muriyat", "Xodimlar, hujjatlar va hamkorlar", adminMenus)}
-            {directionMenus.length > 0 && group(
-              "Yo‘nalishga xos bo‘limlar",
-              `${loadedProfile.direction} uchun maxsus boshqaruv`,
-              directionMenus,
-            )}
-            {identity.actor_type !== "staff" && <button
-              type="button"
-              className="business-cabinet__switch"
-              disabled={busy}
-              onClick={() => void switchToUser()}
-            >
-              👤 Oddiy kabinetga qaytish
-            </button>}
+            {group("Tizimlashtirish", "Biznes ish jarayonlari", systemMenuCards)}
           </div>
 
           <aside className="business-cabinet__activity">
