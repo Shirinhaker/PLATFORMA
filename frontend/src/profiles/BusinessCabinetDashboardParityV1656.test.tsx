@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -80,16 +80,17 @@ function api() {
 function menuTexts(section: HTMLElement) {
   return within(section)
     .getAllByRole("button")
-    .map((button) => button.textContent?.replace(/\s+/g, " ").trim() ?? "");
+    .map((button) => button.querySelector("b")?.textContent?.trim() ?? "");
 }
 
 
 describe("v1656 business cabinet dashboard parity", () => {
   it("keeps the dashboard CSS scoped and restores the v1656 three-column menu", () => {
-    const cssPath = fileURLToPath(
-      new URL("./BusinessCabinetDashboardParityV1656.css", import.meta.url),
+    const cssPath = resolve(
+      process.cwd(),
+      "src/profiles/BusinessCabinetDashboardParityV1656.css",
     );
-    const sourcePath = fileURLToPath(new URL("./BusinessProfileV3.tsx", import.meta.url));
+    const sourcePath = resolve(process.cwd(), "src/profiles/BusinessProfileV3.tsx");
     const css = readFileSync(cssPath, "utf8");
     const source = readFileSync(sourcePath, "utf8");
 
@@ -129,17 +130,17 @@ describe("v1656 business cabinet dashboard parity", () => {
     expect(systemSection).not.toBeNull();
 
     expect(menuTexts(onlineSection as HTMLElement)).toEqual(expect.arrayContaining([
-      expect.stringMatching(/^Profil ma’lumotlari/),
-      expect.stringMatching(/^Obuna va tarifim/),
-      expect.stringMatching(/^To‘lovlar/),
-      expect.stringMatching(/^Mahsulot \/ Xizmatlar/),
-      expect.stringMatching(/^Buyurtmalarim/),
-      expect.stringMatching(/^Xizmat buyurtmalari/),
-      expect.stringMatching(/^Suhbatlar/),
-      expect.stringMatching(/^Mijoz fikrlari/),
-      expect.stringMatching(/^Reklamalarim/),
-      expect.stringMatching(/^Istoriyalar/),
-      expect.stringMatching(/^Bildirishnomalar/),
+      "Profil ma’lumotlari",
+      "Obuna va tarifim",
+      "To‘lovlar",
+      "Mahsulot / Xizmatlar",
+      "Buyurtmalarim",
+      "Xizmat buyurtmalari",
+      "Suhbatlar",
+      "Mijoz fikrlari",
+      "Reklamalarim",
+      "Istoriyalar",
+      "Bildirishnomalar",
     ]));
     expect(within(onlineSection as HTMLElement).queryByRole("button", { name: /E’lonlarim/ }))
       .not.toBeInTheDocument();
@@ -147,16 +148,16 @@ describe("v1656 business cabinet dashboard parity", () => {
       .not.toBeInTheDocument();
 
     expect(menuTexts(systemSection as HTMLElement)).toEqual(expect.arrayContaining([
-      expect.stringMatching(/^Kassa/),
-      expect.stringMatching(/^Kassa tahlili/),
-      expect.stringMatching(/^Xodimlar/),
-      expect.stringMatching(/^Buyurtmalar/),
-      expect.stringMatching(/^Ombor/),
-      expect.stringMatching(/^Xarajatlar/),
-      expect.stringMatching(/^Qarz/),
-      expect.stringMatching(/^Hujjatlar/),
-      expect.stringMatching(/^AI yordamchi/),
-      expect.stringMatching(/^Ma’muriyat/),
+      "Kassa",
+      "Kassa tahlili",
+      "Xodimlar",
+      "Buyurtmalar",
+      "Ombor",
+      "Xarajatlar",
+      "Qarz",
+      "Hujjatlar",
+      "AI yordamchi",
+      "Ma’muriyat",
     ]));
   });
 
