@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.profile_parity_v7 import (
     reconcile_accounts as reconcile_accounts_v7,
+    reconcile_businesses as reconcile_businesses_v7,
 )
 from app.legacy_migration.reconcile import StageResult, _find_mapping
-from app.profiles.model import UserProfile
+from app.profiles.model import BusinessProfile, UserProfile
 
 
 # static/index.html v1656: orderIsActive()
@@ -42,6 +43,18 @@ def _boolean(value: object) -> bool:
     return bool(value)
 
 
+def _source_ids(source: sqlite3.Connection, table: str) -> list[int]:
+    try:
+        return [
+            int(row[0])
+            for row in source.execute(
+                f'SELECT id FROM "{table}" ORDER BY id'
+            ).fetchall()
+        ]
+    except sqlite3.Error:
+        return []
+
+
 def v1656_order_is_active(row: dict[str, Any]) -> bool:
     return (
         not _boolean(row.get("problem_open"))
@@ -69,6 +82,42 @@ def _unread(row: dict[str, Any]) -> bool:
     return not _boolean(row.get("is_read")) and not _boolean(row.get("resolved_at"))
 
 
+async def _remember_profile_media(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    *,
+    source_table: str,
+    mapping_type: str,
+    model,
+    field: str,
+) -> dict[int, str]:
+    remembered: dict[int, str] = {}
+    for legacy_id in _source_ids(source, source_table):
+        mapping = await _find_mapping(session, mapping_type, legacy_id)
+        if mapping is None or mapping.target_id is None:
+            continue
+        profile = await session.get(model, mapping.target_id)
+        if profile is None:
+            continue
+        object_key = str(getattr(profile, field, "") or "")
+        if object_key:
+            remembered[int(mapping.target_id)] = object_key
+    return remembered
+
+
+async def _restore_profile_media(
+    session: AsyncSession,
+    remembered: dict[int, str],
+    *,
+    model,
+    field: str,
+) -> None:
+    for account_id, object_key in remembered.items():
+        profile = await session.get(model, account_id)
+        if profile is not None:
+            setattr(profile, field, object_key)
+
+
 async def reconcile_accounts(
     session: AsyncSession,
     source: sqlite3.Connection,
@@ -82,9 +131,53 @@ async def reconcile_accounts(
     actor xabarlari ham kirgan. v1656 ikkalasini ham actor/status bo'yicha
     aniq filtrlardi. Shu wrapper import tugagach aynan v1656 semantikasini
     tiklaydi; qolgan account migratsiyasiga tegmaydi.
+
+    Idempotent va production passlarda reconcile eski source'dagi
+    avatar_file qiymatini object-key deb ishlata olmaydi va profile modeldagi
+    kalitni bo'shatadi. Late V8 profil-media ko'chirishidan keyin mavjud R2
+    object-keyni shu sabab oldindan eslab, reconcile tugagach qaytaramiz.
     """
+    avatar_keys = await _remember_profile_media(
+        session,
+        source,
+        source_table="users",
+        mapping_type="user_account",
+        model=UserProfile,
+        field="avatar_object_key",
+    )
     result = await reconcile_accounts_v7(session, source, run)
     await repair_user_cabinet_parity(session, source)
+    await _restore_profile_media(
+        session,
+        avatar_keys,
+        model=UserProfile,
+        field="avatar_object_key",
+    )
+    await session.flush()
+    return result
+
+
+async def reconcile_businesses(
+    session: AsyncSession,
+    source: sqlite3.Connection,
+    run: MigrationRun,
+) -> StageResult:
+    """Business importni o'zgartirmay, ko'chirilgan v1656 logoni saqla."""
+    logo_keys = await _remember_profile_media(
+        session,
+        source,
+        source_table="businesses",
+        mapping_type="business_account",
+        model=BusinessProfile,
+        field="logo_object_key",
+    )
+    result = await reconcile_businesses_v7(session, source, run)
+    await _restore_profile_media(
+        session,
+        logo_keys,
+        model=BusinessProfile,
+        field="logo_object_key",
+    )
     await session.flush()
     return result
 
@@ -93,15 +186,7 @@ async def repair_user_cabinet_parity(
     session: AsyncSession,
     source: sqlite3.Connection,
 ) -> None:
-    try:
-        user_ids = [
-            int(row[0])
-            for row in source.execute("SELECT id FROM users ORDER BY id").fetchall()
-        ]
-    except sqlite3.Error:
-        return
-
-    for legacy_user_id in user_ids:
+    for legacy_user_id in _source_ids(source, "users"):
         mapping = await _find_mapping(
             session,
             "user_account",
