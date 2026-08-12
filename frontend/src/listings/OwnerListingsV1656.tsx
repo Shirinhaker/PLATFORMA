@@ -23,6 +23,7 @@ type Props = {
   actor: "user" | "business";
   api: OwnerListingsApi;
   onBack(): void;
+  onOpenAdvertisements?: () => void;
 };
 
 const ICONS: Record<string, string> = {
@@ -38,7 +39,12 @@ function statusText(status: ListingRead["status"]) {
 }
 
 
-export function OwnerListingsV1656({ actor, api, onBack }: Props) {
+export function OwnerListingsV1656({
+  actor,
+  api,
+  onBack,
+  onOpenAdvertisements,
+}: Props) {
   const [rows, setRows] = useState<ListingRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(false);
@@ -134,7 +140,13 @@ export function OwnerListingsV1656({ actor, api, onBack }: Props) {
       </header>
       <section className="promotion-v1656">
         <div className="ad-tabs">
-          <button className="ad-tab" type="button">Reklamalarim</button>
+          <button
+            className="ad-tab"
+            type="button"
+            onClick={onOpenAdvertisements}
+          >
+            Reklamalarim
+          </button>
           <button className="ad-tab on" type="button">E&apos;lonlarim</button>
         </div>
         {notice ? <div className="story-upload-success on" role="status">{notice}</div> : null}

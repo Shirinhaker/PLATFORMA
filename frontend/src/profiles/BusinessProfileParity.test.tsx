@@ -341,6 +341,7 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
+    await user.click(await screen.findByRole("button", { name: /Ma'muriyat/ }));
     await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
     expect(await screen.findByRole("heading", { name: "Xodimlar" }))
       .toBeInTheDocument();

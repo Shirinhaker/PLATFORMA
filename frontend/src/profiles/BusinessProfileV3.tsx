@@ -91,6 +91,7 @@ import {
 } from "../payments/SubscriptionsPaymentsV1656";
 import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
 import "./Cabinet.css";
+import "./BusinessCabinetDashboardParityV1656.css";
 import "./BusinessFollowCounts.css";
 
 
@@ -262,6 +263,7 @@ type Props = {
 type DataView = { title: string; rows: unknown[] };
 type Screen =
   | "cabinet"
+  | "administration"
   | "profile"
   | "data"
   | "online"
@@ -278,6 +280,52 @@ type Screen =
   | "settings";
 
 const HEADER_ONLINE_VIEWS = new Set(["followers", "following"]);
+
+const MAIN_ONLINE_ORDER = [
+  "profile",
+  "subscriptions",
+  "payments",
+  "items",
+  "dining-places",
+  "medical-providers",
+  "medical-queue",
+  "education-enrollments",
+  "orders",
+  "service-orders",
+  "messages",
+  "reviews",
+  "advertisements",
+  "stories",
+  "notifications",
+] as const;
+
+type MenuHubProps = {
+  menus: Menu[];
+  onBack: () => void;
+  onOpen: (menu: Menu) => void;
+};
+
+function BusinessCabinetMenuHub({ menus, onBack, onOpen }: MenuHubProps) {
+  return (
+    <main className="business-online business-cabinet-menu-hub">
+      <header className="business-online__heading">
+        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
+        <div><h1>Ma’muriyat</h1></div>
+      </header>
+      <section className="business-cabinet__menu-grid" aria-label="Ma’muriyat bo‘limlari">
+        {menus.map((menu) => (
+          <button type="button" key={menu.view} onClick={() => onOpen(menu)}>
+            <span>{menu.icon}</span>
+            <span>
+              <b>{menu.label}</b>
+              <small>{menu.caption}</small>
+            </span>
+          </button>
+        ))}
+      </section>
+    </main>
+  );
+}
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
@@ -762,6 +810,12 @@ export function BusinessProfileV3({
         profile={profile}
         view={onlineMenu.view}
         title={onlineMenu.label}
+        onViewChange={(view) => {
+          const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+            (candidate) => candidate.view === view,
+          );
+          if (menu) setOnlineMenu(menu);
+        }}
         initialOrderId={orderTarget}
         onOpenNotification={openNotification}
         onNotificationUnreadChange={setNotificationUnread}
@@ -808,7 +862,7 @@ export function BusinessProfileV3({
     && supportsStaffManagement(api)
   ) {
     return withActionBanner(
-      <StaffManagementV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <StaffManagementV1656 api={api} onBack={() => setScreen("administration")} />,
     );
   }
 
@@ -880,7 +934,7 @@ export function BusinessProfileV3({
         initialView={documentsInitialView}
         canManageCounterparties={identity.actor_type !== "staff"}
         onProfile={setProfile}
-        onBack={() => setScreen("cabinet")}
+        onBack={() => setScreen("administration")}
       />,
     );
   }
@@ -941,6 +995,29 @@ export function BusinessProfileV3({
     );
   }
 
+  const administrationMenus = visibleMenus(profile, ADMIN_MENUS, identity);
+  if (screen === "administration") {
+    return withActionBanner(
+      <BusinessCabinetMenuHub
+        menus={administrationMenus}
+        onBack={() => setScreen("cabinet")}
+        onOpen={(menu) => {
+          if (menu.view === "staff" && supportsStaffManagement(api)) {
+            setScreen("staff");
+            return;
+          }
+          if (
+            (menu.view === "documents" || menu.view === "my-documents")
+            && supportsDocuments(api)
+          ) {
+            setDocumentsInitialView(menu.view === "my-documents" ? "profile" : "center");
+            setScreen("documents");
+          }
+        }}
+      />,
+    );
+  }
+
   const loadedProfile = profile;
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
@@ -949,14 +1026,55 @@ export function BusinessProfileV3({
     followers: loadedProfile.followers_count,
   };
   const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);
-  const onlineMenuCards = onlineMenus.filter((menu) => !HEADER_ONLINE_VIEWS.has(menu.view));
-  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
-  const followingMenu = onlineMenus.find((menu) => menu.view === "following");
   const systemMenus = visibleMenus(loadedProfile, SYSTEM_MENUS, identity);
   const adminMenus = visibleMenus(loadedProfile, ADMIN_MENUS, identity);
   const directionMenus = visibleMenus(loadedProfile, DIRECTION_MENUS, identity);
+  const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
+  const followingMenu = onlineMenus.find((menu) => menu.view === "following");
+
+  const onlineMenuCards = MAIN_ONLINE_ORDER
+    .map((view) => onlineMenus.find((menu) => menu.view === view))
+    .filter((menu): menu is Menu => Boolean(menu));
+
+  const systemCard = (menus: Menu[], view: string, label: string): Menu | null => {
+    const menu = menus.find((candidate) => candidate.view === view);
+    return menu ? { ...menu, label } : null;
+  };
+  const baseSystemCards: Array<Menu | null> = [
+    systemCard(systemMenus, "sales", "Kassa"),
+    systemCard(systemMenus, "expenses", "Xarajatlar"),
+    systemCard(systemMenus, "debtors", "Qarz daftari"),
+    systemCard(systemMenus, "warehouse", "Ombor"),
+    systemCard(systemMenus, "statistics", "Statistika"),
+  ];
+  const representedSystemViews = new Set(
+    baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),
+  );
+  const inlineDirectionMenus = directionMenus.filter(
+    (menu) => !representedSystemViews.has(menu.view),
+  );
+  const systemMenuCards: Menu[] = [
+    ...baseSystemCards.filter((menu): menu is Menu => Boolean(menu)),
+    ...inlineDirectionMenus,
+    ...[
+      systemCard(systemMenus, "ai-assistant", "AI yordamchi"),
+      identity.actor_type !== "staff" && adminMenus.length ? {
+        icon: "🛡️",
+        label: "Ma'muriyat",
+        caption: "Xodimlar va hujjatlar",
+        view: "administration",
+      } : null,
+      identity.actor_type !== "staff"
+        ? systemCard(systemMenus, "settings", "Sozlamalar")
+        : null,
+    ].filter((menu): menu is Menu => Boolean(menu)),
+  ];
 
   function openMenu(menu: Menu) {
+    if (menu.view === "administration") {
+      setScreen("administration");
+      return;
+    }
     if (menu.view === "settings") {
       setScreen("settings");
       return;
@@ -1178,7 +1296,18 @@ export function BusinessProfileV3({
               </button>
             </div>}
           </div>
-          <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          {identity.actor_type === "staff" ? (
+            <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          ) : (
+            <button
+              type="button"
+              className="business-cabinet__user-switch-top"
+              disabled={busy}
+              onClick={() => void switchToUser()}
+            >
+              Oddiy kabinet
+            </button>
+          )}
         </header>
 
         <div className="business-cabinet__stats">
@@ -1190,7 +1319,7 @@ export function BusinessProfileV3({
                 : "business-cabinet__stat"}
               key={metric.key}
               onClick={() => {
-                const menu = [...onlineMenus, ...systemMenus, ...directionMenus]
+                const menu = [...onlineMenus, ...systemMenus, ...adminMenus, ...directionMenus]
                   .find((candidate) => candidate.view === metric.view);
                 if (menu) openMenu(menu);
               }}
@@ -1207,23 +1336,18 @@ export function BusinessProfileV3({
         {error && <p className="business-cabinet__error" role="alert">{error}</p>}
 
         <div className="business-cabinet__content">
-          <div>
+          <div className="business-cabinet__menu-panel">
+            <div className="business-cabinet__section-heading">
+              <div>
+                <h2>Boshqaruv bo‘limlari</h2>
+                <p>{`${loadedProfile.direction || "Biznes"} bo‘yicha kerakli bo‘limlar`}</p>
+              </div>
+              <button type="button" onClick={() => setScreen("profile")}>
+                Profilni ko‘rish
+              </button>
+            </div>
             {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}
-            {group("Tizimlashtirish", "Hisob-kitob, ombor va boshqaruv", systemMenus)}
-            {group("Ma’muriyat", "Xodimlar, hujjatlar va hamkorlar", adminMenus)}
-            {directionMenus.length > 0 && group(
-              "Yo‘nalishga xos bo‘limlar",
-              `${loadedProfile.direction} uchun maxsus boshqaruv`,
-              directionMenus,
-            )}
-            {identity.actor_type !== "staff" && <button
-              type="button"
-              className="business-cabinet__switch"
-              disabled={busy}
-              onClick={() => void switchToUser()}
-            >
-              👤 Oddiy kabinetga qaytish
-            </button>}
+            {group("Tizimlashtirish", "Biznes ish jarayonlari", systemMenuCards)}
           </div>
 
           <aside className="business-cabinet__activity">

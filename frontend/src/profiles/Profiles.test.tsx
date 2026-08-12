@@ -814,7 +814,7 @@ describe("profile cabinets", () => {
     expect(screen.getByText("500 000 so‘m")).toBeInTheDocument();
     expect(screen.getByText("Onlaynlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Tizimlashtirish")).toBeInTheDocument();
-    expect(screen.getByText("Ma’muriyat")).toBeInTheDocument();
+    expect(screen.getByText("Ma'muriyat")).toBeInTheDocument();
     expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
     await user.click(screen.getByRole(
       "button",
@@ -844,7 +844,8 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", { name: /E’lonlarim/ }));
+    await user.click(await screen.findByRole("button", { name: /Reklamalarim/ }));
+    await user.click(await screen.findByRole("button", { name: "E'lonlarim" }));
 
     expect(await screen.findByText("Biznes e'loni")).toBeInTheDocument();
     expect(api.getMyListings).toHaveBeenCalledOnce();
@@ -863,9 +864,12 @@ describe("profile cabinets", () => {
       />,
     );
 
+    await user.click(await screen.findByRole("button", { name: /Ma'muriyat/ }));
     await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
     expect(await screen.findByText("Haqiqiy xodim")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
+    expect(await screen.findByRole("heading", { name: "Ma’muriyat" }))
+      .toBeInTheDocument();
     await user.click(screen.getByRole(
       "button",
       { name: /Mening hujjatlarim/ },
@@ -881,6 +885,9 @@ describe("profile cabinets", () => {
     expect(await screen.findByText("Shartnoma")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Orqaga/ }));
     await user.click(screen.getByRole("button", { name: /Orqaga/ }));
+    expect(await screen.findByRole("heading", { name: "Ma’muriyat" }))
+      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
     const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
     await user.click(warehouseButtons.at(-1)!);
     expect((await screen.findAllByText("Qog‘oz")).length).toBeGreaterThan(0);
