@@ -241,7 +241,7 @@ export function UserCabinetDashboardV1656({
               onClick={profile.has_business ? onSwitchBusiness : onOpenBusiness}
             >
               {profile.has_business
-                ? "🏪 Biznes kabinetga o'tish"
+                ? "🏪 Biznes kabinetga o‘tish"
                 : "🏪 Biznes ochish"}
             </button>
             {error ? <p className="user-cabinet-v1656__error" role="alert">{error}</p> : null}
