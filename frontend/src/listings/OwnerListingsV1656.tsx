@@ -7,6 +7,7 @@ import {
   type PaymentRequestApi,
 } from "../profiles/PaymentRequestModal";
 import { ListingFormV1656 } from "./ListingFormV1656";
+import { ListingMediaGridV1656 } from "./ListingMediaGridV1656";
 import "./ListingsV1656.css";
 
 
@@ -55,6 +56,7 @@ export function OwnerListingsV1656({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(null);
   // To'lov oynasi: e'lon joylangach yoki "To'lov qilish" bosilganda.
   const [payFor, setPayFor] = useState<ListingRead | null>(null);
   const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
@@ -115,6 +117,7 @@ export function OwnerListingsV1656({
     try {
       await api.deleteListing(publicId);
       setRows((current) => current.filter((row) => row.public_id !== publicId));
+      setOpened((current) => current === publicId ? null : current);
       setConfirmId(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "E'lon o'chirilmadi.");
@@ -171,47 +174,71 @@ export function OwnerListingsV1656({
                 <h3>Hozircha e&apos;lon yo&apos;q</h3><p>Yuqoridagi tugma orqali joylang.</p>
               </div>
             ) : null}
-            {rows.map((row) => (
-              <article className="elon-item" key={row.public_id}>
-                <div className="li-thumb"><span>{ICONS[row.cat] ?? "📦"}</span></div>
-                <div className="li-main">
-                  <div className="li-title">{row.title}</div>
-                  <div className="li-price">{row.price}</div>
-                  <div className="li-meta">
-                    {row.visibility === "own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma"}
-                    {` · ${statusText(row.status)}`}
-                    {row.media.length ? ` · 📎 ${row.media.length}` : ""}
-                  </div>
-                  {row.status === "payment_pending" && canPay ? (
+            {rows.map((row) => {
+              const open = opened === row.public_id;
+              return (
+                <article className="owner-listing-wrap" key={row.public_id}>
+                  <div className={`elon-item${open ? " on" : ""}`}>
                     <button
-                      className="btn btn-primary listing-pay-btn"
+                      aria-expanded={open}
+                      aria-label={`${row.title} e'lonini ko'rish`}
+                      className="owner-listing-open"
                       type="button"
-                      onClick={() => { setError(""); setPayFor(row); }}
+                      onClick={() => setOpened(open ? null : row.public_id)}
                     >
-                      To‘lov qilish
+                      <span className="li-thumb"><span>{ICONS[row.cat] ?? "📦"}</span></span>
+                      <span className="li-main">
+                        <span className="li-title">{row.title}</span>
+                        <span className="li-price">{row.price}</span>
+                        <span className="li-meta">
+                          {row.visibility === "own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma"}
+                          {` · ${statusText(row.status)}`}
+                          {row.media.length ? ` · 📎 ${row.media.length}` : ""}
+                        </span>
+                      </span>
+                      <span className={`chev${open ? " down" : ""}`} aria-hidden="true">›</span>
                     </button>
+                    <div className="owner-listing-actions">
+                      {row.status === "payment_pending" && canPay ? (
+                        <button
+                          className="btn btn-primary listing-pay-btn"
+                          type="button"
+                          onClick={() => { setError(""); setPayFor(row); }}
+                        >
+                          To‘lov qilish
+                        </button>
+                      ) : null}
+                      <button
+                        aria-label="E'lonni o'chirish"
+                        className="mini-ic"
+                        type="button"
+                        onClick={() => setConfirmId(row.public_id)}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  {open ? (
+                    <div className="el-detail owner-listing-detail">
+                      <ListingMediaGridV1656 media={row.media} />
+                      <div className="el-price">{row.price || "Narx kelishilgan"}</div>
+                      {row.address ? <div className="el-addr">📍 {row.address}</div> : null}
+                      {row.descr ? <div className="el-desc">{row.descr}</div> : null}
+                    </div>
                   ) : null}
-                </div>
-                <button
-                  aria-label="E'lonni o'chirish"
-                  className="mini-ic"
-                  type="button"
-                  onClick={() => setConfirmId(row.public_id)}
-                >
-                  <svg
-                    aria-hidden="true"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                  </svg>
-                </button>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </>
         )}
       </section>
