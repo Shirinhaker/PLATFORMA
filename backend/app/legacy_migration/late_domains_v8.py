@@ -14,10 +14,12 @@ from app.legacy_migration.model import (
     MigrationStage,
     MigrationStatus,
 )
+from app.legacy_migration.profile_media_v8 import migrate_profile_images
 from app.legacy_migration.profile_parity_v7 import import_late_typed_domains
 from app.legacy_migration.real_source_v7 import open_real_snapshot
 from app.legacy_migration.runner_v6 import MIGRATION_SCHEMA_VERSION
 from app.legacy_migration.source import file_sha256
+from app.media.storage import build_r2_storage
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,6 +47,7 @@ async def run(*, snapshot: Path, run_id: int, environment: str) -> int:
     manifest_sha256 = file_sha256(manifest_path)
 
     database = Database(settings.database_url)
+    storage = build_r2_storage(settings)
     await database.start()
     try:
         async with database.session() as session:
@@ -57,16 +60,23 @@ async def run(*, snapshot: Path, run_id: int, environment: str) -> int:
                 )
                 source = open_real_snapshot(snapshot_path)
                 try:
-                    result = await import_late_typed_domains(
+                    typed_result = await import_late_typed_domains(
                         session,
                         source,
+                        migration_run,
+                    )
+                    profile_media_result = await migrate_profile_images(
+                        session,
+                        source,
+                        storage,
                         migration_run,
                     )
                 finally:
                     source.close()
 
                 counters = dict(migration_run.counters_json)
-                counters["late_typed_domains"] = asdict(result)
+                counters["late_typed_domains"] = asdict(typed_result)
+                counters["profile_media"] = asdict(profile_media_result)
                 migration_run.counters_json = counters
                 await session.flush()
     finally:
@@ -78,7 +88,8 @@ async def run(*, snapshot: Path, run_id: int, environment: str) -> int:
                 "environment": environment,
                 "run_id": run_id,
                 "schema_version": MIGRATION_SCHEMA_VERSION,
-                "late_typed_domains": asdict(result),
+                "late_typed_domains": asdict(typed_result),
+                "profile_media": asdict(profile_media_result),
             },
             sort_keys=True,
         )

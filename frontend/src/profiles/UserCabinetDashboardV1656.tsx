@@ -1,6 +1,7 @@
 import type { UserProfile } from "../api/types";
 import { avatarImageStyle } from "./UserAvatarCropV1656";
 import "./UserProfileV1656.css";
+import "./UserCabinetDashboardParityV1656.css";
 
 
 export type UserCabinetSectionV1656 = {
@@ -34,6 +35,21 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rad etildi",
 };
 
+/* static/index.html v1656 dagi orderIsActive bilan aynan bir xil statuslar. */
+const V1656_ACTIVE_ORDER_STATUSES = new Set([
+  "new",
+  "accepted",
+  "preparing",
+  "tayyor",
+  "courier_assigned",
+  "courier_arrived_store",
+  "handoff_waiting_seller",
+  "in_delivery",
+  "courier_arrived_customer",
+  "delivered_waiting_customer",
+  "pickup_waiting_customer",
+]);
+
 
 function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -51,6 +67,55 @@ function activityDate(value: number) {
   return new Date(value * 1000).toLocaleString("uz-UZ");
 }
 
+function objectRow(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function truthyLegacy(value: unknown) {
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  }
+  return Boolean(value);
+}
+
+export function isV1656ActiveUserOrder(value: unknown) {
+  const row = objectRow(value);
+  if (!row || truthyLegacy(row.problem_open)) return false;
+  return V1656_ACTIVE_ORDER_STATUSES.has(String(row.status ?? ""));
+}
+
+function userNotificationVisible(value: unknown) {
+  const row = objectRow(value);
+  if (!row) return false;
+  const actorKind = String(row.actor_kind ?? "").trim().toLowerCase();
+  /*
+   * v1656 /api/notifications?actor_type=user actor_kind=user ni ajratadi.
+   * Yangi native notificationlarda actor_kind bo'lmasligi mumkin — ular
+   * account_type bilan allaqachon scope qilingan, shuning uchun ko'rinadi.
+   */
+  return !actorKind || actorKind === "user";
+}
+
+function notificationIsUnread(value: unknown) {
+  const row = objectRow(value);
+  return Boolean(
+    row
+    && userNotificationVisible(row)
+    && !truthyLegacy(row.is_read)
+    && !truthyLegacy(row.resolved_at),
+  );
+}
+
+function payloadArray(
+  payload: Record<string, unknown>,
+  key: string,
+): unknown[] | null {
+  const value = payload[key];
+  return Array.isArray(value) ? value : null;
+}
+
 
 export function UserCabinetDashboardV1656({
   busy,
@@ -65,20 +130,31 @@ export function UserCabinetDashboardV1656({
   onSwitchBusiness,
 }: Props) {
   const snapshot = profile.dashboard_snapshot ?? {};
+  const payload = (profile.cabinet_payload ?? {}) as Record<string, unknown>;
+  const orders = payloadArray(payload, "orders");
+  const saved = payloadArray(payload, "saved");
+  const notifications = payloadArray(payload, "notifications");
+  const activeOrderCount = orders
+    ? orders.filter(isV1656ActiveUserOrder).length
+    : snapshot.active_orders ?? 0;
+  const savedCount = saved ? saved.length : snapshot.saved ?? 0;
+  const scopedNotificationUnread = notifications
+    ? notifications.filter(notificationIsUnread).length
+    : notificationUnread;
   const recentActivity = profile.recent_activity ?? [];
   const location = [profile.district, profile.region].filter(Boolean).join(", ");
   const metrics = [
-    ["Faol buyurtmalar", snapshot.active_orders ?? 0, "Joriy buyurtmalar", "orders"],
+    ["Faol buyurtmalar", activeOrderCount, "Joriy buyurtmalar", "orders"],
     ["Obunalar", snapshot.following ?? profile.following_count, "Kuzatilayotgan profillar", "follows"],
-    ["Saqlanganlar", snapshot.saved ?? 0, "E’lon va bizneslar", "saved"],
-    ["Bildirishnomalar", notificationUnread, "O‘qilmagan xabarlar", "notifications"],
+    ["Saqlanganlar", savedCount, "E’lon va bizneslar", "saved"],
+    ["Bildirishnomalar", scopedNotificationUnread, "O‘qilmagan xabarlar", "notifications"],
   ] as const;
 
   function badge(view: string) {
     if (view === "orders") return orderUnread.product;
     if (view === "service-orders") return orderUnread.service;
     if (view === "messages") return messageUnread;
-    if (view === "notifications") return notificationUnread;
+    if (view === "notifications") return scopedNotificationUnread;
     return 0;
   }
 
