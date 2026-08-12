@@ -59,7 +59,7 @@ function profile(): UserProfile {
       ],
     },
     recent_activity: [],
-  } as UserProfile;
+  } as unknown as UserProfile;
 }
 
 
