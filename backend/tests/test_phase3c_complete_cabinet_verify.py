@@ -87,3 +87,29 @@ def test_nested_payload_inspection_detects_demo_and_secrets():
 
     assert demo_rows == 1
     assert sensitive_fields == 2
+
+
+def test_subscription_is_demo_marks_activation_not_a_demo_identity():
+    demo_rows, sensitive_fields = _inspect_cabinet_value(
+        {
+            "business_subscriptions": [
+                {
+                    "id": 11,
+                    "business_id": 7,
+                    "plan_code": "plus",
+                    "is_demo": 1,
+                    "metadata": {"is_demo": 1},
+                }
+            ],
+            "advertisements": [
+                {
+                    "id": 21,
+                    "business_id": 7,
+                    "is_demo": 1,
+                }
+            ],
+        }
+    )
+
+    assert demo_rows == 2
+    assert sensitive_fields == 0

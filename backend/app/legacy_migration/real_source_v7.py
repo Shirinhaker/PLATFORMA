@@ -23,7 +23,11 @@ def open_real_snapshot(path) -> sqlite3.Connection:
         source.close()
 
 
-def copy_real_source(source: sqlite3.Connection) -> sqlite3.Connection:
+def copy_real_source(
+    source: sqlite3.Connection,
+    *,
+    preserve_demo_flag_tables: frozenset[str] = frozenset(),
+) -> sqlite3.Connection:
     """
     Copy readable legacy tables without explicitly marked demo/test rows.
 
@@ -72,7 +76,15 @@ def copy_real_source(source: sqlite3.Connection) -> sqlite3.Connection:
         rows = source.execute(
             f"SELECT * FROM {_identifier(table)}"
         ).fetchall()
-        real_rows = [row for row in rows if not _is_explicit_demo(row, column_names)]
+        real_rows = (
+            rows
+            if table in preserve_demo_flag_tables
+            else [
+                row
+                for row in rows
+                if not _is_explicit_demo(row, column_names)
+            ]
+        )
         if not real_rows:
             continue
         placeholders = ",".join("?" for _ in column_names)

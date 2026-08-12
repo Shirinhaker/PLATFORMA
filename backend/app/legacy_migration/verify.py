@@ -383,15 +383,33 @@ async def _cabinet_payload_violations(
     return demo_rows, sensitive_fields
 
 
-def _inspect_cabinet_value(value: object) -> tuple[int, int]:
+def _inspect_cabinet_value(
+    value: object,
+    *,
+    subscription_activation: bool = False,
+) -> tuple[int, int]:
     if isinstance(value, dict):
-        demo_rows = int(_is_explicit_demo(value))
+        demo_rows = int(
+            _is_explicit_demo(
+                value,
+                ignored_flags=(
+                    frozenset({"is_demo"})
+                    if subscription_activation
+                    else frozenset()
+                ),
+            )
+        )
         sensitive_fields = 0
         for key, item in value.items():
             if _is_sensitive_key(str(key)):
                 sensitive_fields += 1
                 continue
-            child_demo, child_sensitive = _inspect_cabinet_value(item)
+            child_demo, child_sensitive = _inspect_cabinet_value(
+                item,
+                subscription_activation=(
+                    str(key) == "business_subscriptions"
+                ),
+            )
             demo_rows += child_demo
             sensitive_fields += child_sensitive
         return demo_rows, sensitive_fields
@@ -399,18 +417,25 @@ def _inspect_cabinet_value(value: object) -> tuple[int, int]:
         demo_rows = 0
         sensitive_fields = 0
         for item in value:
-            child_demo, child_sensitive = _inspect_cabinet_value(item)
+            child_demo, child_sensitive = _inspect_cabinet_value(
+                item,
+                subscription_activation=subscription_activation,
+            )
             demo_rows += child_demo
             sensitive_fields += child_sensitive
         return demo_rows, sensitive_fields
     return 0, 0
 
 
-def _is_explicit_demo(row: dict[str, Any]) -> bool:
+def _is_explicit_demo(
+    row: dict[str, Any],
+    *,
+    ignored_flags: frozenset[str] = frozenset(),
+) -> bool:
     return any(
         _truthy(row.get(key))
         for key in EXPLICIT_DEMO_FLAGS
-        if key in row
+        if key in row and key not in ignored_flags
     )
 
 

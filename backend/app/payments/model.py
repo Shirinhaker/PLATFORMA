@@ -337,6 +337,13 @@ Index(
     BusinessSubscription.business_account_id,
     BusinessSubscription.id,
 )
+Index(
+    "uq_business_subscriptions_legacy",
+    BusinessSubscription.legacy_source_id,
+    unique=True,
+    postgresql_where=BusinessSubscription.legacy_source_id.is_not(None),
+    sqlite_where=BusinessSubscription.legacy_source_id.is_not(None),
+)
 # Bir to'lov faqat bir marta obunaga aylanadi.
 Index(
     "uq_business_subscriptions_payment",
