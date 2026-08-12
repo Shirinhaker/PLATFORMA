@@ -48,6 +48,7 @@ function detail(
       review_status: "pending",
       review_reason: "",
       submitted_at: 1_785_200_000,
+      reviewed_at: 0,
       receipt_mime: "image/png",
       receipt_sha256: "a".repeat(64),
       has_receipt: true,
