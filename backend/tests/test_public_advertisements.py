@@ -123,6 +123,17 @@ def test_target_specificity_requires_location_match():
     )
 
 
+def test_target_specificity_normalizes_legacy_uzbek_location_names():
+    assert target_specificity(
+        [{
+            "region": "Surxondaryo viloyati",
+            "district": "Qumqo'rg'on tumani",
+        }],
+        "Surxondaryo",
+        "Qumqo‘rg‘on",
+    ) == 2
+
+
 class FakeAdvertisementService:
     def __init__(self):
         self.view_ids = []

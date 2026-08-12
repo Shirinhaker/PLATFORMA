@@ -728,17 +728,6 @@ export function BusinessOnlineScreen({
     },
   };
 
-  if (view === "listings" && supportsOwnerListings(api)) {
-    return (
-      <OwnerListingsV1656
-        actor="business"
-        api={api}
-        onBack={() => { void onBack(); }}
-        onOpenAdvertisements={() => onViewChange?.("advertisements")}
-      />
-    );
-  }
-
   if (view === "reviews" && supportsReceivedReviews(api)) {
     return (
       <ReceivedReviewsV1656
@@ -844,6 +833,9 @@ export function BusinessOnlineScreen({
     onViewChange,
   });
   const exactV1656 = Boolean(primary);
+  const screenTitle = ["advertisements", "listings"].includes(view)
+    ? "E'lonlarim va reklamalarim"
+    : title;
 
   return (
     <main className="business-online">
@@ -858,7 +850,7 @@ export function BusinessOnlineScreen({
           {subscreenBack ? "← Orqaga" : "← Kabinetga qaytish"}
         </button>
         <div>
-          <h1>{subscreenBack ? subscreenTitle : title}</h1>
+          <h1>{subscreenBack ? subscreenTitle : screenTitle}</h1>
           {!exactV1656 ? (
             <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
           ) : null}
@@ -1157,6 +1149,17 @@ function renderContent(context: RenderContext): ReactNode {
         />
       );
     case "listings":
+      if (supportsOwnerListings(context.api)) {
+        return (
+          <OwnerListingsV1656
+            actor="business"
+            api={context.api}
+            embedded
+            onBack={() => undefined}
+            onOpenAdvertisements={() => context.onViewChange?.("advertisements")}
+          />
+        );
+      }
       return (
         <CrudEditorView
           {...shared}

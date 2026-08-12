@@ -14,6 +14,20 @@ from app.public_discovery.schemas import PublicResultKind
 
 
 ImageUrlProvider = Callable[[str], str]
+_LOCATION_APOSTROPHES = ("‘", "’", "ʻ", "ʼ", "`", "´", "ʹ")
+_LOCATION_SUFFIXES = (" viloyati", " tumani", " shahri")
+
+
+def _location_key(value: str) -> str:
+    """v1656 va yangi tanlagichdagi joy nomlarini bir xil qiladi."""
+    key = " ".join(str(value or "").casefold().strip().split())
+    for apostrophe in _LOCATION_APOSTROPHES:
+        key = key.replace(apostrophe, "'")
+    for suffix in _LOCATION_SUFFIXES:
+        if key.endswith(suffix):
+            key = key[: -len(suffix)].rstrip()
+            break
+    return key
 
 
 def build_advertisement_public_id(target_id: int) -> str:
@@ -47,12 +61,12 @@ def target_specificity(
 ) -> int | None:
     if not targets:
         return 0
-    region_key = region.casefold()
-    district_key = district.casefold()
+    region_key = _location_key(region)
+    district_key = _location_key(district)
     scores = []
     for target in targets:
-        target_region = str(target.get("region") or "").casefold()
-        target_district = str(target.get("district") or "").casefold()
+        target_region = _location_key(str(target.get("region") or ""))
+        target_district = _location_key(str(target.get("district") or ""))
         if target_region and target_region != region_key:
             continue
         if target_district and target_district != district_key:

@@ -24,6 +24,8 @@ type Props = {
   api: OwnerListingsApi;
   onBack(): void;
   onOpenAdvertisements?: () => void;
+  /** Biznes kabinetida umumiy reklama/e'lon ekrani ichida ko'rsatadi. */
+  embedded?: boolean;
 };
 
 const ICONS: Record<string, string> = {
@@ -44,6 +46,7 @@ export function OwnerListingsV1656({
   api,
   onBack,
   onOpenAdvertisements,
+  embedded = false,
 }: Props) {
   const [rows, setRows] = useState<ListingRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,24 +123,8 @@ export function OwnerListingsV1656({
     }
   }
 
-  return (
-    <main className="business-online owner-listings-v1656">
-      <header className="business-online-head">
-        <button
-          className="back-btn"
-          aria-label="Orqaga"
-          type="button"
-          onClick={() => {
-            if (form) {
-              setForm(false);
-              setError("");
-              return;
-            }
-            onBack();
-          }}
-        >‹</button>
-        <h1>E&apos;lonlar</h1>
-      </header>
+  const content = (
+    <>
       <section className="promotion-v1656">
         <div className="ad-tabs">
           <button
@@ -152,12 +139,23 @@ export function OwnerListingsV1656({
         {notice ? <div className="story-upload-success on" role="status">{notice}</div> : null}
         {error ? <div className="story-upload-error on" role="alert">{error}</div> : null}
         {form ? (
-          <ListingFormV1656
-            actor={actor}
-            api={api}
-            busy={busy}
-            onSave={create}
-          />
+          <>
+            {embedded ? (
+              <button
+                className="btn btn-soft btn-block"
+                type="button"
+                onClick={() => { setForm(false); setError(""); }}
+              >
+                ← E&apos;lonlarimga qaytish
+              </button>
+            ) : null}
+            <ListingFormV1656
+              actor={actor}
+              api={api}
+              busy={busy}
+              onSave={create}
+            />
+          </>
         ) : (
           <>
             <button
@@ -259,6 +257,32 @@ export function OwnerListingsV1656({
           </div>
         </>
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="owner-listings-v1656">{content}</div>;
+  }
+
+  return (
+    <main className="business-online owner-listings-v1656">
+      <header className="business-online-head">
+        <button
+          className="back-btn"
+          aria-label="Orqaga"
+          type="button"
+          onClick={() => {
+            if (form) {
+              setForm(false);
+              setError("");
+              return;
+            }
+            onBack();
+          }}
+        >‹</button>
+        <h1>E&apos;lonlar</h1>
+      </header>
+      {content}
     </main>
   );
 }

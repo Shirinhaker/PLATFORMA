@@ -1046,6 +1046,7 @@ export function BusinessProfileV3({
     systemCard(systemMenus, "debtors", "Qarz daftari"),
     systemCard(systemMenus, "warehouse", "Ombor"),
     systemCard(systemMenus, "statistics", "Statistika"),
+    systemCard(systemMenus, "reports", "Hisobotlar"),
   ];
   const representedSystemViews = new Set(
     baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),

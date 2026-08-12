@@ -263,6 +263,7 @@ export function paymentTarget(row: Advertisement): PaymentTarget {
     priceCode: row.price_code || "advertisement_district_hour",
     label: `Reklama · ${row.district_count} tuman · ${row.duration_days} kun`,
     quantity: row.billable_district_hours,
+    expectedAmountUzs: row.price,
     targetId: row.id,
   };
 }

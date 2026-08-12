@@ -149,6 +149,13 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
             "app.public_discovery.repository.load_followed_profiles",
             followed,
         )
+        async def no_native_pro(*args, **kwargs):
+            return set()
+
+        monkeypatch.setattr(
+            "app.public_discovery.repository._active_pro_business_ids",
+            no_native_pro,
+        )
         payload = await load_public_home_map(
             AsyncStore(session),
             district="Qumqo'rg'on",
