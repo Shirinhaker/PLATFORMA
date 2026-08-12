@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
@@ -18,7 +19,10 @@ from app.payments.model import (
     PaymentRequest,
 )
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-from app.public_discovery.repository import load_public_district_offers
+from app.public_discovery.repository import (
+    _active_pro_business_ids,
+    load_public_district_offers,
+)
 
 
 NOW = datetime(2026, 8, 12, tzinfo=UTC)
@@ -36,6 +40,21 @@ class AsyncStore:
 
     async def scalar(self, statement):
         return self.sync.scalar(statement)
+
+
+class StatementCapture:
+    def __init__(self):
+        self.statement = None
+
+    async def scalars(self, statement):
+        self.statement = statement
+
+        class EmptyRows:
+            @staticmethod
+            def all():
+                return []
+
+        return EmptyRows()
 
 
 def account(account_id: int, account_type: AccountType) -> Account:
@@ -109,6 +128,21 @@ def business_profile(account_id: int) -> BusinessProfile:
         # Eski JSON bo'sh: test aynan yangi jadvalni tekshiradi.
         cabinet_payload={},
     )
+
+
+@pytest.mark.asyncio
+async def test_active_pro_filter_uses_postgresql_integer_comparison():
+    session = StatementCapture()
+
+    assert await _active_pro_business_ids(session, {21}) == set()
+    assert session.statement is not None
+    sql = str(session.statement.compile(
+        dialect=postgresql.dialect(),
+        compile_kwargs={"literal_binds": True},
+    ))
+
+    assert "business_subscriptions.is_demo = 0" in sql
+    assert "business_subscriptions.is_demo IS false" not in sql
 
 
 @pytest.mark.asyncio
