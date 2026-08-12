@@ -140,6 +140,7 @@ class AdminPaymentService:
                         review_status=attempt.review_status,
                         review_reason=attempt.review_reason,
                         submitted_at=attempt.submitted_at,
+                        reviewed_at=attempt.reviewed_at,
                         receipt_mime=attempt.receipt_mime,
                         receipt_sha256=attempt.receipt_sha256,
                         has_receipt=bool(attempt.receipt_object_key),
