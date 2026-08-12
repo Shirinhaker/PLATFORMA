@@ -657,7 +657,10 @@ async def _active_pro_business_ids(
             BusinessSubscription.plan_code == "pro",
             BusinessSubscription.status == "active",
             BusinessSubscription.expires_at > int(time.time()),
-            BusinessSubscription.is_demo.is_(False),
+            # `is_demo` tarixiy sxemada INTEGER (0/1). PostgreSQL INTEGER
+            # ustuniga `IS false` qo'llamaydi; Railway'da bu so'rov 500
+            # qaytarardi. 0 bilan solishtirish SQLite va PostgreSQLda bir xil.
+            BusinessSubscription.is_demo == 0,
         )
         .distinct()
     )
