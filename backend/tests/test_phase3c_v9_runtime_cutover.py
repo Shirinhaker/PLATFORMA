@@ -10,6 +10,7 @@ FREEZE_SCRIPT = (
 )
 RUNBOOK = ROOT / "docs/phase3c-v9-telegram-monolith-cutover.md"
 PRODUCTION_RUNBOOK = ROOT / "docs/deploy-phase3c-production.md"
+PROCFILE = ROOT / "Procfile"
 
 
 def test_webhook_cutover_is_dry_run_by_default_and_requires_legacy_freeze():
@@ -72,6 +73,16 @@ def test_legacy_freeze_verifier_checks_public_api_and_webhook_boundaries():
     assert ready_gate < api_probe < webhook_probe
 
 
+def test_legacy_procfile_is_pinned_to_write_freeze_wrapper():
+    command = PROCFILE.read_text(encoding="utf-8").strip()
+
+    assert command == (
+        "web: env KOPRIK_MIGRATION_MAINTENANCE=1 "
+        "uvicorn cutover_app:app --host 0.0.0.0 --port $PORT"
+    )
+    assert "main:app" not in command
+
+
 def test_runtime_cutover_runbook_preserves_safe_order_and_rollback_evidence():
     runbook = RUNBOOK.read_text(encoding="utf-8")
 
@@ -86,6 +97,8 @@ def test_runtime_cutover_runbook_preserves_safe_order_and_rollback_evidence():
     assert positions == sorted(positions)
 
     assert "KOPRIK_MIGRATION_MAINTENANCE=1" in runbook
+    assert "Procfile" in runbook
+    assert "cutover_app:app" in runbook
     assert "Koprik-Phase3C-Legacy-Freeze-Verify-V9.ps1" in runbook
     assert "Koprik-Phase3C-Telegram-Webhook-Cutover-V9.ps1" in runbook
     assert "Demo akkaunt yaratish shart emas." in runbook
