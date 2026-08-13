@@ -228,9 +228,15 @@ def shift_schedule_start(
     if approved <= requested:
         return requested
 
+    # Kun bo'yi reklama uchun tasdiq vaqtining o'zi yangi start bo'ladi.
+    # Eski qoida uni keyingi mahalliy 00:00 ga surib, kabinetda "Faol"
+    # bo'lsa ham bosh sahifada ko'rinmasligiga sabab bo'lardi.
+    if bool(daily_all_day):
+        return approved
+
     tz = _uz_timezone(tz_offset_seconds)
     approved_local = datetime.fromtimestamp(approved, tz)
-    start_hour = 0 if bool(daily_all_day) else full_hour(daily_start)
+    start_hour = full_hour(daily_start)
     candidate = approved_local.replace(
         hour=start_hour, minute=0, second=0, microsecond=0
     )

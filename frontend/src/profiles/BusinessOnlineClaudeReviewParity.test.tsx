@@ -416,8 +416,8 @@ describe("Claude review v1656 interaktiv pariteti", () => {
       targets: [{ level: "republic", region: "", district: "" }],
       duration_days: 1,
       daily_all_day: true,
-      daily_start: "19:00",
-      daily_end: "21:00",
+      daily_start: "00:00",
+      daily_end: "00:00",
     }));
     expect(await screen.findByText(/82[\s\u00a0]560[\s\u00a0]000 so'm/))
       .toBeInTheDocument();

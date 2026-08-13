@@ -10,7 +10,7 @@ import { CrudEditorView } from "../profiles/BusinessOnlineCrudEditorView";
 import type { PaymentTarget } from "../profiles/PaymentRequestModal";
 
 
-export type BusinessAdvertisementsApi = Pick<
+type AdvertisementBaseApi = Pick<
   ApiClient,
   | "getMyAdvertisements"
   | "createAdvertisement"
@@ -20,7 +20,11 @@ export type BusinessAdvertisementsApi = Pick<
   | "uploadGrantedFile"
 >;
 
-const METHODS: ReadonlyArray<keyof BusinessAdvertisementsApi> = [
+export type BusinessAdvertisementsApi = AdvertisementBaseApi & Partial<
+  Pick<ApiClient, "applyBusinessOnlineAction">
+>;
+
+const METHODS: ReadonlyArray<keyof AdvertisementBaseApi> = [
   "getMyAdvertisements",
   "createAdvertisement",
   "deleteAdvertisement",
@@ -33,7 +37,7 @@ export function supportsAdvertisementApi(
   api: object,
 ): api is BusinessAdvertisementsApi {
   return METHODS.every((method) => (
-    typeof (api as Partial<BusinessAdvertisementsApi>)[method] === "function"
+    typeof (api as Partial<AdvertisementBaseApi>)[method] === "function"
   ));
 }
 
@@ -196,6 +200,27 @@ export function BusinessAdvertisementsV1656({
     }
   }
 
+  async function startNow(id: number | string): Promise<void> {
+    setBusy(true);
+    setError("");
+    try {
+      if (typeof api.applyBusinessOnlineAction !== "function") {
+        throw new Error("Reklamani hozir boshlash funksiyasi mavjud emas.");
+      }
+      await api.applyBusinessOnlineAction("advertisements", "start_now", {
+        record_id: id,
+        payload: {},
+      });
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Reklama hozir boshlanmadi.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function quote(request: BusinessOnlineRecord) {
     const value = await api.quoteAdvertisement({
       targets: targetsOf(request.targets),
@@ -235,22 +260,42 @@ export function BusinessAdvertisementsV1656({
         onPromotionChange={(view) => {
           if (view === "listings") onOpenListings?.();
         }}
-        rowAction={(row) => (
-          text(row.status) === "payment_pending" ? (
-            <button
-              type="button"
-              className="mini-btn advertisement-pay"
-              onClick={() => {
-                const found = rows.find(
-                  (item) => String(item.id) === String(row.id),
-                );
-                if (found) openPayment(paymentTarget(found));
-              }}
-            >
-              To‘lov qilish
-            </button>
-          ) : null
-        )}
+        rowAction={(row) => {
+          const status = text(row.status);
+          if (status === "payment_pending") {
+            return (
+              <button
+                type="button"
+                className="mini-btn advertisement-pay"
+                onClick={() => {
+                  const found = rows.find(
+                    (item) => String(item.id) === String(row.id),
+                  );
+                  if (found) openPayment(paymentTarget(found));
+                }}
+              >
+                To‘lov qilish
+              </button>
+            );
+          }
+          if (
+            typeof api.applyBusinessOnlineAction === "function"
+            && status === "active"
+            && number(row.start_at) > Math.floor(Date.now() / 1000)
+          ) {
+            return (
+              <button
+                type="button"
+                className="mini-btn advertisement-start-now"
+                disabled={busy}
+                onClick={() => void startNow(Number(row.id))}
+              >
+                Hozir boshlash
+              </button>
+            );
+          }
+          return null;
+        }}
       />
     </>
   );

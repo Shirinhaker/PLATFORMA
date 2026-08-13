@@ -569,8 +569,8 @@ export function CrudEditorView({
               onClick={() => begin({
                 status: "payment_pending",
                 daily_all_day: 1,
-                daily_start: "19:00",
-                daily_end: "21:00",
+                daily_start: "",
+                daily_end: "",
                 duration_days: 1,
                 start_date: localDateInputValue(),
                 target_level: "district",
@@ -918,12 +918,16 @@ function AdvertisementForm({
   const targetsKey = JSON.stringify(targets);
   const durationDays = Number(draft.duration_days ?? 1);
   const dailyAllDay = Boolean(draft.daily_all_day);
-  const dailyStart = recordText(draft, "daily_start") || "00:00";
-  const dailyEnd = recordText(draft, "daily_end") || "00:00";
+  const dailyStart = recordText(draft, "daily_start");
+  const dailyEnd = recordText(draft, "daily_end");
 
   useEffect(() => {
     let current = true;
-    if (!targets.length || !quoteAdvertisementRef.current) {
+    if (
+      !targets.length
+      || !quoteAdvertisementRef.current
+      || (!dailyAllDay && (!dailyStart || !dailyEnd))
+    ) {
       setQuote(null);
       setQuoteError("");
       return () => { current = false; };
@@ -933,8 +937,8 @@ function AdvertisementForm({
       targets,
       duration_days: durationDays,
       daily_all_day: dailyAllDay,
-      daily_start: dailyStart,
-      daily_end: dailyEnd,
+      daily_start: dailyAllDay ? "00:00" : dailyStart,
+      daily_end: dailyAllDay ? "00:00" : dailyEnd,
     }).then((value) => {
       if (current && value) setQuote(value);
     }).catch((reason: unknown) => {
@@ -1144,11 +1148,13 @@ function AdvertisementForm({
         </label>
         {!draft.daily_all_day && (
           <div className="ad-daily-times">
-            <select className="input" aria-label="Kunlik boshlanish" value={recordText(draft, "daily_start")} onChange={(event) => setDraft({ ...draft, daily_start: event.currentTarget.value })}>
+            <select className="input" aria-label="Kunlik boshlanish" value={dailyStart} onChange={(event) => setDraft({ ...draft, daily_start: event.currentTarget.value })}>
+              <option value="" disabled>Boshlanishni tanlang</option>
               {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
             </select>
             <span>—</span>
-            <select className="input" aria-label="Kunlik tugash" value={recordText(draft, "daily_end")} onChange={(event) => setDraft({ ...draft, daily_end: event.currentTarget.value })}>
+            <select className="input" aria-label="Kunlik tugash" value={dailyEnd} onChange={(event) => setDraft({ ...draft, daily_end: event.currentTarget.value })}>
+              <option value="" disabled>Tugashni tanlang</option>
               {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
             </select>
           </div>
@@ -1156,7 +1162,9 @@ function AdvertisementForm({
         <div className="idesc">
           {draft.daily_all_day
             ? "Reklama kun davomida uzluksiz ko'rinadi."
-            : `Har kuni ${recordText(draft, "daily_start")} dan ${recordText(draft, "daily_end")} gacha ko'rinadi.`}
+            : dailyStart && dailyEnd
+              ? `Har kuni ${dailyStart} dan ${dailyEnd} gacha ko'rinadi.`
+              : "Boshlanish va tugash vaqtini alohida tanlang."}
         </div>
       </div>
       <label className="field">Qancha vaqt?

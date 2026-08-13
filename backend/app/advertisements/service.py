@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -50,6 +50,7 @@ SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 PRICE_CODE = "advertisement_district_hour"
 DEFAULT_HOUR_RATE = 20_000
+UZ_TIMEZONE = timezone(timedelta(hours=5))
 RATE_NOTE = (
     "Reklama kvitansiya yuborilib, administrator tasdiqlagandan keyin "
     "faol bo'ladi."
@@ -229,6 +230,81 @@ class AdvertisementAuthoringService:
             )
             await session.delete(advertisement)
             await session.commit()
+
+    async def start_now(
+        self,
+        *,
+        account_id: int,
+        account_type: AccountType,
+        advertisement_id: int,
+    ) -> AdvertisementRead:
+        """Kelajakda boshlanadigan faol reklamani egasi hozir boshlaydi.
+
+        Narx va sotib olingan kunlik soatlar o'zgarmaydi. Maxsus vaqtli
+        reklamada vaqt oynasi O'zbekiston vaqti bo'yicha hozirga suriladi.
+        """
+        now_dt = self._now()
+        now = _unix(now_dt)
+        column = (
+            Advertisement.owner_user_account_id
+            if account_type is AccountType.USER
+            else Advertisement.owner_business_account_id
+        )
+        async with self._session_factory() as session:
+            advertisement = await session.scalar(
+                select(Advertisement)
+                .where(
+                    Advertisement.id == advertisement_id,
+                    column == account_id,
+                )
+                .with_for_update()
+            )
+            if advertisement is None:
+                raise ApiError(
+                    404, "advertisement_not_found", "Reklama topilmadi."
+                )
+            if advertisement.status != "active":
+                raise ApiError(
+                    409,
+                    "advertisement_not_active",
+                    "Faqat faol reklamani hozir boshlash mumkin.",
+                )
+            if _unix(advertisement.start_at) <= now:
+                raise ApiError(
+                    409,
+                    "advertisement_already_started",
+                    "Reklama allaqachon boshlangan.",
+                )
+
+            if not advertisement.daily_all_day:
+                local_now = now_dt.astimezone(UZ_TIMEZONE)
+                local_end = local_now + timedelta(hours=advertisement.hours_per_day)
+                advertisement.daily_start = local_now.time().replace(
+                    tzinfo=None, microsecond=0
+                )
+                advertisement.daily_end = local_end.time().replace(
+                    tzinfo=None, microsecond=0
+                )
+
+            try:
+                actual_end = schedule_end_at(
+                    actual_start_at=now,
+                    duration_days=advertisement.duration_days,
+                    hours_each_day=advertisement.hours_per_day,
+                    daily_all_day=advertisement.daily_all_day,
+                )
+            except AdPricingError as exc:
+                raise ApiError(
+                    400, "advertisement_schedule_invalid", str(exc)
+                ) from exc
+
+            advertisement.start_at = _moment(now)
+            advertisement.end_at = _moment(actual_end)
+            advertisement.updated_at = _moment(now)
+            await session.flush()
+            result = self._read(advertisement)
+            await session.commit()
+            return result
 
     # ----------------------------------------------------- to'lovdan keyin
 

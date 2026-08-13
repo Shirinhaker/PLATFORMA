@@ -66,6 +66,11 @@ function makeApi(
       expires_in_seconds: 900,
     }),
     uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
+    applyBusinessOnlineAction: vi.fn().mockResolvedValue({
+      resource: "advertisements",
+      item: null,
+      items: [],
+    }),
     ...overrides,
   } as unknown as BusinessAdvertisementsApi;
 }
@@ -87,6 +92,53 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
 
     await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
     expect(await screen.findByText("Choyxona ochildi")).toBeVisible();
+  });
+
+  it("maxsus vaqt yashirin 19:00–21:00 bilan boshlanmaydi", async () => {
+    const api = makeApi([]);
+    render(
+      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
+    );
+
+    await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
+    fireEvent.click(
+      screen.getByRole("button", { name: "+ Reklama joylashtirish" }),
+    );
+
+    const allDay = screen.getByRole("checkbox", {
+      name: "Kun bo'yi ko'rinsin",
+    });
+    expect(allDay).toBeChecked();
+    fireEvent.click(allDay);
+
+    const start = screen.getByRole("combobox", {
+      name: "Kunlik boshlanish",
+    }) as HTMLSelectElement;
+    const end = screen.getByRole("combobox", {
+      name: "Kunlik tugash",
+    }) as HTMLSelectElement;
+    expect(start.value).toBe("");
+    expect(end.value).toBe("");
+    expect(
+      screen.getByText("Boshlanish va tugash vaqtini alohida tanlang."),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "+ Hududni qo'shish" }),
+    );
+    expect(api.quoteAdvertisement).not.toHaveBeenCalled();
+
+    fireEvent.change(start, { target: { value: "19:00" } });
+    expect(api.quoteAdvertisement).not.toHaveBeenCalled();
+    fireEvent.change(end, { target: { value: "21:00" } });
+
+    await waitFor(() => expect(api.quoteAdvertisement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        daily_all_day: false,
+        daily_start: "19:00",
+        daily_end: "21:00",
+      }),
+    ));
   });
 
   it("to'lov kutayotgan reklamada to'lov tugmasi bor", async () => {
@@ -123,6 +175,50 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
     await screen.findByText("Choyxona ochildi");
     expect(
       screen.queryByRole("button", { name: "To‘lov qilish" }),
+    ).toBeNull();
+  });
+
+  it("kelajakdagi faol reklamani egasi hozir boshlaydi", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const future = advertisement({
+      status: "active",
+      start_at: now + 3600,
+      end_at: now + 3600 + 7 * 86_400,
+    });
+    const started = advertisement({
+      status: "active",
+      start_at: now,
+      end_at: now + 7 * 86_400,
+    });
+    const getMyAdvertisements = vi.fn()
+      .mockResolvedValueOnce([future])
+      .mockResolvedValueOnce([started]);
+    const applyBusinessOnlineAction = vi.fn().mockResolvedValue({
+      resource: "advertisements",
+      item: started,
+      items: [started],
+    });
+    const api = makeApi([], {
+      getMyAdvertisements,
+      applyBusinessOnlineAction,
+    });
+
+    render(
+      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Hozir boshlash" }),
+    );
+
+    await waitFor(() => expect(applyBusinessOnlineAction).toHaveBeenCalledWith(
+      "advertisements",
+      "start_now",
+      { record_id: 12, payload: {} },
+    ));
+    await waitFor(() => expect(getMyAdvertisements).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole("button", { name: "Hozir boshlash" }),
     ).toBeNull();
   });
 
