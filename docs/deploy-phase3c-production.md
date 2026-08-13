@@ -134,7 +134,14 @@ NEXT_STEP=manual_smoke_then_explicit_route_cutover
 5. Candidate backend/frontend routingini production routingga o‘tkazing, lekin
    maintenance’ni darhol olib tashlamang.
 6. Production routing orqali yana qisqa smoke-test bajaring.
-7. Faqat shundan keyin public Phase 3C flag/maintenance blokini kelishilgan
+7. Eski v1656 `web`ni yakuniy uzishdan oldin
+   [`phase3c-v9-telegram-monolith-cutover.md`](phase3c-v9-telegram-monolith-cutover.md)
+   runbookini bajaring: legacy write-freeze -> freeze verify -> Telegram webhookni
+   yangi `/api/v1/auth/telegram/webhook` ga o‘tkazish -> real auth smoke-test.
+8. Faqat shu Telegram/legacy cutover ham yashil bo‘lgandan keyin eski `web`
+   auto-deploy/service'ni to‘xtating. SQLite volume, backup va migratsiya dalillarini
+   o‘chirmang.
+9. Faqat shundan keyin public Phase 3C flag/maintenance blokini kelishilgan
    tartibda oching.
 
 ## Rollback — trafik hali ochilmagan bo‘lsa
