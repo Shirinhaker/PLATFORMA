@@ -2,11 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ApiClient } from "../../api/client";
 import type { PublicAdvertisement } from "../../api/types";
-import { AppToastV1656 } from "./AppToastV1656";
 import type { HomeLocation } from "./location-storage";
 
-
-type HomeAd = PublicAdvertisement & { is_demo?: boolean };
 
 interface HomeAdvertisementsProps {
   getAdvertisements: ApiClient["getAdvertisements"];
@@ -16,16 +13,6 @@ interface HomeAdvertisementsProps {
   recordAdvertisementViews?: ApiClient["recordAdvertisementViews"];
 }
 
-
-const DEMO_HOME_ADS: HomeAd[] = [
-  { public_id: "demo-1", title: "Orzu Mebel", caption: "Uyingiz uchun eng yaxshi tanlovlar", owner_public_id: "", desktop_image_url: "/demo_ads/demo_sofa.svg", mobile_image_url: "", crop_x: 62, crop_y: 50, crop_zoom: 1, is_demo: true },
-  { public_id: "demo-2", title: "Samarqand Coffee", caption: "Issiq qahva va yangi desertlar", owner_public_id: "", desktop_image_url: "/demo_ads/demo_cafe.svg", mobile_image_url: "", crop_x: 72, crop_y: 52, crop_zoom: 1.12, is_demo: true },
-  { public_id: "demo-3", title: "Smart Texnika", caption: "Telefon va aksessuarlarga foydali taklif", owner_public_id: "", desktop_image_url: "/demo_ads/demo_tech.svg", mobile_image_url: "", crop_x: 77, crop_y: 48, crop_zoom: 1.05, is_demo: true },
-  { public_id: "demo-4", title: "Mahalla Market", caption: "Bugungi mahsulotlarga maxsus chegirma", owner_public_id: "", desktop_image_url: "/demo_ads/demo_market.svg", mobile_image_url: "", crop_x: 38, crop_y: 50, crop_zoom: 1.08, is_demo: true },
-  { public_id: "demo-5", title: "Nafis Beauty", caption: "Go'zalligingiz uchun yangi xizmatlar", owner_public_id: "", desktop_image_url: "/demo_ads/demo_beauty.svg", mobile_image_url: "", crop_x: 76, crop_y: 50, crop_zoom: 1.1, is_demo: true },
-];
-
-
 export function HomeAdvertisements({
   getAdvertisements,
   location,
@@ -33,13 +20,12 @@ export function HomeAdvertisements({
   recordAdvertisementClick,
   recordAdvertisementViews,
 }: HomeAdvertisementsProps) {
-  const [items, setItems] = useState<HomeAd[]>(DEMO_HOME_ADS);
+  const [items, setItems] = useState<PublicAdvertisement[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [message, setMessage] = useState("");
   const [transitioning, setTransitioning] = useState(false);
   const [visible, setVisible] = useState(() => !document.hidden);
   const activeIndexRef = useRef(0);
-  const itemsRef = useRef<HomeAd[]>(DEMO_HOME_ADS);
+  const itemsRef = useRef<PublicAdvertisement[]>([]);
   const seen = useRef<string[]>([]);
   const switching = useRef(false);
   const switchTimer = useRef<number | null>(null);
@@ -53,9 +39,9 @@ export function HomeAdvertisements({
         region: location?.region || "",
         district: location?.district || "",
       });
-      return result.length ? result : DEMO_HOME_ADS;
+      return result;
     } catch {
-      return DEMO_HOME_ADS;
+      return [];
     }
   }, [getAdvertisements, location?.district, location?.region]);
 
@@ -72,7 +58,10 @@ export function HomeAdvertisements({
     }
   }, [recordAdvertisementViews]);
 
-  const transitionTo = useCallback((nextIndex: number, nextItems?: HomeAd[]) => {
+  const transitionTo = useCallback((
+    nextIndex: number,
+    nextItems?: PublicAdvertisement[],
+  ) => {
     if (switching.current) return;
     switching.current = true;
     setTransitioning(true);
@@ -131,7 +120,7 @@ export function HomeAdvertisements({
 
   useEffect(() => {
     const item = items[activeIndex];
-    if (!visible || !item || item.is_demo) return undefined;
+    if (!visible || !item) return undefined;
     const publicId = item.public_id;
     const timer = window.setTimeout(() => {
       if (
@@ -165,18 +154,16 @@ export function HomeAdvertisements({
     }
   }, []);
 
-  const item = items[activeIndex] ?? DEMO_HOME_ADS[0]!;
+  const item = items[activeIndex];
 
-  function openAdvertisement() {
-    if (item.is_demo) {
-      setMessage("Bu namoyish uchun joylangan demo reklama.");
-      return;
-    }
+  if (!item) return null;
+
+  function openAdvertisement(activeItem: PublicAdvertisement) {
     if (recordAdvertisementClick) {
-      void recordAdvertisementClick(item.public_id);
+      void recordAdvertisementClick(activeItem.public_id);
     }
-    if (item.owner_public_id && item.owner_kind && onOpenOwner) {
-      onOpenOwner(item.owner_kind, item.owner_public_id);
+    if (activeItem.owner_public_id && activeItem.owner_kind && onOpenOwner) {
+      onOpenOwner(activeItem.owner_kind, activeItem.owner_public_id);
     }
   }
 
@@ -185,7 +172,7 @@ export function HomeAdvertisements({
       <div
         className={`ad has-image${transitioning ? " ad-transitioning" : ""}`}
         id="adBox"
-        onClick={openAdvertisement}
+        onClick={() => openAdvertisement(item)}
       >
         <picture className="ad-picture">
           <source
@@ -227,7 +214,6 @@ export function HomeAdvertisements({
           />
         ))}
       </div>
-      <AppToastV1656 message={message} />
     </>
   );
 }
