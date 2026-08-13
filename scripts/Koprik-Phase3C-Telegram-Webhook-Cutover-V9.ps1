@@ -64,16 +64,53 @@ function Invoke-TelegramApi {
 
     $Uri = "https://api.telegram.org/bot$BotToken/$Method"
     $Json = $Body | ConvertTo-Json -Compress -Depth 8
-    $Result = Invoke-RestMethod `
-        -Method Post `
-        -Uri $Uri `
-        -ContentType "application/json" `
-        -Body $Json `
-        -TimeoutSec 20
+    try {
+        $Result = Invoke-RestMethod `
+            -Method Post `
+            -Uri $Uri `
+            -ContentType "application/json" `
+            -Body $Json `
+            -TimeoutSec 20
+    } catch {
+        throw ("TELEGRAM_API_{0}_REQUEST_FAILED" -f $Method.ToUpperInvariant())
+    }
     if (-not $Result.ok) {
         throw ("TELEGRAM_API_{0}_FAILED" -f $Method.ToUpperInvariant())
     }
     return $Result
+}
+
+function Get-ApiReady {
+    try {
+        return Invoke-RestMethod `
+            -Method Get `
+            -Uri "$ApiBase/readyz" `
+            -TimeoutSec 20
+    } catch {
+        throw "TELEGRAM_CUTOVER_MODULAR_API_UNREACHABLE"
+    }
+}
+
+function Get-LegacyReady {
+    try {
+        return Invoke-RestMethod `
+            -Method Get `
+            -Uri "$LegacyBase/readyz" `
+            -TimeoutSec 20
+    } catch {
+        throw "TELEGRAM_CUTOVER_LEGACY_UNREACHABLE"
+    }
+}
+
+function Test-LegacyFrozen {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$ReadyPayload
+    )
+
+    $Maintenance = Read-BoolProperty -Object $ReadyPayload -Name "maintenance"
+    $WritesFrozen = Read-BoolProperty -Object $ReadyPayload -Name "writes_frozen"
+    return $Maintenance -and $WritesFrozen
 }
 
 $ApiBase = Normalize-HttpsBaseUrl `
@@ -106,19 +143,13 @@ Write-Host ("API_BASE_URL={0}" -f $ApiBase)
 Write-Host ("LEGACY_BASE_URL={0}" -f $LegacyBase)
 Write-Host ("TARGET_WEBHOOK_URL={0}" -f $TargetWebhook)
 
-$ApiReady = Invoke-RestMethod `
-    -Method Get `
-    -Uri "$ApiBase/readyz" `
-    -TimeoutSec 20
+$ApiReady = Get-ApiReady
 if ($ApiReady.status -ne "ready") {
     throw "TELEGRAM_CUTOVER_MODULAR_API_NOT_READY"
 }
 Write-Host "MODULAR_API_READY=1"
 
-$LegacyReady = Invoke-RestMethod `
-    -Method Get `
-    -Uri "$LegacyBase/readyz" `
-    -TimeoutSec 20
+$LegacyReady = Get-LegacyReady
 $LegacyMaintenance = Read-BoolProperty -Object $LegacyReady -Name "maintenance"
 $LegacyWritesFrozen = Read-BoolProperty -Object $LegacyReady -Name "writes_frozen"
 $LegacyFrozen = $LegacyMaintenance -and $LegacyWritesFrozen
@@ -153,6 +184,19 @@ if (-not $Execute.IsPresent) {
 if (-not $LegacyFrozen) {
     throw "TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN"
 }
+
+# Telegramga yozishdan darhol oldin ikkala servis holatini qayta tekshiramiz.
+# Bu preflight va setWebhook orasida legacy servis qayta ochilib ketgan bo‘lsa
+# webhookni xavfli almashtirishni to‘xtatadi.
+$ApiReadyBeforeWrite = Get-ApiReady
+if ($ApiReadyBeforeWrite.status -ne "ready") {
+    throw "TELEGRAM_CUTOVER_MODULAR_API_NOT_READY_BEFORE_WRITE"
+}
+$LegacyReadyBeforeWrite = Get-LegacyReady
+if (-not (Test-LegacyFrozen -ReadyPayload $LegacyReadyBeforeWrite)) {
+    throw "TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN_BEFORE_WRITE"
+}
+Write-Host "PREWRITE_GUARDS_OK=1"
 
 $SetResult = Invoke-TelegramApi -Method "setWebhook" -Body @{
     url = $TargetWebhook
