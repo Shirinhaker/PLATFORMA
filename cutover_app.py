@@ -1,41 +1,22 @@
-"""Railway cutover wrapper for the v1656 production web service.
+"""Permanent retired shell for the former v1656 Railway web service.
 
-Normal mode delegates every ASGI scope to ``main:app`` unchanged.
-During the final V8 cutover, set ``KOPRIK_MIGRATION_MAINTENANCE=1``.
-In that mode the legacy application is deliberately not imported or started,
-so its Telegram webhook and background workers cannot write to SQLite while the
-final source snapshot is being taken.
+The legacy production cutover is complete.  This module intentionally has no
+code path that can delegate requests to the old monolith.  If an old Railway
+service is accidentally started again, it stays read-only/offline from the
+application point of view: health probes succeed, while public navigation,
+API mutations, Telegram webhook traffic, websockets, and background writers
+remain unavailable.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 
-MAINTENANCE_ENV = "KOPRIK_MIGRATION_MAINTENANCE"
 ROOT = Path(__file__).resolve().parent
 MAINTENANCE_HTML = ROOT / "frontend" / "public" / "maintenance.html"
-
-
-def _env_enabled(name: str) -> bool:
-    raw = os.environ.get(name)
-    if raw is None:
-        return False
-    return raw.strip().lower() not in ("", "0", "false", "no", "off")
-
-
-MAINTENANCE_MODE = _env_enabled(MAINTENANCE_ENV)
-
-# Importing main creates the normal v1656 FastAPI application.  We intentionally
-# do not even import it in maintenance mode, because its lifespan starts the
-# Telegram/outbox background workers.  This is the write-freeze boundary.
-if not MAINTENANCE_MODE:
-    from main import app as _normal_app
-else:
-    _normal_app = None
 
 
 def _maintenance_html_bytes() -> bytes:
@@ -45,9 +26,9 @@ def _maintenance_html_bytes() -> bytes:
         return (
             "<!doctype html><html lang='uz'><meta charset='utf-8'>"
             "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>Koprik — texnik ishlar</title>"
-            "<body><h1>Texnik ishlar olib borilmoqda</h1>"
-            "<p>Ma’lumotlarni xavfsiz ko‘chiryapmiz. Iltimos, birozdan keyin qayta kiring.</p>"
+            "<title>Koprik — eski servis o‘chirilgan</title>"
+            "<body><h1>Eski servis productiondan chiqarilgan</h1>"
+            "<p>Koprik yangi modular tizimda ishlaydi.</p>"
             "</body></html>"
         ).encode("utf-8")
 
@@ -57,8 +38,8 @@ def _headers(content_type: str, body: bytes) -> list[tuple[bytes, bytes]]:
         (b"content-type", content_type.encode("ascii")),
         (b"content-length", str(len(body)).encode("ascii")),
         (b"cache-control", b"no-store, no-cache, must-revalidate, max-age=0"),
-        (b"retry-after", b"120"),
-        (b"x-koprik-maintenance", b"migration-write-freeze"),
+        (b"retry-after", b"3600"),
+        (b"x-koprik-maintenance", b"legacy-retired"),
     ]
 
 
@@ -86,17 +67,11 @@ async def _send_http(
     )
 
 
-class CutoverApp:
+class RetiredLegacyApp:
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
-        if not MAINTENANCE_MODE:
-            assert _normal_app is not None
-            await _normal_app(scope, receive, send)
-            return
-
         scope_type = scope.get("type")
+
         if scope_type == "lifespan":
-            # Do not enter main.py's lifespan in maintenance mode.  A successful
-            # wrapper lifespan keeps Railway healthy while legacy writers stay off.
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.startup":
@@ -104,7 +79,7 @@ class CutoverApp:
                 elif message["type"] == "lifespan.shutdown":
                     await send({"type": "lifespan.shutdown.complete"})
                     return
-            
+
         if scope_type == "websocket":
             await send({"type": "websocket.close", "code": 1013})
             return
@@ -120,9 +95,11 @@ class CutoverApp:
             body = json.dumps(
                 {
                     "ok": True,
+                    "retired": True,
                     "maintenance": True,
                     "writes_frozen": True,
-                    "mode": "v8_cutover",
+                    "legacy_runtime_enabled": False,
+                    "mode": "legacy_retired",
                 },
                 separators=(",", ":"),
             ).encode("utf-8")
@@ -135,13 +112,24 @@ class CutoverApp:
             )
             return
 
+        if method in ("GET", "HEAD") and path == "/maintenance.html":
+            body = _maintenance_html_bytes()
+            await _send_http(
+                send,
+                status=200,
+                body=body,
+                content_type="text/html; charset=utf-8",
+                head_only=head_only,
+            )
+            return
+
         if method in ("GET", "HEAD") and not (
             path.startswith("/api/") or path == "/webhook"
         ):
             body = _maintenance_html_bytes()
             await _send_http(
                 send,
-                status=200 if path == "/maintenance.html" else 503,
+                status=503,
                 body=body,
                 content_type="text/html; charset=utf-8",
                 head_only=head_only,
@@ -150,8 +138,9 @@ class CutoverApp:
 
         body = json.dumps(
             {
-                "detail": "V8 migratsiyasi uchun yozuvlar vaqtincha to‘xtatilgan.",
-                "code": "migration_maintenance",
+                "detail": "Eski v1656 servis productiondan chiqarilgan.",
+                "code": "legacy_retired",
+                "retired": True,
                 "writes_frozen": True,
             },
             ensure_ascii=False,
@@ -166,4 +155,4 @@ class CutoverApp:
         )
 
 
-app = CutoverApp()
+app = RetiredLegacyApp()
