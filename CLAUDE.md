@@ -1,59 +1,40 @@
-# PLATFORMA — loyiha qoidalari
+# PLATFORMA вЂ” loyiha qoidalari
 
-Bu fayl Claude uchun. Kod yozishda va PR ko'rib chiqishda quyidagi
-qoidalarga amal qilinadi.
+## Faol arxitektura
 
-## Loyiha tuzilishi
+Production kod faqat modular arxitekturada saqlanadi:
 
-- **Backend**: FastAPI (Python), ildizdagi `main.py`, `api.py` va modullar.
-- **Frontend**: React + TypeScript + Vite, `frontend/` papkasida.
-- **Testlar**: frontend uchun vitest — `cd frontend && npm test`.
-- **Tip tekshiruvi**: `cd frontend && npx tsc --noEmit`.
-- **Hujjatlar**: `docs/` papkasida bosqichlar bo'yicha (Phase 2, 3, 3C, V7).
+- **Backend**: FastAPI, `backend/app/`
+- **Database**: PostgreSQL + Alembic, `backend/migrations/`
+- **Worker**: `backend/app/outbox/`
+- **Frontend**: React + TypeScript + Vite, `frontend/`
+- **Infra**: `compose.yaml` va `infra/`
 
-## Eng muhim qoida: v1656 pariteti
+Eski v1656 monolit source/UI active branchdan olib tashlangan.
+Cutover paytidagi to'liq nusxa:
+`archive/legacy-v1656-production-cutover`.
 
-Ishlab turgan eski monolit sayt (v1656) — haqiqat manbai. Yangi modullarga
-ko'chirilgan har qanday ekran undan **aynan** nusxa bo'lishi shart:
+## Qat'iy qoida
 
-- tugma va sarlavha matnlari harfma-harf bir xil (o'zbekcha matnlar ham),
-- CSS klass nomlari va ko'rinish bir xil,
-- xatti-harakat bir xil (qidiruv paytida nima yashirinadi, menyu qanday
-  ochiladi, bo'sh holatda nima yoziladi).
+Rootga `main.py`, `api.py`, `database.py`, `static/`, `admin/` yoki boshqa
+v1656 runtime fayllarini qayta qo'shmang. Zarur tarixiy tekshiruv archive
+branch yoki `docs/` dagi migratsiya dalillari orqali qilinadi.
 
-Farq kiritish kerak bo'lsa, avval sababini `docs/` ichida hujjatlashtiring.
+## Testlar
 
-## Testlar bo'yicha qat'iy talablar
+PR yuborishdan oldin:
 
-- Test **hech qachon** `skip`, `todo` yoki o'chirish yo'li bilan
-  "yashil" qilinmaydi. Test yiqilsa — kod tuzatiladi, test emas.
-- Assert zaiflashtirilmaydi. Mavjud tekshiruv olib tashlansa, o'sha
-  qoplama boshqa test fayliga ko'chirilishi shart.
-- Yangi ekran qo'shilsa, unga parity testi ham qo'shiladi.
-- PR yuborishdan oldin `npm test` va `npx tsc --noEmit` toza o'tishi kerak.
+- `cd backend && python -m pytest tests -q`
+- `cd frontend && npm test`
+- `cd frontend && npx tsc --noEmit`
+- `cd frontend && npm run build`
+
+Testni shunchaki yashil qilish uchun `skip`/`todo` ishlatilmaydi.
+Faol modular funksiyaning qoplamasi olib tashlanmaydi.
 
 ## Ish uslubi
 
-- TDD: avval qizil test, keyin tuzatish, keyin yashil.
-- Commitlar mayda va aniq, prefikslar bilan: `feat:`, `fix:`, `test:`,
-  `refactor:`, `style:`, `docs:`, `chore:`, `ops:`.
-- Har bir ish alohida branchda, `main` ga faqat PR orqali qo'shiladi.
-
-## Xavfsizlik va UX talablari
-
-- **O'chirish amali doim tasdiqlash so'raydi** ("Ishonchingiz komilmi?").
-- Forma saqlanmasa, foydalanuvchiga sabab ko'rsatiladi — jim turmaydi.
-- Narx, miqdor kabi raqamli maydonlar validatsiya qilinadi.
-- Tugma qo'yilgan bo'lsa, u haqiqiy amal bajarishi shart — bo'sh
-  yoki aldamchi tugma qoldirilmaydi.
-- API kalitlar, parollar va maxfiy qiymatlar repoga yozilmaydi.
-
-## V7 migratsiya davrida
-
-Kabinet ma'lumotlari JSON'dan relatsion bazaga ko'chirilmoqda. Shu sababli:
-
-- maydon nomlari uchun fallback saqlanadi (`group_id` / `item_group_id`,
-  `note` / `description`),
-- guruhi yo'q ("yetim") yozuvlar yo'qolmaydi, "Guruhsiz" bo'limiga tushadi,
-- migratsiya skriptlari qaytadan ishga tushirilganda ma'lumot buzmasligi
-  (idempotent) shart.
+- Har bir ish alohida branchda.
+- `main` ga faqat PR orqali.
+- Ishlayotgan modular funksiyalarga aloqasiz o'zgarish kiritmang.
+- API kalit, token, parol va boshqa maxfiy qiymatlarni repoga yozmang.
