@@ -144,6 +144,42 @@ async def apply_action(
     request: Request,
     service: Annotated[BusinessOnlineService, Depends(online_service)],
 ) -> BusinessOnlineMutationRead:
+    # Reklama ekrani biznes va oddiy foydalanuvchida umumiy komponentdan
+    # foydalanadi. `start_now` shu mavjud CSRF-himoyalangan action kanali
+    # orqali relatsion reklama servisiga yo'naltiriladi.
+    if resource == "advertisements" and action == "start_now":
+        if current.account_type is AccountType.BUSINESS:
+            require_resource_permission(current, resource)
+        if body.record_id is None:
+            raise ApiError(
+                422,
+                "advertisement_id_required",
+                "Reklama tanlanmagan.",
+            )
+        try:
+            advertisement_id = int(body.record_id)
+        except (TypeError, ValueError):
+            raise ApiError(
+                404,
+                "advertisement_not_found",
+                "Reklama topilmadi.",
+            ) from None
+        advertisement_service = request.app.state.advertisement_authoring_service
+        item = await advertisement_service.start_now(
+            account_id=current.account_id,
+            account_type=current.account_type,
+            advertisement_id=advertisement_id,
+        )
+        items = await advertisement_service.list_mine(
+            account_id=current.account_id,
+            account_type=current.account_type,
+        )
+        return BusinessOnlineMutationRead(
+            resource=resource,
+            item=item.model_dump(),
+            items=[row.model_dump() for row in items],
+        )
+
     require_business(current)
     require_resource_permission(current, resource)
     item, items = await service.apply_action(
