@@ -9,6 +9,7 @@ FREEZE_SCRIPT = (
     ROOT / "scripts/Koprik-Phase3C-Legacy-Freeze-Verify-V9.ps1"
 )
 RUNBOOK = ROOT / "docs/phase3c-v9-telegram-monolith-cutover.md"
+PRODUCTION_RUNBOOK = ROOT / "docs/deploy-phase3c-production.md"
 
 
 def test_webhook_cutover_is_dry_run_by_default_and_requires_legacy_freeze():
@@ -22,15 +23,20 @@ def test_webhook_cutover_is_dry_run_by_default_and_requires_legacy_freeze():
     assert "TELEGRAM_WEBHOOK_NOT_CHANGED=1" in script
     assert "TELEGRAM_CUTOVER_WRONG_BOT" in script
     assert "TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN" in script
+    assert "TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN_BEFORE_WRITE" in script
+    assert "PREWRITE_GUARDS_OK=1" in script
     assert "LEGACY_WRITES_FROZEN" in script
     assert "drop_pending_updates = $false" in script
     assert 'allowed_updates = @("message")' in script
     assert "TELEGRAM_WEBHOOK_CUTOVER_COMPLETE=1" in script
 
     freeze_check = script.index("TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN")
+    prewrite_check = script.index(
+        "TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN_BEFORE_WRITE"
+    )
     set_webhook = script.index('Invoke-TelegramApi -Method "setWebhook"')
     verify_webhook = script.rindex('Invoke-TelegramApi -Method "getWebhookInfo"')
-    assert freeze_check < set_webhook < verify_webhook
+    assert freeze_check < prewrite_check < set_webhook < verify_webhook
 
 
 def test_webhook_cutover_does_not_log_token_or_secret_values():
@@ -43,6 +49,7 @@ def test_webhook_cutover_does_not_log_token_or_secret_values():
         'WEBHOOK_SECRET={0}',
     ):
         assert unsafe not in script
+    assert "TELEGRAM_API_{0}_REQUEST_FAILED" in script
 
 
 def test_legacy_freeze_verifier_checks_public_api_and_webhook_boundaries():
@@ -85,3 +92,14 @@ def test_runtime_cutover_runbook_preserves_safe_order_and_rollback_evidence():
     assert "SQLite volume, backup, source archive" in runbook
     assert "o‘chirmang" in runbook
     assert "ko‘r-ko‘rona qaytish mumkin emas" in runbook
+
+
+def test_production_runbook_requires_runtime_cutover_before_legacy_shutdown():
+    runbook = PRODUCTION_RUNBOOK.read_text(encoding="utf-8")
+
+    assert "phase3c-v9-telegram-monolith-cutover.md" in runbook
+    runtime_cutover = runbook.index("phase3c-v9-telegram-monolith-cutover.md")
+    old_web_stop = runbook.index("auto-deploy/service'ni to‘xtating")
+    public_open = runbook.index("public Phase 3C flag/maintenance blokini")
+    assert runtime_cutover < old_web_stop < public_open
+    assert "SQLite volume, backup va migratsiya dalillarini" in runbook
