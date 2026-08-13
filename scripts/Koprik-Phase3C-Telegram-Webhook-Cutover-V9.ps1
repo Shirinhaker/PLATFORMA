@@ -21,7 +21,7 @@ function Normalize-HttpsBaseUrl {
         [string]$FailureCode
     )
 
-    $Parsed = $null
+    [Uri]$Parsed = $null
     if (-not [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$Parsed)) {
         throw $FailureCode
     }
@@ -119,7 +119,7 @@ $ApiBase = Normalize-HttpsBaseUrl `
 $LegacyBase = Normalize-HttpsBaseUrl `
     -Value $LegacyBaseUrl `
     -FailureCode "TELEGRAM_CUTOVER_LEGACY_BASE_URL_INVALID"
-$ExpectedUsername = $ExpectedBotUsername.Trim().TrimStart("@")
+$ExpectedUsername = $ExpectedBotUsername.Trim().TrimStart([char]"@")
 
 if (-not $ExpectedUsername) {
     throw "TELEGRAM_CUTOVER_EXPECTED_BOT_USERNAME_REQUIRED"
