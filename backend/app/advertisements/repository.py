@@ -1,7 +1,7 @@
 import hashlib
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from app.public_discovery.schemas import PublicResultKind
 
 
 ImageUrlProvider = Callable[[str], str]
+UZ_TIMEZONE = timezone(timedelta(hours=5))
 _LOCATION_APOSTROPHES = ("‘", "’", "ʻ", "ʼ", "`", "´", "ʹ")
 _LOCATION_SUFFIXES = (" viloyati", " tumani", " shahri")
 
@@ -97,7 +98,8 @@ async def select_active_advertisements(
     )
     candidates = (await session.scalars(statement)).all()
     ranked = []
-    current_time = now.time().replace(tzinfo=None)
+    aware_now = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+    current_time = aware_now.astimezone(UZ_TIMEZONE).time().replace(tzinfo=None)
     for candidate in candidates:
         if not daily_window_active(
             current_time,
