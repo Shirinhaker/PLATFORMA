@@ -10,7 +10,7 @@ import { CrudEditorView } from "../profiles/BusinessOnlineCrudEditorView";
 import type { PaymentTarget } from "../profiles/PaymentRequestModal";
 
 
-export type BusinessAdvertisementsApi = Pick<
+type AdvertisementBaseApi = Pick<
   ApiClient,
   | "getMyAdvertisements"
   | "createAdvertisement"
@@ -18,24 +18,26 @@ export type BusinessAdvertisementsApi = Pick<
   | "quoteAdvertisement"
   | "createUploadGrant"
   | "uploadGrantedFile"
-  | "applyBusinessOnlineAction"
 >;
 
-const METHODS: ReadonlyArray<keyof BusinessAdvertisementsApi> = [
+export type BusinessAdvertisementsApi = AdvertisementBaseApi & Partial<
+  Pick<ApiClient, "applyBusinessOnlineAction">
+>;
+
+const METHODS: ReadonlyArray<keyof AdvertisementBaseApi> = [
   "getMyAdvertisements",
   "createAdvertisement",
   "deleteAdvertisement",
   "quoteAdvertisement",
   "createUploadGrant",
   "uploadGrantedFile",
-  "applyBusinessOnlineAction",
 ];
 
 export function supportsAdvertisementApi(
   api: object,
 ): api is BusinessAdvertisementsApi {
   return METHODS.every((method) => (
-    typeof (api as Partial<BusinessAdvertisementsApi>)[method] === "function"
+    typeof (api as Partial<AdvertisementBaseApi>)[method] === "function"
   ));
 }
 
@@ -202,6 +204,9 @@ export function BusinessAdvertisementsV1656({
     setBusy(true);
     setError("");
     try {
+      if (typeof api.applyBusinessOnlineAction !== "function") {
+        throw new Error("Reklamani hozir boshlash funksiyasi mavjud emas.");
+      }
       await api.applyBusinessOnlineAction("advertisements", "start_now", {
         record_id: id,
         payload: {},
@@ -274,7 +279,8 @@ export function BusinessAdvertisementsV1656({
             );
           }
           if (
-            status === "active"
+            typeof api.applyBusinessOnlineAction === "function"
+            && status === "active"
             && number(row.start_at) > Math.floor(Date.now() / 1000)
           ) {
             return (
