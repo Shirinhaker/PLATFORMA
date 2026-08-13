@@ -66,6 +66,11 @@ function makeApi(
       expires_in_seconds: 900,
     }),
     uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
+    applyBusinessOnlineAction: vi.fn().mockResolvedValue({
+      resource: "advertisements",
+      item: null,
+      items: [],
+    }),
     ...overrides,
   } as unknown as BusinessAdvertisementsApi;
 }
@@ -170,6 +175,50 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
     await screen.findByText("Choyxona ochildi");
     expect(
       screen.queryByRole("button", { name: "To‘lov qilish" }),
+    ).toBeNull();
+  });
+
+  it("kelajakdagi faol reklamani egasi hozir boshlaydi", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const future = advertisement({
+      status: "active",
+      start_at: now + 3600,
+      end_at: now + 3600 + 7 * 86_400,
+    });
+    const started = advertisement({
+      status: "active",
+      start_at: now,
+      end_at: now + 7 * 86_400,
+    });
+    const getMyAdvertisements = vi.fn()
+      .mockResolvedValueOnce([future])
+      .mockResolvedValueOnce([started]);
+    const applyBusinessOnlineAction = vi.fn().mockResolvedValue({
+      resource: "advertisements",
+      item: started,
+      items: [started],
+    });
+    const api = makeApi([], {
+      getMyAdvertisements,
+      applyBusinessOnlineAction,
+    });
+
+    render(
+      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Hozir boshlash" }),
+    );
+
+    await waitFor(() => expect(applyBusinessOnlineAction).toHaveBeenCalledWith(
+      "advertisements",
+      "start_now",
+      { record_id: 12, payload: {} },
+    ));
+    await waitFor(() => expect(getMyAdvertisements).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole("button", { name: "Hozir boshlash" }),
     ).toBeNull();
   });
 
