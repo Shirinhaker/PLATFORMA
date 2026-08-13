@@ -18,6 +18,7 @@ export type BusinessAdvertisementsApi = Pick<
   | "quoteAdvertisement"
   | "createUploadGrant"
   | "uploadGrantedFile"
+  | "applyBusinessOnlineAction"
 >;
 
 const METHODS: ReadonlyArray<keyof BusinessAdvertisementsApi> = [
@@ -27,6 +28,7 @@ const METHODS: ReadonlyArray<keyof BusinessAdvertisementsApi> = [
   "quoteAdvertisement",
   "createUploadGrant",
   "uploadGrantedFile",
+  "applyBusinessOnlineAction",
 ];
 
 export function supportsAdvertisementApi(
@@ -196,6 +198,24 @@ export function BusinessAdvertisementsV1656({
     }
   }
 
+  async function startNow(id: number | string): Promise<void> {
+    setBusy(true);
+    setError("");
+    try {
+      await api.applyBusinessOnlineAction("advertisements", "start_now", {
+        record_id: id,
+        payload: {},
+      });
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Reklama hozir boshlanmadi.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function quote(request: BusinessOnlineRecord) {
     const value = await api.quoteAdvertisement({
       targets: targetsOf(request.targets),
@@ -235,22 +255,41 @@ export function BusinessAdvertisementsV1656({
         onPromotionChange={(view) => {
           if (view === "listings") onOpenListings?.();
         }}
-        rowAction={(row) => (
-          text(row.status) === "payment_pending" ? (
-            <button
-              type="button"
-              className="mini-btn advertisement-pay"
-              onClick={() => {
-                const found = rows.find(
-                  (item) => String(item.id) === String(row.id),
-                );
-                if (found) openPayment(paymentTarget(found));
-              }}
-            >
-              To‘lov qilish
-            </button>
-          ) : null
-        )}
+        rowAction={(row) => {
+          const status = text(row.status);
+          if (status === "payment_pending") {
+            return (
+              <button
+                type="button"
+                className="mini-btn advertisement-pay"
+                onClick={() => {
+                  const found = rows.find(
+                    (item) => String(item.id) === String(row.id),
+                  );
+                  if (found) openPayment(paymentTarget(found));
+                }}
+              >
+                To‘lov qilish
+              </button>
+            );
+          }
+          if (
+            status === "active"
+            && number(row.start_at) > Math.floor(Date.now() / 1000)
+          ) {
+            return (
+              <button
+                type="button"
+                className="mini-btn advertisement-start-now"
+                disabled={busy}
+                onClick={() => void startNow(Number(row.id))}
+              >
+                Hozir boshlash
+              </button>
+            );
+          }
+          return null;
+        }}
       />
     </>
   );
