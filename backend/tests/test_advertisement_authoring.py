@@ -363,6 +363,103 @@ async def test_payment_activates_and_shifts_the_schedule(
     assert [item.title for item in public_items] == ["Choyxona ochildi"]
 
 
+async def test_custom_daily_window_uses_uzbekistan_time(advertisement_context):
+    """19:00–21:00 oynasi UTC emas, O'zbekiston soati bilan tekshiriladi."""
+    service, sessions, _engine = advertisement_context
+    created = await service.create(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(
+            duration_days=1,
+            daily_all_day=False,
+            daily_start="19:00",
+            daily_end="21:00",
+        ),
+    )
+    async with sessions() as session:
+        await service.activate_paid(
+            session,
+            advertisement_id=created.id,
+            account_id=SHOP,
+            now=int(NOW.timestamp()),
+        )
+        await session.commit()
+
+    # 14:30 UTC = 19:30 O'zbekiston vaqti: reklama ko'rinishi shart.
+    async with sessions() as session:
+        public_items = await select_active_advertisements(
+            session,
+            now=datetime(2026, 8, 10, 14, 30, tzinfo=UTC),
+            placement="home",
+            region="Toshkent shahri",
+            district="Chilonzor tumani",
+            image_url_provider=lambda key: f"https://r2.test/{key}",
+        )
+    assert [item.title for item in public_items] == ["Choyxona ochildi"]
+
+
+async def test_owner_can_start_future_custom_ad_now_without_changing_price(
+    advertisement_context,
+):
+    """Eski 2 soatlik reklama hozirga ko'chsa ham 2 soatligicha qoladi."""
+    service, sessions, _engine = advertisement_context
+    created = await service.create(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(
+            duration_days=1,
+            daily_all_day=False,
+            daily_start="19:00",
+            daily_end="21:00",
+        ),
+    )
+    assert created.hours_per_day == 2
+    assert created.billable_district_hours == 2
+    assert created.price == 2 * RATE
+
+    # To'lov 7-avgustda tasdiqlangan, reja 10-avgust 19:00 edi.
+    async with sessions() as session:
+        await service.activate_paid(
+            session,
+            advertisement_id=created.id,
+            account_id=SHOP,
+            now=int(NOW.timestamp()),
+        )
+        await session.commit()
+
+    with pytest.raises(ApiError) as stranger:
+        await service.start_now(
+            account_id=SHOP + 1,
+            account_type=AccountType.BUSINESS,
+            advertisement_id=created.id,
+        )
+    assert stranger.value.code == "advertisement_not_found"
+
+    started = await service.start_now(
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        advertisement_id=created.id,
+    )
+    assert started.start_at == int(NOW.timestamp())
+    assert started.end_at - started.start_at == 2 * 3600
+    assert started.daily_start == "14:00"
+    assert started.daily_end == "16:00"
+    assert started.hours_per_day == 2
+    assert started.billable_district_hours == 2
+    assert started.price == 2 * RATE
+
+    async with sessions() as session:
+        public_items = await select_active_advertisements(
+            session,
+            now=NOW + timedelta(minutes=1),
+            placement="home",
+            region="Toshkent shahri",
+            district="Chilonzor tumani",
+            image_url_provider=lambda key: f"https://r2.test/{key}",
+        )
+    assert [item.title for item in public_items] == ["Choyxona ochildi"]
+
+
 async def test_activation_is_refused_twice(advertisement_context):
     service, sessions, _engine = advertisement_context
     created = await service.create(
