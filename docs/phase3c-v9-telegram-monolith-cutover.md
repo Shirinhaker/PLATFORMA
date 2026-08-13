@@ -10,8 +10,7 @@ to‘xtatish.
 
 Eski v1656 `main.py` ishga tushganda Telegram webhookni `BASE_URL + /webhook` ga
 qayta o‘rnatadi. Shuning uchun yangi webhookni avval almashtirib, eski `web`ni
-keyin freeze qilish xavfli: legacy servis redeploy/restart bo‘lsa webhook yana eski
-manzilga qaytishi mumkin.
+keyin freeze qilish mumkin emas.
 
 Majburiy tartib:
 
@@ -22,43 +21,37 @@ Majburiy tartib:
 Quyidagilar allaqachon ishlayotgan bo‘lishi kerak:
 
 - `koprik.uz` yangi React frontendga xizmat qilmoqda;
-- yangi modular API `/readyz` `status=ready` qaytarmoqda;
+- yangi modular API productionda deploy bo‘lmoqda;
 - production PostgreSQL/R2/Redis ishlamoqda;
-- asosiy kabinet, katalog, navbat/buyurtma, chat/media smoke-testlari o‘tgan;
 - final SQLite va PostgreSQL backup/migratsiya dalillari saqlangan.
 
-Haqiqiy Telegram token yoki webhook secretni repo, log yoki terminal tarixiga
-qo‘ymang. Ularni faqat vaqtinchalik environment variable orqali bering:
-
-```powershell
-$env:KOPRIK_TELEGRAM_BOT_TOKEN = "..."
-$env:KOPRIK_TELEGRAM_WEBHOOK_SECRET = "..."
-```
+Haqiqiy Telegram token yoki webhook secretni repo, log yoki chatga yozmang.
+Production avtomatik cutover bu qiymatlarni API servisining mavjud environment
+secretlaridan o‘qiydi.
 
 ## 1. Eski `web` servisni write-freeze holatiga o‘tkazish
 
-Yakuniy cutover uchun root `Procfile` vaqtincha aynan eski Railway `web` servisni
-maintenance wrapper orqali ishga tushirishga pin qilinadi:
+Root `Procfile` eski Railway `web` servisni maintenance wrapper orqali ishga
+tushirishga pin qilinadi:
 
 ```text
 web: env KOPRIK_MIGRATION_MAINTENANCE=1 uvicorn cutover_app:app --host 0.0.0.0 --port $PORT
 ```
 
-Bu commit `main`ga merge bo‘lib eski `web` qayta deploy qilingach freeze real
-production holatiga kiradi. Alohida Railway environment qiymatini qo‘lda kiritish
-shart emas; maintenance flag process command ichida aniq beriladi.
+Bu commit `main`ga merge bo‘lib eski `web` qayta deploy qilingach freeze production
+holatiga kiradi. `cutover_app.py` maintenance rejimida eski `main.py`ni import
+qilmaydi. Natijada legacy Telegram webhook, outbox/push background workerlar va
+SQLite mutation endpointlari ishga tushmaydi.
 
-Bu rejimda `cutover_app.py` eski `main.py`ni umuman import qilmaydi. Natijada
-legacy Telegram webhook, outbox/push background workerlar va SQLite mutation
-endpointlari ishga tushmaydi. Freeze aktiv paytda `Procfile`ni `main:app`ga
-qaytarmang; Telegram webhook yangi API'ga o‘tkazilib real auth smoke tugaguncha
-legacy servis shu holatda qolishi shart.
+Freeze aktiv paytda `Procfile`ni `main:app`ga qaytarmang.
 
 ## 2. Freeze holatini majburiy tekshirish
 
+Manual tekshiruv uchun:
+
 ```powershell
 .\scripts\Koprik-Phase3C-Legacy-Freeze-Verify-V9.ps1 `
-  -LegacyBaseUrl https://OLD-WEB.up.railway.app
+  -LegacyBaseUrl https://web-production-302eb.up.railway.app
 ```
 
 Skript quyidagilarni tekshiradi:
@@ -75,11 +68,61 @@ Muvaffaqiyat belgisi:
 LEGACY_WRITE_FREEZE_VERIFIED=1
 ```
 
-Bu natija chiqmasa webhook cutover bajarilmaydi.
+## 3. Production uchun avtomatik, fail-closed Telegram cutover
 
-## 3. Telegram webhook dry-run
+`backend/app/auth/telegram_cutover_once.py` production API startidan oldin
+`backend/Dockerfile` orqali ishga tushadi.
 
-Avval yozuvsiz dry-run qiling:
+U faqat aynan cutover uchun tasdiqlangan Railway service ID va environment ID mos
+kelganda ishlaydi. Boshqa PR/staging servislarida:
+
+```text
+TELEGRAM_WEBHOOK_CUTOVER_SKIPPED=1
+```
+
+va API odatdagidek start bo‘ladi.
+
+Production targetda modul quyidagi tartibni majburiy bajaradi:
+
+1. eski `web` `/readyz` javobida `maintenance=true` va `writes_frozen=true` ni tekshiradi;
+2. Railway bergan `RAILWAY_PUBLIC_DOMAIN`dan target webhook URL tuzadi;
+3. API servisidagi `KOPRIK_TELEGRAM_BOT_TOKEN`, `KOPRIK_TELEGRAM_BOT_USERNAME` va
+   `KOPRIK_TELEGRAM_WEBHOOK_SECRET` secretlarini o‘qiydi, lekin logga chiqarmaydi;
+4. Telegram `getMe` orqali aynan kutilgan bot ekanini tekshiradi;
+5. `getWebhookInfo` bilan joriy URLni ko‘radi;
+6. URL targetga teng bo‘lmasa legacy freeze'ni ikkinchi marta tekshiradi;
+7. `setWebhook` bilan yangi modular endpointga o‘tkazadi;
+8. `getWebhookInfo` bilan target URLni qayta tasdiqlaydi.
+
+Target URL Railway tomonidan avtomatik berilgan API public domain asosida:
+
+```text
+https://$RAILWAY_PUBLIC_DOMAIN/api/v1/auth/telegram/webhook
+```
+
+Docker command `&&` bilan fail-closed. Cutover modul xato bilan tugasa yangi API
+process start qilinmaydi va Railway deploy muvaffaqiyatli deb belgilanmasligi kerak.
+Token/secret qiymatlari xato matniga kiritilmaydi.
+
+Muvaffaqiyat belgisi:
+
+```text
+TELEGRAM_WEBHOOK_CUTOVER_COMPLETE=1
+```
+
+yoki webhook avvaldan to‘g‘ri bo‘lsa:
+
+```text
+TELEGRAM_WEBHOOK_ALREADY_TARGET=1
+```
+
+Bu one-shot pre-start gate cutover tasdiqlangach alohida cleanup PR bilan Docker
+start komandadan olib tashlanadi. Webhook endpointning o‘zi modular auth ichida
+qoladi.
+
+## 4. Manual PowerShell fallback
+
+Avtomatik production gate ishlatilmaydigan operator muhitida avval dry-run:
 
 ```powershell
 .\scripts\Koprik-Phase3C-Telegram-Webhook-Cutover-V9.ps1 `
@@ -88,49 +131,8 @@ Avval yozuvsiz dry-run qiling:
   -ExpectedBotUsername YOUR_BOT_USERNAME
 ```
 
-Dry-run:
-
-- yangi API `/readyz` holatini tekshiradi;
-- legacy `writes_frozen` holatini ko‘radi;
-- Telegram `getMe` orqali aynan kutilgan bot ekanini tasdiqlaydi;
-- `getWebhookInfo` bilan joriy webhookni ko‘rsatadi;
-- hech qanday Telegram sozlamasini o‘zgartirmaydi.
-
-Muvaffaqiyat belgisi:
-
-```text
-TELEGRAM_WEBHOOK_CUTOVER_DRY_RUN_OK=1
-TELEGRAM_WEBHOOK_NOT_CHANGED=1
-```
-
-## 4. Webhookni yangi modular API'ga o‘tkazish
-
-Freeze verify yashil bo‘lgandan keyingina:
-
-```powershell
-.\scripts\Koprik-Phase3C-Telegram-Webhook-Cutover-V9.ps1 `
-  -ApiBaseUrl https://NEW-API.up.railway.app `
-  -LegacyBaseUrl https://OLD-WEB.up.railway.app `
-  -ExpectedBotUsername YOUR_BOT_USERNAME `
-  -Execute
-```
-
-Target manzil qat’iy:
-
-```text
-https://NEW-API.up.railway.app/api/v1/auth/telegram/webhook
-```
-
-`-Execute` rejimi legacy servis `maintenance=true` va `writes_frozen=true` bo‘lmasa
-`TELEGRAM_CUTOVER_LEGACY_NOT_FROZEN` bilan to‘xtaydi. Skript `setWebhook`dan keyin
-`getWebhookInfo`ni qayta chaqiradi va URL aynan targetga teng bo‘lmasa xato beradi.
-
-Muvaffaqiyat belgisi:
-
-```text
-TELEGRAM_WEBHOOK_CUTOVER_COMPLETE=1
-LEGACY_WEB_MUST_REMAIN_FROZEN=1
-```
+Keyin freeze verify yashil bo‘lgandagina `-Execute` bilan ishlatiladi. Manual skript
+ham `getMe`, ikki bosqichli freeze guard, `setWebhook` va post-verify bajaradi.
 
 ## 5. Real auth smoke-test
 
@@ -147,16 +149,15 @@ Demo akkaunt yaratish shart emas.
 
 ## 6. Eski Railway `web`ni chiqarish
 
-Faqat 2–5-bosqichlar yashil bo‘lgandan keyin:
+Faqat freeze, Telegram cutover va real auth smoke yashil bo‘lgandan keyin:
 
 - eski `web` servisning auto-deployini o‘chiring;
 - undan public domain/routing qolmaganini tasdiqlang;
 - servisni stop/suspend qiling;
 - **SQLite volume, backup, source archive va migratsiya dalillarini o‘chirmang**.
 
-Repo ichidagi v1656 kodini ham shu zahoti o‘chirmang. Avval production bir muddat
-faqat modular tizimda barqaror ishlashi va rollback/reconciliation ehtiyoji
-yo‘qligi tasdiqlansin; source cleanup alohida PR bo‘ladi.
+Repo ichidagi v1656 kodini ham shu zahoti o‘chirmang. Avval production faqat
+modular tizimda barqaror ishlashi tasdiqlansin; source cleanup alohida PR bo‘ladi.
 
 ## Rollback
 
