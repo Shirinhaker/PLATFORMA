@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -57,30 +57,40 @@ describe("HomeAdvertisements", () => {
     });
   });
 
-  it("falls back to the five exact v1656 demo advertisements", async () => {
-    render(
+  it("renders no banner when there is no real advertisement", async () => {
+    const getAdvertisements = vi.fn().mockResolvedValue([]);
+    const { container } = render(
       <HomeAdvertisements
-        getAdvertisements={vi.fn().mockResolvedValue([])}
+        getAdvertisements={getAdvertisements}
         location={null}
       />,
     );
 
-    expect(await screen.findByText("Orzu Mebel")).toBeVisible();
+    await waitFor(() => expect(getAdvertisements).toHaveBeenCalled());
+    expect(container.querySelector("#adBox")).not.toBeInTheDocument();
     expect(document.querySelectorAll(".dots-row span[data-home-ad-dot]"))
-      .toHaveLength(5);
-    expect(screen.queryByText("Hozir faol reklama yo‘q"))
-      .not.toBeInTheDocument();
+      .toHaveLength(0);
   });
 
   it("keeps the exact v1656 banner element structure", async () => {
     render(
       <HomeAdvertisements
-        getAdvertisements={vi.fn().mockResolvedValue([])}
+        getAdvertisements={vi.fn().mockResolvedValue([{
+          public_id: "a_public",
+          title: "Turon Savdo",
+          caption: "Yangi mebellar",
+          owner_public_id: "",
+          desktop_image_url: "/media/desktop.webp",
+          mobile_image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+        }])}
         location={null}
       />,
     );
 
-    await screen.findByText("Orzu Mebel");
+    await screen.findByText("Turon Savdo");
     expect(document.querySelector("#adBox > .ad-overlay")?.tagName)
       .toBe("DIV");
     expect(document.querySelector("#adBox > .ad-copy")?.tagName)
@@ -89,19 +99,17 @@ describe("HomeAdvertisements", () => {
       .toBe("DIV");
   });
 
-  it("shows the exact v1656 toast when a demo advertisement is clicked", async () => {
-    render(
+  it("does not resurrect demo banners when the request fails", async () => {
+    const getAdvertisements = vi.fn().mockRejectedValue(new Error("offline"));
+    const { container } = render(
       <HomeAdvertisements
-        getAdvertisements={vi.fn().mockResolvedValue([])}
+        getAdvertisements={getAdvertisements}
         location={null}
       />,
     );
 
-    await screen.findByText("Orzu Mebel");
-    await userEvent.click(document.querySelector("#adBox")!);
-
-    expect(screen.getByText("Bu namoyish uchun joylangan demo reklama."))
-      .toHaveClass("app-toast", "on");
+    await waitFor(() => expect(getAdvertisements).toHaveBeenCalled());
+    expect(container.querySelector("#adBox")).not.toBeInTheDocument();
   });
 
   it("records a real advertisement click and opens its owner", async () => {
