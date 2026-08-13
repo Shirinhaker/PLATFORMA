@@ -10,23 +10,24 @@ Bu bosqich yangi modular frontend/API productionda ishlayotganidan keyin eski v1
 - production API deployi cutover gate bilan muvaffaqiyatli tugadi;
 - real oddiy foydalanuvchi login smoke-testidan o‘tdi;
 - real biznes kabinet login smoke-testidan o‘tdi;
-- one-shot cutover gate endi default holatda avtomatik ishlamaydi.
+- one-shot cutover gate endi default holatda avtomatik ishlamaydi;
+- eski Railway `web` servisi operator tomonidan productiondan chiqarilib `offline` holatiga o‘tkazildi;
+- eski `web-volume` saqlab qolindi;
+- `melodious-emotion` modular frontend va API deploy statuslari retirementdan keyin ham `success` bo‘lib qoldi.
 
-Keyingi operatsion bosqich: eski `web` auto-deploy/public routingni chiqarish va servisni
-stop/suspend qilish. SQLite volume, backup, source archive va migratsiya dalillarini
-o‘chirmang.
+**Production cutover yakunlandi.** Endi yangi trafik va login oqimi modular frontend/API orqali ishlaydi. Legacy source, SQLite volume, backup va migratsiya dalillari hozircha rollback/evidence uchun saqlanadi.
 
 ## Muhim xavf
 
 Eski v1656 `main.py` ishga tushganda Telegram webhookni `BASE_URL + /webhook` ga
-qayta o‘rnatadi. Shuning uchun freeze holatini saqlamasdan eski monolitni qayta
-ishga tushirmang.
+qayta o‘rnatadi. Shuning uchun eski monolit servisni `main.py` bilan qayta ishga
+tushirmang.
 
 Majburiy tartib:
 
 `legacy freeze -> freeze verify -> Telegram webhook cutover -> real auth smoke -> legacy auto-deploy/service off`
 
-## 1. Legacy freeze
+## 1. Legacy freeze — yakunlangan
 
 Root `Procfile` eski Railway `web` servisni maintenance wrapper orqali ishga
 tushirishga pin qilingan:
@@ -35,18 +36,16 @@ tushirishga pin qilingan:
 web: env KOPRIK_MIGRATION_MAINTENANCE=1 uvicorn cutover_app:app --host 0.0.0.0 --port $PORT
 ```
 
-Bu holatda `cutover_app.py` eski `main.py`ni import qilmaydi. Legacy Telegram webhook,
-outbox/push background workerlar va SQLite mutation endpointlari ishga tushmaydi.
+Freeze paytida `cutover_app.py` eski `main.py`ni import qilmagan. Legacy Telegram webhook,
+outbox/push background workerlar va SQLite mutation endpointlari ishga tushmagan.
 
-Freeze aktiv paytda `Procfile`ni `main:app`ga qaytarmang.
+## 2. Freeze verify — yakunlangan
 
-## 2. Freeze verify
-
-Manual tekshiruv uchun:
+Manual tekshiruv uchun mavjud skript:
 
 ```powershell
 .\scripts\Koprik-Phase3C-Legacy-Freeze-Verify-V9.ps1 `
-  -LegacyBaseUrl https://web-production-302eb.up.railway.app
+  -LegacyBaseUrl https://OLD-LEGACY-WEB.up.railway.app
 ```
 
 Muvaffaqiyat belgisi:
@@ -70,7 +69,7 @@ https://platforma-production-f753.up.railway.app/api/v1/auth/telegram/webhook
 Cutoverdan keyingi production API deployi muvaffaqiyatli tugadi va real ordinary +
 business login smoke-testlari o‘tdi.
 
-### One-shot gate cleanup
+### One-shot gate cleanup — yakunlangan
 
 Oddiy API restartlar endi cutover’ni qayta bajarmaydi. Docker startupda gate faqat
 quyidagi maxsus flag aniq yoqilgandagina ishlaydi:
@@ -89,7 +88,7 @@ Favqulodda operator muhitida manual skript mavjud:
 ```powershell
 .\scripts\Koprik-Phase3C-Telegram-Webhook-Cutover-V9.ps1 `
   -ApiBaseUrl https://platforma-production-f753.up.railway.app `
-  -LegacyBaseUrl https://web-production-302eb.up.railway.app `
+  -LegacyBaseUrl https://OLD-LEGACY-WEB.up.railway.app `
   -ExpectedBotUsername YOUR_BOT_USERNAME
 ```
 
@@ -105,17 +104,26 @@ Quyidagilar 2026-08-13 kuni real profillar bilan tekshirildi:
 
 Demo akkaunt ishlatilmadi. Demo akkaunt yaratish shart emas.
 
-## 6. Eski Railway `web`ni chiqarish
+## 6. Eski Railway `web`ni chiqarish — yakunlangan
 
-Faqat freeze, Telegram cutover va real auth smoke yashil bo‘lgandan keyin:
+2026-08-13 kuni operator eski root `web` servisni productiondan chiqardi:
 
-- eski `web` servisning auto-deployini o‘chiring;
-- undan public domain/routingni olib tashlang;
-- servisni stop/suspend qiling;
-- **SQLite volume, backup, source archive va migratsiya dalillarini o‘chirmang**.
+- servis `offline` holatiga o‘tkazildi;
+- GitHub source bog‘lanishi retirement jarayonida uzildi;
+- eski `web-volume` o‘chirilmay saqlandi;
+- modular frontend/API retirementdan keyin ham yashil deploy holatida qoldi.
+
+**SQLite volume, backup, source archive va migratsiya dalillarini o‘chirmang.**
 
 Repo ichidagi v1656 source kodini ham shu zahoti o‘chirmang. Avval production faqat
 modular tizimda barqaror ishlashi tasdiqlansin; source cleanup alohida PR bo‘ladi.
+
+## Keyingi cleanup — production migratsiyaning majburiy qismi emas
+
+Legacy source kodni, vaqtinchalik cutover skriptlarini va eski migration evidence fayllarini
+birdan o‘chirmang. Bir muddat modular production barqaror ishlagach, alohida source-cleanup
+PR bilan faqat endi kerak bo‘lmaydigan runtime qismlar tozalanadi. Backup va audit dalillari
+saqlanadi.
 
 ## Rollback
 
