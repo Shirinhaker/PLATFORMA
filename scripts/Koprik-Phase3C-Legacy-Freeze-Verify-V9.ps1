@@ -12,7 +12,7 @@ function Normalize-HttpsBaseUrl {
         [string]$Value
     )
 
-    $Parsed = $null
+    [Uri]$Parsed = $null
     if (-not [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$Parsed)) {
         throw "LEGACY_FREEZE_BASE_URL_INVALID"
     }
@@ -56,6 +56,7 @@ function Invoke-Probe {
     )
 
     $Client = [System.Net.Http.HttpClient]::new()
+    $Client.Timeout = [TimeSpan]::FromSeconds(20)
     $Request = [System.Net.Http.HttpRequestMessage]::new(
         [System.Net.Http.HttpMethod]::new($Method),
         $Uri
@@ -67,6 +68,7 @@ function Invoke-Probe {
             "application/json"
         )
     }
+    $Response = $null
     try {
         $Response = $Client.SendAsync($Request).GetAwaiter().GetResult()
         $Content = $Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
@@ -75,7 +77,13 @@ function Invoke-Probe {
             body = $Content
         }
     }
+    catch {
+        throw "LEGACY_FREEZE_PROBE_FAILED"
+    }
     finally {
+        if ($null -ne $Response) {
+            $Response.Dispose()
+        }
         $Request.Dispose()
         $Client.Dispose()
     }
