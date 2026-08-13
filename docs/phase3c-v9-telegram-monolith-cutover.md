@@ -103,16 +103,16 @@ Quyidagilar 2026-08-13 kuni real profillar bilan tekshirildi:
 1. mavjud oddiy foydalanuvchi Telegram orqali kabinetga kirdi;
 2. mavjud biznes profil Telegram orqali kabinetga kirdi.
 
-Demo akkaunt ishlatilmadi.
+Demo akkaunt ishlatilmadi. Demo akkaunt yaratish shart emas.
 
 ## 6. Eski Railway `web`ni chiqarish
 
-Endi quyidagilar bajarilishi mumkin:
+Faqat freeze, Telegram cutover va real auth smoke yashil bo‘lgandan keyin:
 
-- eski `web` servisning auto-deployini o‘chirish;
-- undan public domain/routingni olib tashlash;
-- servisni stop/suspend qilish;
-- **SQLite volume, backup, source archive va migratsiya dalillarini o‘chirmaslik**.
+- eski `web` servisning auto-deployini o‘chiring;
+- undan public domain/routingni olib tashlang;
+- servisni stop/suspend qiling;
+- **SQLite volume, backup, source archive va migratsiya dalillarini o‘chirmang**.
 
 Repo ichidagi v1656 source kodini ham shu zahoti o‘chirmang. Avval production faqat
 modular tizimda barqaror ishlashi tasdiqlansin; source cleanup alohida PR bo‘ladi.
