@@ -28,6 +28,24 @@ function Normalize-HttpsBaseUrl {
     return $Parsed.GetLeftPart([UriPartial]::Authority).TrimEnd("/")
 }
 
+function Read-BoolProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($null -eq $Object) {
+        return $false
+    }
+    $Property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $Property) {
+        return $false
+    }
+    return [bool]$Property.Value
+}
+
 function Invoke-Probe {
     param(
         [Parameter(Mandatory = $true)]
@@ -77,7 +95,9 @@ try {
 } catch {
     throw "LEGACY_FREEZE_READYZ_NOT_JSON"
 }
-if (-not $ReadyJson.maintenance -or -not $ReadyJson.writes_frozen) {
+$MaintenanceEnabled = Read-BoolProperty -Object $ReadyJson -Name "maintenance"
+$WritesFrozen = Read-BoolProperty -Object $ReadyJson -Name "writes_frozen"
+if (-not $MaintenanceEnabled -or -not $WritesFrozen) {
     throw "LEGACY_FREEZE_NOT_ACTIVE"
 }
 Write-Host "LEGACY_READYZ_FROZEN=1"
