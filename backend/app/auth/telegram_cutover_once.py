@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -13,6 +14,7 @@ TARGET_ENVIRONMENT_ID = "3c37f08c-227b-4560-9c4d-f7c8ef8fca86"
 LEGACY_FREEZE_URL = "https://web-production-302eb.up.railway.app/readyz"
 WEBHOOK_PATH = "/api/v1/auth/telegram/webhook"
 TIMEOUT_SECONDS = 15
+WEBHOOK_SECRET_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,256}$")
 
 
 class CutoverError(RuntimeError):
@@ -113,6 +115,8 @@ def run() -> int:
         raise CutoverError("telegram_bot_username_missing")
     if not webhook_secret:
         raise CutoverError("telegram_webhook_secret_missing")
+    if WEBHOOK_SECRET_PATTERN.fullmatch(webhook_secret) is None:
+        raise CutoverError("telegram_webhook_secret_invalid")
 
     target_url = f"https://{public_domain}{WEBHOOK_PATH}"
 
