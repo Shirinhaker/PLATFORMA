@@ -15,4 +15,4 @@ COPY alembic.ini ./
 RUN python -m pip install .
 
 USER 10001
-CMD ["sh", "-c", "python -m app.auth.telegram_cutover_once && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
