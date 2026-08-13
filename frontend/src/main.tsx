@@ -7,6 +7,7 @@ import {
   loadApiBaseUrl,
 } from "./api/runtime-base-url";
 import { App } from "./app/App";
+import { resolveAdminEntryRedirect } from "./app/entry-routing";
 import { resolveAuthContext } from "./auth/adapter";
 import "./profiles/BusinessOnlineEditingViews.css";
 import "./profiles/BusinessProfileV2.css";
@@ -53,4 +54,9 @@ async function bootstrap() {
 }
 
 
-void bootstrap();
+const adminEntryRedirect = resolveAdminEntryRedirect(window.location);
+if (adminEntryRedirect) {
+  window.location.replace(adminEntryRedirect);
+} else {
+  void bootstrap();
+}
