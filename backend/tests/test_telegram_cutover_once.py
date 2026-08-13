@@ -127,15 +127,14 @@ def test_cutover_fails_before_telegram_write_if_legacy_is_not_frozen(
     assert "secret-value" not in error
 
 
-def test_api_docker_start_is_fail_closed_on_cutover() -> None:
+def test_api_docker_start_no_longer_runs_cutover_automatically() -> None:
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
-    cutover_command = "python -m app.auth.telegram_cutover_once"
-    uvicorn_command = "exec uvicorn app.main:app"
 
-    assert cutover_command in dockerfile
-    assert uvicorn_command in dockerfile
-    assert "&&" in dockerfile
-    assert dockerfile.index(cutover_command) < dockerfile.index(uvicorn_command)
+    assert "python -m app.auth.telegram_cutover_once" not in dockerfile
+    assert (
+        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", '
+        '"--port", "8000"]'
+    ) in dockerfile
 
 
 def test_cutover_source_never_logs_secret_values() -> None:
