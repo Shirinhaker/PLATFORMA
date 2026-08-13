@@ -37,17 +37,22 @@ $env:KOPRIK_TELEGRAM_WEBHOOK_SECRET = "..."
 
 ## 1. Eski `web` servisni write-freeze holatiga o‘tkazish
 
-Railway eski v1656 `web` servisida:
+Yakuniy cutover uchun root `Procfile` vaqtincha aynan eski Railway `web` servisni
+maintenance wrapper orqali ishga tushirishga pin qilinadi:
 
 ```text
-KOPRIK_MIGRATION_MAINTENANCE=1
+web: env KOPRIK_MIGRATION_MAINTENANCE=1 uvicorn cutover_app:app --host 0.0.0.0 --port $PORT
 ```
 
-qiymatini qo‘ying va aynan eski `web` servisni redeploy qiling.
+Bu commit `main`ga merge bo‘lib eski `web` qayta deploy qilingach freeze real
+production holatiga kiradi. Alohida Railway environment qiymatini qo‘lda kiritish
+shart emas; maintenance flag process command ichida aniq beriladi.
 
 Bu rejimda `cutover_app.py` eski `main.py`ni umuman import qilmaydi. Natijada
 legacy Telegram webhook, outbox/push background workerlar va SQLite mutation
-endpointlari ishga tushmaydi.
+endpointlari ishga tushmaydi. Freeze aktiv paytda `Procfile`ni `main:app`ga
+qaytarmang; Telegram webhook yangi API'ga o‘tkazilib real auth smoke tugaguncha
+legacy servis shu holatda qolishi shart.
 
 ## 2. Freeze holatini majburiy tekshirish
 
