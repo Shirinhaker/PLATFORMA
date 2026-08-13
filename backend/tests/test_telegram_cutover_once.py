@@ -37,6 +37,24 @@ def test_cutover_skips_outside_exact_railway_target(
     assert "TELEGRAM_WEBHOOK_CUTOVER_SKIPPED=1" in capsys.readouterr().out
 
 
+def test_cutover_rejects_invalid_secret_before_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _production_env(monkeypatch)
+    monkeypatch.setenv("KOPRIK_TELEGRAM_WEBHOOK_SECRET", "bad secret")
+
+    def forbidden_freeze() -> None:
+        raise AssertionError("network must not start with an invalid secret")
+
+    monkeypatch.setattr(cutover, "_verify_legacy_freeze", forbidden_freeze)
+
+    with pytest.raises(
+        cutover.CutoverError,
+        match="telegram_webhook_secret_invalid",
+    ):
+        cutover.run()
+
+
 def test_cutover_verifies_freeze_twice_then_sets_and_verifies_webhook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
