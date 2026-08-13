@@ -11,6 +11,7 @@ FREEZE_SCRIPT = (
 RUNBOOK = ROOT / "docs/phase3c-v9-telegram-monolith-cutover.md"
 PRODUCTION_RUNBOOK = ROOT / "docs/deploy-phase3c-production.md"
 PROCFILE = ROOT / "Procfile"
+CUTOVER_APP = ROOT / "cutover_app.py"
 
 
 def test_webhook_cutover_is_dry_run_by_default_and_requires_legacy_freeze():
@@ -81,6 +82,26 @@ def test_legacy_procfile_is_pinned_to_write_freeze_wrapper():
         "uvicorn cutover_app:app --host 0.0.0.0 --port $PORT"
     )
     assert "main:app" not in command
+
+
+def test_legacy_wrapper_is_permanently_retired():
+    source = CUTOVER_APP.read_text(encoding="utf-8")
+
+    for unsafe in (
+        "from main import",
+        'import_module("main")',
+        "MAINTENANCE_MODE",
+        "_normal_app",
+        "os.environ",
+    ):
+        assert unsafe not in source
+
+    assert "class RetiredLegacyApp" in source
+    assert "app = RetiredLegacyApp()" in source
+    assert '"retired": True' in source
+    assert '"legacy_runtime_enabled": False' in source
+    assert '"mode": "legacy_retired"' in source
+    assert '"code": "legacy_retired"' in source
 
 
 def test_runtime_cutover_runbook_preserves_safe_order_and_rollback_evidence():
