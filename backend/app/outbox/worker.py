@@ -75,10 +75,10 @@ async def send_admin_code(
     telegram: TelegramClient,
     payload: dict[str, Any],
 ) -> None:
-    """Admin kodi bazada ham, navbatda ham saqlanmaydi — qayta hisoblanadi."""
     async with database.session() as session:
         challenge = await session.get(
-            AdminAuthChallenge, int(payload["challenge_id"])
+            AdminAuthChallenge,
+            int(payload["challenge_id"]),
         )
         if (
             challenge is None
@@ -87,7 +87,11 @@ async def send_admin_code(
             or challenge.telegram_user_id != int(payload["chat_id"])
         ):
             return
-        code = derive_otp(challenge.id, 0, settings.otp_secret)
+        code = derive_otp(
+            challenge.id,
+            0,
+            settings.resolved_admin_otp_secret,
+        )
         await telegram.send_message(
             challenge.telegram_user_id,
             f"Koprik admin tasdiqlash kodi: {code}",
@@ -261,7 +265,12 @@ async def cleanup_expired_auth(
 
 
 async def run_worker(settings: Settings, *, once: bool = False) -> None:
-    database = Database(settings.database_url)
+    database = Database(
+        settings.database_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout_seconds,
+    )
     await database.start()
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
