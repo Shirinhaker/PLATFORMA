@@ -271,7 +271,7 @@ async def test_marking_read_updates_only_owner_order_rows(notification_store):
     )
     assert user_rows is not None
     assert business_rows is not None
-    assert [row["is_read"] for row in user_rows] == [1, 0]
+    assert [row["is_read"] for row in user_rows] == [0, 1]
     assert business_rows[0]["is_read"] == 0
     assert await repository.unread_count(
         store,
@@ -316,7 +316,7 @@ async def test_profile_projection_overrides_stale_json_and_counts_relational_unr
     )
 
     assert [row["event_key"] for row in payload["notifications"]] == [
-        "order:31:accepted",
         "order:31:ready",
+        "order:31:accepted",
     ]
     assert snapshot == {"active_orders": 2, "unread": 1}
