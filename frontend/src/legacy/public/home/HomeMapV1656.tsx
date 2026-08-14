@@ -274,25 +274,53 @@ export function HomeMapV1656({
           .addTo(map)
           .on("click", () => onOpenResult(point.kind, point.publicId));
       });
-      const onlyPoint = points[0];
-      if (resultItems && onlyPoint && points.length === 1) {
-        map.setView(
-          [onlyPoint.latitude, onlyPoint.longitude],
-          14,
-          { animate: true },
-        );
-      } else if (resultItems && points.length > 1) {
-        map.fitBounds(
-          points.map((point) => [
-            point.latitude,
-            point.longitude,
-          ] as [number, number]),
-          { animate: true, maxZoom: 15, padding: [40, 40] },
-        );
+      let resizeTimer: number | undefined;
+      let resizeFallback: number | undefined;
+      let resizeObserver: ResizeObserver | undefined;
+      const focusSearchPoints = () => {
+        if (!resultItems) return;
+        const onlyPoint = points[0];
+        if (onlyPoint && points.length === 1) {
+          map.setView(
+            [onlyPoint.latitude, onlyPoint.longitude],
+            14,
+            { animate: false },
+          );
+        } else if (points.length > 1) {
+          map.fitBounds(
+            points.map((point) => [
+              point.latitude,
+              point.longitude,
+            ] as [number, number]),
+            { animate: false, maxZoom: 15, padding: [40, 40] },
+          );
+        }
+      };
+      const syncMapViewport = () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          if (disposed) return;
+          map.invalidateSize({ pan: false });
+          focusSearchPoints();
+        }, 40);
+      };
+
+      window.addEventListener("resize", syncMapViewport);
+      window.addEventListener("orientationchange", syncMapViewport);
+      window.visualViewport?.addEventListener("resize", syncMapViewport);
+      if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(syncMapViewport);
+        resizeObserver.observe(host);
       }
-      const invalidate = window.setTimeout(() => map.invalidateSize(), 240);
+      syncMapViewport();
+      resizeFallback = window.setTimeout(syncMapViewport, 240);
       cleanup = () => {
-        window.clearTimeout(invalidate);
+        window.clearTimeout(resizeTimer);
+        window.clearTimeout(resizeFallback);
+        resizeObserver?.disconnect();
+        window.removeEventListener("resize", syncMapViewport);
+        window.removeEventListener("orientationchange", syncMapViewport);
+        window.visualViewport?.removeEventListener("resize", syncMapViewport);
         map.remove();
       };
     }).catch(() => undefined);
