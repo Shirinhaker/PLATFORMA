@@ -176,7 +176,6 @@ export function BusinessAdvertisements({
       setError(
         reason instanceof Error ? reason.message : "Reklama saqlanmadi.",
       );
-      throw reason;
     } finally {
       setBusy(false);
     }

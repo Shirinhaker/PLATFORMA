@@ -49,7 +49,7 @@ class AdvertisementRates(BaseModel):
 class AdvertisementCreate(AdvertisementQuoteRequest):
     title: str = Field(min_length=1, max_length=200)
     caption: str = Field(default="", max_length=2000)
-    desktop_image_object_key: str = Field(min_length=1, max_length=1024)
+    desktop_image_object_key: str = Field(default="", max_length=1024)
     mobile_image_object_key: str = Field(default="", max_length=1024)
     crop_x: float = Field(default=50.0, ge=0, le=100)
     crop_y: float = Field(default=50.0, ge=0, le=100)

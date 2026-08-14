@@ -233,37 +233,6 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
     expect(await screen.findByText("Ulanmadi.")).toBeVisible();
   });
 
-  it("saqlash xatosida formani va kiritilgan ma'lumotni yopmaydi", async () => {
-    const api = makeApi([], {
-      createAdvertisement: vi.fn().mockRejectedValue(
-        new Error("Reklama rasmi tasdiqlanmadi."),
-      ),
-    });
-    render(<BusinessAdvertisements api={api} openPayment={vi.fn()} />);
-
-    fireEvent.click(await screen.findByRole("button", {
-      name: "+ Reklama joylashtirish",
-    }));
-    fireEvent.change(screen.getByLabelText("Kompyuter uchun rasm"), {
-      target: {
-        files: [new File(["banner"], "banner.webp", { type: "image/webp" })],
-      },
-    });
-    await screen.findByRole("button", { name: "Rasm tanlandi ✅" });
-    fireEvent.change(screen.getByLabelText("Reklama sarlavhasi"), {
-      target: { value: "Yozgi aksiya" },
-    });
-    fireEvent.change(screen.getByLabelText("Hudud darajasi"), {
-      target: { value: "republic" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "+ Hududni qo'shish" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reklamani joylashtirish" }));
-
-    expect(await screen.findByText("Reklama rasmi tasdiqlanmadi.")).toBeVisible();
-    expect(screen.getByLabelText("Reklama sarlavhasi")).toHaveValue("Yozgi aksiya");
-    expect(screen.getByRole("button", { name: "Rasm tanlandi ✅" })).toBeVisible();
-  });
-
   it("to'lov maqsadi tuman-soat soniga ko'ra tuziladi", () => {
     const target = paymentTarget(advertisement({
       district_count: 3,

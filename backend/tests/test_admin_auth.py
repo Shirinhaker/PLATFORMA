@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.admin.model import AdminAuthChallenge, AdminSession
 from app.admin.service import AdminAuthService
-from app.auth.security import decrypt_outbox_secret, derive_otp
+from app.auth.security import derive_otp
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.base import Base
@@ -148,7 +148,7 @@ async def test_empty_allowlist_locks_everyone_out(admin_context):
     assert failure.value.status_code == 403
 
 
-async def test_code_is_encrypted_in_the_queue(admin_context):
+async def test_code_is_not_stored_in_the_queue(admin_context):
     build, engine = admin_context
     service = build()
 
@@ -157,14 +157,9 @@ async def test_code_is_encrypted_in_the_queue(admin_context):
     with Session(engine) as check:
         event = check.scalar(select(OutboxEvent))
         assert event.topic == "telegram.admin_code.send"
-        assert set(event.payload) == {
-            "challenge_id", "chat_id", "encrypted_code",
-        }
+        # Navbatda faqat havola bor — kodning o'zi emas.
+        assert set(event.payload) == {"challenge_id", "chat_id"}
         assert _code(started["challenge_id"]) not in str(event.payload)
-        assert decrypt_outbox_secret(
-            event.payload["encrypted_code"],
-            _settings().outbox_encryption_key,
-        ) == {"code": _code(started["challenge_id"])}
 
         challenge = check.get(AdminAuthChallenge, started["challenge_id"])
         assert challenge.code_hash
