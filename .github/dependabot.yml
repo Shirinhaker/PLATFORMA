@@ -8,12 +8,6 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
-    ignore:
-      # jsdom 30 changes accessible-name computation and currently breaks the
-      # frontend's accessibility contract tests. Keep 26 until that migration
-      # is handled deliberately instead of accepting a red automated PR.
-      - dependency-name: "jsdom"
-        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

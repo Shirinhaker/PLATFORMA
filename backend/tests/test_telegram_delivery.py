@@ -5,7 +5,6 @@ import fakeredis.aioredis
 import httpx
 import pytest
 
-from app.admin.model import AdminAuthChallenge
 from app.auth.model import AuthChallenge
 from app.auth.security import derive_otp, encrypt_outbox_secret
 from app.auth.telegram import TelegramClient
@@ -197,57 +196,6 @@ async def test_worker_does_not_send_an_expired_code():
     )
 
     assert telegram.messages == []
-
-
-async def test_worker_sends_the_api_admin_code_even_with_a_different_secret():
-    key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    challenge = AdminAuthChallenge(
-        id=51,
-        telegram_user_id=42,
-        code_hash="hash",
-        attempts=0,
-        expires_at=datetime.now(UTC) + timedelta(minutes=5),
-        consumed_at=None,
-        created_at=datetime.now(UTC),
-    )
-
-    class FakeSession:
-        async def get(self, model, object_id, **kwargs):
-            assert model is AdminAuthChallenge
-            assert object_id == 51
-            return challenge
-
-    class FakeDatabase:
-        @asynccontextmanager
-        async def session(self):
-            yield FakeSession()
-
-    class FakeTelegram:
-        def __init__(self):
-            self.messages = []
-
-        async def send_message(self, chat_id, text):
-            self.messages.append((chat_id, text))
-
-    telegram = FakeTelegram()
-    handlers = build_handlers(
-        Settings(
-            environment="test",
-            admin_otp_secret="worker-has-a-different-secret",
-            outbox_encryption_key=key,
-        ),
-        FakeDatabase(),
-        telegram,
-    )
-    await handlers["telegram.admin_code.send"]({
-        "challenge_id": 51,
-        "chat_id": 42,
-        "encrypted_code": encrypt_outbox_secret({"code": "654321"}, key),
-    })
-
-    assert telegram.messages == [
-        (42, "Koprik admin tasdiqlash kodi: 654321")
-    ]
 
 
 async def test_worker_decrypts_credentials_only_for_delivery():

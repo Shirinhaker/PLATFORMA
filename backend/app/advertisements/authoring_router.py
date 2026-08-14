@@ -4,7 +4,6 @@ Public reklamalar `router.py` da — u yerda sessiya talab qilinmaydi.
 Bu yerda esa reklama egasining o'z kabineti.
 """
 
-import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
@@ -22,8 +21,6 @@ from app.auth.dependencies import (
     require_csrf,
     require_current_account,
 )
-from app.core.errors import ApiError
-from app.media.storage import UploadRejected
 
 
 router = APIRouter(prefix="/api/v1/advertisements", tags=["advertisements"])
@@ -37,40 +34,6 @@ def authoring_service(request: Request) -> AdvertisementAuthoringService:
 
 
 ServiceDep = Annotated[AdvertisementAuthoringService, Depends(authoring_service)]
-
-
-async def verify_advertisement_image(
-    request: Request,
-    current: CurrentAccount,
-    object_key: str,
-) -> None:
-    expected_prefix = (
-        f"private/{current.account_type.value}/{current.account_id}/"
-        "advertisement_image/"
-    )
-    if not object_key.startswith(expected_prefix):
-        raise ApiError(
-            400,
-            "advertisement_image_invalid",
-            "Reklama rasmini qayta yuklang.",
-        )
-    try:
-        await asyncio.to_thread(
-            request.app.state.r2.verify_profile_image,
-            object_key,
-        )
-    except UploadRejected as exc:
-        raise ApiError(
-            400,
-            "advertisement_image_invalid",
-            str(exc),
-        ) from None
-    except Exception:
-        raise ApiError(
-            400,
-            "advertisement_image_missing",
-            "Reklama rasmi yuklanmadi. Rasmni qayta tanlang.",
-        ) from None
 
 
 @router.get("/rates", response_model=AdvertisementRates)
@@ -100,22 +63,10 @@ async def advertisement_price(
 )
 async def create_advertisement(
     body: AdvertisementCreate,
-    request: Request,
     current: CurrentWrite,
     service: ServiceDep,
 ) -> AdvertisementRead:
     """Reklama `payment_pending` bilan yaratiladi va hali ko'rinmaydi."""
-    await verify_advertisement_image(
-        request,
-        current,
-        body.desktop_image_object_key,
-    )
-    if body.mobile_image_object_key:
-        await verify_advertisement_image(
-            request,
-            current,
-            body.mobile_image_object_key,
-        )
     return await service.create(
         account_id=current.account_id,
         account_type=current.account_type,
