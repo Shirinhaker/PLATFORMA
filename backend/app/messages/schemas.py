@@ -82,6 +82,7 @@ class MessageProfileRead(BaseModel):
 class MessageThreadRead(BaseModel):
     other: MessageProfileRead
     messages: list[MessageRead]
+    next_cursor: int | None = Field(default=None, gt=0)
 
 
 class MessageConversationRead(BaseModel):

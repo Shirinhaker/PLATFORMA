@@ -2,6 +2,8 @@ import logging
 
 import httpx
 
+from app.core.metrics import EXTERNAL_ERRORS
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,7 @@ class OpenAIResponsesProvider:
             response.raise_for_status()
             data = response.json()
         except (httpx.HTTPError, ValueError, TypeError):
+            EXTERNAL_ERRORS.labels("openai").inc()
             logger.warning("OpenAI Responses so'rovi bajarilmadi", exc_info=True)
             return ""
         logger.info(

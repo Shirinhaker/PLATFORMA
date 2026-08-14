@@ -35,7 +35,7 @@ describe("AppShell", () => {
     expect(onAccount).toHaveBeenCalledOnce();
   });
 
-  it("shows only the v1656 back/title bar on public subviews", async () => {
+  it("shows only the modular back/title bar on public subviews", async () => {
     const onBack = vi.fn();
     const onAccount = vi.fn();
     render(

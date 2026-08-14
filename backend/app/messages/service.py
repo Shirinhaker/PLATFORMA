@@ -104,6 +104,8 @@ class MessageService:
         account_id: int,
         target_kind: AccountType,
         target_public_id: str,
+        before_id: int | None = None,
+        limit: int = 100,
     ) -> MessageThreadRead:
         async with self._session_factory() as session:
             target = await self._target(
@@ -126,8 +128,14 @@ class MessageService:
                     messages=[],
                 )
             messages = await self._repository.messages(
-                session, conversation_id=int(conversation.id)
+                session,
+                conversation_id=int(conversation.id),
+                before_id=before_id,
+                limit=limit,
             )
+            has_more = len(messages) > limit
+            if has_more:
+                messages = messages[1:]
             await self._repository.mark_read(
                 session,
                 conversation_id=int(conversation.id),
@@ -141,6 +149,10 @@ class MessageService:
             return MessageThreadRead(
                 other=self._profile_read(profile, target_id),
                 messages=projected,
+                next_cursor=(
+                    min(int(row.id) for row in messages)
+                    if has_more and messages else None
+                ),
             )
 
     async def send_text(

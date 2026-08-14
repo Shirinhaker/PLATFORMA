@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import AccountType
 from app.core.errors import ApiError
 from app.media.storage import R2Storage, UploadRejected
+from app.outbox.repository import enqueue_event
 from app.public_ids import build_profile_public_id
 from app.stories.model import Story
 from app.stories.processor import (
@@ -153,39 +155,52 @@ class StoryService:
                 deleted_at=None,
             )
             session.add(story)
-            await session.commit()
+            await session.flush()
             story_id = int(story.id)
+            await enqueue_event(
+                session,
+                "story.media.process",
+                {"story_id": story_id, "size_bytes": body.size_bytes},
+            )
+            await session.commit()
+        return StoryCreated(story_id=story_id)
 
+    async def process_pending(self, story_id: int, claimed_size: int) -> None:
+        async with self._session_factory() as session:
+            story = await session.get(Story, story_id, with_for_update=True)
+            if story is None or story.status != "processing":
+                return
+            owner_type = AccountType(story.owner_type)
+            owner_id = int(story.owner_account_id)
+            object_key = story.source_object_key
+            claimed_type = story.mime_type
+            caption = story.caption
         try:
             processed = await self._processor.process(
-                owner_type=account_type,
-                owner_id=account_id,
-                object_key=body.object_key,
-                claimed_type=body.content_type,
-                claimed_size=body.size_bytes,
-                caption=body.caption,
+                owner_type=owner_type,
+                owner_id=owner_id,
+                object_key=object_key,
+                claimed_type=claimed_type,
+                claimed_size=claimed_size,
+                caption=caption,
             )
-        except Exception as exc:
+        except (StoryValidationError, UploadRejected):
             await self._mark_failed(story_id)
             try:
-                self._storage.delete_object(body.object_key)
+                await self.cleanup_object(object_key)
             except Exception:
-                pass
-            if isinstance(exc, (StoryValidationError, UploadRejected)):
-                raise ApiError(
-                    400, "story_upload_rejected", str(exc)
-                ) from None
-            raise ApiError(
-                500,
-                "story_processing_failed",
-                "Istoriya joylanmadi. Qayta urinib ko‘ring.",
-            ) from exc
+                await self._defer_object_cleanup(object_key)
+            return
 
         try:
             async with self._session_factory() as session:
-                saved = await session.get(Story, story_id)
+                saved = await session.get(Story, story_id, with_for_update=True)
                 if saved is None:
-                    raise ApiError(404, "story_not_found", "Istoriya topilmadi.")
+                    await self._cleanup_generated_media(processed)
+                    return
+                if saved.status != "processing":
+                    await self._cleanup_generated_media(processed)
+                    return
                 saved.media_type = processed.media_type
                 saved.media_object_key = processed.media_object_key
                 saved.thumbnail_object_key = processed.thumbnail_object_key
@@ -195,30 +210,48 @@ class StoryService:
                 saved.duration_seconds = processed.duration_seconds
                 saved.status = "active"
                 await session.commit()
-                profile = (
-                    await self._repository.profiles(session, {account_id})
-                ).get(account_id)
-                return StoryCreated(
-                    story=self._story_read(saved, profile or {}, viewed=False)
-                )
+            if (
+                processed.media_type == "video"
+                and object_key
+                and object_key != processed.media_object_key
+            ):
+                try:
+                    await self.cleanup_object(object_key)
+                except Exception:
+                    await self._defer_object_cleanup(object_key)
         except Exception as exc:
-            await self._mark_failed(story_id)
-            for key in {
-                processed.media_object_key,
-                processed.thumbnail_object_key,
-            }:
-                if key:
-                    try:
-                        self._storage.delete_object(key)
-                    except Exception:
-                        pass
-            if isinstance(exc, ApiError):
-                raise
-            raise ApiError(
-                500,
-                "story_activation_failed",
-                "Istoriya saqlanmadi. Qayta urinib ko‘ring.",
-            ) from exc
+            await self._cleanup_generated_media(processed)
+            raise RuntimeError("story_activation_failed") from exc
+
+    async def cleanup_object(self, object_key: str) -> None:
+        await asyncio.to_thread(self._storage.delete_object, object_key)
+
+    async def _cleanup_generated_media(self, processed: Any) -> None:
+        # Image processing reuses the source object; deleting it would make a
+        # retry impossible. Video processing creates separate derived objects.
+        if processed.media_type != "video":
+            return
+        for key in {processed.media_object_key, processed.thumbnail_object_key}:
+            if not key:
+                continue
+            try:
+                await self.cleanup_object(key)
+            except Exception:
+                await self._defer_object_cleanup(key)
+
+    async def _defer_object_cleanup(self, object_key: str) -> None:
+        try:
+            async with self._session_factory() as session:
+                await enqueue_event(
+                    session,
+                    "media.object.delete",
+                    {"object_key": object_key},
+                )
+                await session.commit()
+        except Exception:
+            # Story allaqachon active; cleanup navbatini yozishdagi xato uni
+            # foydalanuvchidan yashirmasligi kerak.
+            return
 
     async def feed(
         self,

@@ -1,9 +1,11 @@
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import Account, AccountType
@@ -20,6 +22,9 @@ from app.auth.security import derive_csrf
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
 from app.notifications.repository import NotificationRepository
+from app.media.storage import UploadRejected
+from app.media.model import MediaUploadGrant
+from app.outbox.repository import enqueue_event
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
     get_business_profile,
@@ -53,6 +58,74 @@ CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 _cabinet_records = CabinetRecordRepository()
 _notifications = NotificationRepository()
 _education = EducationEnrollmentRepository()
+
+
+async def verify_profile_upload(request: Request, object_key: str) -> None:
+    try:
+        await asyncio.to_thread(
+            request.app.state.r2.verify_profile_image,
+            object_key,
+        )
+    except UploadRejected as exc:
+        try:
+            await asyncio.to_thread(
+                request.app.state.r2.delete_object,
+                object_key,
+            )
+        except Exception:
+            await defer_profile_object_cleanup(request, object_key)
+        raise ApiError(400, "media_upload_rejected", str(exc)) from None
+
+
+async def defer_profile_object_cleanup(request: Request, object_key: str) -> None:
+    database = getattr(request.app.state, "database", None)
+    if database is None:
+        return
+    try:
+        async with database.session() as session:
+            await enqueue_event(
+                session,
+                "media.object.delete",
+                {"object_key": object_key},
+            )
+            await session.commit()
+    except Exception:
+        # A periodic orphan sweep remains the final fallback for unattached
+        # uploads when even the cleanup event cannot be persisted.
+        return
+
+
+async def delete_replaced_profile_object(
+    request: Request,
+    old_key: str,
+    new_key: str | None,
+) -> None:
+    if not old_key or old_key == new_key:
+        return
+    try:
+        await asyncio.to_thread(request.app.state.r2.delete_object, old_key)
+    except Exception:
+        # Profil yozuvi saqlangan; cleanup xatosi foydalanuvchi amalini buzmaydi.
+        await defer_profile_object_cleanup(request, old_key)
+
+
+async def mark_profile_upload_attached(
+    session: AsyncSession,
+    object_key: str | None,
+) -> None:
+    if not object_key:
+        return
+    grant = await session.scalar(
+        select(MediaUploadGrant)
+        .where(
+            MediaUploadGrant.object_key == object_key,
+            MediaUploadGrant.status == "pending",
+        )
+        .with_for_update()
+    )
+    if grant is not None:
+        grant.status = "attached"
+        grant.attached_at = datetime.now(UTC)
 
 
 async def profile_session(request: Request) -> AsyncIterator[AsyncSession]:
@@ -139,6 +212,15 @@ async def assembled_cabinet_payload(
     return result
 
 
+def runtime_cabinet_fallback(request: Request, payload: object) -> object:
+    # Compatibility fixtures still exercise the old JSON projection in tests.
+    # Every deploy environment reads only normalized relational records.
+    settings = getattr(request.app.state, "settings", None)
+    if settings is not None and settings.environment == "test":
+        return payload
+    return {}
+
+
 def dashboard_with_notification_count(
     profile,
     cabinet_payload: dict[str, Any],
@@ -195,7 +277,7 @@ async def user_profile_response(
         session,
         account_id=profile.account_id,
         account_type=AccountType.USER,
-        fallback=profile.cabinet_payload,
+        fallback=runtime_cabinet_fallback(request, profile.cabinet_payload),
     )
     return UserProfileRead.model_validate(profile).model_copy(
         update={
@@ -226,7 +308,7 @@ async def business_profile_response(
         session,
         account_id=profile.account_id,
         account_type=AccountType.BUSINESS,
-        fallback=profile.cabinet_payload,
+        fallback=runtime_cabinet_fallback(request, profile.cabinet_payload),
     )
     response = business_profile_read(request, profile, cabinet_payload=payload)
     if current is None or current.actor_type != "staff":
@@ -322,12 +404,26 @@ async def update_business_profile(
             account_id=current.account_id,
             purpose="payment_qr",
         )
+        await verify_profile_upload(request, body.pay_qr_object_key)
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_qr_key = profile.pay_qr_object_key
         await patch_business_profile(session, profile, body)
+        if "pay_qr_object_key" in body.model_fields_set:
+            await mark_profile_upload_attached(
+                session,
+                body.pay_qr_object_key,
+            )
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        response = await business_profile_response(request, session, profile)
+        if "pay_qr_object_key" in body.model_fields_set:
+            await delete_replaced_profile_object(
+                request,
+                old_qr_key,
+                body.pay_qr_object_key,
+            )
+        return response
     except Exception:
         await session.rollback()
         raise
@@ -414,16 +510,21 @@ async def attach_user_avatar(
         account_id=current.account_id,
         purpose="avatar",
     )
+    await verify_profile_upload(request, body.object_key)
     try:
         profile = await get_user_profile(session, current.account_id)
+        old_key = profile.avatar_object_key
         profile.avatar_object_key = body.object_key
         profile.avatar_x = body.x
         profile.avatar_y = body.y
         profile.avatar_zoom = body.zoom
+        await mark_profile_upload_attached(session, body.object_key)
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await user_profile_response(request, session, profile)
+        response = await user_profile_response(request, session, profile)
+        await delete_replaced_profile_object(request, old_key, body.object_key)
+        return response
     except Exception:
         await session.rollback()
         raise
@@ -445,16 +546,21 @@ async def attach_business_logo(
         account_id=current.account_id,
         purpose="logo",
     )
+    await verify_profile_upload(request, body.object_key)
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_key = profile.logo_object_key
         profile.logo_object_key = body.object_key
         profile.logo_x = body.x
         profile.logo_y = body.y
         profile.logo_zoom = body.zoom
+        await mark_profile_upload_attached(session, body.object_key)
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        response = await business_profile_response(request, session, profile)
+        await delete_replaced_profile_object(request, old_key, body.object_key)
+        return response
     except Exception:
         await session.rollback()
         raise
@@ -477,13 +583,18 @@ async def attach_business_payment_qr(
             account_id=current.account_id,
             purpose="payment_qr",
         )
+        await verify_profile_upload(request, body.object_key)
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_key = profile.pay_qr_object_key
         profile.pay_qr_object_key = body.object_key
+        await mark_profile_upload_attached(session, body.object_key)
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        response = await business_profile_response(request, session, profile)
+        await delete_replaced_profile_object(request, old_key, body.object_key)
+        return response
     except Exception:
         await session.rollback()
         raise

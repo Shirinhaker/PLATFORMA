@@ -74,7 +74,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
-/** v1656da rekvizitlar `details` JSON'ida. Karta raqami eng ko'p
+/** modularda rekvizitlar `details` JSON'ida. Karta raqami eng ko'p
  *  ishlatiladigan maydon bo'lgani uchun unga alohida katak berilgan;
  *  boshqa kalitlar tegilmay saqlanadi. */
 function cardNumberOf(details: Record<string, unknown>) {

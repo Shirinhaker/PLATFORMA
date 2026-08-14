@@ -79,25 +79,54 @@ class NotificationService:
         account_type: AccountType,
         staff_id: int | None = None,
         permissions: tuple[str, ...] = (),
+        before_id: int | None = None,
+        limit: int = 50,
     ) -> NotificationListRead:
         async with self._session_factory() as session:
             rows = await self._repository.list_rows(
                 session,
                 account_id=account_id,
                 account_type=account_type.value,
+                before_id=before_id,
+                limit=limit,
             ) or []
+            has_more = len(rows) > limit
+            if has_more:
+                # list_rows is chronological; the first row is the one extra
+                # older record fetched solely to detect the next page.
+                rows = rows[1:]
             visible = [
                 row for row in rows
                 if self._visible(row, staff_id=staff_id, permissions=permissions)
             ]
-            unread = sum(
-                1 for row in visible
-                if not int(row.get("is_read") or 0)
-                and not int(row.get("resolved_at") or 0)
-            )
+            if staff_id is None:
+                unread = await self._repository.unread_count(
+                    session,
+                    account_id=account_id,
+                    account_type=account_type.value,
+                )
+            else:
+                unread_rows = await self._repository.unread_rows(
+                    session,
+                    account_id=account_id,
+                    account_type=account_type.value,
+                )
+                unread = sum(
+                    1 for row in unread_rows
+                    if not int(row.get("resolved_at") or 0)
+                    and self._visible(
+                        row,
+                        staff_id=staff_id,
+                        permissions=permissions,
+                    )
+                )
             return NotificationListRead(
                 items=[self._read(row) for row in visible],
                 unread=unread,
+                next_cursor=(
+                    min(int(row["id"]) for row in rows)
+                    if has_more and rows else None
+                ),
             )
 
     async def actions(
@@ -177,7 +206,7 @@ class NotificationService:
                     read_at=now,
                 )
             else:
-                rows = await self._repository.list_rows(
+                rows = await self._repository.unread_rows(
                     session,
                     account_id=account_id,
                     account_type=account_type.value,

@@ -1,0 +1,318 @@
+.documents-modular {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 18px clamp(14px, 3vw, 24px) 40px;
+  color: var(--text, #17201f);
+}
+
+.documents-modular button,
+.documents-modular input,
+.documents-modular select,
+.documents-modular textarea {
+  font: inherit;
+}
+
+.documents-modular__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.documents-modular__header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.documents-modular__header h1 {
+  margin: 0;
+  font-size: 20px;
+  text-align: center;
+}
+
+.documents-modular__back {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line, #dfe7e5);
+  border-radius: 12px;
+  background: var(--card, #fff);
+  color: inherit;
+  cursor: pointer;
+}
+
+.documents-modular__menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.documents-modular__menu button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 78px;
+  padding: 13px;
+  border: 1px solid var(--line, #dfe7e5);
+  border-radius: 17px;
+  background: var(--card, #fff);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgb(19 65 57 / 5%);
+}
+
+.documents-modular__menu button > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--primary-tint, #e9f8f5);
+  font-size: 22px;
+}
+
+.documents-modular__menu b,
+.documents-modular__menu small,
+.documents-modular__list b,
+.documents-modular__list small {
+  display: block;
+}
+
+.documents-modular__menu small,
+.documents-modular__list small,
+.documents-modular__document-head small,
+.documents-modular__send small {
+  margin-top: 3px;
+  color: var(--muted, #6b7774);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.documents-modular__form {
+  display: grid;
+  gap: 12px;
+}
+
+.documents-modular__form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.documents-modular__form input,
+.documents-modular__form select,
+.documents-modular__form textarea,
+.documents-modular__body,
+.documents-modular__send input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--line, #d7e0de);
+  border-radius: 12px;
+  background: var(--card, #fff);
+  color: inherit;
+}
+
+.documents-modular__form textarea,
+.documents-modular__body {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.documents-modular__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.documents-modular__info,
+.documents-modular__empty,
+.documents-modular__send {
+  padding: 12px;
+  border: 1px solid var(--line, #dfe7e5);
+  border-radius: 13px;
+  background: var(--primary-tint, #eff9f7);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.documents-modular__primary,
+.documents-modular__soft {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.documents-modular__primary {
+  border: 1px solid var(--primary, #078c7f);
+  background: var(--primary, #078c7f);
+  color: #fff;
+  font-weight: 800;
+}
+
+.documents-modular__soft {
+  border: 1px solid var(--line, #d7e0de);
+  background: var(--card, #fff);
+  color: inherit;
+}
+
+.documents-modular button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.documents-modular__danger {
+  color: #c83232;
+}
+
+.documents-modular__total {
+  display: grid;
+  justify-items: center;
+  margin-bottom: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--primary-tint, #eaf8f5);
+}
+
+.documents-modular__total strong {
+  font-size: 30px;
+}
+
+.documents-modular__list {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.documents-modular__list button,
+.documents-modular__list article {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--line, #dfe7e5);
+  border-radius: 13px;
+  background: var(--card, #fff);
+  color: inherit;
+  text-align: left;
+}
+
+.documents-modular__list button {
+  cursor: pointer;
+}
+
+.documents-modular__preview {
+  opacity: .72;
+}
+
+.documents-modular__status {
+  display: inline-block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgb(107 114 128 / 12%);
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.documents-modular__status.sent {
+  background: rgb(37 99 235 / 12%);
+  color: #1e40af;
+}
+
+.documents-modular__status.waiting {
+  background: rgb(230 161 0 / 15%);
+  color: #b45309;
+}
+
+.documents-modular__status.accepted {
+  background: rgb(24 128 56 / 12%);
+  color: #188038;
+}
+
+.documents-modular__status.rejected {
+  background: rgb(229 57 53 / 12%);
+  color: #e53935;
+}
+
+.documents-modular__document-head {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.documents-modular__document-head > b {
+  font-size: 16px;
+}
+
+.documents-modular__body[readonly] {
+  background: var(--soft-bg, #f7f9f8);
+}
+
+.documents-modular__send {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.documents-modular__send > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.documents-modular__send button {
+  padding: 0 14px;
+  border: 1px solid var(--line, #d7e0de);
+  border-radius: 11px;
+  background: var(--card, #fff);
+  color: inherit;
+  font-weight: 700;
+}
+
+.documents-modular__actions {
+  display: grid;
+  gap: 2px;
+}
+
+.documents-modular__error,
+.documents-modular__notice {
+  margin: 9px 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 13px;
+}
+
+.documents-modular__error {
+  background: rgb(229 57 53 / 10%);
+  color: #c62828;
+}
+
+.documents-modular__notice {
+  background: rgb(24 128 56 / 10%);
+  color: #18763a;
+}
+
+@media (max-width: 560px) {
+  .documents-modular__menu {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

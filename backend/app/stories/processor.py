@@ -253,7 +253,6 @@ class StoryMediaProcessor:
                         except Exception:
                             pass
                 raise
-            self._storage.delete_object(object_key)
             return ProcessedStoryMedia(
                 media_type="video",
                 media_object_key=media_key,

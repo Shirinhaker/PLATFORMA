@@ -101,7 +101,7 @@ describe("obuna tarifini sotib olish", () => {
       />,
     );
 
-    // v1656 `paymentMethodText`: qabul qiluvchi, rekvizit, ko'rsatma.
+    // modular `paymentMethodText`: qabul qiluvchi, rekvizit, ko'rsatma.
     const details = screen.getByText(/Qabul qiluvchi: Bunyod Rahimov/);
     expect(details).toBeVisible();
     expect(details).toHaveTextContent("5614 6819 1868 7751");

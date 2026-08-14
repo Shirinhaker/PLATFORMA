@@ -141,7 +141,7 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
 
 
 describe("business online server mutations", () => {
-  it("sends the v1656 notification and review actions to the API", async () => {
+  it("sends the modular notification and review actions to the API", async () => {
     const { user, client } = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /Bildirishnomalarim/ }));
@@ -186,7 +186,7 @@ describe("business online server mutations", () => {
 
   });
 
-  it("renders following as the exact v1656 read-only profile list", async () => {
+  it("renders following as the exact modular read-only profile list", async () => {
     const { user, client } = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /Biznes obunalari/ }));

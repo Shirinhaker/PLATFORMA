@@ -91,7 +91,7 @@ async def owner_stories(
     )
 
 
-@router.post("", response_model=StoryCreated, status_code=201)
+@router.post("", response_model=StoryCreated, status_code=202)
 async def create_story(
     body: StoryCreate,
     request: Request,

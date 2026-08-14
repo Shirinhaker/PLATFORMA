@@ -15,7 +15,8 @@ from app.education.model import (
     EducationStudentGroupHistory,
     EducationTeacher,
 )
-from app.legacy_migration.model import LegacyIdMap, ReviewState
+from app.core.legacy_ids import LegacyIdMap
+from app.core.states import ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
 
 
@@ -105,8 +106,11 @@ class EducationEnrollmentRepository:
     def __init__(
         self,
         cabinet_records: CabinetRecordRepository | None = None,
+        *,
+        legacy_json_compatibility: bool = True,
     ) -> None:
         self._cabinet_records = cabinet_records or CabinetRecordRepository()
+        self._legacy_json_compatibility = legacy_json_compatibility
 
     @staticmethod
     def supported(session: AsyncSession) -> bool:
@@ -230,6 +234,8 @@ class EducationEnrollmentRepository:
                 resource="items",
             )
             return [dict(row) for row in rows if isinstance(row, dict)]
+        if not self._legacy_json_compatibility:
+            return []
         payload = (
             profile.cabinet_payload
             if isinstance(profile.cabinet_payload, dict)

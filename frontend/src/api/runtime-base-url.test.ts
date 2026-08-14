@@ -46,17 +46,16 @@ function missingConfigRequest() {
 
 
 describe("loadApiBaseUrl", () => {
-  it("uses an HTTPS query only as a non-persistent debug override", async () => {
+  it("rejects the removed API query override", async () => {
     const fetcher = vi.fn();
     const legacyStorage = storage();
 
-    const result = await loadApiBaseUrl(
+    await expect(loadApiBaseUrl(
       fetcher as unknown as typeof fetch,
       location("?api=https%3A%2F%2Fdebug-api.example%2F"),
       legacyStorage,
-    );
+    )).rejects.toMatchObject({ code: "api_debug_override_disabled" });
 
-    expect(result).toBe("https://debug-api.example");
     expect(fetcher).not.toHaveBeenCalled();
     expect(legacyStorage.removeItem).toHaveBeenCalledWith(
       "koprik_api_base_url",
@@ -194,11 +193,11 @@ describe("loadApiBaseUrl", () => {
     });
   });
 
-  it("rejects an insecure debug API origin", async () => {
+  it("rejects an insecure debug API origin with the same closed error", async () => {
     await expect(loadApiBaseUrl(
       vi.fn() as unknown as typeof fetch,
       location("?api=http%3A%2F%2Finsecure.local"),
       storage(),
-    )).rejects.toMatchObject({ code: "api_debug_origin_invalid" });
+    )).rejects.toMatchObject({ code: "api_debug_override_disabled" });
   });
 });

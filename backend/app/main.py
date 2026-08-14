@@ -33,7 +33,7 @@ from app.catalog.service import CatalogService
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.logging import configure_logging
-from app.core.middleware import RequestIdMiddleware, request_id_context
+from app.core.middleware import MetricsMiddleware, RequestIdMiddleware, request_id_context
 from app.db.session import Database
 from app.admin.moderation_service import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
@@ -50,6 +50,7 @@ from app.documents.service import DocumentService
 from app.education.router import router as education_router
 from app.education.management_service import EducationManagementService
 from app.education.service import EducationEnrollmentService
+from app.education.repository import EducationEnrollmentRepository
 from app.education.statistics_service import EducationStatisticsService
 from app.expenses.router import router as expenses_router
 from app.expenses.service import ExpenseService
@@ -153,9 +154,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             resolved,
         )
         catalog_cache_epoch = CatalogCacheEpoch(redis_client)
+        education_repository = EducationEnrollmentRepository(
+            legacy_json_compatibility=resolved.environment == "test",
+        )
         app.state.business_online_service = BusinessOnlineService(
             database.session,
             catalog_cache_epoch=catalog_cache_epoch,
+            education_repository=education_repository,
+            legacy_json_compatibility=resolved.environment == "test",
         )
         app.state.public_discovery_service = PublicDiscoveryService(
             database.session,
@@ -271,12 +277,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,
+            repository=education_repository,
         )
         app.state.education_statistics_service = EducationStatisticsService(
             database.session,
         )
         app.state.education_management_service = EducationManagementService(
             database.session,
+            enrollment_repository=education_repository,
         )
         app.state.staff_service = StaffService(database.session, resolved)
         app.state.statistics_service = StatisticsService(database.session)
@@ -301,6 +309,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["*"],
         )
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(MetricsMiddleware)
     app.state.settings = resolved
     app.state.r2 = build_r2_storage(resolved)
     app.include_router(platform_router)

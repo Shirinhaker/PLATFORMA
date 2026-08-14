@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.legacy_migration.model import ReviewState
+from app.core.states import ReviewState
 from app.listings.model import Listing, ListingMedia, ListingSave
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 

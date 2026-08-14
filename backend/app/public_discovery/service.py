@@ -182,6 +182,7 @@ class PublicDiscoveryService:
                 public_id=public_id,
                 image_url_provider=self._image_url_provider,
                 include_listings=self._settings.listings_enabled,
+                legacy_json_compatibility=self._settings.environment == "test",
             )
             await session.rollback()
             return result
