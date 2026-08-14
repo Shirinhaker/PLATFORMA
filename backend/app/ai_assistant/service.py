@@ -15,7 +15,13 @@ from app.ai_assistant.documents import (
 from app.ai_assistant.model import AIChatMessage
 from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.repository import AIAssistantRepository
-from app.ai_assistant.schemas import AIChatAnswerRead, AIChatHistoryRead, AIChatMessageRead, AIDocumentDraftRead, AIDocumentDraftRequest
+from app.ai_assistant.schemas import (
+    AIChatAnswerRead,
+    AIChatHistoryRead,
+    AIChatMessageRead,
+    AIDocumentDraftRead,
+    AIDocumentDraftRequest,
+)
 from app.core.errors import ApiError
 
 
@@ -28,7 +34,13 @@ def _money(value: int) -> str:
 
 
 class AIAssistantService:
-    def __init__(self, session_factory: SessionFactory, provider: OpenAIResponsesProvider, *, repository: AIAssistantRepository | None = None) -> None:
+    def __init__(
+        self,
+        session_factory: SessionFactory,
+        provider: OpenAIResponsesProvider,
+        *,
+        repository: AIAssistantRepository | None = None,
+    ) -> None:
         self._session_factory = session_factory
         self._provider = provider
         self._repository = repository or AIAssistantRepository()
@@ -42,8 +54,21 @@ class AIAssistantService:
 
     async def history(self, business_id: int, limit: int) -> AIChatHistoryRead:
         async with self._session_factory() as session:
-            rows = await self._repository.history(session, business_id, max(1, min(limit, 100)))
-            result = AIChatHistoryRead(history=[AIChatMessageRead(role=row.role, text=row.text, created_at=row.created_at) for row in rows])
+            rows = await self._repository.history(
+                session,
+                business_id,
+                max(1, min(limit, 100)),
+            )
+            result = AIChatHistoryRead(
+                history=[
+                    AIChatMessageRead(
+                        role=row.role,
+                        text=row.text,
+                        created_at=row.created_at,
+                    )
+                    for row in rows
+                ]
+            )
             await session.rollback()
             return result
 
@@ -58,25 +83,38 @@ class AIAssistantService:
         async with self._session_factory() as session:
             business = await self._repository.business(session, business_id)
             if business is None:
-                raise ApiError(404, "business_not_found", "Biznes profili topilmadi.")
-            context = await self._repository.context(session, business_id, start, end)
+                raise ApiError(
+                    404,
+                    "business_not_found",
+                    "Biznes profili topilmadi.",
+                )
+            context = await self._repository.context(
+                session,
+                business_id,
+                start,
+                end,
+            )
             context["today"] = local_day.isoformat()
+            # Oddiy chat uchun huquqiy/shaxsiy rekvizitlar tashqi AI
+            # provayderiga yuborilmaydi. Hujjat drafti alohida, foydalanuvchi
+            # ataylab chaqiradigan oqim bo'lib, o'sha yerda zarur rekvizitlar
+            # kontekstga maqsadli ravishda kiritiladi.
             context["business"] = {
-                "id": business_id,
                 "name": business.name,
-                "yon": business.direction,
-                "tur": business.activity_type,
-                "director": business.director,
-                "inn": business.tax_id,
-                "address": business.address,
-                "phone": business.phone,
+                "direction": business.direction,
+                "activity_type": business.activity_type,
             }
             await session.rollback()
         answer = await self._provider.answer(
             "Sen Platforma biznes kabinetidagi AI yordamchisan. O'zbek "
             "tilida, sodda va aniq javob ber. Faqat berilgan biznes "
             "kontekstiga asoslan.",
-            "Biznes konteksti:\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n\nSavol:\n" + message,
+            (
+                "Biznes konteksti:\n"
+                + json.dumps(context, ensure_ascii=False, indent=2)
+                + "\n\nSavol:\n"
+                + message
+            ),
             max_output_tokens=1200,
         )
         source = "openai" if answer else "local"
@@ -84,13 +122,29 @@ class AIAssistantService:
             answer = self._local_answer(message, context)
         async with self._session_factory() as session:
             session.add_all([
-                AIChatMessage(business_account_id=business_id, role="user", text=message, source="user", created_at=now),
-                AIChatMessage(business_account_id=business_id, role="assistant", text=answer, source=source, created_at=now),
+                AIChatMessage(
+                    business_account_id=business_id,
+                    role="user",
+                    text=message,
+                    source="user",
+                    created_at=now,
+                ),
+                AIChatMessage(
+                    business_account_id=business_id,
+                    role="assistant",
+                    text=answer,
+                    source=source,
+                    created_at=now,
+                ),
             ])
             await session.commit()
             return AIChatAnswerRead(answer=answer, source=source)
 
-    async def document_draft(self, business_id: int, body: AIDocumentDraftRequest) -> AIDocumentDraftRead:
+    async def document_draft(
+        self,
+        business_id: int,
+        body: AIDocumentDraftRequest,
+    ) -> AIDocumentDraftRead:
         user_prompt = body.prompt.strip()
         if not user_prompt:
             raise ApiError(
@@ -102,7 +156,11 @@ class AIAssistantService:
         async with self._session_factory() as session:
             business = await self._repository.business(session, business_id)
             if business is None:
-                raise ApiError(404, "business_not_found", "Biznes profili topilmadi.")
+                raise ApiError(
+                    404,
+                    "business_not_found",
+                    "Biznes profili topilmadi.",
+                )
             direction, doc_type = self._doc_type(
                 user_prompt,
                 body.direction,
@@ -149,7 +207,12 @@ class AIAssistantService:
         )
         source = "openai" if text else "local"
         if not text:
-            text = local_document_body(user_prompt, direction, doc_type, context)
+            text = local_document_body(
+                user_prompt,
+                direction,
+                doc_type,
+                context,
+            )
         title = body.title.strip() or (
             user_prompt[:70] + ("..." if len(user_prompt) > 70 else "")
         )
@@ -164,14 +227,21 @@ class AIAssistantService:
         )
 
     @staticmethod
-    def _doc_type(prompt: str, direction: str, doc_type: str) -> tuple[str, str]:
+    def _doc_type(
+        prompt: str,
+        direction: str,
+        doc_type: str,
+    ) -> tuple[str, str]:
         return pick_document_type(prompt, direction, doc_type)
 
     @staticmethod
     def _local_answer(message: str, context: dict) -> str:
         lowered = message.lower()
         summary = context["today_summary"]
-        if any(word in lowered for word in ("savdo", "tushum", "foyda", "statistika")):
+        if any(
+            word in lowered
+            for word in ("savdo", "tushum", "foyda", "statistika")
+        ):
             return (
                 "📊 Bugungi xulosa:\n"
                 "• Tushum: " + _money(summary["revenue"]) + "\n"
@@ -191,10 +261,19 @@ class AIAssistantService:
                 )
             )
         if any(word in lowered for word in ("qarz", "debitor")):
-            return "📒 Umumiy qarz qoldig'i: " + _money(context["debt_total"]) + "."
+            return (
+                "📒 Umumiy qarz qoldig'i: "
+                + _money(context["debt_total"])
+                + "."
+            )
         if any(word in lowered for word in ("buyurtma", "zakaz")):
             rows = context["orders_by_status"]
-            return "📥 Hozir buyurtmalar statistikasi topilmadi." if not rows else "📥 Buyurtmalar holati:\n" + "\n".join(f"• {key}: {value}" for key, value in rows.items())
+            return (
+                "📥 Hozir buyurtmalar statistikasi topilmadi."
+                if not rows
+                else "📥 Buyurtmalar holati:\n"
+                + "\n".join(f"• {key}: {value}" for key, value in rows.items())
+            )
         if any(
             word in lowered
             for word in ("eng ko'p", "eng ko‘p", "ko'p sot", "ko‘p sot", "top")
@@ -203,7 +282,8 @@ class AIAssistantService:
             if not rows:
                 return "🛒 Bugun sotilgan mahsulotlar topilmadi."
             return "🛒 Eng ko'p sotilganlar:\n" + "\n".join(
-                f"• {row['name']} — {row['qty']:g} {row['unit']} · {_money(row['total'])}"
+                f"• {row['name']} — {row['qty']:g} {row['unit']} · "
+                f"{_money(row['total'])}"
                 for row in rows[:6]
             )
         return (
@@ -212,7 +292,8 @@ class AIAssistantService:
             "• Xarajat: " + _money(summary["expenses"]) + "\n"
             "• Sof foyda: " + _money(summary["profit"]) + "\n"
             "• Qarz qoldig'i: " + _money(context["debt_total"]) + "\n"
-            "• Kam qolgan tovarlar: " + str(len(context.get("low_stock") or []))
+            "• Kam qolgan tovarlar: "
+            + str(len(context.get("low_stock") or []))
             + " ta\n\nOmbor, qarz, buyurtma yoki savdo bo'yicha aniqroq "
             "so'rasangiz, batafsil aytaman."
         )
