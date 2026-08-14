@@ -27,7 +27,7 @@ dependencies = [
 test = [
   "pytest>=8,<10",
   "pytest-asyncio>=0.25,<2",
-  "pytest-cov==7.0.0",
+  "pytest-cov==7.1.0",
   "fakeredis[lua]>=2.37,<3",
   "mypy==1.17.1",
   "ruff==0.16.2",
