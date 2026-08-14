@@ -20,7 +20,7 @@ dependencies = [
   "cryptography>=50,<51",
   "python-json-logger>=3,<4",
   "firebase-admin==7.5.0",
-  "prometheus-client==0.22.1",
+  "prometheus-client==0.26.0",
 ]
 
 [project.optional-dependencies]
