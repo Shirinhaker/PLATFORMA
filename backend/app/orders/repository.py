@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogItem
-from app.legacy_migration.model import OwnerState, ReviewState
+from app.content_state import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.profiles.model import BusinessProfile, UserProfile
@@ -126,12 +126,14 @@ class OrderRepository:
     async def messages(
         self, session: AsyncSession, order_id: int
     ) -> list[OrderMessage]:
-        return list((await session.scalars(
+        rows = list((await session.scalars(
             select(OrderMessage)
             .where(OrderMessage.order_id == order_id)
-            .order_by(OrderMessage.created_at, OrderMessage.id)
+            .order_by(OrderMessage.created_at.desc(), OrderMessage.id.desc())
             .limit(500)
         )).all())
+        rows.reverse()
+        return rows
 
     async def message_summaries(
         self, session: AsyncSession, order_ids: list[int]
