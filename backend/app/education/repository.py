@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogItem
+from app.content_state import ReviewState
 from app.education.model import (
     CourseEnrollment,
     EducationGroup,
@@ -15,7 +16,7 @@ from app.education.model import (
     EducationStudentGroupHistory,
     EducationTeacher,
 )
-from app.legacy_migration.model import LegacyIdMap, ReviewState
+from app.legacy_identity_lookup import legacy_id_for_target
 from app.profiles.model import BusinessProfile, UserProfile
 
 
@@ -177,17 +178,11 @@ class EducationEnrollmentRepository:
         entity_type: str,
         target_id: int,
     ) -> int | None:
-        value = await session.scalar(
-            select(LegacyIdMap.legacy_id)
-            .where(
-                LegacyIdMap.entity_type == entity_type,
-                LegacyIdMap.target_id == target_id,
-                LegacyIdMap.mapping_status == "mapped",
-            )
-            .order_by(LegacyIdMap.legacy_id)
-            .limit(1)
+        return await legacy_id_for_target(
+            session,
+            entity_type=entity_type,
+            target_id=target_id,
         )
-        return int(value) if value is not None else None
 
     async def list_rows(
         self,
