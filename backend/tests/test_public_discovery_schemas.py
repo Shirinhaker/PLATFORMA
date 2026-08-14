@@ -122,7 +122,7 @@ def test_content_search_item_has_capabilities_without_private_ids():
     assert "image_object_key" not in payload
 
 
-def test_public_search_map_point_exposes_only_opted_in_business_location():
+def test_public_search_map_point_exposes_validated_business_location():
     item = PublicSearchItem(
         kind="service",
         public_id="s_public",

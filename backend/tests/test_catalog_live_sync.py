@@ -191,8 +191,17 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
         store,
         PublicSearchParams(q="ingliz tili", result_type="service"),
     )
-    assert hidden.items[0].map_point is None
+    assert hidden.items[0].map_point is not None
     assert hidden.items[0].owner_public_id == english.items[0].owner_public_id
+
+    business.latitude = None
+    business.longitude = None
+    store.sync.commit()
+    without_location = await search_public_profiles(
+        store,
+        PublicSearchParams(q="ingliz tili", result_type="service"),
+    )
+    assert without_location.items[0].map_point is None
 
 
 @pytest.mark.asyncio
