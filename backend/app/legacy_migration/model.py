@@ -6,7 +6,6 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Identity,
     Integer,
@@ -16,17 +15,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.content_state import (
+    OWNER_STATE_ENUM,
+    REVIEW_STATE_ENUM,
+    OwnerState,
+    ReviewState,
+    enum_type,
+)
 from app.db.base import Base
-
-
-class OwnerState(str, Enum):
-    LINKED = "linked"
-    UNLINKED = "unlinked"
-
-
-class ReviewState(str, Enum):
-    READY = "ready"
-    REVIEW_REQUIRED = "review_required"
 
 
 class MigrationEnvironment(str, Enum):
@@ -61,17 +57,6 @@ class MediaMigrationState(str, Enum):
     FAILED = "failed"
 
 
-def enum_type(enum: type[Enum], name: str) -> SqlEnum:
-    return SqlEnum(
-        enum,
-        name=name,
-        values_callable=lambda enum_class: [item.value for item in enum_class],
-        validate_strings=True,
-    )
-
-
-OWNER_STATE_ENUM = enum_type(OwnerState, "owner_state")
-REVIEW_STATE_ENUM = enum_type(ReviewState, "review_state")
 MIGRATION_ENVIRONMENT_ENUM = enum_type(
     MigrationEnvironment,
     "migration_environment",
