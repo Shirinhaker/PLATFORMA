@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 import re
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import AccountType
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.errors import ApiError
-from app.core.states import ReviewState
+from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing
 from app.listings.repository import ListingRepository
 from app.listings.schemas import (

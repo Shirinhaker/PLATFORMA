@@ -24,7 +24,7 @@ from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.follows.model import ProfileFollow
-from app.core.states import ReviewState
+from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.payments.model import BusinessSubscription
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
@@ -60,8 +60,6 @@ from app.public_discovery.schemas import (
     PublicSearchMapPoint,
     PublicSearchParams,
     PublicSearchResponse,
-    decode_search_cursor,
-    encode_search_cursor,
 )
 
 
@@ -535,25 +533,18 @@ def build_public_search_statements(
     else:
         combined = union_all(*queries).subquery("public_profiles")
 
-    normalized_name = func.lower(combined.c.name)
-    data_statement = select(combined)
-    if params.cursor:
-        cursor_name, cursor_kind, cursor_id = decode_search_cursor(params.cursor)
-        data_statement = data_statement.where(or_(
-            normalized_name > cursor_name,
-            and_(normalized_name == cursor_name, combined.c.kind > cursor_kind),
-            and_(
-                normalized_name == cursor_name,
-                combined.c.kind == cursor_kind,
-                combined.c.account_id > cursor_id,
-            ),
-        ))
-    data_statement = data_statement.order_by(
-        normalized_name,
-        combined.c.kind,
-        combined.c.account_id,
-    ).limit(params.page_size + 1)
-    return data_statement, None
+    data_statement = (
+        select(combined)
+        .order_by(
+            func.lower(combined.c.name),
+            combined.c.kind,
+            combined.c.account_id,
+        )
+        .limit(params.page_size)
+        .offset(params.offset)
+    )
+    count_statement = select(func.count()).select_from(combined)
+    return data_statement, count_statement
 
 
 async def search_public_profiles(
@@ -563,14 +554,13 @@ async def search_public_profiles(
     include_content: bool = True,
     include_listings: bool = False,
 ) -> PublicSearchResponse:
-    data_statement, _ = build_public_search_statements(
+    data_statement, count_statement = build_public_search_statements(
         params,
         include_content=include_content,
         include_listings=include_listings,
     )
-    rows = list((await session.execute(data_statement)).mappings().all())
-    has_more = len(rows) > params.page_size
-    rows = rows[:params.page_size]
+    rows = (await session.execute(data_statement)).mappings().all()
+    total = int((await session.execute(count_statement)).scalar_one())
 
     items = []
     for row in rows:
@@ -620,23 +610,39 @@ async def search_public_profiles(
         )
     return PublicSearchResponse(
         items=items,
-        page=1,
+        page=params.page,
         page_size=params.page_size,
-        # Cursor pagination intentionally avoids an unbounded COUNT across the
-        # UNION. If the first page already exhausts the query its length is an
-        # exact total; otherwise `None` prevents clients from mistaking a page
-        # length for the full result count.
-        total=(len(items) if not params.cursor and not has_more else None),
-        has_more=has_more,
-        next_cursor=(
-            encode_search_cursor(
-                str(rows[-1]["name"]).lower(),
-                str(rows[-1]["kind"]),
-                int(rows[-1]["account_id"]),
-            )
-            if has_more and rows else None
-        ),
+        total=total,
     )
+
+
+def _has_legacy_active_subscription(
+    profile: BusinessProfile,
+    eligible_plan_codes: frozenset[str],
+) -> bool:
+    payload = (
+        profile.cabinet_payload
+        if isinstance(profile.cabinet_payload, dict)
+        else {}
+    )
+    rows = payload.get("business_subscriptions", [])
+    if not isinstance(rows, list):
+        return False
+    now = int(time.time())
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            expires_at = int(row.get("expires_at") or 0)
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if (
+            str(row.get("status") or "") == "active"
+            and str(row.get("plan_code") or "") in eligible_plan_codes
+            and expires_at > now
+        ):
+            return True
+    return False
 
 
 async def _active_subscription_business_ids(
@@ -689,9 +695,9 @@ def _has_active_subscription(
     active_business_ids: set[int],
     eligible_plan_codes: frozenset[str],
 ) -> bool:
-    del eligible_plan_codes
     return (
         profile.account_id in active_business_ids
+        or _has_legacy_active_subscription(profile, eligible_plan_codes)
     )
 
 
@@ -936,7 +942,6 @@ async def load_public_profile(
     image_url_provider: ImageUrlProvider,
     include_listings: bool = True,
     queue_date: date | None = None,
-    legacy_json_compatibility: bool = True,
 ) -> PublicProfileDetail | None:
     account_id = await _resolve_public_profile_account_id(
         session,
@@ -1041,7 +1046,7 @@ async def load_public_profile(
             account_type="business",
             resource="items",
         )
-        if not course_rows and legacy_json_compatibility:
+        if not course_rows:
             payload = (
                 profile.cabinet_payload
                 if isinstance(profile.cabinet_payload, dict)

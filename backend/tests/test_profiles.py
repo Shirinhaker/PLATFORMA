@@ -31,11 +31,6 @@ class FakeProfileSession:
     async def get(self, model, account_id):
         return self.profiles[model].get(account_id)
 
-    async def scalar(self, _statement):
-        # Upload grants are integration-tested with a real SQLAlchemy session;
-        # this focused profile fake has no relational grant store.
-        return None
-
     async def flush(self):
         for model in (UserProfile, BusinessProfile):
             usernames = [
@@ -74,20 +69,6 @@ class FakeAuthService:
 
     async def resolve_session(self, raw_token, now):
         return self.identities.get(raw_token)
-
-
-class FakeProfileStorage:
-    def __init__(self):
-        self.deleted: list[str] = []
-
-    def verify_profile_image(self, _object_key: str) -> None:
-        return None
-
-    def delete_object(self, object_key: str) -> None:
-        self.deleted.append(object_key)
-
-    def create_download_url(self, object_key: str) -> str:
-        return f"https://media.test/{object_key}" if object_key else ""
 
 
 @pytest.fixture
@@ -179,7 +160,6 @@ async def profile_clients():
     app = create_app(settings)
     app.state.database = database
     app.state.auth_service = FakeAuthService(identities)
-    app.state.r2 = FakeProfileStorage()
     app.state.profile_summary_service = ProfileSummaryService(
         database.session,
         redis,

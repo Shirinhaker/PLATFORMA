@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
 
+from app.accounts.model import AccountType
 from app.auth.dependencies import (
     CurrentAccount,
     require_business_owner,
@@ -11,6 +12,7 @@ from app.auth.dependencies import (
 )
 from app.auth.router import _client_ip, _enforce_rate_limit, _set_session_cookie
 from app.auth.security import sha256_token
+from app.core.errors import ApiError
 from app.staff.schemas import (
     StaffAccessWrite,
     StaffAttendanceRead,

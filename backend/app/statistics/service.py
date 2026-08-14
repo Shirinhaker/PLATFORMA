@@ -15,6 +15,7 @@ from app.statistics.schemas import (
     StatisticsPaymentRead,
     StatisticsProductRead,
     StatisticsReportRead,
+    StatisticsSourceRead,
     StatisticsSourceSplitRead,
     StatisticsTrendRead,
     StatisticsWaiterRead,

@@ -18,7 +18,7 @@ import { LoginForm, type LoginDraft } from "./LoginForm";
 import { RegistrationForm } from "./RegistrationForm";
 import { StaffLoginForm } from "./StaffLoginForm";
 import { TelegramCodeForm } from "./TelegramCodeForm";
-import "./Auth.css";
+import "./AuthV1656.css";
 
 
 export type AuthApi = Pick<
@@ -174,7 +174,7 @@ export function AuthFlow({
   }
   return (
     <main className="koprik-auth-stage">
-      <section className="koprik-flow-shell koprik-auth-shell auth-modular">
+      <section className="koprik-flow-shell koprik-auth-shell auth-v1656">
         <h1 className="lead">Ro'yxatdan o'tish</h1>
         <div className="koprik-role-grid">
           <p className="lead-sub">Kim sifatida ro'yxatdan o'tmoqchisiz?</p>

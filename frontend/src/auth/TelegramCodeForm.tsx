@@ -114,7 +114,7 @@ export function TelegramCodeForm({
     const business = credentials.accountType === "business";
     return (
       <main className="koprik-auth-stage">
-        <section className="koprik-flow-shell koprik-auth-shell auth-modular credential-card">
+        <section className="koprik-flow-shell koprik-auth-shell auth-v1656 credential-card">
           <h1 className="lead">
             {business ? "Biznes profilingiz ochildi! ✅" : "Ro'yxatdan o'tdingiz! ✅"}
           </h1>
@@ -146,7 +146,7 @@ export function TelegramCodeForm({
 
   return (
     <main className="koprik-auth-stage">
-      <form className="koprik-flow-shell koprik-auth-shell auth-modular" onSubmit={verify}>
+      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={verify}>
         <h1 className="lead">Telegram orqali tasdiqlash</h1>
         <p className="lead-sub">Telegram bot yuborgan 6 xonali kodni kiriting.</p>
         <label className="field">

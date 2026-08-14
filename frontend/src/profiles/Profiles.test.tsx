@@ -669,7 +669,7 @@ describe("profile cabinets", () => {
     );
   });
 
-  it("opens migrated notification data from the modular cabinet", async () => {
+  it("opens migrated notification data from the v1656 cabinet", async () => {
     const user = userEvent.setup();
     render(
       <UserProfile
@@ -687,7 +687,7 @@ describe("profile cabinets", () => {
     expect(await screen.findByText("Yangi xabar")).toBeInTheDocument();
   });
 
-  it("opens the shared modular settings screen from both cabinets", async () => {
+  it("opens the shared v1656 settings screen from both cabinets", async () => {
     const user = userEvent.setup();
     const userCabinet = render(
       <UserProfile
@@ -786,7 +786,7 @@ describe("profile cabinets", () => {
     expect(onSwitched).toHaveBeenCalledWith(businessIdentity);
   });
 
-  it("offers modular business opening when the user has no linked business", async () => {
+  it("offers v1656 business opening when the user has no linked business", async () => {
     const user = userEvent.setup();
     const api = profileApi();
     api.getUserProfile.mockResolvedValue({ ...userProfile, has_business: false });
@@ -831,7 +831,7 @@ describe("profile cabinets", () => {
     expect(screen.getByText("Tayyor mahsulotlar")).toBeInTheDocument();
   });
 
-  it("opens the relational modular E'lonlar CRUD from the business cabinet", async () => {
+  it("opens the relational v1656 E'lonlar CRUD from the business cabinet", async () => {
     const user = userEvent.setup();
     const businessListing = {
       ...listing,
@@ -940,7 +940,7 @@ describe("profile cabinets", () => {
     expect(api.getDebtors).toHaveBeenCalledOnce();
   });
 
-  it("opens the modular editor and uploads the business logo", async () => {
+  it("opens the v1656 editor and uploads the business logo", async () => {
     const user = userEvent.setup();
     const api = profileApi();
     const file = new File(["image"], "logo.png", { type: "image/png" });

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.model import CatalogGroup, CatalogItem
-from app.core.states import OwnerState, ReviewState
+from app.legacy_migration.model import OwnerState, ReviewState
 
 
 CATALOG_RESOURCES = frozenset({"item_groups", "items"})

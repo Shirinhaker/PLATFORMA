@@ -1,7 +1,5 @@
 from redis.asyncio import Redis
 
-from app.core.metrics import EXTERNAL_ERRORS
-
 
 class RedisClient:
     def __init__(self, url: str, *, max_connections: int = 100) -> None:
@@ -29,5 +27,4 @@ class RedisClient:
         try:
             return bool(await self.client.ping())
         except Exception:
-            EXTERNAL_ERRORS.labels("redis").inc()
             return False

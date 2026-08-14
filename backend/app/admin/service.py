@@ -1,4 +1,4 @@
-"""Modular admin autentifikatsiyasi.
+"""Admin autentifikatsiyasi — v1656 `admin_auth.py` bilan bir xil oqim.
 
     Telegram ID (ro'yxatda bo'lishi shart)
     → bir martalik kod botga yuboriladi
@@ -85,13 +85,9 @@ class AdminAuthService:
             # Kod saqlanmaydi va navbatga ham yozilmaydi — u challenge
             # id sidan server siri bilan qayta hisoblanadi (auth domeni
             # bilan bir xil yondashuv).
-            code = derive_otp(
-                challenge.id,
-                0,
-                self._settings.admin_otp_secret,
-            )
+            code = derive_otp(challenge.id, 0, self._settings.otp_secret)
             challenge.code_hash = _code_hash(
-                self._settings.admin_otp_secret, telegram_user_id, code
+                self._settings.otp_secret, telegram_user_id, code
             )
             await enqueue_event(
                 session,
@@ -149,7 +145,7 @@ class AdminAuthService:
                     "Bu Telegram ID adminlar ro‘yxatida yo‘q.",
                 )
             expected = _code_hash(
-                self._settings.admin_otp_secret,
+                self._settings.otp_secret,
                 challenge.telegram_user_id,
                 str(code or ""),
             )

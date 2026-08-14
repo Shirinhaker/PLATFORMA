@@ -12,7 +12,7 @@ function response(body: unknown) {
 }
 
 
-describe("typed modular account settings API client", () => {
+describe("typed v1656 account settings API client", () => {
   it("uses the versioned owner endpoint and CSRF-protects credential writes", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(response({

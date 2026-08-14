@@ -27,7 +27,7 @@ function actions() {
 }
 
 
-describe("Claude review modular interaktiv pariteti", () => {
+describe("Claude review v1656 interaktiv pariteti", () => {
   it("rad etilgan to'lov uchun kvitansiya tanlaydi va qayta yuboradi", async () => {
     const user = userEvent.setup();
     const resubmit = vi.fn().mockResolvedValue(undefined);

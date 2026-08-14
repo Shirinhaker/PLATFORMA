@@ -1,0 +1,63 @@
+/* Oshpaz ekrani — v1656 `bizInternalOrdersList` bilan bir xil ko'rinish. */
+
+.biz-kitchen-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.biz-kitchen-tabs .seg-b {
+  flex: 1;
+  height: 38px;
+}
+
+.biz-kitchen-card {
+  margin: 9px 0;
+}
+
+.biz-kitchen-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.biz-kitchen-item {
+  margin-top: 3px;
+}
+
+.biz-kitchen-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.biz-kitchen-pay {
+  margin-top: 5px;
+}
+
+.biz-kitchen-ready {
+  width: 100%;
+  margin-top: 9px;
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.biz-kitchen-empty {
+  padding: 26px 16px;
+}
+
+.biz-kitchen-message {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+}
+
+.biz-kitchen-message.error {
+  background: #fef2f2;
+  color: #991b1b;
+}

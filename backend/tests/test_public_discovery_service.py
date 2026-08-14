@@ -146,7 +146,7 @@ def test_public_search_cache_key_changes_with_filters_and_pagination():
         PublicSearchParams(q="savdo", page=1)
     )
     second = PublicDiscoveryService.cache_key(
-        PublicSearchParams(q="savdo", cursor="WyJzYXZkbyIsImJ1c2luZXNzIiwxXQ")
+        PublicSearchParams(q="savdo", page=2)
     )
     third = PublicDiscoveryService.cache_key(
         PublicSearchParams(q="xizmat", page=1)

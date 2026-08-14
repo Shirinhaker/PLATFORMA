@@ -1,0 +1,347 @@
+import { useState } from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import { ItemsEditorView } from "./BusinessOnlineEditingViews";
+
+
+const shared = {
+  busy: false,
+  form: null,
+  draft: {},
+  setForm: vi.fn(),
+  setDraft: vi.fn(),
+  create: vi.fn().mockResolvedValue(undefined),
+  patch: vi.fn().mockResolvedValue(undefined),
+  remove: vi.fn().mockResolvedValue(undefined),
+  action: vi.fn().mockResolvedValue(undefined),
+};
+
+const groups = [{ id: 1, name: "gighi", kind: "product" }];
+const rows = [
+  {
+    id: 11,
+    name: "ingiliz tili",
+    kind: "service",
+    group_id: 1,
+    price: 350000,
+    description: "",
+  },
+  {
+    id: 12,
+    name: "banan",
+    kind: "product",
+    group_id: null,
+    price: 25000,
+    unit: "kg",
+    description: "",
+  },
+  {
+    id: 13,
+    name: "stomatolog",
+    kind: "service",
+    group_id: null,
+    price: 0,
+    description: "",
+  },
+];
+
+function renderView(overrides: Partial<Parameters<typeof ItemsEditorView>[0]> = {}) {
+  return render(
+    <ItemsEditorView
+      {...shared}
+      groups={groups}
+      rows={rows}
+      query=""
+      setQuery={vi.fn()}
+      kind="all"
+      setKind={vi.fn()}
+      direction=""
+      {...overrides}
+    />,
+  );
+}
+
+function StatefulItemsView({
+  initialForm = null,
+  initialDraft = {},
+  actions = {},
+  direction = "",
+}: {
+  initialForm?: string | null;
+  initialDraft?: Record<string, unknown>;
+  actions?: Partial<typeof shared>;
+  direction?: string;
+}) {
+  const [form, setForm] = useState<string | null>(initialForm);
+  const [draft, setDraft] = useState(initialDraft);
+  return (
+    <ItemsEditorView
+      {...shared}
+      {...actions}
+      form={form}
+      setForm={setForm}
+      draft={draft}
+      setDraft={setDraft}
+      groups={groups}
+      rows={rows}
+      query=""
+      setQuery={vi.fn()}
+      kind="all"
+      setKind={vi.fn()}
+      direction={direction}
+    />
+  );
+}
+
+
+describe("v1656 mahsulot va xizmatlar pariteti", () => {
+  it("guruhlar va Guruhsiz yozuvlarni aynan monolit sectionlarida ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    expect(screen.getByRole("heading", { name: "gighi" })).toBeInTheDocument();
+    expect(screen.getByText("Mahsulot guruhi · 1 ta")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Guruhsiz" })).toBeInTheDocument();
+    expect(screen.getByText("Guruh tanlanmagan · 2 ta")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Tovar qo'shish" })).toHaveLength(2);
+    expect(screen.getByText("25000 / kg")).toBeInTheDocument();
+    expect(screen.getByText("Narx kelishiladi")).toBeInTheDocument();
+    expect(screen.getAllByText("Xizmat")).toHaveLength(2);
+    expect(screen.getAllByText("Izoh yo'q")).toHaveLength(3);
+
+    await user.click(screen.getByRole("button", { name: "stomatolog amallari" }));
+    expect(screen.getByRole("button", { name: "Tahrirlash" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guruhini o'zgartirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
+  });
+
+  it("guruh menyusida monolitdagi nomlarni ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.click(screen.getByRole("button", { name: "gighi amallari" }));
+    expect(screen.getByRole("button", { name: "Nomini o'zgartirish" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
+  });
+
+  it("qidiruv paytida monolit kabi qo'shish tugmalarini yashiradi", () => {
+    renderView({ query: "stomatolog" });
+
+    expect(screen.queryByRole("button", { name: "+ Guruh qo'shish" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tovar qo'shish" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "gighi" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Guruhsiz" })).toBeInTheDocument();
+    expect(screen.getByText("Guruh tanlanmagan · 1 ta")).toBeInTheDocument();
+  });
+
+  it("formatlangan narxni monolit kabi Narx kelishiladi bilan almashtirmaydi", () => {
+    renderView({
+      rows: [{
+        id: 14,
+        name: "Palov",
+        kind: "product",
+        group_id: null,
+        price: "2 000 so'm",
+        unit: "dona",
+      }],
+    });
+
+    expect(screen.getByText("2 000 so'm")).toHaveClass("price");
+    expect(screen.queryByText("Narx kelishiladi")).not.toBeInTheDocument();
+  });
+
+  it("bo'sh mahsulot nomida monolitdagi xatoni ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "" }}
+        actions={{ create }}
+      />,
+    );
+
+    expect(screen.getByText("Yangi tovar").closest("section"))
+      .toHaveClass("form-wrap");
+    expect(screen.getByLabelText("Nomi")).toHaveClass("input");
+    expect(screen.getByLabelText("Narxi"))
+      .toHaveAttribute("placeholder", "Masalan: 2 000 so'm");
+    expect(screen.getByRole("button", { name: "Saqlash" }))
+      .toHaveClass("btn", "btn-primary", "btn-block");
+
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Nomi kiritilishi shart.");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("navbatli yo'nalishdagi xizmatda v1656 Navbat tizimi maydonini saqlaydi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "service", name: "Qabul" }}
+        actions={{ create }}
+        direction="Tibbiy xizmatlar"
+      />,
+    );
+
+    expect(screen.getByLabelText("Navbat tizimi")).toHaveValue("0");
+    expect(screen.getByText(
+      "Xizmat kartasida onlayn va oflayn yagona navbatni ishlatadi.",
+    )).toHaveClass("idesc");
+
+    await user.selectOptions(screen.getByLabelText("Navbat tizimi"), "1");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      name: "Qabul",
+      kind: "service",
+      queue_enabled: 1,
+    }));
+  });
+
+  it("mahsulot yoki navbatsiz yo'nalishda Navbat tizimini yashirib o'chiradi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "Non", queue_enabled: 1 }}
+        actions={{ create }}
+        direction="Tibbiy xizmatlar"
+      />,
+    );
+
+    expect(screen.queryByLabelText("Navbat tizimi")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      queue_enabled: 0,
+    }));
+  });
+
+  it("v1656 Ombor maydonlarini yangi mahsulotda to‘liq saqlaydi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "Guruch", track_stock: 1 }}
+        actions={{ create }}
+        direction="Umumiy ovqatlanish"
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Ombor turi"), "raw_material");
+    await user.type(screen.getByLabelText("Boshlang‘ich qoldiq"), "25.5");
+    await user.type(screen.getByLabelText("Minimal qoldiq"), "4");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      track_stock: 1,
+      stock_type: "raw_material",
+      stock_qty: "25.5",
+      min_qty: "4",
+    }));
+  });
+
+  it("bo'sh guruh nomida monolitdagi xatoni ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StatefulItemsView
+        initialForm="item_groups:new"
+        initialDraft={{ kind: "product", name: "" }}
+        actions={{ create }}
+      />,
+    );
+
+    expect(screen.getByRole("dialog")).toHaveClass("order-sheet", "on");
+    expect(screen.getByLabelText("Yopish")).toHaveClass("order-close");
+    expect(screen.getByLabelText("Guruh nomi")).toHaveClass("input");
+
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(screen.getByRole("alert"))
+      .toHaveTextContent("Guruh nomi kiritilishi shart.");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("tovarni faqat tasdiqlash oynasidan keyin o'chiradi", async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn().mockResolvedValue(undefined);
+    render(<StatefulItemsView actions={{ remove }} />);
+
+    await user.click(screen.getByRole("button", { name: "banan amallari" }));
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Tovarni o'chirish");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Bu tovar o'chirilsinmi?");
+
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+    expect(remove).toHaveBeenCalledWith("items", 12);
+  });
+
+  it("guruhni ichidagi tovarlar haqidagi aniq ogohlantirishdan keyin o'chiradi", async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn().mockResolvedValue(undefined);
+    render(<StatefulItemsView actions={{ remove }} />);
+
+    await user.click(screen.getByRole("button", { name: "gighi amallari" }));
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Guruhni o'chirish");
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "'gighi' guruhi o'chirilsinmi? Ichidagi tovarlar o'chmaydi, Guruhsiz bo'limiga o'tadi.",
+    );
+
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+    expect(remove).toHaveBeenCalledWith("item_groups", 1);
+  });
+
+  it("Guruhini o'zgartirish monolit kabi to'liq openItemForm formasini ochadi", async () => {
+    const user = userEvent.setup();
+    render(<StatefulItemsView />);
+
+    await user.click(screen.getByRole("button", { name: "banan amallari" }));
+    await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
+
+    expect(screen.getByRole("heading", { name: "Tovarni tahrirlash" }))
+      .toBeInTheDocument();
+    expect(screen.getByLabelText("Nomi")).toHaveValue("banan");
+    expect(screen.getByLabelText("Narxi")).toHaveValue("25000");
+    expect(screen.getByLabelText("Guruh")).toHaveValue("");
+  });
+
+  it("Guruhini o'zgartirish formasidan yangi guruhni saqlaydi", async () => {
+    const user = userEvent.setup();
+    const patch = vi.fn().mockResolvedValue(undefined);
+    render(<StatefulItemsView actions={{ patch }} />);
+
+    await user.click(screen.getByRole("button", { name: "banan amallari" }));
+    await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
+    await user.selectOptions(screen.getByLabelText("Guruh"), "1");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+
+    expect(patch).toHaveBeenCalledWith("items", "12", expect.objectContaining({
+      name: "banan",
+      group_id: "1",
+    }));
+  });
+
+  it("guruh o'chirish matnini monolitdagi acf-text klassi bilan ko'rsatadi", async () => {
+    const user = userEvent.setup();
+    render(<StatefulItemsView />);
+
+    await user.click(screen.getByRole("button", { name: "gighi amallari" }));
+    await user.click(screen.getByRole("button", { name: "O'chirish" }));
+
+    expect(screen.getByText(/'gighi' guruhi o'chirilsinmi/))
+      .toHaveClass("acf-text");
+  });
+});

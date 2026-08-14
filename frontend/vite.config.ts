@@ -52,13 +52,6 @@ export default defineConfig(({ mode }) => {
           main: "index.html",
           admin: "admin.html",
         },
-        output: {
-          manualChunks(id) {
-            if (id.includes("node_modules/leaflet")) return "vendor-map";
-            if (id.includes("node_modules/react")) return "vendor-react";
-            return undefined;
-          },
-        },
       },
     },
     ...(apiTarget ? {
@@ -76,7 +69,7 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: "jsdom",
       setupFiles: "./src/test/setup.ts",
-      // Keng paritet testlari bitta testda o'nlab ekranni to'liq
+      // v1656 paritet testlari bitta testda o'nlab ekranni to'liq
       // render qiladi. 5 soniyalik standart chegara to'plam parallel
       // ishlaganda yetmay qoladi va test tasodifiy yiqiladi.
       testTimeout: 20000,

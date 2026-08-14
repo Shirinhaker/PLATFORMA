@@ -1,14 +1,23 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { PublicFeatures, SessionIdentity } from "../api/types";
 import { AuthFlow, type AuthApi } from "../auth/AuthFlow";
 import type { AppSession } from "../auth/types";
-import { findCatalogDirection } from "../public/catalog-data";
-import type {
-  CourseEnrollmentApi,
-  CourseEnrollmentTarget,
-} from "../education/CourseEnrollment";
+import { CatalogScreen } from "../legacy/public/CatalogScreen";
+import { CategoryScreen } from "../legacy/public/CategoryScreen";
+import { findCatalogDirection } from "../legacy/public/catalog-data";
+import { HomeScreen } from "../legacy/public/HomeScreen";
+import { LocationScreen } from "../legacy/public/LocationScreen";
+import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
+import {
+  CourseEnrollmentV1656,
+  type CourseEnrollmentApi,
+  type CourseEnrollmentTarget,
+} from "../education/CourseEnrollmentV1656";
+import { ListingPageV1656 } from "../listings/ListingPageV1656";
+import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
+import { CartV1656 } from "../orders/CartV1656";
 import {
   addCartItem,
   cartLineCount,
@@ -17,42 +26,37 @@ import {
 import {
   readHomeLocation,
   type HomeLocation,
-} from "../public/location-storage";
+} from "../legacy/public/location-storage";
 import {
   initialPublicNavigationState,
   publicNavigationReducer,
-} from "../public/public-navigation";
-import type { PublicView } from "../public/public-contract";
-import type { BusinessProfileApi } from "../profiles/BusinessProfile";
-import type { UserProfileApi } from "../profiles/UserProfile";
+} from "../legacy/public/public-navigation";
+import type { PublicView } from "../legacy/public/public-contract";
+import {
+  BusinessProfile,
+  type BusinessProfileApi,
+} from "../profiles/BusinessProfile";
+import {
+  UserProfile,
+  type UserProfileApi,
+} from "../profiles/UserProfile";
 import "./App.css";
 import { AppShell } from "./AppShell";
 import { SessionStatus } from "./SessionStatus";
-import type {
-  QueueBookingApi,
-  QueueBookingTarget,
-} from "../queues/QueueBooking";
-import type {
-  MessagePeer,
-  MessagesApi,
-} from "../messages/Messages";
-import type { PublicReviewsApi } from "../reviews/Reviews";
-
-const CatalogScreen = lazy(() => import("../public/CatalogScreen").then((module) => ({ default: module.CatalogScreen })));
-const CategoryScreen = lazy(() => import("../public/CategoryScreen").then((module) => ({ default: module.CategoryScreen })));
-const HomeScreen = lazy(() => import("../public/HomeScreen").then((module) => ({ default: module.HomeScreen })));
-const LocationScreen = lazy(() => import("../public/LocationScreen").then((module) => ({ default: module.LocationScreen })));
-const PublicProfile = lazy(() => import("../public/PublicProfile").then((module) => ({ default: module.PublicProfile })));
-const CourseEnrollment = lazy(() => import("../education/CourseEnrollment").then((module) => ({ default: module.CourseEnrollment })));
-const ListingPage = lazy(() => import("../listings/ListingPage").then((module) => ({ default: module.ListingPage })));
-const PublicListings = lazy(() => import("../listings/PublicListings").then((module) => ({ default: module.PublicListings })));
-const Cart = lazy(() => import("../orders/Cart").then((module) => ({ default: module.Cart })));
-const BusinessProfile = lazy(() => import("../profiles/BusinessProfile").then((module) => ({ default: module.BusinessProfile })));
-const UserProfile = lazy(() => import("../profiles/UserProfile").then((module) => ({ default: module.UserProfile })));
-const QueueBooking = lazy(() => import("../queues/QueueBooking").then((module) => ({ default: module.QueueBooking })));
-const Messages = lazy(() => import("../messages/Messages").then((module) => ({ default: module.Messages })));
-const TaxiCall = lazy(() => import("../taxi/TaxiCall").then((module) => ({ default: module.TaxiCall })));
-const DriverCabinet = lazy(() => import("../taxi/DriverCabinet").then((module) => ({ default: module.DriverCabinet })));
+import {
+  QueueBookingV1656,
+  supportsQueueBookingApi,
+  type QueueBookingApi,
+  type QueueBookingTarget,
+} from "../queues/QueueBookingV1656";
+import {
+  MessagesV1656,
+  type MessagePeer,
+  type MessagesApi,
+} from "../messages/MessagesV1656";
+import type { PublicReviewsApi } from "../reviews/ReviewsV1656";
+import { TaxiCallV1656 } from "../taxi/TaxiCallV1656";
+import { DriverCabinetV1656 } from "../taxi/DriverCabinetV1656";
 
 
 type SessionApi = Pick<ApiClient, "getSession">;
@@ -142,11 +146,6 @@ function supportsMessages(api: AppApi): api is AppApi & MessagesApi {
     "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
-}
-
-function supportsQueueBookingApi(api: AppApi): api is AppApi & QueueBookingApi {
-  return ["getQueueOptions", "getQueueSlots", "createQueue"]
-    .every((method) => typeof api[method as keyof AppApi] === "function");
 }
 
 function supportsPublicReviews(api: AppApi): api is AppApi & PublicReviewsApi {
@@ -571,7 +570,7 @@ export function App({ api }: { api: AppApi }) {
       && supportsMessages(api)
     ) {
       return (
-        <Messages
+        <MessagesV1656
           api={api}
           initialPeer={openedChat}
           onBack={() => setOpenedChat(null)}
@@ -585,7 +584,7 @@ export function App({ api }: { api: AppApi }) {
     }
     if (navigation.view === "home" && openedListing && getPublicListing) {
       return (
-        <ListingPage
+        <ListingPageV1656
           authenticated={authenticated}
           getPublicListing={getPublicListing}
           publicId={openedListing.publicId}
@@ -605,7 +604,7 @@ export function App({ api }: { api: AppApi }) {
       && getPublicProfile
     ) {
       return (
-        <PublicProfile
+        <PublicProfileV1656
           authenticated={authenticated}
           cart={carts[openedProfile.publicId]}
           kind={openedProfile.kind}
@@ -689,7 +688,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "listings":
         return listingApi ? (
-          <PublicListings
+          <PublicListingsV1656
             api={listingApi}
             authenticated={authenticated}
             onNeedLogin={() => openAuth()}
@@ -704,7 +703,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "cart":
         return (
-          <Cart
+          <CartV1656
             authenticated={authenticated}
             carts={carts}
             createOrder={createOrder}
@@ -717,7 +716,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "taxi-call":
         return (
-          <TaxiCall
+          <TaxiCallV1656
             api={api}
             authenticated={session.status === "user"}
             center={{
@@ -737,7 +736,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "taxidrv":
         return session.status === "user" ? (
-          <DriverCabinet api={api} />
+          <DriverCabinetV1656 api={api} />
         ) : renderAccount();
       case "auth":
       case "cabinet":
@@ -768,8 +767,7 @@ export function App({ api }: { api: AppApi }) {
   }
 
   return (
-    <Suspense fallback={<SessionStatus state="loading" />}>
-      <AppShell
+    <AppShell
       authenticated={authenticated}
       title={(openedChat || openedProfile || openedListing) && navigation.view === "home"
         ? openedChat ? "Suhbat" : openedProfile?.title ?? openedListing?.title
@@ -859,7 +857,7 @@ export function App({ api }: { api: AppApi }) {
           ) : renderPublicContent()}
         </div>
         {queueBooking && supportsQueueBookingApi(api) ? (
-          <QueueBooking
+          <QueueBookingV1656
             api={api}
             key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
             target={queueBooking}
@@ -868,7 +866,7 @@ export function App({ api }: { api: AppApi }) {
           />
         ) : null}
         {courseEnrollment && typeof api.createCourseEnrollment === "function" ? (
-          <CourseEnrollment
+          <CourseEnrollmentV1656
             api={api as CourseEnrollmentApi}
             customerPhone={session.status === "user" ? orderCustomer.phone : ""}
             target={courseEnrollment}
@@ -880,7 +878,6 @@ export function App({ api }: { api: AppApi }) {
           <div className="app-toast on" role="status">{queueMessage.text}</div>
         ) : null}
       </>
-      </AppShell>
-    </Suspense>
+    </AppShell>
   );
 }

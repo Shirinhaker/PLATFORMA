@@ -32,23 +32,29 @@ jobs:
             Loyiha konteksti:
             - PLATFORMA — FastAPI (Python) backend + React/TypeScript/Vite frontend.
             - Frontend testlari: vitest (`cd frontend && npm test`).
-            - Maqsad: modular FastAPI va React domenlari orasidagi API
-              shartnomalari, xavfsizlik va regressiyalarni tekshirish.
+            - Maqsad: eski ishlab turgan monolit (static/index.html, v1656) bilan
+              yangi React modullari orasida TO'LIQ PARITET saqlash.
 
             MUHIM — samarali ishla, qadamlarni tejab:
+            - `static/index.html` 14 ming qatordan iborat. UNI TO'LIQ O'QIMA.
+              Faqat kerakli qismini o'qi:
+              `sed -n '8140,8390p' static/index.html`
+              yoki `grep -n "cab-dining" static/index.html` bilan qatorni top.
+            - PR tavsifida ko'rsatilgan qator oraliqlaridan foydalan.
             - Avval `git diff` bilan o'zgargan fayllarni ko'r, keyin faqat
-              o'sha domenlarning backend, frontend va test fayllarini tekshir.
+              o'sha fayllarga tegishli etalon qismlarini tekshir.
             - Testlarni o'zing ishga tushirma — faqat kodni va test fayllarini o'qi.
 
             Quyidagilarni tekshir, faqat aniq muammolarni yoz:
 
-            1. UX SHARTNOMASI: matn, tugma nomlari, bo'sh holat xabarlari va
-               tasdiqlash oynalarida regressiya bormi?
+            1. PARITET: matn, tugma nomlari, CSS klasslar, bo'sh holat
+               xabarlari, tasdiqlash oynalari monolit bilan aynan bir xilmi?
+               Farq bo'lsa fayl va qatorni ko'rsat.
             2. TESTLAR: test skip/o'chirilganmi, assert zaiflashtirilganmi,
                qoplama toraymaganmi?
             3. XAVFSIZLIK: o'chirish/tahrirlashda tasdiqlash bormi,
                validatsiya yetarlimi.
-            4. REGRESSIYA: API shartnomalari, maydon nomlari va relatsion
+            4. REGRESSIYA: API shartnomalari, maydon nomlari, V7
                normalizatsiya mantig'i buzilmaganmi.
             5. Yo'nalishga moslashuv (CAB_PLANS / applyCabinetLayout) to'g'rimi.
 

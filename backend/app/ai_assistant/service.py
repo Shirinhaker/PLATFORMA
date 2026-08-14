@@ -2,9 +2,7 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, time, timedelta, timezone
 import json
-import time as unix_time
 
-from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai_assistant.documents import (
@@ -19,7 +17,6 @@ from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.repository import AIAssistantRepository
 from app.ai_assistant.schemas import AIChatAnswerRead, AIChatHistoryRead, AIChatMessageRead, AIDocumentDraftRead, AIDocumentDraftRequest
 from app.core.errors import ApiError
-from app.payments.model import BusinessSubscription
 
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -50,31 +47,7 @@ class AIAssistantService:
             await session.rollback()
             return result
 
-    async def quota_plan(self, business_id: int) -> str:
-        async with self._session_factory() as session:
-            plan = await session.scalar(
-                select(BusinessSubscription.plan_code)
-                .where(
-                    BusinessSubscription.business_account_id == business_id,
-                    BusinessSubscription.status == "active",
-                    BusinessSubscription.expires_at > int(unix_time.time()),
-                )
-                .order_by(
-                    case((BusinessSubscription.plan_code == "pro", 0), else_=1),
-                    BusinessSubscription.expires_at.desc(),
-                )
-                .limit(1)
-            )
-            await session.rollback()
-        return str(plan or "free")
-
-    async def chat(
-        self,
-        business_id: int,
-        message: str,
-        *,
-        allow_external_processing: bool = False,
-    ) -> AIChatAnswerRead:
+    async def chat(self, business_id: int, message: str) -> AIChatAnswerRead:
         message = message.strip()
         if not message:
             raise ApiError(400, "ai_message_required", "Savol yozing.")
@@ -105,7 +78,7 @@ class AIAssistantService:
             "kontekstiga asoslan.",
             "Biznes konteksti:\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n\nSavol:\n" + message,
             max_output_tokens=1200,
-        ) if allow_external_processing else ""
+        )
         source = "openai" if answer else "local"
         if not answer:
             answer = self._local_answer(message, context)
@@ -173,7 +146,7 @@ class AIAssistantService:
             "qaytar.",
             prompt,
             max_output_tokens=2200,
-        ) if body.allow_external_processing else ""
+        )
         source = "openai" if text else "local"
         if not text:
             text = local_document_body(user_prompt, direction, doc_type, context)

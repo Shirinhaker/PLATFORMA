@@ -1,24 +1,18 @@
 FROM python:3.12-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.33 /uv /uvx /bin/
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && apt-get clean
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
-
+COPY pyproject.toml ./
 COPY app ./app
 COPY migrations ./migrations
 COPY alembic.ini ./
-RUN uv sync --frozen --no-dev
+RUN python -m pip install .
 
 USER 10001
-CMD ["sh", "-c", "python -m app.db.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "if [ \"${KOPRIK_TELEGRAM_CUTOVER_ONCE:-0}\" = \"1\" ]; then python -m app.auth.telegram_cutover_once; fi && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

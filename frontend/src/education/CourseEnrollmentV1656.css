@@ -1,0 +1,105 @@
+.course-enrollment-v1656 .app-modal-back {
+  position: fixed;
+  z-index: 5200;
+  inset: 0;
+  display: none;
+  background: rgb(0 0 0 / 42%);
+}
+
+.course-enrollment-v1656 .app-modal-back.on {
+  display: block;
+}
+
+.course-enrollment-v1656 .app-confirm {
+  position: fixed;
+  z-index: 5201;
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 56px);
+  max-width: 360px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.96);
+  transition: opacity .18s, transform .18s;
+}
+
+.course-enrollment-v1656 .app-confirm.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.course-enrollment-v1656 .acf-title {
+  margin-bottom: 12px;
+  font: 800 17px var(--font-d);
+}
+
+.course-enrollment-v1656 label {
+  display: block;
+  margin: 10px 2px 5px;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-enrollment-v1656 input,
+.course-enrollment-v1656 textarea {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  outline: none;
+  color: var(--ink);
+  background: var(--card);
+  font: inherit;
+}
+
+.course-enrollment-v1656 input {
+  height: 46px;
+  padding: 0 12px;
+}
+
+.course-enrollment-v1656 textarea {
+  min-height: 88px;
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.course-enrollment-v1656 input:focus,
+.course-enrollment-v1656 textarea:focus {
+  border-color: var(--primary);
+}
+
+.course-enrollment-v1656 .acf-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.course-enrollment-v1656 .acf-btns button {
+  flex: 1;
+  height: 46px;
+  border: 1.5px solid var(--line);
+  border-radius: 13px;
+  color: var(--ink);
+  background: var(--card);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.course-enrollment-v1656 .acf-btns .acf-ok {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.course-enrollment-v1656 .acf-btns button:disabled {
+  cursor: wait;
+  opacity: .65;
+}

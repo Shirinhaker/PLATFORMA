@@ -8,7 +8,6 @@ from app.auth.dependencies import (
     require_current_account,
     require_staff_permission,
 )
-from app.auth.router import _client_ip, _enforce_rate_limit
 
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
@@ -49,13 +48,6 @@ async def search_public_profiles(
     request: Request,
     params: Annotated[PublicSearchParams, Query()],
 ) -> PublicSearchResponse:
-    if hasattr(request.app.state, "redis"):
-        await _enforce_rate_limit(
-            request,
-            f"public:search:ip:{_client_ip(request)}",
-            60,
-            60,
-        )
     return await request.app.state.public_discovery_service.search(params)
 
 
