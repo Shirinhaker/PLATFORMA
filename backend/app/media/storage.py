@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import secrets
 from typing import Literal
@@ -39,7 +38,6 @@ MAX_LISTING_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_STORY_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_STORY_VIDEO_BYTES = 100 * 1024 * 1024
 MAX_SPECIALIST_PORTFOLIO_BYTES = 30 * 1024 * 1024
-PENDING_UPLOAD_TTL = timedelta(hours=24)
 
 MediaPurpose = Literal[
     "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
@@ -56,8 +54,6 @@ class UploadRejected(ValueError):
 @dataclass(frozen=True)
 class UploadGrant:
     object_key: str
-    pending_object_key: str
-    purpose: str
     upload_url: str
     method: str
     headers: dict[str, str]
@@ -83,7 +79,7 @@ def _upload_rule(
     purpose: MediaPurpose,
     content_type: str,
     size_bytes: int,
-) -> tuple[str, int]:
+) -> str:
     profile_purpose = (
         owner_type is AccountType.USER and purpose == "avatar"
     ) or (
@@ -118,14 +114,14 @@ def _upload_rule(
         if not 1 <= size_bytes <= maximum:
             limit = 30 if purpose == "specialist_portfolio_image" else 8
             raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
-        return STORY_IMAGE_TYPES[content_type], maximum
+        return STORY_IMAGE_TYPES[content_type]
 
     if purpose == "specialist_portfolio_video":
         if content_type not in LISTING_VIDEO_TYPES:
             raise UploadRejected("MP4, WEBM yoki MOV fayl tanlang.")
         if not 1 <= size_bytes <= MAX_SPECIALIST_PORTFOLIO_BYTES:
             raise UploadRejected("Fayl hajmi 30 MB dan oshmasin.")
-        return LISTING_VIDEO_TYPES[content_type], MAX_SPECIALIST_PORTFOLIO_BYTES
+        return LISTING_VIDEO_TYPES[content_type]
 
     if purpose in {
         "listing_photo", "order_chat_image", "chat_image", "payment_receipt",
@@ -150,7 +146,7 @@ def _upload_rule(
         if not 1 <= size_bytes <= maximum:
             limit = 8 if purpose in {"order_chat_image", "chat_image", "payment_receipt"} else 10
             raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
-        return allowed_images[content_type], maximum
+        return allowed_images[content_type]
 
     if purpose in {"listing_video", "story_video"}:
         if content_type not in LISTING_VIDEO_TYPES:
@@ -163,13 +159,13 @@ def _upload_rule(
         if not 1 <= size_bytes <= maximum:
             limit = 100 if purpose == "story_video" else 50
             raise UploadRejected(f"Fayl hajmi {limit} MB dan oshmasin.")
-        return LISTING_VIDEO_TYPES[content_type], maximum
+        return LISTING_VIDEO_TYPES[content_type]
 
     if content_type not in PROFILE_IMAGE_TYPES:
         raise UploadRejected("Rasm turi ruxsat etilmagan.")
     if not 1 <= size_bytes <= MAX_PROFILE_IMAGE_BYTES:
         raise UploadRejected("Rasm hajmi 8 MB dan oshmasin.")
-    return PROFILE_IMAGE_TYPES[content_type], MAX_PROFILE_IMAGE_BYTES
+    return PROFILE_IMAGE_TYPES[content_type]
 
 
 class R2Storage:
@@ -188,78 +184,17 @@ class R2Storage:
         size_bytes: int,
     ) -> UploadGrant:
         del filename
-        suffix, _maximum = _upload_rule(
-            owner_type,
-            purpose,
-            content_type,
-            size_bytes,
-        )
-        token = secrets.token_hex(16)
-        basename = f"{token}{suffix}"
+        suffix = _upload_rule(owner_type, purpose, content_type, size_bytes)
         object_key = (
-            f"private/{owner_type.value}/{owner_id}/{purpose}/{basename}"
-        )
-        pending_object_key = (
-            f"pending/{owner_type.value}/{owner_id}/{purpose}/{basename}"
+            f"private/{owner_type.value}/{owner_id}/{purpose}/"
+            f"{secrets.token_hex(16)}{suffix}"
         )
         return self._presigned_put(
-            object_key=object_key,
-            pending_object_key=pending_object_key,
-            purpose=purpose,
-            content_type=content_type,
+            object_key,
+            content_type,
             size_bytes=size_bytes,
             expires_in=300,
         )
-
-    def finalize_upload(
-        self,
-        *,
-        owner_type: AccountType,
-        owner_id: int,
-        purpose: MediaPurpose,
-        pending_object_key: str,
-        object_key: str,
-    ) -> str:
-        pending_prefix = f"pending/{owner_type.value}/{owner_id}/{purpose}/"
-        final_prefix = f"private/{owner_type.value}/{owner_id}/{purpose}/"
-        if not pending_object_key.startswith(pending_prefix):
-            raise UploadRejected("Vaqtinchalik media kaliti akkauntga tegishli emas.")
-        if not object_key.startswith(final_prefix):
-            raise UploadRejected("Media kaliti akkauntga tegishli emas.")
-        pending_name = pending_object_key.removeprefix(pending_prefix)
-        final_name = object_key.removeprefix(final_prefix)
-        if not pending_name or pending_name != final_name or "/" in pending_name:
-            raise UploadRejected("Media kaliti noto‘g‘ri.")
-
-        response = self.client.head_object(
-            Bucket=self.bucket,
-            Key=pending_object_key,
-        )
-        actual_size = int(response.get("ContentLength") or 0)
-        actual_type = str(response.get("ContentType") or "").split(";", 1)[0].strip().lower()
-        suffix, _maximum = _upload_rule(
-            owner_type,
-            purpose,
-            actual_type,
-            actual_size,
-        )
-        if not pending_name.endswith(suffix):
-            raise UploadRejected("Media kengaytmasi fayl turiga mos emas.")
-
-        self.client.copy_object(
-            Bucket=self.bucket,
-            CopySource={"Bucket": self.bucket, "Key": pending_object_key},
-            Key=object_key,
-            ContentType=actual_type,
-            MetadataDirective="REPLACE",
-            Metadata={"validated": "1"},
-        )
-        try:
-            self.client.delete_object(Bucket=self.bucket, Key=pending_object_key)
-        except Exception:
-            # Worker stale pending obyektni keyin tozalaydi.
-            pass
-        return object_key
 
     def ready(self) -> bool:
         try:
@@ -267,40 +202,6 @@ class R2Storage:
             return True
         except Exception:
             return False
-
-    def cleanup_pending_uploads(
-        self,
-        *,
-        now: datetime | None = None,
-        max_delete: int = 500,
-    ) -> int:
-        stamp = now or datetime.now(UTC)
-        cutoff = stamp - PENDING_UPLOAD_TTL
-        continuation: str | None = None
-        deleted = 0
-        while deleted < max_delete:
-            kwargs = {
-                "Bucket": self.bucket,
-                "Prefix": "pending/",
-                "MaxKeys": min(1000, max_delete - deleted),
-            }
-            if continuation:
-                kwargs["ContinuationToken"] = continuation
-            response = self.client.list_objects_v2(**kwargs)
-            for row in response.get("Contents") or []:
-                modified = row.get("LastModified")
-                key = str(row.get("Key") or "")
-                if key and modified is not None and modified <= cutoff:
-                    self.client.delete_object(Bucket=self.bucket, Key=key)
-                    deleted += 1
-                    if deleted >= max_delete:
-                        break
-            if not response.get("IsTruncated") or deleted >= max_delete:
-                break
-            continuation = str(response.get("NextContinuationToken") or "") or None
-            if continuation is None:
-                break
-        return deleted
 
     def put_migration_object(
         self,
@@ -407,11 +308,9 @@ class R2Storage:
 
     def _presigned_put(
         self,
-        *,
         object_key: str,
-        pending_object_key: str,
-        purpose: str,
         content_type: str,
+        *,
         size_bytes: int,
         expires_in: int,
     ) -> UploadGrant:
@@ -419,7 +318,7 @@ class R2Storage:
             "put_object",
             Params={
                 "Bucket": self.bucket,
-                "Key": pending_object_key,
+                "Key": object_key,
                 "ContentType": content_type,
                 "ContentLength": size_bytes,
             },
@@ -427,8 +326,6 @@ class R2Storage:
         )
         return UploadGrant(
             object_key=object_key,
-            pending_object_key=pending_object_key,
-            purpose=purpose,
             upload_url=upload_url,
             method="PUT",
             headers={"Content-Type": content_type},
