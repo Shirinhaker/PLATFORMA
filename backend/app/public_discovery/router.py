@@ -8,7 +8,8 @@ from app.auth.dependencies import (
     require_current_account,
     require_staff_permission,
 )
-
+from app.cache.rate_limit import consume_rate_limit
+from app.core.errors import ApiError
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
     PublicFollowedProfile,
@@ -20,6 +21,38 @@ from app.public_discovery.schemas import (
 
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client is not None else "unknown"
+
+
+def _redis(request: Request):
+    wrapper = request.app.state.redis
+    client = getattr(wrapper, "client", None)
+    return client if client is not None and not callable(client) else wrapper
+
+
+async def _enforce_public_rate_limit(
+    request: Request,
+    scope: str,
+    *,
+    limit: int,
+    window_seconds: int = 60,
+) -> None:
+    result = await consume_rate_limit(
+        _redis(request),
+        f"public:{scope}:ip:{_client_ip(request)}",
+        limit,
+        window_seconds,
+    )
+    if not result.allowed:
+        raise ApiError(
+            429,
+            "public_rate_limited",
+            "Juda ko‘p so‘rov yuborildi. Birozdan keyin qayta urinib ko‘ring.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
 
 
 async def optional_current_account(
@@ -48,6 +81,7 @@ async def search_public_profiles(
     request: Request,
     params: Annotated[PublicSearchParams, Query()],
 ) -> PublicSearchResponse:
+    await _enforce_public_rate_limit(request, "search", limit=60)
     return await request.app.state.public_discovery_service.search(params)
 
 
@@ -57,6 +91,7 @@ async def get_public_home_map(
     district: str = Query(min_length=1, max_length=120),
     current: CurrentAccount | None = Depends(optional_current_account),
 ) -> PublicHomeMapResponse:
+    await _enforce_public_rate_limit(request, "home-map", limit=120)
     return await request.app.state.public_discovery_service.home_map(
         district.strip(),
         account_id=current.account_id if current else None,
@@ -72,6 +107,7 @@ async def get_public_district_offers(
     request: Request,
     district: str = Query(min_length=1, max_length=120),
 ) -> PublicDistrictOffersResponse:
+    await _enforce_public_rate_limit(request, "district-offers", limit=120)
     return await request.app.state.public_discovery_service.district_offers(
         district.strip()
     )
@@ -104,6 +140,7 @@ async def get_public_profile(
         Path(pattern=r"^[ub]_[0-9a-f]{16}$"),
     ],
 ) -> PublicProfileDetail:
+    await _enforce_public_rate_limit(request, "profile", limit=120)
     profile = await request.app.state.public_discovery_service.profile(
         kind=kind,
         public_id=public_id,
