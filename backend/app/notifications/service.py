@@ -90,11 +90,30 @@ class NotificationService:
                 row for row in rows
                 if self._visible(row, staff_id=staff_id, permissions=permissions)
             ]
-            unread = sum(
-                1 for row in visible
-                if not int(row.get("is_read") or 0)
-                and not int(row.get("resolved_at") or 0)
-            )
+            if staff_id is None:
+                unread = await self._repository.unread_count(
+                    session,
+                    account_id=account_id,
+                    account_type=account_type.value,
+                )
+            else:
+                all_rows = await self._repository.list_rows(
+                    session,
+                    account_id=account_id,
+                    account_type=account_type.value,
+                    limit=None,
+                ) or []
+                unread = sum(
+                    1
+                    for row in all_rows
+                    if not int(row.get("is_read") or 0)
+                    and not int(row.get("resolved_at") or 0)
+                    and self._visible(
+                        row,
+                        staff_id=staff_id,
+                        permissions=permissions,
+                    )
+                )
             return NotificationListRead(
                 items=[self._read(row) for row in visible],
                 unread=unread,
@@ -181,6 +200,7 @@ class NotificationService:
                     session,
                     account_id=account_id,
                     account_type=account_type.value,
+                    limit=None,
                 ) or []
                 ids = [
                     int(row["id"])
