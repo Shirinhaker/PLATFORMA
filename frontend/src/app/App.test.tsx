@@ -499,6 +499,79 @@ describe("App", () => {
       .not.toHaveClass("search-results-active");
   });
 
+  it("opens the owner profile and highlights the searched catalog item", async () => {
+    const user = userEvent.setup();
+    saveHomeLocation();
+    const api = {
+      ...guestApi(),
+      searchPublic: vi.fn().mockResolvedValue({
+        items: [{
+          kind: "product" as const,
+          public_id: "p_banan",
+          name: "Banan",
+          public_username: "",
+          description: "",
+          direction: "Savdo",
+          activity_type: "Oziq-ovqat do‘koni",
+          region: "Surxondaryo viloyati",
+          district: "Qumqo‘rg‘on tumani",
+          mahalla: "",
+          image_url: "/media/banan.webp",
+          price_text: "25 000 so‘m",
+          owner_label: "Muhr",
+          owner_public_id: "b_muhr",
+        }],
+        page: 1,
+        page_size: 20,
+        total: 1,
+        pages: 1,
+      }),
+      getPublicProfile: vi.fn().mockResolvedValue({
+        kind: "business" as const,
+        public_id: "b_muhr",
+        name: "Muhr",
+        public_username: "muhr",
+        description: "",
+        direction: "Savdo",
+        activity_type: "Oziq-ovqat do‘koni",
+        address: "Qumqo‘rg‘on",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 0,
+        specialist: null,
+        items: [{
+          kind: "product" as const,
+          public_id: "p_banan",
+          name: "Banan",
+          price_text: "25 000 so‘m",
+          unit: "kg",
+          note: "",
+          image_url: "/media/banan.webp",
+          group_name: "Mevalar",
+          queue_enabled: false,
+        }],
+        listings: [],
+      }),
+    };
+    render(<App api={api} />);
+
+    await screen.findByRole("heading", {
+      name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
+    });
+    await user.type(screen.getByPlaceholderText("Nima qidiryapsiz?"), "banan");
+    await user.click(screen.getByRole("button", { name: "Qidirish" }));
+    await user.click(await screen.findByRole("button", { name: /Banan/ }));
+
+    expect(await screen.findByText("Mahsulot va xizmatlar"))
+      .toBeInTheDocument();
+    expect(api.getPublicProfile).toHaveBeenCalledWith("business", "b_muhr");
+    expect(screen.getByText("Banan").closest("article"))
+      .toHaveClass("is-search-target");
+  });
+
   it("opens an followed business profile from its Home card", async () => {
     const user = userEvent.setup();
     saveHomeLocation();

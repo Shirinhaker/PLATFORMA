@@ -150,6 +150,7 @@ describe("PublicProfileV1656", () => {
 
     render(
       <PublicProfileV1656
+        focusItemPublicId="p_non"
         kind="business"
         publicId="b_turon"
         getPublicProfile={getPublicProfile}
@@ -164,6 +165,10 @@ describe("PublicProfileV1656", () => {
     expect(screen.getByText("Sifatli mahsulotlar")).toBeInTheDocument();
     expect(screen.getByText("Mahsulot va xizmatlar")).toBeInTheDocument();
     expect(screen.getByText("Non")).toBeInTheDocument();
+    expect(screen.getByText("Non").closest("article"))
+      .toHaveClass("is-search-target");
+    expect(screen.getByText("Non").closest("article"))
+      .toHaveAttribute("aria-current", "true");
     expect(screen.getByText("E'lonlari")).toBeInTheDocument();
     expect(screen.getByText("Un sotiladi")).toBeInTheDocument();
     expect(getPublicProfile).toHaveBeenCalledWith("business", "b_turon");

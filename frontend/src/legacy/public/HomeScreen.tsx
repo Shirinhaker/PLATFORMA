@@ -43,6 +43,7 @@ interface HomeScreenProps {
   onOpenPublicResult?: (
     kind: "user" | "business" | "product" | "service" | "listing",
     publicId: string,
+    ownerPublicId?: string,
   ) => void;
   recordAdvertisementClick?: ApiClient["recordAdvertisementClick"];
   recordAdvertisementViews?: ApiClient["recordAdvertisementViews"];
@@ -206,7 +207,12 @@ export function HomeScreen({
   const openResult = useCallback((
     kind: "user" | "business" | "product" | "service" | "listing",
     publicId: string,
+    ownerPublicId?: string,
   ) => {
+    if (ownerPublicId) {
+      onOpenPublicResult(kind, publicId, ownerPublicId);
+      return;
+    }
     onOpenPublicResult(kind, publicId);
   }, [onOpenPublicResult]);
 
@@ -420,7 +426,11 @@ export function HomeScreen({
               pending={searchPending}
               query={resultQuery}
               onLoadMore={loadMore}
-              onOpenResult={(item) => openResult(item.kind, item.public_id)}
+              onOpenResult={(item) => openResult(
+                item.kind,
+                item.public_id,
+                item.owner_public_id,
+              )}
             />
           </div>
         </div>

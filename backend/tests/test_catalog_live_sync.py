@@ -164,6 +164,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
     assert english.items[0].name == "ingliz tili"
     assert english.items[0].price_text == "350000"
     assert english.items[0].owner_label == "Muhr"
+    assert english.items[0].owner_public_id is not None
     assert english.items[0].image_url == "/media/catalog/english.webp"
     assert english.items[0].map_point is not None
     assert english.items[0].map_point.business_public_id.startswith("b_")
@@ -191,6 +192,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
         PublicSearchParams(q="ingliz tili", result_type="service"),
     )
     assert hidden.items[0].map_point is None
+    assert hidden.items[0].owner_public_id == english.items[0].owner_public_id
 
 
 @pytest.mark.asyncio

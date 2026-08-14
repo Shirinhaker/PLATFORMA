@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ApiClient } from "../../api/client";
 import type { PublicProfileDetail, PublicProfileItem } from "../../api/types";
@@ -21,6 +21,7 @@ import {
 interface PublicProfileV1656Props {
   kind: "user" | "business";
   publicId: string;
+  focusItemPublicId?: string;
   getPublicProfile: ApiClient["getPublicProfile"];
   authenticated?: boolean;
   cart?: CartReceipt;
@@ -86,6 +87,7 @@ function itemGroups(items: PublicProfileItem[]) {
 export function PublicProfileV1656({
   kind,
   publicId,
+  focusItemPublicId,
   getPublicProfile,
   authenticated = false,
   cart,
@@ -105,6 +107,7 @@ export function PublicProfileV1656({
 }: PublicProfileV1656Props) {
   const [profile, setProfile] = useState<PublicProfileDetail | null>(null);
   const [error, setError] = useState("");
+  const focusItemRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -126,6 +129,21 @@ export function PublicProfileV1656({
       active = false;
     };
   }, [getPublicProfile, kind, onTitleChange, publicId]);
+
+  useEffect(() => {
+    if (!profile || !focusItemPublicId) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const element = focusItemRef.current;
+      if (!element) return;
+      element.focus({ preventScroll: true });
+      element.scrollIntoView?.({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusItemPublicId, profile]);
 
   if (error) {
     return (
@@ -400,6 +418,7 @@ export function PublicProfileV1656({
               ) : null}
               <div className="item-hrow">
                 {items.map((item) => {
+                  const focused = item.public_id === focusItemPublicId;
                   const queueEnabled = queueSupported
                     && item.kind === "service"
                     && item.queue_enabled;
@@ -408,7 +427,14 @@ export function PublicProfileV1656({
                     Number(item.today_queue_count) || 0,
                   );
                   return (
-                    <article className="item-card2 biz-prod-card" key={item.public_id}>
+                    <article
+                      aria-current={focused ? "true" : undefined}
+                      className={`item-card2 biz-prod-card${focused ? " is-search-target" : ""}`}
+                      data-item-public-id={item.public_id}
+                      key={item.public_id}
+                      ref={focused ? focusItemRef : undefined}
+                      tabIndex={focused ? -1 : undefined}
+                    >
                       <div className="item-card2-img">
                         {item.image_url ? <img alt="" src={item.image_url} /> : <span>📦</span>}
                       </div>

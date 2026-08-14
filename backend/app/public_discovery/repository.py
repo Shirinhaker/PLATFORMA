@@ -164,6 +164,7 @@ def _user_query(params: PublicSearchParams):
             literal(None).cast(String).label("price_text"),
             literal(None).cast(String).label("owner_state"),
             literal(None).cast(String).label("owner_label"),
+            literal(None).cast(BigInteger).label("owner_business_account_id"),
             literal(None).cast(Boolean).label("can_order"),
             literal(None).cast(Boolean).label("can_chat"),
             literal(None).cast(BigInteger).label("map_business_account_id"),
@@ -238,6 +239,7 @@ def _business_query(params: PublicSearchParams):
         literal(None).cast(String).label("price_text"),
         literal(None).cast(String).label("owner_state"),
         literal(None).cast(String).label("owner_label"),
+        literal(None).cast(BigInteger).label("owner_business_account_id"),
         literal(None).cast(Boolean).label("can_order"),
         literal(None).cast(Boolean).label("can_chat"),
         case(
@@ -343,6 +345,10 @@ def _content_query(params: PublicSearchParams, kind: str):
             (linked, CatalogItem.owner_name_snapshot),
             else_="Egasi hali akkauntini bog‘lamagan",
         ).label("owner_label"),
+        case(
+            (linked, CatalogItem.business_account_id),
+            else_=None,
+        ).label("owner_business_account_id"),
         case((linked, True), else_=False).label("can_order"),
         case((linked, True), else_=False).label("can_chat"),
         case(
@@ -441,6 +447,7 @@ def _listing_query(params: PublicSearchParams):
             Listing.price_text.label("price_text"),
             literal("linked").cast(String).label("owner_state"),
             func.coalesce(business_profile.name, owner_profile.name, "").label("owner_label"),
+            literal(None).cast(BigInteger).label("owner_business_account_id"),
             literal(False).cast(Boolean).label("can_order"),
             literal(False).cast(Boolean).label("can_chat"),
             case(
@@ -619,6 +626,14 @@ async def search_public_profiles(
                 price_text=row["price_text"],
                 owner_state=row["owner_state"],
                 owner_label=row["owner_label"],
+                owner_public_id=(
+                    build_public_id(
+                        PublicResultKind.BUSINESS,
+                        int(row["owner_business_account_id"]),
+                    )
+                    if row["owner_business_account_id"] is not None
+                    else None
+                ),
                 can_order=row["can_order"],
                 can_chat=row["can_chat"],
                 map_point=map_point,
