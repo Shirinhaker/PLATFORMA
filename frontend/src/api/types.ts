@@ -3,7 +3,7 @@ export type AccountType = "user" | "business";
 export type BuildInfo = {
   api_version: "v1";
   foundation: "phase1";
-  legacy_build: "v1656";
+  ui_build: "modular";
 };
 
 export type ApiErrorBody = {
@@ -1011,6 +1011,7 @@ export type MessageProfileRead = {
 export type MessageThreadRead = {
   other: MessageProfileRead;
   messages: MessageRead[];
+  next_cursor?: number | null;
 };
 
 export type MessageConversationRead = {
@@ -1109,6 +1110,7 @@ export type NotificationRead = {
 export type NotificationListRead = {
   items: NotificationRead[];
   unread: number;
+  next_cursor?: number | null;
 };
 
 export type ActionNotificationListRead = {
@@ -1200,7 +1202,11 @@ export type StoryViewer = {
 };
 
 export type StoryViewResult = { ok: true; counted: boolean };
-export type StoryCreated = { ok: true; story: StoryRead };
+export type StoryCreated = {
+  ok: true;
+  story_id: number;
+  status: "processing";
+};
 
 export type UploadGrantRequest = {
   purpose: MediaPurpose;
@@ -1349,6 +1355,7 @@ export type PublicSearchParams = {
   mahalla?: string;
   page?: number;
   page_size?: number;
+  cursor?: string;
 };
 
 export type PublicSearchMapPoint = {
@@ -1382,8 +1389,10 @@ export type PublicSearchResponse = {
   items: PublicSearchItem[];
   page: number;
   page_size: number;
-  total: number;
+  total: number | null;
   pages: number;
+  next_cursor?: string;
+  has_more?: boolean;
 };
 
 export type PublicCatalogParams = {
@@ -2002,7 +2011,7 @@ export type AIChatMessage = {
 
 export type AIChatHistory = { history: AIChatMessage[] };
 export type AIChatAnswer = { ok: boolean; answer: string; source: "openai" | "local" };
-export type AIStatus = { ok: boolean; build: string; business_id: number; openai_enabled: boolean; local_fallback: boolean };
+export type AIStatus = { ok: boolean; build: string; business_id: number; openai_enabled: boolean; local_fallback: boolean; external_processing_requires_consent: boolean };
 export type AIDocumentDraftRequest = {
   prompt: string;
   direction?: string;
@@ -2014,6 +2023,7 @@ export type AIDocumentDraftRequest = {
   firm_name?: string;
   director?: string;
   inn?: string;
+  allow_external_processing?: boolean;
 };
 export type AIDocumentDraft = {
   ok: boolean;

@@ -79,7 +79,7 @@ def _record_id(value: object) -> int:
 
 
 class BusinessOnlineService:
-    """Relational primary store with temporary synchronized JSON fallback."""
+    """Relational primary store; JSON compatibility is test-only when enabled."""
 
     def __init__(
         self,
@@ -93,6 +93,7 @@ class BusinessOnlineService:
         notification_repository: NotificationRepository | None = None,
         education_repository: EducationEnrollmentRepository | None = None,
         education_service: EducationEnrollmentService | None = None,
+        legacy_json_compatibility: bool = True,
     ) -> None:
         self._session_factory = session_factory
         self._repository = repository or CabinetRecordRepository()
@@ -100,8 +101,11 @@ class BusinessOnlineService:
         self._listing_sync = listing_sync
         self._inventory_sync = inventory_sync
         self._catalog_cache_epoch = catalog_cache_epoch
+        self._legacy_json_compatibility = legacy_json_compatibility
         self._notifications = notification_repository or NotificationRepository()
-        self._education = education_repository or EducationEnrollmentRepository()
+        self._education = education_repository or EducationEnrollmentRepository(
+            legacy_json_compatibility=legacy_json_compatibility,
+        )
         self._education_service = education_service or EducationEnrollmentService(
             session_factory,
             repository=self._education,
@@ -195,7 +199,7 @@ class BusinessOnlineService:
                 payload,
                 changed,
             )
-            sync_json_fallback(profile, payload)
+            self._sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             await self._invalidate_catalog_cache(catalog_changed)
@@ -253,7 +257,7 @@ class BusinessOnlineService:
                 payload,
                 changed,
             )
-            sync_json_fallback(profile, payload)
+            self._sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             await self._invalidate_catalog_cache(catalog_changed)
@@ -338,7 +342,7 @@ class BusinessOnlineService:
                 payload,
                 changed,
             )
-            sync_json_fallback(profile, payload)
+            self._sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             await self._invalidate_catalog_cache(catalog_changed)
@@ -484,7 +488,7 @@ class BusinessOnlineService:
                 changed,
             )
             await self._persist_user_notifications(session, notification_events)
-            sync_json_fallback(profile, payload)
+            self._sync_json_fallback(profile, payload)
             refresh_derived(profile, payload)
             await session.commit()
             await self._invalidate_catalog_cache(catalog_changed)
@@ -561,7 +565,10 @@ class BusinessOnlineService:
             profile = await session.get(UserProfile, user_id)
             if profile is None:
                 continue
-            payload = normalized_payload(profile.cabinet_payload)
+            payload = (
+                normalized_payload(profile.cabinet_payload)
+                if self._legacy_json_compatibility else {}
+            )
             payload.update(await self._repository.read_payload(
                 session,
                 account_id=user_id,
@@ -577,7 +584,7 @@ class BusinessOnlineService:
                 resource="notifications",
                 rows=notifications,
             )
-            sync_json_fallback(profile, payload)
+            self._sync_json_fallback(profile, payload)
             snapshot = deepcopy(profile.dashboard_snapshot or {})
             snapshot["unread"] = sum(
                 not bool(int(row.get("is_read") or 0))
@@ -605,6 +612,8 @@ class BusinessOnlineService:
                 account_type="business",
                 resource=resource,
             )
+        if not self._legacy_json_compatibility:
+            return []
         return resource_rows(profile.cabinet_payload, resource)
 
     async def _education_write(
@@ -762,7 +771,10 @@ class BusinessOnlineService:
         session: AsyncSession,
         profile: BusinessProfile,
     ) -> dict[str, Any]:
-        payload = normalized_payload(profile.cabinet_payload)
+        payload = (
+            normalized_payload(profile.cabinet_payload)
+            if self._legacy_json_compatibility else {}
+        )
         relational = await self._repository.read_payload(
             session,
             account_id=profile.account_id,
@@ -781,6 +793,14 @@ class BusinessOnlineService:
                 if rows is not None:
                     payload[resource] = rows
         return payload
+
+    def _sync_json_fallback(
+        self,
+        profile: BusinessProfile | UserProfile,
+        payload: dict[str, Any],
+    ) -> None:
+        if self._legacy_json_compatibility:
+            sync_json_fallback(profile, payload)
 
     async def _persist_resources(
         self,

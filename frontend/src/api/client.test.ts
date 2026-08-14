@@ -298,7 +298,10 @@ describe("ApiClient", () => {
       init?.body,
     ])).toEqual([
       ["https://api.example/api/v1/ai-assistant/history?limit=30", "GET", undefined],
-      ["https://api.example/api/v1/ai-assistant/chat", "POST", JSON.stringify({ message: "Bugungi xulosa" })],
+      ["https://api.example/api/v1/ai-assistant/chat", "POST", JSON.stringify({
+        message: "Bugungi xulosa",
+        allow_external_processing: false,
+      })],
       ["https://api.example/api/v1/ai-assistant/status", "GET", undefined],
       ["https://api.example/api/v1/ai-assistant/documents/draft", "POST", JSON.stringify(draft)],
     ]);
@@ -687,7 +690,7 @@ describe("ApiClient", () => {
         JSON.stringify({
           api_version: "v1",
           foundation: "phase1",
-          legacy_build: "v1656",
+          ui_build: "modular",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -960,7 +963,7 @@ describe("ApiClient", () => {
     });
   });
 
-  it("uses the v1656 Home map, offers, followed and feature contracts", async () => {
+  it("uses the modular Home map, offers, followed and feature contracts", async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse({}));
     const client = new ApiClient(
       "https://api.example",
@@ -1130,7 +1133,7 @@ describe("ApiClient", () => {
       ]);
   });
 
-  it("opens a v1656 business through the typed CSRF-protected endpoint", async () => {
+  it("opens a modular business through the typed CSRF-protected endpoint", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse({
         account_id: 5,

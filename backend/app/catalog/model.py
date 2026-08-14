@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, attributes, mapped_column
 
 from app.db.base import Base
-from app.legacy_migration.model import (
+from app.core.states import (
     OWNER_STATE_ENUM,
     REVIEW_STATE_ENUM,
     OwnerState,

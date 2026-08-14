@@ -1,4 +1,5 @@
 from typing import Annotated, Literal
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,6 +8,7 @@ from app.accounts.model import AccountType
 from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
 from app.core.errors import ApiError
 from app.media.storage import UploadRejected
+from app.media.model import MediaUploadGrant
 
 
 router = APIRouter(prefix="/api/v1/media", tags=["media"])
@@ -82,4 +84,18 @@ async def create_upload_grant(
             "media_upload_rejected",
             str(exc),
         ) from None
+    if body.purpose in {"avatar", "logo", "payment_qr"}:
+        async with request.app.state.database.session() as session:
+            session.add(MediaUploadGrant(
+                owner_account_id=current.account_id,
+                owner_type=current.account_type.value,
+                purpose=body.purpose,
+                object_key=grant.object_key,
+                content_type=body.content_type,
+                declared_size=body.size_bytes,
+                status="pending",
+                created_at=datetime.now(UTC),
+                attached_at=None,
+            ))
+            await session.commit()
     return grant

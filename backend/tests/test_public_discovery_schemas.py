@@ -7,6 +7,8 @@ from app.public_discovery.schemas import (
     PublicSearchItem,
     PublicSearchParams,
     PublicSearchResponse,
+    decode_search_cursor,
+    encode_search_cursor,
 )
 
 
@@ -73,7 +75,6 @@ def test_public_search_params_normalize_filters_and_limit_pagination():
         result_type="business",
         direction="  Chakana savdo ",
         region="  Toshkent ",
-        page=2,
         page_size=50,
     )
 
@@ -81,10 +82,13 @@ def test_public_search_params_normalize_filters_and_limit_pagination():
     assert params.direction == "Chakana savdo"
     assert params.region == "Toshkent"
     assert params.result_type is PublicResultType.BUSINESS
-    assert params.offset == 50
+    cursor = encode_search_cursor("savdo", "business", 42)
+    assert decode_search_cursor(cursor) == ("savdo", "business", 42)
 
     with pytest.raises(ValidationError):
         PublicSearchParams(page_size=51)
+    with pytest.raises(ValidationError):
+        PublicSearchParams(page=2)
 
 
 def test_public_search_params_accept_all_result_types():

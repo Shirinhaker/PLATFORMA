@@ -8,9 +8,9 @@ import {
   initials,
 } from "./business-profile-config";
 import {
-  BusinessLocationPickerV1656View,
+  BusinessLocationPickerView,
   type PicklocPoint,
-} from "./BusinessLocationPickerV1656View";
+} from "./BusinessLocationPickerView";
 import "./BusinessProfileEditor.css";
 
 
@@ -356,7 +356,7 @@ export function BusinessProfileEditorV2({
 
   if (mapOpen) {
     return (
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="bp"
         value={point}
         onCancel={() => setMapOpen(false)}

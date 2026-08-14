@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 
 from app.auth.dependencies import (
     CurrentAccount,
@@ -50,13 +50,20 @@ def require_device_owner(current: CurrentAccount) -> None:
 
 
 @router.get("", response_model=NotificationListRead)
-async def notifications(request: Request, current: CurrentRead):
+async def notifications(
+    request: Request,
+    current: CurrentRead,
+    before_id: int | None = Query(default=None, gt=0),
+    limit: int = Query(default=50, ge=1, le=100),
+):
     require_access(current)
     return await service(request).list(
         account_id=current.account_id,
         account_type=current.account_type,
         staff_id=current.staff_id,
         permissions=current.permissions,
+        before_id=before_id,
+        limit=limit,
     )
 
 

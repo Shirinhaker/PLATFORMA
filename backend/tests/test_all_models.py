@@ -27,6 +27,10 @@ def _model_modules() -> set[str]:
     """`app/*/model.py` va `app/*/*_model.py` fayllari."""
     found = set()
     for path in BACKEND.glob("app/*/model.py"):
+        if path.parent.name == "legacy_migration":
+            # Offline compatibility module only re-exports neutral ORM
+            # definitions and must not be imported by runtime startup.
+            continue
         found.add(f"app.{path.parent.name}.model")
     for path in BACKEND.glob("app/*/*_model.py"):
         found.add(f"app.{path.parent.name}.{path.stem}")

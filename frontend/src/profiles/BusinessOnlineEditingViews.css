@@ -357,7 +357,7 @@
 }
 
 .business-items .app-modal-back,
-.promotion-v1656 .app-modal-back {
+.promotion-modular .app-modal-back {
   position: fixed;
   z-index: 5200;
   inset: 0;
@@ -372,7 +372,7 @@
 }
 
 .business-items .app-confirm,
-.promotion-v1656 .app-confirm {
+.promotion-modular .app-confirm {
   position: fixed;
   z-index: 5201;
   top: 50%;
@@ -389,18 +389,18 @@
 }
 
 .business-items .acf-title,
-.promotion-v1656 .acf-title {
+.promotion-modular .acf-title {
   font-size: 19px;
   font-weight: 850;
 }
 
 .business-items .app-confirm p,
-.promotion-v1656 .app-confirm p {
+.promotion-modular .app-confirm p {
   white-space: pre-line;
 }
 
 .business-items .acf-btns,
-.promotion-v1656 .acf-btns {
+.promotion-modular .acf-btns {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -408,13 +408,13 @@
 }
 
 .business-items .acf-cancel,
-.promotion-v1656 .acf-cancel {
+.promotion-modular .acf-cancel {
   color: var(--koprik-ink);
   background: var(--koprik-card);
 }
 
 .business-items .acf-ok.danger,
-.promotion-v1656 .acf-ok.danger {
+.promotion-modular .acf-ok.danger {
   color: #fff;
   background: #dc2626;
 }

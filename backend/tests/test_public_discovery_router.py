@@ -110,14 +110,13 @@ def test_public_search_is_unauthenticated_and_returns_only_public_fields():
         params={
             "q": "savdo",
             "result_type": "business",
-            "page": 2,
             "page_size": 10,
         },
     )
 
     assert response.status_code == 200
     assert service.params.q == "savdo"
-    assert service.params.page == 2
+    assert service.params.page == 1
     assert response.json() == {
         "items": [
             {
@@ -134,10 +133,11 @@ def test_public_search_is_unauthenticated_and_returns_only_public_fields():
                 "image_url": "",
             }
         ],
-        "page": 2,
+        "page": 1,
         "page_size": 10,
         "total": 1,
         "pages": 1,
+        "has_more": False,
     }
 
 

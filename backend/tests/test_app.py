@@ -15,14 +15,14 @@ def test_healthz_is_process_only():
     }
 
 
-def test_v1_build_identifies_foundation_without_changing_legacy_build():
+def test_v1_build_identifies_modular_ui_build():
     app = create_app(Settings(environment="test"))
     response = TestClient(app).get("/api/v1/build")
     assert response.status_code == 200
     assert response.json() == {
         "api_version": "v1",
         "foundation": "phase1",
-        "legacy_build": "v1656",
+        "ui_build": "modular",
     }
 
 

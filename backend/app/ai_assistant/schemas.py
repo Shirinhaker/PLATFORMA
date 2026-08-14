@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class AIChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     message: str = Field(max_length=1000)
+    allow_external_processing: bool = False
 
 
 class AIChatMessageRead(BaseModel):
@@ -31,6 +32,7 @@ class AIStatusRead(BaseModel):
     business_id: int
     openai_enabled: bool
     local_fallback: bool = True
+    external_processing_requires_consent: bool = True
 
 
 class AIDocumentDraftRequest(BaseModel):
@@ -45,6 +47,7 @@ class AIDocumentDraftRequest(BaseModel):
     firm_name: str = Field(default="", max_length=120)
     director: str = Field(default="", max_length=160)
     inn: str = Field(default="", max_length=32)
+    allow_external_processing: bool = False
 
 
 class AIDocumentDraftRead(BaseModel):

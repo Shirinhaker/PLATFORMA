@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     service_name: str = "koprik-api"
     environment: str = "development"
-    legacy_build: str = "v1656"
+    ui_build: str = "modular"
     database_url: str = "postgresql+asyncpg://koprik:koprik@localhost:5432/koprik"
     # Har API nusxasi shuncha ulanish ochadi. PostgreSQL'ning `max_connections`
     # chegarasi barcha nusxalar uchun umumiy, shuning uchun nusxalar soni
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Pool bo'shashini uzoq kutish yiqilishni butun tizimga tarqatadi —
     # tez rad etib, yukni orqaga qaytargan ma'qul.
     db_pool_timeout_seconds: int = Field(default=3, ge=1, le=60)
+    worker_db_pool_size: int = Field(default=3, ge=1, le=20)
+    worker_db_max_overflow: int = Field(default=2, ge=0, le=20)
+    worker_db_pool_timeout_seconds: int = Field(default=3, ge=1, le=60)
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = Field(default=100, ge=1, le=1000)
     cors_origins: str = ""
@@ -36,6 +39,7 @@ class Settings(BaseSettings):
     telegram_bot_username: str = Field(default="")
     telegram_webhook_secret: str = Field(default="")
     otp_secret: str = Field(default="")
+    admin_otp_secret: str = Field(default="")
     csrf_secret: str = Field(default="")
     outbox_encryption_key: str = Field(default="")
     firebase_service_account_json: str = Field(default="")
@@ -72,8 +76,8 @@ class Settings(BaseSettings):
     telegram_resend_seconds: int = 60
     telegram_max_attempts: int = 5
 
-    # Admin paneli. Ro'yxat bo'sh bo'lsa hech kim kira olmaydi — v1656da
-    # standart qiymatga ikkita Telegram ID yozilgan edi, bu xavfli.
+    # Admin paneli. Ro'yxat bo'sh bo'lsa hech kim kira olmaydi; standart
+    # qiymatga Telegram ID yozish xavfli bo'ladi.
     admin_telegram_ids: str = ""
     admin_cookie_name: str = "koprik_admin_session"
     admin_challenge_ttl_seconds: int = 5 * 60
@@ -135,6 +139,7 @@ class Settings(BaseSettings):
             "telegram_bot_username": self.telegram_bot_username,
             "telegram_webhook_secret": self.telegram_webhook_secret,
             "otp_secret": self.otp_secret,
+            "admin_otp_secret": self.admin_otp_secret,
             "csrf_secret": self.csrf_secret,
             "outbox_encryption_key": self.outbox_encryption_key,
         }

@@ -8,66 +8,66 @@ import type {
 } from "../api/types";
 import { CabinetDataView } from "./CabinetDataView";
 import {
-  OwnerListingsV1656,
+  OwnerListings,
   type OwnerListingsApi,
-} from "../listings/OwnerListingsV1656";
-import { SavedListingsV1656 } from "../listings/SavedListingsV1656";
+} from "../listings/OwnerListings";
+import { SavedListings } from "../listings/SavedListings";
 import {
-  OrdersCabinetV1656,
+  OrdersCabinet,
   type OrdersApi,
-} from "../orders/OrdersCabinetV1656";
+} from "../orders/OrdersCabinet";
 import {
-  MyQueuesV1656,
+  MyQueues,
   type MyQueuesApi,
-} from "../queues/MyQueuesV1656";
+} from "../queues/MyQueues";
 import {
-  OwnerStoriesV1656,
+  OwnerStories,
   type OwnerStoriesApi,
-} from "../stories/OwnerStoriesV1656";
+} from "../stories/OwnerStories";
 import {
-  MessagesV1656,
+  Messages,
   type MessagesApi,
-} from "../messages/MessagesV1656";
+} from "../messages/Messages";
 import {
-  ReceivedReviewsV1656,
+  ReceivedReviews,
   type ReceivedReviewsApi,
-} from "../reviews/ReviewsV1656";
+} from "../reviews/Reviews";
 import {
-  ActionNotificationsV1656,
-  NotificationsV1656,
+  ActionNotifications,
+  Notifications,
   type NotificationsApi,
-} from "../notifications/NotificationsV1656";
+} from "../notifications/Notifications";
 import {
-  FollowListsV1656,
+  FollowLists,
   type FollowListsApi,
-} from "../follows/FollowListsV1656";
+} from "../follows/FollowLists";
 import {
-  PaymentsV1656,
+  Payments,
   supportsPaymentsApi,
-} from "../payments/SubscriptionsPaymentsV1656";
+} from "../payments/SubscriptionsPayments";
 import {
-  SpecialistV1656,
+  Specialist,
   type SpecialistApi,
-} from "../specialists/SpecialistV1656";
+} from "../specialists/Specialist";
 import {
-  DriverCabinetV1656,
+  DriverCabinet,
   type DriverCabinetApi,
-} from "../taxi/DriverCabinetV1656";
-import { MyRidesV1656 } from "../taxi/MyRidesV1656";
-import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
-import { BusinessOpeningV1656 } from "../business-opening/BusinessOpeningV1656";
+} from "../taxi/DriverCabinet";
+import { MyRides } from "../taxi/MyRides";
+import { AccountSettings } from "../settings/AccountSettings";
+import { BusinessOpening } from "../business-opening/BusinessOpening";
 import {
-  UserCabinetDashboardV1656,
-  type UserCabinetSectionV1656,
-} from "./UserCabinetDashboardV1656";
-import { UserProfileEditorV1656 } from "./UserProfileEditorV1656";
+  UserCabinetDashboard,
+  type UserCabinetSection,
+} from "./UserCabinetDashboard";
+import { UserProfileEditor } from "./UserProfileEditor";
 import {
   supportsAdvertisementApi,
-} from "../advertisements/BusinessAdvertisementsV1656";
+} from "../advertisements/BusinessAdvertisements";
 import {
-  UserAdvertisementsV1656,
+  UserAdvertisements,
   type UserAdvertisementsApi,
-} from "../advertisements/UserAdvertisementsV1656";
+} from "../advertisements/UserAdvertisements";
 
 
 export type UserProfileApi = Pick<
@@ -178,7 +178,7 @@ type Props = {
 type CabinetView = "dashboard" | "profile" | "specialist" | string;
 type PayloadSource = string | readonly string[];
 
-type Section = UserCabinetSectionV1656 & {
+type Section = UserCabinetSection & {
   payload?: PayloadSource;
 };
 
@@ -521,7 +521,7 @@ export function UserProfile({
   }
 
   const actionBanner = supportsNotifications(api) ? (
-    <ActionNotificationsV1656
+    <ActionNotifications
       api={api}
       onOpenNotification={openNotification}
     />
@@ -530,7 +530,7 @@ export function UserProfile({
 
   if (view === "listings" && supportsOwnerListings(api)) {
     return withActionBanner(
-      <OwnerListingsV1656
+      <OwnerListings
         actor="user"
         api={api}
         onBack={() => setView("dashboard")}
@@ -541,7 +541,7 @@ export function UserProfile({
 
   if (view === "advertisements" && supportsUserAdvertisements(api)) {
     return withActionBanner(
-      <UserAdvertisementsV1656
+      <UserAdvertisements
         api={api}
         onBack={() => setView("dashboard")}
         onOpenListings={() => setView("listings")}
@@ -551,7 +551,7 @@ export function UserProfile({
 
   if (view === "stories" && supportsOwnerStories(api)) {
     return withActionBanner(
-      <OwnerStoriesV1656
+      <OwnerStories
         actor="user"
         api={api}
         ownerName={profile.name}
@@ -562,7 +562,7 @@ export function UserProfile({
 
   if (["followers", "follows"].includes(view) && supportsFollowLists(api)) {
     return withActionBanner(
-      <FollowListsV1656
+      <FollowLists
         api={api}
         kind={view === "followers" ? "followers" : "following"}
         onBack={() => setView("dashboard")}
@@ -575,7 +575,7 @@ export function UserProfile({
 
   if (view === "payments" && supportsPaymentsApi(api)) {
     return withActionBanner(
-      <PaymentsV1656
+      <Payments
         api={api}
         onBack={() => setView("dashboard")}
       />,
@@ -584,7 +584,7 @@ export function UserProfile({
 
   if (view === "saved" && getSavedListings) {
     return withActionBanner(
-      <SavedListingsV1656
+      <SavedListings
         getSavedListings={getSavedListings}
         legacyRows={selectedRows}
         onBack={() => setView("dashboard")}
@@ -595,7 +595,7 @@ export function UserProfile({
 
   if (view === "messages" && supportsMessages(api)) {
     return withActionBanner(
-      <MessagesV1656
+      <Messages
         api={api}
         onBack={() => setView("dashboard")}
       />,
@@ -604,7 +604,7 @@ export function UserProfile({
 
   if (view === "specialist-reviews" && supportsReceivedReviews(api)) {
     return withActionBanner(
-      <ReceivedReviewsV1656
+      <ReceivedReviews
         api={api}
         onBack={() => setView("specialist")}
       />,
@@ -613,7 +613,7 @@ export function UserProfile({
 
   if (["notifications", "notify-filters"].includes(view) && supportsNotifications(api)) {
     return withActionBanner(
-      <NotificationsV1656
+      <Notifications
         api={api}
         onBack={() => setView("dashboard")}
         onOpenNotification={openNotification}
@@ -625,16 +625,16 @@ export function UserProfile({
   if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
     const queueSection = view === "service-orders" && supportsMyQueues(api) ? (
       <>
-        <MyQueuesV1656
+        <MyQueues
           api={api}
           focusQueueId={queueTarget}
           onFocusHandled={() => setQueueTarget(null)}
         />
-        <h2 className="queue-orders-v1656__heading">Boshqa xizmat buyurtmalari</h2>
+        <h2 className="queue-orders-modular__heading">Boshqa xizmat buyurtmalari</h2>
       </>
     ) : null;
     return withActionBanner(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         key={view}
         api={api}
         side="customer"
@@ -652,19 +652,19 @@ export function UserProfile({
 
   if (view === "drivers" && supportsTaxi(api)) {
     return withActionBanner(
-      <DriverCabinetV1656 api={api} onBack={() => setView("dashboard")} />,
+      <DriverCabinet api={api} onBack={() => setView("dashboard")} />,
     );
   }
 
   if (view === "rides" && supportsTaxi(api)) {
     return withActionBanner(
-      <MyRidesV1656 api={api} onBack={() => setView("dashboard")} />,
+      <MyRides api={api} onBack={() => setView("dashboard")} />,
     );
   }
 
   if (view === "settings") {
     return withActionBanner(
-      <AccountSettingsV1656
+      <AccountSettings
         api={api}
         identity={identity}
         canManageBusinessCredentials={Boolean(profile.has_business)}
@@ -679,7 +679,7 @@ export function UserProfile({
 
   if (view === "business-opening" && supportsBusinessOpening(api)) {
     return withActionBanner(
-      <BusinessOpeningV1656
+      <BusinessOpening
         api={api}
         onBack={() => setView("dashboard")}
         onOpened={() => setProfile((current) => (
@@ -730,7 +730,7 @@ export function UserProfile({
   if (view === "specialist") {
     if (supportsSpecialist(api)) {
       return withActionBanner(
-        <SpecialistV1656
+        <Specialist
           api={api}
           onBack={() => setView("dashboard")}
           onReviews={supportsReceivedReviews(api)
@@ -750,7 +750,7 @@ export function UserProfile({
 
   if (view === "profile") {
     return withActionBanner(
-      <UserProfileEditorV1656
+      <UserProfileEditor
         api={api}
         profile={profile}
         onBack={() => setView("dashboard")}
@@ -762,7 +762,7 @@ export function UserProfile({
   }
 
   return withActionBanner(
-    <UserCabinetDashboardV1656
+    <UserCabinetDashboard
       busy={busy}
       error={error}
       messageUnread={messageUnread}

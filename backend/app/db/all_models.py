@@ -25,6 +25,8 @@ from app.auth import model as auth_model  # noqa: F401
 from app.cabinet_records import model as cabinet_records_model  # noqa: F401
 from app.cash_register import model as cash_register_model  # noqa: F401
 from app.catalog import model as catalog_model  # noqa: F401
+from app.core import legacy_ids  # noqa: F401
+from app.db import migration_models  # noqa: F401
 from app.debt_ledger import model as debt_ledger_model  # noqa: F401
 from app.dining import model as dining_model  # noqa: F401
 from app.documents import model as documents_model  # noqa: F401
@@ -32,9 +34,9 @@ from app.education import model as education_model  # noqa: F401
 from app.expenses import model as expenses_model  # noqa: F401
 from app.follows import model as follows_model  # noqa: F401
 from app.inventory import model as inventory_model  # noqa: F401
-from app.legacy_migration import model as legacy_migration_model  # noqa: F401
 from app.listings import model as listings_model  # noqa: F401
 from app.messages import model as messages_model  # noqa: F401
+from app.media import model as media_model  # noqa: F401
 from app.notifications import model as notifications_model  # noqa: F401
 from app.orders import model as orders_model  # noqa: F401
 from app.outbox import model as outbox_model  # noqa: F401

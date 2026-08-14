@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { PublicHeader } from "../legacy/public/PublicHeader";
-import "../legacy/public/legacy-public.css";
+import { PublicHeader } from "../public/PublicHeader";
+import "../public/public.css";
 
 type AppShellProps = {
   children: ReactNode;

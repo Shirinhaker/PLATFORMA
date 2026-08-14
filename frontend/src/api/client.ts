@@ -289,6 +289,7 @@ export class ApiClient {
     textFilters.forEach(([name, value]) => { if (value) query.set(name, value); });
     if (params.page !== undefined) query.set("page", String(params.page));
     if (params.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params.cursor) query.set("cursor", params.cursor);
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/search${suffix}`);
   }
@@ -664,10 +665,12 @@ export class ApiClient {
   getMessageThread(
     kind: AccountType,
     publicId: string,
+    beforeId?: number | null,
   ): Promise<MessageThreadRead> {
+    const query = beforeId ? `?before_id=${beforeId}` : "";
     return this.request(
       "GET",
-      `/api/v1/messages/with/${kind}/${encodeURIComponent(publicId)}`,
+      `/api/v1/messages/with/${kind}/${encodeURIComponent(publicId)}${query}`,
       undefined,
       true,
     );
@@ -747,8 +750,9 @@ export class ApiClient {
     );
   }
 
-  getNotifications(): Promise<NotificationListRead> {
-    return this.request("GET", "/api/v1/notifications", undefined, true);
+  getNotifications(beforeId?: number | null): Promise<NotificationListRead> {
+    const query = beforeId ? `?before_id=${beforeId}` : "";
+    return this.request("GET", `/api/v1/notifications${query}`, undefined, true);
   }
 
   getActionNotifications(): Promise<ActionNotificationListRead> {
@@ -1901,8 +1905,11 @@ export class ApiClient {
     return this.request("GET", `/api/v1/ai-assistant/history?limit=${limit}`);
   }
 
-  sendAIChatMessage(message: string): Promise<AIChatAnswer> {
-    return this.request("POST", "/api/v1/ai-assistant/chat", { message }, true);
+  sendAIChatMessage(message: string, allowExternalProcessing = false): Promise<AIChatAnswer> {
+    return this.request("POST", "/api/v1/ai-assistant/chat", {
+      message,
+      allow_external_processing: allowExternalProcessing,
+    }, true);
   }
 
   getAIStatus(): Promise<AIStatus> {

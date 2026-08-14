@@ -53,7 +53,7 @@ function authApi() {
 }
 
 
-describe("AuthFlow v1656 parity", () => {
+describe("AuthFlow modular parity", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     vi.spyOn(window, "open").mockReturnValue(null);
@@ -64,7 +64,7 @@ describe("AuthFlow v1656 parity", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens directly on the exact v1656 login screen", () => {
+  it("opens directly on the exact modular login screen", () => {
     render(
       <AuthFlow
         api={authApi()}
@@ -113,7 +113,7 @@ describe("AuthFlow v1656 parity", () => {
       .toBeInTheDocument();
   });
 
-  it("shows the exact role cards and all twenty v1656 directions", async () => {
+  it("shows the exact role cards and all twenty modular directions", async () => {
     const user = userEvent.setup();
     render(<AuthFlow api={authApi()} onAuthenticated={vi.fn()} />);
 

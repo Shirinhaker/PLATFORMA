@@ -46,7 +46,7 @@ export function StaffLoginForm({
   return (
     <main className="koprik-auth-stage">
       <form
-        className="koprik-flow-shell koprik-auth-shell koprik-staff-shell auth-v1656"
+        className="koprik-flow-shell koprik-auth-shell koprik-staff-shell auth-modular"
         onSubmit={(event) => void submit(event)}
       >
         <div className="koprik-staff-shell__heading">
@@ -57,7 +57,7 @@ export function StaffLoginForm({
         <label className="field">
           <span>Firma logini</span>
           <input
-            className="input auth-v1656__lowercase"
+            className="input auth-modular__lowercase"
             autoComplete="off"
             placeholder="masalan: biz123456"
             value={firmLogin}
@@ -68,7 +68,7 @@ export function StaffLoginForm({
         <label className="field">
           <span>Xodim logini</span>
           <input
-            className="input auth-v1656__lowercase"
+            className="input auth-modular__lowercase"
             autoComplete="username"
             placeholder="masalan: vali01"
             value={login}

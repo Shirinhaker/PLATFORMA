@@ -48,6 +48,7 @@ def test_staging_accepts_complete_auth_and_telegram_secrets():
         telegram_bot_username="koprik_test_bot",
         telegram_webhook_secret="webhook-secret",
         otp_secret="otp-secret",
+        admin_otp_secret="admin-otp-secret",
         csrf_secret="csrf-secret",
         outbox_encryption_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     )
@@ -108,6 +109,7 @@ def test_staging_rejects_invalid_outbox_encryption_key():
             telegram_bot_username="koprik_test_bot",
             telegram_webhook_secret="webhook-secret",
             otp_secret="otp-secret",
+            admin_otp_secret="admin-otp-secret",
             csrf_secret="csrf-secret",
             outbox_encryption_key="not-a-fernet-key",
         )

@@ -65,7 +65,7 @@ function api() {
 }
 
 
-describe("v1656 business header follow counts", () => {
+describe("modular business header follow counts", () => {
   it("shows follower counts in the identity card and hides duplicate menu cards", async () => {
     const user = userEvent.setup();
     render(

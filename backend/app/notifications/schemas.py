@@ -34,6 +34,7 @@ class NotificationRead(BaseModel):
 class NotificationListRead(BaseModel):
     items: list[NotificationRead]
     unread: int = Field(ge=0)
+    next_cursor: int | None = Field(default=None, gt=0)
 
 
 class ActionNotificationListRead(BaseModel):

@@ -12,7 +12,7 @@ function response(body: unknown) {
 }
 
 
-describe("typed v1656 notifications API client", () => {
+describe("typed modular notifications API client", () => {
   it("uses normalized endpoints and protects every write with CSRF", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(response({

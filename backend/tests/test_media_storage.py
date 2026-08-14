@@ -5,6 +5,25 @@ from app.accounts.model import AccountType
 from app.media.storage import R2Storage, StoredObject, UploadRejected
 
 
+def test_r2_readiness_performs_a_real_bucket_probe():
+    class Healthy:
+        def __init__(self):
+            self.calls = 0
+
+        def head_bucket(self, *, Bucket):
+            self.calls += 1
+            assert Bucket == "koprik-test"
+
+    class Broken:
+        def head_bucket(self, **_kwargs):
+            raise RuntimeError("r2 unavailable")
+
+    healthy = Healthy()
+    assert R2Storage(healthy, bucket="koprik-test").ready() is True
+    assert healthy.calls == 1
+    assert R2Storage(Broken(), bucket="koprik-test").ready() is False
+
+
 def test_upload_grant_uses_private_profile_prefix(s3_client):
     storage = R2Storage(s3_client, bucket="koprik-test")
     grant = storage.create_upload_grant(
@@ -45,6 +64,51 @@ def test_profile_image_is_limited_to_eight_mebibytes(s3_client):
             filename="large.webp",
             content_type="image/webp",
             size_bytes=8 * 1024 * 1024 + 1,
+        )
+
+
+def test_profile_attachment_verifies_real_r2_bytes_and_type():
+    class Body:
+        def read(self, size):
+            assert size == 32
+            return b"\x89PNG\r\n\x1a\n" + b"0" * 24
+
+        def close(self):
+            return None
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            return {"ContentLength": 1024, "ContentType": "image/png"}
+
+        def get_object(self, *, Bucket, Key, Range):
+            assert Range == "bytes=0-31"
+            return {"Body": Body()}
+
+    result = R2Storage(Client(), bucket="koprik-test").verify_profile_image(
+        "private/user/42/avatar/image.png"
+    )
+    assert result.size_bytes == 1024
+    assert result.content_type == "image/png"
+
+
+def test_profile_attachment_rejects_spoofed_content_type():
+    class Body:
+        def read(self, size):
+            return b"MZ" + b"0" * 30
+
+        def close(self):
+            return None
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            return {"ContentLength": 1024, "ContentType": "image/png"}
+
+        def get_object(self, **kwargs):
+            return {"Body": Body()}
+
+    with pytest.raises(UploadRejected, match="haqiqiy fayl turi"):
+        R2Storage(Client(), bucket="koprik-test").verify_profile_image(
+            "private/user/42/avatar/fake.png"
         )
 
 

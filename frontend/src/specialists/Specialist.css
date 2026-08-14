@@ -1,0 +1,266 @@
+.specialist-modular {
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 14px;
+  color: var(--ink, #11201b);
+}
+
+.specialist-modular button,
+.specialist-modular input,
+.specialist-modular textarea {
+  font: inherit;
+}
+
+.specialist-modular__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.specialist-modular__toolbar > button:first-child {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line, #dce5e0);
+  border-radius: 12px;
+  background: var(--card, #fff);
+  cursor: pointer;
+}
+
+.specialist-modular__toolbar div {
+  min-width: 0;
+  flex: 1;
+}
+
+.specialist-modular__toolbar h1,
+.specialist-modular__toolbar p,
+.specialist-modular__section h2,
+.specialist-modular__section p {
+  margin: 0;
+}
+
+.specialist-modular__toolbar h1 { font-size: 22px; }
+.specialist-modular__toolbar p,
+.specialist-modular__section p,
+.specialist-modular__muted {
+  margin-top: 4px;
+  color: var(--soft, #64756e);
+  font-size: 13px;
+}
+
+.specialist-modular__reviews {
+  flex: none;
+  padding: 10px 12px;
+  border: 1px solid var(--line, #dce5e0);
+  border-radius: 12px;
+  color: var(--primary, #0e8c84);
+  background: var(--card, #fff);
+  cursor: pointer;
+}
+
+.specialist-modular__form {
+  display: grid;
+  gap: 14px;
+}
+
+.specialist-modular__form > label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.specialist-modular__form input,
+.specialist-modular__form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 1px solid var(--line, #dce5e0);
+  border-radius: 12px;
+  color: var(--ink, #11201b);
+  background: var(--card, #fff);
+}
+
+.specialist-modular__form textarea { min-height: 110px; resize: vertical; }
+
+.specialist-modular__section {
+  padding-top: 8px;
+}
+
+.specialist-modular__section h2,
+.specialist-modular__visibility h2,
+.specialist-modular__form section > h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.specialist-modular__form section > h2 small {
+  color: var(--soft, #64756e);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.specialist-modular__rail {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 2px 2px 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.specialist-modular__add-card,
+.specialist-modular__media-card,
+.specialist-modular__offer-card {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border: 1.5px solid var(--line, #dce5e0);
+  border-radius: 15px;
+  background: var(--card, #fff);
+  box-shadow: 0 8px 24px rgb(16 40 33 / 6%);
+  scroll-snap-align: start;
+}
+
+.specialist-modular__add-card {
+  display: flex;
+  width: 116px;
+  height: 142px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-style: dashed;
+  color: var(--primary, #0e8c84);
+  background: var(--primary-tint, #e2f3f1);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+
+.specialist-modular__add-card span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--card, #fff);
+  font-size: 26px;
+}
+
+.specialist-modular__media-card { width: 132px; height: 142px; background: #dce5e0; }
+.specialist-modular__media-card img,
+.specialist-modular__media-card video { width: 100%; height: 100%; object-fit: cover; }
+.specialist-modular__media-card video { background: #111; }
+.specialist-modular__media-card button,
+.specialist-modular__image-preview button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgb(0 0 0 / 62%);
+  font-size: 20px;
+  cursor: pointer;
+}
+.specialist-modular__media-card em {
+  position: absolute;
+  bottom: 5px;
+  left: 6px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  color: #fff;
+  background: rgb(0 0 0 / 60%);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.specialist-modular__offer-card {
+  display: flex;
+  width: 148px;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 0 10px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.specialist-modular__offer-image {
+  display: grid;
+  height: 108px;
+  place-items: center;
+  background: var(--primary-tint, #e2f3f1);
+  font-size: 34px;
+}
+.specialist-modular__offer-image img { width: 100%; height: 100%; object-fit: cover; }
+.specialist-modular__offer-card small,
+.specialist-modular__offer-card b,
+.specialist-modular__offer-card span { padding: 0 10px; }
+.specialist-modular__offer-card small { margin-top: 8px; color: var(--primary, #0e8c84); }
+.specialist-modular__offer-card b { margin-top: 3px; }
+.specialist-modular__offer-card span { margin-top: 4px; color: var(--soft, #64756e); font-size: 12px; }
+
+.specialist-modular__visibility { display: grid; gap: 8px; }
+.specialist-modular__visibility > button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1.5px solid var(--line, #dce5e0);
+  border-radius: 14px;
+  color: inherit;
+  background: var(--card, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+.specialist-modular__visibility > button.on {
+  border-color: var(--primary, #0e8c84);
+  background: var(--primary-tint, #e2f3f1);
+}
+.specialist-modular__visibility > button > span { font-size: 24px; }
+.specialist-modular__visibility p { margin: 3px 0 0; color: var(--soft, #64756e); font-size: 12px; }
+
+.specialist-map-modular { position: relative; height: 290px; margin-top: 8px; overflow: hidden; border-radius: 15px; }
+.specialist-map-modular__canvas { width: 100%; height: 100%; background: #e9efeb; }
+.specialist-map-modular__pin { position: absolute; z-index: 500; top: 50%; left: 50%; transform: translate(-50%, -100%); font-size: 38px; pointer-events: none; }
+.specialist-map-modular__help { position: absolute; z-index: 500; top: 10px; right: 0; left: 0; text-align: center; pointer-events: none; }
+.specialist-map-modular__help span { padding: 7px 10px; border-radius: 10px; background: rgb(255 255 255 / 92%); font-size: 12px; }
+.specialist-modular__map-info { margin-top: 7px; }
+.specialist-modular__warning { padding: 10px 12px; border-radius: 12px; color: #8a5a00; background: #fff3cd; font-size: 13px; }
+
+.specialist-modular__primary,
+.specialist-modular__soft,
+.specialist-modular__danger {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.specialist-modular__primary { color: #fff; background: var(--primary, #0e8c84); }
+.specialist-modular__soft { margin-top: 7px; color: var(--primary, #0e8c84); background: var(--primary-tint, #e2f3f1); }
+.specialist-modular__danger { color: #dc2626; background: transparent; border: 1px solid var(--line, #dce5e0); }
+.specialist-modular__primary:disabled,
+.specialist-modular__soft:disabled { opacity: .6; cursor: wait; }
+.specialist-modular__error { color: #c62828; }
+.specialist-modular__success { color: var(--primary, #0e8c84); font-weight: 700; }
+
+.specialist-modular__chips { display: flex; gap: 9px; }
+.specialist-modular__chips button { padding: 8px 14px; border: 1px solid var(--line, #dce5e0); border-radius: 999px; background: #fff; cursor: pointer; }
+.specialist-modular__chips button.on { color: #fff; border-color: var(--primary, #0e8c84); background: var(--primary, #0e8c84); }
+.specialist-modular__photo-add { display: flex; min-height: 120px; align-items: center; justify-content: center; gap: 8px; border: 1.5px dashed var(--line, #dce5e0); border-radius: 14px; color: var(--primary, #0e8c84); background: var(--primary-tint, #e2f3f1); cursor: pointer; }
+.specialist-modular__image-preview { position: relative; width: 180px; height: 150px; overflow: hidden; border-radius: 14px; }
+.specialist-modular__image-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 640px) {
+  .specialist-modular__toolbar { align-items: flex-start; flex-wrap: wrap; }
+  .specialist-modular__reviews { width: 100%; margin-left: 54px; }
+}

@@ -5,7 +5,7 @@ import type {
   ChallengeStarted,
   RegistrationStart,
 } from "../api/types";
-import { CATALOG_DIRECTIONS } from "../legacy/public/catalog-data";
+import { CATALOG_DIRECTIONS } from "../public/catalog-data";
 import type { AuthApi } from "./AuthFlow";
 
 
@@ -63,7 +63,7 @@ export function RegistrationForm({
 
   return (
     <main className="koprik-auth-stage">
-      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={submit}>
+      <form className="koprik-flow-shell koprik-auth-shell auth-modular" onSubmit={submit}>
         <h1 className="lead">
           {business ? "Biznes ro'yxati" : "Foydalanuvchi ro'yxati"}
         </h1>

@@ -11,7 +11,7 @@ from app.auth.schemas import SessionIdentity
 from app.auth.security import derive_csrf
 from app.core.config import Settings
 from app.main import create_app
-from app.media.storage import R2Storage
+from app.media.storage import DownloadedObject, R2Storage
 from app.profiles.model import BusinessProfile, UserProfile
 from app.profiles.summary_service import ProfileSummaryService
 
@@ -30,6 +30,12 @@ class FakeProfileSession:
 
     async def get(self, model, account_id):
         return self.profiles[model].get(account_id)
+
+    def add(self, _row):
+        return None
+
+    async def scalar(self, _statement):
+        return None
 
     async def flush(self):
         return None
@@ -126,7 +132,13 @@ async def media_clients(s3_client):
         redis,
         settings,
     )
-    app.state.r2 = R2Storage(s3_client, bucket="koprik-test")
+    storage = R2Storage(s3_client, bucket="koprik-test")
+    storage.verify_profile_image = lambda _key: DownloadedObject(
+        size_bytes=1024,
+        content_type="image/png",
+    )
+    storage.delete_object = lambda _key: None
+    app.state.r2 = storage
 
     async with AsyncExitStack() as stack:
         clients = {}

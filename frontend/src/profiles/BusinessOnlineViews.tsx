@@ -161,7 +161,7 @@ function orderCreatedText(value: unknown): string {
   })}`;
 }
 
-function v1656Money(value: number): string {
+function modularMoney(value: number): string {
   return `${new Intl.NumberFormat("uz-UZ").format(Number(value || 0))} so'm`;
 }
 
@@ -189,7 +189,7 @@ export function SubscriptionsView({
   duration: number;
   setDuration: (value: number) => void;
   busy: boolean;
-  /** Tarif tanlanganda to'lov oynasini ochadi (v1656 oqimi). */
+  /** Tarif tanlanganda to'lov oynasini ochadi (modular oqimi). */
   openPayment: (plan: "plus" | "pro") => void;
 }) {
   const current = [...rows].reverse().find((row) => (
@@ -439,7 +439,7 @@ export function PaymentsView({
                 </span>
               </div>
               <div className="payment-card-amount">
-                {v1656Money(recordNumber(row, "amount", "amount_snapshot", "total"))}
+                {modularMoney(recordNumber(row, "amount", "amount_snapshot", "total"))}
               </div>
               {recordText(row, "reason") && (
                 <div className="subscription-action-message error">
@@ -925,7 +925,7 @@ export function OrdersView({
 
   return (
     <section>
-      <div className="order-tabs-v1656">
+      <div className="order-tabs-modular">
         <button
           type="button"
           className={current === "active" ? "seg-b on" : "seg-b"}
@@ -950,7 +950,7 @@ export function OrdersView({
           {done.some((row) => Boolean(row.is_unread)) ? " 🔔" : ""}
         </button>
       </div>
-      <div className="orders-v1656-list">
+      <div className="orders-modular-list">
         {visible.length ? visible.map((row, index) => {
           const id = recordId(row, index);
           const status = recordText(row, "status");
@@ -1024,7 +1024,7 @@ export function OrdersView({
                         : ""}
                     </span>
                     <b>{recordNumber(line, "line_total")
-                      ? v1656Money(recordNumber(line, "line_total"))
+                      ? modularMoney(recordNumber(line, "line_total"))
                       : recordText(line, "price") || "—"}</b>
                   </div>
                 );
@@ -1758,7 +1758,7 @@ export function NotificationsView({
   }
 
   return (
-    <section className="form-wrap notify-v1656">
+    <section className="form-wrap notify-modular">
       <div className="lead">Bildirishnomalarim</div>
       <div className="lead-sub">
         Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi.
@@ -1779,7 +1779,7 @@ export function NotificationsView({
         </label>
       </div>
       <div className="elon-hint">Mobil ilova qurilmasi ulanmagan.</div>
-      <div className="notify-v1656-head">
+      <div className="notify-modular-head">
         <b>Buyurtma bildirishnomalari</b>
         <button
           type="button"
