@@ -28,14 +28,6 @@ class UploadGrantRequest(BaseModel):
     size_bytes: int = Field(ge=1)
 
 
-class UploadFinalizeRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    purpose: MediaPurpose
-    pending_object_key: str = Field(min_length=1, max_length=1024)
-    object_key: str = Field(min_length=1, max_length=1024)
-
-
 def _redis(request: Request):
     wrapper = request.app.state.redis
     client = getattr(wrapper, "client", None)
@@ -144,36 +136,3 @@ async def create_upload_grant(
         size_bytes=body.size_bytes,
     )
     return grant
-
-
-@router.post("/upload-grants/finalize")
-async def finalize_upload(
-    body: UploadFinalizeRequest,
-    request: Request,
-    current: Annotated[CurrentAccount, Depends(require_csrf)],
-) -> dict[str, str]:
-    _require_purpose_access(current, body.purpose)
-    result = await consume_rate_limit(
-        _redis(request),
-        f"media-finalize:{current.account_id}",
-        60,
-        10 * 60,
-    )
-    if not result.allowed:
-        raise ApiError(
-            429,
-            "media_finalize_rate_limited",
-            "Juda ko‘p media yakunlash so‘rovi yuborildi.",
-            headers={"Retry-After": str(result.retry_after_seconds)},
-        )
-    try:
-        key = request.app.state.r2.finalize_upload(
-            owner_type=current.account_type,
-            owner_id=current.account_id,
-            purpose=body.purpose,
-            pending_object_key=body.pending_object_key,
-            object_key=body.object_key,
-        )
-    except UploadRejected as exc:
-        raise ApiError(400, "media_upload_rejected", str(exc)) from None
-    return {"object_key": key}
