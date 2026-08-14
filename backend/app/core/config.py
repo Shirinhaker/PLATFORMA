@@ -17,13 +17,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     legacy_build: str = "v1656"
     database_url: str = "postgresql+asyncpg://koprik:koprik@localhost:5432/koprik"
-    # Har API nusxasi shuncha ulanish ochadi. PostgreSQL'ning `max_connections`
-    # chegarasi barcha nusxalar uchun umumiy, shuning uchun nusxalar soni
-    # oshganda bu qiymatlar muhitdan pasaytiriladi (yoki PgBouncer qo'yiladi).
     db_pool_size: int = Field(default=10, ge=1, le=100)
     db_max_overflow: int = Field(default=20, ge=0, le=100)
-    # Pool bo'shashini uzoq kutish yiqilishni butun tizimga tarqatadi —
-    # tez rad etib, yukni orqaga qaytargan ma'qul.
     db_pool_timeout_seconds: int = Field(default=3, ge=1, le=60)
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = Field(default=100, ge=1, le=1000)
@@ -36,6 +31,7 @@ class Settings(BaseSettings):
     telegram_bot_username: str = Field(default="")
     telegram_webhook_secret: str = Field(default="")
     otp_secret: str = Field(default="")
+    admin_otp_secret: str = Field(default="")
     csrf_secret: str = Field(default="")
     outbox_encryption_key: str = Field(default="")
     firebase_service_account_json: str = Field(default="")
@@ -43,21 +39,10 @@ class Settings(BaseSettings):
     auth_cookie_name: str = "koprik_session"
     session_ttl_seconds: int = 30 * 24 * 60 * 60
     session_cache_ttl_seconds: int = Field(default=30, ge=5, le=300)
-    profile_summary_cache_ttl_seconds: int = Field(
-        default=30,
-        ge=5,
-        le=300,
-    )
-    public_search_cache_ttl_seconds: int = Field(
-        default=30,
-        ge=5,
-        le=300,
-    )
+    profile_summary_cache_ttl_seconds: int = Field(default=30, ge=5, le=300)
+    public_search_cache_ttl_seconds: int = Field(default=30, ge=5, le=300)
     legacy_media_roots: str = ""
-    legacy_media_max_bytes: int = Field(
-        default=100 * 1024 * 1024,
-        ge=1,
-    )
+    legacy_media_max_bytes: int = Field(default=100 * 1024 * 1024, ge=1)
     legacy_snapshot_root: str = ""
     listings_enabled: bool = False
     stories_enabled: bool = True
@@ -72,16 +57,12 @@ class Settings(BaseSettings):
     telegram_resend_seconds: int = 60
     telegram_max_attempts: int = 5
 
-    # Admin paneli. Ro'yxat bo'sh bo'lsa hech kim kira olmaydi — v1656da
-    # standart qiymatga ikkita Telegram ID yozilgan edi, bu xavfli.
     admin_telegram_ids: str = ""
     admin_cookie_name: str = "koprik_admin_session"
     admin_challenge_ttl_seconds: int = 5 * 60
     admin_challenge_max_attempts: int = 5
     admin_session_ttl_seconds: int = 8 * 60 * 60
-    # Bo'sh turgan admin sessiyasi shu muddatdan keyin yopiladi.
     admin_session_idle_seconds: int = 30 * 60
-    # Audit jurnalidagi IP xeshi uchun. Berilmasa `csrf_secret` ishlatiladi.
     admin_audit_ip_secret: str = ""
 
     @property
@@ -96,6 +77,12 @@ class Settings(BaseSettings):
                 result.add(value)
         return frozenset(result)
 
+    @property
+    def resolved_admin_otp_secret(self) -> str:
+        # Development/test fixtures historically only set otp_secret.
+        # Deployed environments require a dedicated admin secret below.
+        return self.admin_otp_secret or self.otp_secret
+
     @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:
@@ -104,7 +91,6 @@ class Settings(BaseSettings):
             for origin in value.split(",")
             if origin.strip()
         ]
-
         for origin in origins:
             parsed = urlsplit(origin)
             if (
@@ -118,7 +104,6 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "CORS origin to‘liq va xavfsiz HTTPS origin bo‘lishi kerak."
                 )
-
         return ",".join(dict.fromkeys(origins))
 
     @property
@@ -138,6 +123,9 @@ class Settings(BaseSettings):
             "csrf_secret": self.csrf_secret,
             "outbox_encryption_key": self.outbox_encryption_key,
         }
+        if self.admin_telegram_id_set:
+            required["admin_otp_secret"] = self.admin_otp_secret
+
         missing = [name for name, value in required.items() if not value.strip()]
         if missing:
             raise ValueError(
