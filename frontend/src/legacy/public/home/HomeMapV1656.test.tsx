@@ -267,7 +267,7 @@ describe("HomeMapV1656", () => {
     expect(onOpenResult).toHaveBeenCalledWith("listing", "l_flat");
   });
 
-  it("keeps normal pins visible when search results have no public coordinates", async () => {
+  it("hides normal pins when search results have no visible coordinates", async () => {
     render(
       <HomeMapV1656
         businesses={[{
@@ -288,9 +288,9 @@ describe("HomeMapV1656", () => {
         district="Qumqo‘rg‘on"
         resultItems={[{
           kind: "business",
-          public_id: "b_muhr",
-          name: "Muhr",
-          public_username: "muhr",
+          public_id: "b_other",
+          name: "Boshqa biznes",
+          public_username: "other",
           description: "",
           direction: "Savdo",
           activity_type: "Do‘kon",
@@ -307,9 +307,76 @@ describe("HomeMapV1656", () => {
 
     await waitFor(() => {
       expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
+        .toHaveLength(0);
+    });
+  });
+
+  it("uses an authorised followed pin for its searched product only", async () => {
+    const onOpenResult = vi.fn();
+    render(
+      <HomeMapV1656
+        businesses={[{
+          id: 41,
+          public_id: "b_muhr",
+          name: "Muhr",
+          yon: "Savdo",
+          tur: "Do‘kon",
+          lat: 37.82,
+          lng: 67.58,
+          logo_file: "/media/muhr-logo.webp",
+          logo_x: 48,
+          logo_y: 52,
+          logo_zoom: 1.2,
+          address: "Qumqo‘rg‘on",
+          source: "public",
+        }, {
+          id: 42,
+          public_id: "b_other",
+          name: "Boshqa obuna",
+          yon: "Savdo",
+          tur: "Do‘kon",
+          lat: 37.83,
+          lng: 67.59,
+          logo_file: "",
+          logo_x: 50,
+          logo_y: 50,
+          logo_zoom: 1,
+          address: "Qumqo‘rg‘on",
+          source: "public",
+        }]}
+        district="Qumqo‘rg‘on"
+        resultItems={[{
+          kind: "product",
+          public_id: "p_banan",
+          name: "Banan",
+          public_username: "",
+          description: "",
+          direction: "Savdo",
+          activity_type: "Do‘kon",
+          region: "",
+          district: "",
+          mahalla: "",
+          image_url: "/media/banan.webp",
+          owner_public_id: "b_muhr",
+          owner_label: "Muhr",
+          price_text: "25 000 so‘m",
+        }]}
+        specialists={[]}
+        onCloseResults={vi.fn()}
+        onOpenResult={onOpenResult}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
         .toHaveLength(1);
     });
     expect(document.querySelector(".leaflet-marker-pane .plabel"))
-      .toHaveTextContent("Muhr");
+      .toHaveTextContent("Muhr25 000 so‘m");
+    expect(document.querySelector(".leaflet-marker-pane .dot img"))
+      .toHaveAttribute("src", "/media/muhr-logo.webp");
+
+    fireEvent.click(document.querySelector(".leaflet-marker-pane .leaflet-pin")!);
+    expect(onOpenResult).toHaveBeenCalledWith("business", "b_muhr");
   });
 });

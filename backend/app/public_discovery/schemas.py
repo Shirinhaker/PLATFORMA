@@ -85,6 +85,7 @@ class PublicSearchItem(BaseModel):
     price_text: str | None = Field(default=None, max_length=120)
     owner_state: str | None = Field(default=None, pattern="^(linked|unlinked)$")
     owner_label: str | None = Field(default=None, max_length=200)
+    owner_public_id: str | None = Field(default=None, min_length=1, max_length=64)
     can_order: bool | None = None
     can_chat: bool | None = None
     map_point: PublicSearchMapPoint | None = None

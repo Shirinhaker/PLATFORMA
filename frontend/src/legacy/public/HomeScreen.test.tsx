@@ -390,6 +390,44 @@ describe("HomeScreen", () => {
     expect(onOpenPublicResult).toHaveBeenCalledWith("listing", "l_flat");
   });
 
+  it("opens a searched product through its owner business profile", async () => {
+    const searchPublic = vi.fn().mockResolvedValue({
+      items: [{
+        kind: "product" as const,
+        public_id: "p_banan",
+        name: "Banan",
+        public_username: "",
+        description: "",
+        direction: "Savdo",
+        activity_type: "Oziq-ovqat do‘koni",
+        region: "Surxondaryo viloyati",
+        district: "Qumqo‘rg‘on tumani",
+        mahalla: "",
+        image_url: "/media/banan.webp",
+        price_text: "25 000 so‘m",
+        owner_label: "Muhr",
+        owner_public_id: "b_muhr",
+      }],
+      page: 1,
+      page_size: 20,
+      total: 1,
+      pages: 1,
+    });
+    const { onOpenPublicResult } = renderHome(undefined, { searchPublic });
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nima qidiryapsiz?"),
+      "banan{enter}",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Banan/ }));
+
+    expect(onOpenPublicResult).toHaveBeenCalledWith(
+      "product",
+      "p_banan",
+      "b_muhr",
+    );
+  });
+
   it("loads the next v1656 search page from Yana ko'rsatish", async () => {
     const searchPublic = vi.fn().mockImplementation(async ({ page = 1 }) => ({
       items: [{

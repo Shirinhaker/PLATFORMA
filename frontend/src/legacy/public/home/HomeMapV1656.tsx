@@ -86,11 +86,28 @@ function avatarImageStyle(x: number, y: number, zoom: number) {
 }
 
 
-function buildSearchMapPoints(items: PublicSearchItem[]): MapPoint[] {
+function buildSearchMapPoints(
+  items: PublicSearchItem[],
+  businesses: PublicHomeBusinessPin[],
+): MapPoint[] {
   const groups = new Map<string, SearchMapGroup>();
+  const businessesByPublicId = new Map(
+    businesses.map((business) => [business.public_id, business]),
+  );
 
   items.forEach((item) => {
-    const mapPoint = item.map_point;
+    const ownerPublicId = (
+      item.kind === "product" || item.kind === "service"
+    ) ? item.owner_public_id : item.kind === "business" ? item.public_id : "";
+    const visibleBusiness = ownerPublicId
+      ? businessesByPublicId.get(ownerPublicId)
+      : undefined;
+    const mapPoint = item.map_point ?? (visibleBusiness ? {
+      business_public_id: visibleBusiness.public_id,
+      business_name: visibleBusiness.name,
+      latitude: visibleBusiness.lat,
+      longitude: visibleBusiness.lng,
+    } : undefined);
     if (
       !mapPoint
       || !Number.isFinite(mapPoint.latitude)
@@ -119,6 +136,7 @@ function buildSearchMapPoints(items: PublicSearchItem[]): MapPoint[] {
     }
 
     const catalogItem = item.kind === "product" || item.kind === "service";
+    const businessPin = businessesByPublicId.get(mapPoint.business_public_id);
     const key = mapPoint.business_public_id;
     let group = groups.get(key);
     if (!group) {
@@ -126,15 +144,15 @@ function buildSearchMapPoints(items: PublicSearchItem[]): MapPoint[] {
         point: {
           kind: "business",
           publicId: mapPoint.business_public_id,
-          label: mapPoint.business_name,
+          label: businessPin?.name || mapPoint.business_name,
           latitude: mapPoint.latitude,
           longitude: mapPoint.longitude,
           color: catalogItem ? "#0E8C84" : "#2563EB",
           fallback: catalogItem ? "🛒" : "🏪",
-          photo: item.image_url,
-          photoX: 50,
-          photoY: 50,
-          photoZoom: 1,
+          photo: businessPin?.logo_file || item.image_url,
+          photoX: businessPin?.logo_x ?? 50,
+          photoY: businessPin?.logo_y ?? 50,
+          photoZoom: businessPin?.logo_zoom ?? 1,
           small: false,
         },
         prices: [],
@@ -215,10 +233,10 @@ export function HomeMapV1656({
         small: true,
       })),
     ];
-    const searchPoints = resultItems ? buildSearchMapPoints(resultItems) : [];
-    const points = resultItems && searchPoints.length
-      ? searchPoints
-      : normalPoints;
+    const searchPoints = resultItems
+      ? buildSearchMapPoints(resultItems, businesses)
+      : [];
+    const points = resultItems ? searchPoints : normalPoints;
 
     void import("leaflet").then((leafletModule) => {
       if (disposed || !mapElement.current) return;

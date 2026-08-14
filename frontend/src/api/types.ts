@@ -1374,6 +1374,7 @@ export type PublicSearchItem = {
   price_text?: string;
   owner_state?: "linked" | "unlinked";
   owner_label?: string;
+  owner_public_id?: string;
   can_order?: boolean;
   can_chat?: boolean;
   map_point?: PublicSearchMapPoint;

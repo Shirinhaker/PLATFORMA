@@ -35,7 +35,7 @@ SearchLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:search:v4:"
+_CACHE_PREFIX = "public:search:v5:"
 
 
 class PublicDiscoveryService:

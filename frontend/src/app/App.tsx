@@ -179,6 +179,7 @@ export function App({ api }: { api: AppApi }) {
     kind: "user" | "business";
     publicId: string;
     title: string;
+    focusItemPublicId?: string;
   } | null>(null);
   const [openedListing, setOpenedListing] = useState<{
     publicId: string;
@@ -421,11 +422,26 @@ export function App({ api }: { api: AppApi }) {
   const openPublicResult = useCallback((
     kind: "user" | "business" | "product" | "service" | "listing",
     publicId: string,
+    ownerPublicId?: string,
   ) => {
     if ((kind === "user" || kind === "business") && getPublicProfile) {
       setOpenedListing(null);
       setOpenedChat(null);
       setOpenedProfile({ kind, publicId, title: "Profil" });
+      setHomeSearchResultsActive(false);
+    } else if (
+      (kind === "product" || kind === "service")
+      && ownerPublicId
+      && getPublicProfile
+    ) {
+      setOpenedListing(null);
+      setOpenedChat(null);
+      setOpenedProfile({
+        kind: "business",
+        publicId: ownerPublicId,
+        title: "Profil",
+        focusItemPublicId: publicId,
+      });
       setHomeSearchResultsActive(false);
     } else if (kind === "listing" && getPublicListing) {
       setOpenedProfile(null);
@@ -607,6 +623,7 @@ export function App({ api }: { api: AppApi }) {
         <PublicProfileV1656
           authenticated={authenticated}
           cart={carts[openedProfile.publicId]}
+          focusItemPublicId={openedProfile.focusItemPublicId}
           kind={openedProfile.kind}
           publicId={openedProfile.publicId}
           getPublicProfile={getPublicProfile}
