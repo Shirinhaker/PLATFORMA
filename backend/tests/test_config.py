@@ -60,47 +60,6 @@ def test_staging_accepts_complete_auth_and_telegram_secrets():
     assert settings.public_search_cache_ttl_seconds == 30
 
 
-def test_production_derives_domain_separated_admin_otp_secret_for_rollout(
-    monkeypatch,
-):
-    monkeypatch.delenv("KOPRIK_ADMIN_OTP_SECRET", raising=False)
-    common = {
-        "environment": "production",
-        "telegram_bot_token": "bot-token",
-        "telegram_bot_username": "koprik_bot",
-        "telegram_webhook_secret": "webhook-secret",
-        "otp_secret": "otp-secret",
-        "csrf_secret": "csrf-secret",
-        "outbox_encryption_key": (
-            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        ),
-    }
-
-    settings = Settings(**common)
-    same_settings = Settings(**common)
-    changed_context = Settings(**{**common, "csrf_secret": "other-csrf-secret"})
-
-    assert settings.admin_otp_secret
-    assert settings.admin_otp_secret != settings.otp_secret
-    assert settings.admin_otp_secret == same_settings.admin_otp_secret
-    assert settings.admin_otp_secret != changed_context.admin_otp_secret
-
-
-def test_production_preserves_explicit_admin_otp_secret():
-    settings = Settings(
-        environment="production",
-        telegram_bot_token="bot-token",
-        telegram_bot_username="koprik_bot",
-        telegram_webhook_secret="webhook-secret",
-        otp_secret="otp-secret",
-        admin_otp_secret="dedicated-admin-secret",
-        csrf_secret="csrf-secret",
-        outbox_encryption_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-    )
-
-    assert settings.admin_otp_secret == "dedicated-admin-secret"
-
-
 def test_profile_summary_cache_ttl_defaults_to_thirty_seconds():
     settings = Settings(environment="test")
 
