@@ -46,18 +46,24 @@ function missingConfigRequest() {
 
 
 describe("loadApiBaseUrl", () => {
-  it("uses an HTTPS query only as a non-persistent debug override", async () => {
-    const fetcher = vi.fn();
+  it("ignores legacy api query overrides and uses trusted runtime config", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response(
+      200,
+      JSON.stringify({ apiBaseUrl: "https://api-staging.example/" }),
+    ));
     const legacyStorage = storage();
 
     const result = await loadApiBaseUrl(
       fetcher as unknown as typeof fetch,
-      location("?api=https%3A%2F%2Fdebug-api.example%2F"),
+      location("?api=https%3A%2F%2Fevil.example%2F"),
       legacyStorage,
     );
 
-    expect(result).toBe("https://debug-api.example");
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(result).toBe("https://api-staging.example");
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://frontend-staging-production-6c41.up.railway.app/runtime-config.json",
+      expect.objectContaining({ cache: "no-store" }),
+    );
     expect(legacyStorage.removeItem).toHaveBeenCalledWith(
       "koprik_api_base_url",
     );
@@ -192,13 +198,5 @@ describe("loadApiBaseUrl", () => {
     await expect(missingConfigRequest()).rejects.toMatchObject({
       code: "api_runtime_configuration_missing",
     });
-  });
-
-  it("rejects an insecure debug API origin", async () => {
-    await expect(loadApiBaseUrl(
-      vi.fn() as unknown as typeof fetch,
-      location("?api=http%3A%2F%2Finsecure.local"),
-      storage(),
-    )).rejects.toMatchObject({ code: "api_debug_origin_invalid" });
   });
 });
