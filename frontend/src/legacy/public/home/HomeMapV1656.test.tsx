@@ -266,4 +266,50 @@ describe("HomeMapV1656", () => {
 
     expect(onOpenResult).toHaveBeenCalledWith("listing", "l_flat");
   });
+
+  it("keeps normal pins visible when search results have no public coordinates", async () => {
+    render(
+      <HomeMapV1656
+        businesses={[{
+          id: 41,
+          public_id: "b_muhr",
+          name: "Muhr",
+          yon: "Savdo",
+          tur: "Do‘kon",
+          lat: 37.82,
+          lng: 67.58,
+          logo_file: "/media/muhr.webp",
+          logo_x: 50,
+          logo_y: 50,
+          logo_zoom: 1,
+          address: "Qumqo‘rg‘on",
+          source: "public",
+        }]}
+        district="Qumqo‘rg‘on"
+        resultItems={[{
+          kind: "business",
+          public_id: "b_muhr",
+          name: "Muhr",
+          public_username: "muhr",
+          description: "",
+          direction: "Savdo",
+          activity_type: "Do‘kon",
+          region: "",
+          district: "",
+          mahalla: "",
+          image_url: "/media/muhr.webp",
+        }]}
+        specialists={[]}
+        onCloseResults={vi.fn()}
+        onOpenResult={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
+        .toHaveLength(1);
+    });
+    expect(document.querySelector(".leaflet-marker-pane .plabel"))
+      .toHaveTextContent("Muhr");
+  });
 });

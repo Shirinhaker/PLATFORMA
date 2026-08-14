@@ -68,11 +68,13 @@ function StatefulItemsView({
   initialDraft = {},
   actions = {},
   direction = "",
+  uploadItemImage,
 }: {
   initialForm?: string | null;
   initialDraft?: Record<string, unknown>;
   actions?: Partial<typeof shared>;
   direction?: string;
+  uploadItemImage?: (file: File) => Promise<string>;
 }) {
   const [form, setForm] = useState<string | null>(initialForm);
   const [draft, setDraft] = useState(initialDraft);
@@ -91,6 +93,7 @@ function StatefulItemsView({
       kind="all"
       setKind={vi.fn()}
       direction={direction}
+      uploadItemImage={uploadItemImage}
     />
   );
 }
@@ -246,6 +249,38 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
       stock_qty: "25.5",
       min_qty: "4",
     }));
+  });
+
+  it("mahsulot rasmini yuklab object key bilan saqlaydi", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn().mockResolvedValue(undefined);
+    const uploadItemImage = vi.fn().mockResolvedValue(
+      "private/business/84/catalog_item_image/product.webp",
+    );
+    const createObjectURL = vi.fn().mockReturnValue("blob:product-preview");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    render(
+      <StatefulItemsView
+        initialForm="items:new"
+        initialDraft={{ kind: "product", name: "Non" }}
+        actions={{ create }}
+        uploadItemImage={uploadItemImage}
+      />,
+    );
+    const file = new File(["image"], "non.webp", { type: "image/webp" });
+
+    await user.upload(screen.getByLabelText("Mahsulot rasmi"), file);
+
+    expect(uploadItemImage).toHaveBeenCalledWith(file);
+    expect(await screen.findByAltText("Tanlangan mahsulot rasmi"))
+      .toHaveAttribute("src", "blob:product-preview");
+    await user.click(screen.getByRole("button", { name: "Saqlash" }));
+    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
+      image_object_key: "private/business/84/catalog_item_image/product.webp",
+    }));
+    expect(create.mock.calls[0]?.[1]).not.toHaveProperty("image_url");
+    vi.unstubAllGlobals();
   });
 
   it("bo'sh guruh nomida monolitdagi xatoni ko'rsatadi", async () => {

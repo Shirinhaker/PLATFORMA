@@ -44,10 +44,12 @@ def test_public_search_query_selects_only_the_public_projection():
         "pay_card",
         "tax_id",
         "director",
-        "avatar_object_key",
-        "logo_object_key",
     ):
         assert private_column not in data_sql
+
+    # Media object keys are selected only to turn them into short-lived public
+    # download URLs after the query; the API schema never exposes raw keys.
+    assert "as image_object_key" in data_sql
 
     assert "user_profiles.latitude" not in data_sql
     assert "user_profiles.longitude" not in data_sql

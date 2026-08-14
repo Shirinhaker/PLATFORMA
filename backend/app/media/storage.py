@@ -1,13 +1,11 @@
+import secrets
 from dataclasses import dataclass
 from pathlib import Path
-import secrets
 from typing import Literal
 
 import boto3
-
 from app.accounts.model import AccountType
 from app.core.config import Settings
-
 
 PROFILE_IMAGE_TYPES = {
     "image/jpeg": ".jpg",
@@ -83,6 +81,7 @@ class R2Storage:
             "story_image", "story_video",
             "specialist_credential", "specialist_offer_image",
             "specialist_portfolio_image", "specialist_portfolio_video",
+            "catalog_item_image",
         ],
         filename: str,
         content_type: str,
@@ -92,7 +91,7 @@ class R2Storage:
             owner_type is AccountType.USER and purpose == "avatar"
         ) or (
             owner_type is AccountType.BUSINESS
-            and purpose in {"logo", "payment_qr"}
+            and purpose in {"logo", "payment_qr", "catalog_item_image"}
         )
         listing_purpose = purpose in {
             "listing_photo", "listing_video", "order_chat_image",

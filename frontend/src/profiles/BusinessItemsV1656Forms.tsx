@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import type { BusinessOnlineRecord } from "../api/business-online-types";
 import { QUEUE_DIRECTIONS } from "./business-profile-config";
 import { recordId, recordText } from "./BusinessOnlineViews";
@@ -115,6 +117,7 @@ export function ItemForm({
   editing,
   onCancel,
   onSave,
+  uploadImage,
 }: {
   draft: BusinessOnlineRecord;
   groups: BusinessOnlineRecord[];
@@ -124,7 +127,11 @@ export function ItemForm({
   editing: boolean;
   onCancel: () => void;
   onSave: () => Promise<void>;
+  uploadImage?: (file: File) => Promise<string>;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [localPreview, setLocalPreview] = useState("");
   const selectedGroup = groups.find((group, index) => (
     String(recordId(group, index)) === String(draft.group_id ?? "")
   ));
@@ -135,6 +142,55 @@ export function ItemForm({
   const queueVisible = kind === "service" && QUEUE_DIRECTIONS.some(
     (value) => value === direction,
   );
+  const imagePreview = localPreview || recordText(
+    draft,
+    "image_url",
+    "photo_file",
+    "photo_url",
+  );
+
+  useEffect(() => () => {
+    if (localPreview.startsWith("blob:")) URL.revokeObjectURL(localPreview);
+  }, [localPreview]);
+
+  async function selectImage(file: File | undefined) {
+    if (!file) return;
+    if (!uploadImage) {
+      setUploadError("Rasm yuklash xizmati hozir mavjud emas.");
+      return;
+    }
+    if (![
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ].includes(file.type)) {
+      setUploadError("JPG, PNG, WEBP yoki GIF rasm tanlang.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Rasm hajmi 8 MB dan oshmasin.");
+      return;
+    }
+    setUploadError("");
+    setUploading(true);
+    try {
+      const objectKey = await uploadImage(file);
+      const preview = URL.createObjectURL(file);
+      setLocalPreview(preview);
+      setDraft({
+        ...draft,
+        image_object_key: objectKey,
+        image_url: preview,
+      });
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "Rasmni yuklab bo‘lmadi.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <section className="item-form-card form-wrap">
@@ -145,9 +201,37 @@ export function ItemForm({
       </h2>
       <div className="field">
         <label>Rasm — ixtiyoriy</label>
-        <button type="button" className="item-photo-add">
-          <span className="ic">📷</span><span>Rasm qo'shish</span>
-        </button>
+        {imagePreview ? (
+          <img
+            className="item-photo-preview"
+            src={imagePreview}
+            alt="Tanlangan mahsulot rasmi"
+          />
+        ) : null}
+        <label className={`item-photo-add${uploading ? " is-loading" : ""}`}>
+          <input
+            aria-label="Mahsulot rasmi"
+            className="item-photo-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            disabled={busy || uploading}
+            onChange={(event) => {
+              void selectImage(event.currentTarget.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
+          <span className="ic">📷</span>
+          <span>
+            {uploading
+              ? "Yuklanmoqda…"
+              : imagePreview
+                ? "Rasmni almashtirish"
+                : "Rasm qo'shish"}
+          </span>
+        </label>
+        {uploadError ? (
+          <span className="item-photo-error" role="alert">{uploadError}</span>
+        ) : null}
       </div>
       <label className="field">
         Nomi
@@ -356,7 +440,12 @@ export function ItemForm({
         </div>
       )}
       <div className="item-form-actions">
-        <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void onSave()}>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          disabled={busy || uploading}
+          onClick={() => void onSave()}
+        >
           Saqlash
         </button>
         <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>Bekor qilish</button>

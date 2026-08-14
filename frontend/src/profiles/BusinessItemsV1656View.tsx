@@ -28,6 +28,7 @@ type Props = SharedActions & {
   kind: string;
   setKind: (value: string) => void;
   direction?: string;
+  uploadItemImage?: (file: File) => Promise<string>;
 };
 
 type GroupBlock = {
@@ -222,6 +223,7 @@ export function ItemsEditorView({
   kind,
   setKind,
   direction = "",
+  uploadItemImage,
   ...actions
 }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -397,6 +399,7 @@ export function ItemsEditorView({
           setDraft={actions.setDraft}
           busy={actions.busy}
           editing={actions.form === itemEdit}
+          uploadImage={uploadItemImage}
           onCancel={() => actions.setForm(null)}
           onSave={saveItem}
         />

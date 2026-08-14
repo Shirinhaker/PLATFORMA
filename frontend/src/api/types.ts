@@ -922,6 +922,7 @@ export type MediaPurpose = (
   | "advertisement_image" | "story_image" | "story_video"
   | "specialist_credential" | "specialist_offer_image"
   | "specialist_portfolio_image" | "specialist_portfolio_video"
+  | "catalog_item_image"
 );
 
 export type SpecialistCredential = {

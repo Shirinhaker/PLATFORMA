@@ -1,6 +1,6 @@
-import pytest
 from io import BytesIO
 
+import pytest
 from app.accounts.model import AccountType
 from app.media.storage import R2Storage, StoredObject, UploadRejected
 
@@ -46,6 +46,23 @@ def test_profile_image_is_limited_to_eight_mebibytes(s3_client):
             content_type="image/webp",
             size_bytes=8 * 1024 * 1024 + 1,
         )
+
+
+def test_business_catalog_image_grant_uses_owned_private_prefix(s3_client):
+    storage = R2Storage(s3_client, bucket="koprik-test")
+    grant = storage.create_upload_grant(
+        owner_type=AccountType.BUSINESS,
+        owner_id=84,
+        purpose="catalog_item_image",
+        filename="product.webp",
+        content_type="image/webp",
+        size_bytes=1024,
+    )
+
+    assert grant.object_key.startswith(
+        "private/business/84/catalog_item_image/"
+    )
+    assert grant.object_key.endswith(".webp")
 
 
 def test_order_chat_image_grant_uses_private_owner_prefix_and_eight_mb_limit(s3_client):

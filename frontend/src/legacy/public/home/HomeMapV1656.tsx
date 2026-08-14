@@ -215,8 +215,9 @@ export function HomeMapV1656({
         small: true,
       })),
     ];
-    const points = resultItems
-      ? buildSearchMapPoints(resultItems)
+    const searchPoints = resultItems ? buildSearchMapPoints(resultItems) : [];
+    const points = resultItems && searchPoints.length
+      ? searchPoints
       : normalPoints;
 
     void import("leaflet").then((leafletModule) => {

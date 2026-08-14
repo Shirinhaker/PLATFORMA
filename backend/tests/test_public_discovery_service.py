@@ -1,8 +1,7 @@
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
 
 import fakeredis.aioredis
-
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.schemas import (
@@ -154,7 +153,7 @@ def test_public_search_cache_key_changes_with_filters_and_pagination():
 
     assert len({first, second, third}) == 3
     assert "savdo" not in first
-    assert first.startswith("public:search:v3:")
+    assert first.startswith("public:search:v4:")
 
 
 async def test_catalog_epoch_invalidates_cached_content_searches():
