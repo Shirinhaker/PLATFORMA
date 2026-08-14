@@ -1,9 +1,23 @@
+import hashlib
+import hmac
 from functools import lru_cache
 from urllib.parse import urlsplit
 
 from cryptography.fernet import Fernet
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_ADMIN_OTP_DERIVATION_CONTEXT = b"koprik-admin-otp-v1\0"
+
+
+def _derive_admin_otp_secret(otp_secret: str, csrf_secret: str) -> str:
+    """Eski production muhitlari uchun domeni ajratilgan admin kalitini yaratadi."""
+    return hmac.new(
+        otp_secret.encode("utf-8"),
+        _ADMIN_OTP_DERIVATION_CONTEXT + csrf_secret.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 class Settings(BaseSettings):
@@ -139,7 +153,6 @@ class Settings(BaseSettings):
             "telegram_bot_username": self.telegram_bot_username,
             "telegram_webhook_secret": self.telegram_webhook_secret,
             "otp_secret": self.otp_secret,
-            "admin_otp_secret": self.admin_otp_secret,
             "csrf_secret": self.csrf_secret,
             "outbox_encryption_key": self.outbox_encryption_key,
         }
@@ -148,6 +161,17 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Staging va production uchun auth sirlari to‘liq bo‘lishi kerak: "
                 + ", ".join(missing)
+            )
+
+        # Yangi alohida secret eng kuchli variant bo'lib qoladi. Lekin eski
+        # production muhitini birdan yiqitmaslik uchun u hali berilmagan bo'lsa,
+        # ikkita mavjud secret va qat'iy domen kontekstidan mustaqil kalit
+        # hosil qilamiz. Oddiy foydalanuvchi OTP kaliti admin OTP'da bevosita
+        # ishlatilmaydi.
+        if not self.admin_otp_secret.strip():
+            self.admin_otp_secret = _derive_admin_otp_secret(
+                self.otp_secret,
+                self.csrf_secret,
             )
 
         try:
