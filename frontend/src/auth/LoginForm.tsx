@@ -78,10 +78,10 @@ export function LoginForm({
 
   return (
     <main className="koprik-auth-stage">
-      <form className="koprik-flow-shell koprik-auth-shell auth-modular" onSubmit={submit}>
+      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={submit}>
         <h1 className="lead">Kabinetga kirish</h1>
         {reason ? (
-          <p className="lead-sub auth-modular__reason" id="loginReason">
+          <p className="lead-sub auth-v1656__reason" id="loginReason">
             🔒 {reason} uchun tizimga kiring yoki ro'yxatdan o'ting.
           </p>
         ) : null}
@@ -139,7 +139,7 @@ export function LoginForm({
           </button>
         </p>
         {onStaff ? (
-          <div className="auth-modular__staff-entry">
+          <div className="auth-v1656__staff-entry">
             <button className="btn btn-soft btn-block" type="button" onClick={onStaff}>
               👥 Xodimlar uchun kirish
             </button>

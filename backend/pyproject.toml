@@ -17,45 +17,28 @@ dependencies = [
   "redis>=5,<8",
   "boto3>=1.35,<2",
   "argon2-cffi>=23.1,<26",
-  "cryptography>=50,<51",
+  "cryptography>=44,<47",
   "python-json-logger>=3,<4",
   "firebase-admin==7.5.0",
-  "prometheus-client==0.22.1",
 ]
 
 [project.optional-dependencies]
 test = [
   "pytest>=8,<10",
   "pytest-asyncio>=0.25,<2",
-  "pytest-cov==7.0.0",
   "fakeredis[lua]>=2.27,<3",
-  "mypy==1.17.1",
-  "ruff==0.12.9",
-  "pip-audit==2.9.0",
 ]
 
 [project.scripts]
 koprik-worker = "app.outbox.worker:main"
+koprik-migrate-legacy = "app.legacy_migration.cli_v9:main"
+koprik-migrate-complete-cabinets = "app.legacy_migration.cli_v9:main"
+koprik-migrate-late-domains = "app.legacy_migration.late_domains_v9:main"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-
-[tool.ruff]
-target-version = "py312"
-line-length = 100
-
-[tool.ruff.lint]
-select = ["E9", "F"]
-
-[tool.mypy]
-python_version = "3.12"
-ignore_missing_imports = true
-check_untyped_defs = true
-warn_unused_ignores = true
-no_implicit_optional = true
-exclude = ["app/legacy_migration/"]
 
 [tool.setuptools.packages.find]
 where = ["."]

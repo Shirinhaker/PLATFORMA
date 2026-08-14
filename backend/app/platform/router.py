@@ -1,10 +1,5 @@
 from fastapi import APIRouter, Request
-import asyncio
-
-from fastapi.responses import JSONResponse, Response
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
-
-from app.core.metrics import update_db_pool_metrics
+from fastapi.responses import JSONResponse
 
 
 router = APIRouter()
@@ -25,7 +20,7 @@ async def build(request: Request) -> dict[str, str]:
     return {
         "api_version": "v1",
         "foundation": "phase1",
-        "ui_build": request.app.state.settings.ui_build,
+        "legacy_build": request.app.state.settings.legacy_build,
     }
 
 
@@ -45,18 +40,20 @@ async def public_features(request: Request) -> dict[str, bool]:
 async def readyz(request: Request):
     database_ready = await request.app.state.database.ready()
     redis_ready = await request.app.state.redis.ready()
-    r2_ready = await asyncio.to_thread(request.app.state.r2.ready)
-    ready = database_ready and redis_ready and r2_ready
+    settings = request.app.state.settings
+    r2_configured = (
+        settings.environment in {"development", "test"}
+        or bool(
+            settings.r2_bucket
+            and settings.r2_access_key_id
+            and settings.r2_secret_access_key
+        )
+    )
+    ready = database_ready and redis_ready and r2_configured
     payload = {
         "status": "ready" if ready else "not_ready",
         "database": database_ready,
         "redis": redis_ready,
-        "r2": r2_ready,
+        "r2_configured": r2_configured,
     }
     return JSONResponse(payload, status_code=200 if ready else 503)
-
-
-@router.get("/metrics", include_in_schema=False)
-async def metrics(request: Request) -> Response:
-    update_db_pool_metrics(request.app.state.database)
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

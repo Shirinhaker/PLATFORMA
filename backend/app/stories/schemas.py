@@ -78,8 +78,7 @@ class StoryReportCreate(BaseModel):
 
 class StoryCreated(BaseModel):
     ok: Literal[True] = True
-    story_id: int
-    status: Literal["processing"] = "processing"
+    story: StoryRead
 
 
 class StoryOk(BaseModel):

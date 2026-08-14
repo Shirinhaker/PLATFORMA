@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.core.states import (
+from app.legacy_migration.model import (
     REVIEW_STATE_ENUM,
     ReviewState,
 )

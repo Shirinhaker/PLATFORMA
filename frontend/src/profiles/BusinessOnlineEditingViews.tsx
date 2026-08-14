@@ -1,4 +1,4 @@
 import "./BusinessOnlineEditingViews.css";
 
-export { ItemsEditorView } from "./BusinessItemsView";
+export { ItemsEditorView } from "./BusinessItemsV1656View";
 export { CrudEditorView } from "./BusinessOnlineCrudEditorView";

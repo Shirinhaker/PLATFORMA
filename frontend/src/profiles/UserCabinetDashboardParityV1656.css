@@ -1,0 +1,92 @@
+/*
+ * Oddiy foydalanuvchi kabinetining desktop/responsive joylashuvi v1656
+ * monolitidagi .dashboard-screen qoidalariga aynan mos kelishi uchun.
+ *
+ * UserProfileV1656.css ichidagi >=900px gorizontal kartalar React davrida
+ * qo'shilgan edi va v1656 monolitida yo'q. Bu fayl faqat dashboardga scope
+ * qilingan holda o'sha farqni bekor qiladi.
+ */
+.user-cabinet-v1656 {
+  width: min(1040px, calc(100% - 24px));
+}
+
+.user-cabinet-v1656__identity {
+  padding: 8px 2px 12px;
+  border-bottom: 0;
+}
+
+.user-cabinet-v1656__metrics {
+  margin: 8px 0 16px;
+}
+
+@media (min-width: 720px) {
+  .user-cabinet-v1656__identity {
+    padding: 10px 4px 16px;
+  }
+
+  .user-cabinet-v1656__metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 11px;
+  }
+
+  .user-cabinet-v1656__metrics button {
+    min-height: 116px;
+    padding: 16px;
+  }
+
+  .user-cabinet-v1656__metrics strong {
+    font-size: 25px;
+  }
+
+  .user-cabinet-v1656__menu {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .user-cabinet-v1656__menu > button {
+    min-height: 126px;
+  }
+}
+
+/*
+ * UserProfileV1656.css dagi >=900px gorizontal kartani bekor qilamiz.
+ * v1656 dashboardida desktopda ham ikonka tepada, nom pastda, caption yashirin.
+ */
+@media (min-width: 900px) {
+  .user-cabinet-v1656__menu > button {
+    flex-direction: column;
+    justify-content: center;
+    min-height: 126px;
+    padding: 12px 9px;
+    text-align: center;
+  }
+
+  .user-cabinet-v1656__menu > button > div {
+    flex: initial;
+    width: 100%;
+  }
+
+  .user-cabinet-v1656__menu small {
+    display: none;
+  }
+}
+
+@media (min-width: 1080px) {
+  .user-cabinet-v1656__main {
+    grid-template-columns: minmax(0, 1.04fr) minmax(380px, .96fr);
+    gap: 20px;
+  }
+
+  .user-cabinet-v1656__activity {
+    position: sticky;
+    top: 0;
+    padding: 18px;
+  }
+
+  .user-cabinet-v1656__panel-title h2 {
+    font-size: 18px;
+  }
+
+  .user-cabinet-v1656__menu > button {
+    min-height: 132px;
+  }
+}

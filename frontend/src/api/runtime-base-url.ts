@@ -96,8 +96,13 @@ export async function loadApiBaseUrl(
 ): Promise<string> {
   removeLegacyStorage(storage);
 
-  if (new URLSearchParams(location.search).has("api")) {
-    throw new ApiConfigurationError("api_debug_override_disabled");
+  const query = new URLSearchParams(location.search).get("api");
+  if (query !== null) {
+    const debugOrigin = safeHttpsOrigin(query);
+    if (!debugOrigin) {
+      throw new ApiConfigurationError("api_debug_origin_invalid");
+    }
+    return debugOrigin;
   }
 
   const origin = safeHttpsOrigin(location.origin);

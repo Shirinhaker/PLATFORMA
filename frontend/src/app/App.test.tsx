@@ -173,7 +173,7 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Savat" }));
 
-    expect(await screen.findByRole("heading", { name: "Savatcha bo'sh" }))
+    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" }))
       .toBeInTheDocument();
     expect(screen.getByText("Do'kon sahifasidan mahsulot qo'shing."))
       .toBeInTheDocument();
@@ -203,7 +203,7 @@ describe("App", () => {
 
     const listings = screen.getByRole("button", { name: "E’lonlar" });
     await user.click(listings);
-    expect(await screen.findByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Savat" }))
       .not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Taxi bo'limi" }))
@@ -261,7 +261,7 @@ describe("App", () => {
     expect(api.getPublicListing).toHaveBeenCalledWith(detail.public_id);
   });
 
-  it("switches the modular theme palette and icon from the Home header", async () => {
+  it("switches the v1656 theme palette and icon from the Home header", async () => {
     saveHomeLocation();
     document.documentElement.dataset.theme = "light";
     render(<App api={guestApi()} />);
@@ -379,7 +379,7 @@ describe("App", () => {
       .toBeInTheDocument();
   });
 
-  it("opens the driver cabinet as its own modular screen", async () => {
+  it("opens the driver cabinet as its own v1656 screen", async () => {
     const user = userEvent.setup();
     saveHomeLocation();
     const api = {
@@ -558,7 +558,7 @@ describe("App", () => {
     );
   });
 
-  it("opens a shared user profile from the modular user query", async () => {
+  it("opens a shared user profile from the v1656 user query", async () => {
     saveHomeLocation();
     window.history.replaceState({}, "", "/?user=u_0123456789abcdef");
     const api = {
@@ -722,7 +722,7 @@ describe("App", () => {
       name: "Kursga yozilish",
     }));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("Telefon raqamingiz"))
       .toHaveValue("+998901234567");
     await user.type(screen.getByLabelText("Izoh"), "Kechki guruh");
@@ -749,9 +749,9 @@ describe("App", () => {
       screen.getByRole("button", { name: /^Katalog bo‘yicha/ }),
     );
     await user.click(
-      await screen.findByRole("button", { name: /^Savdo —/ }),
+      screen.getByRole("button", { name: /^Savdo —/ }),
     );
-    expect(await screen.findByRole("heading", { name: "Savdo" }))
+    expect(screen.getByRole("heading", { name: "Savdo" }))
       .toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Orqaga" }));

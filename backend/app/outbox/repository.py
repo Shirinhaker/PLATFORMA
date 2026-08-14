@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.outbox.model import OutboxEvent
@@ -32,24 +32,13 @@ async def claim_events(
     worker_id: str,
     *,
     limit: int,
-    lease_timeout: timedelta = timedelta(minutes=5),
 ) -> list[OutboxEvent]:
     now = datetime.now(UTC)
-    stale_before = now - lease_timeout
     result = await session.execute(
         select(OutboxEvent)
         .where(
-            or_(
-                and_(
-                    OutboxEvent.status.in_(("pending", "retry")),
-                    OutboxEvent.available_at <= now,
-                ),
-                and_(
-                    OutboxEvent.status == "processing",
-                    OutboxEvent.locked_at.is_not(None),
-                    OutboxEvent.locked_at <= stale_before,
-                ),
-            ),
+            OutboxEvent.status.in_(("pending", "retry")),
+            OutboxEvent.available_at <= now,
         )
         .order_by(OutboxEvent.id)
         .limit(limit)
@@ -80,23 +69,6 @@ async def mark_processed(
     event.processed_at = datetime.now(UTC)
     event.locked_at = None
     event.locked_by = None
-
-
-async def renew_lease(
-    session: AsyncSession,
-    event_id: int,
-    worker_id: str,
-) -> bool:
-    result = await session.execute(
-        update(OutboxEvent)
-        .where(
-            OutboxEvent.id == event_id,
-            OutboxEvent.status == "processing",
-            OutboxEvent.locked_by == worker_id,
-        )
-        .values(locked_at=datetime.now(UTC))
-    )
-    return bool(result.rowcount)
 
 
 async def mark_failed(

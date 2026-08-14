@@ -213,7 +213,7 @@ class QueueService:
         body: QueueProviderWrite,
     ) -> QueueProviderRead:
         async with self._session_factory() as session:
-            await self._business(session, business_account_id)
+            business = await self._business(session, business_account_id)
             provider = await self._repository.provider(
                 session,
                 provider_id=provider_id,

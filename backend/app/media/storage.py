@@ -7,7 +7,6 @@ import boto3
 
 from app.accounts.model import AccountType
 from app.core.config import Settings
-from app.core.metrics import EXTERNAL_ERRORS
 
 
 PROFILE_IMAGE_TYPES = {
@@ -66,19 +65,6 @@ class StoredObject:
 class DownloadedObject:
     size_bytes: int
     content_type: str
-
-
-def sniff_profile_image_type(data: bytes) -> str:
-    head = bytes(data or b"")[:32]
-    if head.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if head.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if len(head) >= 12 and head[:4] == b"RIFF" and head[8:12] == b"WEBP":
-        return "image/webp"
-    if head.startswith((b"GIF87a", b"GIF89a")):
-        return "image/gif"
-    return ""
 
 
 class R2Storage:
@@ -198,14 +184,6 @@ class R2Storage:
             expires_in=900,
         )
 
-    def ready(self) -> bool:
-        try:
-            self.client.head_bucket(Bucket=self.bucket)
-            return True
-        except Exception:
-            EXTERNAL_ERRORS.labels("r2").inc()
-            return False
-
     def put_migration_object(
         self,
         *,
@@ -271,29 +249,6 @@ class R2Storage:
             Params={"Bucket": self.bucket, "Key": object_key},
             ExpiresIn=expires_in,
         )
-
-    def verify_profile_image(self, object_key: str) -> DownloadedObject:
-        """R2'dagi haqiqiy avatar/logo hajmi va magic-byte turini tekshiradi."""
-        response = self.client.head_object(Bucket=self.bucket, Key=object_key)
-        size = int(response.get("ContentLength") or 0)
-        declared = str(response.get("ContentType") or "").split(";", 1)[0]
-        if size <= 0 or size > MAX_PROFILE_IMAGE_BYTES:
-            raise UploadRejected("Rasm hajmi 8 MB dan oshmasin.")
-        body_response = self.client.get_object(
-            Bucket=self.bucket,
-            Key=object_key,
-            Range="bytes=0-31",
-        )
-        stream = body_response["Body"]
-        try:
-            actual = sniff_profile_image_type(stream.read(32))
-        finally:
-            close = getattr(stream, "close", None)
-            if callable(close):
-                close()
-        if actual not in PROFILE_IMAGE_TYPES or declared != actual:
-            raise UploadRejected("Rasmning haqiqiy fayl turi mos emas.")
-        return DownloadedObject(size_bytes=size, content_type=actual)
 
     def download_to_file(self, object_key: str, path: Path) -> DownloadedObject:
         response = self.client.head_object(Bucket=self.bucket, Key=object_key)

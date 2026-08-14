@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogItem
-from app.core.states import OwnerState, ReviewState
+from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem, OrderMessage
 from app.profiles.model import BusinessProfile, UserProfile

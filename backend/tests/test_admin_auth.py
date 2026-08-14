@@ -77,7 +77,6 @@ def _settings(admin_ids: str = str(ADMIN_TG)) -> Settings:
         environment="test",
         telegram_bot_username="koprik_test_bot",
         otp_secret="test-otp-secret",
-        admin_otp_secret="test-admin-otp-secret",
         csrf_secret="test-csrf-secret",
         outbox_encryption_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
         admin_telegram_ids=admin_ids,
@@ -115,7 +114,7 @@ def admin_context():
 
 
 def _code(challenge_id: int) -> str:
-    return derive_otp(challenge_id, 0, "test-admin-otp-secret")
+    return derive_otp(challenge_id, 0, "test-otp-secret")
 
 
 # ------------------------------------------------------------------- ro'yxat

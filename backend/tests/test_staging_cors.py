@@ -18,7 +18,6 @@ def settings(environment: str, cors_origins: str = "") -> Settings:
         telegram_bot_token="test-token",
         telegram_webhook_secret="test-webhook-secret",
         otp_secret="test-otp-secret",
-        admin_otp_secret="test-admin-otp-secret",
         csrf_secret="test-csrf-secret",
         outbox_encryption_key=(
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

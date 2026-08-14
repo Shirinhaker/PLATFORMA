@@ -3,7 +3,6 @@ from app.public_discovery.repository import (
     build_public_search_statements,
 )
 from app.public_discovery.schemas import PublicResultKind, PublicSearchParams
-from app.public_discovery.schemas import encode_search_cursor
 
 
 def compile_sql(statement) -> str:
@@ -25,23 +24,18 @@ def test_public_id_is_stable_and_does_not_reveal_the_database_id():
 
 def test_public_search_query_selects_only_the_public_projection():
     data_statement, count_statement = build_public_search_statements(
-        PublicSearchParams(
-            q="savdo",
-            page_size=10,
-            cursor=encode_search_cursor("savdo", "business", 42),
-        )
+        PublicSearchParams(q="savdo", page=2, page_size=10)
     )
 
     data_sql = compile_sql(data_statement)
+    count_sql = compile_sql(count_statement)
 
     assert "user_profiles" in data_sql
     assert "business_profiles" in data_sql
     assert "accounts.status = 'active'" in data_sql
-    assert "limit 11" in data_sql
-    assert "offset" not in data_sql
-    assert "public_profiles.account_id > 42" in data_sql
+    assert "limit 10 offset 10" in data_sql
     assert "order by lower" in data_sql
-    assert count_statement is None
+    assert "count(" in count_sql
 
     for private_column in (
         "password_hash",

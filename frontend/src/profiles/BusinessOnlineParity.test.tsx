@@ -116,8 +116,8 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
 }
 
 
-describe("modular online cabinet parity", () => {
-  it("opens the exact modular item screen from the cabinet", async () => {
+describe("v1656 online cabinet parity", () => {
+  it("opens the exact v1656 item screen from the cabinet", async () => {
     const user = await renderCabinet();
 
     expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();

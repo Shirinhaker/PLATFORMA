@@ -1,0 +1,121 @@
+/* Kassa — ovqatlanish bo'limlari, v1656 `diningCashTabs` ko'rinishi. */
+
+.dining-cash-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.dining-cash-tabs .seg-b {
+  flex: 1;
+  height: 40px;
+}
+
+.dining-cash-group {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.dining-cash-row {
+  border-top: 1px solid var(--line);
+  padding-top: 7px;
+  margin-top: 7px;
+}
+
+.dining-cash-row summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.dining-cash-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.dining-cash-total {
+  white-space: nowrap;
+}
+
+.dining-cash-body {
+  padding: 3px 0 8px 18px;
+}
+
+.dining-cash-wide {
+  width: 100%;
+  margin-top: 7px;
+}
+
+.dining-cash-pair {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.dining-cash-pair .mini-btn {
+  flex: 1;
+}
+
+.dining-cash-debt {
+  border-color: #b45309;
+  color: #b45309;
+}
+
+.dining-cash-problem {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.dining-cash-cancel {
+  border-color: #991b1b;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.dining-cash-resolve {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.dining-cash-problem-card {
+  display: block;
+  margin-bottom: 9px;
+}
+
+.dining-cash-problem-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dining-cash-empty {
+  padding: 26px 16px;
+}
+
+.dining-cash-lines {
+  max-height: 48vh;
+  overflow: auto;
+  margin: 10px 0;
+}
+
+.dining-cash-message {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+}
+
+.dining-cash-message.error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.dining-cash-warning {
+  color: #991b1b;
+  margin-bottom: 6px;
+}

@@ -9,29 +9,23 @@ import socket
 from typing import Any
 
 import httpx
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, or_
 
 from app.admin.model import AdminAuthChallenge
 from app.auth.model import AuthChallenge, AuthSession, PendingRegistration
 from app.auth.security import decrypt_outbox_secret, derive_otp
 from app.auth.telegram import TelegramClient
 from app.core.config import Settings
-from app.core.metrics import OUTBOX_OLDEST_AGE, OUTBOX_PENDING
 from app.db.session import Database
 from app.outbox.repository import (
     claim_events,
     mark_failed,
     mark_processed,
-    renew_lease,
 )
-from app.outbox.model import OutboxEvent
 from app.notifications.push_worker import (
     build_firebase_sender,
     process_push_batch,
 )
-from app.media.storage import build_r2_storage
-from app.media.model import MediaUploadGrant
-from app.stories.service import StoryService
 
 
 Handler = Callable[[dict[str, Any]], Awaitable[None]]
@@ -93,7 +87,7 @@ async def send_admin_code(
             or challenge.telegram_user_id != int(payload["chat_id"])
         ):
             return
-        code = derive_otp(challenge.id, 0, settings.admin_otp_secret)
+        code = derive_otp(challenge.id, 0, settings.otp_secret)
         await telegram.send_message(
             challenge.telegram_user_id,
             f"Koprik admin tasdiqlash kodi: {code}",
@@ -149,7 +143,6 @@ def build_handlers(
     settings: Settings,
     database: Database,
     telegram: TelegramClient,
-    story_service: StoryService | None = None,
 ) -> dict[str, Handler]:
     async def auth_code_handler(payload: dict[str, Any]) -> None:
         await send_auth_code(settings, database, telegram, payload)
@@ -163,30 +156,13 @@ def build_handlers(
     async def admin_code_handler(payload: dict[str, Any]) -> None:
         await send_admin_code(settings, database, telegram, payload)
 
-    async def story_media_handler(payload: dict[str, Any]) -> None:
-        if story_service is None:
-            raise RuntimeError("story_service_not_configured")
-        await story_service.process_pending(
-            int(payload["story_id"]),
-            int(payload["size_bytes"]),
-        )
-
-    async def media_delete_handler(payload: dict[str, Any]) -> None:
-        if story_service is None:
-            raise RuntimeError("media_cleanup_service_not_configured")
-        await story_service.cleanup_object(str(payload["object_key"]))
-
-    handlers: dict[str, Handler] = {
+    return {
         "foundation.echo": foundation_echo,
         "telegram.auth_code.send": auth_code_handler,
         "telegram.credentials.send": credentials_handler,
         "telegram.business_credentials.send": business_credentials_handler,
         "telegram.admin_code.send": admin_code_handler,
     }
-    if story_service is not None:
-        handlers["story.media.process"] = story_media_handler
-        handlers["media.object.delete"] = media_delete_handler
-    return handlers
 
 
 async def process_batch(
@@ -215,15 +191,6 @@ async def process_batch(
                         f"Ro‘yxatdan o‘tmagan topic: {event.topic}",
                     )
             continue
-        lease_stop = asyncio.Event()
-        lease_task = asyncio.create_task(
-            _renew_event_lease(
-                database,
-                event.id,
-                worker_id,
-                lease_stop,
-            )
-        )
         try:
             await handler(event.payload)
         except Exception:
@@ -252,33 +219,7 @@ async def process_batch(
                         event.id,
                         sanitized_payload=sanitized_payload,
                     )
-        finally:
-            lease_stop.set()
-            await lease_task
     return len(events)
-
-
-async def _renew_event_lease(
-    database: Database,
-    event_id: int,
-    worker_id: str,
-    stop: asyncio.Event,
-) -> None:
-    while True:
-        try:
-            await asyncio.wait_for(stop.wait(), timeout=60)
-            return
-        except TimeoutError:
-            try:
-                async with database.session() as session:
-                    async with session.begin():
-                        active = await renew_lease(session, event_id, worker_id)
-            except Exception:
-                # Connection uzilishi workerning asosiy handler natijasini
-                # yashirmasin; lease timeout recovery xavfsizlik tarmog‘i.
-                return
-            if not active:
-                return
 
 
 async def cleanup_expired_auth(
@@ -319,53 +260,8 @@ async def cleanup_expired_auth(
         await session.commit()
 
 
-async def cleanup_orphan_profile_uploads(
-    database: Database,
-    storage,
-    now: datetime,
-) -> None:
-    cutoff = now - timedelta(hours=24)
-    async with database.session() as session:
-        grants = list((await session.scalars(
-            select(MediaUploadGrant)
-            .where(
-                MediaUploadGrant.status == "pending",
-                MediaUploadGrant.created_at < cutoff,
-            )
-            .order_by(MediaUploadGrant.id)
-            .limit(100)
-            .with_for_update(skip_locked=True)
-        )).all())
-        for grant in grants:
-            try:
-                await asyncio.to_thread(storage.delete_object, grant.object_key)
-            except Exception:
-                continue
-            grant.status = "cleaned"
-        await session.commit()
-
-
-async def update_outbox_metrics(database: Database, now: datetime) -> None:
-    async with database.session() as session:
-        pending, oldest = (await session.execute(
-            select(func.count(OutboxEvent.id), func.min(OutboxEvent.created_at))
-            .where(OutboxEvent.status.in_(("pending", "retry", "processing")))
-        )).one()
-    OUTBOX_PENDING.set(int(pending or 0))
-    if oldest is None:
-        OUTBOX_OLDEST_AGE.set(0)
-    else:
-        aware = oldest if oldest.tzinfo is not None else oldest.replace(tzinfo=UTC)
-        OUTBOX_OLDEST_AGE.set(max(0, (now - aware).total_seconds()))
-
-
 async def run_worker(settings: Settings, *, once: bool = False) -> None:
-    database = Database(
-        settings.database_url,
-        pool_size=settings.worker_db_pool_size,
-        max_overflow=settings.worker_db_max_overflow,
-        pool_timeout=settings.worker_db_pool_timeout_seconds,
-    )
+    database = Database(settings.database_url)
     await database.start()
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -373,19 +269,11 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
         loop.add_signal_handler(sig, stop.set)
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     last_cleanup: datetime | None = None
-    last_metrics: datetime | None = None
     try:
         push_sender = build_firebase_sender(settings)
-        storage = build_r2_storage(settings)
         async with httpx.AsyncClient(timeout=10) as http:
             telegram = TelegramClient(settings.telegram_bot_token, http)
-            story_service = StoryService(database.session, storage)
-            handlers = build_handlers(
-                settings,
-                database,
-                telegram,
-                story_service,
-            )
+            handlers = build_handlers(settings, database, telegram)
             while not stop.is_set():
                 now = datetime.now(UTC)
                 if (
@@ -393,11 +281,7 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
                     or now - last_cleanup >= timedelta(hours=1)
                 ):
                     await cleanup_expired_auth(database, now)
-                    await cleanup_orphan_profile_uploads(database, storage, now)
                     last_cleanup = now
-                if last_metrics is None or now - last_metrics >= timedelta(seconds=15):
-                    await update_outbox_metrics(database, now)
-                    last_metrics = now
                 count = await process_batch(
                     database,
                     worker_id,

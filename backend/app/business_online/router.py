@@ -16,7 +16,7 @@ from app.business_online.schemas import (
     BusinessOnlinePatch,
     BusinessOnlineResourceRead,
 )
-from app.business_online.service_relational import BusinessOnlineService
+from app.business_online.service import BusinessOnlineService
 from app.core.errors import ApiError
 from app.staff.permissions import RESOURCE_PERMISSIONS
 

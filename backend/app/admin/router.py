@@ -9,7 +9,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from app.admin.audit import request_meta
-from app.auth.router import _client_ip, _enforce_rate_limit
 from app.admin.dependencies import CurrentAdmin, AdminServiceDep
 from app.admin.moderation_service import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
@@ -67,22 +66,9 @@ ReviewDep = Annotated[PaymentService, Depends(payment_service)]
 @router.post("/auth/start", response_model=AdminAuthStarted)
 async def admin_auth_start(
     body: AdminAuthStart,
-    request: Request,
     service: AdminServiceDep,
 ) -> AdminAuthStarted:
     """Ro'yxatdagi Telegram ID ga bir martalik kod yuboradi."""
-    await _enforce_rate_limit(
-        request,
-        f"admin:auth:start:ip:{_client_ip(request)}",
-        5,
-        10 * 60,
-    )
-    await _enforce_rate_limit(
-        request,
-        f"admin:auth:start:telegram:{body.telegram_user_id}",
-        3,
-        10 * 60,
-    )
     result = await service.start(telegram_user_id=body.telegram_user_id)
     return AdminAuthStarted(**result)
 
@@ -94,18 +80,6 @@ async def admin_auth_verify(
     response: Response,
     service: AdminServiceDep,
 ) -> AdminIdentity:
-    await _enforce_rate_limit(
-        request,
-        f"admin:auth:verify:ip:{_client_ip(request)}",
-        10,
-        5 * 60,
-    )
-    await _enforce_rate_limit(
-        request,
-        f"admin:auth:verify:challenge:{body.challenge_id}",
-        5,
-        5 * 60,
-    )
     token = await service.verify(
         challenge_id=body.challenge_id, code=body.code
     )

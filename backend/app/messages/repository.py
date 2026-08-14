@@ -198,19 +198,13 @@ class MessageRepository:
         session: AsyncSession,
         *,
         conversation_id: int,
-        before_id: int | None = None,
-        limit: int = 100,
     ) -> list[Message]:
-        statement = select(Message).where(
-            Message.conversation_id == conversation_id
-        )
-        if before_id is not None:
-            statement = statement.where(Message.id < before_id)
-        rows = list((await session.scalars(
-            statement.order_by(Message.id.desc()).limit(limit + 1)
+        return list((await session.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at, Message.id)
+            .limit(500)
         )).all())
-        rows.reverse()
-        return rows
 
     async def messages_by_ids(
         self,

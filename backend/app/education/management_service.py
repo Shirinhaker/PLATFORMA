@@ -21,6 +21,7 @@ from app.education.cabinet_service import EducationCabinetService
 from app.education.management_repository import EducationManagementRepository
 from app.education.model import (
     EducationAttendance,
+    EducationGroup,
     EducationPayment,
     EducationStudent,
     EducationTeacher,

@@ -35,6 +35,7 @@ from app.payments.schemas import (
     BusinessSubscriptionSummary,
     PaymentAttemptRead,
     PaymentCatalogRead,
+    PaymentDecision,
     PaymentMethodRead,
     PaymentPriceRead,
     PaymentReceipt,

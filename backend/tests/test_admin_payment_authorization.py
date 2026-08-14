@@ -28,7 +28,6 @@ def _settings() -> Settings:
         environment="test",
         telegram_bot_username="koprik_test_bot",
         otp_secret="test-otp-secret",
-        admin_otp_secret="test-admin-otp-secret",
         csrf_secret="test-csrf-secret",
         outbox_encryption_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
         admin_telegram_ids=str(ADMIN_TG),

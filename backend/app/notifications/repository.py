@@ -188,28 +188,18 @@ class NotificationRepository:
         *,
         account_id: int,
         account_type: str,
-        before_id: int | None = None,
-        limit: int = 50,
     ) -> list[dict[str, Any]] | None:
         if not self.supported(session):
             return None
-        statement = (
-            select(Notification).where(
+        notifications = list((await session.scalars(
+            select(Notification)
+            .where(
                 Notification.account_id == account_id,
                 Notification.account_type == account_type,
             )
-        )
-        if before_id is not None:
-            statement = statement.where(Notification.id < before_id)
-        notifications = list((await session.scalars(
-            statement
-            .order_by(Notification.id.desc())
-            .limit(limit + 1)
+            .order_by(Notification.created_at, Notification.id)
+            .limit(200)
         )).all())
-        # The database reads newest-first so the LIMIT always keeps the newest
-        # rows.  Keep the public/repository contract chronological for UI
-        # rendering and compatibility with cabinet projections.
-        notifications.reverse()
         return [_row(notification) for notification in notifications]
 
     async def get_row(
@@ -230,22 +220,6 @@ class NotificationRepository:
             .limit(1)
         )
         return _row(notification) if notification is not None else None
-
-    async def unread_rows(
-        self,
-        session: AsyncSession,
-        *,
-        account_id: int,
-        account_type: str,
-    ) -> list[dict[str, Any]]:
-        notifications = list((await session.scalars(
-            select(Notification).where(
-                Notification.account_id == account_id,
-                Notification.account_type == account_type,
-                Notification.is_read.is_(False),
-            )
-        )).all())
-        return [_row(notification) for notification in notifications]
 
     async def unread_count(
         self,

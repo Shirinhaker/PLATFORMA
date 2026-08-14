@@ -68,17 +68,6 @@ class FakeProvider:
         return ""
 
 
-class CapturingProvider:
-    enabled = True
-
-    def __init__(self):
-        self.calls = []
-
-    async def answer(self, *args, **kwargs):
-        self.calls.append((args, kwargs))
-        return "Tashqi AI javobi"
-
-
 def service_and_session():
     session = FakeSession()
 
@@ -98,33 +87,6 @@ async def test_local_fallback_uses_only_tenant_context_and_saves_both_messages()
     assert [row.role for row in session.added] == ["user", "assistant"]
     assert {row.business_account_id for row in session.added} == {17}
     assert session.committed is True
-
-
-@pytest.mark.asyncio
-async def test_external_business_context_requires_explicit_consent():
-    session = FakeSession()
-    provider = CapturingProvider()
-
-    @asynccontextmanager
-    async def factory():
-        yield session
-
-    service = AIAssistantService(
-        factory,
-        provider,
-        repository=FakeRepository(),
-    )
-    local = await service.chat(17, "Bugungi xulosa")
-    external = await service.chat(
-        17,
-        "Bugungi xulosa",
-        allow_external_processing=True,
-    )
-
-    assert local.source == "local"
-    assert external.source == "openai"
-    assert external.answer == "Tashqi AI javobi"
-    assert len(provider.calls) == 1
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,8 @@
 from contextvars import ContextVar
 import re
 import uuid
-import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from app.core.metrics import HTTP_LATENCY, HTTP_REQUESTS
 
 
 request_id_context: ContextVar[str] = ContextVar(
@@ -30,19 +27,3 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
             request_id_context.reset(token)
         response.headers["X-Request-Id"] = request_id
         return response
-
-
-class MetricsMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        started = time.perf_counter()
-        status = 500
-        try:
-            response = await call_next(request)
-            status = response.status_code
-            return response
-        finally:
-            route = getattr(request.scope.get("route"), "path", request.url.path)
-            HTTP_REQUESTS.labels(request.method, route, str(status)).inc()
-            HTTP_LATENCY.labels(request.method, route).observe(
-                time.perf_counter() - started
-            )

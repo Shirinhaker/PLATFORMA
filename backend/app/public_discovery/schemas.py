@@ -1,6 +1,4 @@
 from enum import Enum
-import base64
-import json
 from math import ceil
 
 from pydantic import (
@@ -39,9 +37,8 @@ class PublicSearchParams(BaseModel):
     region: str = Field(default="", max_length=120)
     district: str = Field(default="", max_length=120)
     mahalla: str = Field(default="", max_length=160)
-    page: int = Field(default=1, ge=1, le=1)
+    page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=50)
-    cursor: str = Field(default="", max_length=512)
 
     @field_validator(
         "q",
@@ -56,41 +53,10 @@ class PublicSearchParams(BaseModel):
     def normalize_text_filter(cls, value):
         return value.strip() if isinstance(value, str) else value
 
-    @field_validator("cursor")
-    @classmethod
-    def validate_cursor(cls, value: str) -> str:
-        if not value:
-            return ""
-        decode_search_cursor(value)
-        return value
-
-
-def encode_search_cursor(name: str, kind: str, account_id: int) -> str:
-    payload = json.dumps(
-        [name, kind, account_id],
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
-
-
-def decode_search_cursor(value: str) -> tuple[str, str, int]:
-    try:
-        padding = "=" * (-len(value) % 4)
-        decoded = base64.urlsafe_b64decode(value + padding)
-        data = json.loads(decoded.decode("utf-8"))
-        if (
-            not isinstance(data, list)
-            or len(data) != 3
-            or not isinstance(data[0], str)
-            or data[1] not in {item.value for item in PublicResultKind}
-            or not isinstance(data[2], int)
-            or data[2] < 1
-        ):
-            raise ValueError
-        return data[0], data[1], data[2]
-    except (ValueError, TypeError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError("Qidiruv kursori noto‘g‘ri.") from exc
+    @computed_field
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.page_size
 
 
 class PublicSearchMapPoint(BaseModel):
@@ -128,14 +94,12 @@ class PublicSearchResponse(BaseModel):
     items: list[PublicSearchItem]
     page: int = Field(ge=1)
     page_size: int = Field(ge=1, le=50)
-    total: int | None = Field(default=None, ge=0)
-    next_cursor: str | None = None
-    has_more: bool = False
+    total: int = Field(ge=0)
 
     @computed_field
     @property
     def pages(self) -> int:
-        return ceil(self.total / self.page_size) if self.total is not None else 0
+        return ceil(self.total / self.page_size) if self.total else 0
 
 
 class PublicHomeBusinessPin(BaseModel):

@@ -42,7 +42,7 @@ from app.advertisements.authoring_schemas import (
     AdvertisementTarget,
 )
 from app.core.errors import ApiError
-from app.core.states import ReviewState
+from app.legacy_migration.model import ReviewState
 from app.payments.model import PlatformPrice
 
 

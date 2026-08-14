@@ -4,19 +4,19 @@ import type {
   BusinessOnlineRecord,
   BusinessOnlineResource,
 } from "../api/business-online-types";
-import { UZBEKISTAN_REGIONS } from "../public/location-data";
-import { readHomeLocation } from "../public/location-storage";
+import { UZBEKISTAN_REGIONS } from "../legacy/public/location-data";
+import { readHomeLocation } from "../legacy/public/location-storage";
 import {
-  BusinessLocationPickerView,
+  BusinessLocationPickerV1656View,
   normalizeLatLng,
-} from "./BusinessLocationPickerView";
+} from "./BusinessLocationPickerV1656View";
 import {
   recordId,
   recordNumber,
   recordText,
   type SharedActions,
 } from "./BusinessOnlineViews";
-function modularMoney(value: number): string {
+function v1656Money(value: number): string {
   return `${new Intl.NumberFormat("uz-UZ").format(Number(value || 0))} so'm`;
 }
 
@@ -154,7 +154,7 @@ export function CrudEditorView({
   ) => Promise<BusinessOnlineRecord | null | void>;
   /** Berilsa reklama rasmi R2'ga yuklanadi. */
   uploadImage?: (file: File) => Promise<string>;
-  /** modular reklama/e'lon tablari orasida kabinet route'ini almashtiradi. */
+  /** v1656 reklama/e'lon tablari orasida kabinet route'ini almashtiradi. */
   onPromotionChange?: (view: "advertisements" | "listings") => void;
 }) {
   const [openForm, setOpenForm] = useState(false);
@@ -484,7 +484,7 @@ export function CrudEditorView({
 
   if (resource === "listings") {
     return (
-      <section className="promotion-modular">
+      <section className="promotion-v1656">
         <PromotionTabs active="listings" onChange={onPromotionChange} />
         {!openForm ? (
           <div className="biz-listings-pane">
@@ -555,7 +555,7 @@ export function CrudEditorView({
 
   if (resource === "advertisements") {
     return (
-      <section className="promotion-modular">
+      <section className="promotion-v1656">
         <PromotionTabs active="ads" onChange={onPromotionChange} />
         {!openForm ? (
           <div className="biz-ads-pane">
@@ -614,7 +614,7 @@ export function CrudEditorView({
                       <span className={`ad-status ${status}`}>{label}</span>
                     </div>
                     <div className="ad-own-stats">
-                      <b>{modularMoney(recordNumber(row, "price"))}</b>
+                      <b>{v1656Money(recordNumber(row, "price"))}</b>
                       <span className="li-meta">
                         👁 {Number(row.views ?? 0)} · ↗ {Number(row.clicks ?? 0)}
                       </span>
@@ -734,7 +734,7 @@ function ListingForm({
     const latitude = recordText(draft, "lat");
     const longitude = recordText(draft, "lng");
     return (
-      <BusinessLocationPickerView
+      <BusinessLocationPickerV1656View
         prefix="be"
         value={latitude && longitude
           ? normalizeLatLng(latitude, longitude)
@@ -756,7 +756,7 @@ function ListingForm({
     );
   }
   return (
-    <div className="form-wrap listing-form-modular">
+    <div className="form-wrap listing-form-v1656">
       <div className="field">
         <label>Toifa</label>
         <div className="sort-row">
@@ -993,7 +993,7 @@ function AdvertisementForm({
   }
 
   return (
-    <div className="form-wrap advertisement-form-modular">
+    <div className="form-wrap advertisement-form-v1656">
       <div className="ad-quality">
         <b>Rasm talabi:</b> kompyuter uchun 2744 × 368 px (7.46:1), telefon
         uchun 800 × 250 px (3.2:1) tavsiya etiladi. JPG, PNG yoki WEBP;
@@ -1174,9 +1174,9 @@ function AdvertisementForm({
       </label>
       <div className="ad-price-box">
         <div className="idesc">Hisoblangan reklama narxi</div>
-        <div className="price">{modularMoney(recordNumber(quote ?? draft, "total", "price"))}</div>
+        <div className="price">{v1656Money(recordNumber(quote ?? draft, "total", "price"))}</div>
         <div className="idesc">{quoteError || (quote
-          ? `${Number(quote.district_count ?? 0)} tuman × ${Number(quote.hours_per_day ?? 0)} soat × ${Number(quote.duration_days ?? 1)} kun × ${modularMoney(Number(quote.district_hour_rate ?? 0))}`
+          ? `${Number(quote.district_count ?? 0)} tuman × ${Number(quote.hours_per_day ?? 0)} soat × ${Number(quote.duration_days ?? 1)} kun × ${v1656Money(Number(quote.district_hour_rate ?? 0))}`
           : targets.length
             ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun`
             : "Hududni tanlang.")}</div>

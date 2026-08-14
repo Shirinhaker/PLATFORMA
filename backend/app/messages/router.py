@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Depends, Path, Request
 
 from app.accounts.model import AccountType
 from app.auth.dependencies import (
@@ -61,8 +61,6 @@ async def thread(
     target_public_id: Annotated[str, Path(pattern=r"^[ub]_[0-9a-f]{16}$")],
     request: Request,
     current: CurrentRead,
-    before_id: int | None = Query(default=None, gt=0),
-    limit: int = Query(default=100, ge=1, le=200),
 ):
     require_enabled(request)
     require_chat_access(current)
@@ -70,8 +68,6 @@ async def thread(
         account_id=current.account_id,
         target_kind=target_kind,
         target_public_id=target_public_id,
-        before_id=before_id,
-        limit=limit,
     )
 
 

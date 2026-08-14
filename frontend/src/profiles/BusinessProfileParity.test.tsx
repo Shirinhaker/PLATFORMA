@@ -192,7 +192,7 @@ async function openEditor(user: ReturnType<typeof userEvent.setup>) {
 }
 
 
-describe("modular business profile parity", () => {
+describe("v1656 business profile parity", () => {
   it("renders the customer-facing profile editor instead of technical fields", async () => {
     const user = userEvent.setup();
     render(
@@ -293,7 +293,7 @@ describe("modular business profile parity", () => {
       .toBeInTheDocument();
   });
 
-  it("shows the exact modular validation message for an empty business name", async () => {
+  it("shows the exact v1656 validation message for an empty business name", async () => {
     const user = userEvent.setup();
     render(
       <BusinessProfile
@@ -372,7 +372,7 @@ describe("modular business profile parity", () => {
     expect(screen.getByLabelText("To‘lov kvitansiyasi")).toBeInTheDocument();
   });
 
-  it("opens the live modular expense ledger instead of payload rows", async () => {
+  it("opens the live v1656 expense ledger instead of payload rows", async () => {
     const user = userEvent.setup();
     render(
       <BusinessProfile
@@ -390,7 +390,7 @@ describe("modular business profile parity", () => {
       .toBeInTheDocument();
   });
 
-  it("opens live modular statistics instead of dashboard snapshot rows", async () => {
+  it("opens live v1656 statistics instead of dashboard snapshot rows", async () => {
     const user = userEvent.setup();
     const client = api();
     render(

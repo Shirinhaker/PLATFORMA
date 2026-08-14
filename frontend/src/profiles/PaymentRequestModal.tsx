@@ -16,7 +16,7 @@ export type PaymentRequestApi = Pick<
 >;
 
 export type PaymentTarget = {
-  /** modular: `subscription_plus_3m` kabi tarif kodi. */
+  /** v1656: `subscription_plus_3m` kabi tarif kodi. */
   priceCode: string;
   label: string;
   /** Berilmasa obuna deb qaraladi — eski chaqiruvlar o'zgarmaydi. */
@@ -44,7 +44,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
-/** modular `paymentMethodText` — qabul qiluvchi, rekvizitlar, ko'rsatma. */
+/** v1656 `paymentMethodText` — qabul qiluvchi, rekvizitlar, ko'rsatma. */
 export function paymentMethodText(method: PaymentMethod | undefined) {
   if (!method) return "To‘lov usulini tanlang.";
   const lines: string[] = [];

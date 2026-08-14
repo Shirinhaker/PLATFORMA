@@ -266,6 +266,7 @@ async def _enrich_all_business_profiles(
     session: AsyncSession,
     source: sqlite3.Connection,
 ) -> None:
+    users = {int(row["id"]): row for row in _source_rows(source, "users")}
     all_orders = _optional_rows(source, "orders")
     all_items = _optional_rows(source, "items")
     all_groups = _optional_rows(source, "item_groups")
