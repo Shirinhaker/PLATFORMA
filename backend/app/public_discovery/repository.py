@@ -23,8 +23,8 @@ from sqlalchemy.orm import aliased
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogGroup, CatalogItem
+from app.content_state import ReviewState
 from app.follows.model import ProfileFollow
-from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.payments.model import BusinessSubscription
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
@@ -1037,7 +1037,6 @@ async def load_public_profile(
     if profile is None:
         return None
     from app.catalog.repository import build_content_public_id
-
     course_rows_by_id: dict[str, dict[str, object]] = {}
     if str(profile.direction or "").strip() == "Ta'lim faoliyati":
         course_rows = await _cabinet_records.read_resource(
