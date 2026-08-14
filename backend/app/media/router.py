@@ -5,34 +5,44 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.accounts.model import AccountType
 from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
+from app.cache.rate_limit import consume_rate_limit, consume_weighted_rate_limit
 from app.core.errors import ApiError
 from app.media.storage import UploadRejected
 
 
 router = APIRouter(prefix="/api/v1/media", tags=["media"])
+MediaPurpose = Literal[
+    "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
+    "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
+    "story_image", "story_video", "specialist_credential", "specialist_offer_image",
+    "specialist_portfolio_image", "specialist_portfolio_video",
+]
 
 
 class UploadGrantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    purpose: Literal[
-        "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-        "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
-        "story_image", "story_video",
-        "specialist_credential", "specialist_offer_image",
-        "specialist_portfolio_image", "specialist_portfolio_video",
-    ]
+    purpose: MediaPurpose
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
     size_bytes: int = Field(ge=1)
 
 
-@router.post("/upload-grants")
-async def create_upload_grant(
-    body: UploadGrantRequest,
-    request: Request,
-    current: Annotated[CurrentAccount, Depends(require_csrf)],
-):
+class UploadFinalizeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    purpose: MediaPurpose
+    pending_object_key: str = Field(min_length=1, max_length=1024)
+    object_key: str = Field(min_length=1, max_length=1024)
+
+
+def _redis(request: Request):
+    wrapper = request.app.state.redis
+    client = getattr(wrapper, "client", None)
+    return client if client is not None and not callable(client) else wrapper
+
+
+def _require_purpose_access(current: CurrentAccount, purpose: str) -> None:
     if current.actor_type == "staff":
         required = {
             "listing_photo": ("ads",),
@@ -44,29 +54,78 @@ async def create_upload_grant(
                 "dining_external", "kitchen",
             ),
             "chat_image": ("chats",),
-        }.get(body.purpose, ("__business_owner__",))
+        }.get(purpose, ("__business_owner__",))
         require_staff_permission(current, *required)
-    allowed = body.purpose in {
+
+    allowed = purpose in {
         "listing_photo", "listing_video", "order_chat_image", "chat_image",
-        "story_image", "story_video",
-        # Reklamani oddiy foydalanuvchi ham joylashi mumkin.
-        "payment_receipt", "advertisement_image",
+        "story_image", "story_video", "payment_receipt", "advertisement_image",
     } or (
         current.account_type is AccountType.USER
-        and body.purpose in {
+        and purpose in {
             "avatar", "specialist_credential", "specialist_offer_image",
             "specialist_portfolio_image", "specialist_portfolio_video",
         }
     ) or (
         current.account_type is AccountType.BUSINESS
-        and body.purpose in {"logo", "payment_qr"}
+        and purpose in {"logo", "payment_qr"}
     )
     if not allowed:
         raise ApiError(
             403,
             "media_purpose_forbidden",
-            "Bu rasm turi akkauntga mos emas.",
+            "Bu media turi akkauntga mos emas.",
         )
+
+
+async def _limit_upload_grant(
+    request: Request,
+    *,
+    account_id: int,
+    size_bytes: int,
+) -> None:
+    redis = _redis(request)
+    request_limit = await consume_rate_limit(
+        redis,
+        f"media-grant:count:{account_id}",
+        30,
+        10 * 60,
+    )
+    if not request_limit.allowed:
+        raise ApiError(
+            429,
+            "media_upload_rate_limited",
+            "Juda ko‘p media yuklash boshlandi. Biroz kuting.",
+            headers={"Retry-After": str(request_limit.retry_after_seconds)},
+        )
+
+    for key, limit, window in (
+        ("hour", 1024 * 1024 * 1024, 60 * 60),
+        ("day", 5 * 1024 * 1024 * 1024, 24 * 60 * 60),
+    ):
+        quota = await consume_weighted_rate_limit(
+            redis,
+            f"media-grant:bytes:{key}:{account_id}",
+            cost=size_bytes,
+            limit=limit,
+            window_seconds=window,
+        )
+        if not quota.allowed:
+            raise ApiError(
+                429,
+                "media_upload_quota_exceeded",
+                "Media yuklash hajmi limiti tugadi. Keyinroq qayta urinib ko‘ring.",
+                headers={"Retry-After": str(quota.retry_after_seconds)},
+            )
+
+
+@router.post("/upload-grants")
+async def create_upload_grant(
+    body: UploadGrantRequest,
+    request: Request,
+    current: Annotated[CurrentAccount, Depends(require_csrf)],
+):
+    _require_purpose_access(current, body.purpose)
     try:
         grant = request.app.state.r2.create_upload_grant(
             owner_type=current.account_type,
@@ -77,9 +136,44 @@ async def create_upload_grant(
             size_bytes=body.size_bytes,
         )
     except UploadRejected as exc:
-        raise ApiError(
-            400,
-            "media_upload_rejected",
-            str(exc),
-        ) from None
+        raise ApiError(400, "media_upload_rejected", str(exc)) from None
+
+    await _limit_upload_grant(
+        request,
+        account_id=current.account_id,
+        size_bytes=body.size_bytes,
+    )
     return grant
+
+
+@router.post("/upload-grants/finalize")
+async def finalize_upload(
+    body: UploadFinalizeRequest,
+    request: Request,
+    current: Annotated[CurrentAccount, Depends(require_csrf)],
+) -> dict[str, str]:
+    _require_purpose_access(current, body.purpose)
+    result = await consume_rate_limit(
+        _redis(request),
+        f"media-finalize:{current.account_id}",
+        60,
+        10 * 60,
+    )
+    if not result.allowed:
+        raise ApiError(
+            429,
+            "media_finalize_rate_limited",
+            "Juda ko‘p media yakunlash so‘rovi yuborildi.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+    try:
+        key = request.app.state.r2.finalize_upload(
+            owner_type=current.account_type,
+            owner_id=current.account_id,
+            purpose=body.purpose,
+            pending_object_key=body.pending_object_key,
+            object_key=body.object_key,
+        )
+    except UploadRejected as exc:
+        raise ApiError(400, "media_upload_rejected", str(exc)) from None
+    return {"object_key": key}
