@@ -225,6 +225,92 @@ describe("HomeMapV1656", () => {
     expect(onOpenResult).toHaveBeenCalledWith("business", "b_muhr");
   });
 
+  it("refits searched markers after the mobile viewport changes size", async () => {
+    const leaflet = (await import("leaflet")).default;
+    const invalidateSize = vi.spyOn(leaflet.Map.prototype, "invalidateSize");
+    const fitBounds = vi.spyOn(leaflet.Map.prototype, "fitBounds");
+
+    try {
+      render(
+        <HomeMapV1656
+          businesses={[]}
+          district="Qumqo‘rg‘on"
+          resultItems={[
+            {
+              kind: "product",
+              public_id: "p_banan",
+              name: "Banan",
+              public_username: "",
+              description: "",
+              direction: "Savdo",
+              activity_type: "Do‘kon",
+              region: "Surxondaryo viloyati",
+              district: "Qumqo‘rg‘on tumani",
+              mahalla: "",
+              image_url: "/media/banan.webp",
+              price_text: "25 000 so‘m",
+              owner_label: "Muhr",
+              owner_public_id: "b_muhr",
+              map_point: {
+                business_public_id: "b_muhr",
+                business_name: "Muhr",
+                latitude: 37.8234,
+                longitude: 67.5789,
+              },
+            },
+            {
+              kind: "service",
+              public_id: "s_massaj",
+              name: "Texnik massaj",
+              public_username: "",
+              description: "",
+              direction: "Maishiy xizmatlar",
+              activity_type: "Massaj",
+              region: "Surxondaryo viloyati",
+              district: "Qumqo‘rg‘on tumani",
+              mahalla: "",
+              image_url: "/media/massaj.webp",
+              price_text: "100 000 so‘m",
+              owner_label: "Dorixona",
+              owner_public_id: "b_dorixona",
+              map_point: {
+                business_public_id: "b_dorixona",
+                business_name: "Dorixona",
+                latitude: 37.8401,
+                longitude: 67.5882,
+              },
+            },
+          ]}
+          specialists={[]}
+          onCloseResults={vi.fn()}
+          onOpenResult={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
+          .toHaveLength(2);
+        expect(invalidateSize).toHaveBeenCalled();
+        expect(fitBounds).toHaveBeenCalled();
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 320));
+      invalidateSize.mockClear();
+      fitBounds.mockClear();
+
+      window.dispatchEvent(new Event("resize"));
+
+      await waitFor(() => {
+        expect(invalidateSize).toHaveBeenCalled();
+        expect(fitBounds).toHaveBeenCalled();
+      });
+      expect(document.querySelectorAll(".leaflet-marker-pane .leaflet-pin"))
+        .toHaveLength(2);
+    } finally {
+      invalidateSize.mockRestore();
+      fitBounds.mockRestore();
+    }
+  });
+
   it("keeps a searched E'lon as its own marker and opens the E'lon", async () => {
     const onOpenResult = vi.fn();
     render(
