@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 import re
@@ -40,9 +41,7 @@ from app.profiles.schemas import (
 )
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_ids import build_profile_public_id
-from app.business_online.service_relational import (
-    RELATIONAL_EDUCATION_RESOURCES,
-)
+from app.business_online.service_relational import RELATIONAL_EDUCATION_RESOURCES
 from app.education.repository import EducationEnrollmentRepository
 from app.staff.permissions import allowed_payload_resources
 
@@ -71,6 +70,17 @@ ProfileSummary = Annotated[
     ProfileSummaryService,
     Depends(get_profile_summary_service),
 ]
+
+
+async def _delete_replaced_object(request: Request, old_key: str, new_key: str) -> None:
+    if not old_key or old_key == new_key:
+        return
+    try:
+        await asyncio.to_thread(request.app.state.r2.delete_object, old_key)
+    except Exception:
+        # DB o'zgarishi allaqachon commit bo'lgan. Storage cleanup xatosi
+        # foydalanuvchi profilini rollback qilmasligi kerak.
+        return
 
 
 def require_account_type(
@@ -127,7 +137,6 @@ async def assembled_cabinet_payload(
     if notification_rows is not None:
         result["notifications"] = notification_rows
     if account_type is AccountType.BUSINESS:
-        # Ta'lim resurslari o'z jadvallariga ko'chirilgan.
         for resource in RELATIONAL_EDUCATION_RESOURCES:
             rows = await _education.list_rows(
                 session,
@@ -170,12 +179,8 @@ def business_profile_read(
     cabinet_payload: dict[str, Any] | None = None,
 ) -> BusinessProfileRead:
     updates: dict[str, Any] = {
-        "logo_url": request.app.state.r2.create_download_url(
-            profile.logo_object_key
-        ),
-        "pay_qr_url": request.app.state.r2.create_download_url(
-            profile.pay_qr_object_key
-        ),
+        "logo_url": request.app.state.r2.create_download_url(profile.logo_object_key),
+        "pay_qr_url": request.app.state.r2.create_download_url(profile.pay_qr_object_key),
     }
     if cabinet_payload is not None:
         updates["cabinet_payload"] = cabinet_payload
@@ -199,18 +204,13 @@ async def user_profile_response(
     )
     return UserProfileRead.model_validate(profile).model_copy(
         update={
-            "public_id": profile.public_id or build_profile_public_id(
-                "user",
-                profile.account_id,
-            ),
+            "public_id": profile.public_id
+            or build_profile_public_id("user", profile.account_id),
             "avatar_url": request.app.state.r2.create_download_url(
                 profile.avatar_object_key
             ),
             "cabinet_payload": payload,
-            "dashboard_snapshot": dashboard_with_notification_count(
-                profile,
-                payload,
-            ),
+            "dashboard_snapshot": dashboard_with_notification_count(profile, payload),
         }
     )
 
@@ -233,17 +233,19 @@ async def business_profile_response(
         return response
     allowed = allowed_payload_resources(current.permissions)
     filtered = {name: value for name, value in payload.items() if name in allowed}
-    return response.model_copy(update={
-        "pay_card": "",
-        "pay_holder": "",
-        "pay_qr_object_key": "",
-        "pay_qr_url": "",
-        "director": "",
-        "tax_id": "",
-        "cabinet_payload": filtered,
-        "dashboard_snapshot": {},
-        "recent_activity": [],
-    })
+    return response.model_copy(
+        update={
+            "pay_card": "",
+            "pay_holder": "",
+            "pay_qr_object_key": "",
+            "pay_qr_url": "",
+            "director": "",
+            "tax_id": "",
+            "cabinet_payload": filtered,
+            "dashboard_snapshot": {},
+            "recent_activity": [],
+        }
+    )
 
 
 @router.get("/me", response_model=MeRead)
@@ -312,10 +314,7 @@ async def update_business_profile(
 ):
     require_account_type(current, AccountType.BUSINESS)
     require_business_owner(current)
-    if (
-        "pay_qr_object_key" in body.model_fields_set
-        and body.pay_qr_object_key
-    ):
+    if "pay_qr_object_key" in body.model_fields_set and body.pay_qr_object_key:
         require_profile_object_key(
             body.pay_qr_object_key,
             account_type=AccountType.BUSINESS,
@@ -324,10 +323,18 @@ async def update_business_profile(
         )
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_pay_qr = profile.pay_qr_object_key
         await patch_business_profile(session, profile, body)
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        result = await business_profile_response(request, session, profile)
+        if "pay_qr_object_key" in body.model_fields_set:
+            await _delete_replaced_object(
+                request,
+                old_pay_qr,
+                profile.pay_qr_object_key,
+            )
+        return result
     except Exception:
         await session.rollback()
         raise
@@ -343,7 +350,11 @@ async def switch_cabinet(
 ):
     require_staff_permission(current, "__business_owner__")
     if body.target_type is current.account_type:
-        raise ApiError(409, "cabinet_already_active", "Tanlangan kabinet allaqachon ochiq.")
+        raise ApiError(
+            409,
+            "cabinet_already_active",
+            "Tanlangan kabinet allaqachon ochiq.",
+        )
 
     link = (
         await session.get(ProfileLink, current.account_id)
@@ -359,7 +370,11 @@ async def switch_cabinet(
             )
         )
     if link is None:
-        raise ApiError(404, "linked_cabinet_not_found", "Bog‘langan kabinet topilmadi.")
+        raise ApiError(
+            404,
+            "linked_cabinet_not_found",
+            "Bog‘langan kabinet topilmadi.",
+        )
 
     target_id = (
         link.business_account_id
@@ -367,11 +382,21 @@ async def switch_cabinet(
         else link.user_account_id
     )
     target = await session.get(Account, target_id)
-    if target is None or target.status != "active" or target.account_type is not body.target_type:
-        raise ApiError(404, "linked_cabinet_not_found", "Bog‘langan kabinet topilmadi.")
+    if (
+        target is None
+        or target.status != "active"
+        or target.account_type is not body.target_type
+    ):
+        raise ApiError(
+            404,
+            "linked_cabinet_not_found",
+            "Bog‘langan kabinet topilmadi.",
+        )
 
     now = datetime.now(UTC)
-    expires_at = now + timedelta(seconds=request.app.state.settings.session_ttl_seconds)
+    expires_at = now + timedelta(
+        seconds=request.app.state.settings.session_ttl_seconds
+    )
     try:
         old_session = await lock_session(session, current.session_token)
         if old_session is not None and old_session.revoked_at is None:
@@ -388,13 +413,18 @@ async def switch_cabinet(
         await session.rollback()
         raise
 
-    await request.app.state.auth_service._revoke_cached_session(current.session_token)
+    await request.app.state.auth_service._revoke_cached_session(
+        current.session_token
+    )
     _set_session_cookie(response, request, raw_token)
     return CabinetSwitchRead(
         account_id=target.id,
         account_type=target.account_type,
         login=target.login,
-        csrf_token=derive_csrf(raw_token, request.app.state.settings.csrf_secret),
+        csrf_token=derive_csrf(
+            raw_token,
+            request.app.state.settings.csrf_secret,
+        ),
         expires_at=expires_at.isoformat(),
     )
 
@@ -416,6 +446,7 @@ async def attach_user_avatar(
     )
     try:
         profile = await get_user_profile(session, current.account_id)
+        old_key = profile.avatar_object_key
         profile.avatar_object_key = body.object_key
         profile.avatar_x = body.x
         profile.avatar_y = body.y
@@ -423,7 +454,9 @@ async def attach_user_avatar(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await user_profile_response(request, session, profile)
+        result = await user_profile_response(request, session, profile)
+        await _delete_replaced_object(request, old_key, body.object_key)
+        return result
     except Exception:
         await session.rollback()
         raise
@@ -447,6 +480,7 @@ async def attach_business_logo(
     )
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_key = profile.logo_object_key
         profile.logo_object_key = body.object_key
         profile.logo_x = body.x
         profile.logo_y = body.y
@@ -454,7 +488,9 @@ async def attach_business_logo(
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        result = await business_profile_response(request, session, profile)
+        await _delete_replaced_object(request, old_key, body.object_key)
+        return result
     except Exception:
         await session.rollback()
         raise
@@ -479,11 +515,14 @@ async def attach_business_payment_qr(
         )
     try:
         profile = await get_business_profile(session, current.account_id)
+        old_key = profile.pay_qr_object_key
         profile.pay_qr_object_key = body.object_key
         await session.flush()
         await session.commit()
         await summaries.invalidate(current.account_type, current.account_id)
-        return await business_profile_response(request, session, profile)
+        result = await business_profile_response(request, session, profile)
+        await _delete_replaced_object(request, old_key, body.object_key)
+        return result
     except Exception:
         await session.rollback()
         raise
