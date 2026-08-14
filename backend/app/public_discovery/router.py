@@ -28,7 +28,11 @@ def _client_ip(request: Request) -> str:
 
 
 def _redis(request: Request):
-    wrapper = request.app.state.redis
+    wrapper = getattr(request.app.state, "redis", None)
+    if wrapper is None:
+        if request.app.state.settings.environment == "test":
+            return None
+        raise RuntimeError("redis_not_initialized")
     client = getattr(wrapper, "client", None)
     return client if client is not None and not callable(client) else wrapper
 
@@ -40,8 +44,11 @@ async def _enforce_public_rate_limit(
     limit: int,
     window_seconds: int = 60,
 ) -> None:
+    redis = _redis(request)
+    if redis is None:
+        return
     result = await consume_rate_limit(
-        _redis(request),
+        redis,
         f"public:{scope}:ip:{_client_ip(request)}",
         limit,
         window_seconds,
