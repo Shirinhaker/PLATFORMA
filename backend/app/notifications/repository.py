@@ -188,18 +188,21 @@ class NotificationRepository:
         *,
         account_id: int,
         account_type: str,
+        limit: int | None = 200,
     ) -> list[dict[str, Any]] | None:
         if not self.supported(session):
             return None
-        notifications = list((await session.scalars(
+        statement = (
             select(Notification)
             .where(
                 Notification.account_id == account_id,
                 Notification.account_type == account_type,
             )
-            .order_by(Notification.created_at, Notification.id)
-            .limit(200)
-        )).all())
+            .order_by(Notification.created_at.desc(), Notification.id.desc())
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        notifications = list((await session.scalars(statement)).all())
         return [_row(notification) for notification in notifications]
 
     async def get_row(
@@ -254,7 +257,7 @@ class NotificationRepository:
                 Notification.is_read.is_(False),
                 Notification.resolved_at.is_(None),
             )
-            .order_by(Notification.created_at, Notification.id)
+            .order_by(Notification.created_at.desc(), Notification.id.desc())
             .limit(limit)
         )).all())
         return [_row(notification) for notification in notifications]
