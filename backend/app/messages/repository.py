@@ -199,12 +199,14 @@ class MessageRepository:
         *,
         conversation_id: int,
     ) -> list[Message]:
-        return list((await session.scalars(
+        rows = list((await session.scalars(
             select(Message)
             .where(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at, Message.id)
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(500)
         )).all())
+        rows.reverse()
+        return rows
 
     async def messages_by_ids(
         self,
