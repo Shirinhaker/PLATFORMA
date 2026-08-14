@@ -21,7 +21,7 @@ async def healthz(request: Request) -> dict[str, str]:
 async def build(request: Request) -> dict[str, str]:
     return {
         "api_version": "v1",
-        "foundation": "modular",
+        "foundation": "phase1",
         "legacy_build": request.app.state.settings.legacy_build,
     }
 
