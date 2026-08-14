@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.model import AdminAuthChallenge, AdminSession
-from app.auth.security import derive_otp, sha256_token
+from app.auth.security import derive_otp, encrypt_outbox_secret, sha256_token
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.outbox.repository import enqueue_event
@@ -82,9 +82,10 @@ class AdminAuthService:
             )
             session.add(challenge)
             await session.flush()
-            # Kod saqlanmaydi va navbatga ham yozilmaydi — u challenge
-            # id sidan server siri bilan qayta hisoblanadi (auth domeni
-            # bilan bir xil yondashuv).
+            # API tekshiradigan aynan shu kod workerga shifrlangan holda
+            # uzatiladi. API va worker alohida servis bo'lgani uchun ularning
+            # fallback secretlari vaqtincha farq qilsa ham foydalanuvchiga
+            # noto'g'ri kod yuborilmasligi kerak.
             code = derive_otp(
                 challenge.id,
                 0,
@@ -99,6 +100,10 @@ class AdminAuthService:
                 {
                     "challenge_id": challenge.id,
                     "chat_id": telegram_user_id,
+                    "encrypted_code": encrypt_outbox_secret(
+                        {"code": code},
+                        self._settings.outbox_encryption_key,
+                    ),
                 },
             )
             challenge_id = challenge.id

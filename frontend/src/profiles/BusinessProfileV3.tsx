@@ -90,11 +90,6 @@ import {
   supportsPaymentsApi,
 } from "../payments/SubscriptionsPayments";
 import { AccountSettings } from "../settings/AccountSettings";
-import "./Cabinet.css";
-import "./BusinessCabinetDashboardParity.css";
-import "./BusinessFollowCounts.css";
-
-
 export type BusinessProfileApiV3 = Pick<
   ApiClient,
   | "getSession"

@@ -7,8 +7,15 @@ export type EntryLocation = Pick<
 export function resolveAdminEntryRedirect(
   location: EntryLocation,
 ): string | null {
+  const hostname = location.hostname.toLowerCase();
   if (
-    location.hostname.toLowerCase() !== "admin.koprik.uz"
+    (hostname === "koprik.uz" || hostname === "www.koprik.uz")
+    && (location.pathname === "/admin" || location.pathname.startsWith("/admin/"))
+  ) {
+    return `https://admin.koprik.uz/admin${location.search}${location.hash}`;
+  }
+  if (
+    hostname !== "admin.koprik.uz"
     || location.pathname !== "/"
   ) {
     return null;

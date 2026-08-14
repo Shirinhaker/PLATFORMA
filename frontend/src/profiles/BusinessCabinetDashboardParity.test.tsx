@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import businessProfileSource from "./BusinessProfileV3.tsx?raw";
+import frontendBootstrapSource from "../main.tsx?raw";
 import {
   BusinessProfileV3,
   type BusinessProfileApiV3,
@@ -91,9 +91,11 @@ function menuTexts(section: HTMLElement) {
 
 
 describe("modular business cabinet dashboard parity", () => {
-  it("keeps the dedicated modular dashboard stylesheet wired to the component", () => {
-    expect(businessProfileSource)
-      .toContain('import "./BusinessCabinetDashboardParity.css";');
+  it("loads the active dashboard stylesheet globally without the obsolete V2 rules", () => {
+    expect(frontendBootstrapSource)
+      .toContain('import "./profiles/BusinessCabinetDashboardParity.css";');
+    expect(frontendBootstrapSource)
+      .not.toContain('import "./profiles/BusinessProfileV2.css";');
   });
 
   it("shows the owner dashboard with the exact modular group hierarchy", async () => {
