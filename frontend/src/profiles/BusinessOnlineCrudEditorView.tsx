@@ -229,7 +229,13 @@ export function CrudEditorView({
       setValidationError("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash).");
       return;
     }
-    await actions.create(resource, cleanDraft(draft));
+    try {
+      await actions.create(resource, cleanDraft(draft));
+    } catch {
+      // Domain component xatoni foydalanuvchiga ko'rsatadi. Formani yopib
+      // yubormaslik kiritilgan ma'lumot va yuklangan rasmni saqlab qoladi.
+      return;
+    }
     setOpenForm(false);
     setDraft({});
     setValidationError("");

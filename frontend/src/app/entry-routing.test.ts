@@ -13,7 +13,16 @@ describe("production entry routing", () => {
     })).toBe("/admin?from=bookmark#payments");
   });
 
-  it("keeps the public domain and explicit admin path unchanged", () => {
+  it("redirects a public-domain admin bookmark to the separate admin site", () => {
+    expect(resolveAdminEntryRedirect({
+      hostname: "koprik.uz",
+      pathname: "/admin",
+      search: "?from=bookmark",
+      hash: "#payments",
+    })).toBe("https://admin.koprik.uz/admin?from=bookmark#payments");
+  });
+
+  it("keeps the public root and the real admin path unchanged", () => {
     expect(resolveAdminEntryRedirect({
       hostname: "koprik.uz",
       pathname: "/",

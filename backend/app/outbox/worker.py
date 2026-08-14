@@ -81,7 +81,7 @@ async def send_admin_code(
     telegram: TelegramClient,
     payload: dict[str, Any],
 ) -> None:
-    """Admin kodi bazada ham, navbatda ham saqlanmaydi — qayta hisoblanadi."""
+    """API yaratgan admin kodini faqat yuborish vaqtida ochadi."""
     async with database.session() as session:
         challenge = await session.get(
             AdminAuthChallenge, int(payload["challenge_id"])
@@ -93,11 +93,27 @@ async def send_admin_code(
             or challenge.telegram_user_id != int(payload["chat_id"])
         ):
             return
-        code = derive_otp(challenge.id, 0, settings.admin_otp_secret)
-        await telegram.send_message(
-            challenge.telegram_user_id,
-            f"Koprik admin tasdiqlash kodi: {code}",
-        )
+        encrypted_code = str(payload.get("encrypted_code") or "")
+        if encrypted_code:
+            secret = decrypt_outbox_secret(
+                encrypted_code,
+                settings.outbox_encryption_key,
+            )
+            try:
+                code = secret["code"]
+                await telegram.send_message(
+                    challenge.telegram_user_id,
+                    f"Koprik admin tasdiqlash kodi: {code}",
+                )
+            finally:
+                secret.clear()
+        else:
+            # Rolling deploy paytida navbatda qolgan eski eventlar uchun.
+            code = derive_otp(challenge.id, 0, settings.admin_otp_secret)
+            await telegram.send_message(
+                challenge.telegram_user_id,
+                f"Koprik admin tasdiqlash kodi: {code}",
+            )
 
 
 async def send_credentials(
@@ -245,6 +261,11 @@ async def process_batch(
                     }:
                         sanitized_payload = {
                             "account_id": event.payload.get("account_id"),
+                            "delivery": "telegram",
+                        }
+                    elif event.topic == "telegram.admin_code.send":
+                        sanitized_payload = {
+                            "challenge_id": event.payload.get("challenge_id"),
                             "delivery": "telegram",
                         }
                     await mark_processed(
