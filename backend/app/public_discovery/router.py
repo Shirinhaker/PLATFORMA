@@ -82,6 +82,12 @@ async def search_public_profiles(
     params: Annotated[PublicSearchParams, Query()],
 ) -> PublicSearchResponse:
     await _enforce_public_rate_limit(request, "search", limit=60)
+    if params.page > 200:
+        raise ApiError(
+            400,
+            "public_search_page_too_deep",
+            "Qidiruv sahifasi juda uzoq. Filtr yoki aniqroq qidiruvdan foydalaning.",
+        )
     return await request.app.state.public_discovery_service.search(params)
 
 
