@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.legacy_migration.model import ReviewState
+from app.content_state import ReviewState
 from app.listings.model import Listing, ListingMedia
 
 
