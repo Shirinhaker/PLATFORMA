@@ -41,8 +41,8 @@ from app.advertisements.authoring_schemas import (
     AdvertisementRead,
     AdvertisementTarget,
 )
+from app.content_state import ReviewState
 from app.core.errors import ApiError
-from app.legacy_migration.model import ReviewState
 from app.payments.model import PlatformPrice
 
 
@@ -98,8 +98,6 @@ class AdvertisementAuthoringService:
         self._image_url = image_url_provider
         self._now = now_provider
 
-    # ------------------------------------------------------------- narxlar
-
     async def rates(self) -> AdvertisementRates:
         async with self._session_factory() as session:
             rate = await self._hour_rate(session)
@@ -126,8 +124,6 @@ class AdvertisementAuthoringService:
                 "total", "currency",
             )
         })
-
-    # ------------------------------------------------------------- yaratish
 
     async def create(
         self,
@@ -184,7 +180,6 @@ class AdvertisementAuthoringService:
                 district_hour_rate=pricing["district_hour_rate"],
                 billable_district_hours=pricing["billable_district_hours"],
                 price_code=PRICE_CODE,
-                # To'lov tasdiqlanmaguncha reklama ko'rinmaydi.
                 status="payment_pending",
                 views=0,
                 clicks=0,
@@ -306,8 +301,6 @@ class AdvertisementAuthoringService:
             await session.commit()
             return result
 
-    # ----------------------------------------------------- to'lovdan keyin
-
     async def activate_paid(
         self,
         session: AsyncSession,
@@ -364,8 +357,6 @@ class AdvertisementAuthoringService:
         advertisement.start_at = _moment(actual_start)
         advertisement.end_at = _moment(actual_end)
         advertisement.updated_at = _moment(now)
-
-    # ------------------------------------------------------------ yordamchi
 
     @staticmethod
     def _time(value: str) -> time:
