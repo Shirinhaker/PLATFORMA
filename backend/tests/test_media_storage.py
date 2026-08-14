@@ -19,7 +19,7 @@ def test_upload_grant_uses_private_profile_prefix(s3_client):
     assert grant.object_key.endswith(".png")
     assert grant.method == "PUT"
     assert grant.headers == {"Content-Type": "image/png"}
-    assert grant.expires_in_seconds == 900
+    assert grant.expires_in_seconds == 300
 
 
 def test_executable_upload_is_rejected(s3_client):
