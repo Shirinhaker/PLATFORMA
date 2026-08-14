@@ -1,13 +1,4 @@
-"""Admin autentifikatsiyasi — v1656 `admin_auth.py` bilan bir xil oqim.
-
-    Telegram ID (ro'yxatda bo'lishi shart)
-    → bir martalik kod botga yuboriladi
-    → kod tekshiriladi
-    → alohida HttpOnly `koprik_admin_session` cookie beriladi
-
-Admin sessiyasi oddiy foydalanuvchi sessiyasidan ajratilgan: o'g'irlangan
-foydalanuvchi cookie'si admin bo'limlarini ochmaydi.
-"""
+"""Admin autentifikatsiyasi — Telegram OTP + alohida admin sessiyasi."""
 
 from __future__ import annotations
 
@@ -31,11 +22,6 @@ SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
 def _aware(value: datetime) -> datetime:
-    """Bazadan kelgan vaqtni UTC deb qaraydi.
-
-    PostgreSQL `timestamptz` mintaqani saqlaydi, SQLite esa yo'qotadi.
-    Ikkala holatda ham qiymat UTC da yozilgan.
-    """
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
@@ -59,9 +45,7 @@ class AdminAuthService:
         return telegram_user_id in self._settings.admin_telegram_id_set
 
     async def start(self, *, telegram_user_id: int) -> dict[str, int]:
-        """Kod yaratadi va botga yuborish uchun navbatga qo'yadi."""
         if not self.is_admin(telegram_user_id):
-            # Ro'yxatda yo'q ID uchun kod umuman yaratilmaydi.
             raise ApiError(
                 403,
                 "admin_not_allowed",
@@ -71,6 +55,7 @@ class AdminAuthService:
         expires_at = now + timedelta(
             seconds=self._settings.admin_challenge_ttl_seconds
         )
+        admin_secret = self._settings.resolved_admin_otp_secret
         async with self._session_factory() as session:
             challenge = AdminAuthChallenge(
                 telegram_user_id=telegram_user_id,
@@ -82,12 +67,11 @@ class AdminAuthService:
             )
             session.add(challenge)
             await session.flush()
-            # Kod saqlanmaydi va navbatga ham yozilmaydi — u challenge
-            # id sidan server siri bilan qayta hisoblanadi (auth domeni
-            # bilan bir xil yondashuv).
-            code = derive_otp(challenge.id, 0, self._settings.otp_secret)
+            code = derive_otp(challenge.id, 0, admin_secret)
             challenge.code_hash = _code_hash(
-                self._settings.otp_secret, telegram_user_id, code
+                admin_secret,
+                telegram_user_id,
+                code,
             )
             await enqueue_event(
                 session,
@@ -105,7 +89,6 @@ class AdminAuthService:
         }
 
     async def verify(self, *, challenge_id: int, code: str) -> str:
-        """Kodni tekshiradi va yangi sessiya tokenini qaytaradi."""
         now = self._now()
         async with self._session_factory() as session:
             challenge = await session.scalar(
@@ -137,7 +120,6 @@ class AdminAuthService:
                     "admin_challenge_attempts",
                     "Tasdiqlash urinishlari tugagan.",
                 )
-            # Ro'yxat kod yuborilgandan keyin o'zgargan bo'lishi mumkin.
             if not self.is_admin(challenge.telegram_user_id):
                 raise ApiError(
                     403,
@@ -145,7 +127,7 @@ class AdminAuthService:
                     "Bu Telegram ID adminlar ro‘yxatida yo‘q.",
                 )
             expected = _code_hash(
-                self._settings.otp_secret,
+                self._settings.resolved_admin_otp_secret,
                 challenge.telegram_user_id,
                 str(code or ""),
             )
@@ -153,7 +135,9 @@ class AdminAuthService:
                 challenge.attempts += 1
                 await session.commit()
                 raise ApiError(
-                    400, "admin_code_invalid", "Tasdiqlash kodi noto‘g‘ri."
+                    400,
+                    "admin_code_invalid",
+                    "Tasdiqlash kodi noto‘g‘ri.",
                 )
 
             raw_token = secrets.token_urlsafe(48)
@@ -173,11 +157,6 @@ class AdminAuthService:
         return raw_token
 
     async def resolve(self, raw_token: str) -> int | None:
-        """Cookie'dan admin Telegram ID sini aniqlaydi.
-
-        Sessiya muddati tugagan yoki uzoq turib qolgan bo'lsa bekor
-        qilinadi va `None` qaytadi.
-        """
         token = (raw_token or "").strip()
         if not token:
             return None
@@ -201,7 +180,6 @@ class AdminAuthService:
                 await session.commit()
                 return None
             if not self.is_admin(row.telegram_user_id):
-                # Ro'yxatdan chiqarilgan admin darhol quvviladi.
                 row.revoked_at = now
                 await session.commit()
                 return None
