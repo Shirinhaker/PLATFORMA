@@ -1,10 +1,10 @@
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 import asyncio
 import hashlib
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.repository import (
-    load_public_district_offers,
     load_followed_profiles,
+    load_public_district_offers,
     load_public_home_map,
     load_public_profile,
     search_public_profiles,
@@ -23,11 +23,10 @@ from app.public_discovery.schemas import (
     PublicFollowedProfile,
     PublicHomeMapResponse,
     PublicProfileDetail,
+    PublicResultType,
     PublicSearchParams,
     PublicSearchResponse,
 )
-from app.public_discovery.schemas import PublicResultType
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 SearchLoader = Callable[
@@ -36,7 +35,7 @@ SearchLoader = Callable[
 ]
 
 logger = logging.getLogger(__name__)
-_CACHE_PREFIX = "public:search:v3:"
+_CACHE_PREFIX = "public:search:v4:"
 
 
 class PublicDiscoveryService:
@@ -53,6 +52,9 @@ class PublicDiscoveryService:
         self._session_factory = session_factory
         self._redis = redis
         self._settings = settings
+        self._image_url_provider = image_url_provider or (
+            lambda object_key: f"/media/{object_key}" if object_key else ""
+        )
         if search_loader is None:
             async def configured_loader(session, params):
                 if (
@@ -74,14 +76,12 @@ class PublicDiscoveryService:
                     params,
                     include_content=settings.phase3c_public_enabled,
                     include_listings=settings.listings_enabled,
+                    image_url_provider=self._image_url_provider,
                 )
 
             self._search_loader = configured_loader
         else:
             self._search_loader = search_loader
-        self._image_url_provider = image_url_provider or (
-            lambda object_key: f"/media/{object_key}" if object_key else ""
-        )
         self._catalog_cache_epoch = (
             catalog_cache_epoch or CatalogCacheEpoch(redis)
         )

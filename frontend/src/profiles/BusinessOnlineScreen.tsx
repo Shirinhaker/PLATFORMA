@@ -797,6 +797,19 @@ export function BusinessOnlineScreen({
     setPaymentTarget(target);
   }
 
+  const uploadItemImage = (
+    api.createUploadGrant && api.uploadGrantedFile
+  ) ? async (file: File): Promise<string> => {
+    const grant = await api.createUploadGrant!({
+      purpose: "catalog_item_image",
+      filename: file.name,
+      content_type: file.type,
+      size_bytes: file.size,
+    });
+    await api.uploadGrantedFile!(grant, file);
+    return grant.object_key;
+  } : undefined;
+
   const content = renderContent({
     api,
     view,
@@ -831,6 +844,7 @@ export function BusinessOnlineScreen({
     setSubscreenBack: handleSubscreenBack,
     onOpenOrder,
     onViewChange,
+    uploadItemImage,
   });
   const exactV1656 = Boolean(primary);
   const screenTitle = ["advertisements", "listings"].includes(view)
@@ -975,6 +989,7 @@ type RenderContext = {
   ) => void;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
   onViewChange?: (view: string) => void;
+  uploadItemImage?: (file: File) => Promise<string>;
 };
 
 function renderContent(context: RenderContext): ReactNode {
@@ -1023,6 +1038,7 @@ function renderContent(context: RenderContext): ReactNode {
           kind={context.kind}
           setKind={context.setKind}
           direction={profile.direction}
+          uploadItemImage={context.uploadItemImage}
         />
       );
     case "dining-kitchen":

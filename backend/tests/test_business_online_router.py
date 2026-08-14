@@ -67,6 +67,9 @@ async def online_clients():
     app.state.auth_service = FakeAuthService(identities)
     app.state.business_online_service = service
     app.state.profile_summary_service = profile_summary
+    app.state.r2 = SimpleNamespace(
+        create_download_url=lambda key: f"https://cdn.test/{key}",
+    )
 
     transport = httpx.ASGITransport(app=app)
     async with (
@@ -120,6 +123,44 @@ async def test_business_online_mutation_requires_csrf(online_clients):
     assert response.status_code == 403
     assert response.json()["code"] == "csrf_failed"
     online_clients.service.create_record.assert_not_awaited()
+
+
+async def test_business_item_image_must_belong_to_current_business(online_clients):
+    response = await online_clients.business.post(
+        "/api/v1/business-online/items",
+        headers={"X-CSRF-Token": online_clients.business_csrf},
+        json={"record": {
+            "name": "Yangi",
+            "image_object_key": (
+                "private/business/99/catalog_item_image/stolen.webp"
+            ),
+        }},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "catalog_item_image_forbidden"
+    online_clients.service.create_record.assert_not_awaited()
+
+
+async def test_business_item_response_contains_signed_image_url(online_clients):
+    object_key = "private/business/7/catalog_item_image/product.webp"
+    online_clients.service.create_record.return_value = (
+        {"id": 2, "name": "Yangi", "image_object_key": object_key},
+        [{"id": 2, "name": "Yangi", "image_object_key": object_key}],
+    )
+    response = await online_clients.business.post(
+        "/api/v1/business-online/items",
+        headers={"X-CSRF-Token": online_clients.business_csrf},
+        json={"record": {
+            "name": "Yangi",
+            "image_object_key": object_key,
+        }},
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["item"]["image_url"] == (
+        f"https://cdn.test/{object_key}"
+    )
 
 
 async def test_business_action_uses_current_account_and_invalidates_summary(

@@ -225,6 +225,19 @@ async def test_business_receives_only_logo_prefix(media_clients):
     )
 
 
+async def test_business_receives_catalog_item_image_prefix(media_clients):
+    response = await media_clients.business.post(
+        "/api/v1/media/upload-grants",
+        headers={"X-CSRF-Token": media_clients.business.csrf},
+        json=upload_request("catalog_item_image"),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["object_key"].startswith(
+        "private/business/84/catalog_item_image/"
+    )
+
+
 @pytest.mark.parametrize(
     ("client_name", "owner_prefix"),
     (("user", "private/user/42"), ("business", "private/business/84")),

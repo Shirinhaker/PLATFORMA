@@ -1,9 +1,6 @@
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
-
 from app.accounts.model import Account, AccountType
 from app.catalog.live_sync import sync_business_catalog
 from app.catalog.model import CatalogGroup, CatalogItem
@@ -12,7 +9,8 @@ from app.legacy_migration.model import ReviewState
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import search_public_profiles
 from app.public_discovery.schemas import PublicSearchParams
-
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
 
@@ -122,6 +120,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
     business = store.sync.get(BusinessProfile, 7)
     business.latitude = 37.8234
     business.longitude = 67.5789
+    business.logo_object_key = "business/muhr-logo.webp"
     store.sync.commit()
     payload = {
         "item_groups": [],
@@ -131,6 +130,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
                 "name": "ingliz tili",
                 "price": 350000,
                 "kind": "service",
+                "image_object_key": "catalog/english.webp",
             },
             {"id": 2, "name": "stomatolog", "price": "", "kind": "service"},
             {"id": 3, "name": "fsf", "price": ""},
@@ -164,6 +164,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
     assert english.items[0].name == "ingliz tili"
     assert english.items[0].price_text == "350000"
     assert english.items[0].owner_label == "Muhr"
+    assert english.items[0].image_url == "/media/catalog/english.webp"
     assert english.items[0].map_point is not None
     assert english.items[0].map_point.business_public_id.startswith("b_")
     assert english.items[0].map_point.business_name == "Muhr"
@@ -177,6 +178,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
         PublicSearchParams(q="Muhr", result_type="business"),
     )
     assert business_result.items[0].map_point is not None
+    assert business_result.items[0].image_url == "/media/business/muhr-logo.webp"
     assert (
         business_result.items[0].map_point.business_public_id
         == english.items[0].map_point.business_public_id

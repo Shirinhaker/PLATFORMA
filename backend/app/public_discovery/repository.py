@@ -1,7 +1,7 @@
-from collections.abc import Callable
-from datetime import date, datetime, timedelta, timezone
 import hashlib
 import time
+from collections.abc import Callable
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import (
     BigInteger,
@@ -24,44 +24,45 @@ from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.follows.model import ProfileFollow
-from app.legacy_migration.model import LegacyIdMap, ReviewState
+from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.payments.model import BusinessSubscription
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-from app.specialists.model import (
-    SpecialistCredential,
-    SpecialistOffer,
-    SpecialistPortfolio,
-    SpecialistProfile,
-)
-from app.public_ids import (
-    build_listing_public_id as _build_listing_public_id,
-    build_profile_public_id,
-)
-from app.queues.repository import active_provider_count, active_queue_count
-from app.queues.service import QUEUE_DIRECTIONS
 from app.public_discovery.schemas import (
     PublicDistrictOffer,
     PublicDistrictOffersResponse,
+    PublicFollowedProfile,
     PublicHomeBusinessPin,
     PublicHomeMapResponse,
     PublicHomeSpecialistPin,
-    PublicFollowedProfile,
     PublicProfileDetail,
     PublicProfileItem,
     PublicProfileListing,
-    PublicSpecialistSummary,
-    PublicSpecialistCredential,
-    PublicSpecialistOffer,
-    PublicSpecialistPortfolio,
     PublicResultKind,
     PublicResultType,
     PublicSearchItem,
     PublicSearchMapPoint,
     PublicSearchParams,
     PublicSearchResponse,
+    PublicSpecialistCredential,
+    PublicSpecialistOffer,
+    PublicSpecialistPortfolio,
+    PublicSpecialistSummary,
 )
-
+from app.public_ids import (
+    build_listing_public_id as _build_listing_public_id,
+)
+from app.public_ids import (
+    build_profile_public_id,
+)
+from app.queues.repository import active_provider_count, active_queue_count
+from app.queues.service import QUEUE_DIRECTIONS
+from app.specialists.model import (
+    SpecialistCredential,
+    SpecialistOffer,
+    SpecialistPortfolio,
+    SpecialistProfile,
+)
 
 ImageUrlProvider = Callable[[str], str]
 _cabinet_records = CabinetRecordRepository()
@@ -159,7 +160,7 @@ def _user_query(params: PublicSearchParams):
             UserProfile.region.label("region"),
             UserProfile.district.label("district"),
             UserProfile.mahalla.label("mahalla"),
-            _empty("image_url"),
+            UserProfile.avatar_object_key.label("image_object_key"),
             literal(None).cast(String).label("price_text"),
             literal(None).cast(String).label("owner_state"),
             literal(None).cast(String).label("owner_label"),
@@ -233,7 +234,7 @@ def _business_query(params: PublicSearchParams):
             if location_filtered
             else _empty("mahalla")
         ),
-        _empty("image_url"),
+        BusinessProfile.logo_object_key.label("image_object_key"),
         literal(None).cast(String).label("price_text"),
         literal(None).cast(String).label("owner_state"),
         literal(None).cast(String).label("owner_label"),
@@ -335,7 +336,7 @@ def _content_query(params: PublicSearchParams, kind: str):
             if owner_filtered
             else _empty("mahalla")
         ),
-        _empty("image_url"),
+        CatalogItem.image_object_key.label("image_object_key"),
         CatalogItem.price_text.label("price_text"),
         cast(CatalogItem.owner_state, String).label("owner_state"),
         case(
@@ -413,6 +414,17 @@ def _listing_query(params: PublicSearchParams):
         Listing.latitude.is_not(None)
         & Listing.longitude.is_not(None)
     )
+    first_photo_key = (
+        select(ListingMedia.object_key)
+        .where(
+            ListingMedia.listing_id == Listing.id,
+            ListingMedia.media_type == "photo",
+        )
+        .order_by(ListingMedia.position, ListingMedia.id)
+        .limit(1)
+        .correlate(Listing)
+        .scalar_subquery()
+    )
     statement = (
         select(
             literal(PublicResultKind.LISTING.value).label("kind"),
@@ -425,7 +437,7 @@ def _listing_query(params: PublicSearchParams):
             func.coalesce(owner_profile.region, "").label("region"),
             func.coalesce(owner_profile.district, "").label("district"),
             func.coalesce(owner_profile.mahalla, "").label("mahalla"),
-            _empty("image_url"),
+            func.coalesce(first_photo_key, "").label("image_object_key"),
             Listing.price_text.label("price_text"),
             literal("linked").cast(String).label("owner_state"),
             func.coalesce(business_profile.name, owner_profile.name, "").label("owner_label"),
@@ -553,6 +565,7 @@ async def search_public_profiles(
     *,
     include_content: bool = True,
     include_listings: bool = False,
+    image_url_provider: ImageUrlProvider | None = None,
 ) -> PublicSearchResponse:
     data_statement, count_statement = build_public_search_statements(
         params,
@@ -562,6 +575,9 @@ async def search_public_profiles(
     rows = (await session.execute(data_statement)).mappings().all()
     total = int((await session.execute(count_statement)).scalar_one())
 
+    resolve_image = image_url_provider or (
+        lambda object_key: f"/media/{object_key}" if object_key else ""
+    )
     items = []
     for row in rows:
         kind = PublicResultKind(row["kind"])
@@ -599,7 +615,7 @@ async def search_public_profiles(
                 region=row["region"],
                 district=row["district"],
                 mahalla=row["mahalla"],
-                image_url=row["image_url"],
+                image_url=resolve_image(row["image_object_key"] or ""),
                 price_text=row["price_text"],
                 owner_state=row["owner_state"],
                 owner_label=row["owner_label"],

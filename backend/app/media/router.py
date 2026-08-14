@@ -1,13 +1,11 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, Field
-
 from app.accounts.model import AccountType
 from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
 from app.core.errors import ApiError
 from app.media.storage import UploadRejected
-
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(prefix="/api/v1/media", tags=["media"])
 
@@ -21,6 +19,7 @@ class UploadGrantRequest(BaseModel):
         "story_image", "story_video",
         "specialist_credential", "specialist_offer_image",
         "specialist_portfolio_image", "specialist_portfolio_video",
+        "catalog_item_image",
     ]
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=120)
@@ -59,7 +58,7 @@ async def create_upload_grant(
         }
     ) or (
         current.account_type is AccountType.BUSINESS
-        and body.purpose in {"logo", "payment_qr"}
+        and body.purpose in {"logo", "payment_qr", "catalog_item_image"}
     )
     if not allowed:
         raise ApiError(

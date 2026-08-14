@@ -1,17 +1,15 @@
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.accounts.model import Account, AccountType
 from app.db.base import Base
 from app.legacy_migration.model import ReviewState
-from app.listings.model import Listing
+from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import search_public_profiles
 from app.public_discovery.schemas import PublicResultType, PublicSearchParams
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 NOW = datetime(2026, 8, 2, 11, 0, tzinfo=UTC)
 
@@ -35,6 +33,7 @@ def listing_search_store():
             BusinessProfile.__table__,
             ProfileLink.__table__,
             Listing.__table__,
+            ListingMedia.__table__,
         ),
     )
     session = Session(engine, expire_on_commit=False)
@@ -91,6 +90,15 @@ def listing_search_store():
             created_at=NOW,
             updated_at=NOW,
         ),
+        ListingMedia(
+            id=91,
+            listing_id=31,
+            media_type="photo",
+            object_key="listings/nexia.webp",
+            position=0,
+            migration_state="ready",
+            migration_run_id=None,
+        ),
     ))
     session.commit()
     try:
@@ -111,12 +119,14 @@ async def test_user_listing_is_returned_by_public_search(listing_search_store):
         ),
         include_content=False,
         include_listings=True,
+        image_url_provider=lambda key: f"https://cdn.test/{key}" if key else "",
     )
 
     assert result.total == 1
     assert result.items[0].kind.value == "listing"
     assert result.items[0].name == "Nexia 3 sotiladi"
     assert result.items[0].price_text == "120 000 000 so'm"
+    assert result.items[0].image_url == "https://cdn.test/listings/nexia.webp"
     assert result.items[0].owner_label == "Ali"
     assert result.items[0].public_id.startswith("l_")
     assert result.items[0].map_point is not None

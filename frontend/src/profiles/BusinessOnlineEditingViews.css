@@ -456,6 +456,50 @@
   font: inherit;
 }
 
+.business-items .item-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.business-items .item-photo-add {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--koprik-primary);
+  border-radius: 13px;
+  color: var(--koprik-primary) !important;
+  background: var(--koprik-primary-tint);
+  cursor: pointer;
+}
+
+.business-items .item-photo-add.is-loading {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.business-items .item-photo-preview {
+  display: block;
+  width: 100%;
+  height: 180px;
+  border-radius: 13px;
+  object-fit: cover;
+  background: var(--koprik-primary-tint);
+}
+
+.business-items .item-photo-error {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .business-items .item-form-card textarea {
   min-height: 94px;
   resize: vertical;
