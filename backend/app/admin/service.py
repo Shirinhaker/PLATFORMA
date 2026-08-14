@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import hmac
 import secrets
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admin.model import AdminAuthChallenge, AdminSession
@@ -19,6 +19,8 @@ from app.outbox.repository import enqueue_event
 
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+ADMIN_START_WINDOW = timedelta(minutes=10)
+ADMIN_START_LIMIT = 5
 
 
 def _aware(value: datetime) -> datetime:
@@ -57,6 +59,18 @@ class AdminAuthService:
         )
         admin_secret = self._settings.resolved_admin_otp_secret
         async with self._session_factory() as session:
+            recent = await session.scalar(
+                select(func.count(AdminAuthChallenge.id)).where(
+                    AdminAuthChallenge.telegram_user_id == telegram_user_id,
+                    AdminAuthChallenge.created_at >= now - ADMIN_START_WINDOW,
+                )
+            )
+            if int(recent or 0) >= ADMIN_START_LIMIT:
+                raise ApiError(
+                    429,
+                    "admin_auth_rate_limited",
+                    "Admin kodi juda ko‘p so‘raldi. 10 daqiqadan keyin qayta urinib ko‘ring.",
+                )
             challenge = AdminAuthChallenge(
                 telegram_user_id=telegram_user_id,
                 code_hash="",
