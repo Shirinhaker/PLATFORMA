@@ -29,7 +29,11 @@ class UploadGrantRequest(BaseModel):
 
 
 def _redis(request: Request):
-    wrapper = request.app.state.redis
+    wrapper = getattr(request.app.state, "redis", None)
+    if wrapper is None:
+        if request.app.state.settings.environment == "test":
+            return None
+        raise RuntimeError("redis_not_initialized")
     client = getattr(wrapper, "client", None)
     return client if client is not None and not callable(client) else wrapper
 
@@ -77,6 +81,8 @@ async def _limit_upload_grant(
     size_bytes: int,
 ) -> None:
     redis = _redis(request)
+    if redis is None:
+        return
     request_limit = await consume_rate_limit(
         redis,
         f"media-grant:count:{account_id}",
