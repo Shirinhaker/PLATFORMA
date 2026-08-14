@@ -207,9 +207,8 @@ def _business_query(params: PublicSearchParams):
     location_filtered = bool(
         params.region or params.district or params.mahalla
     )
-    map_visible = (
-        BusinessProfile.map_visible.is_(True)
-        & BusinessProfile.latitude.is_not(None)
+    map_available = (
+        BusinessProfile.latitude.is_not(None)
         & BusinessProfile.longitude.is_not(None)
     )
     statement = select(
@@ -243,19 +242,19 @@ def _business_query(params: PublicSearchParams):
         literal(None).cast(Boolean).label("can_order"),
         literal(None).cast(Boolean).label("can_chat"),
         case(
-            (map_visible, BusinessProfile.account_id),
+            (map_available, BusinessProfile.account_id),
             else_=None,
         ).label("map_business_account_id"),
         case(
-            (map_visible, BusinessProfile.name),
+            (map_available, BusinessProfile.name),
             else_=None,
         ).label("map_business_name"),
         case(
-            (map_visible, BusinessProfile.latitude),
+            (map_available, BusinessProfile.latitude),
             else_=None,
         ).label("map_latitude"),
         case(
-            (map_visible, BusinessProfile.longitude),
+            (map_available, BusinessProfile.longitude),
             else_=None,
         ).label("map_longitude"),
         literal(PublicResultKind.BUSINESS.value).label("map_owner_kind"),
@@ -309,9 +308,8 @@ def _content_query(params: PublicSearchParams, kind: str):
         (CatalogItem.owner_state == "linked")
         & CatalogItem.business_account_id.is_not(None)
     )
-    map_visible = (
+    map_available = (
         linked
-        & BusinessProfile.map_visible.is_(True)
         & BusinessProfile.latitude.is_not(None)
         & BusinessProfile.longitude.is_not(None)
     )
@@ -352,19 +350,19 @@ def _content_query(params: PublicSearchParams, kind: str):
         case((linked, True), else_=False).label("can_order"),
         case((linked, True), else_=False).label("can_chat"),
         case(
-            (map_visible, CatalogItem.business_account_id),
+            (map_available, CatalogItem.business_account_id),
             else_=None,
         ).label("map_business_account_id"),
         case(
-            (map_visible, BusinessProfile.name),
+            (map_available, BusinessProfile.name),
             else_=None,
         ).label("map_business_name"),
         case(
-            (map_visible, BusinessProfile.latitude),
+            (map_available, BusinessProfile.latitude),
             else_=None,
         ).label("map_latitude"),
         case(
-            (map_visible, BusinessProfile.longitude),
+            (map_available, BusinessProfile.longitude),
             else_=None,
         ).label("map_longitude"),
         literal(PublicResultKind.BUSINESS.value).label("map_owner_kind"),
