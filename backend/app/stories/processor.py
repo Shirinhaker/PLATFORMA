@@ -17,13 +17,15 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
 MAX_VIDEO_SECONDS = 60.0
 MAX_CAPTION_LENGTH = 200
+STORY_PROCESSING_CONCURRENCY = 2
+_STORY_PROCESSING_SLOTS = asyncio.Semaphore(STORY_PROCESSING_CONCURRENCY)
 
 IMAGE_MIMES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 VIDEO_MIMES = {"video/mp4", "video/quicktime", "video/webm"}
 
 
 class StoryValidationError(ValueError):
-    """Foydalanuvchiga ko‘rsatiladigan v1656 validatsiya xatosi."""
+    """Foydalanuvchiga ko‘rsatiladigan media validatsiya xatosi."""
 
 
 @dataclass(frozen=True)
@@ -134,8 +136,9 @@ def transcode_video(source: Path, output: Path, thumbnail: Path) -> None:
                 "ffmpeg", "-loglevel", "error", "-y", "-i", str(source),
                 "-t", "60", "-vf",
                 "scale=720:-2:force_original_aspect_ratio=decrease",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
-                "-c:a", "aac", "-movflags", "+faststart", str(output),
+                "-threads", "1", "-c:v", "libx264", "-preset", "veryfast",
+                "-crf", "27", "-c:a", "aac", "-movflags", "+faststart",
+                str(output),
             ],
             capture_output=True,
             timeout=180,
@@ -144,8 +147,8 @@ def transcode_video(source: Path, output: Path, thumbnail: Path) -> None:
         subprocess.run(
             [
                 "ffmpeg", "-loglevel", "error", "-y", "-ss", "0", "-i",
-                str(output), "-frames:v", "1", "-vf", "scale=480:-2",
-                str(thumbnail),
+                str(output), "-frames:v", "1", "-threads", "1", "-vf",
+                "scale=480:-2", str(thumbnail),
             ],
             capture_output=True,
             timeout=60,
@@ -174,15 +177,16 @@ class StoryMediaProcessor:
         expected = f"private/{owner_type.value}/{owner_id}/story_"
         if not object_key.startswith(expected):
             raise StoryValidationError("Bu media obyekti akkauntga tegishli emas.")
-        return await asyncio.to_thread(
-            self._process_sync,
-            owner_type,
-            owner_id,
-            object_key,
-            claimed_type,
-            claimed_size,
-            caption,
-        )
+        async with _STORY_PROCESSING_SLOTS:
+            return await asyncio.to_thread(
+                self._process_sync,
+                owner_type,
+                owner_id,
+                object_key,
+                claimed_type,
+                claimed_size,
+                caption,
+            )
 
     def _process_sync(
         self,
