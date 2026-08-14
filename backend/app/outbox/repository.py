@@ -1,10 +1,13 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.outbox.model import OutboxEvent
+
+
+OUTBOX_LEASE_SECONDS = 5 * 60
 
 
 async def enqueue_event(
@@ -34,13 +37,22 @@ async def claim_events(
     limit: int,
 ) -> list[OutboxEvent]:
     now = datetime.now(UTC)
+    stale_before = now - timedelta(seconds=OUTBOX_LEASE_SECONDS)
+    ready = and_(
+        OutboxEvent.status.in_(("pending", "retry")),
+        OutboxEvent.available_at <= now,
+    )
+    stale_processing = and_(
+        OutboxEvent.status == "processing",
+        or_(
+            OutboxEvent.locked_at.is_(None),
+            OutboxEvent.locked_at <= stale_before,
+        ),
+    )
     result = await session.execute(
         select(OutboxEvent)
-        .where(
-            OutboxEvent.status.in_(("pending", "retry")),
-            OutboxEvent.available_at <= now,
-        )
-        .order_by(OutboxEvent.id)
+        .where(or_(ready, stale_processing))
+        .order_by(OutboxEvent.available_at, OutboxEvent.id)
         .limit(limit)
         .with_for_update(skip_locked=True)
     )
