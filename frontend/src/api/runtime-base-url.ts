@@ -4,7 +4,7 @@ const LEGACY_STORAGE_KEYS = [
 ] as const;
 
 
-type RuntimeLocation = Pick<Location, "origin" | "search">;
+type RuntimeLocation = Pick<Location, "origin">;
 type LegacyStorage = Pick<Storage, "removeItem">;
 
 
@@ -95,15 +95,6 @@ export async function loadApiBaseUrl(
   storage: LegacyStorage = window.localStorage,
 ): Promise<string> {
   removeLegacyStorage(storage);
-
-  const query = new URLSearchParams(location.search).get("api");
-  if (query !== null) {
-    const debugOrigin = safeHttpsOrigin(query);
-    if (!debugOrigin) {
-      throw new ApiConfigurationError("api_debug_origin_invalid");
-    }
-    return debugOrigin;
-  }
 
   const origin = safeHttpsOrigin(location.origin);
   if (!origin) {
