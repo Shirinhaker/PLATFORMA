@@ -120,9 +120,15 @@ describe("v1656 public E'lonlar", () => {
 
     await user.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
     expect(container.querySelector(".listing-media-grid.is-compact"))
-      .toBeInTheDocument();
+      .toHaveClass("is-horizontal");
     expect(container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"))
       .toHaveLength(3);
+    const map = screen.getByTitle("E'lon xaritasi");
+    expect(map).toHaveAttribute("src", expect.stringContaining("openstreetmap.org/export/embed.html"));
+    const detailPrice = container.querySelector(".el-price");
+    expect(detailPrice).toBeInTheDocument();
+    expect(map.compareDocumentPosition(detailPrice!))
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByLabelText("Xarita manzili"))
       .toHaveTextContent("Qumqo‘rg‘on");
     expect(screen.getByLabelText("Xarita manzili"))

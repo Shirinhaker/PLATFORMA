@@ -2,6 +2,17 @@ import type { ListingRead } from "../api/types";
 import { ListingMediaGridV1656 } from "./ListingMediaGridV1656";
 
 
+function listingMapUrl(latitude: number, longitude: number) {
+  const bbox = [
+    longitude - 0.0075,
+    latitude - 0.0045,
+    longitude + 0.0075,
+    latitude + 0.0045,
+  ].join(",");
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${latitude},${longitude}`)}`;
+}
+
+
 type Props = {
   listing: ListingRead;
   onContact(): void;
@@ -23,6 +34,16 @@ export function ListingDetailV1656({
   return (
     <div className="el-detail">
       <ListingMediaGridV1656 compact={compactMedia} media={listing.media} />
+      {listing.lat != null && listing.lng != null ? (
+        <div className="listing-detail-map">
+          <iframe
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src={listingMapUrl(listing.lat, listing.lng)}
+            title="E'lon xaritasi"
+          />
+        </div>
+      ) : null}
       <div className="el-detail-info">
         <div className="el-price">{listing.price || "Narx kelishilgan"}</div>
         {hasLocation ? (

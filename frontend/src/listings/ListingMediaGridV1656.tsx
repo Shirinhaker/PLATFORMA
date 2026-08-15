@@ -21,6 +21,7 @@ export function ListingMediaGridV1656({ media, compact = false }: Props) {
         "listing-media-grid",
         media.length === 1 ? "is-single" : "",
         compact ? "is-compact" : "",
+        compact ? "is-horizontal" : "",
       ].filter(Boolean).join(" ")}>
         {media.map((item, index) => (
           <button
