@@ -4,14 +4,24 @@ import type { ListingMedia } from "../api/types";
 import { ListingMediaViewerV1656 } from "./ListingMediaViewerV1656";
 
 
-export function ListingMediaGridV1656({ media }: { media: ListingMedia[] }) {
+type Props = {
+  media: ListingMedia[];
+  compact?: boolean;
+};
+
+
+export function ListingMediaGridV1656({ media, compact = false }: Props) {
   const [openedMedia, setOpenedMedia] = useState<ListingMedia | null>(null);
 
   if (!media.length) return null;
 
   return (
     <>
-      <div className={`listing-media-grid${media.length === 1 ? " is-single" : ""}`}>
+      <div className={[
+        "listing-media-grid",
+        media.length === 1 ? "is-single" : "",
+        compact ? "is-compact" : "",
+      ].filter(Boolean).join(" ")}>
         {media.map((item, index) => (
           <button
             aria-label={item.type === "video" ? "Videoni katta ko‘rish" : "Rasmni katta ko‘rish"}
