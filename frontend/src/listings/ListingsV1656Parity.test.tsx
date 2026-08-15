@@ -89,6 +89,46 @@ describe("v1656 public E'lonlar", () => {
       .toBeInTheDocument();
   });
 
+  it("shows the first photo on the compact card and keeps all media in the opened detail", async () => {
+    const user = userEvent.setup();
+    const mediaListing = {
+      ...listing,
+      media: [
+        { type: "video" as const, url: "/tour.mp4" },
+        { type: "photo" as const, url: "/main.webp" },
+        { type: "photo" as const, url: "/room.webp" },
+      ],
+    };
+    const { container } = render(
+      <PublicListingsV1656
+        api={{
+          getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
+          getPublicListings: vi.fn().mockResolvedValue([mediaListing]),
+          toggleListingSave: vi.fn(),
+        }}
+        authenticated
+        onOpenOwner={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Uy-joy/ }));
+    const cardImage = await screen.findByAltText("3 xonali kvartira — asosiy rasm");
+    expect(cardImage).toHaveAttribute("src", "/main.webp");
+    expect(cardImage.closest(".public-listing-card-media")).toBeInTheDocument();
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    expect(screen.getByText("2 rasm · 1 video")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
+    expect(container.querySelector(".listing-media-grid.is-compact"))
+      .toBeInTheDocument();
+    expect(container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"))
+      .toHaveLength(3);
+    expect(screen.getByLabelText("Xarita manzili"))
+      .toHaveTextContent("Qumqo‘rg‘on");
+    expect(screen.getByLabelText("Xarita manzili"))
+      .toHaveTextContent("37.82000, 67.58000");
+  });
+
   it("opens listing photos in the v1656 media viewer", async () => {
     const user = userEvent.setup();
     render(
