@@ -71,37 +71,41 @@ The required browser-rendered implementation evidence is unavailable because the
 
 - Source visual truth: `/workspace/elon-media-asl-olcham-demo.html`
 - Supporting user reference: `/workspace/scratch/b413d71f5555/upload/f453f64c-ea57-41fc-8f1e-063760ee04d4.png`
-- Implementation route: local Vite app, public `E’lonlar` section
-- Implementation screenshot: unavailable
+- Implementation route: `https://v1656-comparison-web-listing-preview-188.up.railway.app`, public `E’lonlar` section
+- Implementation screenshot: captured and inspected in Cloud Browser during the Railway preview; the browser shared-file mount was read-only, so the capture was not persisted into the repository.
 - Intended viewport: desktop and mobile public-listing widths
 - Source pixels: supporting screenshot is 510 × 189 px; the approved demo uses a fixed 172 × 129 CSS-px media surface.
 - Implementation CSS size: listing preview and compact detail media are fixed at 172 × 129 CSS px.
-- Density normalization: not performed because a browser-rendered implementation capture could not be obtained.
+- Density normalization: desktop CSS-pixel measurements were read from the rendered page.
 - State: category selected, listing card visible, listing expanded, media viewer available.
 
 **Full-view Comparison Evidence**
 
-- The source visual was available, but the cloud browser rejected the local preview URL with `ERR_BLOCKED_BY_CLIENT`.
-- A visual, same-viewport comparison could therefore not be completed.
+- The isolated Railway preview opened successfully in Cloud Browser.
+- The selected `Uy-joy` category rendered six live listings. The first listing used its actual first image, with title, price, date and media count below it.
+- Rendered desktop measurements: card 270 × 253 CSS px; card media 172 × 129 CSS px.
+- The expanded first listing occupied the full 554 px result row and showed all eight media items in a wrapping grid. The first three measured media buttons were each exactly 172 × 129 CSS px.
 
 **Focused Region Comparison Evidence**
 
-- Not available for the same blocker. Code and component tests confirm the fixed media dimensions, content order, media count, expanded media collection, map-address data, and viewer trigger, but these are not substitutes for browser-rendered visual evidence.
+- Card media crop, information-below-media order, media badge, wrapping detail gallery and map-address block were visually inspected in the live preview.
+- Clicking the first image opened the `E'lon mediasi` dialog with a close button and enlarged image.
+- The detail DOM contained six image buttons and two video buttons, matching the card's `6 rasm · 2 video` count.
 
 **Findings**
 
-- [P1] Browser-rendered fidelity is unverified
-  Location: public listing card and expanded listing detail.
-  Evidence: the source is available, while the implementation screenshot could not be captured from the cloud browser.
-  Impact: spacing, wrapping, image crop, and responsive polish cannot be signed off visually.
-  Fix: open the local preview in an accessible browser surface, capture the same card and expanded state at desktop and mobile widths, then compare both captures against the approved source.
+- [P2] Mobile same-viewport capture remains unavailable
+  Location: public listing card and expanded listing detail below the desktop breakpoint.
+  Evidence: Cloud Browser exposed the desktop viewport but no supported viewport-resize control. Responsive CSS and component tests pass, but a mobile browser image was not captured.
+  Impact: the desktop result is visually signed off; final mobile spacing remains a manual-preview check.
+  Fix: open the Railway preview from a phone or responsive browser and confirm the 172 × 129 media surface does not overflow.
 
 **Required Fidelity Surfaces**
 
-- Fonts and typography: code uses the existing product typography tokens; visual matching remains unverified.
-- Spacing and layout rhythm: fixed 172 × 129 media and information-below-media order are implemented; visual matching remains unverified.
-- Colors and visual tokens: existing product tokens are retained; visual matching remains unverified.
-- Image quality and asset fidelity: real listing media URLs are used with `object-fit: cover`; crop quality remains visually unverified.
+- Fonts and typography: existing product typography rendered consistently with the surrounding E’lonlar UI.
+- Spacing and layout rhythm: desktop fixed 172 × 129 media and information-below-media order are visually verified.
+- Colors and visual tokens: existing product tokens are retained and rendered consistently.
+- Image quality and asset fidelity: real listing media URLs render with `object-fit: cover`; cards without media retain the category fallback.
 - Copy and content: title, price, address/time, media count, map address, coordinates, description, and actions are present.
 
 **Primary Interactions Tested**
@@ -116,22 +120,21 @@ The required browser-rendered implementation evidence is unavailable because the
 
 **Console Errors Checked**
 
-- Not checked in a browser because the local preview could not be opened by the cloud browser.
+- Checked in Cloud Browser. No application console error was observed during category selection, card expansion, gallery rendering or media-viewer open/close. One browser-extension metadata error was unrelated to the app.
 
 **Comparison History**
 
-- Iteration 1: source available; implementation capture blocked before visual comparison. No visual fixes were claimed from this pass.
+- Iteration 1: local preview capture blocked by Cloud Browser URL policy.
+- Iteration 2: deployed the branch to an isolated Railway preview, inspected the live cards, verified exact media dimensions, expanded the first listing and opened the media viewer.
 
 **Implementation Checklist**
 
-- Capture desktop card and expanded detail.
 - Capture mobile card and expanded detail.
-- Verify exact 172 × 129 media surfaces, text wrapping, card width, media wrapping, and button stacking.
-- Check browser console and keyboard/media-viewer behavior.
+- Verify mobile text wrapping and button stacking in a resizable browser or phone.
 - Repeat comparison after any P0/P1/P2 visual fix.
 
 **Follow-up Polish**
 
-- None classified until browser-rendered comparison is available.
+- A wider desktop card could be reconsidered only if the approved 270 px card feels too narrow after user review; no change is required by the current reference.
 
 final result: blocked
