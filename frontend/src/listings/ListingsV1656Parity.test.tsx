@@ -9,6 +9,32 @@ import { PublicListingsV1656 } from "./PublicListingsV1656";
 import { SavedListingsV1656 } from "./SavedListingsV1656";
 
 
+const leaflet = vi.hoisted(() => {
+  const map = {
+    invalidateSize: vi.fn(),
+    remove: vi.fn(),
+    setView: vi.fn(),
+  };
+  map.setView.mockReturnValue(map);
+  return {
+    map,
+    icon: {},
+    mapFactory: vi.fn(() => map),
+    tileLayer: { addTo: vi.fn() },
+    marker: { addTo: vi.fn() },
+  };
+});
+
+vi.mock("leaflet", () => ({
+  default: {
+    icon: vi.fn(() => leaflet.icon),
+    map: leaflet.mapFactory,
+    tileLayer: vi.fn(() => leaflet.tileLayer),
+    marker: vi.fn(() => leaflet.marker),
+  },
+}));
+
+
 const listing = {
   public_id: "l_1234567890abcdef",
   cat: "uy" as const,
@@ -87,6 +113,53 @@ describe("v1656 public E'lonlar", () => {
       .toBeInTheDocument();
     expect(screen.getByText("Texnika bo'yicha hozircha e'lonlar joylanmagan."))
       .toBeInTheDocument();
+  });
+
+  it("shows the first photo on the compact card and keeps all media in the opened detail", async () => {
+    const user = userEvent.setup();
+    const mediaListing = {
+      ...listing,
+      media: [
+        { type: "video" as const, url: "/tour.mp4" },
+        { type: "photo" as const, url: "/main.webp" },
+        { type: "photo" as const, url: "/room.webp" },
+      ],
+    };
+    const { container } = render(
+      <PublicListingsV1656
+        api={{
+          getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
+          getPublicListings: vi.fn().mockResolvedValue([mediaListing]),
+          toggleListingSave: vi.fn(),
+        }}
+        authenticated
+        onOpenOwner={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Uy-joy/ }));
+    const cardImage = await screen.findByAltText("3 xonali kvartira — asosiy rasm");
+    expect(cardImage).toHaveAttribute("src", "/main.webp");
+    expect(cardImage.closest(".public-listing-card-media")).toBeInTheDocument();
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
+    expect(screen.getByText("2 rasm · 1 video")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
+    expect(container.querySelector(".listing-media-grid.is-compact"))
+      .toHaveClass("is-horizontal");
+    expect(container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"))
+      .toHaveLength(3);
+    const map = screen.getByLabelText("E'lon xaritasi");
+    await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
+    expect(leaflet.map.setView).toHaveBeenCalledWith([37.82, 67.58], 16);
+    const detailPrice = container.querySelector(".el-price");
+    expect(detailPrice).toBeInTheDocument();
+    expect(map.compareDocumentPosition(detailPrice!))
+      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByLabelText("Xarita manzili"))
+      .toHaveTextContent("Qumqo‘rg‘on");
+    expect(screen.getByLabelText("Xarita manzili"))
+      .toHaveTextContent("37.82000, 67.58000");
   });
 
   it("opens listing photos in the v1656 media viewer", async () => {

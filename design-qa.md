@@ -62,3 +62,84 @@ final result: blocked
 ## Blocker
 
 The required browser-rendered implementation evidence is unavailable because the selected cloud browser blocks the local preview endpoint. Automated and source-level checks pass, but this report cannot be marked `passed` without the browser screenshot comparison.
+
+---
+
+# Design QA — Compact public listing media
+
+**Comparison Target**
+
+- Source visual truth: `/workspace/elon-media-asl-olcham-demo.html`
+- Current user reference: `/workspace/scratch/b413d71f5555/upload/919b9db1-5772-4912-a71a-efd50465367a.png`
+- Implementation route: `https://v1656-comparison-web-listing-preview-188.up.railway.app`, public `E’lonlar` section
+- Implementation screenshot: captured in Cloud Browser and compared with the reference in the same comparison input; the browser shared-file mount was read-only, so the capture was not persisted into the repository.
+- Intended viewport: desktop and mobile public-listing widths
+- Source pixels: current reference is 192 × 216 px and shows the compact card without the previous empty right side.
+- Implementation CSS size: listing preview and compact detail media are fixed at 172 × 129 CSS px.
+- Density normalization: desktop CSS-pixel measurements were read from the rendered page.
+- State: `Uy-joy` selected; compact card visible; first listing expanded; horizontal media strip scrolled to its final video; Leaflet map rendered; media viewer opened and closed.
+
+**Full-view Comparison Evidence**
+
+- The isolated Railway preview opened successfully in Cloud Browser.
+- The selected `Uy-joy` category rendered six live listings in compact 192 px columns. The previous 270 px card width and its empty right side are gone.
+- The first listing uses its actual first image and keeps title, price, date and media count below the 172 × 129 media surface, matching the reference hierarchy.
+- The opened listing occupies the complete result row. Its eight media items stay in one 172 × 129 horizontal strip rather than wrapping vertically.
+- A working Leaflet/OpenStreetMap map with the listing marker renders directly below the media strip. Price, map-address text, description and actions follow below the map.
+
+**Focused Region Comparison Evidence**
+
+- The 192 × 216 px user reference and the final Cloud Browser capture were emitted together and visually compared.
+- Card width, 172 × 129 image crop, rounded corners, information order, media badge and compact density match the source intent.
+- Clicking the final video in the horizontal strip automatically scrolled it into view and opened the `E'lon mediasi` dialog, proving the off-screen media remains reachable.
+- The earlier iframe map failed WebGL in Cloud Browser. It was replaced with the product's existing Leaflet map approach; the final capture shows map tiles and the bundled blue marker asset correctly.
+
+**Findings**
+
+- [P2] Mobile same-viewport capture remains unavailable
+  Location: public listing card and expanded listing detail below the desktop breakpoint.
+  Evidence: Cloud Browser exposed the desktop viewport but no supported viewport-resize control. Responsive CSS and component tests pass, but a mobile browser image was not captured.
+  Impact: the desktop result is visually signed off; final mobile spacing remains a manual-preview check.
+  Fix: open the Railway preview from a phone or responsive browser and confirm the 172 × 129 media surface does not overflow.
+
+**Required Fidelity Surfaces**
+
+- Fonts and typography: existing product typography rendered consistently with the surrounding E’lonlar UI.
+- Spacing and layout rhythm: the compact 192 px card removes the unwanted empty right side; the desktop 172 × 129 media, horizontal detail strip, map and information order are visually verified.
+- Colors and visual tokens: existing product tokens are retained and rendered consistently.
+- Image quality and asset fidelity: real listing media URLs render with `object-fit: cover`; the Leaflet marker uses the bundled library image assets rather than a placeholder.
+- Copy and content: title, price, address/time, media count, interactive map, map address, coordinates, description and actions are present in the requested order.
+
+**Primary Interactions Tested**
+
+- Select a listing category.
+- Render the first available photo on the compact listing card.
+- Expand and collapse the listing card.
+- Reach the final video in the horizontal media strip.
+- Open and close the final media item in the viewer.
+- Render the Leaflet map, marker, map address and coordinates.
+- Contact and save actions remain wired.
+
+**Console Errors Checked**
+
+- The first iframe-map iteration produced a WebGL error and was removed.
+- The final Leaflet iteration produced no new application error during category selection, card expansion, map rendering or final-video viewer open/close. Remaining log entries were historical iframe errors and unrelated browser-extension metadata errors.
+
+**Comparison History**
+
+- Iteration 1: local preview capture blocked by Cloud Browser URL policy.
+- Iteration 2: deployed the branch to an isolated Railway preview, inspected the live cards, verified exact media dimensions, expanded the first listing and opened the media viewer.
+- Iteration 3: reduced card width from 270 to 192 px, changed compact detail media from wrapping to horizontal scrolling and placed a map before all other information.
+- Iteration 4: found the OSM iframe WebGL failure in rendered QA, replaced it with Leaflet, then found and fixed the broken default marker by bundling Leaflet's real marker assets. The final Railway screenshot shows a working map and marker.
+
+**Implementation Checklist**
+
+- Capture mobile card and expanded detail.
+- Verify mobile text wrapping and button stacking in a resizable browser or phone.
+- Repeat comparison after any P0/P1/P2 visual fix.
+
+**Follow-up Polish**
+
+- None for the verified desktop target.
+
+final result: blocked
