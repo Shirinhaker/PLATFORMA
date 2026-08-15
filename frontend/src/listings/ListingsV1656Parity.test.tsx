@@ -9,6 +9,30 @@ import { PublicListingsV1656 } from "./PublicListingsV1656";
 import { SavedListingsV1656 } from "./SavedListingsV1656";
 
 
+const leaflet = vi.hoisted(() => {
+  const map = {
+    invalidateSize: vi.fn(),
+    remove: vi.fn(),
+    setView: vi.fn(),
+  };
+  map.setView.mockReturnValue(map);
+  return {
+    map,
+    mapFactory: vi.fn(() => map),
+    tileLayer: { addTo: vi.fn() },
+    marker: { addTo: vi.fn() },
+  };
+});
+
+vi.mock("leaflet", () => ({
+  default: {
+    map: leaflet.mapFactory,
+    tileLayer: vi.fn(() => leaflet.tileLayer),
+    marker: vi.fn(() => leaflet.marker),
+  },
+}));
+
+
 const listing = {
   public_id: "l_1234567890abcdef",
   cat: "uy" as const,
@@ -123,8 +147,9 @@ describe("v1656 public E'lonlar", () => {
       .toHaveClass("is-horizontal");
     expect(container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"))
       .toHaveLength(3);
-    const map = screen.getByTitle("E'lon xaritasi");
-    expect(map).toHaveAttribute("src", expect.stringContaining("openstreetmap.org/export/embed.html"));
+    const map = screen.getByLabelText("E'lon xaritasi");
+    await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
+    expect(leaflet.map.setView).toHaveBeenCalledWith([37.82, 67.58], 16);
     const detailPrice = container.querySelector(".el-price");
     expect(detailPrice).toBeInTheDocument();
     expect(map.compareDocumentPosition(detailPrice!))
