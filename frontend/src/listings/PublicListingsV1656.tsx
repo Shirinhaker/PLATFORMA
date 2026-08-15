@@ -51,6 +51,28 @@ function priceNumber(value: string) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function formatListingTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  const time = new Intl.DateTimeFormat("uz-UZ", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  if (sameDay) return `Bugun, ${time}`;
+  return new Intl.DateTimeFormat("uz-UZ", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 
 export function PublicListingsV1656({
   api,
@@ -172,44 +194,76 @@ export function PublicListingsV1656({
               <div className="list-sub">
                 {selected?.name} — {sorted.length} ta e&apos;lon
               </div>
-              {sorted.map((row) => {
-                const metadata = CATEGORIES.find((item) => item.key === row.cat) ?? FALLBACK_CATEGORY;
-                const hasVideo = row.media.some((item) => item.type === "video");
-                const open = opened === row.public_id;
-                return (
-                  <article className="elon-wrap" key={row.public_id}>
-                    <button
-                      className={`elon-item${open ? " on" : ""}`}
-                      type="button"
-                      onClick={() => setOpened(open ? null : row.public_id)}
+              <div className="public-listing-card-grid">
+                {sorted.map((row) => {
+                  const metadata = CATEGORIES.find((item) => item.key === row.cat) ?? FALLBACK_CATEGORY;
+                  const preview = row.media.find((item) => item.type === "photo") ?? row.media[0];
+                  const hasVideo = row.media.some((item) => item.type === "video");
+                  const open = opened === row.public_id;
+                  return (
+                    <article
+                      className={`elon-wrap${open ? " is-open" : ""}`}
+                      key={row.public_id}
                     >
-                      <span
-                        className="li-thumb"
-                        style={{ background: `linear-gradient(135deg,${metadata.color}33,${metadata.color}14)` }}
+                      <button
+                        aria-expanded={open}
+                        className={`elon-item public-listing-card${open ? " on" : ""}`}
+                        type="button"
+                        onClick={() => setOpened(open ? null : row.public_id)}
                       >
-                        <span>{metadata.icon}</span>
-                        {hasVideo ? <span className="vbadge">▶</span> : null}
-                      </span>
-                      <span className="li-main">
-                        <span className="li-title">{row.title}</span>
-                        <span className="li-price">{row.price}</span>
-                        <span className="li-meta">
-                          {row.address}{row.media.length ? ` · 📎 ${row.media.length}` : ""}
+                        <span
+                          className="public-listing-card-media"
+                          style={{ background: `linear-gradient(135deg,${metadata.color}33,${metadata.color}14)` }}
+                        >
+                          {preview?.type === "photo" ? (
+                            <img alt={`${row.title} — asosiy rasm`} loading="lazy" src={preview.url} />
+                          ) : null}
+                          {preview?.type === "video" ? (
+                            <video muted playsInline preload="metadata" src={preview.url} />
+                          ) : null}
+                          {!preview ? (
+                            <span className="public-listing-card-fallback" aria-hidden="true">
+                              {metadata.icon}
+                            </span>
+                          ) : null}
+                          {preview?.type === "video" ? (
+                            <span className="public-listing-card-play" aria-hidden="true">▶</span>
+                          ) : null}
+                          {row.media.length ? (
+                            <span className="public-listing-card-count">
+                              1 / {row.media.length}
+                            </span>
+                          ) : null}
                         </span>
-                      </span>
-                      <span className={`chev${open ? " down" : ""}`} aria-hidden="true">›</span>
-                    </button>
-                    {open ? (
-                      <ListingDetailV1656
-                        listing={row}
-                        saving={saving === row.public_id}
-                        onContact={() => onOpenOwner(row.owner_kind, row.owner_public_id)}
-                        onSave={() => void save(row)}
-                      />
-                    ) : null}
-                  </article>
-                );
-              })}
+                        <span className="li-main public-listing-card-info">
+                          <span className="li-title">{row.title}</span>
+                          <span className="li-price">{row.price || "Narx kelishilgan"}</span>
+                          <span className="li-meta">
+                            {[row.address, formatListingTime(row.created_at)].filter(Boolean).join(" · ")}
+                          </span>
+                          {row.media.length ? (
+                            <span className="public-listing-card-media-summary">
+                              {row.media.filter((item) => item.type === "photo").length} rasm
+                              {hasVideo
+                                ? ` · ${row.media.filter((item) => item.type === "video").length} video`
+                                : ""}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                      {open ? (
+                        <ListingDetailV1656
+                          compactMedia
+                          listing={row}
+                          saving={saving === row.public_id}
+                          onContact={() => onOpenOwner(row.owner_kind, row.owner_public_id)}
+                          onSave={() => void save(row)}
+                        />
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
             </>
           ) : null}
         </div>
