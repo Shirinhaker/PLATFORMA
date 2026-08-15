@@ -18,6 +18,7 @@ const leaflet = vi.hoisted(() => {
   map.setView.mockReturnValue(map);
   return {
     map,
+    icon: {},
     mapFactory: vi.fn(() => map),
     tileLayer: { addTo: vi.fn() },
     marker: { addTo: vi.fn() },
@@ -26,6 +27,7 @@ const leaflet = vi.hoisted(() => {
 
 vi.mock("leaflet", () => ({
   default: {
+    icon: vi.fn(() => leaflet.icon),
     map: leaflet.mapFactory,
     tileLayer: vi.fn(() => leaflet.tileLayer),
     marker: vi.fn(() => leaflet.marker),
