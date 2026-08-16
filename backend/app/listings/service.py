@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
 from app.catalog.cache_epoch import CatalogCacheEpoch
+from app.core.enums import ReviewState
 from app.core.errors import ApiError
-from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing
 from app.listings.repository import ListingRepository
 from app.listings.schemas import (

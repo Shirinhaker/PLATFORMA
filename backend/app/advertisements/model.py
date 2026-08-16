@@ -15,11 +15,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.enums import REVIEW_STATE_ENUM, ReviewState
 from app.db.base import Base
-from app.legacy_migration.model import (
-    REVIEW_STATE_ENUM,
-    ReviewState,
-)
 
 
 class Advertisement(Base):

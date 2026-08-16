@@ -246,27 +246,33 @@ cd frontend && npm run build
 
 ## 9. ⚠️ Tuzoqlar — bilmasangiz vaqt yo'qotasiz
 
-1. **Ikkita `BusinessOnlineService` bor.**
-   `business_online/service.py` (2 147 qator) va `business_online/service_relational.py` (1 114 qator) —
-   klass nomi bir xil. `main.py` **`service_relational.py`** dagisini ishlatadi,
-   `router.py` esa `service.py` dagisini import qiladi. Tahrirlashdan oldin qaysi biri
-   ekanini tekshiring.
+1. **`business_online` da ikkita xizmat bor — ikkalasi ham tirik.**
+   `service.py` → `BusinessOnlineService`: **asosiy**, relatsion jadvallarga yozadi.
+   `payload_service.py` → `BusinessOnlinePayloadService`: eski JSON `cabinet_payload`
+   yo'li, hali ko'chirilmagan bo'limlar uchun zaxira. `service.py` kerak bo'lganda
+   o'ziga chaqiradi. Yangi funksiya **faqat** `service.py` ga yoziladi.
 
-2. **`V1656` qo'shimchasi = eski tizim bilan bir xillik.**
-   v1656 — production'dan chiqarilgan eski monolit. `*_v1656*` nomli fayllar o'sha
-   tizim bilan xatti-harakat mosligini ta'minlaydi. Bu versiya raqami emas.
+   > Ilgari ikkala fayldagi klass nomi bir xil edi va `main.py` bilan `router.py`
+   > har xilini ishlatardi. Bosqich 2 da tuzatildi.
 
-3. **Production kod `legacy_migration` dan import qiladi.**
-   `catalog`, `advertisements`, `orders`, `auth`, `education` — hammasi
-   `app.legacy_migration.*` ga bog'langan. Migratsiya papkasini o'chirsangiz,
-   ishlayotgan kod sinadi.
+2. **`v1656` = eski tizim bilan bir xillik, versiya raqami emas.**
+   v1656 — production'dan chiqarilgan eski monolit. Fayl nomlaridagi `V1656`
+   qo'shimchasi olib tashlangan, lekin **CSS klass nomlaridagi `v1656` ataylab
+   qoldirilgan** — ularni o'zgartirish saytning ko'rinishini buzadi (bir marta
+   buzgan, PR #182 da orqaga qaytarilgan).
 
-4. **`profiles/` papkasida `BusinessProfile`, `BusinessProfileV2`, `BusinessProfileV3` bor.**
-   Ishlaydigani — **V3**. `BusinessProfile.tsx` shunchaki V3 ga re-export.
-   `BusinessProfileV2.tsx` — o'lik kod, hech qayerda import qilinmaydi.
+3. **`legacy_migration` dan import qilmang.**
+   Bu paket — v1656 dan bir martalik ko'chirish. Umumiy narsalar undan chiqarildi:
+   `ReviewState`/`OwnerState` → `app/core/enums.py`, eski parol tekshiruvi →
+   `app/auth/legacy_passwords.py`. Qolgan 4 ta bog'liqlik haqli va
+   `tests/test_legacy_migration_boundary.py` da sabab bilan ro'yxatga olingan.
+   Yangi import qo'shsangiz, o'sha test sizni to'xtatadi.
 
-5. **Frontend'ning barcha API chaqiruvlari bitta faylda** — `api/client.ts` (53 KB).
-   Yangi endpoint qo'shsangiz, shu yerga va `api/types.ts` ga yoziladi.
+4. **Ulkan fayllar bo'lindi, lekin hammasi emas.**
+   `api/types.ts`, `BusinessOnlineViews.tsx`, `EducationManagement.tsx` va boshqalar
+   papkaga bo'lingan — eski fayl endi faqat `export * from "./..."` qiladi, ya'ni
+   chaqiruv joylari o'zgarmagan. Qaysi fayllar hali katta ekanini
+   `python scripts/check_file_length.py` ko'rsatadi.
 
-6. **`docs/superpowers/plans/`** — har bir feature bo'yicha reja hujjati bor.
+5. **`docs/superpowers/plans/`** — har bir feature bo'yicha reja hujjati bor.
    "Bu nega shunday qilingan?" degan savolga javob shu yerda.

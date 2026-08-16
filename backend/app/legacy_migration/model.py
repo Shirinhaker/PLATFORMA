@@ -13,22 +13,39 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy import (
-    Enum as SqlEnum,
-)
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.enums import (
+    OWNER_STATE_ENUM,
+    REVIEW_STATE_ENUM,
+    OwnerState,
+    ReviewState,
+    enum_type,
+)
 from app.db.base import Base
 
-
-class OwnerState(str, Enum):
-    LINKED = "linked"
-    UNLINKED = "unlinked"
-
-
-class ReviewState(str, Enum):
-    READY = "ready"
-    REVIEW_REQUIRED = "review_required"
+# Bu ikkalasi `app.core.enums` ga ko'chirildi — jonli domenlar bir martalik
+# migratsiya paketidan import qilmasligi uchun. Shu yerdan qayta e'lon
+# qilinadi, chunki migratsiya kodining o'zi ham ularni ishlatadi.
+__all__ = [
+    "MEDIA_MIGRATION_STATE_ENUM",
+    "MIGRATION_ENVIRONMENT_ENUM",
+    "MIGRATION_STAGE_ENUM",
+    "MIGRATION_STATUS_ENUM",
+    "OWNER_STATE_ENUM",
+    "REVIEW_STATE_ENUM",
+    "LegacyIdMap",
+    "MediaMigration",
+    "MediaMigrationState",
+    "MigrationEnvironment",
+    "MigrationIssue",
+    "MigrationRun",
+    "MigrationStage",
+    "MigrationStatus",
+    "OwnerState",
+    "ReviewState",
+    "enum_type",
+]
 
 
 class MigrationEnvironment(str, Enum):
@@ -63,17 +80,6 @@ class MediaMigrationState(str, Enum):
     FAILED = "failed"
 
 
-def enum_type(enum: type[Enum], name: str) -> SqlEnum:
-    return SqlEnum(
-        enum,
-        name=name,
-        values_callable=lambda enum_class: [item.value for item in enum_class],
-        validate_strings=True,
-    )
-
-
-OWNER_STATE_ENUM = enum_type(OwnerState, "owner_state")
-REVIEW_STATE_ENUM = enum_type(ReviewState, "review_state")
 MIGRATION_ENVIRONMENT_ENUM = enum_type(
     MigrationEnvironment,
     "migration_environment",

@@ -1,3 +1,14 @@
+"""Eski v1656 parol xeshlarini tekshirish.
+
+Bu **migratsiya kodi emas**, garchi ilgari `legacy_migration/` da turgan
+bo'lsa ham. v1656 dan ko'chib kelgan foydalanuvchilarning paroli bazada
+o'sha eski PBKDF2 shaklida qoladi va ular parolni o'zgartirmaguncha shu
+yerda tekshiriladi — ya'ni bu doimiy ish-vaqti ehtiyoji.
+
+`app/auth/security.py` login paytida shu funksiyani chaqiradi: yangi
+format mos kelmasa, eskisiga tushadi.
+"""
+
 import hashlib
 import hmac
 import re

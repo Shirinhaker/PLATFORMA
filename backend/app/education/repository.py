@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogItem
+from app.core.enums import ReviewState
 from app.education.model import (
     CourseEnrollment,
     EducationGroup,
@@ -15,7 +16,10 @@ from app.education.model import (
     EducationStudentGroupHistory,
     EducationTeacher,
 )
-from app.legacy_migration.model import LegacyIdMap, ReviewState
+
+# `LegacyIdMap` — migratsiya paytida yozilgan, lekin **ish vaqtida ham
+# o'qiladigan** jadval: eski v1656 ID'lari bo'yicha qidiruv shunga tayanadi.
+from app.legacy_migration.model import LegacyIdMap
 from app.profiles.model import BusinessProfile, UserProfile
 
 # Kabinet payloadidagi resurs nomlari — frontend shu nomlarni kutadi.

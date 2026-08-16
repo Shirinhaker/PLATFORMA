@@ -9,7 +9,7 @@ from app.catalog.schemas import (
     PublicCatalogParams,
     PublicCatalogResponse,
 )
-from app.legacy_migration.model import OwnerState, ReviewState
+from app.core.enums import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import build_public_id
 from app.public_discovery.schemas import PublicResultKind
