@@ -13,12 +13,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     DateTime,
     Identity,
     Index,
-    JSON,
     String,
     Text,
     text,
@@ -26,7 +26,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-
 
 ACTOR_TYPES = ("user", "business")
 RESTRICTIONS = ("content_hidden", "account_blocked")

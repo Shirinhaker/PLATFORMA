@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+import re
+from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +22,6 @@ from app.listings.schemas import (
 )
 from app.public_discovery.repository import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]

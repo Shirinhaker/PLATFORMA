@@ -20,7 +20,6 @@ from app.listings.model import Listing
 from app.profiles.model import BusinessProfile, UserProfile
 from app.stories.model import Story, StoryReport, StoryView
 
-
 EXPLICIT_DEMO_FLAGS = (
     "is_demo",
     "demo",

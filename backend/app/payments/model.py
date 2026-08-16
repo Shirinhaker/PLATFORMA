@@ -13,20 +13,19 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     ForeignKey,
     Identity,
     Index,
     Integer,
-    JSON,
     String,
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-
 
 SERVICE_TYPES = ("advertisement", "subscription", "listing")
 REQUEST_STATUSES = ("pending", "approved", "rejected", "cancelled")

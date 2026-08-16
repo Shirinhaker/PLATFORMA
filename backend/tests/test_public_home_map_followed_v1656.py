@@ -15,7 +15,6 @@ from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import build_public_id, load_public_home_map
 from app.public_discovery.schemas import PublicFollowedProfile, PublicResultKind
 
-
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
 
 

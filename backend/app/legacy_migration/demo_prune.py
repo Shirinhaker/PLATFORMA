@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import sqlite3
 
-
 DEMO_LOGIN_PREFIX = "demo_v1616_"
 
 #: (jadval, ustun) — o'chirish tartibi bolalardan ota-onaga qarab.

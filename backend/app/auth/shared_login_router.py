@@ -7,7 +7,6 @@ from app.accounts.model import AccountType
 from app.auth.router import _client_ip, _enforce_rate_limit
 from app.auth.security import sha256_token
 
-
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 

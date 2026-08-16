@@ -13,7 +13,6 @@ from app.admin.reports_service import AdminReportsService
 from app.admin.schemas import ReportCreate, ReportRow
 from app.auth.dependencies import CurrentAccount, require_csrf
 
-
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 

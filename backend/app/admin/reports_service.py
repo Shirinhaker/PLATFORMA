@@ -9,11 +9,11 @@ darajasida to'silgan (0027 migratsiyasidagi trigger).
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-import csv
 from datetime import UTC, datetime
-import io
 from typing import Any
 
 from sqlalchemy import select
@@ -28,7 +28,6 @@ from app.admin.moderation_model import (
     ModerationReport,
 )
 from app.core.errors import ApiError
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 

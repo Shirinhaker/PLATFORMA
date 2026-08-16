@@ -21,7 +21,6 @@ from app.education.cabinet_service import EducationCabinetService
 from app.education.management_repository import EducationManagementRepository
 from app.education.model import (
     EducationAttendance,
-    EducationGroup,
     EducationPayment,
     EducationStudent,
     EducationTeacher,
@@ -51,10 +50,6 @@ from app.education.schemas import (
     EducationPayrollHistoryRead,
     EducationPayrollRead,
     EducationPayrollTeacherRead,
-    EducationTeacherCreated,
-    EducationTeacherRead,
-    EducationTeacherUpdated,
-    EducationTeacherWrite,
     EducationStudentAttendanceCounts,
     EducationStudentAttendanceSummary,
     EducationStudentCardRead,
@@ -65,10 +60,13 @@ from app.education.schemas import (
     EducationStudentTransferred,
     EducationStudentTransferWrite,
     EducationStudentWrite,
+    EducationTeacherCreated,
+    EducationTeacherRead,
+    EducationTeacherUpdated,
+    EducationTeacherWrite,
     EducationUpdated,
 )
 from app.expenses.model import Expense
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
@@ -338,7 +336,7 @@ class EducationManagementService:
                 student_ids=[student.id],
                 start_date="0001-01-01",
             )
-            counts = {name: 0 for name in ATTENDANCE_STATUSES}
+            counts = dict.fromkeys(ATTENDANCE_STATUSES, 0)
             for row in attendances:
                 if row.attendance_status in counts:
                     counts[row.attendance_status] += 1

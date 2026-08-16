@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from math import isfinite
-import re
 from typing import Any
 
 from sqlalchemy import select
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 

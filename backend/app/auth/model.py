@@ -2,13 +2,13 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     DateTime,
     ForeignKey,
     Identity,
     Index,
     Integer,
-    JSON,
     String,
     text,
 )

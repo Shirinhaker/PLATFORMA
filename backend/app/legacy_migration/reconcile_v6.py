@@ -1,6 +1,6 @@
+import sqlite3
 from datetime import UTC, datetime
 from math import isfinite
-import sqlite3
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,12 +20,15 @@ from app.legacy_migration.reconcile import (
     _text,
     _unix_datetime,
     _upsert_mapping,
-    reconcile_accounts as reconcile_accounts_v5,
-    reconcile_businesses as reconcile_businesses_v5,
     source_row_hash,
 )
+from app.legacy_migration.reconcile import (
+    reconcile_accounts as reconcile_accounts_v5,
+)
+from app.legacy_migration.reconcile import (
+    reconcile_businesses as reconcile_businesses_v5,
+)
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-
 
 TERMINAL_ORDER_STATUSES = {
     "done",

@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 NORMALIZATION_ADVISORY_LOCK_KEY = 0x4B4F5052  # "KOPR"
 
 

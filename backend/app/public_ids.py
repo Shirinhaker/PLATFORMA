@@ -7,7 +7,7 @@ def build_profile_public_id(kind: str, account_id: int) -> str:
     if kind not in {"user", "business"}:
         raise ValueError("Profil turi user yoki business bo'lishi kerak.")
     digest = hashlib.blake2s(
-        f"{kind}:{account_id}".encode("utf-8"),
+        f"{kind}:{account_id}".encode(),
         digest_size=8,
         person=b"koprik",
     ).hexdigest()
@@ -16,7 +16,7 @@ def build_profile_public_id(kind: str, account_id: int) -> str:
 
 def build_listing_public_id(listing_id: int) -> str:
     digest = hashlib.blake2s(
-        f"listing:{listing_id}".encode("utf-8"),
+        f"listing:{listing_id}".encode(),
         digest_size=8,
         key=b"koprik-content-v1",
     ).hexdigest()
@@ -27,7 +27,7 @@ def build_content_public_id(kind: str, target_id: int) -> str:
     if kind not in {"product", "service"}:
         raise ValueError("Kontent turi product yoki service bo'lishi kerak.")
     digest = hashlib.blake2s(
-        f"{kind}:{target_id}".encode("utf-8"),
+        f"{kind}:{target_id}".encode(),
         digest_size=8,
         key=b"koprik-content-v1",
     ).hexdigest()

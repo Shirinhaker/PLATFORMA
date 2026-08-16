@@ -1,10 +1,9 @@
-from collections import Counter
-from dataclasses import dataclass
 import hashlib
 import json
-from pathlib import Path
 import sqlite3
-
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
 
 REQUIRED_TABLES = (
     "users",

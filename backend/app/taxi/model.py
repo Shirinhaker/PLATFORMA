@@ -19,7 +19,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.orders.model import Order  # noqa: F401 - registers the referenced table
 
-
 DRIVER_SERVICES = ("taxi", "dostavka", "both")
 RIDE_KINDS = ("taxi", "dostavka")
 ACTIVE_RIDE_STATUSES = (

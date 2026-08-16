@@ -18,7 +18,6 @@ from app.profiles.model import BusinessProfile
 from app.queues.model import QueueProvider, QueueProviderService
 from app.queues.repository import QueueRepository
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

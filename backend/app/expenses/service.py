@@ -20,7 +20,6 @@ from app.expenses.schemas import (
     ExpenseRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 # O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5 (qarang: cash_register).

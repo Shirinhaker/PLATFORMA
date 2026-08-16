@@ -18,7 +18,6 @@ from app.core.errors import ApiError
 from app.listings.model import Listing
 from app.notifications.service import NotificationService
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 

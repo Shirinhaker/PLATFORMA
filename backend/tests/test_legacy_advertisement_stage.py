@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, time
 import sqlite3
+from datetime import UTC, datetime, time
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -20,7 +20,6 @@ from app.legacy_migration.model import (
     ReviewState,
 )
 from app.profiles.model import BusinessProfile
-
 
 NOW = datetime(2026, 7, 29, tzinfo=UTC)
 

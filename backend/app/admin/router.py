@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Request, Response
 
 from app.admin.audit import request_meta
-from app.admin.dependencies import CurrentAdmin, AdminServiceDep
+from app.admin.dependencies import AdminServiceDep, CurrentAdmin
 from app.admin.moderation_service import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
 from app.admin.reports_service import AdminReportsService
@@ -42,7 +42,6 @@ from app.admin.schemas import (
 )
 from app.payments.schemas import PaymentRequestRead
 from app.payments.service import PaymentService
-
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 PaymentId = Annotated[int, Path(gt=0)]

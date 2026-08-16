@@ -5,7 +5,6 @@ from app.cash_register.model import CashReceipt
 from app.debt_ledger.model import Debtor, DebtTransaction
 from app.orders.model import Order
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0017_debt_ledger_domain.py"
 

@@ -24,7 +24,6 @@ from app.public_discovery.repository import (
     load_public_district_offers,
 )
 
-
 NOW = datetime(2026, 8, 12, tzinfo=UTC)
 
 

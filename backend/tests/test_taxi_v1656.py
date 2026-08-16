@@ -14,7 +14,6 @@ from app.taxi.model import TaxiDriver, TaxiRide
 from app.taxi.schemas import DriverWrite, RideCreate
 from app.taxi.service import TaxiService, calculate_price
 
-
 NOW = datetime(2026, 8, 11, 8, 0, tzinfo=UTC)
 
 

@@ -13,7 +13,6 @@ from app.expenses.schemas import ExpenseCategoryCreate, ExpenseCreate
 from app.expenses.service import DEFAULT_EXPENSE_CATEGORIES, ExpenseService
 from app.inventory.model import StockMove  # noqa: F401 -- FK metadata target
 
-
 NOW = datetime(2026, 8, 4, 9, 30, tzinfo=UTC)
 
 

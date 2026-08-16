@@ -8,7 +8,6 @@ from app.core.errors import ApiError
 from app.statistics.schemas import StatisticsNavigationRead, StatisticsReportRead
 from app.statistics.service import StatisticsService
 
-
 router = APIRouter(prefix="/api/v1/statistics", tags=["statistics"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 

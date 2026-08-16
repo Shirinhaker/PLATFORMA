@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 
-
 FRONTEND_ORIGIN = (
     "https://frontend-staging-production-6c41.up.railway.app"
 )

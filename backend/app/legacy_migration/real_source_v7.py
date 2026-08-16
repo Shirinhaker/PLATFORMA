@@ -4,7 +4,6 @@ import sqlite3
 
 from app.legacy_migration.source import open_immutable
 
-
 EXPLICIT_DEMO_FLAGS = (
     "is_demo",
     "demo",

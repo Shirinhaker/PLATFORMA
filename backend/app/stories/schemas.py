@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.accounts.model import AccountType
 
-
 StoryState = Literal["active", "archived"]
 
 

@@ -29,7 +29,6 @@ from app.education.model import (
 )
 from app.profiles.model import BusinessProfile
 
-
 NOW = datetime(2026, 8, 5, 9, 0, tzinfo=UTC)
 STAMP = 1785100000
 BUSINESS_ID = 7

@@ -10,10 +10,14 @@ from app.auth.dependencies import (
     require_staff_permission,
 )
 from app.core.errors import ApiError
-from app.listings.schemas import ListingCreate, ListingPatch, ListingRead, ListingSaveRead
+from app.listings.schemas import (
+    ListingCreate,
+    ListingPatch,
+    ListingRead,
+    ListingSaveRead,
+)
 from app.listings.service import ListingService
 from app.public_discovery.router import optional_current_account
-
 
 router = APIRouter(prefix="/api/v1", tags=["listings"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

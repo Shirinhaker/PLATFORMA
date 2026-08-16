@@ -2,20 +2,18 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.account_settings.router import router
-from app.account_settings.router import require_business_credentials_owner
+from app.account_settings.router import require_business_credentials_owner, router
 from app.account_settings.schemas import BusinessCredentialsUpdate
 from app.account_settings.service import AccountSettingsService
 from app.accounts.model import Account, AccountType
-from app.auth.security import verify_password
 from app.auth.dependencies import CurrentAccount
+from app.auth.security import verify_password
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.profiles.model import ProfileLink
-
 
 NOW = datetime(2026, 8, 11, 10, 0, tzinfo=UTC)
 

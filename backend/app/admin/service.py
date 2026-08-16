@@ -11,11 +11,11 @@ foydalanuvchi cookie'si admin bo'limlarini ochmaydi.
 
 from __future__ import annotations
 
+import hmac
+import secrets
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, timedelta
-import hmac
-import secrets
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +25,6 @@ from app.auth.security import derive_otp, sha256_token
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.outbox.repository import enqueue_event
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 

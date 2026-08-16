@@ -22,7 +22,6 @@ from app.core.errors import ApiError
 from app.outbox.repository import enqueue_event
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 

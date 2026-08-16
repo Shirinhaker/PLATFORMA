@@ -14,11 +14,11 @@ uchun stol abadiy band qolardi.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
-import re
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +50,6 @@ from app.inventory.service import InventoryService
 from app.notifications.model import Notification
 from app.notifications.repository import NotificationRepository
 from app.staff.model import StaffMember
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 

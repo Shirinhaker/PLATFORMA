@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 DriverService = Literal["taxi", "dostavka", "both"]
 RideKind = Literal["taxi", "dostavka"]
 RideStatus = Literal[

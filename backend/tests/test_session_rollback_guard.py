@@ -24,7 +24,6 @@ import textwrap
 
 import pytest
 
-
 # `session.rollback()` chaqiradigan barcha servislar.
 ROLLBACK_SERVICES = (
     ("app.account_settings.service", "AccountSettingsService"),

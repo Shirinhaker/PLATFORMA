@@ -16,7 +16,6 @@ from app.cash_register.schemas import (
 from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
 
-
 router = APIRouter(prefix="/api/v1/cash-register", tags=["cash-register"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

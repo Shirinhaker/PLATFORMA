@@ -1,6 +1,6 @@
+import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
-import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -17,8 +17,12 @@ from app.auth.dependencies import (
 from app.auth.repository import create_session, lock_session
 from app.auth.router import _set_session_cookie
 from app.auth.security import derive_csrf
+from app.business_online.service_relational import (
+    RELATIONAL_EDUCATION_RESOURCES,
+)
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
+from app.education.repository import EducationEnrollmentRepository
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
@@ -40,12 +44,7 @@ from app.profiles.schemas import (
 )
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_ids import build_profile_public_id
-from app.business_online.service_relational import (
-    RELATIONAL_EDUCATION_RESOURCES,
-)
-from app.education.repository import EducationEnrollmentRepository
 from app.staff.permissions import allowed_payload_resources
-
 
 router = APIRouter(prefix="/api/v1", tags=["profiles"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

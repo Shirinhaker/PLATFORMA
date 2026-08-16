@@ -1,9 +1,9 @@
+import sqlite3
 from datetime import UTC, datetime
 from io import BytesIO
-import sqlite3
 
-import pytest
 import httpx
+import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,6 @@ from app.legacy_migration.model import (
 )
 from app.media.storage import StoredObject
 from app.messages.model import Message, MessageConversation
-
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
 NOW = datetime(2026, 7, 29, tzinfo=UTC)

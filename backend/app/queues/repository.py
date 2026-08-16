@@ -18,7 +18,6 @@ from app.queues.model import (
     QueueProviderService,
 )
 
-
 ACTIVE_STATUSES = ("waiting", "called", "in_service")
 
 

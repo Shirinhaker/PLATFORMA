@@ -24,7 +24,6 @@ from app.inventory.model import InventoryItem, StockMove
 from app.profiles.model import BusinessProfile
 from app.staff.model import StaffMember
 
-
 NOW = datetime(2026, 8, 4, 9, 0, tzinfo=UTC)  # O'zbekistonda 14:00
 
 

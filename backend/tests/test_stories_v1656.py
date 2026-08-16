@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 import importlib
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -9,7 +9,6 @@ import pytest
 from app.accounts.model import AccountType
 from app.core.config import Settings
 from app.main import create_app
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

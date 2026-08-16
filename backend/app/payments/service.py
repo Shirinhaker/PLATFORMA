@@ -12,10 +12,10 @@ diskida turardi va bir nechta nusxa ishlaganda topilmasdi.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
 import secrets
 import time
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +35,6 @@ from app.payments.schemas import (
     BusinessSubscriptionSummary,
     PaymentAttemptRead,
     PaymentCatalogRead,
-    PaymentDecision,
     PaymentMethodRead,
     PaymentPriceRead,
     PaymentReceipt,
@@ -43,7 +42,6 @@ from app.payments.schemas import (
     PaymentRequestRead,
     PaymentResubmit,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 Activator = Callable[..., object]

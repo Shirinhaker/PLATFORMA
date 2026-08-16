@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
+import secrets
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, date, datetime, time, timedelta, timezone
-import re
-import secrets
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +39,6 @@ from app.staff.schemas import (
     StaffSetupRead,
     StaffTemplateRead,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

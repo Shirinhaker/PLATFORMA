@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, date, datetime, time, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
-import re
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +25,6 @@ from app.core.errors import ApiError
 from app.debt_ledger.service import DebtLedgerService
 from app.inventory.service import InventoryService
 from app.orders.model import Order, OrderItem
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

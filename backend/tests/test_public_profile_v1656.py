@@ -10,11 +10,10 @@ from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile
-from app.public_discovery.repository import build_public_id, load_public_profile
 from app.public_discovery import repository as public_repository
+from app.public_discovery.repository import build_public_id, load_public_profile
 from app.public_discovery.schemas import PublicResultKind
 from app.queues.model import QueueEntry, QueueProvider, QueueProviderService
-
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
 

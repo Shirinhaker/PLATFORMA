@@ -19,7 +19,6 @@ from sqlalchemy import inspect as sa_inspect
 from app.db import all_models
 from app.db.base import Base
 
-
 BACKEND = pathlib.Path(__file__).resolve().parent.parent
 
 

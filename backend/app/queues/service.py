@@ -19,8 +19,8 @@ from app.queues.schemas import (
     QueueBusinessSetupRead,
     QueueCreate,
     QueueEntryRead,
-    QueueOfflineCreate,
     QueueNotificationRead,
+    QueueOfflineCreate,
     QueueOptionsRead,
     QueueProviderRead,
     QueueProviderWrite,
@@ -31,7 +31,6 @@ from app.queues.schemas import (
     QueueSwap,
 )
 from app.staff.repository import StaffRepository
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

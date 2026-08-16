@@ -17,7 +17,6 @@ from app.legacy_migration.demo_prune import (
     prune_demo_records,
 )
 
-
 SCHEMA = """
 CREATE TABLE users (id INTEGER PRIMARY KEY, login TEXT, tg_id INTEGER,
                     name TEXT);

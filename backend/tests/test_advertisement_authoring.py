@@ -13,24 +13,22 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
-from app.advertisements.model import Advertisement
-from app.advertisements.pricing import (
-    REGION_KEYS,
-    AdPricingError,
-    calculate_ad_price,
-    normalize_ad_region,
-)
-from app.advertisements.repository import select_active_advertisements
 from app.advertisements.authoring_schemas import (
     AdvertisementCreate,
     AdvertisementQuoteRequest,
     AdvertisementTarget,
 )
+from app.advertisements.model import Advertisement
+from app.advertisements.pricing import (
+    REGION_KEYS,
+    calculate_ad_price,
+    normalize_ad_region,
+)
+from app.advertisements.repository import select_active_advertisements
 from app.advertisements.service import AdvertisementAuthoringService
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.payments.model import PlatformPrice
-
 
 NOW = datetime(2026, 8, 7, 9, 0, tzinfo=UTC)
 SHOP = 7

@@ -21,7 +21,6 @@ from app.messages.schemas import (
 )
 from app.messages.service import MessageService
 
-
 router = APIRouter(prefix="/api/v1/messages", tags=["messages"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

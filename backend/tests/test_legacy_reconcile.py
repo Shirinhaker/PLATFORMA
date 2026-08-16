@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -21,7 +21,6 @@ from app.legacy_migration.reconcile import (
 )
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 NOW = datetime(2026, 7, 29, 0, 0, tzinfo=UTC)
 
 
@@ -35,7 +34,7 @@ class AsyncSessionAdapter:
 
     async def flush(self):
         for item in list(self.sync.new):
-            if not hasattr(item, "id") or getattr(item, "id") is not None:
+            if not hasattr(item, "id") or item.id is not None:
                 continue
             table = item.__table__.name
             if table not in self.sequences:

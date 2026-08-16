@@ -3,16 +3,18 @@ from enum import Enum
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Identity,
     Integer,
-    JSON,
     String,
     UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 

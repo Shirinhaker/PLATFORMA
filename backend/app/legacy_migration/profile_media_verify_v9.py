@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 from app.core.config import Settings
 from app.db.session import Database

@@ -1,6 +1,9 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session
+
 from app.accounts.model import Account, AccountType
 from app.catalog.live_sync import sync_business_catalog
 from app.catalog.model import CatalogGroup, CatalogItem
@@ -9,8 +12,6 @@ from app.legacy_migration.model import ReviewState
 from app.profiles.model import BusinessProfile
 from app.public_discovery.repository import search_public_profiles
 from app.public_discovery.schemas import PublicSearchParams
-from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)
 

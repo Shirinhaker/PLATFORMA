@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN
+from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import select
@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.model import CatalogItem
 from app.inventory.model import InventoryItem, StockBatch, StockMove
-
 
 INVENTORY_RESOURCES = frozenset({"items"})
 QUANTITY_STEP = Decimal("0.001")

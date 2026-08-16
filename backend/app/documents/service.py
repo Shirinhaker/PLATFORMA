@@ -24,7 +24,6 @@ from app.documents.schemas import (
     MutationRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 COUNTERPARTY_TYPES = ("Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa")

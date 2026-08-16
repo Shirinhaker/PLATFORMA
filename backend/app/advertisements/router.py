@@ -8,7 +8,6 @@ from app.advertisements.schemas import (
     PublicAdvertisementViews,
 )
 
-
 router = APIRouter(prefix="/api/v1/public", tags=["public-advertisements"])
 
 

@@ -1,5 +1,5 @@
-from math import isfinite
 import re
+from math import isfinite
 from typing import Any
 
 from pydantic import (
@@ -11,7 +11,6 @@ from pydantic import (
 )
 
 from app.accounts.model import AccountType
-
 
 USERNAME = re.compile(r"^[a-z0-9_]{3,32}$")
 USERNAME_MESSAGE = (

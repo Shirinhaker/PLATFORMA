@@ -22,7 +22,6 @@ from app.specialists.schemas import (
 )
 from app.specialists.service import SpecialistService
 
-
 NOW = datetime(2026, 8, 10, 9, 0, tzinfo=UTC)
 
 

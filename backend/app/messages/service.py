@@ -21,7 +21,6 @@ from app.messages.schemas import (
 )
 from app.public_ids import build_profile_public_id
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]
 NowProvider = Callable[[], datetime]

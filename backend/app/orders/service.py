@@ -1,19 +1,19 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
-import re
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 from typing import Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
+from app.cash_register.service import CashRegisterService
 from app.catalog.model import CatalogItem
 from app.catalog.repository import build_content_public_id
-from app.cash_register.service import CashRegisterService
 from app.core.errors import ApiError
 from app.debt_ledger.service import DebtLedgerService
 from app.listings.model import Listing
@@ -25,8 +25,8 @@ from app.orders.notifications import (
 )
 from app.orders.repository import OrderRepository
 from app.orders.schemas import (
-    OrderCreate,
     OrderChatRead,
+    OrderCreate,
     OrderMessageCreate,
     OrderMessageRead,
     OrderPaymentDecision,
@@ -40,7 +40,6 @@ from app.outbox.repository import enqueue_event
 from app.profiles.model import BusinessProfile, UserProfile
 from app.public_discovery.repository import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]

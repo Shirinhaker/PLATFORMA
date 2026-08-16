@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections import defaultdict
 import sqlite3
-from typing import Any, Iterable
+from collections import defaultdict
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +16,12 @@ from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.reconcile import StageResult, _find_mapping
 from app.legacy_migration.reconcile_v6 import (
     reconcile_accounts as reconcile_accounts_v6,
+)
+from app.legacy_migration.reconcile_v6 import (
     reconcile_businesses as reconcile_businesses_v6,
 )
 from app.profiles.model import BusinessProfile, UserProfile
 from app.taxi.legacy_import import import_taxi_domain
-
 
 EXPLICIT_DEMO_FLAGS = (
     "is_demo",
@@ -632,22 +634,18 @@ def _filter_documents(rows: list[object], wanted: str) -> list[dict[str, Any]]:
         if not isinstance(row, dict):
             continue
         direction = str(row.get("direction") or "").strip().casefold()
-        if wanted == "incoming" and (
+        if (wanted == "incoming" and (
             "incoming" in direction
             or "kirim" in direction
             or "kiruvchi" in direction
-        ):
-            result.append(row)
-        elif wanted == "outgoing" and (
+        )) or (wanted == "outgoing" and (
             "outgoing" in direction
             or "chiq" in direction
             or "chiquvchi" in direction
-        ):
-            result.append(row)
-        elif wanted == "internal" and (
+        )) or (wanted == "internal" and (
             "internal" in direction
             or "ichki" in direction
-        ):
+        )):
             result.append(row)
     return result
 

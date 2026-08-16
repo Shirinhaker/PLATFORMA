@@ -27,7 +27,6 @@ from app.profiles.router import (
     dashboard_with_notification_count,
 )
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

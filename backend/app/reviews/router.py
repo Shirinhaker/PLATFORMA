@@ -19,7 +19,6 @@ from app.reviews.schemas import (
 )
 from app.reviews.service import ReviewService
 
-
 router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

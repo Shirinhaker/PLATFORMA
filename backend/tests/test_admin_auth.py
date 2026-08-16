@@ -21,7 +21,6 @@ from app.core.errors import ApiError
 from app.db.base import Base
 from app.outbox.model import OutboxEvent
 
-
 NOW = datetime(2026, 8, 6, 9, 0, tzinfo=UTC)
 ADMIN_TG = 1423181561
 OUTSIDER_TG = 555000111

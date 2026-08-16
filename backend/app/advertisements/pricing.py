@@ -9,12 +9,11 @@ sayt bilan bir tiyin farq qilmasligi kerak.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
 import re
 import unicodedata
+from datetime import date, datetime, timedelta, timezone
 
 from app.advertisements.district_catalog import REGION_DISTRICTS
-
 
 VALID_AD_DURATIONS = (1, 3, 7, 14, 30)
 FULL_HOUR_RE = re.compile(r"^(?:[01]\d|2[0-3]):00$")

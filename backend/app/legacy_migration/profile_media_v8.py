@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from io import BytesIO
 import hashlib
 import sqlite3
+from io import BytesIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,6 @@ from app.media.storage import (
     R2Storage,
 )
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 OWNER_CONFIG = {
     "user": (

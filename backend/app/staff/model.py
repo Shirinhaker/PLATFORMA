@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -9,7 +10,6 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
-    JSON,
     String,
     Time,
     func,

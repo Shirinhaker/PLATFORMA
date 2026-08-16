@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 
-
 logger = logging.getLogger(__name__)
 CATALOG_CACHE_EPOCH_KEY = "public:catalog:epoch:v1"
 

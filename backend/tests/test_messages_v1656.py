@@ -1,21 +1,19 @@
-from importlib import import_module
+import secrets
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from importlib import import_module
 from pathlib import Path
-import secrets
 
 import pytest
 from pydantic import ValidationError
 
-from app.accounts.model import AccountType
-from app.accounts.model import Account
+from app.accounts.model import Account, AccountType
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.main import create_app
 from app.messages.schemas import MessageCreate, MessageEdit, MessageImageCreate
 from app.messages.service import MessageService
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

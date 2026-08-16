@@ -1,11 +1,11 @@
 import asyncio
-from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
-from datetime import datetime, timedelta
 import hmac
 import json
 import logging
 import math
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,8 @@ from app.auth.repository import (
     find_challenge_by_start_token,
     lock_challenge,
     lock_session,
+)
+from app.auth.repository import (
     resolve_session as resolve_stored_session,
 )
 from app.auth.schemas import (
@@ -49,7 +51,6 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.outbox.repository import enqueue_event
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[
     [],

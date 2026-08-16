@@ -2,7 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 StatisticsPeriod = Literal["kun", "hafta", "oy", "chorak", "yarim", "yil"]
 
 

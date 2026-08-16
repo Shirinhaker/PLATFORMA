@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.advertisements.pricing import shift_schedule_start
 
 
 def stamp(value: str) -> int:
-    return int(datetime.fromisoformat(value).replace(tzinfo=timezone.utc).timestamp())
+    return int(datetime.fromisoformat(value).replace(tzinfo=UTC).timestamp())
 
 
 def test_all_day_ad_starts_at_approval_when_requested_start_is_past():

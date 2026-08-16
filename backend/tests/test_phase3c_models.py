@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from sqlalchemy import JSON, CheckConstraint, Index, UniqueConstraint
 
 from app.advertisements.model import Advertisement

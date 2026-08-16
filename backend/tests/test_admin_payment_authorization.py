@@ -18,7 +18,6 @@ from app.core.config import Settings
 from app.main import create_app
 from app.payments.schemas import PaymentRequestRead
 
-
 ADMIN_TG = 1423181561
 BUSINESS_ACCOUNT = 7
 

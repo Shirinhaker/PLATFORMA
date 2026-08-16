@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -18,7 +18,6 @@ from app.legacy_migration.model import (
 )
 from app.legacy_migration.story_stage import import_stories
 from app.stories.model import Story, StoryReport, StoryView
-
 
 NOW = datetime(2026, 8, 8, tzinfo=UTC)
 

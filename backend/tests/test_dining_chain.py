@@ -56,7 +56,6 @@ from app.orders.model import Order, OrderItem
 from app.profiles.model import BusinessProfile, ProfileLink
 from app.staff.model import StaffMember
 
-
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 
 BUSINESS = 1

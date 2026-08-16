@@ -10,7 +10,6 @@ from app.auth.dependencies import (
 from app.follows.schemas import FollowListRead, FollowResult, FollowToggle
 from app.follows.service import FollowService
 
-
 router = APIRouter(prefix="/api/v1/follows", tags=["follows"])
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

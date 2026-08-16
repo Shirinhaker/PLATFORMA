@@ -19,7 +19,6 @@ from app.orders.model import Order  # noqa: F401 -- FK metadata target
 from app.staff.model import StaffMember
 from app.statistics.service import StatisticsService
 
-
 NOW = datetime(2026, 8, 4, 9, 0, tzinfo=UTC)  # Toshkentda 14:00
 
 

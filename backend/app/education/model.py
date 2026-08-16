@@ -29,7 +29,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 ENROLLMENT_STATUSES = ("new", "accepted", "rejected")
 # Ariza shu holatlarda bo'lsa, o'sha kursga qayta yozilib bo'lmaydi.
 ACTIVE_ENROLLMENT_SQL = "status IN ('new', 'accepted')"

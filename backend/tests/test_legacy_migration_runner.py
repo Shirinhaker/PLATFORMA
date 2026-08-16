@@ -10,10 +10,10 @@ from app.legacy_migration.model import (
     MigrationStatus,
 )
 from app.legacy_migration.runner import (
+    STAGES,
     MigrationRunner,
     ProductionApproval,
     ProductionGateError,
-    STAGES,
     build_database_runner,
 )
 from app.legacy_migration.source import SnapshotInfo

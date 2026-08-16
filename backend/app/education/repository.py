@@ -18,7 +18,6 @@ from app.education.model import (
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 # Kabinet payloadidagi resurs nomlari — frontend shu nomlarni kutadi.
 ENROLLMENTS = "education_enrollments"
 GROUPS = "education_groups"

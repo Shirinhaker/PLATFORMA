@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 
-
 VERSIONS = Path(__file__).resolve().parents[1] / "migrations" / "versions"
 # Satr ichidagi `;` dan keyin yana SQL kelsa — ikkinchi buyruq.
 TRAILING_SQL = re.compile(r";\s*\S")

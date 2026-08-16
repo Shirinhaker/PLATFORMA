@@ -8,7 +8,6 @@ from app.business_opening.schemas import BusinessOpeningRead, BusinessOpeningWri
 from app.business_opening.service import BusinessOpeningService
 from app.core.errors import ApiError
 
-
 router = APIRouter(prefix="/api/v1/business-opening", tags=["business-opening"])
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 

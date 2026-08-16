@@ -23,7 +23,6 @@ from app.listings.service import ListingService
 from app.main import create_app
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 
-
 NOW = datetime(2026, 8, 2, 10, 0, tzinfo=UTC)
 
 
@@ -228,7 +227,8 @@ async def _activate(store, account_id: int) -> None:
     E'lon endi `payment_pending` bilan yaratiladi va to'lovsiz public
     ro'yxatlarda ko'rinmaydi (v1656 `listing_publish` tarifi).
     """
-    from sqlalchemy import or_, select as _select
+    from sqlalchemy import or_
+    from sqlalchemy import select as _select
 
     from app.listings.activation import ListingActivationService
     from app.listings.model import Listing

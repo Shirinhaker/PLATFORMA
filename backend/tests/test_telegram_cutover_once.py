@@ -6,7 +6,6 @@ import pytest
 
 from app.auth import telegram_cutover_once as cutover
 
-
 ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = ROOT / "backend/Dockerfile"
 

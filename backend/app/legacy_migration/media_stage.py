@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import hashlib
 from pathlib import Path, PurePosixPath
-import sqlite3
 from tempfile import SpooledTemporaryFile
 from typing import BinaryIO
 
@@ -28,7 +28,6 @@ from app.listings.model import ListingMedia
 from app.media.storage import R2Storage
 from app.messages.model import Message
 from app.stories.model import Story
-
 
 CONTENT_TYPE_SUFFIXES = {
     "image/jpeg": ".jpg",

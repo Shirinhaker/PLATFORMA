@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 MIGRATION = Path("migrations/versions/0003_phase3c_content.py")
 
 

@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -16,7 +16,6 @@ from app.legacy_migration.profile_parity_v7 import (
     reconcile_businesses,
 )
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-
 
 NOW = datetime(2026, 7, 30, 0, 0, tzinfo=UTC)
 

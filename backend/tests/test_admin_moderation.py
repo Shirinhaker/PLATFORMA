@@ -24,9 +24,7 @@ from app.admin.moderation_service import AdminModerationService
 from app.admin.reports_service import AdminReportsService
 from app.core.errors import ApiError
 from app.db.base import Base
-from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 NOW = datetime(2026, 8, 6, 10, 0, tzinfo=UTC)
 ADMIN = 1423181561

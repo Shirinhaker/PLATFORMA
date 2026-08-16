@@ -20,7 +20,6 @@ from app.documents.schemas import (
 )
 from app.documents.service import DocumentService
 
-
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

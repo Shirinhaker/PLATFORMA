@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,6 @@ from app.inventory.schemas import (
     StockMoveRead,
     StockMoveResult,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

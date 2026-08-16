@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import hmac
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request, Response
@@ -15,7 +15,6 @@ from app.auth.schemas import RegistrationStart
 from app.auth.security import sha256_token
 from app.cache.rate_limit import consume_rate_limit
 from app.core.errors import ApiError
-
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 RATE_LIMIT_MESSAGE = (

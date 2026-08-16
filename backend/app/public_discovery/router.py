@@ -8,7 +8,6 @@ from app.auth.dependencies import (
     require_current_account,
     require_staff_permission,
 )
-
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
     PublicFollowedProfile,
@@ -17,7 +16,6 @@ from app.public_discovery.schemas import (
     PublicSearchParams,
     PublicSearchResponse,
 )
-
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 

@@ -11,7 +11,6 @@ from app.accounts.model import Account, AccountType
 from app.follows.model import ProfileFollow
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 FollowListKind = Literal["followers", "following"]
 
 

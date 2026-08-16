@@ -12,7 +12,6 @@ from app.legacy_migration.model import ReviewState
 from app.public_discovery.repository import build_public_id
 from app.public_discovery.schemas import PublicResultKind
 
-
 ImageUrlProvider = Callable[[str], str]
 UZ_TIMEZONE = timezone(timedelta(hours=5))
 _LOCATION_APOSTROPHES = ("‘", "’", "ʻ", "ʼ", "`", "´", "ʹ")

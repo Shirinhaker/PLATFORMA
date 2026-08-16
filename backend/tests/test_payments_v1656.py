@@ -30,7 +30,6 @@ from app.payments.schemas import (
 )
 from app.payments.service import PaymentService
 
-
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 STAMP = 1785200000
 SHOP = 7

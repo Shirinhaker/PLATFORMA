@@ -1,9 +1,9 @@
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 import asyncio
 import hashlib
 import json
 import logging
+from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,6 @@ from app.catalog.schemas import (
     PublicCatalogResponse,
 )
 from app.core.config import Settings
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 CatalogLoader = Callable[

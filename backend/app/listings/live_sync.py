@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import hashlib
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing, ListingMedia
-
 
 LISTING_RESOURCES = frozenset({"listings"})
 

@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import fakeredis.aioredis
+
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.schemas import (

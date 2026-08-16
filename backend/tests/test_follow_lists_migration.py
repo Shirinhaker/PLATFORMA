@@ -3,7 +3,6 @@ from pathlib import Path
 
 from app.follows.router import router as follows_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0035_follow_lists.py"
 

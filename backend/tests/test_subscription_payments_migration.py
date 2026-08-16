@@ -6,8 +6,8 @@ import pytest
 from app.accounts.model import AccountType
 from app.auth.dependencies import CurrentAccount
 from app.core.errors import ApiError
-from app.payments.router import require_payment_owner, router as payments_router
-
+from app.payments.router import require_payment_owner
+from app.payments.router import router as payments_router
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0036_subscription_payments.py"

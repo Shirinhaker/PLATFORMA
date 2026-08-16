@@ -7,14 +7,13 @@ from app.auth.dependencies import CurrentAccount, require_csrf, require_current_
 from app.core.errors import ApiError
 from app.debt_ledger.schemas import (
     DebtMutationRead,
-    DebtTransactionCreate,
     DebtorCreate,
     DebtorCreated,
     DebtorDetailRead,
     DebtorRead,
+    DebtTransactionCreate,
 )
 from app.debt_ledger.service import DebtLedgerService
-
 
 router = APIRouter(prefix="/api/v1/debt-ledger", tags=["debt-ledger"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

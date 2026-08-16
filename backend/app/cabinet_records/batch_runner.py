@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +16,6 @@ from app.cabinet_records.verify import (
     verify_payload_parity,
 )
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 

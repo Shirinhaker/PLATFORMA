@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, timedelta
-import math
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,10 +26,9 @@ from app.stories.schemas import (
     StoryCreated,
     StoryGroup,
     StoryRead,
-    StoryViewResult,
     StoryViewerRead,
+    StoryViewResult,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

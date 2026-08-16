@@ -14,7 +14,6 @@ from app.legacy_migration.reconcile import (
 )
 from app.payments.model import BusinessSubscription, PaymentRequest
 
-
 PAID_PLANS = frozenset({"plus", "pro"})
 SUBSCRIPTION_STATUSES = frozenset({"active", "superseded", "expired"})
 

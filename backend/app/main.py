@@ -1,58 +1,60 @@
-from contextlib import asynccontextmanager
 import os
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.advertisements.repository import AdvertisementService
+from app.account_settings.router import router as account_settings_router
+from app.account_settings.service import AccountSettingsService
+from app.admin.moderation_service import AdminModerationService
+from app.admin.payments_service import AdminPaymentService
+from app.admin.reports_router import router as reports_router
+from app.admin.reports_service import AdminReportsService
+from app.admin.router import router as admin_router
+from app.admin.service import AdminAuthService
 from app.advertisements.authoring_router import (
     router as advertisement_authoring_router,
 )
+from app.advertisements.repository import AdvertisementService
 from app.advertisements.router import router as advertisements_router
 from app.advertisements.service import AdvertisementAuthoringService
-from app.account_settings.router import router as account_settings_router
-from app.account_settings.service import AccountSettingsService
-from app.auth.router import router as auth_router
-from app.auth.shared_login import SharedLoginAuthService
-from app.auth.shared_login_router import router as shared_login_router
 from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.router import router as ai_assistant_router
 from app.ai_assistant.service import AIAssistantService
+from app.auth.router import router as auth_router
+from app.auth.shared_login import SharedLoginAuthService
+from app.auth.shared_login_router import router as shared_login_router
 from app.business_online.router import router as business_online_router
 from app.business_online.service_relational import BusinessOnlineService
 from app.business_opening.router import router as business_opening_router
 from app.business_opening.service import BusinessOpeningService
+from app.cache.client import RedisClient
 from app.cash_register.router import router as cash_register_router
 from app.cash_register.service import CashRegisterService
-from app.cache.client import RedisClient
-from app.catalog.router import router as catalog_router
 from app.catalog.cache_epoch import CatalogCacheEpoch
+from app.catalog.router import router as catalog_router
 from app.catalog.service import CatalogService
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestIdMiddleware, request_id_context
 from app.db.session import Database
-from app.admin.moderation_service import AdminModerationService
-from app.admin.payments_service import AdminPaymentService
-from app.admin.reports_service import AdminReportsService
-from app.admin.reports_router import router as reports_router
-from app.admin.router import router as admin_router
-from app.admin.service import AdminAuthService
 from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
 from app.dining.service import DiningService
 from app.documents.router import router as documents_router
 from app.documents.service import DocumentService
-from app.education.router import router as education_router
 from app.education.management_service import EducationManagementService
+from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
 from app.education.statistics_service import EducationStatisticsService
 from app.expenses.router import router as expenses_router
 from app.expenses.service import ExpenseService
+from app.follows.router import router as follows_router
+from app.follows.service import FollowService
 from app.inventory.router import router as inventory_router
 from app.inventory.service import InventoryService
 from app.listings.activation import ListingActivationService
@@ -66,31 +68,28 @@ from app.notifications.router import router as notifications_router
 from app.notifications.service import NotificationService
 from app.orders.router import router as orders_router
 from app.orders.service import OrderService
+from app.payments.router import router as payments_router
+from app.payments.service import PaymentService
 from app.platform.router import router as platform_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
-from app.follows.router import router as follows_router
-from app.follows.service import FollowService
-from app.payments.router import router as payments_router
-from app.payments.service import PaymentService
 from app.queues.router import router as queues_router
 from app.queues.service import QueueService
 from app.reviews.router import router as reviews_router
 from app.reviews.service import ReviewService
+from app.specialists.router import router as specialists_router
+from app.specialists.service import SpecialistService
 from app.staff.router import router as staff_router
 from app.staff.service import StaffService
 from app.statistics.router import router as statistics_router
 from app.statistics.service import StatisticsService
 from app.stories.router import router as stories_router
 from app.stories.service import StoryService
-from app.specialists.router import router as specialists_router
-from app.specialists.service import SpecialistService
 from app.taxi.admin_router import router as taxi_admin_router
 from app.taxi.router import router as taxi_router
 from app.taxi.service import TaxiService
-
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Mapping
 
 
 def sync_json_fallback(profile, payload: Mapping[str, object]) -> None:

@@ -8,7 +8,6 @@ from app.staff.model import (
     StaffSession,
 )
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

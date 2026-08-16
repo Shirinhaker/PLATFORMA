@@ -1,7 +1,7 @@
-from importlib import import_module
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -19,10 +19,9 @@ from app.orders.model import Order
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
 from app.reviews.model import Review
-from app.specialists.model import SpecialistProfile
 from app.reviews.schemas import ReviewReplyWrite, ReviewTargetKind, ReviewWrite
 from app.reviews.service import ReviewService
-
+from app.specialists.model import SpecialistProfile
 
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime(2026, 8, 10, 8, 0, tzinfo=UTC)

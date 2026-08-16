@@ -28,7 +28,6 @@ from app.specialists.schemas import (
     SpecialistRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]
 ObjectDeleter = Callable[[str], None]

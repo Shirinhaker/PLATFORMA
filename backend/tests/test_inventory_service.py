@@ -19,12 +19,11 @@ from app.inventory.model import (
     StockBatch,
     StockMove,
 )
-from app.inventory.schemas import IngredientWrite, InventoryItemWrite, StockMoveCreate
 from app.inventory.repository import InventoryRepository
+from app.inventory.schemas import IngredientWrite, InventoryItemWrite, StockMoveCreate
 from app.inventory.service import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
-
 
 NOW = datetime(2026, 8, 4, 9, 0, tzinfo=UTC)
 

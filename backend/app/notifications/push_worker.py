@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
 import os
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
 from sqlalchemy import or_, select, update
@@ -12,7 +12,6 @@ from sqlalchemy import or_, select, update
 from app.core.config import Settings
 from app.db.session import Database
 from app.notifications.model import Notification, PushDevice, PushOutbox
-
 
 RETRY_DELAYS = (60, 300, 900, 3600)
 PERMANENT_FIREBASE_ERRORS = {

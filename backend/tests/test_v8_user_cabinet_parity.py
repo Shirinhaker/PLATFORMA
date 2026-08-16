@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from io import BytesIO
 import sqlite3
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -8,7 +7,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.legacy_migration import cabinet_parity_v8, profile_media_v8
-from app.legacy_migration.model import MigrationRun
 from app.media.storage import StoredObject
 from app.profiles.model import UserProfile
 

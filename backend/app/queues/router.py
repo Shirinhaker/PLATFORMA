@@ -26,7 +26,6 @@ from app.queues.schemas import (
 )
 from app.queues.service import QueueService
 
-
 router = APIRouter(prefix="/api/v1/queues", tags=["queues"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

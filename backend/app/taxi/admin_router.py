@@ -7,7 +7,6 @@ from app.admin.dependencies import CurrentAdmin
 from app.taxi.schemas import AdminDriverRead, DriverTopupRead, DriverTopupWrite
 from app.taxi.service import TaxiService
 
-
 router = APIRouter(prefix="/api/v1/admin/taxi", tags=["admin", "taxi"])
 DriverId = Annotated[int, Path(gt=0)]
 

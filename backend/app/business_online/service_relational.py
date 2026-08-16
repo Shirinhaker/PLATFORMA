@@ -13,7 +13,6 @@ from app.business_online.service import (
     MEDICAL_RESOURCES,
     RESOURCE_SPECS,
     append_medical_user_notification,
-    apply_action as apply_payload_action,
     cascade_after_delete,
     display_resource_rows,
     ensure_resource_direction,
@@ -34,24 +33,32 @@ from app.business_online.service import (
     sync_medical_doctor_links,
     unix_now,
 )
+from app.business_online.service import (
+    apply_action as apply_payload_action,
+)
 from app.cabinet_records.dual_write import sync_json_fallback
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
+from app.education.cabinet_service import EducationCabinetService
 from app.education.repository import (
     ENROLLMENTS as EDUCATION_ENROLLMENTS,
+)
+from app.education.repository import (
     GROUPS as EDUCATION_GROUPS,
+)
+from app.education.repository import (
     STUDENTS as EDUCATION_STUDENTS,
+)
+from app.education.repository import (
     EducationEnrollmentRepository,
 )
-from app.education.cabinet_service import EducationCabinetService
 from app.education.service import EducationEnrollmentService
 from app.inventory.live_sync import sync_business_inventory
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 CatalogSync = Callable[..., Awaitable[None]]

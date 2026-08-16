@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import importlib.util
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,6 @@ from app.public_discovery.repository import (
 )
 from app.public_discovery.schemas import PublicResultKind
 from app.queues.model import QueueProvider, QueueProviderService
-
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]

@@ -16,7 +16,6 @@ from app.expenses.schemas import (
 )
 from app.expenses.service import ExpenseService
 
-
 router = APIRouter(prefix="/api/v1/expenses", tags=["expenses"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

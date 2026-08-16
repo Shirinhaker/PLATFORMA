@@ -19,7 +19,6 @@ from app.education.schemas import (
 )
 from app.education.statistics_repository import EducationStatisticsRepository
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))

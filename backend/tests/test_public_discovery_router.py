@@ -6,10 +6,10 @@ from app.core.config import Settings
 from app.main import create_app
 from app.public_discovery.router import optional_current_account
 from app.public_discovery.schemas import (
-    PublicSearchItem,
-    PublicSearchResponse,
     PublicFollowedProfile,
     PublicProfileDetail,
+    PublicSearchItem,
+    PublicSearchResponse,
 )
 
 

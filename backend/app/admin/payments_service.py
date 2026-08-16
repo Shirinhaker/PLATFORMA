@@ -35,7 +35,6 @@ from app.payments.model import (
     PlatformPrice,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 STATUSES = ("pending", "approved", "rejected", "cancelled")

@@ -4,7 +4,6 @@ from pathlib import Path
 from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
 from app.inventory.model import StockMove
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0016_cash_register_domain.py"
 

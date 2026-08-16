@@ -23,7 +23,6 @@ from app.education.model import (
 )
 from app.education.repository import EducationEnrollmentRepository
 
-
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 BILLING_TYPES = ("monthly", "attendance")
 

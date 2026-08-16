@@ -32,7 +32,6 @@ from app.dining.schemas import (
 )
 from app.dining.service import DiningService
 
-
 router = APIRouter(prefix="/api/v1/dining", tags=["dining"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

@@ -19,7 +19,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 ORDER_STATUSES = (
     "new", "accepted", "rejected", "preparing", "tayyor", "cancelled",
     "courier_assigned", "courier_arrived_store", "handoff_waiting_seller",

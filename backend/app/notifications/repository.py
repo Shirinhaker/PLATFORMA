@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any, Mapping
+from typing import Any
 
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
@@ -16,7 +17,6 @@ from app.notifications.model import (
     PushOutbox,
 )
 from app.profiles.model import ProfileLink
-
 
 ROW_COLUMNS = frozenset({
     "id",

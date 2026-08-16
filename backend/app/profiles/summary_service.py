@@ -1,8 +1,8 @@
 import asyncio
-from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
 import json
 import logging
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,6 @@ from app.accounts.model import AccountType
 from app.core.config import Settings
 from app.profiles.repository import get_business_profile, get_user_profile
 from app.profiles.schemas import MeRead
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 

@@ -8,7 +8,6 @@ from app.queues.model import (
     QueueProviderService,
 )
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

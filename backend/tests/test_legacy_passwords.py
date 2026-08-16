@@ -3,7 +3,6 @@ import pytest
 from app.auth.security import verify_password_with_rehash
 from app.legacy_migration.passwords import verify_legacy_pbkdf2
 
-
 LEGACY_HASH = (
     "00112233445566778899aabbccddeeff$"
     "0ba712d93841d92cdc0a7a9149951429107b035040d07fd5bb3829bf79acd927"

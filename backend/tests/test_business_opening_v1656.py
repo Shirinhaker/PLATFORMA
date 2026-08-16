@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
@@ -18,7 +18,6 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-
 
 NOW = datetime(2026, 8, 11, 11, 0, tzinfo=UTC)
 OUTBOX_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

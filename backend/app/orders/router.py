@@ -9,6 +9,8 @@ from app.auth.dependencies import (
     require_staff_permission,
 )
 from app.orders.schemas import (
+    OrderChatRead,
+    OrderCreate,
     OrderMessageCreate,
     OrderMessageEdit,
     OrderMessageRead,
@@ -17,11 +19,8 @@ from app.orders.schemas import (
     OrderProblemSolution,
     OrderRead,
     OrderStatusChange,
-    OrderCreate,
-    OrderChatRead,
 )
 from app.orders.service import OrderService
-
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

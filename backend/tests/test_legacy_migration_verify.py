@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -20,12 +20,12 @@ from app.legacy_migration.model import (
     OwnerState,
     ReviewState,
 )
-from app.listings.model import Listing
 from app.legacy_migration.verify import (
     VerificationInput,
     evaluate_gates,
     verify_migration,
 )
+from app.listings.model import Listing
 
 
 def valid_input(**changes):

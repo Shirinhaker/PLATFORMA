@@ -21,7 +21,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 IDENTITY_BIGINT = BigInteger().with_variant(Integer, "sqlite")
 ACTIVE_QUEUE_SQL = "status IN ('waiting', 'called', 'in_service')"
 

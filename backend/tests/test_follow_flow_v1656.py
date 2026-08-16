@@ -21,7 +21,6 @@ from app.follows.service import FollowService
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
 
-
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 STAMP = 1785200000
 READER = 70          # obuna bo'luvchi oddiy foydalanuvchi

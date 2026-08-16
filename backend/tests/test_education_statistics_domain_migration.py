@@ -11,7 +11,6 @@ from app.education.model import (
 )
 from app.education.router import router as education_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0021_education_statistics.py"
 MAIN = ROOT / "backend/app/main.py"

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-import inspect
 from typing import Any
 
 from sqlalchemy import select
@@ -13,7 +13,6 @@ from app.db.session import Database
 from app.legacy_migration.advertisement_stage import import_advertisements
 from app.legacy_migration.catalog_stage import import_catalog
 from app.legacy_migration.listing_stage import import_listings
-from app.legacy_migration.story_stage import import_stories
 from app.legacy_migration.media_stage import migrate_media
 from app.legacy_migration.model import (
     MigrationEnvironment,
@@ -32,6 +31,7 @@ from app.legacy_migration.source import (
     inventory_source,
     open_immutable,
 )
+from app.legacy_migration.story_stage import import_stories
 from app.legacy_migration.verify import (
     VerificationReport,
     verify_migration,
@@ -274,53 +274,51 @@ def build_database_runner(
         approval: ProductionApproval | None,
     ) -> MigrationRun:
         target_environment = MigrationEnvironment(environment)
-        async with database.session() as session:
-            async with session.begin():
-                existing = await session.scalar(
-                    select(MigrationRun)
-                    .where(
-                        MigrationRun.source_database_sha256
-                        == snapshot.database_sha256,
-                        MigrationRun.media_manifest_sha256
-                        == snapshot.manifest_sha256,
-                        MigrationRun.environment == target_environment,
-                        MigrationRun.schema_version
-                        == MIGRATION_SCHEMA_VERSION,
-                    )
-                    .order_by(MigrationRun.id.desc())
-                    .limit(1)
+        async with database.session() as session, session.begin():
+            existing = await session.scalar(
+                select(MigrationRun)
+                .where(
+                    MigrationRun.source_database_sha256
+                    == snapshot.database_sha256,
+                    MigrationRun.media_manifest_sha256
+                    == snapshot.manifest_sha256,
+                    MigrationRun.environment == target_environment,
+                    MigrationRun.schema_version
+                    == MIGRATION_SCHEMA_VERSION,
                 )
-                if (
-                    existing is not None
-                    and existing.schema_version == MIGRATION_SCHEMA_VERSION
-                ):
-                    return existing
-                run = MigrationRun(
-                    source_database_sha256=snapshot.database_sha256,
-                    media_manifest_sha256=snapshot.manifest_sha256,
-                    schema_version=MIGRATION_SCHEMA_VERSION,
-                    environment=target_environment,
-                    stage=MigrationStage.SNAPSHOT,
-                    status=MigrationStatus.RUNNING,
-                    counters_json={},
-                    error_count=0,
-                    approved_staging_run_id=(
-                        approval.approved_staging_run_id
-                        if approval is not None
-                        else None
-                    ),
-                    started_at=datetime.now(UTC),
-                )
-                session.add(run)
-                await session.flush()
-                return run
+                .order_by(MigrationRun.id.desc())
+                .limit(1)
+            )
+            if (
+                existing is not None
+                and existing.schema_version == MIGRATION_SCHEMA_VERSION
+            ):
+                return existing
+            run = MigrationRun(
+                source_database_sha256=snapshot.database_sha256,
+                media_manifest_sha256=snapshot.manifest_sha256,
+                schema_version=MIGRATION_SCHEMA_VERSION,
+                environment=target_environment,
+                stage=MigrationStage.SNAPSHOT,
+                status=MigrationStatus.RUNNING,
+                counters_json={},
+                error_count=0,
+                approved_staging_run_id=(
+                    approval.approved_staging_run_id
+                    if approval is not None
+                    else None
+                ),
+                started_at=datetime.now(UTC),
+            )
+            session.add(run)
+            await session.flush()
+            return run
 
     async def save(run: MigrationRun) -> MigrationRun:
-        async with database.session() as session:
-            async with session.begin():
-                saved = await session.merge(run)
-                await session.flush()
-                return saved
+        async with database.session() as session, session.begin():
+            saved = await session.merge(run)
+            await session.flush()
+            return saved
 
     async def validate_staging(
         run_id: int,
@@ -340,22 +338,20 @@ def build_database_runner(
             )
 
     async def inventory_handler(snapshot, run):
-        async with database.session() as session:
-            async with session.begin():
-                source = open_immutable(snapshot.path)
-                try:
-                    return {"inventory": inventory_source(source)}
-                finally:
-                    source.close()
+        async with database.session() as session, session.begin():
+            source = open_immutable(snapshot.path)
+            try:
+                return {"inventory": inventory_source(source)}
+            finally:
+                source.close()
 
     async def transaction_stage(snapshot, run, function):
-        async with database.session() as session:
-            async with session.begin():
-                source = open_immutable(snapshot.path)
-                try:
-                    return await function(session, source, run)
-                finally:
-                    source.close()
+        async with database.session() as session, session.begin():
+            source = open_immutable(snapshot.path)
+            try:
+                return await function(session, source, run)
+            finally:
+                source.close()
 
     async def import_listings_and_stories(session, source, run):
         listings = await import_listings(session, source, run)
@@ -427,16 +423,15 @@ async def _media_transaction(
     storage: R2Storage,
     settings: Settings,
 ) -> StageResult:
-    async with database.session() as session:
-        async with session.begin():
-            source = open_immutable(snapshot.path)
-            try:
-                return await migrate_media(
-                    session,
-                    source,
-                    storage,
-                    settings,
-                    run,
-                )
-            finally:
-                source.close()
+    async with database.session() as session, session.begin():
+        source = open_immutable(snapshot.path)
+        try:
+            return await migrate_media(
+                session,
+                source,
+                storage,
+                settings,
+                run,
+            )
+        finally:
+            source.close()

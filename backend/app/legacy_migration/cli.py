@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import asdict
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from sqlalchemy import select
 
 from app.core.config import Settings
+
 # Domenlararo tashqi kalitlar yechilishi uchun barcha modellar kerak
 # (`stories.created_by_staff_id` → `staff_members.id`).
 from app.db import all_models  # noqa: F401

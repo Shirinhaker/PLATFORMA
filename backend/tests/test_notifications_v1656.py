@@ -18,8 +18,8 @@ from app.notifications.model import (
     PushDevice,
     PushOutbox,
 )
-from app.notifications.repository import NotificationRepository
 from app.notifications.push_worker import PendingPush, process_push_batch
+from app.notifications.repository import NotificationRepository
 from app.notifications.schemas import (
     NotificationFilterWrite,
     NotificationPreferenceWrite,
@@ -28,7 +28,6 @@ from app.notifications.schemas import (
 from app.notifications.service import NotificationService, price_number
 from app.orders.model import Order  # noqa: F401
 from app.profiles.model import ProfileLink
-
 
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime(2026, 8, 10, 8, 0, tzinfo=UTC)

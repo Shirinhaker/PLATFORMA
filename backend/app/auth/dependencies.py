@@ -1,6 +1,6 @@
+import hmac
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import hmac
 from typing import Annotated
 
 from fastapi import Depends, Header, Request

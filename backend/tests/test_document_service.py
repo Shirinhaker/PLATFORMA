@@ -18,7 +18,6 @@ from app.documents.schemas import (
 from app.documents.service import DocumentService
 from app.profiles.model import BusinessProfile
 
-
 NOW = datetime(2026, 8, 10, 14, 30, tzinfo=UTC)
 
 

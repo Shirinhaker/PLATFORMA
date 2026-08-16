@@ -21,7 +21,6 @@ from app.taxi.schemas import (
 )
 from app.taxi.service import TaxiService
 
-
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 RideId = Annotated[int, Path(gt=0)]

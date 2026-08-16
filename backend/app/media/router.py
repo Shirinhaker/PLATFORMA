@@ -1,11 +1,12 @@
 from typing import Annotated, Literal
 
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict, Field
+
 from app.accounts.model import AccountType
 from app.auth.dependencies import CurrentAccount, require_csrf, require_staff_permission
 from app.core.errors import ApiError
 from app.media.storage import UploadRejected
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(prefix="/api/v1/media", tags=["media"])
 

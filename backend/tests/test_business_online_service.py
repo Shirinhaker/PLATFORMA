@@ -7,7 +7,6 @@ from app.business_online.service import BusinessOnlineService
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 # Navbat sanasi xizmatning o'z soati bilan solishtiriladi (Toshkent, UTC+5).
 # Qattiq yozilgan sana bilan test o'sha kun o'tishi bilan yiqilardi.
 TODAY = (datetime.now(UTC) + timedelta(hours=5)).strftime("%Y-%m-%d")

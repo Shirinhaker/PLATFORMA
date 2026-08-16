@@ -23,7 +23,6 @@ from app.legacy_migration.reconcile import (
     source_row_hash,
 )
 
-
 VALID_KINDS = {"product", "service"}
 
 

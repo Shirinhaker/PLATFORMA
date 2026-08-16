@@ -12,14 +12,13 @@ from app.debt_ledger.model import Debtor, DebtTransaction
 from app.debt_ledger.repository import DebtLedgerRepository
 from app.debt_ledger.schemas import (
     DebtMutationRead,
-    DebtTransactionCreate,
-    DebtTransactionRead,
     DebtorCreate,
     DebtorCreated,
     DebtorDetailRead,
     DebtorRead,
+    DebtTransactionCreate,
+    DebtTransactionRead,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

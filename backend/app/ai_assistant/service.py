@@ -1,7 +1,7 @@
+import json
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, time, timedelta, timezone
-import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,9 +15,14 @@ from app.ai_assistant.documents import (
 from app.ai_assistant.model import AIChatMessage
 from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.repository import AIAssistantRepository
-from app.ai_assistant.schemas import AIChatAnswerRead, AIChatHistoryRead, AIChatMessageRead, AIDocumentDraftRead, AIDocumentDraftRequest
+from app.ai_assistant.schemas import (
+    AIChatAnswerRead,
+    AIChatHistoryRead,
+    AIChatMessageRead,
+    AIDocumentDraftRead,
+    AIDocumentDraftRequest,
+)
 from app.core.errors import ApiError
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 UZ_TZ = timezone(timedelta(hours=5))

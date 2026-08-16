@@ -12,7 +12,6 @@ from app.inventory.live_sync import sync_business_inventory
 from app.inventory.model import InventoryItem, StockBatch, StockMove
 from app.staff.model import StaffMember  # noqa: F401 — StockMove FK metadata uchun.
 
-
 NOW = datetime(2026, 8, 10, tzinfo=UTC)
 
 

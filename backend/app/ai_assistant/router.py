@@ -2,12 +2,23 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.ai_assistant.schemas import AIChatAnswerRead, AIChatHistoryRead, AIChatRequest, AIDocumentDraftRead, AIDocumentDraftRequest, AIStatusRead
+from app.ai_assistant.schemas import (
+    AIChatAnswerRead,
+    AIChatHistoryRead,
+    AIChatRequest,
+    AIDocumentDraftRead,
+    AIDocumentDraftRequest,
+    AIStatusRead,
+)
 from app.ai_assistant.service import AIAssistantService
-from app.auth.dependencies import CurrentAccount, require_business_owner, require_csrf, require_current_account
+from app.auth.dependencies import (
+    CurrentAccount,
+    require_business_owner,
+    require_csrf,
+    require_current_account,
+)
 from app.cache.rate_limit import consume_rate_limit
 from app.core.errors import ApiError
-
 
 router = APIRouter(prefix="/api/v1/ai-assistant", tags=["ai-assistant"])
 ReadAccount = Annotated[CurrentAccount, Depends(require_current_account)]

@@ -32,7 +32,6 @@ from app.education.service import EducationEnrollmentService
 from app.legacy_migration.model import LegacyIdMap, OwnerState, ReviewState
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 
-
 NOW = datetime(2026, 8, 4, 9, 30, tzinfo=UTC)
 STAMP = 1785000000
 BUSINESS_ID = 7

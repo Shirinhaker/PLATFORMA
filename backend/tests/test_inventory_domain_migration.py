@@ -12,7 +12,6 @@ from app.inventory.model import (
 )
 from app.inventory.router import router as inventory_router
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

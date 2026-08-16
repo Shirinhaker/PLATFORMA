@@ -10,10 +10,8 @@ from sqlalchemy.orm import Session
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.model import CabinetRecord, CabinetRecordField, CabinetResource
 from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
-from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
 from app.db.base import Base
-from app.debt_ledger.model import Debtor
 from app.education.management_service import EducationManagementService
 from app.education.model import (
     EducationAttendance,
@@ -31,16 +29,12 @@ from app.education.schemas import (
     EducationPaymentCreate,
     EducationPaymentVoid,
     EducationPayrollCreate,
-    EducationTeacherWrite,
     EducationStudentTransferWrite,
     EducationStudentWrite,
+    EducationTeacherWrite,
 )
 from app.expenses.model import Expense
-from app.inventory.model import InventoryItem, StockMove
-from app.orders.model import Order
 from app.profiles.model import BusinessProfile
-from app.staff.model import StaffMember
-
 
 NOW = datetime(2026, 8, 10, 9, 0, tzinfo=UTC)
 BUSINESS_ID = 7

@@ -15,12 +15,10 @@ from app.statistics.schemas import (
     StatisticsPaymentRead,
     StatisticsProductRead,
     StatisticsReportRead,
-    StatisticsSourceRead,
     StatisticsSourceSplitRead,
     StatisticsTrendRead,
     StatisticsWaiterRead,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

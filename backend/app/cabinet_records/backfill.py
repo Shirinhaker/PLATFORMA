@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,11 @@ from app.cabinet_records.contract import NORMALIZATION_SCHEMA_VERSION
 from app.cabinet_records.model import CabinetNormalizationRun
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.cabinet_records.security import assert_payload_safe
-from app.cabinet_records.verify import PayloadParity, payload_digest, verify_payload_parity
+from app.cabinet_records.verify import (
+    PayloadParity,
+    payload_digest,
+    verify_payload_parity,
+)
 from app.profiles.model import BusinessProfile, UserProfile
 
 

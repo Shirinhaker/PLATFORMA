@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 import sqlite3
+from types import SimpleNamespace
 
 import pytest
 

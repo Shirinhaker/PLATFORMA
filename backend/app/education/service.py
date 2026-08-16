@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-import time
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +13,6 @@ from app.core.errors import ApiError
 from app.education.model import CourseEnrollment, EducationStudent
 from app.education.repository import EducationEnrollmentRepository
 from app.education.schemas import CourseEnrollmentCreate, CourseEnrollmentCreated
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 

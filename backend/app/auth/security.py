@@ -1,9 +1,9 @@
 import base64
-from dataclasses import dataclass
 import hashlib
 import hmac
 import json
 import secrets
+from dataclasses import dataclass
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
@@ -11,7 +11,6 @@ from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 from app.accounts.model import AccountType
 from app.legacy_migration.passwords import verify_legacy_pbkdf2
-
 
 try:
     from argon2 import PasswordHasher

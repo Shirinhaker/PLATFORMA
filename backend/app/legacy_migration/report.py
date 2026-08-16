@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
-import json
 from typing import Any
 
 from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.verify import VerificationReport
-
 
 FORBIDDEN_REPORT_KEYS = {
     "name",

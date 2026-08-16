@@ -34,7 +34,6 @@ from app.admin.moderation_model import (
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 

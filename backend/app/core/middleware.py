@@ -1,9 +1,8 @@
-from contextvars import ContextVar
 import re
 import uuid
+from contextvars import ContextVar
 
 from starlette.middleware.base import BaseHTTPMiddleware
-
 
 request_id_context: ContextVar[str] = ContextVar(
     "request_id",

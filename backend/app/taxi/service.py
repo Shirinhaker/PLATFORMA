@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-import math
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -34,7 +34,6 @@ from app.taxi.schemas import (
     RidePerson,
     RideRead,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

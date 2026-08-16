@@ -4,7 +4,6 @@ from pathlib import Path
 from app.expenses.model import Expense, ExpenseCategory
 from app.expenses.router import router as expenses_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0018_expense_domain.py"
 ALEMBIC_ENV = ROOT / "backend/migrations/env.py"

@@ -16,7 +16,6 @@ from app.specialists.schemas import (
 )
 from app.specialists.service import SpecialistService
 
-
 router = APIRouter(prefix="/api/v1/specialists", tags=["specialists"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

@@ -12,11 +12,11 @@ tushirmagan.
 
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
+
 import pytest
 
 from app.core.config import Settings
 from app.main import create_app
-
 
 EXPECTED_SERVICES = (
     "advertisement_service",

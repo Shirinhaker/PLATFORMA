@@ -21,7 +21,6 @@ from app.reviews.schemas import (
     ReviewWrite,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 

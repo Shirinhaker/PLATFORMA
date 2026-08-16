@@ -7,9 +7,9 @@ saqlangan, chunki ekran bitta tugma bilan ishlaydi.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-import time
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -28,7 +28,6 @@ from app.follows.schemas import (
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]
