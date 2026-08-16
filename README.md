@@ -2,13 +2,16 @@
 
 Active production repository modular arxitekturaga o'tgan.
 
+> **Loyihaga yangi kelgan bo'lsangiz — [`ARCHITECTURE.md`](./ARCHITECTURE.md) ni o'qing.**
+> U yerda so'rov oqimi, 38 ta backend moduli, frontend xaritasi va tuzoqlar bor.
+
 ## Tuzilma
 
-- `backend/` вЂ” FastAPI modular API, worker va PostgreSQL migratsiyalari
-- `frontend/` вЂ” React + TypeScript + Vite
-- `infra/` вЂ” deployment/infra konfiguratsiyasi
-- `docs/` вЂ” migratsiya va production cutover dalillari
-- `compose.yaml` вЂ” local PostgreSQL + Redis + API + worker
+- `backend/` — FastAPI modular API, worker va PostgreSQL migratsiyalari
+- `frontend/` — React + TypeScript + Vite
+- `infra/` — deployment/infra konfiguratsiyasi
+- `docs/` — migratsiya va production cutover dalillari
+- `compose.yaml` — local PostgreSQL + Redis + API + worker
 
 ## Legacy v1656
 

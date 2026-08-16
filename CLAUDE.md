@@ -1,4 +1,4 @@
-# PLATFORMA вЂ” loyiha qoidalari
+# PLATFORMA — loyiha qoidalari
 
 ## Faol arxitektura
 
