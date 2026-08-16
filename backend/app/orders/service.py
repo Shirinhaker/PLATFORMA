@@ -11,4 +11,6 @@ nomdan import qiladi.
 from app.orders.service_parts import OrderService
 from app.orders.service_parts.helpers import *  # noqa: F403
 
-__all__ = ["OrderService"]
+__all__ = [
+    "OrderService",
+]

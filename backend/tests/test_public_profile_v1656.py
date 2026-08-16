@@ -10,7 +10,7 @@ from app.db.base import Base
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile
-from app.public_discovery import repository as public_repository
+from app.public_discovery.queries import profile as profile_queries
 from app.public_discovery.repository import build_public_id, load_public_profile
 from app.public_discovery.schemas import PublicResultKind
 from app.queues.model import QueueEntry, QueueProvider, QueueProviderService
@@ -215,7 +215,10 @@ async def test_public_education_profile_enriches_course_metadata_from_cabinet_re
                 }
             ]
 
-    monkeypatch.setattr(public_repository, "_cabinet_records", CourseRecords())
+    # Nom **ishlatilgan** modulda almashtiriladi: `profile.py` uni import
+    # qilib olgan, shuning uchun qayta-eksport qobig'ini o'zgartirish yetmaydi.
+    monkeypatch.setattr(profile_queries, "_cabinet_records", CourseRecords())
+
     try:
         session.add_all(
             (
