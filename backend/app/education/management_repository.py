@@ -43,14 +43,16 @@ class EducationManagementRepository:
             .correlate(EducationGroup)
             .scalar_subquery()
         )
-        return (await session.execute(
-            select(EducationGroup, student_count.label("student_count"))
-            .where(
-                EducationGroup.business_account_id == business_account_id,
-                EducationGroup.status == "active",
+        return (
+            await session.execute(
+                select(EducationGroup, student_count.label("student_count"))
+                .where(
+                    EducationGroup.business_account_id == business_account_id,
+                    EducationGroup.status == "active",
+                )
+                .order_by(EducationGroup.id.desc())
             )
-            .order_by(EducationGroup.id.desc())
-        )).all()
+        ).all()
 
     async def active_group(
         self,
@@ -120,18 +122,22 @@ class EducationManagementRepository:
         business_account_id: int,
         student_id: int,
     ) -> list[EducationPayment]:
-        return list((await session.scalars(
-            select(EducationPayment)
-            .where(
-                EducationPayment.business_account_id == business_account_id,
-                EducationPayment.student_id == student_id,
-            )
-            .order_by(
-                EducationPayment.payment_month.desc(),
-                EducationPayment.id.desc(),
-            )
-            .limit(300)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(EducationPayment)
+                    .where(
+                        EducationPayment.business_account_id == business_account_id,
+                        EducationPayment.student_id == student_id,
+                    )
+                    .order_by(
+                        EducationPayment.payment_month.desc(),
+                        EducationPayment.id.desc(),
+                    )
+                    .limit(300)
+                )
+            ).all()
+        )
 
     async def student_group_history(
         self,
@@ -140,26 +146,28 @@ class EducationManagementRepository:
         business_account_id: int,
         student_id: int,
     ):
-        return (await session.execute(
-            select(EducationStudentGroupHistory, EducationGroup.name)
-            .outerjoin(
-                EducationGroup,
-                (EducationGroup.id == EducationStudentGroupHistory.group_id)
-                & (
-                    EducationGroup.business_account_id
-                    == EducationStudentGroupHistory.business_account_id
-                ),
+        return (
+            await session.execute(
+                select(EducationStudentGroupHistory, EducationGroup.name)
+                .outerjoin(
+                    EducationGroup,
+                    (EducationGroup.id == EducationStudentGroupHistory.group_id)
+                    & (
+                        EducationGroup.business_account_id
+                        == EducationStudentGroupHistory.business_account_id
+                    ),
+                )
+                .where(
+                    EducationStudentGroupHistory.business_account_id
+                    == business_account_id,
+                    EducationStudentGroupHistory.student_id == student_id,
+                )
+                .order_by(
+                    EducationStudentGroupHistory.started_date.desc(),
+                    EducationStudentGroupHistory.id.desc(),
+                )
             )
-            .where(
-                EducationStudentGroupHistory.business_account_id
-                == business_account_id,
-                EducationStudentGroupHistory.student_id == student_id,
-            )
-            .order_by(
-                EducationStudentGroupHistory.started_date.desc(),
-                EducationStudentGroupHistory.id.desc(),
-            )
-        )).all()
+        ).all()
 
     async def attendance_for_day(
         self,
@@ -169,22 +177,24 @@ class EducationManagementRepository:
         group_id: int,
         lesson_date: str,
     ):
-        return (await session.execute(
-            select(EducationStudent, EducationAttendance)
-            .outerjoin(
-                EducationAttendance,
-                (EducationAttendance.business_account_id == business_account_id)
-                & (EducationAttendance.group_id == group_id)
-                & (EducationAttendance.student_id == EducationStudent.id)
-                & (EducationAttendance.lesson_date == lesson_date),
+        return (
+            await session.execute(
+                select(EducationStudent, EducationAttendance)
+                .outerjoin(
+                    EducationAttendance,
+                    (EducationAttendance.business_account_id == business_account_id)
+                    & (EducationAttendance.group_id == group_id)
+                    & (EducationAttendance.student_id == EducationStudent.id)
+                    & (EducationAttendance.lesson_date == lesson_date),
+                )
+                .where(
+                    EducationStudent.business_account_id == business_account_id,
+                    EducationStudent.group_id == group_id,
+                    EducationStudent.status == "active",
+                )
+                .order_by(func.lower(EducationStudent.full_name), EducationStudent.id)
             )
-            .where(
-                EducationStudent.business_account_id == business_account_id,
-                EducationStudent.group_id == group_id,
-                EducationStudent.status == "active",
-            )
-            .order_by(func.lower(EducationStudent.full_name), EducationStudent.id)
-        )).all()
+        ).all()
 
     async def attendance_rows(
         self,
@@ -216,13 +226,17 @@ class EducationManagementRepository:
         group_id: int,
         lesson_date: str,
     ) -> list[EducationAttendance]:
-        return list((await session.scalars(
-            select(EducationAttendance).where(
-                EducationAttendance.business_account_id == business_account_id,
-                EducationAttendance.group_id == group_id,
-                EducationAttendance.lesson_date == lesson_date,
-            )
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(EducationAttendance).where(
+                        EducationAttendance.business_account_id == business_account_id,
+                        EducationAttendance.group_id == group_id,
+                        EducationAttendance.lesson_date == lesson_date,
+                    )
+                )
+            ).all()
+        )
 
     async def payment_totals(
         self,
@@ -248,9 +262,7 @@ class EducationManagementRepository:
             .group_by(EducationPayment.student_id, EducationPayment.payment_month)
         )
         if minimum_month:
-            statement = statement.where(
-                EducationPayment.payment_month >= minimum_month
-            )
+            statement = statement.where(EducationPayment.payment_month >= minimum_month)
         return (await session.execute(statement)).all()
 
     async def active_payments(
@@ -269,9 +281,7 @@ class EducationManagementRepository:
             EducationPayment.voided_at.is_(None),
         )
         if minimum_month:
-            statement = statement.where(
-                EducationPayment.payment_month >= minimum_month
-            )
+            statement = statement.where(EducationPayment.payment_month >= minimum_month)
         return list((await session.scalars(statement)).all())
 
     async def payment_history(
@@ -281,23 +291,25 @@ class EducationManagementRepository:
         business_account_id: int,
         payment_month: str,
     ):
-        return (await session.execute(
-            select(EducationPayment, EducationStudent.full_name)
-            .outerjoin(
-                EducationStudent,
-                (EducationStudent.id == EducationPayment.student_id)
-                & (
-                    EducationStudent.business_account_id
-                    == EducationPayment.business_account_id
-                ),
+        return (
+            await session.execute(
+                select(EducationPayment, EducationStudent.full_name)
+                .outerjoin(
+                    EducationStudent,
+                    (EducationStudent.id == EducationPayment.student_id)
+                    & (
+                        EducationStudent.business_account_id
+                        == EducationPayment.business_account_id
+                    ),
+                )
+                .where(
+                    EducationPayment.business_account_id == business_account_id,
+                    EducationPayment.payment_month == payment_month,
+                )
+                .order_by(EducationPayment.id.desc())
+                .limit(300)
             )
-            .where(
-                EducationPayment.business_account_id == business_account_id,
-                EducationPayment.payment_month == payment_month,
-            )
-            .order_by(EducationPayment.id.desc())
-            .limit(300)
-        )).all()
+        ).all()
 
     async def payment(
         self,
@@ -331,14 +343,16 @@ class EducationManagementRepository:
             .correlate(EducationTeacher)
             .scalar_subquery()
         )
-        return (await session.execute(
-            select(EducationTeacher, group_count.label("group_count"))
-            .where(
-                EducationTeacher.business_account_id == business_account_id,
-                EducationTeacher.status == "active",
+        return (
+            await session.execute(
+                select(EducationTeacher, group_count.label("group_count"))
+                .where(
+                    EducationTeacher.business_account_id == business_account_id,
+                    EducationTeacher.status == "active",
+                )
+                .order_by(func.lower(EducationTeacher.full_name), EducationTeacher.id)
             )
-            .order_by(func.lower(EducationTeacher.full_name), EducationTeacher.id)
-        )).all()
+        ).all()
 
     async def active_teacher(
         self,
@@ -397,27 +411,29 @@ class EducationManagementRepository:
         business_account_id: int,
         payment_month: str,
     ):
-        return (await session.execute(
-            select(
-                EducationGroup.teacher_id,
-                EducationAttendance.group_id,
-                EducationAttendance.lesson_date,
+        return (
+            await session.execute(
+                select(
+                    EducationGroup.teacher_id,
+                    EducationAttendance.group_id,
+                    EducationAttendance.lesson_date,
+                )
+                .join(
+                    EducationGroup,
+                    (EducationGroup.id == EducationAttendance.group_id)
+                    & (
+                        EducationGroup.business_account_id
+                        == EducationAttendance.business_account_id
+                    ),
+                )
+                .where(
+                    EducationAttendance.business_account_id == business_account_id,
+                    EducationAttendance.lesson_date.like(f"{payment_month}-%"),
+                    EducationGroup.teacher_id.is_not(None),
+                )
+                .distinct()
             )
-            .join(
-                EducationGroup,
-                (EducationGroup.id == EducationAttendance.group_id)
-                & (
-                    EducationGroup.business_account_id
-                    == EducationAttendance.business_account_id
-                ),
-            )
-            .where(
-                EducationAttendance.business_account_id == business_account_id,
-                EducationAttendance.lesson_date.like(f"{payment_month}-%"),
-                EducationGroup.teacher_id.is_not(None),
-            )
-            .distinct()
-        )).all()
+        ).all()
 
     async def teacher_payment_totals(
         self,
@@ -426,18 +442,19 @@ class EducationManagementRepository:
         business_account_id: int,
         payment_month: str,
     ):
-        return (await session.execute(
-            select(
-                EducationTeacherPayment.teacher_id,
-                func.coalesce(func.sum(EducationTeacherPayment.amount), 0),
+        return (
+            await session.execute(
+                select(
+                    EducationTeacherPayment.teacher_id,
+                    func.coalesce(func.sum(EducationTeacherPayment.amount), 0),
+                )
+                .where(
+                    EducationTeacherPayment.business_account_id == business_account_id,
+                    EducationTeacherPayment.payment_month == payment_month,
+                )
+                .group_by(EducationTeacherPayment.teacher_id)
             )
-            .where(
-                EducationTeacherPayment.business_account_id
-                == business_account_id,
-                EducationTeacherPayment.payment_month == payment_month,
-            )
-            .group_by(EducationTeacherPayment.teacher_id)
-        )).all()
+        ).all()
 
     async def teacher_payment_history(
         self,
@@ -446,24 +463,25 @@ class EducationManagementRepository:
         business_account_id: int,
         payment_month: str,
     ):
-        return (await session.execute(
-            select(EducationTeacherPayment, EducationTeacher.full_name)
-            .outerjoin(
-                EducationTeacher,
-                (EducationTeacher.id == EducationTeacherPayment.teacher_id)
-                & (
-                    EducationTeacher.business_account_id
-                    == EducationTeacherPayment.business_account_id
-                ),
+        return (
+            await session.execute(
+                select(EducationTeacherPayment, EducationTeacher.full_name)
+                .outerjoin(
+                    EducationTeacher,
+                    (EducationTeacher.id == EducationTeacherPayment.teacher_id)
+                    & (
+                        EducationTeacher.business_account_id
+                        == EducationTeacherPayment.business_account_id
+                    ),
+                )
+                .where(
+                    EducationTeacherPayment.business_account_id == business_account_id,
+                    EducationTeacherPayment.payment_month == payment_month,
+                )
+                .order_by(EducationTeacherPayment.id.desc())
+                .limit(300)
             )
-            .where(
-                EducationTeacherPayment.business_account_id
-                == business_account_id,
-                EducationTeacherPayment.payment_month == payment_month,
-            )
-            .order_by(EducationTeacherPayment.id.desc())
-            .limit(300)
-        )).all()
+        ).all()
 
     async def teacher_payment(
         self,

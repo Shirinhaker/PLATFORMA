@@ -24,7 +24,6 @@ from app.public_discovery.repository import (
     load_public_district_offers,
 )
 
-
 NOW = datetime(2026, 8, 12, tzinfo=UTC)
 
 
@@ -136,10 +135,12 @@ async def test_home_offer_filter_matches_v1656_plus_pro_policy_on_postgresql():
 
     assert await _active_home_offer_business_ids(session, {21}) == set()
     assert session.statement is not None
-    sql = str(session.statement.compile(
-        dialect=postgresql.dialect(),
-        compile_kwargs={"literal_binds": True},
-    ))
+    sql = str(
+        session.statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
 
     assert "business_subscriptions.plan_code IN ('plus', 'pro')" in sql
     assert "business_subscriptions.is_demo" not in sql
@@ -172,51 +173,53 @@ async def test_native_paid_subscription_shows_home_product_card(
     )
     session = Session(engine, expire_on_commit=False)
     try:
-        session.add_all((
-            account(11, AccountType.USER),
-            account(21, AccountType.BUSINESS),
-            owner_profile(11),
-            business_profile(21),
-            ProfileLink(
-                user_account_id=11,
-                business_account_id=21,
-                created_at=NOW,
-            ),
-            CatalogItem(
-                id=101,
-                public_id="p_test",
-                business_account_id=21,
-                source_record_key=None,
-                catalog_group_id=None,
-                owner_name_snapshot="Turon Savdo",
-                name="Guruch",
-                price_text="18 000 so'm",
-                unit="kg",
-                note="",
-                kind="product",
-                queue_enabled=False,
-                image_object_key="guruch.webp",
-                status="active",
-                owner_state=OwnerState.LINKED,
-                review_state=ReviewState.READY,
-                migration_run_id=None,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            BusinessSubscription(
-                id=301,
-                business_account_id=21,
-                legacy_source_id=None,
-                plan_code=plan_code,
-                duration_months=12,
-                starts_at=int(NOW.timestamp()),
-                expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
-                status="active",
-                is_demo=is_demo,
-                payment_request_id=None,
-                created_at=int(NOW.timestamp()),
-            ),
-        ))
+        session.add_all(
+            (
+                account(11, AccountType.USER),
+                account(21, AccountType.BUSINESS),
+                owner_profile(11),
+                business_profile(21),
+                ProfileLink(
+                    user_account_id=11,
+                    business_account_id=21,
+                    created_at=NOW,
+                ),
+                CatalogItem(
+                    id=101,
+                    public_id="p_test",
+                    business_account_id=21,
+                    source_record_key=None,
+                    catalog_group_id=None,
+                    owner_name_snapshot="Turon Savdo",
+                    name="Guruch",
+                    price_text="18 000 so'm",
+                    unit="kg",
+                    note="",
+                    kind="product",
+                    queue_enabled=False,
+                    image_object_key="guruch.webp",
+                    status="active",
+                    owner_state=OwnerState.LINKED,
+                    review_state=ReviewState.READY,
+                    migration_run_id=None,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                BusinessSubscription(
+                    id=301,
+                    business_account_id=21,
+                    legacy_source_id=None,
+                    plan_code=plan_code,
+                    duration_months=12,
+                    starts_at=int(NOW.timestamp()),
+                    expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
+                    status="active",
+                    is_demo=is_demo,
+                    payment_request_id=None,
+                    created_at=int(NOW.timestamp()),
+                ),
+            )
+        )
         session.commit()
 
         payload = await load_public_district_offers(

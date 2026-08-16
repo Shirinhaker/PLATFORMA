@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 import importlib
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -9,7 +9,6 @@ import pytest
 from app.accounts.model import AccountType
 from app.core.config import Settings
 from app.main import create_app
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,22 +27,10 @@ def test_story_limits_and_signature_validation_match_v1656():
     assert processor.MAX_VIDEO_SECONDS == 60.0
     assert processor.MAX_CAPTION_LENGTH == 200
     assert processor.sniff_media_type(b"\xff\xd8\xffrest") == "image/jpeg"
-    assert (
-        processor.sniff_media_type(b"\x89PNG\r\n\x1a\nrest")
-        == "image/png"
-    )
-    assert (
-        processor.sniff_media_type(b"RIFF\x01\x00\x00\x00WEBPrest")
-        == "image/webp"
-    )
-    assert (
-        processor.sniff_media_type(b"\x00\x00\x00\x18ftypisomrest")
-        == "video/mp4"
-    )
-    assert (
-        processor.sniff_media_type(b"\x1a\x45\xdf\xa3rest")
-        == "video/webm"
-    )
+    assert processor.sniff_media_type(b"\x89PNG\r\n\x1a\nrest") == "image/png"
+    assert processor.sniff_media_type(b"RIFF\x01\x00\x00\x00WEBPrest") == "image/webp"
+    assert processor.sniff_media_type(b"\x00\x00\x00\x18ftypisomrest") == "video/mp4"
+    assert processor.sniff_media_type(b"\x1a\x45\xdf\xa3rest") == "video/webm"
 
 
 def test_story_upload_validation_rejects_spoofing_and_v1656_limits():
@@ -96,22 +83,56 @@ def test_story_upload_validation_rejects_spoofing_and_v1656_limits():
 def test_story_feed_rank_is_own_unseen_followed_nearest_newest():
     service = _stories_module("service")
     groups = [
-        {"name": "newest", "is_own": False, "has_unseen": False,
-         "is_followed": False, "distance_km": None, "latest_story_at": 50},
-        {"name": "nearest", "is_own": False, "has_unseen": True,
-         "is_followed": True, "distance_km": 1.0, "latest_story_at": 10},
-        {"name": "followed", "is_own": False, "has_unseen": True,
-         "is_followed": True, "distance_km": 5.0, "latest_story_at": 40},
-        {"name": "unseen", "is_own": False, "has_unseen": True,
-         "is_followed": False, "distance_km": 0.1, "latest_story_at": 30},
-        {"name": "own", "is_own": True, "has_unseen": False,
-         "is_followed": False, "distance_km": None, "latest_story_at": 1},
+        {
+            "name": "newest",
+            "is_own": False,
+            "has_unseen": False,
+            "is_followed": False,
+            "distance_km": None,
+            "latest_story_at": 50,
+        },
+        {
+            "name": "nearest",
+            "is_own": False,
+            "has_unseen": True,
+            "is_followed": True,
+            "distance_km": 1.0,
+            "latest_story_at": 10,
+        },
+        {
+            "name": "followed",
+            "is_own": False,
+            "has_unseen": True,
+            "is_followed": True,
+            "distance_km": 5.0,
+            "latest_story_at": 40,
+        },
+        {
+            "name": "unseen",
+            "is_own": False,
+            "has_unseen": True,
+            "is_followed": False,
+            "distance_km": 0.1,
+            "latest_story_at": 30,
+        },
+        {
+            "name": "own",
+            "is_own": True,
+            "has_unseen": False,
+            "is_followed": False,
+            "distance_km": None,
+            "latest_story_at": 1,
+        },
     ]
 
     ranked = service.rank_story_groups(groups)
 
     assert [item["name"] for item in ranked] == [
-        "own", "nearest", "followed", "unseen", "newest",
+        "own",
+        "nearest",
+        "followed",
+        "unseen",
+        "newest",
     ]
 
 
@@ -157,7 +178,7 @@ def test_story_migration_is_reversible_and_quarantines_unresolved_data():
     stage_source = stage.read_text(encoding="utf-8")
     assert "story.owner_unresolved" in stage_source
     assert "story.media_missing" in stage_source
-    assert "mapping_status=\"quarantined\"" in stage_source
+    assert 'mapping_status="quarantined"' in stage_source
     assert "source_row_hash" in stage_source
     verify_source = (ROOT / "app" / "legacy_migration" / "verify.py").read_text(
         encoding="utf-8"

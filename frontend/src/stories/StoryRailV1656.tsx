@@ -1,12 +1,10 @@
 import type { StoryGroup } from "../api/types";
 import "./StoriesV1656.css";
 
-
 type Props = {
   groups: StoryGroup[];
   onOpen(index: number): void;
 };
-
 
 export function StoryRailV1656({ groups, onOpen }: Props) {
   if (groups.length === 0) return null;
@@ -24,10 +22,14 @@ export function StoryRailV1656({ groups, onOpen }: Props) {
             {group.avatar_url || group.stories[0]?.thumbnail_url ? (
               <img alt="" src={group.avatar_url || group.stories[0]?.thumbnail_url} />
             ) : (
-              <span aria-hidden="true">{group.name.trim().charAt(0).toUpperCase()}</span>
+              <span aria-hidden="true">
+                {group.name.trim().charAt(0).toUpperCase()}
+              </span>
             )}
           </span>
-          <span className="story-rail-card-v1656__name">{group.is_own ? "Siz" : group.name}</span>
+          <span className="story-rail-card-v1656__name">
+            {group.is_own ? "Siz" : group.name}
+          </span>
         </button>
       ))}
     </section>

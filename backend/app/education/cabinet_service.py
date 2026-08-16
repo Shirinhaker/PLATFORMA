@@ -23,7 +23,6 @@ from app.education.model import (
 )
 from app.education.repository import EducationEnrollmentRepository
 
-
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 BILLING_TYPES = ("monthly", "attendance")
 
@@ -346,7 +345,9 @@ class EducationCabinetService:
 
         name = _text(value("name", current.name if current else ""), 80)
         if not name:
-            raise ApiError(400, "education_group_name_required", "Guruh nomini kiriting.")
+            raise ApiError(
+                400, "education_group_name_required", "Guruh nomini kiriting."
+            )
 
         raw_course = value(
             "course_item_id",
@@ -481,9 +482,7 @@ class EducationCabinetService:
         def value(key: str, fallback: Any) -> Any:
             return data[key] if key in data else fallback
 
-        full_name = _text(
-            value("full_name", current.full_name if current else ""), 120
-        )
+        full_name = _text(value("full_name", current.full_name if current else ""), 120)
         if not full_name:
             raise ApiError(
                 400,
@@ -603,6 +602,4 @@ class EducationCabinetService:
 def _day(now: int) -> str:
     from datetime import UTC, datetime, timedelta
 
-    return (
-        datetime.fromtimestamp(now, UTC) + timedelta(hours=5)
-    ).strftime("%Y-%m-%d")
+    return (datetime.fromtimestamp(now, UTC) + timedelta(hours=5)).strftime("%Y-%m-%d")

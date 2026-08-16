@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -162,9 +163,7 @@ class CabinetRecordRepository:
             marker.record_count = len(rows)
             marker.digest = payload_digest(restored)
             await session.execute(
-                delete(CabinetRecord).where(
-                    CabinetRecord.resource_id == marker.id
-                )
+                delete(CabinetRecord).where(CabinetRecord.resource_id == marker.id)
             )
             await session.flush()
 

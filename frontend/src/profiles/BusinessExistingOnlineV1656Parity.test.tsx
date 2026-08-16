@@ -14,7 +14,6 @@ import {
   isServiceOrder,
 } from "./BusinessOnlineViews";
 
-
 function actions() {
   return {
     busy: false,
@@ -28,7 +27,6 @@ function actions() {
     action: vi.fn().mockResolvedValue(undefined),
   };
 }
-
 
 describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
   it("Obunalarim ekranini monolit matnlari, klasslari va holatlari bilan ko'rsatadi", () => {
@@ -59,22 +57,29 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     );
 
     expect(container.firstElementChild).toHaveClass("subscription-shell");
-    expect(screen.getByText(
-      "Plus yoki Pro tarifini tanlang, kvitansiyani yuboring. Tarif administrator tasdiqlagandan keyin faollashadi.",
-    )).toBeInTheDocument();
-    expect(container.querySelector(".subscription-current-name"))
-      .toHaveTextContent("Plus");
+    expect(
+      screen.getByText(
+        "Plus yoki Pro tarifini tanlang, kvitansiyani yuboring. Tarif administrator tasdiqlagandan keyin faollashadi.",
+      ),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".subscription-current-name")).toHaveTextContent(
+      "Plus",
+    );
     expect(screen.getByText("Faol")).toHaveClass("subscription-current-badge");
     expect(screen.getByRole("button", { name: "1 oy" })).toHaveClass("on");
-    expect(screen.getByRole("button", { name: "1 oy" }))
-      .toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Bepul tarif avtomatik" }))
-      .toBeDisabled();
-    expect(screen.getByRole("button", { name: "Muddatni uzaytirish" }))
-      .toBeEnabled();
-    expect(screen.getByText(
-      "Mahsulot yoki xizmatlarni “Sizga yaqin” bo‘limiga chiqarish huquqi",
-    )).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1 oy" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Bepul tarif avtomatik" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Muddatni uzaytirish" })).toBeEnabled();
+    expect(
+      screen.getByText(
+        "Mahsulot yoki xizmatlarni “Sizga yaqin” bo‘limiga chiqarish huquqi",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Avvalgi tariflar")).toBeInTheDocument();
     expect(container.querySelector(".subscription-history-row")).not.toBeNull();
   });
@@ -82,16 +87,18 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
   it("To'lovlarim ekranini monolit kartasi va bo'sh holati bilan ko'rsatadi", () => {
     const { container, rerender } = render(
       <PaymentsView
-        rows={[{
-          id: 8,
-          service_type: "subscription",
-          plan_code: "pro",
-          request_code: "PAY-8",
-          amount: 149_000,
-          status: "rejected",
-          reason: "Chek aniq emas",
-          created_at: 1_722_211_200,
-        }]}
+        rows={[
+          {
+            id: 8,
+            service_type: "subscription",
+            plan_code: "pro",
+            request_code: "PAY-8",
+            amount: 149_000,
+            status: "rejected",
+            reason: "Chek aniq emas",
+            created_at: 1_722_211_200,
+          },
+        ]}
         loading={false}
         refresh={vi.fn()}
       />,
@@ -99,11 +106,16 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
 
     expect(container.querySelector(".form-wrap")).not.toBeNull();
     expect(screen.getByText("To‘lovlarim")).toHaveClass("lead");
-    expect(screen.getByText(
-      "Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.",
-    )).toHaveClass("lead-sub");
-    expect(screen.getByRole("button", { name: "Yangilash" }))
-      .toHaveClass("btn", "btn-outline", "btn-block");
+    expect(
+      screen.getByText(
+        "Kvitansiya yuborilgan xizmatlar va administrator tekshiruvi holati.",
+      ),
+    ).toHaveClass("lead-sub");
+    expect(screen.getByRole("button", { name: "Yangilash" })).toHaveClass(
+      "btn",
+      "btn-outline",
+      "btn-block",
+    );
     expect(container.querySelector(".payment-card")).not.toBeNull();
     expect(screen.getByText("Pro obuna")).toBeInTheDocument();
     expect(screen.getByText("Rad etilgan")).toHaveClass("payment-status", "rejected");
@@ -114,10 +126,10 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     expect(screen.getByText("149 000 so'm")).toHaveClass("payment-card-amount");
 
     rerender(<PaymentsView rows={[]} loading={false} refresh={vi.fn()} />);
-    expect(screen.getByRole("heading", { name: "To‘lovlar yo‘q" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Yuborgan kvitansiyalaringiz shu yerda ko‘rinadi."))
-      .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "To‘lovlar yo‘q" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Yuborgan kvitansiyalaringiz shu yerda ko‘rinadi."),
+    ).toBeInTheDocument();
   });
 
   it("E'lonlar ro'yxati va formasini cab-elon etaloniga mos ko'rsatadi", async () => {
@@ -127,15 +139,17 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
       <CrudEditorView
         {...shared}
         resource="listings"
-        rows={[{
-          id: 12,
-          title: "Biznes e'loni",
-          price: "2 000 so'm",
-          cat: "uy",
-          visibility: "all",
-          status: "active",
-          media: [{ id: 1 }],
-        }]}
+        rows={[
+          {
+            id: 12,
+            title: "Biznes e'loni",
+            price: "2 000 so'm",
+            cat: "uy",
+            visibility: "all",
+            status: "active",
+            media: [{ id: 1 }],
+          },
+        ]}
         addLabel="+ E’lon"
         empty="Hozircha e’lon yo‘q."
         fields={["title", "description", "price", "category"]}
@@ -143,38 +157,57 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     );
 
     expect(container.querySelector(".ad-tabs")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass("ad-tab", "on");
-    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
     expect(container.querySelector(".elon-item")).not.toBeNull();
     expect(screen.getByText("2 000 so'm")).toHaveClass("li-price");
-    expect(screen.getByText("🌍 Butun platforma · Faol · 📎 1"))
-      .toHaveClass("li-meta");
+    expect(screen.getByText("🌍 Butun platforma · Faol · 📎 1")).toHaveClass("li-meta");
 
     await user.click(screen.getByRole("button", { name: "+ E'lon joylash" }));
-    expect(screen.getByLabelText("Sarlavha"))
-      .toHaveAttribute("placeholder", "Masalan: 3 xonali kvartira");
-    expect(screen.getByLabelText("Narx"))
-      .toHaveAttribute("placeholder", "Narx yoki «kelishilgan»");
-    expect(screen.getByRole("button", { name: "📷 Galereya yoki papkadan tanlash" }))
-      .toHaveClass("upload");
-    expect(screen.getByRole("button", { name: "📍 Xaritada joy belgilash" }))
-      .toHaveClass("upload");
+    expect(screen.getByLabelText("Sarlavha")).toHaveAttribute(
+      "placeholder",
+      "Masalan: 3 xonali kvartira",
+    );
+    expect(screen.getByLabelText("Narx")).toHaveAttribute(
+      "placeholder",
+      "Narx yoki «kelishilgan»",
+    );
+    expect(
+      screen.getByRole("button", { name: "📷 Galereya yoki papkadan tanlash" }),
+    ).toHaveClass("upload");
+    expect(
+      screen.getByRole("button", { name: "📍 Xaritada joy belgilash" }),
+    ).toHaveClass("upload");
     expect(screen.getByText("Butun platformaga")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ish o'rinlari" }));
-    expect(screen.getByRole("button", { name: "Ish o'rinlari" }))
-      .toHaveClass("sort-chip", "on");
-    expect(screen.getByRole("button", { name: "Uy-joy" }))
-      .not.toHaveClass("on");
-    await user.click(screen.getByRole("button", {
-      name: /Faqat sahifam mehmonlariga/,
-    }));
-    expect(screen.getByRole("button", { name: /Faqat sahifam mehmonlariga/ }))
-      .toHaveClass("vis-card", "on");
-    expect(screen.getByRole("button", { name: /Butun platformaga/ }))
-      .not.toHaveClass("on");
-    expect(screen.getByRole("button", { name: "Joylash" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByRole("button", { name: "Ish o'rinlari" })).toHaveClass(
+      "sort-chip",
+      "on",
+    );
+    expect(screen.getByRole("button", { name: "Uy-joy" })).not.toHaveClass("on");
+    await user.click(
+      screen.getByRole("button", {
+        name: /Faqat sahifam mehmonlariga/,
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: /Faqat sahifam mehmonlariga/ }),
+    ).toHaveClass("vis-card", "on");
+    expect(screen.getByRole("button", { name: /Butun platformaga/ })).not.toHaveClass(
+      "on",
+    );
+    expect(screen.getByRole("button", { name: "Joylash" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
   });
 
   it("Reklamalar ro'yxatini cab-elon reklama tabi va aniq bekor qilish tasdig'i bilan ko'rsatadi", async () => {
@@ -184,38 +217,47 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
       <CrudEditorView
         {...shared}
         resource="advertisements"
-        rows={[{
-          id: 5,
-          title: "Banner",
-          status: "active",
-          image_file: "/banner.jpg",
-          targets: [{ level: "republic" }],
-          price: 250_000,
-          views: 12,
-          clicks: 3,
-          start_at: 1_722_211_200,
-          duration_days: 3,
-          daily_all_day: true,
-        }]}
+        rows={[
+          {
+            id: 5,
+            title: "Banner",
+            status: "active",
+            image_file: "/banner.jpg",
+            targets: [{ level: "republic" }],
+            price: 250_000,
+            views: 12,
+            clicks: 3,
+            start_at: 1_722_211_200,
+            duration_days: 3,
+            daily_all_day: true,
+          },
+        ]}
         addLabel="+ Reklama"
         empty="Hozircha reklama yo‘q."
         fields={["title", "caption"]}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("ad-tab", "on");
-    expect(screen.getByText(
-      "Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.",
-    )).toHaveClass("ad-info");
-    expect(screen.getByRole("button", { name: "+ Reklama joylashtirish" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
+    expect(
+      screen.getByText(
+        "Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini o'zingiz tanlaysiz.",
+      ),
+    ).toHaveClass("ad-info");
+    expect(screen.getByRole("button", { name: "+ Reklama joylashtirish" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
     expect(container.querySelector(".ad-own-card")).not.toBeNull();
     expect(screen.getByText("Faol")).toHaveClass("ad-status", "active");
 
     await user.click(screen.getByRole("button", { name: "Bekor qilish" }));
     expect(shared.remove).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog"))
-      .toHaveTextContent("Reklama bekor qilinsinmi?");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Reklama bekor qilinsinmi?");
   });
 
   it("Buyurtmalarni monolitdagi uch tab va order-card klasslari bilan ko'rsatadi", () => {
@@ -244,30 +286,43 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Buyurtmalar \(1\)/ }))
-      .toHaveClass("seg-b", "on");
+    expect(screen.getByRole("button", { name: /Buyurtmalar \(1\)/ })).toHaveClass(
+      "seg-b",
+      "on",
+    );
     expect(screen.getByRole("button", { name: "Muammoli (1)" })).toHaveClass("seg-b");
-    expect(screen.getByRole("button", { name: /Yakunlangan \(1\)/ })).toHaveClass("seg-b");
-    expect(container.querySelector(".item.order-card.order-new.order-unread"))
-      .not.toBeNull();
+    expect(screen.getByRole("button", { name: /Yakunlangan \(1\)/ })).toHaveClass(
+      "seg-b",
+    );
+    expect(
+      container.querySelector(".item.order-card.order-new.order-unread"),
+    ).not.toBeNull();
     expect(screen.getByText("BUYURTMA №44")).toHaveClass("order-no-pill");
-    expect(screen.getByText(/🕒 \d{2}\/\d{2}\/\d{4} · \d{2}:\d{2}/))
-      .toHaveClass("idesc", "order-card-time");
+    expect(screen.getByText(/🕒 \d{2}\/\d{2}\/\d{4} · \d{2}:\d{2}/)).toHaveClass(
+      "idesc",
+      "order-card-time",
+    );
     expect(screen.getByText("Mijoz: Ali")).toHaveClass("idesc");
     expect(screen.getByText("🔔 Yangi buyurtma")).toHaveClass("order-unread-pill");
-    expect(screen.getByRole("button", { name: "Qabul qilish" })).toHaveClass("mini-btn");
+    expect(screen.getByRole("button", { name: "Qabul qilish" })).toHaveClass(
+      "mini-btn",
+    );
     expect(screen.getByRole("button", { name: "Rad etish" })).toHaveClass("mini-btn");
   });
 
   it("xizmat buyurtmasini monolit kabi order_category bo'yicha ajratadi", () => {
-    expect(isServiceOrder({
-      order_category: "service",
-      order_type: "delivery",
-    })).toBe(true);
-    expect(isServiceOrder({
-      order_category: "product",
-      order_type: "service",
-    })).toBe(false);
+    expect(
+      isServiceOrder({
+        order_category: "service",
+        order_type: "delivery",
+      }),
+    ).toBe(true);
+    expect(
+      isServiceOrder({
+        order_category: "product",
+        order_type: "service",
+      }),
+    ).toBe(false);
   });
 
   it("Suhbatlar avval conversation ro'yxatini, keyin chat oynasini ko'rsatadi", async () => {
@@ -275,17 +330,19 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     const send = vi.fn().mockResolvedValue(undefined);
     const { container } = render(
       <MessagesView
-        rows={[{
-          id: 3,
-          target_id: 9,
-          target_kind: "user",
-          name: "Ali Valiyev",
-          text: "Salom",
-          last: "Salom",
-          unread: 2,
-          sender_kind: "user",
-          created_at: 1_722_211_200,
-        }]}
+        rows={[
+          {
+            id: 3,
+            target_id: 9,
+            target_kind: "user",
+            name: "Ali Valiyev",
+            text: "Salom",
+            last: "Salom",
+            unread: 2,
+            sender_kind: "user",
+            created_at: 1_722_211_200,
+          },
+        ]}
         value="Yuboriladigan xabar"
         setValue={vi.fn()}
         busy={false}
@@ -303,27 +360,27 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     expect(container.querySelector(".chat-compose")).not.toBeNull();
     expect(screen.getByPlaceholderText("Xabar yozing...")).toHaveClass("chat-input");
     expect(screen.getByRole("button", { name: "Yuborish" })).toHaveClass("chat-send");
-    expect(screen.getByRole("button", { name: "Xabar amallari" }))
-      .toHaveClass("order-msg-menu-btn");
-    await user.click(screen.getByRole("button", { name: "Yuborish" }));
-    expect(send).toHaveBeenCalledWith(
-      { id: "9", kind: "user" },
-      "Yuboriladigan xabar",
+    expect(screen.getByRole("button", { name: "Xabar amallari" })).toHaveClass(
+      "order-msg-menu-btn",
     );
+    await user.click(screen.getByRole("button", { name: "Yuborish" }));
+    expect(send).toHaveBeenCalledWith({ id: "9", kind: "user" }, "Yuboriladigan xabar");
   });
 
   it("Mijoz fikrlarini sp-review-card va monolit javob formasi bilan ko'rsatadi", () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const { container } = render(
       <ReviewsView
-        rows={[{
-          id: 4,
-          user_name: "Ali",
-          stars: 5,
-          comment: "Yaxshi",
-          owner_reply: "Rahmat",
-          created_at: 1_722_211_200,
-        }]}
+        rows={[
+          {
+            id: 4,
+            user_name: "Ali",
+            stars: 5,
+            comment: "Yaxshi",
+            owner_reply: "Rahmat",
+            created_at: 1_722_211_200,
+          },
+        ]}
         ratingSum={5}
         ratingCount={1}
         replyId={null}
@@ -336,15 +393,21 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     );
 
     expect(screen.getByText("O'rtacha baho")).toHaveClass("idesc");
-    expect(screen.getByText(
-      "Mijoz fikrini o'chirib bo'lmaydi. Har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.",
-    )).toHaveClass("idesc");
+    expect(
+      screen.getByText(
+        "Mijoz fikrini o'chirib bo'lmaydi. Har bir fikrga javob berishingiz va javobingizni yangilashingiz mumkin.",
+      ),
+    ).toHaveClass("idesc");
     expect(container.querySelector(".sp-review-card")).not.toBeNull();
     expect(screen.getByText("Sizning javobingiz")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Mijozga javob yozing..."))
-      .toHaveClass("textarea");
-    expect(screen.getByRole("button", { name: "Javobni yangilash" }))
-      .toHaveClass("btn", "btn-soft", "btn-block");
+    expect(screen.getByPlaceholderText("Mijozga javob yozing...")).toHaveClass(
+      "textarea",
+    );
+    expect(screen.getByRole("button", { name: "Javobni yangilash" })).toHaveClass(
+      "btn",
+      "btn-soft",
+      "btn-block",
+    );
     screen.getByRole("button", { name: "Javobni yangilash" }).click();
     expect(save).toHaveBeenCalledWith(4, "Rahmat");
   });
@@ -368,8 +431,7 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
 
     await user.click(screen.getByRole("button", { name: "Javob berish" }));
 
-    expect(screen.getByRole("alert"))
-      .toHaveTextContent("Javob matnini kiriting.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Javob matnini kiriting.");
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -380,17 +442,19 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
       <CrudEditorView
         {...shared}
         resource="stories"
-        rows={[{
-          id: 6,
-          caption: "Bugungi ish",
-          status: "active",
-          state: "active",
-          media_type: "photo",
-          thumbnail_url: "/story.jpg",
-          created_at: 1_722_211_200,
-          expires_at: 4_102_444_800,
-          view_count: 7,
-        }]}
+        rows={[
+          {
+            id: 6,
+            caption: "Bugungi ish",
+            status: "active",
+            state: "active",
+            media_type: "photo",
+            thumbnail_url: "/story.jpg",
+            created_at: 1_722_211_200,
+            expires_at: 4_102_444_800,
+            view_count: 7,
+          },
+        ]}
         addLabel="+ Istoriya"
         empty="Hozircha istoriya yo‘q."
         fields={["caption", "media_type", "media_url"]}
@@ -408,22 +472,26 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     expect(screen.getByRole("button", { name: "O‘chirish" })).toHaveClass("danger");
 
     await user.click(screen.getByRole("button", { name: "Arxiv" }));
-    expect(screen.getByRole("heading", { name: "Arxiv hozircha bo‘sh" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("24 soati tugagan istoriyalar shu yerda saqlanadi."))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Arxiv hozircha bo‘sh" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("24 soati tugagan istoriyalar shu yerda saqlanadi."),
+    ).toBeInTheDocument();
   });
 
   it("Bildirishnomalarni monolit bo'limlari va menu-card klassida ko'rsatadi", () => {
     const { container } = render(
       <NotificationsView
-        rows={[{
-          id: 7,
-          title: "Yangi xabar",
-          body: "Buyurtma yangilandi",
-          is_read: 0,
-          created_at: 1_722_211_200,
-        }]}
+        rows={[
+          {
+            id: 7,
+            title: "Yangi xabar",
+            body: "Buyurtma yangilandi",
+            is_read: 0,
+            created_at: 1_722_211_200,
+          },
+        ]}
         busy={false}
         markAll={vi.fn().mockResolvedValue(undefined)}
         markOne={vi.fn().mockResolvedValue(undefined)}
@@ -431,19 +499,24 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     );
 
     expect(screen.getByText("Bildirishnomalarim")).toHaveClass("lead");
-    expect(screen.getByText(
-      "Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi.",
-    )).toHaveClass("lead-sub");
+    expect(
+      screen.getByText("Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi."),
+    ).toHaveClass("lead-sub");
     expect(screen.getByText("📲 Push notification")).toBeInTheDocument();
-    expect(screen.getByText("Mobil ilova qurilmasi ulanmagan."))
-      .toHaveClass("elon-hint");
-    expect(screen.getByRole("button", { name: "Barchasini o'qish" }))
-      .toHaveClass("mini-btn");
+    expect(screen.getByText("Mobil ilova qurilmasi ulanmagan.")).toHaveClass(
+      "elon-hint",
+    );
+    expect(screen.getByRole("button", { name: "Barchasini o'qish" })).toHaveClass(
+      "mini-btn",
+    );
     expect(container.querySelector(".menu-card")).not.toBeNull();
     expect(screen.getByText("Yangi xabar")).toBeInTheDocument();
     expect(screen.getByText("E'lon filtrlari")).toHaveClass("lead");
-    expect(screen.getByRole("button", { name: "➕ Yangi filtr qo'shish" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByRole("button", { name: "➕ Yangi filtr qo'shish" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
   });
 
   it("Obunachilar va kuzatilayotganlarning aniq hisob va bo'sh holatlarini ko'rsatadi", () => {
@@ -461,11 +534,14 @@ describe("v1656 mavjud Onlaynlashtirish ekranlari pariteti", () => {
     expect(screen.getByText("Foydalanuvchi · @vali")).toHaveClass("li-meta");
 
     rerender(<PeopleView kind="following" rows={[]} busy={false} />);
-    const empty = screen.getByRole("heading", { name: "Kuzatayotganlar yo'q" })
+    const empty = screen
+      .getByRole("heading", { name: "Kuzatayotganlar yo'q" })
       .closest(".empty");
     expect(empty).not.toBeNull();
-    expect(within(empty as HTMLElement).getByText(
-      "Biznes yoki mutaxassisni kuzatganingizda shu yerda ko'rinadi.",
-    )).toBeInTheDocument();
+    expect(
+      within(empty as HTMLElement).getByText(
+        "Biznes yoki mutaxassisni kuzatganingizda shu yerda ko'rinadi.",
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -5,7 +5,6 @@ from app.cash_register.model import CashReceipt
 from app.debt_ledger.model import Debtor, DebtTransaction
 from app.orders.model import Order
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0017_debt_ledger_domain.py"
 
@@ -20,9 +19,7 @@ def load_migration():
 
 def test_debt_models_scope_legacy_and_order_debt_constraints():
     debtor_indexes = {index.name for index in Debtor.__table__.indexes}
-    transaction_indexes = {
-        index.name for index in DebtTransaction.__table__.indexes
-    }
+    transaction_indexes = {index.name for index in DebtTransaction.__table__.indexes}
 
     assert "uq_debtors_business_legacy" in debtor_indexes
     assert "uq_debt_transactions_business_legacy" in transaction_indexes

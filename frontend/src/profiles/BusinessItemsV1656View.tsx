@@ -1,18 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { BusinessOnlineRecord } from "../api/business-online-types";
-import {
-  recordId,
-  recordText,
-  type SharedActions,
-} from "./BusinessOnlineViews";
-import {
-  cleanItemDraft,
-  GroupForm,
-  ItemForm,
-} from "./BusinessItemsV1656Forms";
+import { recordId, recordText, type SharedActions } from "./BusinessOnlineViews";
+import { cleanItemDraft, GroupForm, ItemForm } from "./BusinessItemsV1656Forms";
 import { QUEUE_DIRECTIONS } from "./business-profile-config";
-
 
 const FILTERS: ReadonlyArray<readonly [string, string]> = [
   ["all", "Barchasi"],
@@ -48,9 +39,9 @@ function itemKindWithGroup(
   groups: BusinessOnlineRecord[],
 ): "product" | "service" {
   const groupId = row.group_id;
-  const group = groups.find((candidate, index) => (
-    String(recordId(candidate, index)) === String(groupId ?? "")
-  ));
+  const group = groups.find(
+    (candidate, index) => String(recordId(candidate, index)) === String(groupId ?? ""),
+  );
   return group ? itemKind(group) : itemKind(row);
 }
 
@@ -60,9 +51,7 @@ function kindText(value: unknown): string {
 
 function groupIdOf(row: BusinessOnlineRecord): string {
   const value = row.group_id ?? row.item_group_id ?? row.group;
-  return value === null || value === undefined || value === ""
-    ? ""
-    : String(value);
+  return value === null || value === undefined || value === "" ? "" : String(value);
 }
 
 function matches(row: BusinessOnlineRecord, query: string): boolean {
@@ -72,7 +61,9 @@ function matches(row: BusinessOnlineRecord, query: string): boolean {
     "note",
     "description",
     "descr",
-  )}`.toLocaleLowerCase("uz").includes(query);
+  )}`
+    .toLocaleLowerCase("uz")
+    .includes(query);
 }
 
 function priceText(row: BusinessOnlineRecord): string {
@@ -85,13 +76,7 @@ function priceText(row: BusinessOnlineRecord): string {
 }
 
 function photo(row: BusinessOnlineRecord): string {
-  return recordText(
-    row,
-    "photo_file",
-    "image_url",
-    "photo_url",
-    "media_url",
-  );
+  return recordText(row, "photo_file", "image_url", "photo_url", "media_url");
 }
 
 function CatalogMenu({
@@ -166,14 +151,13 @@ function ItemCard({
       <span className="kind">{kindText(row.kind)}</span>
       {open && (
         <div className="item-menu on">
-          <button type="button" onClick={onEdit}>Tahrirlash</button>
-          <button type="button" onClick={onMove}>Guruhini o'zgartirish</button>
-          <button
-            type="button"
-            className="danger"
-            disabled={busy}
-            onClick={onDelete}
-          >
+          <button type="button" onClick={onEdit}>
+            Tahrirlash
+          </button>
+          <button type="button" onClick={onMove}>
+            Guruhini o'zgartirish
+          </button>
+          <button type="button" className="danger" disabled={busy} onClick={onDelete}>
             O'chirish
           </button>
         </div>
@@ -204,9 +188,9 @@ function EmptyState({ query, kind }: { query: string; kind: string }) {
       : kind === "product"
         ? ["Mahsulot yo'q", "Bu turda hozircha tovar yo'q."]
         : [
-          "Hozircha tovar yo'q",
-          "Avval guruh qo'shing yoki Guruhsiz bo'limidagi + Tovar orqali boshlang.",
-        ];
+            "Hozircha tovar yo'q",
+            "Avval guruh qo'shing yoki Guruhsiz bo'limidagi + Tovar orqali boshlang.",
+          ];
   return (
     <div className="empty item-empty">
       <h3>{state[0]}</h3>
@@ -270,10 +254,7 @@ export function ItemsEditorView({
     if (searchActive) {
       ungrouped = ungrouped.filter((row) => matches(row, normalizedQuery));
     }
-    if (
-      ungrouped.length
-      || (!searchActive && kind === "all" && groups.length === 0)
-    ) {
+    if (ungrouped.length || (!searchActive && kind === "all" && groups.length === 0)) {
       result.push({ group: null, id: null, rows: ungrouped });
     }
     return result;
@@ -318,13 +299,12 @@ export function ItemsEditorView({
       ...actions.draft,
       name,
       kind: effectiveKind,
-      queue_enabled: (
-        effectiveKind === "service"
-        && QUEUE_DIRECTIONS.some((value) => value === direction)
-      ) ? Number(actions.draft.queue_enabled ?? 0) : 0,
-      group_id: actions.draft.group_id === ""
-        ? null
-        : actions.draft.group_id,
+      queue_enabled:
+        effectiveKind === "service" &&
+        QUEUE_DIRECTIONS.some((value) => value === direction)
+          ? Number(actions.draft.queue_enabled ?? 0)
+          : 0,
+      group_id: actions.draft.group_id === "" ? null : actions.draft.group_id,
     });
     if (actions.form === itemEdit && actions.draft.id !== undefined) {
       await actions.patch("items", String(actions.draft.id), payload);
@@ -338,10 +318,13 @@ export function ItemsEditorView({
   return (
     <section className="business-items">
       {validationError && (
-        <div className="app-toast on" role="alert">{validationError}</div>
+        <div className="app-toast on" role="alert">
+          {validationError}
+        </div>
       )}
       <div className="elon-hint item-intro">
-        Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida chiqadi.
+        Guruhlar pastga, tovarlar esa o'ng-chapga suriladigan kartochka ko'rinishida
+        chiqadi.
       </div>
       <div className="item-tools">
         <div className="item-search">
@@ -430,9 +413,9 @@ export function ItemsEditorView({
                   <CatalogMenu
                     label={groupName}
                     open={openMenu === groupMenu}
-                    onToggle={() => setOpenMenu(
-                      openMenu === groupMenu ? null : groupMenu,
-                    )}
+                    onToggle={() =>
+                      setOpenMenu(openMenu === groupMenu ? null : groupMenu)
+                    }
                   >
                     <button
                       type="button"
@@ -475,9 +458,7 @@ export function ItemsEditorView({
                       id={id}
                       busy={actions.busy}
                       open={openMenu === menu}
-                      onToggle={() => setOpenMenu(
-                        openMenu === menu ? null : menu,
-                      )}
+                      onToggle={() => setOpenMenu(openMenu === menu ? null : menu)}
                       onEdit={() => editItem(row)}
                       onMove={() => editItem(row)}
                       onDelete={() => {
@@ -525,7 +506,11 @@ export function ItemsEditorView({
             <div className="acf-title">{confirmDelete.title}</div>
             <p className="acf-text">{confirmDelete.text}</p>
             <div className="acf-btns">
-              <button type="button" className="acf-cancel" onClick={() => setConfirmDelete(null)}>
+              <button
+                type="button"
+                className="acf-cancel"
+                onClick={() => setConfirmDelete(null)}
+              >
                 Bekor qilish
               </button>
               <button
@@ -534,7 +519,8 @@ export function ItemsEditorView({
                 disabled={actions.busy}
                 onClick={() => {
                   const pending = confirmDelete;
-                  void actions.remove(pending.resource, pending.id)
+                  void actions
+                    .remove(pending.resource, pending.id)
                     .then(() => setConfirmDelete(null));
                 }}
               >

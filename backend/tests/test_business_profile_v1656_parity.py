@@ -14,10 +14,7 @@ from app.profiles.schemas import (
 
 class RecordingS3:
     def generate_presigned_url(self, operation, *, Params, ExpiresIn):
-        return (
-            f"https://media.example/{operation}/"
-            f"{Params['Key']}?expires={ExpiresIn}"
-        )
+        return f"https://media.example/{operation}/{Params['Key']}?expires={ExpiresIn}"
 
 
 def business_profile(**overrides):

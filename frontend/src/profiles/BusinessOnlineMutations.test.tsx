@@ -9,7 +9,6 @@ import type {
 } from "../api/business-online-types";
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -27,12 +26,14 @@ const payload: Record<BusinessOnlineResource, BusinessOnlineRecord[]> = {
   listings: [],
   orders: [],
   messages: [],
-  business_reviews: [{
-    id: 4,
-    rating: 5,
-    text: "Yaxshi",
-    reviewer_name: "Ali",
-  }],
+  business_reviews: [
+    {
+      id: 4,
+      rating: 5,
+      text: "Yaxshi",
+      reviewer_name: "Ali",
+    },
+  ],
   advertisements: [],
   stories: [],
   notifications: [{ id: 7, title: "Yangi xabar", is_read: 0 }],
@@ -86,21 +87,21 @@ const profile = {
 };
 
 function api() {
-  const getBusinessOnlineResource = vi.fn(async (
-    resource: BusinessOnlineResource,
-  ) => ({
+  const getBusinessOnlineResource = vi.fn(async (resource: BusinessOnlineResource) => ({
     resource,
     items: payload[resource],
   }));
-  const applyBusinessOnlineAction = vi.fn(async (
-    resource: BusinessOnlineResource,
-    _action: string,
-    _body: BusinessOnlineActionInput,
-  ) => ({
-    resource,
-    item: null,
-    items: payload[resource],
-  }));
+  const applyBusinessOnlineAction = vi.fn(
+    async (
+      resource: BusinessOnlineResource,
+      _action: string,
+      _body: BusinessOnlineActionInput,
+    ) => ({
+      resource,
+      item: null,
+      items: payload[resource],
+    }),
+  );
   return {
     getSession: vi.fn().mockResolvedValue(identity),
     getBusinessProfile: vi.fn().mockResolvedValue(profile),
@@ -139,17 +140,16 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("heading", { name: "Muhr" });
 }
 
-
 describe("business online server mutations", () => {
   it("sends the v1656 notification and review actions to the API", async () => {
     const { user, client } = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /Bildirishnomalarim/ }));
     await screen.findByRole("heading", { name: "Bildirishnomalarim" });
-    await waitFor(() => expect(client.getBusinessOnlineResource)
-      .toHaveBeenCalledWith("notifications"));
-    expect(client.getBusinessOnlineResource)
-      .toHaveBeenCalledWith("push_preferences");
+    await waitFor(() =>
+      expect(client.getBusinessOnlineResource).toHaveBeenCalledWith("notifications"),
+    );
+    expect(client.getBusinessOnlineResource).toHaveBeenCalledWith("push_preferences");
     const pushCheckbox = screen.getByRole("checkbox", { name: "Yoqilgan" });
     expect(pushCheckbox).not.toBeChecked();
     await user.click(pushCheckbox);
@@ -161,9 +161,11 @@ describe("business online server mutations", () => {
         payload: { enabled: true, orders_enabled: true },
       },
     );
-    await user.click(screen.getByRole("button", {
-      name: "Barchasini o'qish",
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Barchasini o'qish",
+      }),
+    );
     expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
       "notifications",
       "mark_all_read",
@@ -173,17 +175,13 @@ describe("business online server mutations", () => {
     await back(user);
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
     await screen.findByRole("heading", { name: "Mijoz fikrlari" });
-    await user.type(
-      screen.getByPlaceholderText("Mijozga javob yozing..."),
-      "Rahmat",
-    );
+    await user.type(screen.getByPlaceholderText("Mijozga javob yozing..."), "Rahmat");
     await user.click(await screen.findByRole("button", { name: "Javob berish" }));
     expect(client.applyBusinessOnlineAction).toHaveBeenCalledWith(
       "business_reviews",
       "reply",
       { record_id: 4, payload: { reply: "Rahmat" } },
     );
-
   });
 
   it("renders following as the exact v1656 read-only profile list", async () => {
@@ -192,10 +190,12 @@ describe("business online server mutations", () => {
     await user.click(screen.getByRole("button", { name: /Biznes obunalari/ }));
     await screen.findByRole("heading", { name: "Biznes obunalari" });
     expect(screen.getByText("1 ta kuzatilmoqda")).toHaveClass("list-sub");
-    expect(screen.getByText("Hamkor biznes").closest("article"))
-      .toHaveClass("elon-item");
-    expect(screen.queryByRole("button", { name: "Obunani bekor qilish" }))
-      .not.toBeInTheDocument();
+    expect(screen.getByText("Hamkor biznes").closest("article")).toHaveClass(
+      "elon-item",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Obunani bekor qilish" }),
+    ).not.toBeInTheDocument();
     expect(client.applyBusinessOnlineAction).not.toHaveBeenCalledWith(
       "following",
       "unfollow",

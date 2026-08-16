@@ -14,11 +14,11 @@ uchun stol abadiy band qolardi.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
-import re
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +50,6 @@ from app.inventory.service import InventoryService
 from app.notifications.model import Notification
 from app.notifications.repository import NotificationRepository
 from app.staff.model import StaffMember
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
@@ -196,9 +195,7 @@ class DiningService:
                 business_account_id=business_account_id,
                 place_id=place_id,
             )
-            order_id = next(
-                (row.id for row in active if row.kind == "order"), None
-            )
+            order_id = next((row.id for row in active if row.kind == "order"), None)
             result = self._place_read(place, order_id)
             await session.commit()
         return result
@@ -560,8 +557,7 @@ class DiningService:
                 raise ApiError(
                     409,
                     "dining_order_problem_open",
-                    "Muammoli zakaz to‘lovi tasdiqlanmaydi. "
-                    "Avval muammoni hal qiling.",
+                    "Muammoli zakaz to‘lovi tasdiqlanmaydi. Avval muammoni hal qiling.",
                 )
             if order.status != "active":
                 raise ApiError(
@@ -569,9 +565,7 @@ class DiningService:
                     "dining_order_closed",
                     "Bu ichki buyurtma allaqachon yopilgan.",
                 )
-            items = await self._repository.items(
-                session, order_id=order.id, lock=True
-            )
+            items = await self._repository.items(session, order_id=order.id, lock=True)
             if not items:
                 raise ApiError(
                     400,
@@ -606,9 +600,7 @@ class DiningService:
                 legacy_debtor_source_id=None,
                 note=f"Ichki buyurtma #{order.id}",
                 created_by_staff_id=actor_staff_id,
-                actor_name_snapshot=await self._actor_name(
-                    session, actor_staff_id
-                ),
+                actor_name_snapshot=await self._actor_name(session, actor_staff_id),
                 waiter_staff_id=order.waiter_staff_id,
                 waiter_name_snapshot=order.waiter_name,
                 created_at=now,
@@ -690,9 +682,7 @@ class DiningService:
                 business_account_id=business_account_id,
                 event_key=f"dining:{order.id}:paid:kitchen",
                 title="Ichki zakaz to‘lovi tasdiqlandi",
-                body_text=(
-                    f"Zakaz #{order.id} to‘lovi kassir tomonidan tasdiqlandi."
-                ),
+                body_text=(f"Zakaz #{order.id} to‘lovi kassir tomonidan tasdiqlandi."),
                 action_type="dining_kitchen",
                 order_id=order.id,
                 target_perm="kitchen",
@@ -792,8 +782,7 @@ class DiningService:
                 raise ApiError(
                     409,
                     "dining_order_problem_open",
-                    "Muammoli zakazni yakunlab bo‘lmaydi. "
-                    "Avval muammoni hal qiling.",
+                    "Muammoli zakazni yakunlab bo‘lmaydi. Avval muammoni hal qiling.",
                 )
             if order.payment_status != "confirmed":
                 raise ApiError(
@@ -836,8 +825,7 @@ class DiningService:
                 raise ApiError(
                     409,
                     "dining_order_paid",
-                    "To‘lovi tasdiqlangan ichki buyurtmani bekor qilib "
-                    "bo‘lmaydi.",
+                    "To‘lovi tasdiqlangan ichki buyurtmani bekor qilib bo‘lmaydi.",
                 )
             if order.status != "active":
                 raise ApiError(
@@ -972,9 +960,7 @@ class DiningService:
             place_id=place_id,
         )
         if place is None:
-            raise ApiError(
-                404, "dining_place_not_found", "Stol yoki xona topilmadi."
-            )
+            raise ApiError(404, "dining_place_not_found", "Stol yoki xona topilmadi.")
         return place
 
     async def _require_order(
@@ -992,14 +978,10 @@ class DiningService:
             lock=lock,
         )
         if order is None:
-            raise ApiError(
-                404, "dining_order_not_found", "Ichki buyurtma topilmadi."
-            )
+            raise ApiError(404, "dining_order_not_found", "Ichki buyurtma topilmadi.")
         return order
 
-    async def _actor_name(
-        self, session: AsyncSession, staff_id: int | None
-    ) -> str:
+    async def _actor_name(self, session: AsyncSession, staff_id: int | None) -> str:
         """Xodim ismini bazadan oladi; rahbar uchun v1656dagi 'Rahbar'."""
         if staff_id is None:
             return "Rahbar"
@@ -1041,18 +1023,18 @@ class DiningService:
             unit = row.unit or "dona"
             qty = _quantity(wanted[row.id], unit)
             price = _price_of(row.price_text)
-            prepared.append({
-                "catalog_item_id": row.id,
-                "name": row.name,
-                "qty": qty,
-                "unit": unit,
-                "price": price,
-                "total": _line_total(price, qty),
-            })
-        if not prepared:
-            raise ApiError(
-                400, "dining_items_missing", "Tanlangan taomlar topilmadi."
+            prepared.append(
+                {
+                    "catalog_item_id": row.id,
+                    "name": row.name,
+                    "qty": qty,
+                    "unit": unit,
+                    "price": price,
+                    "total": _line_total(price, qty),
+                }
             )
+        if not prepared:
+            raise ApiError(400, "dining_items_missing", "Tanlangan taomlar topilmadi.")
         return prepared
 
     def _add_lines(
@@ -1102,11 +1084,13 @@ class DiningService:
         }
         if not wanted:
             return {}
-        rows = (await session.execute(
-            select(CashReceipt.id, CashReceipt.receipt_no).where(
-                CashReceipt.id.in_(wanted)
+        rows = (
+            await session.execute(
+                select(CashReceipt.id, CashReceipt.receipt_no).where(
+                    CashReceipt.id.in_(wanted)
+                )
             )
-        )).all()
+        ).all()
         return {wanted[row.id]: row.receipt_no for row in rows}
 
     # ------------------------------------------------------- bildirishnomalar
@@ -1162,8 +1146,7 @@ class DiningService:
                 Notification.account_type == "business",
                 Notification.requires_action.is_(True),
                 Notification.is_read.is_(False),
-                Notification.payload["dining_order_id"].as_integer()
-                == order_id,
+                Notification.payload["dining_order_id"].as_integer() == order_id,
             )
             .values(is_read=True, read_at=int(now.timestamp()))
         )
@@ -1241,9 +1224,7 @@ class DiningService:
     # ------------------------------------------------------------- javoblar
 
     @staticmethod
-    def _place_read(
-        place: DiningPlace, active_order_id: int | None
-    ) -> DiningPlaceRead:
+    def _place_read(place: DiningPlace, active_order_id: int | None) -> DiningPlaceRead:
         return DiningPlaceRead(
             id=place.id,
             kind=place.kind,

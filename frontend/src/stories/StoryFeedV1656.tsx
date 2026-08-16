@@ -5,12 +5,9 @@ import type { StoryGroup } from "../api/types";
 import { StoryRailV1656 } from "./StoryRailV1656";
 import { StoryViewerV1656 } from "./StoryViewerV1656";
 
-
-export type StoryViewerApi = Pick<ApiClient,
-  | "recordStoryView"
-  | "getStoryViewers"
-  | "deleteStory"
-  | "reportStory"
+export type StoryViewerApi = Pick<
+  ApiClient,
+  "recordStoryView" | "getStoryViewers" | "deleteStory" | "reportStory"
 >;
 
 type Props = StoryViewerApi & {
@@ -18,7 +15,6 @@ type Props = StoryViewerApi & {
   onOpenOwner?(kind: StoryGroup["owner_type"], publicId: string): void;
   renderRail?(groups: StoryGroup[], onOpen: (index: number) => void): ReactNode;
 };
-
 
 export function StoryFeedV1656({
   load,
@@ -34,11 +30,13 @@ export function StoryFeedV1656({
 
   useEffect(() => {
     let active = true;
-    load().then((items) => {
-      if (active) setGroups(items);
-    }).catch(() => {
-      if (active) setGroups([]);
-    });
+    load()
+      .then((items) => {
+        if (active) setGroups(items);
+      })
+      .catch(() => {
+        if (active) setGroups([]);
+      });
     return () => {
       active = false;
     };
@@ -46,9 +44,11 @@ export function StoryFeedV1656({
 
   return (
     <>
-      {renderRail
-        ? renderRail(groups, setOpenIndex)
-        : <StoryRailV1656 groups={groups} onOpen={setOpenIndex} />}
+      {renderRail ? (
+        renderRail(groups, setOpenIndex)
+      ) : (
+        <StoryRailV1656 groups={groups} onOpen={setOpenIndex} />
+      )}
       {openIndex !== null ? (
         <StoryViewerV1656
           deleteStory={deleteStory}
@@ -59,22 +59,30 @@ export function StoryFeedV1656({
           reportStory={reportStory}
           onClose={() => setOpenIndex(null)}
           onOpenOwner={onOpenOwner}
-          onViewed={(storyId) => setGroups((current) => current.map((group) => {
-            const stories = group.stories.map((story) => (
-              story.id === storyId ? { ...story, viewed: true } : story
-            ));
-            return {
-              ...group,
-              has_unseen: stories.some((story) => !story.viewed),
-              stories,
-            };
-          }))}
-          onDeleted={(storyId) => setGroups((current) => current
-            .map((group) => ({
-              ...group,
-              stories: group.stories.filter((story) => story.id !== storyId),
-            }))
-            .filter((group) => group.stories.length > 0))}
+          onViewed={(storyId) =>
+            setGroups((current) =>
+              current.map((group) => {
+                const stories = group.stories.map((story) =>
+                  story.id === storyId ? { ...story, viewed: true } : story,
+                );
+                return {
+                  ...group,
+                  has_unseen: stories.some((story) => !story.viewed),
+                  stories,
+                };
+              }),
+            )
+          }
+          onDeleted={(storyId) =>
+            setGroups((current) =>
+              current
+                .map((group) => ({
+                  ...group,
+                  stories: group.stories.filter((story) => story.id !== storyId),
+                }))
+                .filter((group) => group.stories.length > 0),
+            )
+          }
         />
       ) : null}
     </>

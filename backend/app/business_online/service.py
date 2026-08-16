@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from math import isfinite
-import re
 from typing import Any
 
 from sqlalchemy import select
@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 
@@ -390,16 +389,18 @@ def prepare_record_for_create(
     if resource == "advertisements":
         targets, pricing = advertisement_pricing(clean)
         clean["targets"] = targets
-        clean.update({
-            "price": pricing["total"],
-            "district_count": pricing["district_count"],
-            "hours_per_day": pricing["hours_per_day"],
-            "duration_days": pricing["duration_days"],
-            "district_hour_rate": pricing["district_hour_rate"],
-            "billable_district_hours": pricing["billable_district_hours"],
-            "price_code": "advertisement_district_hour",
-            "status": "payment_pending",
-        })
+        clean.update(
+            {
+                "price": pricing["total"],
+                "district_count": pricing["district_count"],
+                "hours_per_day": pricing["hours_per_day"],
+                "duration_days": pricing["duration_days"],
+                "district_hour_rate": pricing["district_hour_rate"],
+                "billable_district_hours": pricing["billable_district_hours"],
+                "price_code": "advertisement_district_hour",
+                "status": "payment_pending",
+            }
+        )
         return
     if resource != "dining_places":
         return
@@ -413,18 +414,16 @@ def prepare_record_for_create(
     name = str(clean.get("name") or "").strip()[:60]
     seats = integer_or_default(clean.get("seats"), 0)
     clean.clear()
-    clean.update({
-        "kind": kind,
-        "name": name or ("Stol" if kind == "table" else "Xona"),
-        "seats": (
-            max(0, min(100, seats))
-            if kind == "table"
-            else 0
-        ),
-        "x": 4 + (len(rows) % 5) * 18,
-        "y": 4,
-        "locked": 1,
-    })
+    clean.update(
+        {
+            "kind": kind,
+            "name": name or ("Stol" if kind == "table" else "Xona"),
+            "seats": (max(0, min(100, seats)) if kind == "table" else 0),
+            "x": 4 + (len(rows) % 5) * 18,
+            "y": 4,
+            "locked": 1,
+        }
+    )
 
 
 def prepare_patch_for_resource(
@@ -530,10 +529,7 @@ def display_resource_rows(
 
 
 def education_group_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    items = {
-        str(row.get("id")): row
-        for row in raw_payload_rows(payload, "items")
-    }
+    items = {str(row.get("id")): row for row in raw_payload_rows(payload, "items")}
     students = raw_payload_rows(payload, "education_students")
     result = []
     for source in raw_payload_rows(payload, "education_groups"):
@@ -541,9 +537,7 @@ def education_group_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         row = deepcopy(source)
         course = items.get(str(row.get("course_item_id")), {})
-        row["course_name"] = str(
-            row.get("course_name") or course.get("name") or ""
-        )
+        row["course_name"] = str(row.get("course_name") or course.get("name") or "")
         row["student_count"] = sum(
             str(student.get("group_id")) == str(row.get("id"))
             and str(student.get("status") or "") == "active"
@@ -555,31 +549,25 @@ def education_group_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def education_enrollment_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    items = {
-        str(row.get("id")): row
-        for row in raw_payload_rows(payload, "items")
-    }
+    items = {str(row.get("id")): row for row in raw_payload_rows(payload, "items")}
     groups = {
-        str(row.get("id")): row
-        for row in raw_payload_rows(payload, "education_groups")
+        str(row.get("id")): row for row in raw_payload_rows(payload, "education_groups")
     }
     result = []
     for source in raw_payload_rows(payload, "education_enrollments"):
         row = deepcopy(source)
         course = items.get(str(row.get("course_item_id")), {})
         group = groups.get(str(row.get("group_id")), {})
-        row["course_name"] = str(
-            row.get("course_name") or course.get("name") or ""
-        )
-        row["group_name"] = str(
-            row.get("group_name") or group.get("name") or ""
-        )
+        row["course_name"] = str(row.get("course_name") or course.get("name") or "")
+        row["group_name"] = str(row.get("group_name") or group.get("name") or "")
         result.append(row)
     rank = {"new": 0, "accepted": 1}
-    result.sort(key=lambda row: (
-        rank.get(str(row.get("status") or ""), 2),
-        -integer(row.get("id")),
-    ))
+    result.sort(
+        key=lambda row: (
+            rank.get(str(row.get("status") or ""), 2),
+            -integer(row.get("id")),
+        )
+    )
     return result[:500]
 
 
@@ -599,21 +587,20 @@ def medical_staff_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
         if status != "active":
             continue
         seen.add(str(identifier))
-        result.append({
-            "id": identifier,
-            "name": str(row.get("name") or "")[:120],
-            "profession": str(row.get("profession") or "Xodim")[:120],
-            "status": "active",
-        })
+        result.append(
+            {
+                "id": identifier,
+                "name": str(row.get("name") or "")[:120],
+                "profession": str(row.get("profession") or "Xodim")[:120],
+                "status": "active",
+            }
+        )
     result.sort(key=lambda row: str(row.get("name") or ""))
     return result
 
 
 def medical_doctor_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    staff = {
-        str(row.get("id")): row
-        for row in medical_staff_rows(payload)
-    }
+    staff = {str(row.get("id")): row for row in medical_staff_rows(payload)}
     links = raw_payload_rows(payload, "medical_doctor_services")
     result = []
     for source in raw_payload_rows(payload, "medical_doctors"):
@@ -632,39 +619,33 @@ def medical_doctor_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
         inline_ids = normalized_integer_list(row.get("item_ids"))
         row["item_ids"] = linked_ids if linked_ids else inline_ids
         result.append(row)
-    result.sort(key=lambda row: (
-        str(row.get("status") or ""),
-        str(row.get("name") or ""),
-    ))
+    result.sort(
+        key=lambda row: (
+            str(row.get("status") or ""),
+            str(row.get("name") or ""),
+        )
+    )
     return result
 
 
 def medical_queue_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    items = {
-        str(row.get("id")): row
-        for row in raw_payload_rows(payload, "items")
-    }
-    staff = {
-        str(row.get("id")): row
-        for row in medical_staff_rows(payload)
-    }
+    items = {str(row.get("id")): row for row in raw_payload_rows(payload, "items")}
+    staff = {str(row.get("id")): row for row in medical_staff_rows(payload)}
     result = []
     for source in raw_payload_rows(payload, "medical_queue"):
         row = deepcopy(source)
         item = items.get(str(row.get("item_id")), {})
         provider = staff.get(str(row.get("staff_id")), {})
-        row["service_name"] = str(
-            row.get("service_name") or item.get("name") or ""
-        )
-        row["doctor_name"] = str(
-            row.get("doctor_name") or provider.get("name") or ""
-        )
+        row["service_name"] = str(row.get("service_name") or item.get("name") or "")
+        row["doctor_name"] = str(row.get("doctor_name") or provider.get("name") or "")
         result.append(row)
-    result.sort(key=lambda row: (
-        integer(row.get("staff_id")),
-        integer(row.get("item_id")),
-        integer(row.get("queue_no")),
-    ))
+    result.sort(
+        key=lambda row: (
+            integer(row.get("staff_id")),
+            integer(row.get("item_id")),
+            integer(row.get("queue_no")),
+        )
+    )
     return result
 
 
@@ -720,9 +701,9 @@ def prepare_medical_doctor(
         "work_days": str(source.get("work_days") or "1,2,3,4,5,6")[:30],
         "work_start": str(source.get("work_start") or "08:00")[:5],
         "work_end": str(source.get("work_end") or "17:00")[:5],
-        "avg_minutes": max(5, min(240, integer_or_default(
-            source.get("avg_minutes"), 20
-        ))),
+        "avg_minutes": max(
+            5, min(240, integer_or_default(source.get("avg_minutes"), 20))
+        ),
         "room": str(source.get("room") or "").strip()[:50],
         "bio": str(source.get("bio") or "").strip()[:500],
         "status": "inactive" if source.get("status") == "inactive" else "active",
@@ -736,11 +717,13 @@ def prepare_medical_doctor(
         clean.update(prepared)
         return
     clean.clear()
-    clean.update({
-        key: value
-        for key, value in prepared.items()
-        if key not in {"staff_id", "name", "profession"}
-    })
+    clean.update(
+        {
+            key: value
+            for key, value in prepared.items()
+            if key not in {"staff_id", "name", "profession"}
+        }
+    )
 
 
 def sync_medical_doctor_links(
@@ -755,13 +738,16 @@ def sync_medical_doctor_links(
         if str(row.get("staff_id")) != str(staff_id)
     ]
     minutes = max(5, min(240, integer_or_default(doctor.get("avg_minutes"), 20)))
-    links.extend({
-        "business_id": business_id,
-        "staff_id": staff_id,
-        "item_id": item_id,
-        "active": 1,
-        "duration_minutes": minutes,
-    } for item_id in normalized_integer_list(doctor.get("item_ids")))
+    links.extend(
+        {
+            "business_id": business_id,
+            "staff_id": staff_id,
+            "item_id": item_id,
+            "active": 1,
+            "duration_minutes": minutes,
+        }
+        for item_id in normalized_integer_list(doctor.get("item_ids"))
+    )
     payload["medical_doctor_services"] = links
 
 
@@ -912,24 +898,26 @@ def apply_action(
                     "Mijoz ismi, sana va vaqtni kiriting.",
                 )
             orders = resource_rows(payload, "dining_orders")
-            orders.append({
-                "id": next_record_id(orders),
-                "place_id": place["id"],
-                "kind": "booking",
-                "customer_name": customer,
-                "phone": str(data.get("phone") or "").strip()[:30],
-                "booking_date": booking_date,
-                "booking_time": booking_time,
-                "guests": max(
-                    1,
-                    min(100, integer_or_default(data.get("guests"), 1)),
-                ),
-                "note": str(data.get("note") or "").strip()[:300],
-                "total": 0,
-                "status": "active",
-                "created_at": now,
-                "updated_at": now,
-            })
+            orders.append(
+                {
+                    "id": next_record_id(orders),
+                    "place_id": place["id"],
+                    "kind": "booking",
+                    "customer_name": customer,
+                    "phone": str(data.get("phone") or "").strip()[:30],
+                    "booking_date": booking_date,
+                    "booking_time": booking_time,
+                    "guests": max(
+                        1,
+                        min(100, integer_or_default(data.get("guests"), 1)),
+                    ),
+                    "note": str(data.get("note") or "").strip()[:300],
+                    "total": 0,
+                    "status": "active",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
             payload["dining_orders"] = orders
         elif action == "create_order":
             prepared = dining_prepared_items(
@@ -941,23 +929,25 @@ def apply_action(
             orders = resource_rows(payload, "dining_orders")
             total = sum(integer(item.get("total")) for item in prepared)
             order_id = next_record_id(orders)
-            orders.append({
-                "id": order_id,
-                "place_id": place["id"],
-                "kind": "order",
-                "customer_name": str(data.get("customer_name") or "").strip()[:80],
-                "note": str(data.get("note") or "").strip()[:300],
-                "total": total,
-                "waiter_staff_id": None,
-                "waiter_name": str(actor_name or "Rahbar")[:80],
-                "problem_open": 0,
-                "kitchen_status": "preparing",
-                "payment_status": "open",
-                "status": "active",
-                "items": prepared,
-                "created_at": now,
-                "updated_at": now,
-            })
+            orders.append(
+                {
+                    "id": order_id,
+                    "place_id": place["id"],
+                    "kind": "order",
+                    "customer_name": str(data.get("customer_name") or "").strip()[:80],
+                    "note": str(data.get("note") or "").strip()[:300],
+                    "total": total,
+                    "waiter_staff_id": None,
+                    "waiter_name": str(actor_name or "Rahbar")[:80],
+                    "problem_open": 0,
+                    "kitchen_status": "preparing",
+                    "payment_status": "open",
+                    "status": "active",
+                    "items": prepared,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
             payload["dining_orders"] = orders
             append_dining_notification(
                 payload,
@@ -1022,10 +1012,7 @@ def apply_action(
             ) from None
         if item.get("kind") != "order":
             raise ApiError(404, "dining_order_not_found", "Ichki buyurtma topilmadi.")
-        if (
-            item.get("status") != "active"
-            or item.get("payment_status") == "confirmed"
-        ):
+        if item.get("status") != "active" or item.get("payment_status") == "confirmed":
             raise ApiError(
                 400,
                 "completed_dining_order",
@@ -1041,9 +1028,7 @@ def apply_action(
         item["items"] = [
             *(
                 value
-                for value in (
-                    current_items if isinstance(current_items, list) else []
-                )
+                for value in (current_items if isinstance(current_items, list) else [])
                 if isinstance(value, dict)
             ),
             *prepared,
@@ -1139,7 +1124,9 @@ def apply_action(
         plan = str(data.get("plan") or "").casefold()
         duration = int(data.get("duration_months") or 1)
         if plan not in {"free", "plus", "pro"} or duration not in {1, 3, 12}:
-            raise ApiError(422, "invalid_subscription_plan", "Tarif yoki muddat noto‘g‘ri.")
+            raise ApiError(
+                422, "invalid_subscription_plan", "Tarif yoki muddat noto‘g‘ri."
+            )
         status = "active" if plan == "free" else "pending_payment"
         item = {
             "id": next_record_id(rows),
@@ -1227,12 +1214,14 @@ def apply_action(
         attempts = item.get("attempts")
         if not isinstance(attempts, list):
             attempts = []
-        attempts.append({
-            "submitted_at": now,
-            "receipt_name": receipt_name,
-            "receipt_type": receipt_type,
-            "receipt_size": receipt_size,
-        })
+        attempts.append(
+            {
+                "submitted_at": now,
+                "receipt_name": receipt_name,
+                "receipt_type": receipt_type,
+                "receipt_size": receipt_size,
+            }
+        )
         item["attempts"] = attempts
         item["status"] = "pending"
         item.pop("reason", None)
@@ -1307,7 +1296,9 @@ def advertisement_pricing(
 ) -> tuple[list[dict[str, str]], dict[str, Any]]:
     raw_targets = data.get("targets")
     if not isinstance(raw_targets, list):
-        raise ApiError(400, "advertisement_targets_required", "Reklama hududlarini tanlang.")
+        raise ApiError(
+            400, "advertisement_targets_required", "Reklama hududlarini tanlang."
+        )
     targets: list[dict[str, str]] = []
     seen: set[tuple[str, str, str]] = set()
     for value in raw_targets[:30]:
@@ -1320,9 +1311,8 @@ def advertisement_pricing(
             continue
         if level == "region" and region not in AD_REGION_DISTRICT_COUNTS:
             continue
-        if (
-            level == "district"
-            and (region not in AD_REGION_DISTRICT_COUNTS or not district)
+        if level == "district" and (
+            region not in AD_REGION_DISTRICT_COUNTS or not district
         ):
             continue
         if level == "republic":
@@ -1334,7 +1324,9 @@ def advertisement_pricing(
         seen.add(key)
         targets.append({"level": level, "region": region, "district": district})
     if not targets:
-        raise ApiError(400, "advertisement_targets_required", "Kamida bitta hudud tanlang.")
+        raise ApiError(
+            400, "advertisement_targets_required", "Kamida bitta hudud tanlang."
+        )
     if any(target["level"] == "republic" for target in targets) and len(targets) > 1:
         raise ApiError(
             400,
@@ -1367,20 +1359,16 @@ def advertisement_pricing(
         district_count = sum(AD_REGION_DISTRICT_COUNTS.values())
     else:
         whole_regions = {
-            target["region"]
-            for target in targets
-            if target["level"] == "region"
+            target["region"] for target in targets if target["level"] == "region"
         }
         individual_districts = {
             (target["region"], target["district"].casefold())
             for target in targets
-            if target["level"] == "district"
-            and target["region"] not in whole_regions
+            if target["level"] == "district" and target["region"] not in whole_regions
         }
-        district_count = (
-            sum(AD_REGION_DISTRICT_COUNTS[region] for region in whole_regions)
-            + len(individual_districts)
-        )
+        district_count = sum(
+            AD_REGION_DISTRICT_COUNTS[region] for region in whole_regions
+        ) + len(individual_districts)
     billable = district_count * hours * duration
     return targets, {
         "district_count": district_count,
@@ -1418,9 +1406,13 @@ def apply_education_enrollment_action(
     try:
         enrollment = find_record(rows, record_id)
     except ApiError:
-        raise ApiError(404, "new_education_enrollment_not_found", "Yangi ariza topilmadi.") from None
+        raise ApiError(
+            404, "new_education_enrollment_not_found", "Yangi ariza topilmadi."
+        ) from None
     if str(enrollment.get("status") or "") != "new":
-        raise ApiError(404, "new_education_enrollment_not_found", "Yangi ariza topilmadi.")
+        raise ApiError(
+            404, "new_education_enrollment_not_found", "Yangi ariza topilmadi."
+        )
 
     if action == "accept":
         group_id = integer(data.get("group_id"))
@@ -1479,12 +1471,10 @@ def apply_education_enrollment_action(
                 "user_id": enrollment.get("user_id"),
                 "full_name": str(enrollment.get("customer_name") or ""),
                 "phone": str(enrollment.get("phone") or ""),
-                "joined_date": (
-                    datetime.now(UTC) + timedelta(hours=5)
-                ).strftime("%Y-%m-%d"),
-                "note": (
-                    "Kurs arizasi: " + str(enrollment.get("note") or "")
-                )[:500],
+                "joined_date": (datetime.now(UTC) + timedelta(hours=5)).strftime(
+                    "%Y-%m-%d"
+                ),
+                "note": ("Kurs arizasi: " + str(enrollment.get("note") or ""))[:500],
                 "monthly_fee": 0,
                 "status": "active",
                 "created_at": now,
@@ -1563,9 +1553,8 @@ def apply_medical_queue_action(
                 and str(row.get("staff_id")) == str(staff_id)
                 and str(row.get("queue_date")) == queue_date
                 and str(row.get("slot_time")) == slot_time
-                and str(row.get("status")) in {
-                    "waiting", "called", "in_service", "done"
-                }
+                and str(row.get("status"))
+                in {"waiting", "called", "in_service", "done"}
                 for row in rows
             ):
                 raise ApiError(
@@ -1574,19 +1563,24 @@ def apply_medical_queue_action(
                     "Bu vaqt band qilindi. Boshqa vaqt tanlang.",
                 )
             queue_no = slot_minutes(slot_time) or 0
-            queue_code = f"{medical_code(service.get('name'))}-{slot_time.replace(':', '')}"
+            queue_code = (
+                f"{medical_code(service.get('name'))}-{slot_time.replace(':', '')}"
+            )
         else:
-            queue_no = max(
-                [
-                    integer(row.get("queue_no"))
-                    for row in rows
-                    if str(row.get("item_id")) == str(item_id)
-                    and str(row.get("staff_id")) == str(staff_id)
-                    and str(row.get("queue_date")) == queue_date
-                    and not str(row.get("slot_time") or "")
-                ],
-                default=0,
-            ) + 1
+            queue_no = (
+                max(
+                    [
+                        integer(row.get("queue_no"))
+                        for row in rows
+                        if str(row.get("item_id")) == str(item_id)
+                        and str(row.get("staff_id")) == str(staff_id)
+                        and str(row.get("queue_date")) == queue_date
+                        and not str(row.get("slot_time") or "")
+                    ],
+                    default=0,
+                )
+                + 1
+            )
             queue_code = f"{medical_code(service.get('name'))}-{queue_no:03d}"
         item = {
             "id": next_record_id(rows),
@@ -1623,7 +1617,9 @@ def apply_medical_queue_action(
             )
         old_status = str(item.get("status") or "")
         if old_status in MEDICAL_QUEUE_TERMINAL and status in {
-            "waiting", "called", "in_service"
+            "waiting",
+            "called",
+            "in_service",
         }:
             raise ApiError(
                 400,
@@ -1674,8 +1670,7 @@ def apply_medical_queue_action(
                 event="cancelled",
                 title="Navbat bekor qilindi",
                 body=(
-                    f"{item.get('queue_code')} navbat muassasa tomonidan "
-                    "bekor qilindi."
+                    f"{item.get('queue_code')} navbat muassasa tomonidan bekor qilindi."
                 ),
                 action_type="medical_queue_cancelled",
             )
@@ -1687,14 +1682,19 @@ def apply_medical_queue_action(
             other = find_record(rows, other_id)
         except ApiError:
             other = None
-        same_queue = other is not None and other is not item and (
-            str(item.get("queue_date")),
-            str(item.get("staff_id")),
-            str(item.get("item_id")),
-        ) == (
-            str(other.get("queue_date")),
-            str(other.get("staff_id")),
-            str(other.get("item_id")),
+        same_queue = (
+            other is not None
+            and other is not item
+            and (
+                str(item.get("queue_date")),
+                str(item.get("staff_id")),
+                str(item.get("item_id")),
+            )
+            == (
+                str(other.get("queue_date")),
+                str(other.get("staff_id")),
+                str(other.get("item_id")),
+            )
         )
         if not same_queue or other is None:
             provider = medical_queue_labels(direction)["provider"].lower()
@@ -1789,8 +1789,7 @@ def medical_queue_provider(
         None,
     )
     active_staff = any(
-        integer(row.get("id")) == staff_id
-        for row in medical_staff_rows(payload)
+        integer(row.get("id")) == staff_id for row in medical_staff_rows(payload)
     )
     if not linked or provider is None or not active_staff:
         raise ApiError(
@@ -1803,9 +1802,7 @@ def medical_queue_provider(
 
 def medical_code(name: Any) -> str:
     letters = "".join(
-        character
-        for character in str(name or "").upper()
-        if character.isalnum()
+        character for character in str(name or "").upper() if character.isalnum()
     )[:3]
     return letters or "NAV"
 
@@ -1856,14 +1853,16 @@ def append_medical_queue_history(
     now: int,
 ) -> None:
     rows = raw_payload_rows(payload, "medical_queue_history")
-    rows.append({
-        "id": next_record_id(rows),
-        "queue_id": queue.get("id"),
-        "action": action,
-        "old_value": old_value,
-        "new_value": new_value,
-        "created_at": now,
-    })
+    rows.append(
+        {
+            "id": next_record_id(rows),
+            "queue_id": queue.get("id"),
+            "action": action,
+            "old_value": old_value,
+            "new_value": new_value,
+            "created_at": now,
+        }
+    )
     payload["medical_queue_history"] = rows
 
 
@@ -1880,7 +1879,11 @@ def next_waiting_medical_queue(
         and str(row.get("status")) == "waiting"
         and integer(row.get("queue_no")) > integer(current.get("queue_no"))
     ]
-    return min(candidates, key=lambda row: integer(row.get("queue_no"))) if candidates else None
+    return (
+        min(candidates, key=lambda row: integer(row.get("queue_no")))
+        if candidates
+        else None
+    )
 
 
 def queue_notification_event(
@@ -1896,14 +1899,16 @@ def queue_notification_event(
     queue_id = integer(queue.get("id"))
     if not user_id or not queue_id:
         return
-    events.append({
-        "user_id": user_id,
-        "event_key": f"medical_queue:{queue_id}:{event}",
-        "title": title,
-        "body": body,
-        "action_type": action_type,
-        "medical_queue_id": queue_id,
-    })
+    events.append(
+        {
+            "user_id": user_id,
+            "event_key": f"medical_queue:{queue_id}:{event}",
+            "title": title,
+            "body": body,
+            "action_type": action_type,
+            "medical_queue_id": queue_id,
+        }
+    )
 
 
 async def persist_user_notifications(
@@ -1922,8 +1927,7 @@ async def persist_user_notifications(
         notifications = raw_payload_rows(payload, "notifications")
         snapshot = deepcopy(profile.dashboard_snapshot or {})
         snapshot["unread"] = sum(
-            not bool(integer(row.get("is_read")))
-            for row in notifications
+            not bool(integer(row.get("is_read"))) for row in notifications
         )
         profile.dashboard_snapshot = snapshot
         profile.cabinet_payload = payload
@@ -1938,20 +1942,22 @@ def append_medical_user_notification(
     if any(str(row.get("event_key") or "") == event_key for row in notifications):
         return
     now = unix_now()
-    notifications.append({
-        "id": next_record_id(notifications),
-        "actor_kind": "user",
-        "actor_id": integer(event.get("user_id")),
-        "event_key": event_key,
-        "title": str(event.get("title") or ""),
-        "body": str(event.get("body") or ""),
-        "medical_queue_id": integer(event.get("medical_queue_id")),
-        "requires_action": 1,
-        "action_type": str(event.get("action_type") or ""),
-        "is_read": 0,
-        "created_at": now,
-        "updated_at": now,
-    })
+    notifications.append(
+        {
+            "id": next_record_id(notifications),
+            "actor_kind": "user",
+            "actor_id": integer(event.get("user_id")),
+            "event_key": event_key,
+            "title": str(event.get("title") or ""),
+            "body": str(event.get("body") or ""),
+            "medical_queue_id": integer(event.get("medical_queue_id")),
+            "requires_action": 1,
+            "action_type": str(event.get("action_type") or ""),
+            "is_read": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
     payload["notifications"] = notifications
 
 
@@ -1987,14 +1993,16 @@ def dining_prepared_items(
         quantity = wanted[item_id]
         price = parse_price_amount(item.get("price"))
         line_total = int(round(price * quantity))
-        prepared.append({
-            "item_id": item_id,
-            "name": str(item.get("name") or ""),
-            "qty": quantity,
-            "unit": str(item.get("unit") or "dona"),
-            "price": price,
-            "total": line_total,
-        })
+        prepared.append(
+            {
+                "item_id": item_id,
+                "name": str(item.get("name") or ""),
+                "qty": quantity,
+                "unit": str(item.get("unit") or "dona"),
+                "price": price,
+                "total": line_total,
+            }
+        )
     if not prepared:
         raise ApiError(400, "dining_items_not_found", missing_message)
     return prepared
@@ -2011,17 +2019,19 @@ def append_dining_notification(
     now: int,
 ) -> None:
     notifications = resource_rows(payload, "notifications")
-    notifications.append({
-        "id": next_record_id(notifications),
-        "title": title,
-        "body": body,
-        "action_type": action_type,
-        "dining_order_id": order_id,
-        "target_perm": target_perm,
-        "is_read": 0,
-        "created_at": now,
-        "updated_at": now,
-    })
+    notifications.append(
+        {
+            "id": next_record_id(notifications),
+            "title": title,
+            "body": body,
+            "action_type": action_type,
+            "dining_order_id": order_id,
+            "target_perm": target_perm,
+            "is_read": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
     payload["notifications"] = notifications
 
 
@@ -2053,15 +2063,17 @@ def sync_dining_place_activity(payload: dict[str, Any]) -> None:
         if not active:
             continue
         latest = max(active, key=lambda order: integer(order.get("id")))
-        place.update({
-            "active_id": latest.get("id"),
-            "active_kind": latest.get("kind"),
-            "customer_name": latest.get("customer_name"),
-            "booking_date": latest.get("booking_date"),
-            "booking_time": latest.get("booking_time"),
-            "guests": latest.get("guests"),
-            "total": latest.get("total"),
-        })
+        place.update(
+            {
+                "active_id": latest.get("id"),
+                "active_kind": latest.get("kind"),
+                "customer_name": latest.get("customer_name"),
+                "booking_date": latest.get("booking_date"),
+                "booking_time": latest.get("booking_time"),
+                "guests": latest.get("guests"),
+                "total": latest.get("total"),
+            }
+        )
     payload["dining_places"] = places
 
 
@@ -2084,15 +2096,15 @@ def refresh_derived(profile: BusinessProfile, payload: dict[str, Any]) -> None:
         str(row.get("status") or "") == "new" for row in orders
     )
     snapshot["active_orders"] = sum(
-        str(row.get("status") or "") not in TERMINAL_ORDER_STATUSES
-        for row in orders
+        str(row.get("status") or "") not in TERMINAL_ORDER_STATUSES for row in orders
     )
     snapshot["problem_orders"] = sum(bool(row.get("problem_open")) for row in orders)
-    snapshot["unread"] = sum(not bool(integer(row.get("is_read"))) for row in notifications)
+    snapshot["unread"] = sum(
+        not bool(integer(row.get("is_read"))) for row in notifications
+    )
     snapshot["followers"] = len(followers)
     snapshot["occupied_places"] = sum(
-        bool(row.get("active_id"))
-        for row in resource_rows(payload, "dining_places")
+        bool(row.get("active_id")) for row in resource_rows(payload, "dining_places")
     )
     snapshot["service_active"] = sum(
         str(row.get("status") or "") in {"waiting", "called", "in_service"}

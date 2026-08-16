@@ -186,23 +186,23 @@ import type {
   AdvertisementRates,
 } from "./advertisement-types";
 
-
 type SessionResponse = Omit<SessionIdentity, "name"> & { name?: string };
 type LoginStart = { login: string; password: string; cabinet_type?: AccountType };
-
 
 export class ApiClientError extends Error {
   readonly code: string;
   readonly requestId: string;
 
-  constructor(readonly status: number, body: ApiErrorBody) {
+  constructor(
+    readonly status: number,
+    body: ApiErrorBody,
+  ) {
     super(body.message);
     this.name = "ApiClientError";
     this.code = body.code;
     this.requestId = body.request_id;
   }
 }
-
 
 export class ApiClient {
   private csrfToken = "";
@@ -235,15 +235,12 @@ export class ApiClient {
       headers["X-CSRF-Token"] = this.csrfToken;
     }
 
-    const response = await this.fetcher(
-      `${this.baseUrl.replace(/\/+$/, "")}${path}`,
-      {
-        method,
-        credentials: "include",
-        headers,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      },
-    );
+    const response = await this.fetcher(`${this.baseUrl.replace(/\/+$/, "")}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
     if (response.status === 204) return undefined as T;
 
     let payload: unknown;
@@ -258,16 +255,17 @@ export class ApiClient {
         message: `API xatosi: ${response.status}`,
         request_id: "",
       };
-      const error = payload && typeof payload === "object"
-        ? { ...fallback, ...payload } as ApiErrorBody
-        : fallback;
+      const error =
+        payload && typeof payload === "object"
+          ? ({ ...fallback, ...payload } as ApiErrorBody)
+          : fallback;
       throw new ApiClientError(response.status, error);
     }
     if (
-      payload
-      && typeof payload === "object"
-      && "csrf_token" in payload
-      && typeof payload.csrf_token === "string"
+      payload &&
+      typeof payload === "object" &&
+      "csrf_token" in payload &&
+      typeof payload.csrf_token === "string"
     ) {
       this.csrfToken = payload.csrf_token;
     }
@@ -281,14 +279,20 @@ export class ApiClient {
   searchPublic(params: PublicSearchParams = {}): Promise<PublicSearchResponse> {
     const query = new URLSearchParams();
     const textFilters = [
-      ["q", params.q], ["result_type", params.result_type],
-      ["direction", params.direction], ["activity_type", params.activity_type],
-      ["region", params.region], ["district", params.district],
+      ["q", params.q],
+      ["result_type", params.result_type],
+      ["direction", params.direction],
+      ["activity_type", params.activity_type],
+      ["region", params.region],
+      ["district", params.district],
       ["mahalla", params.mahalla],
     ] as const;
-    textFilters.forEach(([name, value]) => { if (value) query.set(name, value); });
+    textFilters.forEach(([name, value]) => {
+      if (value) query.set(name, value);
+    });
     if (params.page !== undefined) query.set("page", String(params.page));
-    if (params.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params.page_size !== undefined)
+      query.set("page_size", String(params.page_size));
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/search${suffix}`);
   }
@@ -296,19 +300,29 @@ export class ApiClient {
   getCatalogItems(params: PublicCatalogParams = {}): Promise<PublicCatalogResponse> {
     const query = new URLSearchParams();
     const textFilters = [
-      ["kind", params.kind], ["q", params.q], ["direction", params.direction],
-      ["activity_type", params.activity_type], ["region", params.region],
-      ["district", params.district], ["mahalla", params.mahalla],
+      ["kind", params.kind],
+      ["q", params.q],
+      ["direction", params.direction],
+      ["activity_type", params.activity_type],
+      ["region", params.region],
+      ["district", params.district],
+      ["mahalla", params.mahalla],
     ] as const;
-    textFilters.forEach(([name, value]) => { if (value) query.set(name, value); });
+    textFilters.forEach(([name, value]) => {
+      if (value) query.set(name, value);
+    });
     if (params.page !== undefined) query.set("page", String(params.page));
-    if (params.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params.page_size !== undefined)
+      query.set("page_size", String(params.page_size));
     const suffix = query.size ? `?${query.toString()}` : "";
     return this.request("GET", `/api/v1/public/catalog/items${suffix}`);
   }
 
   getCatalogItem(publicId: string): Promise<PublicCatalogItem> {
-    return this.request("GET", `/api/v1/public/catalog/items/${encodeURIComponent(publicId)}`);
+    return this.request(
+      "GET",
+      `/api/v1/public/catalog/items/${encodeURIComponent(publicId)}`,
+    );
   }
 
   getQueueOptions(
@@ -346,12 +360,7 @@ export class ApiClient {
   createCourseEnrollment(
     body: CourseEnrollmentCreate,
   ): Promise<CourseEnrollmentCreated> {
-    return this.request(
-      "POST",
-      "/api/v1/education/enrollments",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/education/enrollments", body, true);
   }
 
   getMyQueues(): Promise<BusinessQueueEntry[]> {
@@ -359,12 +368,7 @@ export class ApiClient {
   }
 
   cancelMyQueue(queueId: number): Promise<BusinessQueueEntry> {
-    return this.request(
-      "POST",
-      `/api/v1/queues/${queueId}/cancel`,
-      undefined,
-      true,
-    );
+    return this.request("POST", `/api/v1/queues/${queueId}/cancel`, undefined, true);
   }
 
   markQueueNotificationRead(notificationId: number): Promise<QueueNotificationRead> {
@@ -377,32 +381,17 @@ export class ApiClient {
   }
 
   getBusinessQueueSetup(): Promise<BusinessQueueSetup> {
-    return this.request(
-      "GET",
-      "/api/v1/queues/business/setup",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/queues/business/setup", undefined, true);
   }
 
   getBusinessQueueProviders(): Promise<BusinessQueueProvider[]> {
-    return this.request(
-      "GET",
-      "/api/v1/queues/business/providers",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/queues/business/providers", undefined, true);
   }
 
   createBusinessQueueProvider(
     body: BusinessQueueProviderWrite,
   ): Promise<BusinessQueueProvider> {
-    return this.request(
-      "POST",
-      "/api/v1/queues/business/providers",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/queues/business/providers", body, true);
   }
 
   updateBusinessQueueProvider(
@@ -430,12 +419,7 @@ export class ApiClient {
   createBusinessOfflineQueue(
     body: BusinessQueueOfflineCreate,
   ): Promise<BusinessQueueEntry> {
-    return this.request(
-      "POST",
-      "/api/v1/queues/business/entries",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/queues/business/entries", body, true);
   }
 
   changeBusinessQueueStatus(
@@ -462,10 +446,13 @@ export class ApiClient {
     );
   }
 
-  getAdvertisements(params: PublicAdvertisementParams = {}): Promise<PublicAdvertisement[]> {
+  getAdvertisements(
+    params: PublicAdvertisementParams = {},
+  ): Promise<PublicAdvertisement[]> {
     const query = new URLSearchParams();
     for (const [name, value] of [
-      ["placement", params.placement], ["region", params.region],
+      ["placement", params.placement],
+      ["region", params.region],
       ["district", params.district],
     ] as const) {
       if (value) query.set(name, value);
@@ -561,21 +548,11 @@ export class ApiClient {
   }
 
   getFollowers(): Promise<FollowListRead> {
-    return this.request(
-      "GET",
-      "/api/v1/follows/followers",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/follows/followers", undefined, true);
   }
 
   getFollowing(): Promise<FollowListRead> {
-    return this.request(
-      "GET",
-      "/api/v1/follows/following",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/follows/following", undefined, true);
   }
 
   getPublicProfile(
@@ -599,18 +576,10 @@ export class ApiClient {
   getMyStories(
     state: "active" | "archived" | "all" = "all",
   ): Promise<ManagedStoryRead[]> {
-    return this.request(
-      "GET",
-      `/api/v1/stories/mine?state=${state}`,
-      undefined,
-      true,
-    );
+    return this.request("GET", `/api/v1/stories/mine?state=${state}`, undefined, true);
   }
 
-  getOwnerStories(
-    kind: "user" | "business",
-    publicId: string,
-  ): Promise<StoryRead[]> {
+  getOwnerStories(kind: "user" | "business", publicId: string): Promise<StoryRead[]> {
     return this.request(
       "GET",
       `/api/v1/stories/owner/${kind}/${encodeURIComponent(publicId)}`,
@@ -626,45 +595,22 @@ export class ApiClient {
   }
 
   getStoryViewers(storyId: number): Promise<StoryViewer[]> {
-    return this.request(
-      "GET",
-      `/api/v1/stories/${storyId}/viewers`,
-      undefined,
-      true,
-    );
+    return this.request("GET", `/api/v1/stories/${storyId}/viewers`, undefined, true);
   }
 
   deleteStory(storyId: number): Promise<void> {
-    return this.request(
-      "DELETE",
-      `/api/v1/stories/${storyId}`,
-      undefined,
-      true,
-    );
+    return this.request("DELETE", `/api/v1/stories/${storyId}`, undefined, true);
   }
 
   reportStory(storyId: number, reason: string): Promise<{ ok: true }> {
-    return this.request(
-      "POST",
-      `/api/v1/stories/${storyId}/reports`,
-      { reason },
-      true,
-    );
+    return this.request("POST", `/api/v1/stories/${storyId}/reports`, { reason }, true);
   }
 
   getMessageConversations(): Promise<MessageConversationRead[]> {
-    return this.request(
-      "GET",
-      "/api/v1/messages/conversations",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/messages/conversations", undefined, true);
   }
 
-  getMessageThread(
-    kind: AccountType,
-    publicId: string,
-  ): Promise<MessageThreadRead> {
+  getMessageThread(kind: AccountType, publicId: string): Promise<MessageThreadRead> {
     return this.request(
       "GET",
       `/api/v1/messages/with/${kind}/${encodeURIComponent(publicId)}`,
@@ -682,30 +628,15 @@ export class ApiClient {
   }
 
   editMessage(messageId: number, text: string): Promise<MessageRead> {
-    return this.request(
-      "PUT",
-      `/api/v1/messages/${messageId}`,
-      { text },
-      true,
-    );
+    return this.request("PUT", `/api/v1/messages/${messageId}`, { text }, true);
   }
 
   deleteMessage(messageId: number): Promise<MessageRead> {
-    return this.request(
-      "DELETE",
-      `/api/v1/messages/${messageId}`,
-      undefined,
-      true,
-    );
+    return this.request("DELETE", `/api/v1/messages/${messageId}`, undefined, true);
   }
 
   getMessageUnreadCount(): Promise<{ count: number }> {
-    return this.request(
-      "GET",
-      "/api/v1/messages/unread-count",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/messages/unread-count", undefined, true);
   }
 
   getReviews(
@@ -739,12 +670,7 @@ export class ApiClient {
   }
 
   replyToReview(reviewId: number, reply: string): Promise<ReviewRead> {
-    return this.request(
-      "PUT",
-      `/api/v1/reviews/${reviewId}/reply`,
-      { reply },
-      true,
-    );
+    return this.request("PUT", `/api/v1/reviews/${reviewId}/reply`, { reply }, true);
   }
 
   getNotifications(): Promise<NotificationListRead> {
@@ -752,12 +678,7 @@ export class ApiClient {
   }
 
   getActionNotifications(): Promise<ActionNotificationListRead> {
-    return this.request(
-      "GET",
-      "/api/v1/notifications/actions",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/notifications/actions", undefined, true);
   }
 
   markNotificationRead(notificationId: number): Promise<{ ok: true; read_at: number }> {
@@ -774,43 +695,23 @@ export class ApiClient {
   }
 
   getNotificationPreference(): Promise<NotificationPreference> {
-    return this.request(
-      "GET",
-      "/api/v1/notifications/preferences",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/notifications/preferences", undefined, true);
   }
 
   saveNotificationPreference(
     body: NotificationPreference,
   ): Promise<NotificationPreference> {
-    return this.request(
-      "PUT",
-      "/api/v1/notifications/preferences",
-      body,
-      true,
-    );
+    return this.request("PUT", "/api/v1/notifications/preferences", body, true);
   }
 
   getNotificationFilters(): Promise<NotificationFilterRead[]> {
-    return this.request(
-      "GET",
-      "/api/v1/notifications/filters",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/notifications/filters", undefined, true);
   }
 
   createNotificationFilter(
     body: NotificationFilterWrite,
   ): Promise<NotificationFilterRead> {
-    return this.request(
-      "POST",
-      "/api/v1/notifications/filters",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/notifications/filters", body, true);
   }
 
   deleteNotificationFilter(filterId: number): Promise<{ ok: true }> {
@@ -823,12 +724,7 @@ export class ApiClient {
   }
 
   getPushStatus(): Promise<PushStatusRead> {
-    return this.request(
-      "GET",
-      "/api/v1/notifications/push-status",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/notifications/push-status", undefined, true);
   }
 
   registerPushDevice(body: PushDeviceWrite): Promise<{ ok: true; device_id: number }> {
@@ -836,12 +732,7 @@ export class ApiClient {
   }
 
   unregisterPushDevice(token: string): Promise<{ ok: true }> {
-    return this.request(
-      "DELETE",
-      "/api/v1/notifications/devices",
-      { token },
-      true,
-    );
+    return this.request("DELETE", "/api/v1/notifications/devices", { token }, true);
   }
 
   createOrder(body: OrderCreate): Promise<OrderCreateResponse> {
@@ -921,7 +812,12 @@ export class ApiClient {
 
   sendOrderChatImage(
     orderId: number,
-    body: { object_key: string; file_name: string; text?: string; reply_to_id?: number | null },
+    body: {
+      object_key: string;
+      file_name: string;
+      text?: string;
+      reply_to_id?: number | null;
+    },
   ): Promise<OrderMessageRead> {
     return this.request("POST", `/api/v1/orders/${orderId}/chat/image`, body, true);
   }
@@ -939,7 +835,10 @@ export class ApiClient {
     );
   }
 
-  deleteOrderChatMessage(orderId: number, messageId: number): Promise<OrderMessageRead> {
+  deleteOrderChatMessage(
+    orderId: number,
+    messageId: number,
+  ): Promise<OrderMessageRead> {
     return this.request(
       "DELETE",
       `/api/v1/orders/${orderId}/chat/${messageId}`,
@@ -949,11 +848,9 @@ export class ApiClient {
   }
 
   recordAdvertisementViews(publicIds: string[]): Promise<void> {
-    return this.request(
-      "POST",
-      "/api/v1/public/advertisements/views",
-      { ids: publicIds },
-    );
+    return this.request("POST", "/api/v1/public/advertisements/views", {
+      ids: publicIds,
+    });
   }
 
   recordAdvertisementClick(publicId: string): Promise<void> {
@@ -1045,14 +942,19 @@ export class ApiClient {
 
   addSpecialistCredential(objectKey: string): Promise<{ ok: true; id: number }> {
     return this.request(
-      "POST", "/api/v1/specialists/me/credentials",
-      { object_key: objectKey }, true,
+      "POST",
+      "/api/v1/specialists/me/credentials",
+      { object_key: objectKey },
+      true,
     );
   }
 
   deleteSpecialistCredential(id: number): Promise<void> {
     return this.request(
-      "DELETE", `/api/v1/specialists/me/credentials/${id}`, undefined, true,
+      "DELETE",
+      `/api/v1/specialists/me/credentials/${id}`,
+      undefined,
+      true,
     );
   }
 
@@ -1066,19 +968,26 @@ export class ApiClient {
 
   deleteSpecialistOffer(id: number): Promise<void> {
     return this.request(
-      "DELETE", `/api/v1/specialists/me/offers/${id}`, undefined, true,
+      "DELETE",
+      `/api/v1/specialists/me/offers/${id}`,
+      undefined,
+      true,
     );
   }
 
-  addSpecialistPortfolio(
-    body: { media_type: "photo" | "video"; object_key: string },
-  ): Promise<{ ok: true; id: number }> {
+  addSpecialistPortfolio(body: {
+    media_type: "photo" | "video";
+    object_key: string;
+  }): Promise<{ ok: true; id: number }> {
     return this.request("POST", "/api/v1/specialists/me/portfolio", body, true);
   }
 
   deleteSpecialistPortfolio(id: number): Promise<void> {
     return this.request(
-      "DELETE", `/api/v1/specialists/me/portfolio/${id}`, undefined, true,
+      "DELETE",
+      `/api/v1/specialists/me/portfolio/${id}`,
+      undefined,
+      true,
     );
   }
 
@@ -1170,21 +1079,11 @@ export class ApiClient {
   }
 
   deleteExpense(expenseId: number): Promise<void> {
-    return this.request(
-      "DELETE",
-      `/api/v1/expenses/${expenseId}`,
-      undefined,
-      true,
-    );
+    return this.request("DELETE", `/api/v1/expenses/${expenseId}`, undefined, true);
   }
 
   getDocumentCounterparties(): Promise<DocumentCounterpartyList> {
-    return this.request(
-      "GET",
-      "/api/v1/documents/counterparties",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/documents/counterparties", undefined, true);
   }
 
   createDocumentCounterparty(
@@ -1220,12 +1119,7 @@ export class ApiClient {
   }
 
   getDocument(documentId: number): Promise<BusinessDocument> {
-    return this.request(
-      "GET",
-      `/api/v1/documents/${documentId}`,
-      undefined,
-      true,
-    );
+    return this.request("GET", `/api/v1/documents/${documentId}`, undefined, true);
   }
 
   createDocument(body: BusinessDocumentWrite): Promise<{ ok: true; id: number }> {
@@ -1240,12 +1134,7 @@ export class ApiClient {
   }
 
   deleteDocument(documentId: number): Promise<void> {
-    return this.request(
-      "DELETE",
-      `/api/v1/documents/${documentId}`,
-      undefined,
-      true,
-    );
+    return this.request("DELETE", `/api/v1/documents/${documentId}`, undefined, true);
   }
 
   sendDocument(
@@ -1278,14 +1167,13 @@ export class ApiClient {
 
   configureWarehouseItem(
     catalogItemId: number,
-    body: { track_stock: boolean; stock_type: "ready_food" | "raw_material"; min_qty: number },
+    body: {
+      track_stock: boolean;
+      stock_type: "ready_food" | "raw_material";
+      min_qty: number;
+    },
   ): Promise<WarehouseItem> {
-    return this.request(
-      "PUT",
-      `/api/v1/warehouse/items/${catalogItemId}`,
-      body,
-      true,
-    );
+    return this.request("PUT", `/api/v1/warehouse/items/${catalogItemId}`, body, true);
   }
 
   createWarehouseMove(body: WarehouseMoveCreate): Promise<WarehouseMoveResult> {
@@ -1293,12 +1181,7 @@ export class ApiClient {
   }
 
   deleteWarehouseMove(moveId: number): Promise<void> {
-    return this.request(
-      "DELETE",
-      `/api/v1/warehouse/moves/${moveId}`,
-      undefined,
-      true,
-    );
+    return this.request("DELETE", `/api/v1/warehouse/moves/${moveId}`, undefined, true);
   }
 
   getWarehouseMoves(inventoryItemId: number): Promise<WarehouseMove[]> {
@@ -1310,9 +1193,7 @@ export class ApiClient {
     );
   }
 
-  getWarehouseRecipe(
-    inventoryItemId: number,
-  ): Promise<WarehouseRecipeIngredient[]> {
+  getWarehouseRecipe(inventoryItemId: number): Promise<WarehouseRecipeIngredient[]> {
     return this.request(
       "GET",
       `/api/v1/warehouse/items/${inventoryItemId}/recipe`,
@@ -1330,7 +1211,10 @@ export class ApiClient {
     );
   }
 
-  getStatistics(period: StatisticsPeriod = "oy", anchor = ""): Promise<StatisticsReport> {
+  getStatistics(
+    period: StatisticsPeriod = "oy",
+    anchor = "",
+  ): Promise<StatisticsReport> {
     const query = new URLSearchParams({ period });
     if (anchor) query.set("anchor", anchor);
     return this.request(
@@ -1377,9 +1261,7 @@ export class ApiClient {
     return this.request("GET", "/api/v1/education/groups", undefined, true);
   }
 
-  createEducationGroup(
-    body: EducationGroupWrite,
-  ): Promise<{ ok: true; id: number }> {
+  createEducationGroup(body: EducationGroupWrite): Promise<{ ok: true; id: number }> {
     return this.request("POST", "/api/v1/education/groups", body, true);
   }
 
@@ -1391,7 +1273,12 @@ export class ApiClient {
   }
 
   deleteEducationGroup(groupId: number): Promise<void> {
-    return this.request("DELETE", `/api/v1/education/groups/${groupId}`, undefined, true);
+    return this.request(
+      "DELETE",
+      `/api/v1/education/groups/${groupId}`,
+      undefined,
+      true,
+    );
   }
 
   getEducationStudents(groupId = 0): Promise<EducationStudent[]> {
@@ -1414,12 +1301,7 @@ export class ApiClient {
     studentId: number,
     body: EducationStudentWrite,
   ): Promise<{ ok: true }> {
-    return this.request(
-      "PUT",
-      `/api/v1/education/students/${studentId}`,
-      body,
-      true,
-    );
+    return this.request("PUT", `/api/v1/education/students/${studentId}`, body, true);
   }
 
   deleteEducationStudent(studentId: number): Promise<void> {
@@ -1532,12 +1414,7 @@ export class ApiClient {
     teacherId: number,
     body: EducationTeacherWrite,
   ): Promise<{ ok: true }> {
-    return this.request(
-      "PUT",
-      `/api/v1/education/teachers/${teacherId}`,
-      body,
-      true,
-    );
+    return this.request("PUT", `/api/v1/education/teachers/${teacherId}`, body, true);
   }
 
   deleteEducationTeacher(teacherId: number): Promise<void> {
@@ -1562,12 +1439,7 @@ export class ApiClient {
   createEducationPayroll(
     body: EducationPayrollCreate,
   ): Promise<{ ok: true; id: number }> {
-    return this.request(
-      "POST",
-      "/api/v1/education/teacher-payroll",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/education/teacher-payroll", body, true);
   }
 
   deleteEducationPayroll(paymentId: number): Promise<void> {
@@ -1587,7 +1459,10 @@ export class ApiClient {
     return this.request("POST", "/api/v1/staff", body, true);
   }
 
-  updateStaffMember(staffId: number, body: Partial<StaffMemberWrite>): Promise<StaffMember> {
+  updateStaffMember(
+    staffId: number,
+    body: Partial<StaffMemberWrite>,
+  ): Promise<StaffMember> {
     return this.request("PUT", `/api/v1/staff/${staffId}`, body, true);
   }
 
@@ -1608,12 +1483,7 @@ export class ApiClient {
   }
 
   updateStaffSchedule(staffId: number, schedule: StaffSchedule): Promise<StaffMember> {
-    return this.request(
-      "PUT",
-      `/api/v1/staff/${staffId}/schedule`,
-      { schedule },
-      true,
-    );
+    return this.request("PUT", `/api/v1/staff/${staffId}/schedule`, { schedule }, true);
   }
 
   createStaffProfession(name: string): Promise<{ professions: string[] }> {
@@ -1622,7 +1492,12 @@ export class ApiClient {
 
   getStaffAttendance(day: string): Promise<StaffAttendance> {
     const query = new URLSearchParams({ day });
-    return this.request("GET", `/api/v1/staff/attendance?${query.toString()}`, undefined, true);
+    return this.request(
+      "GET",
+      `/api/v1/staff/attendance?${query.toString()}`,
+      undefined,
+      true,
+    );
   }
 
   updateStaffAttendance(
@@ -1636,10 +1511,7 @@ export class ApiClient {
     return this.request("PUT", "/api/v1/business-profile", body, true);
   }
 
-  reverseGeocode(
-    latitude: number,
-    longitude: number,
-  ): Promise<ReverseGeocodeResult> {
+  reverseGeocode(latitude: number, longitude: number): Promise<ReverseGeocodeResult> {
     const query = new URLSearchParams({
       lat: String(latitude),
       lng: String(longitude),
@@ -1718,21 +1590,14 @@ export class ApiClient {
   }
 
   openBusiness(body: BusinessOpeningWrite): Promise<BusinessOpeningRead> {
-    return this.request(
-      "POST",
-      "/api/v1/business-opening",
-      body,
-      true,
-    );
+    return this.request("POST", "/api/v1/business-opening", body, true);
   }
 
   getPaymentCatalog(): Promise<PaymentCatalog> {
     return this.request("GET", "/api/v1/payments/catalog", undefined, true);
   }
 
-  createPaymentRequest(
-    body: PaymentRequestBody,
-  ): Promise<PaymentRequestRecord> {
+  createPaymentRequest(body: PaymentRequestBody): Promise<PaymentRequestRecord> {
     return this.request("POST", "/api/v1/payments/requests", body, true);
   }
 
@@ -1741,12 +1606,7 @@ export class ApiClient {
   }
 
   getBusinessSubscription(): Promise<BusinessSubscriptionSummary> {
-    return this.request(
-      "GET",
-      "/api/v1/payments/subscription",
-      undefined,
-      true,
-    );
+    return this.request("GET", "/api/v1/payments/subscription", undefined, true);
   }
 
   resubmitPayment(
@@ -1797,64 +1657,45 @@ export class ApiClient {
     return this.request("POST", "/api/v1/dining/places", body, true);
   }
 
-  updateDiningPlace(
-    placeId: number,
-    body: DiningPlaceWrite,
-  ): Promise<DiningPlace> {
-    return this.request(
-      "PUT", `/api/v1/dining/places/${placeId}`, body, true,
-    );
+  updateDiningPlace(placeId: number, body: DiningPlaceWrite): Promise<DiningPlace> {
+    return this.request("PUT", `/api/v1/dining/places/${placeId}`, body, true);
   }
 
-  moveDiningPlace(
-    placeId: number,
-    body: DiningPlaceMove,
-  ): Promise<DiningPlace> {
-    return this.request(
-      "PUT", `/api/v1/dining/places/${placeId}/position`, body, true,
-    );
+  moveDiningPlace(placeId: number, body: DiningPlaceMove): Promise<DiningPlace> {
+    return this.request("PUT", `/api/v1/dining/places/${placeId}/position`, body, true);
   }
 
   deleteDiningPlace(placeId: number): Promise<void> {
-    return this.request(
-      "DELETE", `/api/v1/dining/places/${placeId}`, undefined, true,
-    );
+    return this.request("DELETE", `/api/v1/dining/places/${placeId}`, undefined, true);
   }
 
   clearDiningPlace(placeId: number): Promise<void> {
     return this.request(
-      "POST", `/api/v1/dining/places/${placeId}/clear`, undefined, true,
+      "POST",
+      `/api/v1/dining/places/${placeId}/clear`,
+      undefined,
+      true,
     );
   }
 
-  bookDiningPlace(
-    placeId: number,
-    body: DiningBookingBody,
-  ): Promise<DiningOrder> {
-    return this.request(
-      "POST", `/api/v1/dining/places/${placeId}/booking`, body, true,
-    );
+  bookDiningPlace(placeId: number, body: DiningBookingBody): Promise<DiningOrder> {
+    return this.request("POST", `/api/v1/dining/places/${placeId}/booking`, body, true);
   }
 
-  createDiningOrder(
-    placeId: number,
-    body: DiningOrderBody,
-  ): Promise<DiningOrder> {
-    return this.request(
-      "POST", `/api/v1/dining/places/${placeId}/order`, body, true,
-    );
+  createDiningOrder(placeId: number, body: DiningOrderBody): Promise<DiningOrder> {
+    return this.request("POST", `/api/v1/dining/places/${placeId}/order`, body, true);
   }
 
   getDiningOrders(): Promise<DiningOrder[]> {
     return this.request("GET", "/api/v1/dining/orders", undefined, true);
   }
 
-  addDiningOrderItems(
-    orderId: number,
-    items: DiningItemInput[],
-  ): Promise<DiningOrder> {
+  addDiningOrderItems(orderId: number, items: DiningItemInput[]): Promise<DiningOrder> {
     return this.request(
-      "POST", `/api/v1/dining/orders/${orderId}/items`, { items }, true,
+      "POST",
+      `/api/v1/dining/orders/${orderId}/items`,
+      { items },
+      true,
     );
   }
 
@@ -1863,7 +1704,10 @@ export class ApiClient {
     status: "preparing" | "done",
   ): Promise<DiningOrder> {
     return this.request(
-      "PUT", `/api/v1/dining/orders/${orderId}/kitchen`, { status }, true,
+      "PUT",
+      `/api/v1/dining/orders/${orderId}/kitchen`,
+      { status },
+      true,
     );
   }
 
@@ -1871,9 +1715,7 @@ export class ApiClient {
     orderId: number,
     body: DiningPaymentBody,
   ): Promise<DiningPaymentResult> {
-    return this.request(
-      "POST", `/api/v1/dining/orders/${orderId}/payment`, body, true,
-    );
+    return this.request("POST", `/api/v1/dining/orders/${orderId}/payment`, body, true);
   }
 
   updateDiningCashierItems(
@@ -1881,19 +1723,28 @@ export class ApiClient {
     items: DiningCashierLine[],
   ): Promise<DiningOrder> {
     return this.request(
-      "PUT", `/api/v1/dining/orders/${orderId}/cashier-items`, { items }, true,
+      "PUT",
+      `/api/v1/dining/orders/${orderId}/cashier-items`,
+      { items },
+      true,
     );
   }
 
   finalizeDiningOrder(orderId: number): Promise<DiningOrder> {
     return this.request(
-      "POST", `/api/v1/dining/orders/${orderId}/finalize`, undefined, true,
+      "POST",
+      `/api/v1/dining/orders/${orderId}/finalize`,
+      undefined,
+      true,
     );
   }
 
   cancelDiningOrder(orderId: number, reason: string): Promise<DiningOrder> {
     return this.request(
-      "POST", `/api/v1/dining/orders/${orderId}/cancel`, { reason }, true,
+      "POST",
+      `/api/v1/dining/orders/${orderId}/cancel`,
+      { reason },
+      true,
     );
   }
 
@@ -1926,9 +1777,7 @@ export class ApiClient {
   }
 
   setTaxiDriverAvailable(available: boolean): Promise<TaxiDriver> {
-    return this.request(
-      "PUT", "/api/v1/taxi/driver/available", { available }, true,
-    );
+    return this.request("PUT", "/api/v1/taxi/driver/available", { available }, true);
   }
 
   createTaxiRide(body: TaxiRideCreate): Promise<TaxiRide> {
@@ -1940,9 +1789,7 @@ export class ApiClient {
   }
 
   cancelTaxiRide(rideId: number): Promise<TaxiRideMutation> {
-    return this.request(
-      "POST", `/api/v1/taxi/rides/${rideId}/cancel`, undefined, true,
-    );
+    return this.request("POST", `/api/v1/taxi/rides/${rideId}/cancel`, undefined, true);
   }
 
   getPendingTaxiRides(): Promise<TaxiDriverRides> {
@@ -1950,9 +1797,7 @@ export class ApiClient {
   }
 
   acceptTaxiRide(rideId: number): Promise<TaxiRideAccepted> {
-    return this.request(
-      "POST", `/api/v1/taxi/rides/${rideId}/accept`, undefined, true,
-    );
+    return this.request("POST", `/api/v1/taxi/rides/${rideId}/accept`, undefined, true);
   }
 
   setTaxiRideStatus(
@@ -1960,36 +1805,31 @@ export class ApiClient {
     status: TaxiRide["status"],
   ): Promise<TaxiRideMutation> {
     return this.request(
-      "POST", `/api/v1/taxi/rides/${rideId}/status`, { status }, true,
+      "POST",
+      `/api/v1/taxi/rides/${rideId}/status`,
+      { status },
+      true,
     );
   }
 
   updateTaxiRideProgress(rideId: number, km: number): Promise<TaxiRide> {
-    return this.request(
-      "POST", `/api/v1/taxi/rides/${rideId}/progress`, { km }, true,
-    );
+    return this.request("POST", `/api/v1/taxi/rides/${rideId}/progress`, { km }, true);
   }
 
   openDiningProblem(
     orderId: number,
     body: { reason: string; note: string },
   ): Promise<DiningOrder> {
-    return this.request(
-      "POST", `/api/v1/dining/orders/${orderId}/problem`, body, true,
-    );
+    return this.request("POST", `/api/v1/dining/orders/${orderId}/problem`, body, true);
   }
 
   // --- Reklama joylash (K14) ---
 
   getAdvertisementRates(): Promise<AdvertisementRates> {
-    return this.request(
-      "GET", "/api/v1/advertisements/rates", undefined, true,
-    );
+    return this.request("GET", "/api/v1/advertisements/rates", undefined, true);
   }
 
-  quoteAdvertisement(
-    body: AdvertisementQuoteRequest,
-  ): Promise<AdvertisementQuote> {
+  quoteAdvertisement(body: AdvertisementQuoteRequest): Promise<AdvertisementQuote> {
     return this.request("POST", "/api/v1/advertisements/price", body, true);
   }
 
@@ -2003,7 +1843,10 @@ export class ApiClient {
 
   deleteAdvertisement(advertisementId: number): Promise<void> {
     return this.request(
-      "DELETE", `/api/v1/advertisements/${advertisementId}`, undefined, true,
+      "DELETE",
+      `/api/v1/advertisements/${advertisementId}`,
+      undefined,
+      true,
     );
   }
 

@@ -1,5 +1,5 @@
-from math import isfinite
 import re
+from math import isfinite
 from typing import Any
 
 from pydantic import (
@@ -12,11 +12,8 @@ from pydantic import (
 
 from app.accounts.model import AccountType
 
-
 USERNAME = re.compile(r"^[a-z0-9_]{3,32}$")
-USERNAME_MESSAGE = (
-    "Username 3–32 ta lotin harfi, raqam yoki _ dan iborat bo‘lsin."
-)
+USERNAME_MESSAGE = "Username 3–32 ta lotin harfi, raqam yoki _ dan iborat bo‘lsin."
 
 
 def normalize_username(value: str) -> str:
@@ -38,10 +35,7 @@ def normalize_json_value(value: Any) -> Any:
     if isinstance(value, float):
         return value if isfinite(value) else None
     if isinstance(value, dict):
-        return {
-            str(key): normalize_json_value(item)
-            for key, item in value.items()
-        }
+        return {str(key): normalize_json_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [normalize_json_value(item) for item in value]
     return value
@@ -155,6 +149,7 @@ class UserProfilePatch(ProfilePatch):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_exact: bool | None = None
+
     @field_validator("public_username", mode="before")
     @classmethod
     def validate_public_username(cls, value):

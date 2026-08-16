@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-import time
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +13,6 @@ from app.core.errors import ApiError
 from app.education.model import CourseEnrollment, EducationStudent
 from app.education.repository import EducationEnrollmentRepository
 from app.education.schemas import CourseEnrollmentCreate, CourseEnrollmentCreated
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
@@ -176,21 +175,24 @@ class EducationEnrollmentService:
             legacy_user_id=enrollment.legacy_user_id,
         )
         if student is None:
-            await self._repository.add_student(session, EducationStudent(
-                business_account_id=business_account_id,
-                legacy_source_id=None,
-                group_id=group.id,
-                user_account_id=enrollment.user_account_id,
-                legacy_user_id=enrollment.legacy_user_id,
-                full_name=enrollment.customer_name,
-                phone=enrollment.phone,
-                joined_date=_local_day(now),
-                note=("Kurs arizasi: " + enrollment.note)[:500],
-                monthly_fee=0,
-                status="active",
-                created_at=now,
-                updated_at=now,
-            ))
+            await self._repository.add_student(
+                session,
+                EducationStudent(
+                    business_account_id=business_account_id,
+                    legacy_source_id=None,
+                    group_id=group.id,
+                    user_account_id=enrollment.user_account_id,
+                    legacy_user_id=enrollment.legacy_user_id,
+                    full_name=enrollment.customer_name,
+                    phone=enrollment.phone,
+                    joined_date=_local_day(now),
+                    note=("Kurs arizasi: " + enrollment.note)[:500],
+                    monthly_fee=0,
+                    status="active",
+                    created_at=now,
+                    updated_at=now,
+                ),
+            )
         else:
             student.group_id = group.id
             student.phone = enrollment.phone
@@ -235,9 +237,7 @@ class EducationEnrollmentService:
 def _local_day(now: int) -> str:
     from datetime import UTC, datetime, timedelta
 
-    return (
-        datetime.fromtimestamp(now, UTC) + timedelta(hours=5)
-    ).strftime("%Y-%m-%d")
+    return (datetime.fromtimestamp(now, UTC) + timedelta(hours=5)).strftime("%Y-%m-%d")
 
 
 def _course_row(

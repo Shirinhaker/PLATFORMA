@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-import re
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +17,6 @@ from app.accounts.model import Account, AccountType
 from app.auth.security import hash_password
 from app.core.errors import ApiError
 from app.profiles.model import ProfileLink
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]

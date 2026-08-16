@@ -7,9 +7,9 @@ xil manzildan kelgan amallarni solishtirish mumkin bo'lib qoladi.
 
 from __future__ import annotations
 
-from datetime import datetime
 import hashlib
 import hmac
+from datetime import datetime
 from typing import Any
 
 from fastapi import Request
@@ -54,16 +54,18 @@ async def append_audit(
     tranzaksiyaga tushsin.
     """
     meta = meta or {}
-    session.add(AdminAuditLog(
-        admin_tg_id=admin_tg_id,
-        action=action.strip()[:80],
-        target_kind=(target_kind or "unknown").strip()[:40],
-        target_id="" if target_id is None else str(target_id)[:64],
-        before_state=before or {},
-        after_state=after or {},
-        reason=(reason or "").strip()[:2000],
-        ip_hash=str(meta.get("ip_hash", ""))[:128],
-        user_agent=str(meta.get("user_agent", ""))[:500],
-        created_at=now,
-    ))
+    session.add(
+        AdminAuditLog(
+            admin_tg_id=admin_tg_id,
+            action=action.strip()[:80],
+            target_kind=(target_kind or "unknown").strip()[:40],
+            target_id="" if target_id is None else str(target_id)[:64],
+            before_state=before or {},
+            after_state=after or {},
+            reason=(reason or "").strip()[:2000],
+            ip_hash=str(meta.get("ip_hash", ""))[:128],
+            user_agent=str(meta.get("user_agent", ""))[:500],
+            created_at=now,
+        )
+    )
     await session.flush()

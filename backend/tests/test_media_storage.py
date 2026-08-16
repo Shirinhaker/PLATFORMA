@@ -1,6 +1,7 @@
 from io import BytesIO
 
 import pytest
+
 from app.accounts.model import AccountType
 from app.media.storage import R2Storage, StoredObject, UploadRejected
 
@@ -59,9 +60,7 @@ def test_business_catalog_image_grant_uses_owned_private_prefix(s3_client):
         size_bytes=1024,
     )
 
-    assert grant.object_key.startswith(
-        "private/business/84/catalog_item_image/"
-    )
+    assert grant.object_key.startswith("private/business/84/catalog_item_image/")
     assert grant.object_key.endswith(".webp")
 
 
@@ -75,9 +74,7 @@ def test_order_chat_image_grant_uses_private_owner_prefix_and_eight_mb_limit(s3_
         content_type="image/heic",
         size_bytes=1024,
     )
-    assert grant.object_key.startswith(
-        "private/business/84/order_chat_image/"
-    )
+    assert grant.object_key.startswith("private/business/84/order_chat_image/")
     assert grant.object_key.endswith(".heic")
 
     with pytest.raises(UploadRejected, match="8 MB"):
@@ -129,9 +126,7 @@ def test_specialist_media_uses_exact_v1656_formats_and_limits(s3_client):
         content_type="image/webp",
         size_bytes=1024,
     )
-    assert credential.object_key.startswith(
-        "private/user/42/specialist_credential/"
-    )
+    assert credential.object_key.startswith("private/user/42/specialist_credential/")
     video = storage.create_upload_grant(
         owner_type=AccountType.USER,
         owner_id=42,
@@ -140,9 +135,7 @@ def test_specialist_media_uses_exact_v1656_formats_and_limits(s3_client):
         content_type="video/mp4",
         size_bytes=30 * 1024 * 1024,
     )
-    assert video.object_key.startswith(
-        "private/user/42/specialist_portfolio_video/"
-    )
+    assert video.object_key.startswith("private/user/42/specialist_portfolio_video/")
     with pytest.raises(UploadRejected, match="30 MB"):
         storage.create_upload_grant(
             owner_type=AccountType.USER,
@@ -208,9 +201,12 @@ def test_migration_upload_sets_checksum_metadata_and_verifies_head():
         "ContentType": "image/png",
         "Metadata": {"sha256": "a" * 64},
     }
-    assert storage.verify_object(
-        stored.object_key,
-        expected_size=9,
-        expected_sha256="a" * 64,
-        expected_content_type="image/png",
-    ) is True
+    assert (
+        storage.verify_object(
+            stored.object_key,
+            expected_size=9,
+            expected_sha256="a" * 64,
+            expected_content_type="image/png",
+        )
+        is True
+    )

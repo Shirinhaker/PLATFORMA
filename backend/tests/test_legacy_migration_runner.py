@@ -10,10 +10,10 @@ from app.legacy_migration.model import (
     MigrationStatus,
 )
 from app.legacy_migration.runner import (
+    STAGES,
     MigrationRunner,
     ProductionApproval,
     ProductionGateError,
-    STAGES,
     build_database_runner,
 )
 from app.legacy_migration.source import SnapshotInfo
@@ -222,9 +222,7 @@ async def test_failed_verify_resume_clears_finished_at_before_media_save(
         return run
 
     async def save(value):
-        saved.append(
-            (value.stage, value.status, value.finished_at)
-        )
+        saved.append((value.stage, value.status, value.finished_at))
         return value
 
     async def media_handler(snapshot_info, value):
@@ -245,9 +243,7 @@ async def test_failed_verify_resume_clears_finished_at_before_media_save(
     assert resumed.stage is MigrationStage.MEDIA
     assert resumed.status is MigrationStatus.RUNNING
     assert resumed.finished_at is None
-    assert saved == [
-        (MigrationStage.MEDIA, MigrationStatus.RUNNING, None)
-    ]
+    assert saved == [(MigrationStage.MEDIA, MigrationStatus.RUNNING, None)]
 
 
 @pytest.mark.asyncio
@@ -287,8 +283,7 @@ async def test_completed_run_rechecks_idempotency_without_losing_first_pass(
         load_or_create=load_or_create,
         save=save,
         stage_handlers={
-            definition.stage: handler(definition.stage)
-            for definition in STAGES
+            definition.stage: handler(definition.stage) for definition in STAGES
         },
     )
 
@@ -346,8 +341,7 @@ async def test_failed_idempotency_verify_resumes_without_overwriting_first_pass(
         load_or_create=load_or_create,
         save=save,
         stage_handlers={
-            definition.stage: handler(definition.stage)
-            for definition in STAGES
+            definition.stage: handler(definition.stage) for definition in STAGES
         },
     )
 
@@ -370,10 +364,7 @@ async def test_failed_idempotency_verify_resumes_without_overwriting_first_pass(
         "created": 0,
         "reused": 1,
     }
-    assert (
-        resumed_check.counters_json["idempotency"]["verify"]["passed"]
-        is True
-    )
+    assert resumed_check.counters_json["idempotency"]["verify"]["passed"] is True
     assert "idempotency_in_progress" not in resumed_check.counters_json
 
 

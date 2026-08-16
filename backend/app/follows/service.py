@@ -7,9 +7,9 @@ saqlangan, chunki ekran bitta tugma bilan ishlaydi.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
-import time
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -28,7 +28,6 @@ from app.follows.schemas import (
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]
@@ -74,9 +73,7 @@ class FollowService:
             follow_id: int | None = None
             if existing is not None:
                 await session.execute(
-                    delete(ProfileFollow).where(
-                        ProfileFollow.id == existing.id
-                    )
+                    delete(ProfileFollow).where(ProfileFollow.id == existing.id)
                 )
             else:
                 follow = ProfileFollow(
@@ -145,25 +142,29 @@ class FollowService:
             info = (
                 raw_info
                 if kind == "business"
-                else f"@{raw_info.lstrip('@')}" if raw_info else ""
+                else f"@{raw_info.lstrip('@')}"
+                if raw_info
+                else ""
             )
             public_id = str(row.get("public_id") or "") or target_public_id(
                 kind,
                 int(row["profile_account_id"]),
             )
-            items.append(FollowProfileRead(
-                kind=kind,
-                public_id=public_id,
-                name=str(row.get("name") or "Profil"),
-                info=info,
-                image_url=self._image_url_provider(
-                    str(row.get("image_object_key") or "")
-                ),
-                crop_x=float(row.get("crop_x") or 50),
-                crop_y=float(row.get("crop_y") or 50),
-                crop_zoom=float(row.get("crop_zoom") or 1),
-                followed_at=int(row.get("followed_at") or 0),
-            ))
+            items.append(
+                FollowProfileRead(
+                    kind=kind,
+                    public_id=public_id,
+                    name=str(row.get("name") or "Profil"),
+                    info=info,
+                    image_url=self._image_url_provider(
+                        str(row.get("image_object_key") or "")
+                    ),
+                    crop_x=float(row.get("crop_x") or 50),
+                    crop_y=float(row.get("crop_y") or 50),
+                    crop_zoom=float(row.get("crop_zoom") or 1),
+                    followed_at=int(row.get("followed_at") or 0),
+                )
+            )
         return FollowListRead(items=items, count=count)
 
     async def _append_follow_notification(

@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import type {
-  AdminApiClient,
-  AdminMethodRow,
-  AdminPriceRow,
-} from "./admin-client";
-
+import type { AdminApiClient, AdminMethodRow, AdminPriceRow } from "./admin-client";
 
 export type AdminPricingApi = Pick<
   AdminApiClient,
@@ -82,10 +77,7 @@ function cardNumberOf(details: Record<string, unknown>) {
   return typeof value === "string" ? value : String(value ?? "");
 }
 
-function withCardNumber(
-  details: Record<string, unknown>,
-  cardNumber: string,
-) {
+function withCardNumber(details: Record<string, unknown>, cardNumber: string) {
   const next = { ...details };
   delete next.card;
   if (cardNumber.trim()) {
@@ -110,7 +102,6 @@ function toDraft(method: AdminMethodRow): MethodDraft {
   };
 }
 
-
 export function AdminPricing({ api }: Props) {
   const [prices, setPrices] = useState<AdminPriceRow[]>([]);
   const [methods, setMethods] = useState<AdminMethodRow[]>([]);
@@ -119,9 +110,7 @@ export function AdminPricing({ api }: Props) {
   const [loading, setLoading] = useState(true);
   // Faqat bosilgan qator kutish holatiga o'tadi — barcha tugmalar emas.
   const [pendingPrice, setPendingPrice] = useState<number | null>(null);
-  const [pendingMethod, setPendingMethod] = useState<number | "new" | null>(
-    null,
-  );
+  const [pendingMethod, setPendingMethod] = useState<number | "new" | null>(null);
   const [note, setNote] = useState("");
   const [failed, setFailed] = useState(false);
 
@@ -264,47 +253,55 @@ export function AdminPricing({ api }: Props) {
 
       <div className="split-grid">
         <div className="panel">
-          <div className="panel-head"><h2>Platforma narxlari</h2></div>
+          <div className="panel-head">
+            <h2>Platforma narxlari</h2>
+          </div>
           <div className="settings-list">
-            {loading ? <div>Yuklanmoqda…</div> : prices.map((price) => (
-              <div className="settings-row" key={price.id}>
-                <div>
-                  <b>{priceLabel(price)}</b>
-                  <div className="muted">
-                    {SERVICE_TEXT[price.service_type] ?? price.service_type}
-                    {price.active ? "" : " · o‘chirilgan"}
+            {loading ? (
+              <div>Yuklanmoqda…</div>
+            ) : (
+              prices.map((price) => (
+                <div className="settings-row" key={price.id}>
+                  <div>
+                    <b>{priceLabel(price)}</b>
+                    <div className="muted">
+                      {SERVICE_TEXT[price.service_type] ?? price.service_type}
+                      {price.active ? "" : " · o‘chirilgan"}
+                    </div>
                   </div>
+                  <label className="sr-only" htmlFor={`price-${price.id}`}>
+                    {`${priceLabel(price)} narxi`}
+                  </label>
+                  <input
+                    id={`price-${price.id}`}
+                    inputMode="numeric"
+                    value={draft[price.id] ?? String(price.amount_uzs)}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        [price.id]: event.target.value,
+                      }))
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="compact"
+                    disabled={pendingPrice === price.id}
+                    onClick={() => void savePrice(price)}
+                  >
+                    Saqlash
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    disabled={pendingPrice === price.id}
+                    onClick={() => void togglePrice(price)}
+                  >
+                    {price.active ? "O‘chirish" : "Yoqish"}
+                  </button>
                 </div>
-                <label className="sr-only" htmlFor={`price-${price.id}`}>
-                  {`${priceLabel(price)} narxi`}
-                </label>
-                <input
-                  id={`price-${price.id}`}
-                  inputMode="numeric"
-                  value={draft[price.id] ?? String(price.amount_uzs)}
-                  onChange={(event) => setDraft((current) => ({
-                    ...current,
-                    [price.id]: event.target.value,
-                  }))}
-                />
-                <button
-                  type="button"
-                  className="compact"
-                  disabled={pendingPrice === price.id}
-                  onClick={() => void savePrice(price)}
-                >
-                  Saqlash
-                </button>
-                <button
-                  type="button"
-                  className="secondary compact"
-                  disabled={pendingPrice === price.id}
-                  onClick={() => void togglePrice(price)}
-                >
-                  {price.active ? "O‘chirish" : "Yoqish"}
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -320,33 +317,38 @@ export function AdminPricing({ api }: Props) {
             </button>
           </div>
           <div className="settings-list">
-            {loading ? <div>Yuklanmoqda…</div> : methods.map((row) => (
-              <div className="settings-row" key={row.id}>
-                <div>
-                  <b>{row.name}</b>
-                  <div className="muted">
-                    {row.recipient_name || cardNumberOf(row.details ?? {})
-                      || row.method_type}
+            {loading ? (
+              <div>Yuklanmoqda…</div>
+            ) : (
+              methods.map((row) => (
+                <div className="settings-row" key={row.id}>
+                  <div>
+                    <b>{row.name}</b>
+                    <div className="muted">
+                      {row.recipient_name ||
+                        cardNumberOf(row.details ?? {}) ||
+                        row.method_type}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    disabled={pendingMethod === row.id}
+                    onClick={() => setMethod(toDraft(row))}
+                  >
+                    Tahrirlash
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    disabled={pendingMethod === row.id}
+                    onClick={() => void toggleMethod(row)}
+                  >
+                    {row.active ? "O‘chirish" : "Yoqish"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="secondary compact"
-                  disabled={pendingMethod === row.id}
-                  onClick={() => setMethod(toDraft(row))}
-                >
-                  Tahrirlash
-                </button>
-                <button
-                  type="button"
-                  className="secondary compact"
-                  disabled={pendingMethod === row.id}
-                  onClick={() => void toggleMethod(row)}
-                >
-                  {row.active ? "O‘chirish" : "Yoqish"}
-                </button>
-              </div>
-            ))}
+              ))
+            )}
 
             {method ? (
               <div
@@ -363,38 +365,48 @@ export function AdminPricing({ api }: Props) {
                 <input
                   id="methodName"
                   value={method.name}
-                  onChange={(event) => setMethod({
-                    ...method, name: event.target.value,
-                  })}
+                  onChange={(event) =>
+                    setMethod({
+                      ...method,
+                      name: event.target.value,
+                    })
+                  }
                 />
                 <label htmlFor="methodRecipient">Qabul qiluvchi</label>
                 <input
                   id="methodRecipient"
                   value={method.recipient_name}
-                  onChange={(event) => setMethod({
-                    ...method, recipient_name: event.target.value,
-                  })}
+                  onChange={(event) =>
+                    setMethod({
+                      ...method,
+                      recipient_name: event.target.value,
+                    })
+                  }
                 />
                 <label htmlFor="methodCard">Karta raqami</label>
                 <input
                   id="methodCard"
                   inputMode="numeric"
                   value={method.card_number}
-                  onChange={(event) => setMethod({
-                    ...method, card_number: event.target.value,
-                  })}
+                  onChange={(event) =>
+                    setMethod({
+                      ...method,
+                      card_number: event.target.value,
+                    })
+                  }
                 />
                 <label htmlFor="methodInstructions">Ko‘rsatma</label>
                 <input
                   id="methodInstructions"
                   value={method.instructions}
-                  onChange={(event) => setMethod({
-                    ...method, instructions: event.target.value,
-                  })}
+                  onChange={(event) =>
+                    setMethod({
+                      ...method,
+                      instructions: event.target.value,
+                    })
+                  }
                 />
-                <div className="idesc">
-                  Bular mijozga to‘lov oynasida ko‘rinadi.
-                </div>
+                <div className="idesc">Bular mijozga to‘lov oynasida ko‘rinadi.</div>
                 <div className="decision-row">
                   <button
                     type="button"

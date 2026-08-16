@@ -4,7 +4,6 @@ from pathlib import Path
 from app.education.model import EducationPayment
 from app.education.router import router as education_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0034_education_management.py"
 

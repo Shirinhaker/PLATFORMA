@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { AdminApiClient, ReportRow } from "./admin-client";
 
-
 export type AdminReportsApi = Pick<
   AdminApiClient,
   "reports" | "assignReport" | "decideReport" | "setContentStatus"
@@ -35,7 +34,6 @@ function stamp(seconds: number) {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${pad(at.getDate())}.${pad(at.getMonth() + 1)} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 }
-
 
 export function AdminReports({ api }: Props) {
   const [status, setStatus] = useState("open");
@@ -91,9 +89,7 @@ export function AdminReports({ api }: Props) {
       await api.decideReport(selected.id, decision, resolution.trim());
       setFailed(false);
       setText(
-        decision === "resolve"
-          ? "Shikoyat hal qilindi ✅"
-          : "Shikoyat rad etildi",
+        decision === "resolve" ? "Shikoyat hal qilindi ✅" : "Shikoyat rad etildi",
       );
       setSelected(null);
       setResolution("");
@@ -116,7 +112,10 @@ export function AdminReports({ api }: Props) {
     setBusy(true);
     try {
       await api.setContentStatus(
-        selected.content_kind, selected.content_id, "hide", resolution.trim(),
+        selected.content_kind,
+        selected.content_id,
+        "hide",
+        resolution.trim(),
       );
       setFailed(false);
       setText("Kontent publicdan yashirildi");
@@ -138,7 +137,9 @@ export function AdminReports({ api }: Props) {
       </div>
 
       <div className="filterbar">
-        <label className="sr-only" htmlFor="reportStatus">Holat</label>
+        <label className="sr-only" htmlFor="reportStatus">
+          Holat
+        </label>
         <select
           id="reportStatus"
           value={status}
@@ -174,26 +175,32 @@ export function AdminReports({ api }: Props) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5}>Yuklanmoqda…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={5}>Shikoyat yo‘q.</td></tr>
-            ) : rows.map((row) => (
-              <tr key={row.id}>
-                <td>{`${row.content_kind} #${row.content_id}`}</td>
-                <td>{REASON_TEXT[row.reason_code] ?? row.reason_code}</td>
-                <td>{STATUS_TEXT[row.status] ?? row.status}</td>
-                <td>{stamp(row.created_at)}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="secondary compact"
-                    onClick={() => setSelected(row)}
-                  >
-                    Ko‘rish
-                  </button>
-                </td>
+              <tr>
+                <td colSpan={5}>Yuklanmoqda…</td>
               </tr>
-            ))}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={5}>Shikoyat yo‘q.</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{`${row.content_kind} #${row.content_id}`}</td>
+                  <td>{REASON_TEXT[row.reason_code] ?? row.reason_code}</td>
+                  <td>{STATUS_TEXT[row.status] ?? row.status}</td>
+                  <td>{stamp(row.created_at)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary compact"
+                      onClick={() => setSelected(row)}
+                    >
+                      Ko‘rish
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -205,7 +212,10 @@ export function AdminReports({ api }: Props) {
             <button
               type="button"
               className="secondary compact"
-              onClick={() => { setSelected(null); setResolution(""); }}
+              onClick={() => {
+                setSelected(null);
+                setResolution("");
+              }}
             >
               Yopish
             </button>
@@ -224,12 +234,13 @@ export function AdminReports({ api }: Props) {
               <dt>Biriktirilgan</dt>
               <dd>{selected.assigned_admin_tg_id ?? "—"}</dd>
             </div>
-            <div><dt>Kelgan</dt><dd>{stamp(selected.created_at)}</dd></div>
+            <div>
+              <dt>Kelgan</dt>
+              <dd>{stamp(selected.created_at)}</dd>
+            </div>
           </dl>
 
-          {selected.comment ? (
-            <div className="muted">{selected.comment}</div>
-          ) : null}
+          {selected.comment ? <div className="muted">{selected.comment}</div> : null}
 
           {selected.status === "open" || selected.status === "reviewing" ? (
             <>

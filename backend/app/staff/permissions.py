@@ -76,9 +76,14 @@ EDUCATION = (
     PermissionDefinition("education_statistics", "Ta’lim statistikasi", "📊"),
 )
 
-TRADE_DIRECTIONS = frozenset({
-    "Savdo", "Qishloq xo'jaligi", "Ishlab chiqarish", "Hunarmandchilik",
-})
+TRADE_DIRECTIONS = frozenset(
+    {
+        "Savdo",
+        "Qishloq xo'jaligi",
+        "Ishlab chiqarish",
+        "Hunarmandchilik",
+    }
+)
 
 
 def direction_kind(direction: str) -> str:
@@ -106,41 +111,84 @@ def permission_templates(direction: str) -> tuple[PermissionTemplate, ...]:
         "trade": (
             PermissionTemplate("seller", "Sotuvchi", ("items", "buyurtma", "kassa")),
             PermissionTemplate("cashier", "Kassir", ("buyurtma", "kassa", "debts")),
-            PermissionTemplate("storekeeper", "Omborchi", ("ombor", "items", "expenses")),
+            PermissionTemplate(
+                "storekeeper", "Omborchi", ("ombor", "items", "expenses")
+            ),
         ),
         "service": (
             PermissionTemplate(
-                "specialist", "Mutaxassis",
+                "specialist",
+                "Mutaxassis",
                 ("items", "service_orders", "chats", "notifications"),
             ),
-            PermissionTemplate("cashier", "Kassir", ("service_orders", "kassa", "debts")),
+            PermissionTemplate(
+                "cashier", "Kassir", ("service_orders", "kassa", "debts")
+            ),
         ),
         "dining": (
             PermissionTemplate(
-                "waiter", "Ofitsiant",
+                "waiter",
+                "Ofitsiant",
                 ("dining_places", "dining_internal", "chats", "notifications"),
             ),
             PermissionTemplate(
-                "cook", "Oshpaz",
-                ("dining_internal", "dining_external", "kitchen", "ready_food", "production", "notifications"),
+                "cook",
+                "Oshpaz",
+                (
+                    "dining_internal",
+                    "dining_external",
+                    "kitchen",
+                    "ready_food",
+                    "production",
+                    "notifications",
+                ),
             ),
             PermissionTemplate(
-                "cashier", "Kassir",
-                ("kassa", "open_accounts", "payment_review", "payment_confirm", "payment_problems"),
+                "cashier",
+                "Kassir",
+                (
+                    "kassa",
+                    "open_accounts",
+                    "payment_review",
+                    "payment_confirm",
+                    "payment_problems",
+                ),
             ),
             PermissionTemplate(
-                "storekeeper", "Omborchi",
-                ("ombor", "ready_food", "raw_stock", "recipes", "production", "expenses"),
+                "storekeeper",
+                "Omborchi",
+                (
+                    "ombor",
+                    "ready_food",
+                    "raw_stock",
+                    "recipes",
+                    "production",
+                    "expenses",
+                ),
             ),
         ),
         "education": (
             PermissionTemplate(
-                "teacher", "O‘qituvchi",
-                ("education_groups", "education_students", "education_schedule", "education_attendance", "notifications"),
+                "teacher",
+                "O‘qituvchi",
+                (
+                    "education_groups",
+                    "education_students",
+                    "education_schedule",
+                    "education_attendance",
+                    "notifications",
+                ),
             ),
             PermissionTemplate(
-                "education_cashier", "Administrator / kassir",
-                ("education_students", "education_payments", "education_enrollments", "chats", "notifications"),
+                "education_cashier",
+                "Administrator / kassir",
+                (
+                    "education_students",
+                    "education_payments",
+                    "education_enrollments",
+                    "chats",
+                    "notifications",
+                ),
             ),
         ),
     }[direction_kind(direction)]
@@ -149,9 +197,7 @@ def permission_templates(direction: str) -> tuple[PermissionTemplate, ...]:
 
 
 ALL_PERMISSION_KEYS = frozenset(
-    item.key
-    for group in (COMMON, TRADE, SERVICE, DINING, EDUCATION)
-    for item in group
+    item.key for group in (COMMON, TRADE, SERVICE, DINING, EDUCATION) for item in group
 )
 
 
@@ -163,9 +209,7 @@ def clean_permissions(values: object, direction: str = "") -> list[str]:
         if direction
         else ALL_PERMISSION_KEYS
     )
-    return list(dict.fromkeys(
-        str(value) for value in values if str(value) in allowed
-    ))
+    return list(dict.fromkeys(str(value) for value in values if str(value) in allowed))
 
 
 RESOURCE_PERMISSIONS: dict[str, tuple[str, ...]] = {

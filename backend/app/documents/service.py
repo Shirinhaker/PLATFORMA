@@ -24,7 +24,6 @@ from app.documents.schemas import (
     MutationRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 COUNTERPARTY_TYPES = ("Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa")
@@ -110,7 +109,9 @@ class DocumentService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "counterparty_not_found", "Kontragent topilmadi.")
+                    raise ApiError(
+                        404, "counterparty_not_found", "Kontragent topilmadi."
+                    )
                 for name, value in body.model_dump().items():
                     setattr(row, name, value)
                 row.updated_at = self._now_provider()
@@ -138,7 +139,9 @@ class DocumentService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "counterparty_not_found", "Kontragent topilmadi.")
+                    raise ApiError(
+                        404, "counterparty_not_found", "Kontragent topilmadi."
+                    )
                 await session.delete(row)
                 await session.flush()
                 await session.commit()
@@ -154,7 +157,9 @@ class DocumentService:
         direction: str | None,
     ) -> DocumentListRead:
         self._require_documents(permissions)
-        normalized = direction if direction in {"ichki", "kiruvchi", "chiquvchi"} else None
+        normalized = (
+            direction if direction in {"ichki", "kiruvchi", "chiquvchi"} else None
+        )
         async with self._session_factory() as session:
             rows = await self._repository.documents(
                 session,
@@ -365,25 +370,27 @@ class DocumentService:
                         "Hujjatni o'zingizga yubora olmaysiz.",
                     )
                 now = self._now_provider()
-                session.add(BusinessDocument(
-                    business_account_id=target.account_id,
-                    legacy_source_id=None,
-                    direction="kiruvchi",
-                    doc_type=source.doc_type,
-                    title=source.title,
-                    number=source.number,
-                    doc_date=source.doc_date,
-                    contractor_id=None,
-                    body=source.body,
-                    sender_business_id=business_account_id,
-                    sender_name_snapshot=sender.name[:120],
-                    receiver_tax_id=receiver_inn,
-                    status="kutilmoqda",
-                    source_document_id=source.id,
-                    responded_at=None,
-                    created_at=now,
-                    updated_at=now,
-                ))
+                session.add(
+                    BusinessDocument(
+                        business_account_id=target.account_id,
+                        legacy_source_id=None,
+                        direction="kiruvchi",
+                        doc_type=source.doc_type,
+                        title=source.title,
+                        number=source.number,
+                        doc_date=source.doc_date,
+                        contractor_id=None,
+                        body=source.body,
+                        sender_business_id=business_account_id,
+                        sender_name_snapshot=sender.name[:120],
+                        receiver_tax_id=receiver_inn,
+                        status="kutilmoqda",
+                        source_document_id=source.id,
+                        responded_at=None,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 source.status = "yuborilgan"
                 source.receiver_tax_id = receiver_inn
                 source.updated_at = now

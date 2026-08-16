@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
-from typing import Mapping
+from collections.abc import Mapping
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,9 @@ def verify_payload_parity(
 def aggregate_profile_digest(entries: list[tuple[str, str]]) -> str:
     """Stable digest for sorted ``account_type:account_id`` profile digests."""
     ordered = sorted(entries, key=lambda entry: entry[0])
-    return payload_digest([{"profile": key, "digest": digest} for key, digest in ordered])
+    return payload_digest(
+        [{"profile": key, "digest": digest} for key, digest in ordered]
+    )
 
 
 def _canonical_payload(payload: Mapping[str, object]) -> dict[str, object]:

@@ -23,6 +23,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.accounts.model import AccountType
+from app.advertisements.authoring_schemas import (
+    AdvertisementCreate,
+    AdvertisementQuote,
+    AdvertisementQuoteRequest,
+    AdvertisementRates,
+    AdvertisementRead,
+    AdvertisementTarget,
+)
 from app.advertisements.model import Advertisement
 from app.advertisements.pricing import (
     VALID_AD_DURATIONS,
@@ -33,18 +41,9 @@ from app.advertisements.pricing import (
     schedule_end_at,
     shift_schedule_start,
 )
-from app.advertisements.authoring_schemas import (
-    AdvertisementCreate,
-    AdvertisementQuote,
-    AdvertisementQuoteRequest,
-    AdvertisementRates,
-    AdvertisementRead,
-    AdvertisementTarget,
-)
 from app.core.errors import ApiError
 from app.legacy_migration.model import ReviewState
 from app.payments.model import PlatformPrice
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
@@ -52,8 +51,7 @@ PRICE_CODE = "advertisement_district_hour"
 DEFAULT_HOUR_RATE = 20_000
 UZ_TIMEZONE = timezone(timedelta(hours=5))
 RATE_NOTE = (
-    "Reklama kvitansiya yuborilib, administrator tasdiqlagandan keyin "
-    "faol bo'ladi."
+    "Reklama kvitansiya yuborilib, administrator tasdiqlagandan keyin faol bo'ladi."
 )
 
 
@@ -78,11 +76,13 @@ def _targets(raw: Any) -> list[AdvertisementTarget]:
     for item in rows:
         if not isinstance(item, dict):
             continue
-        result.append(AdvertisementTarget(
-            level=str(item.get("level") or "republic"),
-            region=str(item.get("region") or ""),
-            district=str(item.get("district") or ""),
-        ))
+        result.append(
+            AdvertisementTarget(
+                level=str(item.get("level") or "republic"),
+                region=str(item.get("region") or ""),
+                district=str(item.get("district") or ""),
+            )
+        )
     return result
 
 
@@ -111,21 +111,25 @@ class AdvertisementAuthoringService:
             note=RATE_NOTE,
         )
 
-    async def quote(
-        self, body: AdvertisementQuoteRequest
-    ) -> AdvertisementQuote:
+    async def quote(self, body: AdvertisementQuoteRequest) -> AdvertisementQuote:
         async with self._session_factory() as session:
             rate = await self._hour_rate(session)
             await session.rollback()
         pricing = self._price(body, rate)
-        return AdvertisementQuote(**{
-            key: pricing[key]
-            for key in (
-                "district_count", "hours_per_day", "duration_days",
-                "district_hour_rate", "billable_district_hours",
-                "total", "currency",
-            )
-        })
+        return AdvertisementQuote(
+            **{
+                key: pricing[key]
+                for key in (
+                    "district_count",
+                    "hours_per_day",
+                    "duration_days",
+                    "district_hour_rate",
+                    "billable_district_hours",
+                    "total",
+                    "currency",
+                )
+            }
+        )
 
     # ------------------------------------------------------------- yaratish
 
@@ -208,12 +212,16 @@ class AdvertisementAuthoringService:
             else Advertisement.owner_business_account_id
         )
         async with self._session_factory() as session:
-            rows = list((await session.scalars(
-                select(Advertisement)
-                .where(column == account_id)
-                .order_by(Advertisement.id.desc())
-                .limit(200)
-            )).all())
+            rows = list(
+                (
+                    await session.scalars(
+                        select(Advertisement)
+                        .where(column == account_id)
+                        .order_by(Advertisement.id.desc())
+                        .limit(200)
+                    )
+                ).all()
+            )
             result = [self._read(row) for row in rows]
             await session.rollback()
         return result
@@ -260,9 +268,7 @@ class AdvertisementAuthoringService:
                 .with_for_update()
             )
             if advertisement is None:
-                raise ApiError(
-                    404, "advertisement_not_found", "Reklama topilmadi."
-                )
+                raise ApiError(404, "advertisement_not_found", "Reklama topilmadi.")
             if advertisement.status != "active":
                 raise ApiError(
                     409,
@@ -294,9 +300,7 @@ class AdvertisementAuthoringService:
                     daily_all_day=advertisement.daily_all_day,
                 )
             except AdPricingError as exc:
-                raise ApiError(
-                    400, "advertisement_schedule_invalid", str(exc)
-                ) from exc
+                raise ApiError(400, "advertisement_schedule_invalid", str(exc)) from exc
 
             advertisement.start_at = _moment(now)
             advertisement.end_at = _moment(actual_end)
@@ -357,9 +361,7 @@ class AdvertisementAuthoringService:
                 daily_all_day=advertisement.daily_all_day,
             )
         except AdPricingError as exc:
-            raise ApiError(
-                400, "advertisement_schedule_invalid", str(exc)
-            ) from exc
+            raise ApiError(400, "advertisement_schedule_invalid", str(exc)) from exc
         advertisement.status = "active"
         advertisement.start_at = _moment(actual_start)
         advertisement.end_at = _moment(actual_end)
@@ -372,9 +374,7 @@ class AdvertisementAuthoringService:
         return time(hour=full_hour(value))
 
     @staticmethod
-    def _price(
-        body: AdvertisementQuoteRequest, rate: int
-    ) -> dict[str, Any]:
+    def _price(body: AdvertisementQuoteRequest, rate: int) -> dict[str, Any]:
         try:
             return calculate_ad_price(
                 targets=[target.model_dump() for target in body.targets],
@@ -418,9 +418,7 @@ class AdvertisementAuthoringService:
             )
         )
         if advertisement is None:
-            raise ApiError(
-                404, "advertisement_not_found", "Reklama topilmadi."
-            )
+            raise ApiError(404, "advertisement_not_found", "Reklama topilmadi.")
         return advertisement
 
     def _read(self, row: Advertisement) -> AdvertisementRead:

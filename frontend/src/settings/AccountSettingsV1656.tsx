@@ -4,7 +4,6 @@ import type { ApiClient } from "../api/client";
 import type { SessionIdentity } from "../api/types";
 import "./AccountSettingsV1656.css";
 
-
 export type AccountSettingsApi = Pick<
   ApiClient,
   "getBusinessCredentials" | "updateBusinessCredentials"
@@ -25,7 +24,7 @@ type Props = {
 const FAQ_ITEMS = [
   {
     q: "Do'konimni qanday ochaman?",
-    a: "Pastdagi menyudan \"Kabinet\" — \"Biznes ochish\" tugmasini bosing. Do'kon nomi, turi, manzilini kiriting. Ochilgach sizga firma login va parol beriladi — ularni saqlab qo'ying.",
+    a: 'Pastdagi menyudan "Kabinet" — "Biznes ochish" tugmasini bosing. Do\'kon nomi, turi, manzilini kiriting. Ochilgach sizga firma login va parol beriladi — ularni saqlab qo\'ying.',
   },
   {
     q: "Mahsulot qanday qo'shaman?",
@@ -33,15 +32,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Buyurtmani qanday qabul qilaman?",
-    a: "\"Buyurtmalar\" bo'limida yangi buyurtmalar ko'rinadi. \"Qabul qilish\" bosing, tayyor bo'lgach — yetkazib berish bo'lsa \"Tayyor bo'ldi\", so'ng \"Yakunlash\" tugmasini bosing.",
+    a: '"Buyurtmalar" bo\'limida yangi buyurtmalar ko\'rinadi. "Qabul qilish" bosing, tayyor bo\'lgach — yetkazib berish bo\'lsa "Tayyor bo\'ldi", so\'ng "Yakunlash" tugmasini bosing.',
   },
   {
-    q: "\"Tayyor bo'ldi\" nima qiladi?",
+    q: '"Tayyor bo\'ldi" nima qiladi?',
     a: "Yetkazib berish buyurtmasida \"Tayyor bo'ldi\" bosilganda, tizim avtomatik dostavka e'lonini beradi — dostavka haydovchilari do'koningizdan mijozgacha yetkazish uchun buyurtmani ko'radi va oladi.",
   },
   {
     q: "Xodimga login-parol qanday beraman?",
-    a: "Kabinet — \"Ma'muriyat\" — \"Xodimlar\" — xodimni oching — \"Ilovaga kirish huquqi\"ni yoqing. Login-parol va ruxsat bo'limlarini (Kassa/Ombor/Buyurtma) belgilang. Xodimga firma logini, o'z logini va parolini bering.",
+    a: 'Kabinet — "Ma\'muriyat" — "Xodimlar" — xodimni oching — "Ilovaga kirish huquqi"ni yoqing. Login-parol va ruxsat bo\'limlarini (Kassa/Ombor/Buyurtma) belgilang. Xodimga firma logini, o\'z logini va parolini bering.',
   },
   {
     q: "Xodim qanday kiradi?",
@@ -53,7 +52,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Mutaxassis bo'lib qanday ro'yxatdan o'taman?",
-    a: "\"Kabinet\" — \"Mutaxasisligim\" bo'limiga kiring. Kasbingiz, narx va ma'lumotlarni to'ldiring, xaritada joylashuvingizni belgilang va \"Ko'rinaman\"ni yoqing. Shundan so'ng qidiruvda va xaritada chiqasiz.",
+    a: '"Kabinet" — "Mutaxasisligim" bo\'limiga kiring. Kasbingiz, narx va ma\'lumotlarni to\'ldiring, xaritada joylashuvingizni belgilang va "Ko\'rinaman"ni yoqing. Shundan so\'ng qidiruvda va xaritada chiqasiz.',
   },
   {
     q: "Taxi yoki dostavkani qanday chaqiraman?",
@@ -86,12 +85,18 @@ function message(error: unknown) {
 }
 
 function supportsCredentials(api: SettingsApi): api is AccountSettingsApi {
-  return typeof api.getBusinessCredentials === "function"
-    && typeof api.updateBusinessCredentials === "function";
+  return (
+    typeof api.getBusinessCredentials === "function" &&
+    typeof api.updateBusinessCredentials === "function"
+  );
 }
 
 function Chevron() {
-  return <span className="account-settings-v1656__chevron" aria-hidden="true">›</span>;
+  return (
+    <span className="account-settings-v1656__chevron" aria-hidden="true">
+      ›
+    </span>
+  );
 }
 
 export function AccountSettingsV1656({
@@ -111,9 +116,9 @@ export function AccountSettingsV1656({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const owner = (canManageBusinessCredentials
-    ?? identity.account_type === "business")
-    && identity.actor_type !== "staff";
+  const owner =
+    (canManageBusinessCredentials ?? identity.account_type === "business") &&
+    identity.actor_type !== "staff";
 
   function back() {
     setError("");
@@ -185,7 +190,9 @@ export function AccountSettingsV1656({
     return (
       <main className="account-settings-v1656">
         <header className="account-settings-v1656__topbar">
-          <button type="button" aria-label="Sozlamalarga qaytish" onClick={back}>‹</button>
+          <button type="button" aria-label="Sozlamalarga qaytish" onClick={back}>
+            ‹
+          </button>
           <h1>Login va parol</h1>
         </header>
         <form className="account-settings-v1656__form" onSubmit={saveCredentials}>
@@ -193,20 +200,24 @@ export function AccountSettingsV1656({
             <b>🏪 Firma logini</b>
             <strong>{busy ? "Yuklanmoqda…" : login || "—"}</strong>
             <p>
-              Bu login va parol bilan boshqa qurilmadan ham do'kon kabinetiga
-              kirasiz. Xodimlaringiz ham shu <b>firma logini</b>ni ishlatadi.
+              Bu login va parol bilan boshqa qurilmadan ham do'kon kabinetiga kirasiz.
+              Xodimlaringiz ham shu <b>firma logini</b>ni ishlatadi.
             </p>
           </section>
           <label>
-            <span>Yangi login <small>(o'zgartirmoqchi bo'lsangiz)</small></span>
+            <span>
+              Yangi login <small>(o'zgartirmoqchi bo'lsangiz)</small>
+            </span>
             <input
               autoComplete="off"
               placeholder="masalan: anvardokon"
               value={newLogin}
               disabled={busy || !owner}
-              onChange={(event) => setNewLogin(
-                event.currentTarget.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
-              )}
+              onChange={(event) =>
+                setNewLogin(
+                  event.currentTarget.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                )
+              }
             />
           </label>
           <label>
@@ -234,8 +245,16 @@ export function AccountSettingsV1656({
           <p className="account-settings-v1656__warning">
             ⚠️ Loginni o'zgartirsangiz, xodimlaringizga yangi firma loginini ayting.
           </p>
-          {error && <p className="account-settings-v1656__error" role="alert">{error}</p>}
-          {notice && <p className="account-settings-v1656__notice" role="status">{notice}</p>}
+          {error && (
+            <p className="account-settings-v1656__error" role="alert">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p className="account-settings-v1656__notice" role="status">
+              {notice}
+            </p>
+          )}
           <button
             type="submit"
             className="account-settings-v1656__save"
@@ -252,7 +271,9 @@ export function AccountSettingsV1656({
     return (
       <main className="account-settings-v1656 account-settings-v1656--help">
         <header className="account-settings-v1656__topbar">
-          <button type="button" aria-label="Sozlamalarga qaytish" onClick={back}>‹</button>
+          <button type="button" aria-label="Sozlamalarga qaytish" onClick={back}>
+            ‹
+          </button>
           <h1>Yordam</h1>
         </header>
         <section className="account-settings-v1656__faq-list">
@@ -264,12 +285,14 @@ export function AccountSettingsV1656({
                 <button
                   type="button"
                   aria-expanded={open}
-                  onClick={() => setOpenFaqs((current) => {
-                    const next = new Set(current);
-                    if (next.has(index)) next.delete(index);
-                    else next.add(index);
-                    return next;
-                  })}
+                  onClick={() =>
+                    setOpenFaqs((current) => {
+                      const next = new Set(current);
+                      if (next.has(index)) next.delete(index);
+                      else next.add(index);
+                      return next;
+                    })
+                  }
                 >
                   <b>{item.q}</b>
                   <span aria-hidden="true">▾</span>
@@ -286,15 +309,19 @@ export function AccountSettingsV1656({
   return (
     <main className="account-settings-v1656">
       <header className="account-settings-v1656__topbar">
-        <button type="button" aria-label="Kabinetga qaytish" onClick={back}>‹</button>
+        <button type="button" aria-label="Kabinetga qaytish" onClick={back}>
+          ‹
+        </button>
         <h1>Sozlamalar</h1>
       </header>
       <section className="account-settings-v1656__rows">
         <button type="button" onClick={() => void openCredentials()}>
-          <span>🔑 Login va parol</span><Chevron />
+          <span>🔑 Login va parol</span>
+          <Chevron />
         </button>
-        <button type="button" onClick={() => window.alert("Til tanlash (namuna).") }>
-          <span>🌐 Til — O'zbekcha</span><Chevron />
+        <button type="button" onClick={() => window.alert("Til tanlash (namuna).")}>
+          <span>🌐 Til — O'zbekcha</span>
+          <Chevron />
         </button>
         <button
           type="button"
@@ -303,10 +330,12 @@ export function AccountSettingsV1656({
             else setNotice("Bildirishnomalar hozircha mavjud emas.");
           }}
         >
-          <span>🔔 Bildirishnomalar</span><Chevron />
+          <span>🔔 Bildirishnomalar</span>
+          <Chevron />
         </button>
         <button type="button" onClick={() => setScreen("help")}>
-          <span>🆘 Yordam</span><Chevron />
+          <span>🆘 Yordam</span>
+          <Chevron />
         </button>
         <button
           type="button"
@@ -316,7 +345,11 @@ export function AccountSettingsV1656({
         >
           <span>🚪 Tizimdan chiqish</span>
         </button>
-        {notice && <p className="account-settings-v1656__notice" role="status">{notice}</p>}
+        {notice && (
+          <p className="account-settings-v1656__notice" role="status">
+            {notice}
+          </p>
+        )}
       </section>
     </main>
   );

@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ItemsEditorView } from "./BusinessOnlineEditingViews";
 
-
 const shared = {
   busy: false,
   form: null,
@@ -98,7 +97,6 @@ function StatefulItemsView({
   );
 }
 
-
 describe("v1656 mahsulot va xizmatlar pariteti", () => {
   it("guruhlar va Guruhsiz yozuvlarni aynan monolit sectionlarida ko'rsatadi", async () => {
     const user = userEvent.setup();
@@ -116,7 +114,9 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
 
     await user.click(screen.getByRole("button", { name: "stomatolog amallari" }));
     expect(screen.getByRole("button", { name: "Tahrirlash" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Guruhini o'zgartirish" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Guruhini o'zgartirish" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
   });
 
@@ -125,15 +125,21 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     renderView();
 
     await user.click(screen.getByRole("button", { name: "gighi amallari" }));
-    expect(screen.getByRole("button", { name: "Nomini o'zgartirish" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Nomini o'zgartirish" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "O'chirish" })).toBeInTheDocument();
   });
 
   it("qidiruv paytida monolit kabi qo'shish tugmalarini yashiradi", () => {
     renderView({ query: "stomatolog" });
 
-    expect(screen.queryByRole("button", { name: "+ Guruh qo'shish" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Tovar qo'shish" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "+ Guruh qo'shish" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Tovar qo'shish" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "gighi" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Guruhsiz" })).toBeInTheDocument();
     expect(screen.getByText("Guruh tanlanmagan · 1 ta")).toBeInTheDocument();
@@ -141,14 +147,16 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
 
   it("formatlangan narxni monolit kabi Narx kelishiladi bilan almashtirmaydi", () => {
     renderView({
-      rows: [{
-        id: 14,
-        name: "Palov",
-        kind: "product",
-        group_id: null,
-        price: "2 000 so'm",
-        unit: "dona",
-      }],
+      rows: [
+        {
+          id: 14,
+          name: "Palov",
+          kind: "product",
+          group_id: null,
+          price: "2 000 so'm",
+          unit: "dona",
+        },
+      ],
     });
 
     expect(screen.getByText("2 000 so'm")).toHaveClass("price");
@@ -166,13 +174,17 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
       />,
     );
 
-    expect(screen.getByText("Yangi tovar").closest("section"))
-      .toHaveClass("form-wrap");
+    expect(screen.getByText("Yangi tovar").closest("section")).toHaveClass("form-wrap");
     expect(screen.getByLabelText("Nomi")).toHaveClass("input");
-    expect(screen.getByLabelText("Narxi"))
-      .toHaveAttribute("placeholder", "Masalan: 2 000 so'm");
-    expect(screen.getByRole("button", { name: "Saqlash" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByLabelText("Narxi")).toHaveAttribute(
+      "placeholder",
+      "Masalan: 2 000 so'm",
+    );
+    expect(screen.getByRole("button", { name: "Saqlash" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
 
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
@@ -193,18 +205,21 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     );
 
     expect(screen.getByLabelText("Navbat tizimi")).toHaveValue("0");
-    expect(screen.getByText(
-      "Xizmat kartasida onlayn va oflayn yagona navbatni ishlatadi.",
-    )).toHaveClass("idesc");
+    expect(
+      screen.getByText("Xizmat kartasida onlayn va oflayn yagona navbatni ishlatadi."),
+    ).toHaveClass("idesc");
 
     await user.selectOptions(screen.getByLabelText("Navbat tizimi"), "1");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
-      name: "Qabul",
-      kind: "service",
-      queue_enabled: 1,
-    }));
+    expect(create).toHaveBeenCalledWith(
+      "items",
+      expect.objectContaining({
+        name: "Qabul",
+        kind: "service",
+        queue_enabled: 1,
+      }),
+    );
   });
 
   it("mahsulot yoki navbatsiz yo'nalishda Navbat tizimini yashirib o'chiradi", async () => {
@@ -221,9 +236,12 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
 
     expect(screen.queryByLabelText("Navbat tizimi")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
-    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
-      queue_enabled: 0,
-    }));
+    expect(create).toHaveBeenCalledWith(
+      "items",
+      expect.objectContaining({
+        queue_enabled: 0,
+      }),
+    );
   });
 
   it("v1656 Ombor maydonlarini yangi mahsulotda to‘liq saqlaydi", async () => {
@@ -243,20 +261,23 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.type(screen.getByLabelText("Minimal qoldiq"), "4");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
-      track_stock: 1,
-      stock_type: "raw_material",
-      stock_qty: "25.5",
-      min_qty: "4",
-    }));
+    expect(create).toHaveBeenCalledWith(
+      "items",
+      expect.objectContaining({
+        track_stock: 1,
+        stock_type: "raw_material",
+        stock_qty: "25.5",
+        min_qty: "4",
+      }),
+    );
   });
 
   it("mahsulot rasmini yuklab object key bilan saqlaydi", async () => {
     const user = userEvent.setup();
     const create = vi.fn().mockResolvedValue(undefined);
-    const uploadItemImage = vi.fn().mockResolvedValue(
-      "private/business/84/catalog_item_image/product.webp",
-    );
+    const uploadItemImage = vi
+      .fn()
+      .mockResolvedValue("private/business/84/catalog_item_image/product.webp");
     const createObjectURL = vi.fn().mockReturnValue("blob:product-preview");
     const revokeObjectURL = vi.fn();
     vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
@@ -273,12 +294,17 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.upload(screen.getByLabelText("Mahsulot rasmi"), file);
 
     expect(uploadItemImage).toHaveBeenCalledWith(file);
-    expect(await screen.findByAltText("Tanlangan mahsulot rasmi"))
-      .toHaveAttribute("src", "blob:product-preview");
+    expect(await screen.findByAltText("Tanlangan mahsulot rasmi")).toHaveAttribute(
+      "src",
+      "blob:product-preview",
+    );
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
-    expect(create).toHaveBeenCalledWith("items", expect.objectContaining({
-      image_object_key: "private/business/84/catalog_item_image/product.webp",
-    }));
+    expect(create).toHaveBeenCalledWith(
+      "items",
+      expect.objectContaining({
+        image_object_key: "private/business/84/catalog_item_image/product.webp",
+      }),
+    );
     expect(create.mock.calls[0]?.[1]).not.toHaveProperty("image_url");
     vi.unstubAllGlobals();
   });
@@ -300,8 +326,9 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
 
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(screen.getByRole("alert"))
-      .toHaveTextContent("Guruh nomi kiritilishi shart.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Guruh nomi kiritilishi shart.",
+    );
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -346,8 +373,9 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.click(screen.getByRole("button", { name: "banan amallari" }));
     await user.click(screen.getByRole("button", { name: "Guruhini o'zgartirish" }));
 
-    expect(screen.getByRole("heading", { name: "Tovarni tahrirlash" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Tovarni tahrirlash" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Nomi")).toHaveValue("banan");
     expect(screen.getByLabelText("Narxi")).toHaveValue("25000");
     expect(screen.getByLabelText("Guruh")).toHaveValue("");
@@ -363,10 +391,14 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.selectOptions(screen.getByLabelText("Guruh"), "1");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(patch).toHaveBeenCalledWith("items", "12", expect.objectContaining({
-      name: "banan",
-      group_id: "1",
-    }));
+    expect(patch).toHaveBeenCalledWith(
+      "items",
+      "12",
+      expect.objectContaining({
+        name: "banan",
+        group_id: "1",
+      }),
+    );
   });
 
   it("guruh o'chirish matnini monolitdagi acf-text klassi bilan ko'rsatadi", async () => {
@@ -376,7 +408,6 @@ describe("v1656 mahsulot va xizmatlar pariteti", () => {
     await user.click(screen.getByRole("button", { name: "gighi amallari" }));
     await user.click(screen.getByRole("button", { name: "O'chirish" }));
 
-    expect(screen.getByText(/'gighi' guruhi o'chirilsinmi/))
-      .toHaveClass("acf-text");
+    expect(screen.getByText(/'gighi' guruhi o'chirilsinmi/)).toHaveClass("acf-text");
   });
 });

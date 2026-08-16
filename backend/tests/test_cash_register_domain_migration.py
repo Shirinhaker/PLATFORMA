@@ -4,7 +4,6 @@ from pathlib import Path
 from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
 from app.inventory.model import StockMove
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0016_cash_register_domain.py"
 
@@ -57,4 +56,6 @@ def test_migration_relinks_fifo_and_initializes_receipt_counter():
     assert "line.legacy_source_key = 'sales:'" in migration.CONSUMPTION_RELINK_SQL
     assert "SET cash_sale_line_id = line.id" in migration.MOVE_RELINK_SQL
     assert "greatest(" in migration.COUNTER_BACKFILL_SQL
-    assert "ON CONFLICT (business_account_id) DO UPDATE" in migration.COUNTER_BACKFILL_SQL
+    assert (
+        "ON CONFLICT (business_account_id) DO UPDATE" in migration.COUNTER_BACKFILL_SQL
+    )

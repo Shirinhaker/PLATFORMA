@@ -28,7 +28,6 @@ from app.specialists.schemas import (
     SpecialistRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 ImageUrlProvider = Callable[[str], str]
 ObjectDeleter = Callable[[str], None]
@@ -56,16 +55,23 @@ class SpecialistService:
     async def get(self, *, user_account_id: int) -> SpecialistRead:
         async with self._session_factory() as session:
             profile = await self._repository.profile(
-                session, user_account_id=user_account_id,
+                session,
+                user_account_id=user_account_id,
             )
             credentials, offers, portfolio = await self._repository.content(
-                session, user_account_id=user_account_id,
+                session,
+                user_account_id=user_account_id,
             )
             review_count = await self._repository.review_count(
-                session, user_account_id=user_account_id,
+                session,
+                user_account_id=user_account_id,
             )
             result = self._read(
-                profile, credentials, offers, portfolio, review_count,
+                profile,
+                credentials,
+                offers,
+                portfolio,
+                review_count,
             )
             await session.rollback()
             return result
@@ -86,7 +92,9 @@ class SpecialistService:
             try:
                 await self._lock_owner(session, user_account_id)
                 profile = await self._repository.profile(
-                    session, user_account_id=user_account_id, lock=True,
+                    session,
+                    user_account_id=user_account_id,
+                    lock=True,
                 )
                 now = self._now_provider()
                 if profile is None:
@@ -130,12 +138,15 @@ class SpecialistService:
         user_account_id: int,
         body: SpecialistCredentialCreate,
     ) -> CreatedRead:
-        self._require_owned_key(user_account_id, body.object_key, "specialist_credential")
+        self._require_owned_key(
+            user_account_id, body.object_key, "specialist_credential"
+        )
         async with self._session_factory() as session:
             try:
                 await self._lock_owner(session, user_account_id)
                 count = await self._repository.credential_count(
-                    session, user_account_id=user_account_id,
+                    session,
+                    user_account_id=user_account_id,
                 )
                 if count >= 12:
                     raise ApiError(
@@ -171,7 +182,11 @@ class SpecialistService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "specialist_credential_not_found", "Hujjat rasmi topilmadi.")
+                    raise ApiError(
+                        404,
+                        "specialist_credential_not_found",
+                        "Hujjat rasmi topilmadi.",
+                    )
                 key = row.object_key
                 await session.delete(row)
                 await session.flush()
@@ -190,13 +205,16 @@ class SpecialistService:
         image_object_key = "" if body.clear_image else body.image_object_key
         if image_object_key:
             self._require_owned_key(
-                user_account_id, image_object_key, "specialist_offer_image",
+                user_account_id,
+                image_object_key,
+                "specialist_offer_image",
             )
         async with self._session_factory() as session:
             try:
                 await self._lock_owner(session, user_account_id)
                 count = await self._repository.offer_count(
-                    session, user_account_id=user_account_id,
+                    session,
+                    user_account_id=user_account_id,
                 )
                 if count >= 60:
                     raise ApiError(
@@ -236,7 +254,9 @@ class SpecialistService:
         image_object_key = "" if body.clear_image else body.image_object_key
         if image_object_key:
             self._require_owned_key(
-                user_account_id, image_object_key, "specialist_offer_image",
+                user_account_id,
+                image_object_key,
+                "specialist_offer_image",
             )
         old_key = ""
         async with self._session_factory() as session:
@@ -248,7 +268,9 @@ class SpecialistService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "specialist_offer_not_found", "Mahsulot/xizmat topilmadi.")
+                    raise ApiError(
+                        404, "specialist_offer_not_found", "Mahsulot/xizmat topilmadi."
+                    )
                 if row.image_object_key != image_object_key or body.clear_image:
                     old_key = row.image_object_key
                     row.legacy_image_url = ""
@@ -277,7 +299,9 @@ class SpecialistService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "specialist_offer_not_found", "Mahsulot/xizmat topilmadi.")
+                    raise ApiError(
+                        404, "specialist_offer_not_found", "Mahsulot/xizmat topilmadi."
+                    )
                 key = row.image_object_key
                 await session.delete(row)
                 await session.flush()
@@ -303,7 +327,8 @@ class SpecialistService:
             try:
                 await self._lock_owner(session, user_account_id)
                 count = await self._repository.portfolio_count(
-                    session, user_account_id=user_account_id,
+                    session,
+                    user_account_id=user_account_id,
                 )
                 if count >= 40:
                     raise ApiError(
@@ -339,7 +364,9 @@ class SpecialistService:
                     lock=True,
                 )
                 if row is None:
-                    raise ApiError(404, "specialist_portfolio_not_found", "Ish namunasi topilmadi.")
+                    raise ApiError(
+                        404, "specialist_portfolio_not_found", "Ish namunasi topilmadi."
+                    )
                 key = row.object_key
                 await session.delete(row)
                 await session.flush()
@@ -367,7 +394,9 @@ class SpecialistService:
     def _media_url(self, object_key: str, legacy_url: str) -> str:
         return self._image_url_provider(object_key) if object_key else legacy_url
 
-    def _read(self, profile, credentials, offers, portfolio, review_count: int) -> SpecialistRead:
+    def _read(
+        self, profile, credentials, offers, portfolio, review_count: int
+    ) -> SpecialistRead:
         return SpecialistRead(
             exists=profile is not None,
             profession=profile.profession if profile else "",
@@ -382,7 +411,8 @@ class SpecialistService:
                     image_url=self._media_url(row.object_key, row.legacy_media_url),
                     position=row.position,
                     created_at=row.created_at,
-                ) for row in credentials
+                )
+                for row in credentials
             ],
             offers=[
                 SpecialistOfferRead(
@@ -391,10 +421,13 @@ class SpecialistService:
                     name=row.name,
                     price_text=row.price_text,
                     note=row.note,
-                    image_url=self._media_url(row.image_object_key, row.legacy_image_url),
+                    image_url=self._media_url(
+                        row.image_object_key, row.legacy_image_url
+                    ),
                     image_object_key=row.image_object_key,
                     created_at=row.created_at,
-                ) for row in offers
+                )
+                for row in offers
             ],
             portfolio=[
                 SpecialistPortfolioRead(
@@ -402,7 +435,8 @@ class SpecialistService:
                     media_type=row.media_type,
                     media_url=self._media_url(row.object_key, row.legacy_media_url),
                     created_at=row.created_at,
-                ) for row in portfolio
+                )
+                for row in portfolio
             ],
         )
 

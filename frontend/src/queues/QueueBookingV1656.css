@@ -25,7 +25,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.96);
-  transition: opacity 0.18s, transform 0.18s;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
 }
 
 .queue-booking-v1656 .app-confirm.on {

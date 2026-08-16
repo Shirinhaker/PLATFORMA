@@ -32,7 +32,6 @@ from app.dining.schemas import (
 )
 from app.dining.service import DiningService
 
-
 router = APIRouter(prefix="/api/v1/dining", tags=["dining"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
@@ -311,9 +310,7 @@ async def open_dining_problem(
     )
 
 
-@router.post(
-    "/orders/{order_id}/problem/resolve", response_model=DiningOrderRead
-)
+@router.post("/orders/{order_id}/problem/resolve", response_model=DiningOrderRead)
 async def resolve_dining_problem(
     order_id: OrderId,
     current: CurrentWrite,

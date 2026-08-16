@@ -73,14 +73,16 @@ def test_copy_real_source_keeps_real_rows_and_document_content():
             "Haqiqiy e’lon"
         ]
         assert [
-            row["title"]
-            for row in target.execute("SELECT * FROM advertisements")
+            row["title"] for row in target.execute("SELECT * FROM advertisements")
         ] == ["Haqiqiy reklama"]
         document = target.execute("SELECT * FROM documents").fetchone()
         assert document["body"] == "Haqiqiy hujjat matni"
-        assert target.execute(
-            "SELECT 1 FROM sqlite_master WHERE name='users_fts'"
-        ).fetchone() is None
+        assert (
+            target.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='users_fts'"
+            ).fetchone()
+            is None
+        )
     finally:
         target.close()
 

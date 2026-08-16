@@ -2,20 +2,18 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.account_settings.router import router
-from app.account_settings.router import require_business_credentials_owner
+from app.account_settings.router import require_business_credentials_owner, router
 from app.account_settings.schemas import BusinessCredentialsUpdate
 from app.account_settings.service import AccountSettingsService
 from app.accounts.model import Account, AccountType
-from app.auth.security import verify_password
 from app.auth.dependencies import CurrentAccount
+from app.auth.security import verify_password
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.profiles.model import ProfileLink
-
 
 NOW = datetime(2026, 8, 11, 10, 0, tzinfo=UTC)
 
@@ -58,15 +56,17 @@ def settings_context():
         tables=(Account.__table__, ProfileLink.__table__),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            account(1, AccountType.BUSINESS, "turondokon"),
-            account(2, AccountType.USER, "bandlogin"),
-            ProfileLink(
-                user_account_id=2,
-                business_account_id=1,
-                created_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                account(1, AccountType.BUSINESS, "turondokon"),
+                account(2, AccountType.USER, "bandlogin"),
+                ProfileLink(
+                    user_account_id=2,
+                    business_account_id=1,
+                    created_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -155,11 +155,13 @@ async def test_unlinked_user_and_staff_cannot_manage_business_credentials(
     assert unlinked.value.code == "linked_business_required"
 
     with pytest.raises(ApiError) as staff:
-        require_business_credentials_owner(CurrentAccount(
-            account_id=1,
-            account_type=AccountType.BUSINESS,
-            session_token="staff-session",
-            actor_type="staff",
-            staff_id=9,
-        ))
+        require_business_credentials_owner(
+            CurrentAccount(
+                account_id=1,
+                account_type=AccountType.BUSINESS,
+                session_token="staff-session",
+                actor_type="staff",
+                staff_id=9,
+            )
+        )
     assert staff.value.code == "business_owner_required"

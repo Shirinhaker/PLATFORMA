@@ -19,7 +19,6 @@ from sqlalchemy import inspect as sa_inspect
 from app.db import all_models
 from app.db.base import Base
 
-
 BACKEND = pathlib.Path(__file__).resolve().parent.parent
 
 
@@ -46,8 +45,8 @@ def _imported_modules() -> set[str]:
 def test_every_model_module_is_registered():
     """Yangi domen qo'shilsa, u ham ro'yxatga tushishi shart."""
     missing = sorted(_model_modules() - _imported_modules())
-    assert not missing, (
-        "app/db/all_models.py ga qo'shilmagan modullar: " + ", ".join(missing)
+    assert not missing, "app/db/all_models.py ga qo'shilmagan modullar: " + ", ".join(
+        missing
     )
 
 
@@ -70,8 +69,8 @@ def test_alembic_env_registers_every_model_module():
         )
     }
     missing = sorted(_model_modules() - imported)
-    assert not missing, (
-        "migrations/env.py ga qo'shilmagan modullar: " + ", ".join(missing)
+    assert not missing, "migrations/env.py ga qo'shilmagan modullar: " + ", ".join(
+        missing
     )
 
 

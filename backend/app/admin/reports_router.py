@@ -13,7 +13,6 @@ from app.admin.reports_service import AdminReportsService
 from app.admin.schemas import ReportCreate, ReportRow
 from app.auth.dependencies import CurrentAccount, require_csrf
 
-
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 
@@ -31,10 +30,12 @@ async def create_report(
     current: CurrentWrite,
     service: ServiceDep,
 ) -> ReportRow:
-    return ReportRow(**await service.create_report(
-        reporter_account_id=current.account_id,
-        content_kind=body.content_kind,
-        content_id=body.content_id,
-        reason_code=body.reason_code,
-        comment=body.comment,
-    ))
+    return ReportRow(
+        **await service.create_report(
+            reporter_account_id=current.account_id,
+            content_kind=body.content_kind,
+            content_id=body.content_id,
+            reason_code=body.reason_code,
+            comment=body.comment,
+        )
+    )

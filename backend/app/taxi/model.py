@@ -19,7 +19,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.orders.model import Order  # noqa: F401 - registers the referenced table
 
-
 DRIVER_SERVICES = ("taxi", "dostavka", "both")
 RIDE_KINDS = ("taxi", "dostavka")
 ACTIVE_RIDE_STATUSES = (
@@ -47,7 +46,9 @@ class TaxiDriver(Base):
         CheckConstraint("rating_sum >= 0", name="ck_taxi_drivers_rating_sum"),
         CheckConstraint("rating_count >= 0", name="ck_taxi_drivers_rating_count"),
         CheckConstraint("balance >= 0", name="ck_taxi_drivers_balance"),
-        CheckConstraint("status IN ('active','blocked')", name="ck_taxi_drivers_status"),
+        CheckConstraint(
+            "status IN ('active','blocked')", name="ck_taxi_drivers_status"
+        ),
     )
 
     id: Mapped[int] = mapped_column(
@@ -71,8 +72,12 @@ class TaxiDriver(Base):
     rating_count: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     balance: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class TaxiRide(Base):
@@ -102,8 +107,12 @@ class TaxiRide(Base):
             name="ck_taxi_rides_to_lng",
         ),
         CheckConstraint("dist_km IS NULL OR dist_km >= 0", name="ck_taxi_rides_dist"),
-        CheckConstraint("dur_min IS NULL OR dur_min >= 0", name="ck_taxi_rides_duration"),
-        CheckConstraint("meter_km IS NULL OR meter_km >= 0", name="ck_taxi_rides_meter"),
+        CheckConstraint(
+            "dur_min IS NULL OR dur_min >= 0", name="ck_taxi_rides_duration"
+        ),
+        CheckConstraint(
+            "meter_km IS NULL OR meter_km >= 0", name="ck_taxi_rides_meter"
+        ),
     )
 
     id: Mapped[int] = mapped_column(
@@ -140,9 +149,13 @@ class TaxiRide(Base):
     car_type: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="pending")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 Index("uq_taxi_drivers_user", TaxiDriver.user_account_id, unique=True)
@@ -154,8 +167,15 @@ Index(
     sqlite_where=text("legacy_source_id IS NOT NULL"),
 )
 Index("ix_taxi_drivers_available_service", TaxiDriver.available, TaxiDriver.service)
-Index("ix_taxi_rides_customer_created", TaxiRide.customer_account_id, TaxiRide.created_at)
-Index("ix_taxi_rides_status_kind_created", TaxiRide.status, TaxiRide.kind, TaxiRide.created_at)
+Index(
+    "ix_taxi_rides_customer_created", TaxiRide.customer_account_id, TaxiRide.created_at
+)
+Index(
+    "ix_taxi_rides_status_kind_created",
+    TaxiRide.status,
+    TaxiRide.kind,
+    TaxiRide.created_at,
+)
 Index("ix_taxi_rides_driver_status", TaxiRide.driver_id, TaxiRide.status)
 Index(
     "uq_taxi_rides_legacy_source",

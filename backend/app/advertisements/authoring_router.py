@@ -22,7 +22,6 @@ from app.auth.dependencies import (
     require_current_account,
 )
 
-
 router = APIRouter(prefix="/api/v1/advertisements", tags=["advertisements"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

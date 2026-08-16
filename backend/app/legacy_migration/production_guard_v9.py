@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Iterable, Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,17 +56,13 @@ def validate_promotion_media_rows(
                 f"promotion_missing_story_target_not_found:{row.legacy_id}"
             )
         if story.migration_run_id != run_id or story.status != "failed":
-            raise RuntimeError(
-                f"promotion_missing_story_not_failed:{row.legacy_id}"
-            )
+            raise RuntimeError(f"promotion_missing_story_not_failed:{row.legacy_id}")
         expires_at = story.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=UTC)
         is_terminal = story.deleted_at is not None or expires_at <= now
         if not is_terminal:
-            raise RuntimeError(
-                f"promotion_active_story_media_missing:{row.legacy_id}"
-            )
+            raise RuntimeError(f"promotion_active_story_media_missing:{row.legacy_id}")
         if int(row.legacy_id) not in missing_story_issue_ids:
             raise RuntimeError(
                 f"promotion_missing_story_issue_not_found:{row.legacy_id}"
@@ -96,8 +92,7 @@ async def validate_media_for_promotion(
     missing_story_ids = {
         int(row.legacy_id)
         for row in rows
-        if row.state is MediaMigrationState.MISSING
-        and row.entity_type == "story"
+        if row.state is MediaMigrationState.MISSING and row.entity_type == "story"
     }
     stories_by_legacy_id: dict[int, Story] = {}
     missing_story_issue_ids: set[int] = set()
@@ -105,9 +100,7 @@ async def validate_media_for_promotion(
         stories = list(
             (
                 await session.scalars(
-                    select(Story).where(
-                        Story.legacy_source_id.in_(missing_story_ids)
-                    )
+                    select(Story).where(Story.legacy_source_id.in_(missing_story_ids))
                 )
             ).all()
         )

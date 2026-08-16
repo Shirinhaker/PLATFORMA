@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, date, datetime, time, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
-import re
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,14 +26,15 @@ from app.debt_ledger.service import DebtLedgerService
 from app.inventory.service import InventoryService
 from app.orders.model import Order, OrderItem
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 # O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5. Loyihaning qolgan
 # modullari ham shu ko'rinishni ishlatadi va bu `tzdata` paketini
 # talab qilmaydi (u bog'liqliklarda e'lon qilinmagan).
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))
-FRACTIONAL_UNITS = frozenset({"kg", "g", "l", "litr", "ml", "metr", "sm", "m²", "m3", "soat"})
+FRACTIONAL_UNITS = frozenset(
+    {"kg", "g", "l", "litr", "ml", "metr", "sm", "m²", "m3", "soat"}
+)
 QUANTITY_STEP = Decimal("0.001")
 PAY_TEXT = {
     "": "Buyurtma",
@@ -139,7 +140,7 @@ class CashRegisterService:
             )
             totals = CashTotalsRead()
             output: list[CashReceiptRead] = []
-            for (receipt, staff_name) in receipt_rows:
+            for receipt, staff_name in receipt_rows:
                 lines = lines_by_receipt.get(receipt.id, [])
                 total = sum(line.total for line in lines)
                 totals.all += total
@@ -156,12 +157,14 @@ class CashRegisterService:
                         totals.cash_in += total
                 else:
                     totals.order += total
-                output.append(self._receipt_read(
-                    receipt,
-                    lines,
-                    staff_name=str(staff_name or ""),
-                    show_costs=show_costs,
-                ))
+                output.append(
+                    self._receipt_read(
+                        receipt,
+                        lines,
+                        staff_name=str(staff_name or ""),
+                        show_costs=show_costs,
+                    )
+                )
             await session.rollback()
             return CashRegisterRead(
                 day=selected_day,
@@ -197,11 +200,13 @@ class CashRegisterService:
                         business_account_id=business_account_id,
                         debtor_id=body.debtor_id,
                     )
-                requested = sorted({
-                    item.catalog_item_id
-                    for item in body.items
-                    if item.catalog_item_id is not None
-                })
+                requested = sorted(
+                    {
+                        item.catalog_item_id
+                        for item in body.items
+                        if item.catalog_item_id is not None
+                    }
+                )
                 catalog_rows = await self._repository.catalog_rows(
                     session,
                     business_account_id=business_account_id,
@@ -209,7 +214,9 @@ class CashRegisterService:
                 )
                 catalogs = {row[0].id: row[0] for row in catalog_rows}
                 if len(catalogs) != len(requested):
-                    raise ApiError(404, "cash_catalog_item_not_found", "Mahsulot topilmadi.")
+                    raise ApiError(
+                        404, "cash_catalog_item_not_found", "Mahsulot topilmadi."
+                    )
                 await self._inventory.lock_cash_catalog_items(
                     session,
                     business_account_id=business_account_id,
@@ -234,7 +241,9 @@ class CashRegisterService:
                             "cash_price_required",
                             f"Narx kiritilmadi: {name}",
                         )
-                    prepared.append((catalog, name[:220], unit[:40], qty, item.price, total))
+                    prepared.append(
+                        (catalog, name[:220], unit[:40], qty, item.price, total)
+                    )
 
                 receipt_no = await self._repository.next_receipt_no(
                     session,
@@ -281,7 +290,10 @@ class CashRegisterService:
                     session.add(line)
                     await session.flush()
                     if catalog is not None:
-                        inventory_id, cost_total = await self._inventory.consume_cash_line(
+                        (
+                            inventory_id,
+                            cost_total,
+                        ) = await self._inventory.consume_cash_line(
                             session,
                             business_account_id=business_account_id,
                             catalog_item_id=catalog.id,
@@ -489,11 +501,15 @@ class CashRegisterService:
         existing = await self._repository.receipt_by_order(session, order.id, lock=True)
         if existing is not None:
             return existing
-        order_items = list((await session.scalars(
-            select(OrderItem)
-            .where(OrderItem.order_id == order.id)
-            .order_by(OrderItem.id)
-        )).all())
+        order_items = list(
+            (
+                await session.scalars(
+                    select(OrderItem)
+                    .where(OrderItem.order_id == order.id)
+                    .order_by(OrderItem.id)
+                )
+            ).all()
+        )
         if not order_items:
             return None
         await self._inventory.lock_cash_catalog_items(
@@ -531,28 +547,30 @@ class CashRegisterService:
                     "order_debt_missing",
                     "Buyurtmaning qarzdori topilmadi.",
                 )
-            debtor, _transaction = (
-                await self._debt_ledger.create_order_debt_in_session(
-                    session,
-                    business_account_id=order.provider_account_id,
-                    order_id=order.id,
-                    debtor_id=order.debtor_id,
-                    amount=order.total_amount,
-                    note=f"Tashqi buyurtma #{order.id}",
-                    actor_staff_id=actor_staff_id,
-                    cash_receipt_id=receipt.id,
-                )
+            debtor, _transaction = await self._debt_ledger.create_order_debt_in_session(
+                session,
+                business_account_id=order.provider_account_id,
+                order_id=order.id,
+                debtor_id=order.debtor_id,
+                amount=order.total_amount,
+                note=f"Tashqi buyurtma #{order.id}",
+                actor_staff_id=actor_staff_id,
+                cash_receipt_id=receipt.id,
             )
             receipt.debtor_id = debtor.id
             receipt.debtor_name_snapshot = debtor.name
             receipt.legacy_debtor_source_id = debtor.legacy_source_id
         for item in order_items:
             qty = _quantity(item.qty, item.unit or "dona")
-            price = int(
-                (Decimal(item.line_total) / qty).quantize(
-                    Decimal("1"), rounding=ROUND_HALF_EVEN
+            price = (
+                int(
+                    (Decimal(item.line_total) / qty).quantize(
+                        Decimal("1"), rounding=ROUND_HALF_EVEN
+                    )
                 )
-            ) if item.line_total else _price(item.price_text)
+                if item.line_total
+                else _price(item.price_text)
+            )
             line = CashReceiptLine(
                 receipt_id=receipt.id,
                 business_account_id=order.provider_account_id,
@@ -603,7 +621,9 @@ class CashRegisterService:
                 "cash_future_date_forbidden",
                 "Kelajak sanaga savdo yozib bo‘lmaydi.",
             )
-        return datetime.combine(value, time(hour=12), tzinfo=UZBEKISTAN_TZ).astimezone(UTC)
+        return datetime.combine(value, time(hour=12), tzinfo=UZBEKISTAN_TZ).astimezone(
+            UTC
+        )
 
     @staticmethod
     def _require_kassa(permissions: tuple[str, ...] | None) -> None:
@@ -638,9 +658,7 @@ class CashRegisterService:
             who=staff_name or receipt.actor_name_snapshot or "Rahbar",
             created_at=receipt.created_at,
             total=sum(line.total for line in lines),
-            can_delete=(
-                receipt.source in {"manual", "debt_payment"}
-            ),
+            can_delete=(receipt.source in {"manual", "debt_payment"}),
             can_change_payment=receipt.source == "order",
             lines=[
                 CashReceiptLineRead(

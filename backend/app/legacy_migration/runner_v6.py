@@ -5,7 +5,6 @@ from app.legacy_migration.cabinet_parity_v8 import (
 )
 from app.legacy_migration.real_source_v7 import open_real_snapshot
 
-
 MIGRATION_SCHEMA_VERSION = "0008_phase3c_taxi_v1"
 
 

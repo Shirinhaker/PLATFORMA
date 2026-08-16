@@ -18,11 +18,10 @@ from app.stories.schemas import (
     StoryOk,
     StoryRead,
     StoryReportCreate,
-    StoryViewResult,
     StoryViewerRead,
+    StoryViewResult,
 )
 from app.stories.service import StoryService
-
 
 router = APIRouter(prefix="/api/v1/stories", tags=["stories"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

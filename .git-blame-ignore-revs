@@ -1,0 +1,14 @@
+# Mexanik formatlash commitlari — git blame bularni o'tkazib yuboradi,
+# shuning uchun "kim yozgan" degan javob to'g'ri qoladi.
+#
+# Sozlash (har bir dasturchi bir marta bajaradi):
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: ruff avtomatik tuzatishlari (import tartibi, ishlatilmagan importlar)
+5cabc64a74f8b9e3d8b01a86a250b756d4cd5768
+
+# style: ruff format bilan butun backend bir xil uslubga keltirildi
+aede02c8239ff563894a05979dcaf1ea4c42e211
+
+# style: frontend prettier bilan bir xil uslubga keltirildi
+4d373c33c5330edd01cd86d101dfa03ec7a56608

@@ -1,13 +1,9 @@
 import { useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type {
-  BusinessOpeningRead,
-  BusinessOpeningWrite,
-} from "../api/types";
+import type { BusinessOpeningRead, BusinessOpeningWrite } from "../api/types";
 import { BUSINESS_DIRECTIONS } from "../profiles/business-profile-config";
 import "./BusinessOpeningV1656.css";
-
 
 export type BusinessOpeningApi = Pick<ApiClient, "openBusiness">;
 
@@ -30,12 +26,7 @@ function errorMessage(reason: unknown) {
   return reason instanceof Error ? reason.message : "So‘rov bajarilmadi.";
 }
 
-export function BusinessOpeningV1656({
-  api,
-  onBack,
-  onSwitch,
-  onOpened,
-}: Props) {
+export function BusinessOpeningV1656({ api, onBack, onSwitch, onOpened }: Props) {
   const [form, setForm] = useState<BusinessOpeningWrite>(EMPTY_FORM);
   const [result, setResult] = useState<BusinessOpeningRead | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,7 +66,9 @@ export function BusinessOpeningV1656({
     return (
       <main className="business-opening-v1656">
         <section className="business-opening-v1656__card business-opening-v1656__success">
-          <span className="business-opening-v1656__success-icon" aria-hidden="true">✓</span>
+          <span className="business-opening-v1656__success-icon" aria-hidden="true">
+            ✓
+          </span>
           <h1>Biznes ochildi! ✅</h1>
           <p>
             Biznes kabinetingiz uchun alohida login va parol. Saqlab qo'ying —
@@ -106,11 +99,7 @@ export function BusinessOpeningV1656({
   return (
     <main className="business-opening-v1656">
       <section className="business-opening-v1656__card">
-        <button
-          type="button"
-          className="business-opening-v1656__back"
-          onClick={onBack}
-        >
+        <button type="button" className="business-opening-v1656__back" onClick={onBack}>
           ← Kabinetga qaytish
         </button>
         <header>
@@ -118,9 +107,8 @@ export function BusinessOpeningV1656({
           <div>
             <h1>Biznes ochish</h1>
             <p>
-              Biznes ma'lumotlaringizni to'ldiring. Biznes profil shu
-              akkauntingizga qo'shiladi — oddiy va biznes kabinet o'rtasida
-              almashtirib turasiz.
+              Biznes ma'lumotlaringizni to'ldiring. Biznes profil shu akkauntingizga
+              qo'shiladi — oddiy va biznes kabinet o'rtasida almashtirib turasiz.
             </p>
           </div>
         </header>
@@ -189,7 +177,11 @@ export function BusinessOpeningV1656({
               />
             </label>
           </div>
-          {error && <p className="business-opening-v1656__error" role="alert">{error}</p>}
+          {error && (
+            <p className="business-opening-v1656__error" role="alert">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             className="business-opening-v1656__primary"

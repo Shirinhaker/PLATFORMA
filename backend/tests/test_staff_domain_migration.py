@@ -8,7 +8,6 @@ from app.staff.model import (
     StaffSession,
 )
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"
@@ -110,7 +109,11 @@ def test_staff_migration_is_reversible_without_touching_other_systemization_data
     lowered = source.casefold()
     downgrade = source[source.index("def downgrade() -> None:") :]
 
-    for forbidden in ("insert into sales", "insert into expenses", "insert into debtors"):
+    for forbidden in (
+        "insert into sales",
+        "insert into expenses",
+        "insert into debtors",
+    ):
         assert forbidden not in lowered
     assert downgrade.index('drop_table("staff_sessions")') < downgrade.index(
         'drop_table("staff_members")'

@@ -16,7 +16,6 @@ from app.specialists.schemas import (
 )
 from app.specialists.service import SpecialistService
 
-
 router = APIRouter(prefix="/api/v1/specialists", tags=["specialists"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
@@ -49,37 +48,47 @@ async def update_my_specialist(
     current: CurrentWrite,
 ) -> SpecialistRead:
     return await service(request).update_profile(
-        user_account_id=_user_id(current), body=body,
+        user_account_id=_user_id(current),
+        body=body,
     )
 
 
-@router.post("/me/credentials", response_model=CreatedRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/me/credentials", response_model=CreatedRead, status_code=status.HTTP_201_CREATED
+)
 async def add_credential(
     body: SpecialistCredentialCreate,
     request: Request,
     current: CurrentWrite,
 ) -> CreatedRead:
     return await service(request).add_credential(
-        user_account_id=_user_id(current), body=body,
+        user_account_id=_user_id(current),
+        body=body,
     )
 
 
 @router.delete("/me/credentials/{row_id}", status_code=204)
-async def delete_credential(row_id: RowId, request: Request, current: CurrentWrite) -> Response:
+async def delete_credential(
+    row_id: RowId, request: Request, current: CurrentWrite
+) -> Response:
     await service(request).delete_credential(
-        user_account_id=_user_id(current), row_id=row_id,
+        user_account_id=_user_id(current),
+        row_id=row_id,
     )
     return Response(status_code=204)
 
 
-@router.post("/me/offers", response_model=CreatedRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/me/offers", response_model=CreatedRead, status_code=status.HTTP_201_CREATED
+)
 async def create_offer(
     body: SpecialistOfferWrite,
     request: Request,
     current: CurrentWrite,
 ) -> CreatedRead:
     return await service(request).create_offer(
-        user_account_id=_user_id(current), body=body,
+        user_account_id=_user_id(current),
+        body=body,
     )
 
 
@@ -91,32 +100,43 @@ async def update_offer(
     current: CurrentWrite,
 ) -> MutationRead:
     return await service(request).update_offer(
-        user_account_id=_user_id(current), row_id=row_id, body=body,
+        user_account_id=_user_id(current),
+        row_id=row_id,
+        body=body,
     )
 
 
 @router.delete("/me/offers/{row_id}", status_code=204)
-async def delete_offer(row_id: RowId, request: Request, current: CurrentWrite) -> Response:
+async def delete_offer(
+    row_id: RowId, request: Request, current: CurrentWrite
+) -> Response:
     await service(request).delete_offer(
-        user_account_id=_user_id(current), row_id=row_id,
+        user_account_id=_user_id(current),
+        row_id=row_id,
     )
     return Response(status_code=204)
 
 
-@router.post("/me/portfolio", response_model=CreatedRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/me/portfolio", response_model=CreatedRead, status_code=status.HTTP_201_CREATED
+)
 async def add_portfolio(
     body: SpecialistPortfolioCreate,
     request: Request,
     current: CurrentWrite,
 ) -> CreatedRead:
     return await service(request).add_portfolio(
-        user_account_id=_user_id(current), body=body,
+        user_account_id=_user_id(current),
+        body=body,
     )
 
 
 @router.delete("/me/portfolio/{row_id}", status_code=204)
-async def delete_portfolio(row_id: RowId, request: Request, current: CurrentWrite) -> Response:
+async def delete_portfolio(
+    row_id: RowId, request: Request, current: CurrentWrite
+) -> Response:
     await service(request).delete_portfolio(
-        user_account_id=_user_id(current), row_id=row_id,
+        user_account_id=_user_id(current),
+        row_id=row_id,
     )
     return Response(status_code=204)

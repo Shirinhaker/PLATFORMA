@@ -56,9 +56,7 @@ class Story(Base):
             "owner_type",
             "owner_account_id",
             "created_at",
-            postgresql_where=text(
-                "status = 'active' AND deleted_at IS NULL"
-            ),
+            postgresql_where=text("status = 'active' AND deleted_at IS NULL"),
         ),
         Index("ix_stories_creator_account", "created_by_account_id"),
         Index("ix_stories_creator_staff", "created_by_staff_id"),
@@ -150,9 +148,7 @@ class StoryView(Base):
         ForeignKey("accounts.id", ondelete="CASCADE"),
         nullable=False,
     )
-    viewed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    viewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class StoryReport(Base):

@@ -4,7 +4,6 @@ import { expect, it, vi } from "vitest";
 
 import { StaffManagementV1656 } from "./StaffManagementV1656";
 
-
 const member = {
   id: 11,
   name: "Ali Valiyev",
@@ -22,7 +21,6 @@ const member = {
   created_at: "2026-08-01T08:00:00Z",
   fired_at: null,
 };
-
 
 function api() {
   return {
@@ -50,7 +48,9 @@ function api() {
     deleteStaffMember: vi.fn().mockResolvedValue(undefined),
     updateStaffAccess: vi.fn().mockResolvedValue(member),
     updateStaffSchedule: vi.fn().mockResolvedValue(member),
-    createStaffProfession: vi.fn().mockResolvedValue({ professions: ["Sotuvchi", "Kassir"] }),
+    createStaffProfession: vi
+      .fn()
+      .mockResolvedValue({ professions: ["Sotuvchi", "Kassir"] }),
     getStaffAttendance: vi.fn().mockResolvedValue({
       date: "2026-08-03",
       weekday: 0,
@@ -59,7 +59,6 @@ function api() {
     updateStaffAttendance: vi.fn(),
   };
 }
-
 
 it("replaces the read-only cabinet list with live staff management", async () => {
   const user = userEvent.setup();
@@ -75,12 +74,13 @@ it("replaces the read-only cabinet list with live staff management", async () =>
   await user.selectOptions(screen.getByLabelText("Lavozimi"), "Kassir");
   await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-  expect(client.createStaffMember).toHaveBeenCalledWith(expect.objectContaining({
-    name: "Vali Karimov",
-    profession: "Kassir",
-  }));
+  expect(client.createStaffMember).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: "Vali Karimov",
+      profession: "Kassir",
+    }),
+  );
 });
-
 
 it("edits access without ever displaying the stored password", async () => {
   const user = userEvent.setup();

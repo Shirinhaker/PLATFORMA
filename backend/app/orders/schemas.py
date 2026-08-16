@@ -37,7 +37,7 @@ class OrderCreate(BaseModel):
             "desired_time": 160,
             "note": 1000,
         }
-        return value.strip()[:limits[info.field_name]]
+        return value.strip()[: limits[info.field_name]]
 
 
 class OrderStatusChange(BaseModel):
@@ -54,8 +54,12 @@ class OrderPaymentDecision(BaseModel):
 class OrderProblemCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Literal[
-        "not_received", "amount_short", "receipt_mismatch",
-        "receipt_unreadable", "wrong_receipt", "other",
+        "not_received",
+        "amount_short",
+        "receipt_mismatch",
+        "receipt_unreadable",
+        "wrong_receipt",
+        "other",
     ]
     note: str = Field(default="", max_length=1000)
 

@@ -10,7 +10,6 @@ import {
 import { BusinessProfile } from "./BusinessProfile";
 import { CrudEditorView } from "./BusinessOnlineEditingViews";
 
-
 const leaflet = vi.hoisted(() => {
   const state = { center: { lat: 41.311, lng: 69.28 }, zoom: 14 };
   const map = {
@@ -18,16 +17,15 @@ const leaflet = vi.hoisted(() => {
     getZoom: vi.fn(() => state.zoom),
     invalidateSize: vi.fn(),
     remove: vi.fn(),
-    setView: vi.fn((
-      point: [number, number] | { lat: number; lng: number },
-      zoom: number,
-    ) => {
-      state.center = Array.isArray(point)
-        ? { lat: point[0], lng: point[1] }
-        : { ...point };
-      state.zoom = zoom;
-      return map;
-    }),
+    setView: vi.fn(
+      (point: [number, number] | { lat: number; lng: number }, zoom: number) => {
+        state.center = Array.isArray(point)
+          ? { lat: point[0], lng: point[1] }
+          : { ...point };
+        state.zoom = zoom;
+        return map;
+      },
+    ),
   };
   const tileLayer = { addTo: vi.fn() };
   return {
@@ -46,7 +44,6 @@ vi.mock("leaflet", () => ({
   },
 }));
 
-
 beforeEach(() => {
   localStorage.clear();
   leaflet.state.center = { lat: 41.311, lng: 69.28 };
@@ -54,15 +51,16 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-
 describe("v1656 pickloc parity", () => {
   it("builds the same readable address fallback as v1656", () => {
-    expect(buildAddrText({
-      city_district: "",
-      county: "Qumqo‘rg‘on tumani",
-      state: "Surxondaryo viloyati",
-      road: "Beruniy ko‘chasi",
-    })).toBe("Beruniy ko‘chasi, Qumqo‘rg‘on tumani, Surxondaryo viloyati");
+    expect(
+      buildAddrText({
+        city_district: "",
+        county: "Qumqo‘rg‘on tumani",
+        state: "Surxondaryo viloyati",
+        road: "Beruniy ko‘chasi",
+      }),
+    ).toBe("Beruniy ko‘chasi, Qumqo‘rg‘on tumani, Surxondaryo viloyati");
   });
 
   it("keeps the pin tip at the container center while the map moves", async () => {
@@ -156,11 +154,14 @@ describe("v1656 pickloc parity", () => {
     await user.click(screen.getByRole("button", { name: "✅ Shu joyni tanlash" }));
     await user.click(screen.getByRole("button", { name: "Joylash" }));
 
-    expect(create).toHaveBeenCalledWith("listings", expect.objectContaining({
-      title: "Uy sotiladi",
-      lat: 37.83,
-      lng: 67.58,
-    }));
+    expect(create).toHaveBeenCalledWith(
+      "listings",
+      expect.objectContaining({
+        title: "Uy sotiladi",
+        lat: 37.83,
+        lng: 67.58,
+      }),
+    );
   });
 
   it("invalidates after screen animation and viewport resize without shifting center", async () => {
@@ -177,15 +178,18 @@ describe("v1656 pickloc parity", () => {
     expect(picker).not.toBeNull();
 
     fireEvent.animationEnd(picker as Element);
-    await waitFor(() => expect(leaflet.map.invalidateSize).toHaveBeenCalledWith({
-      pan: false,
-    }));
+    await waitFor(() =>
+      expect(leaflet.map.invalidateSize).toHaveBeenCalledWith({
+        pan: false,
+      }),
+    );
     expect(leaflet.state.center).toEqual({ lat: 40.5, lng: 66.75 });
 
     const calls = leaflet.map.invalidateSize.mock.calls.length;
     fireEvent(window, new Event("resize"));
-    await waitFor(() => expect(leaflet.map.invalidateSize.mock.calls.length)
-      .toBeGreaterThan(calls));
+    await waitFor(() =>
+      expect(leaflet.map.invalidateSize.mock.calls.length).toBeGreaterThan(calls),
+    );
     expect(leaflet.state.center).toEqual({ lat: 40.5, lng: 66.75 });
   });
 
@@ -218,14 +222,23 @@ describe("v1656 pickloc parity", () => {
       />,
     );
 
-    expect(screen.getByText("Xaritani suring — markerni joyga to'g'rilang"))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "✅ Shu joyni tanlash" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
-    expect(screen.getByRole("button", { name: "Bekor qilish" }))
-      .toHaveClass("btn", "btn-soft", "btn-block");
-    expect(document.querySelector('[data-screen="pickloc"]'))
-      .toHaveClass("screen", "active");
+    expect(
+      screen.getByText("Xaritani suring — markerni joyga to'g'rilang"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "✅ Shu joyni tanlash" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
+    expect(screen.getByRole("button", { name: "Bekor qilish" })).toHaveClass(
+      "btn",
+      "btn-soft",
+      "btn-block",
+    );
+    expect(document.querySelector('[data-screen="pickloc"]')).toHaveClass(
+      "screen",
+      "active",
+    );
   });
 
   it("opens from cab-profil and saves bp center with its resolved address", async () => {
@@ -295,25 +308,29 @@ describe("v1656 pickloc parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /Profil \/ Mening sahifam/ },
-    ));
+    await user.click(
+      await screen.findByRole("button", { name: /Profil \/ Mening sahifam/ }),
+    );
     await user.click(screen.getByRole("button", { name: "📍 Xaritada joy belgilash" }));
     expect(document.querySelector('[data-screen="pickloc"]')).toBeInTheDocument();
     await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
     leaflet.state.center = { lat: 37.838933493659454, lng: 67.58345251326438 };
     await user.click(screen.getByRole("button", { name: "✅ Shu joyni tanlash" }));
 
-    await waitFor(() => expect(updateBusinessProfile).toHaveBeenCalledWith({
-      latitude: 37.838933493659454,
-      longitude: 67.58345251326438,
-      address: "Yangi manzil",
-      map_visible: true,
-    }));
-    expect(JSON.parse(localStorage.getItem("business_pick_point") ?? "{}"))
-      .toEqual({ lat: 37.838933493659454, lng: 67.58345251326438 });
-    expect(await screen.findByRole("heading", { name: "Profil / Mening sahifam" }))
-      .toBeInTheDocument();
+    await waitFor(() =>
+      expect(updateBusinessProfile).toHaveBeenCalledWith({
+        latitude: 37.838933493659454,
+        longitude: 67.58345251326438,
+        address: "Yangi manzil",
+        map_visible: true,
+      }),
+    );
+    expect(JSON.parse(localStorage.getItem("business_pick_point") ?? "{}")).toEqual({
+      lat: 37.838933493659454,
+      lng: 67.58345251326438,
+    });
+    expect(
+      await screen.findByRole("heading", { name: "Profil / Mening sahifam" }),
+    ).toBeInTheDocument();
   });
 });

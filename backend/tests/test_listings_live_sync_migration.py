@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"
@@ -50,7 +49,7 @@ def test_listing_live_migration_backfills_legacy_saved_listings():
 
 def test_listing_live_migration_removes_live_rows_before_restoring_not_null():
     source = MIGRATION.read_text(encoding="utf-8")
-    downgrade = source[source.index("def downgrade() -> None:"):]
+    downgrade = source[source.index("def downgrade() -> None:") :]
 
     assert "DELETE FROM listing_media WHERE migration_run_id IS NULL" in downgrade
     assert "DELETE FROM listings WHERE migration_run_id IS NULL" in downgrade

@@ -18,7 +18,6 @@ from app.profiles.model import BusinessProfile
 from app.queues.model import QueueProvider, QueueProviderService
 from app.queues.repository import QueueRepository
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"
@@ -171,11 +170,14 @@ async def test_repair_backfills_real_v7_provider_and_service_idempotently_on_pos
         session.add(item)
         await session.flush()
 
-        assert await session.scalar(
-            select(func.count(QueueProvider.id)).where(
-                QueueProvider.business_account_id == account.id
+        assert (
+            await session.scalar(
+                select(func.count(QueueProvider.id)).where(
+                    QueueProvider.business_account_id == account.id
+                )
             )
-        ) == 0
+            == 0
+        )
 
         await session.execute(text(migration.PROVIDER_BACKFILL_SQL))
         await session.execute(text(migration.SERVICE_BACKFILL_SQL))
@@ -234,16 +236,22 @@ async def test_repair_backfills_real_v7_provider_and_service_idempotently_on_pos
         await session.flush()
         session.expire_all()
 
-        assert await session.scalar(
-            select(func.count(QueueProvider.id)).where(
-                QueueProvider.business_account_id == account_id
+        assert (
+            await session.scalar(
+                select(func.count(QueueProvider.id)).where(
+                    QueueProvider.business_account_id == account_id
+                )
             )
-        ) == 1
-        assert await session.scalar(
-            select(func.count(QueueProviderService.id)).where(
-                QueueProviderService.provider_id == provider_id
+            == 1
+        )
+        assert (
+            await session.scalar(
+                select(func.count(QueueProviderService.id)).where(
+                    QueueProviderService.provider_id == provider_id
+                )
             )
-        ) == 1
+            == 1
+        )
         assert (await session.get(QueueProvider, provider_id)).room == "Yangi xona"
         assert (await session.get(QueueProviderService, link_id)).duration_minutes == 30
     finally:

@@ -54,9 +54,7 @@ class Review(Base):
     stars: Mapped[int] = mapped_column(Integer, nullable=False)
     comment: Mapped[str] = mapped_column(Text, nullable=False, default="")
     owner_reply: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    owner_replied_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    owner_replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

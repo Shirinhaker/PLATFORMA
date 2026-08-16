@@ -7,16 +7,17 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.core.config import get_settings
-from app.db.base import Base
 from app.accounts import model as accounts_model  # noqa: F401
 from app.admin import model as admin_model  # noqa: F401
 from app.admin import moderation_model as admin_moderation_model  # noqa: F401
 from app.advertisements import model as advertisements_model  # noqa: F401
+from app.ai_assistant import model as ai_assistant_model  # noqa: F401
 from app.auth import model as auth_model  # noqa: F401
 from app.cabinet_records import model as cabinet_records_model  # noqa: F401
-from app.catalog import model as catalog_model  # noqa: F401
 from app.cash_register import model as cash_register_model  # noqa: F401
+from app.catalog import model as catalog_model  # noqa: F401
+from app.core.config import get_settings
+from app.db.base import Base
 from app.debt_ledger import model as debt_ledger_model  # noqa: F401
 from app.dining import model as dining_model  # noqa: F401
 from app.documents import model as documents_model  # noqa: F401
@@ -34,12 +35,10 @@ from app.payments import model as payments_model  # noqa: F401
 from app.profiles import model as profiles_model  # noqa: F401
 from app.queues import model as queues_model  # noqa: F401
 from app.reviews import model as reviews_model  # noqa: F401
+from app.specialists import model as specialists_model  # noqa: F401
 from app.staff import model as staff_model  # noqa: F401
 from app.stories import model as stories_model  # noqa: F401
-from app.specialists import model as specialists_model  # noqa: F401
-from app.ai_assistant import model as ai_assistant_model  # noqa: F401
 from app.taxi import model as taxi_model  # noqa: F401
-
 
 config = context.config
 if config.config_file_name is not None:

@@ -24,9 +24,7 @@ from app.admin.moderation_service import AdminModerationService
 from app.admin.reports_service import AdminReportsService
 from app.core.errors import ApiError
 from app.db.base import Base
-from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 NOW = datetime(2026, 8, 6, 10, 0, tzinfo=UTC)
 ADMIN = 1423181561
@@ -111,49 +109,51 @@ def admin_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            _account(SHOP, AccountType.BUSINESS, "choyxona"),
-            _account(CUSTOMER, AccountType.USER, "anvar"),
-            BusinessProfile(
-                account_id=SHOP,
-                name="Choyxona",
-                phone="+998901112233",
-                description="",
-                public_username="choyxona",
-                direction="Umumiy ovqatlanish",
-                activity_type="",
-                address="",
-                work_hours={},
-                pay_card="",
-                pay_holder="",
-                pay_qr_object_key="",
-                director="",
-                tax_id="",
-                logo_object_key="",
-                logo_x=50,
-                logo_y=50,
-                logo_zoom=1,
-                followers_count=0,
-                following_count=0,
-                rating_sum=0,
-                rating_count=0,
-                map_visible=False,
-                dashboard_snapshot={},
-                recent_activity=[],
-                cabinet_payload={},
-            ),
-            UserProfile(
-                account_id=CUSTOMER,
-                name="Anvar",
-                phone="+998907776655",
-                public_username="anvar",
-                avatar_object_key="",
-                avatar_x=50,
-                avatar_y=50,
-                avatar_zoom=1,
-                cabinet_payload={},
-            ),
-        ))
+        seed.add_all(
+            (
+                _account(SHOP, AccountType.BUSINESS, "choyxona"),
+                _account(CUSTOMER, AccountType.USER, "anvar"),
+                BusinessProfile(
+                    account_id=SHOP,
+                    name="Choyxona",
+                    phone="+998901112233",
+                    description="",
+                    public_username="choyxona",
+                    direction="Umumiy ovqatlanish",
+                    activity_type="",
+                    address="",
+                    work_hours={},
+                    pay_card="",
+                    pay_holder="",
+                    pay_qr_object_key="",
+                    director="",
+                    tax_id="",
+                    logo_object_key="",
+                    logo_x=50,
+                    logo_y=50,
+                    logo_zoom=1,
+                    followers_count=0,
+                    following_count=0,
+                    rating_sum=0,
+                    rating_count=0,
+                    map_visible=False,
+                    dashboard_snapshot={},
+                    recent_activity=[],
+                    cabinet_payload={},
+                ),
+                UserProfile(
+                    account_id=CUSTOMER,
+                    name="Anvar",
+                    phone="+998907776655",
+                    public_username="anvar",
+                    avatar_object_key="",
+                    avatar_x=50,
+                    avatar_y=50,
+                    avatar_zoom=1,
+                    cabinet_payload={},
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -175,9 +175,7 @@ def admin_context():
 async def test_accounts_are_searchable_by_name_and_login(admin_context):
     moderation, _reports, _engine = admin_context
 
-    by_login = await moderation.list_accounts(
-        actor_type="business", query="choy"
-    )
+    by_login = await moderation.list_accounts(actor_type="business", query="choy")
     assert [row["account_id"] for row in by_login] == [SHOP]
     assert by_login[0]["name"] == "Choyxona"
 
@@ -207,9 +205,7 @@ async def test_restriction_is_recorded_and_audited(admin_context):
     )
     assert result["already_active"] is False
 
-    detail = await moderation.account_detail(
-        actor_type="business", account_id=SHOP
-    )
+    detail = await moderation.account_detail(actor_type="business", account_id=SHOP)
     assert detail["restrictions"][0]["restriction"] == "content_hidden"
     assert detail["restrictions"][0]["status"] == "active"
 
@@ -235,24 +231,24 @@ async def test_restriction_is_idempotent(admin_context):
             meta=META,
         )
     with Session(engine) as check:
-        assert check.scalar(
-            select(func.count()).select_from(AccountRestriction)
-        ) == 1
+        assert check.scalar(select(func.count()).select_from(AccountRestriction)) == 1
 
 
 async def test_two_restrictions_are_independent(admin_context):
     """`content_hidden` bloklashni yoqmaydi va aksincha."""
     moderation, _reports, _engine = admin_context
     await moderation.restrict(
-        actor_type="business", account_id=SHOP,
-        restriction="content_hidden", reason="Tekshiruv",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="business",
+        account_id=SHOP,
+        restriction="content_hidden",
+        reason="Tekshiruv",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
-    detail = await moderation.account_detail(
-        actor_type="business", account_id=SHOP
-    )
+    detail = await moderation.account_detail(actor_type="business", account_id=SHOP)
     active = {
-        row["restriction"] for row in detail["restrictions"]
+        row["restriction"]
+        for row in detail["restrictions"]
         if row["status"] == "active"
     }
     assert active == {"content_hidden"}
@@ -262,9 +258,12 @@ async def test_restriction_requires_a_reason(admin_context):
     moderation, _reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await moderation.restrict(
-            actor_type="business", account_id=SHOP,
-            restriction="content_hidden", reason="   ",
-            admin_tg_id=ADMIN, meta=META,
+            actor_type="business",
+            account_id=SHOP,
+            restriction="content_hidden",
+            reason="   ",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.code == "admin_reason_required"
 
@@ -272,20 +271,24 @@ async def test_restriction_requires_a_reason(admin_context):
 async def test_unrestrict_revokes_and_audits(admin_context):
     moderation, _reports, engine = admin_context
     await moderation.restrict(
-        actor_type="user", account_id=CUSTOMER,
-        restriction="account_blocked", reason="Spam",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="user",
+        account_id=CUSTOMER,
+        restriction="account_blocked",
+        reason="Spam",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
 
     await moderation.unrestrict(
-        actor_type="user", account_id=CUSTOMER,
-        restriction="account_blocked", reason="Shikoyat asossiz",
-        admin_tg_id=OTHER_ADMIN, meta=META,
+        actor_type="user",
+        account_id=CUSTOMER,
+        restriction="account_blocked",
+        reason="Shikoyat asossiz",
+        admin_tg_id=OTHER_ADMIN,
+        meta=META,
     )
 
-    detail = await moderation.account_detail(
-        actor_type="user", account_id=CUSTOMER
-    )
+    detail = await moderation.account_detail(actor_type="user", account_id=CUSTOMER)
     assert detail["restrictions"][0]["status"] == "revoked"
     assert detail["restrictions"][0]["revoked_reason"] == "Shikoyat asossiz"
     with Session(engine) as check:
@@ -299,9 +302,12 @@ async def test_unrestrict_without_active_restriction_fails(admin_context):
     moderation, _reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await moderation.unrestrict(
-            actor_type="user", account_id=CUSTOMER,
-            restriction="account_blocked", reason="Sabab",
-            admin_tg_id=ADMIN, meta=META,
+            actor_type="user",
+            account_id=CUSTOMER,
+            restriction="account_blocked",
+            reason="Sabab",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.status_code == 404
 
@@ -310,9 +316,12 @@ async def test_unknown_account_is_refused(admin_context):
     moderation, _reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await moderation.restrict(
-            actor_type="business", account_id=999,
-            restriction="content_hidden", reason="Sabab",
-            admin_tg_id=ADMIN, meta=META,
+            actor_type="business",
+            account_id=999,
+            restriction="content_hidden",
+            reason="Sabab",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.status_code == 404
 
@@ -321,13 +330,13 @@ async def test_notes_are_stored_for_admins_only(admin_context):
     moderation, _reports, _engine = admin_context
 
     await moderation.add_note(
-        actor_type="business", account_id=SHOP,
+        actor_type="business",
+        account_id=SHOP,
         note="Telefon orqali bog'lanildi",
-        admin_tg_id=ADMIN, meta=META,
+        admin_tg_id=ADMIN,
+        meta=META,
     )
-    detail = await moderation.account_detail(
-        actor_type="business", account_id=SHOP
-    )
+    detail = await moderation.account_detail(actor_type="business", account_id=SHOP)
     assert detail["notes"][0]["note"] == "Telefon orqali bog'lanildi"
     assert detail["notes"][0]["admin_tg_id"] == ADMIN
 
@@ -338,19 +347,19 @@ async def test_notes_are_stored_for_admins_only(admin_context):
 async def test_content_is_visible_until_hidden(admin_context):
     moderation, _reports, _engine = admin_context
 
-    before = await moderation.content_status(
-        content_kind="listing", content_id=42
-    )
+    before = await moderation.content_status(content_kind="listing", content_id=42)
     assert before["status"] == "visible"
     assert before["history"] == []
 
     await moderation.set_content_status(
-        content_kind="listing", content_id=42, status="hidden",
-        reason="Noqonuniy mahsulot", admin_tg_id=ADMIN, meta=META,
+        content_kind="listing",
+        content_id=42,
+        status="hidden",
+        reason="Noqonuniy mahsulot",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
-    after = await moderation.content_status(
-        content_kind="listing", content_id=42
-    )
+    after = await moderation.content_status(content_kind="listing", content_id=42)
     assert after["status"] == "hidden"
     assert after["history"][0]["reason"] == "Noqonuniy mahsulot"
 
@@ -363,22 +372,28 @@ async def test_content_history_keeps_every_change(admin_context):
         ("removed", "Qayta buzildi"),
     ):
         await moderation.set_content_status(
-            content_kind="story", content_id=5, status=status,
-            reason=reason, admin_tg_id=ADMIN, meta=META,
+            content_kind="story",
+            content_id=5,
+            status=status,
+            reason=reason,
+            admin_tg_id=ADMIN,
+            meta=META,
         )
-    detail = await moderation.content_status(
-        content_kind="story", content_id=5
-    )
+    detail = await moderation.content_status(content_kind="story", content_id=5)
     assert detail["status"] == "removed"
     assert [row["status"] for row in detail["history"]] == [
-        "removed", "visible", "hidden",
+        "removed",
+        "visible",
+        "hidden",
     ]
     with Session(engine) as check:
         actions = check.scalars(
             select(AdminAuditLog.action).order_by(AdminAuditLog.id)
         ).all()
         assert list(actions) == [
-            "content.hidden", "content.visible", "content.removed",
+            "content.hidden",
+            "content.visible",
+            "content.removed",
         ]
 
 
@@ -386,8 +401,12 @@ async def test_hiding_content_requires_a_reason(admin_context):
     moderation, _reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await moderation.set_content_status(
-            content_kind="listing", content_id=42, status="hidden",
-            reason="", admin_tg_id=ADMIN, meta=META,
+            content_kind="listing",
+            content_id=42,
+            status="hidden",
+            reason="",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.code == "admin_reason_required"
 
@@ -396,8 +415,12 @@ async def test_unknown_content_kind_is_refused(admin_context):
     moderation, _reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await moderation.set_content_status(
-            content_kind="taxi", content_id=1, status="hidden",
-            reason="Sabab", admin_tg_id=ADMIN, meta=META,
+            content_kind="taxi",
+            content_id=1,
+            status="hidden",
+            reason="Sabab",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.code == "admin_content_kind_invalid"
 
@@ -425,20 +448,24 @@ async def test_duplicate_report_does_not_flood_the_queue(admin_context):
     _moderation, reports, engine = admin_context
     for _ in range(3):
         await reports.create_report(
-            reporter_account_id=CUSTOMER, content_kind="listing",
-            content_id=42, reason_code="spam", comment="",
+            reporter_account_id=CUSTOMER,
+            content_kind="listing",
+            content_id=42,
+            reason_code="spam",
+            comment="",
         )
     with Session(engine) as check:
-        assert check.scalar(
-            select(func.count()).select_from(ModerationReport)
-        ) == 1
+        assert check.scalar(select(func.count()).select_from(ModerationReport)) == 1
 
 
 async def test_assign_then_resolve_is_audited(admin_context):
     _moderation, reports, engine = admin_context
     created = await reports.create_report(
-        reporter_account_id=CUSTOMER, content_kind="listing",
-        content_id=42, reason_code="fraud", comment="",
+        reporter_account_id=CUSTOMER,
+        content_kind="listing",
+        content_id=42,
+        reason_code="fraud",
+        comment="",
     )
 
     assigned = await reports.assign(
@@ -448,8 +475,11 @@ async def test_assign_then_resolve_is_audited(admin_context):
     assert assigned["assigned_admin_tg_id"] == ADMIN
 
     resolved = await reports.decide(
-        report_id=created["id"], decision="resolved",
-        resolution="E'lon olib tashlandi", admin_tg_id=ADMIN, meta=META,
+        report_id=created["id"],
+        decision="resolved",
+        resolution="E'lon olib tashlandi",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
     assert resolved["status"] == "resolved"
 
@@ -464,18 +494,27 @@ async def test_second_decision_is_refused(admin_context):
     """Ikki admin bir shikoyatni ikki marta hal qilmaydi."""
     _moderation, reports, _engine = admin_context
     created = await reports.create_report(
-        reporter_account_id=CUSTOMER, content_kind="listing",
-        content_id=42, reason_code="abuse", comment="",
+        reporter_account_id=CUSTOMER,
+        content_kind="listing",
+        content_id=42,
+        reason_code="abuse",
+        comment="",
     )
     await reports.decide(
-        report_id=created["id"], decision="dismissed",
-        resolution="Asossiz", admin_tg_id=ADMIN, meta=META,
+        report_id=created["id"],
+        decision="dismissed",
+        resolution="Asossiz",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
 
     with pytest.raises(ApiError) as failure:
         await reports.decide(
-            report_id=created["id"], decision="resolved",
-            resolution="Boshqa qaror", admin_tg_id=OTHER_ADMIN, meta=META,
+            report_id=created["id"],
+            decision="resolved",
+            resolution="Boshqa qaror",
+            admin_tg_id=OTHER_ADMIN,
+            meta=META,
         )
     assert failure.value.status_code == 409
     assert failure.value.code == "report_already_decided"
@@ -484,13 +523,19 @@ async def test_second_decision_is_refused(admin_context):
 async def test_decision_requires_a_resolution(admin_context):
     _moderation, reports, _engine = admin_context
     created = await reports.create_report(
-        reporter_account_id=CUSTOMER, content_kind="listing",
-        content_id=42, reason_code="other", comment="",
+        reporter_account_id=CUSTOMER,
+        content_kind="listing",
+        content_id=42,
+        reason_code="other",
+        comment="",
     )
     with pytest.raises(ApiError) as failure:
         await reports.decide(
-            report_id=created["id"], decision="resolved",
-            resolution="  ", admin_tg_id=ADMIN, meta=META,
+            report_id=created["id"],
+            decision="resolved",
+            resolution="  ",
+            admin_tg_id=ADMIN,
+            meta=META,
         )
     assert failure.value.code == "admin_reason_required"
 
@@ -499,8 +544,11 @@ async def test_invalid_reason_code_is_refused(admin_context):
     _moderation, reports, _engine = admin_context
     with pytest.raises(ApiError) as failure:
         await reports.create_report(
-            reporter_account_id=CUSTOMER, content_kind="listing",
-            content_id=42, reason_code="boshqa", comment="",
+            reporter_account_id=CUSTOMER,
+            content_kind="listing",
+            content_id=42,
+            reason_code="boshqa",
+            comment="",
         )
     assert failure.value.code == "report_reason_invalid"
 
@@ -511,9 +559,12 @@ async def test_invalid_reason_code_is_refused(admin_context):
 async def test_audit_detail_carries_before_and_after(admin_context):
     moderation, reports, _engine = admin_context
     await moderation.restrict(
-        actor_type="business", account_id=SHOP,
-        restriction="content_hidden", reason="Tekshiruv",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="business",
+        account_id=SHOP,
+        restriction="content_hidden",
+        reason="Tekshiruv",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
     rows = await reports.list_audit()
     detail = await reports.audit_detail(rows[0]["id"])
@@ -526,13 +577,19 @@ async def test_audit_detail_carries_before_and_after(admin_context):
 async def test_audit_can_be_filtered_by_action(admin_context):
     moderation, reports, _engine = admin_context
     await moderation.restrict(
-        actor_type="business", account_id=SHOP,
-        restriction="content_hidden", reason="Tekshiruv",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="business",
+        account_id=SHOP,
+        restriction="content_hidden",
+        reason="Tekshiruv",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
     await moderation.add_note(
-        actor_type="business", account_id=SHOP, note="Izoh",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="business",
+        account_id=SHOP,
+        note="Izoh",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
 
     assert len(await reports.list_audit()) == 2
@@ -543,9 +600,12 @@ async def test_audit_can_be_filtered_by_action(admin_context):
 async def test_audit_export_is_csv(admin_context):
     moderation, reports, _engine = admin_context
     await moderation.restrict(
-        actor_type="business", account_id=SHOP,
-        restriction="content_hidden", reason="Tekshiruv",
-        admin_tg_id=ADMIN, meta=META,
+        actor_type="business",
+        account_id=SHOP,
+        restriction="content_hidden",
+        reason="Tekshiruv",
+        admin_tg_id=ADMIN,
+        meta=META,
     )
 
     csv_text = await reports.audit_csv()

@@ -1,6 +1,5 @@
-from typing import Annotated
-
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 
@@ -12,6 +11,7 @@ from app.auth.dependencies import (
     require_staff_permission,
 )
 from app.core.errors import ApiError
+from app.education.management_service import EducationManagementService
 from app.education.schemas import (
     CourseEnrollmentCreate,
     CourseEnrollmentCreated,
@@ -31,21 +31,19 @@ from app.education.schemas import (
     EducationPayrollCreated,
     EducationPayrollRead,
     EducationStatisticsReportRead,
-    EducationTeacherCreated,
-    EducationTeacherRead,
-    EducationTeacherUpdated,
-    EducationTeacherWrite,
     EducationStudentCardRead,
     EducationStudentRead,
     EducationStudentTransferred,
     EducationStudentTransferWrite,
     EducationStudentWrite,
+    EducationTeacherCreated,
+    EducationTeacherRead,
+    EducationTeacherUpdated,
+    EducationTeacherWrite,
     EducationUpdated,
 )
-from app.education.management_service import EducationManagementService
 from app.education.service import EducationEnrollmentService
 from app.education.statistics_service import EducationStatisticsService
-
 
 router = APIRouter(prefix="/api/v1/education", tags=["education"])
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

@@ -13,20 +13,19 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     ForeignKey,
     Identity,
     Index,
     Integer,
-    JSON,
     String,
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-
 
 SERVICE_TYPES = ("advertisement", "subscription", "listing")
 REQUEST_STATUSES = ("pending", "approved", "rejected", "cancelled")
@@ -44,19 +43,13 @@ class PlatformPrice(Base):
         Identity(),
         primary_key=True,
     )
-    price_code: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True
-    )
+    price_code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     amount_uzs: Mapped[int] = mapped_column(BigInteger, nullable=False)
     service_type: Mapped[str] = mapped_column(
         String(32), nullable=False, server_default=""
     )
-    config: Mapped[dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=dict
-    )
-    active: Mapped[bool] = mapped_column(
-        Integer, nullable=False, server_default="1"
-    )
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    active: Mapped[bool] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
     updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
@@ -71,21 +64,13 @@ class PaymentMethod(Base):
     )
     method_type: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    details: Mapped[dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=dict
-    )
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     recipient_name: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
-    instructions: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    sort_order: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
-    active: Mapped[bool] = mapped_column(
-        Integer, nullable=False, server_default="1"
-    )
+    instructions: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    active: Mapped[bool] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
     updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
@@ -105,9 +90,7 @@ class PaymentRequest(Base):
             "status IN ('pending', 'approved', 'rejected', 'cancelled')",
             name="ck_payment_requests_status",
         ),
-        CheckConstraint(
-            "amount_snapshot >= 0", name="ck_payment_requests_amount"
-        ),
+        CheckConstraint("amount_snapshot >= 0", name="ck_payment_requests_amount"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -116,9 +99,7 @@ class PaymentRequest(Base):
         primary_key=True,
     )
     legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
-    request_code: Mapped[str] = mapped_column(
-        String(40), nullable=False, unique=True
-    )
+    request_code: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     actor_type: Mapped[str] = mapped_column(String(16), nullable=False)
     account_id: Mapped[int] = mapped_column(
         BigInteger,
@@ -133,12 +114,8 @@ class PaymentRequest(Base):
     duration_months: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0"
     )
-    quantity: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="1"
-    )
-    unit_price_snapshot: Mapped[int] = mapped_column(
-        BigInteger, nullable=False
-    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    unit_price_snapshot: Mapped[int] = mapped_column(BigInteger, nullable=False)
     amount_snapshot: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(
         String(8), nullable=False, server_default="UZS"
@@ -169,12 +146,8 @@ class PaymentRequest(Base):
     cancelled_at: Mapped[int] = mapped_column(
         BigInteger, nullable=False, server_default="0"
     )
-    public_reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    internal_note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    public_reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    internal_note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
     updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
@@ -199,9 +172,7 @@ class PaymentAttempt(Base):
         nullable=False,
     )
     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
-    receipt_object_key: Mapped[str] = mapped_column(
-        String(1024), nullable=False
-    )
+    receipt_object_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     receipt_filename: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=""
     )
@@ -214,9 +185,7 @@ class PaymentAttempt(Base):
     review_status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="pending"
     )
-    review_reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    review_reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
 
 
 class PaymentEvent(Base):
@@ -235,12 +204,8 @@ class PaymentEvent(Base):
     from_status: Mapped[str] = mapped_column(String(16), nullable=False)
     to_status: Mapped[str] = mapped_column(String(16), nullable=False)
     actor_kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    actor_id: Mapped[str] = mapped_column(
-        String(64), nullable=False, server_default=""
-    )
-    reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False, server_default="")
+    reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     event_metadata: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSON, nullable=False, default=dict
     )
@@ -316,9 +281,7 @@ class BusinessSubscription(Base):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="active"
     )
-    is_demo: Mapped[bool] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    is_demo: Mapped[bool] = mapped_column(Integer, nullable=False, server_default="0")
     payment_request_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("payment_requests.id", ondelete="SET NULL"),

@@ -1,13 +1,12 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_business_online_service_stops_using_profile_json_as_primary_store():
-    source = (
-        ROOT / "app" / "business_online" / "service_relational.py"
-    ).read_text(encoding="utf-8")
+    source = (ROOT / "app" / "business_online" / "service_relational.py").read_text(
+        encoding="utf-8"
+    )
     main = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
     assert "CabinetRecordRepository" in source
     assert "profile.cabinet_payload = payload" not in source
@@ -15,7 +14,9 @@ def test_business_online_service_stops_using_profile_json_as_primary_store():
 
 
 def test_v7_normalization_migration_and_verify_exist():
-    migration = ROOT / "migrations" / "versions" / "0006_v7_normalized_cabinet_records.py"
+    migration = (
+        ROOT / "migrations" / "versions" / "0006_v7_normalized_cabinet_records.py"
+    )
     assert migration.exists()
     text = migration.read_text(encoding="utf-8")
     assert "cabinet_resources" in text

@@ -5,7 +5,6 @@ import type { DiningOrder, DiningPayType } from "../api/types";
 import { DebtorPickerV1656 } from "../profiles/DebtorPickerV1656";
 import "./BusinessDiningCashV1656.css";
 
-
 export type BusinessDiningCashApi = Pick<
   ApiClient,
   | "getDiningOrders"
@@ -31,12 +30,10 @@ const CASH_METHODS: ReadonlyArray<keyof BusinessDiningCashApi> = [
   "createDebtor",
 ];
 
-export function supportsDiningCashApi(
-  api: object,
-): api is BusinessDiningCashApi {
-  return CASH_METHODS.every((method) => (
-    typeof (api as Partial<BusinessDiningCashApi>)[method] === "function"
-  ));
+export function supportsDiningCashApi(api: object): api is BusinessDiningCashApi {
+  return CASH_METHODS.every(
+    (method) => typeof (api as Partial<BusinessDiningCashApi>)[method] === "function",
+  );
 }
 
 // v1656 `openDiningProblem` dagi ro'yxat.
@@ -63,7 +60,6 @@ type Props = {
   onChanged?: () => void;
 };
 
-
 function money(value: number) {
   return Number(value || 0).toLocaleString("uz-UZ");
 }
@@ -75,7 +71,6 @@ function qtyText(value: number) {
 function reason(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 export function BusinessDiningCashV1656({ api, onChanged }: Props) {
   const [orders, setOrders] = useState<DiningOrder[]>([]);
@@ -130,17 +125,19 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
   }
 
   const open = orders.filter(
-    (order) => order.status === "active"
-      && order.payment_status !== "confirmed"
-      && !order.problem_open,
+    (order) =>
+      order.status === "active" &&
+      order.payment_status !== "confirmed" &&
+      !order.problem_open,
   );
   const problems = orders.filter(
     (order) => order.problem_open && order.status === "active",
   );
   const finalize = orders.filter(
-    (order) => order.status === "active"
-      && order.payment_status === "confirmed"
-      && !order.problem_open,
+    (order) =>
+      order.status === "active" &&
+      order.payment_status === "confirmed" &&
+      !order.problem_open,
   );
 
   if (loading) {
@@ -225,10 +222,12 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
           order={modal.order}
           busy={busy}
           onClose={() => setModal(null)}
-          onSave={(items) => void run(async () => {
-            await api.updateDiningCashierItems(modal.order.id, items);
-            report("Hisob yangilandi ✅");
-          })}
+          onSave={(items) =>
+            void run(async () => {
+              await api.updateDiningCashierItems(modal.order.id, items);
+              report("Hisob yangilandi ✅");
+            })
+          }
         />
       ) : null}
 
@@ -236,11 +235,13 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
         <ProblemModal
           busy={busy}
           onClose={() => setModal(null)}
-          onSave={(body) => void run(async () => {
-            await api.openDiningProblem(modal.order.id, body);
-            setTab("problem");
-            report("Hisob Muammoli bo‘limiga o‘tkazildi");
-          })}
+          onSave={(body) =>
+            void run(async () => {
+              await api.openDiningProblem(modal.order.id, body);
+              setTab("problem");
+              report("Hisob Muammoli bo‘limiga o‘tkazildi");
+            })
+          }
         />
       ) : null}
 
@@ -248,10 +249,12 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
         <CancelModal
           busy={busy}
           onClose={() => setModal(null)}
-          onConfirm={(text) => void run(async () => {
-            await api.cancelDiningOrder(modal.order.id, text);
-            report("Ichki buyurtma bekor qilindi, stol bo‘shadi ✅");
-          })}
+          onConfirm={(text) =>
+            void run(async () => {
+              await api.cancelDiningOrder(modal.order.id, text);
+              report("Ichki buyurtma bekor qilindi, stol bo‘shadi ✅");
+            })
+          }
         />
       ) : null}
 
@@ -260,13 +263,15 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
           api={api}
           title="Ichki hisobni qarzga yozish"
           onCancel={() => setModal(null)}
-          onSelect={(debtorId) => void run(async () => {
-            await api.confirmDiningPayment(modal.order.id, {
-              pay_type: "qarz",
-              debtor_id: debtorId,
-            });
-            report("Ichki hisob qarz daftariga yozildi ✅");
-          })}
+          onSelect={(debtorId) =>
+            void run(async () => {
+              await api.confirmDiningPayment(modal.order.id, {
+                pay_type: "qarz",
+                debtor_id: debtorId,
+              });
+              report("Ichki hisob qarz daftariga yozildi ✅");
+            })
+          }
         />
       ) : null}
 
@@ -276,12 +281,14 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
           okText="Tasdiqlash"
           busy={busy}
           onClose={() => setModal(null)}
-          onConfirm={() => void run(async () => {
-            await api.confirmDiningPayment(modal.order.id, {
-              pay_type: modal.payType,
-            });
-            report("To‘lov tasdiqlandi ✅");
-          })}
+          onConfirm={() =>
+            void run(async () => {
+              await api.confirmDiningPayment(modal.order.id, {
+                pay_type: modal.payType,
+              });
+              report("To‘lov tasdiqlandi ✅");
+            })
+          }
         />
       ) : null}
 
@@ -291,11 +298,13 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
           okText="Hal qilindi"
           busy={busy}
           onClose={() => setModal(null)}
-          onConfirm={() => void run(async () => {
-            await api.resolveDiningProblem(modal.order.id);
-            setTab("open");
-            report("Hisob Ochiq bo‘limiga qaytdi ✅");
-          })}
+          onConfirm={() =>
+            void run(async () => {
+              await api.resolveDiningProblem(modal.order.id);
+              setTab("open");
+              report("Hisob Ochiq bo‘limiga qaytdi ✅");
+            })
+          }
         />
       ) : null}
 
@@ -305,16 +314,17 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
           okText="Yakunlash"
           busy={busy}
           onClose={() => setModal(null)}
-          onConfirm={() => void run(async () => {
-            await api.finalizeDiningOrder(modal.order.id);
-            report("Hisob yakunlandi, stol bo‘shadi ✅");
-          })}
+          onConfirm={() =>
+            void run(async () => {
+              await api.finalizeDiningOrder(modal.order.id);
+              report("Hisob yakunlandi, stol bo‘shadi ✅");
+            })
+          }
         />
       ) : null}
     </div>
   );
 }
-
 
 function OpenPanel({
   orders,
@@ -417,7 +427,6 @@ function OpenPanel({
   );
 }
 
-
 function ProblemPanel({
   orders,
   busy,
@@ -462,7 +471,6 @@ function ProblemPanel({
     </>
   );
 }
-
 
 function FinalizePanel({
   orders,
@@ -517,7 +525,6 @@ function FinalizePanel({
   );
 }
 
-
 function EditBillModal({
   order,
   busy,
@@ -529,8 +536,8 @@ function EditBillModal({
   onClose(): void;
   onSave(items: { line_id: number; qty: number }[]): void;
 }) {
-  const [quantities, setQuantities] = useState<Record<number, number>>(
-    () => Object.fromEntries(order.items.map((item) => [item.id, item.qty])),
+  const [quantities, setQuantities] = useState<Record<number, number>>(() =>
+    Object.fromEntries(order.items.map((item) => [item.id, item.qty])),
   );
 
   function step(lineId: number, delta: number) {
@@ -578,12 +585,14 @@ function EditBillModal({
           type="button"
           className="acf-ok"
           disabled={busy}
-          onClick={() => onSave(
-            order.items.map((item) => ({
-              line_id: item.id,
-              qty: quantities[item.id] ?? 0,
-            })),
-          )}
+          onClick={() =>
+            onSave(
+              order.items.map((item) => ({
+                line_id: item.id,
+                qty: quantities[item.id] ?? 0,
+              })),
+            )
+          }
         >
           Saqlash
         </button>
@@ -591,7 +600,6 @@ function EditBillModal({
     </Sheet>
   );
 }
-
 
 function ProblemModal({
   busy,
@@ -616,7 +624,9 @@ function ProblemModal({
           onChange={(event) => setChosen(event.target.value)}
         >
           {PROBLEM_REASONS.map((value) => (
-            <option key={value} value={value}>{value}</option>
+            <option key={value} value={value}>
+              {value}
+            </option>
           ))}
         </select>
       </div>
@@ -646,7 +656,6 @@ function ProblemModal({
     </Sheet>
   );
 }
-
 
 function CancelModal({
   busy,
@@ -704,7 +713,6 @@ function CancelModal({
   );
 }
 
-
 function ConfirmModal({
   text,
   okText,
@@ -724,19 +732,13 @@ function ConfirmModal({
         <button type="button" className="acf-cancel" onClick={onClose}>
           Bekor qilish
         </button>
-        <button
-          type="button"
-          className="acf-ok"
-          disabled={busy}
-          onClick={onConfirm}
-        >
+        <button type="button" className="acf-ok" disabled={busy} onClick={onConfirm}>
           {okText}
         </button>
       </div>
     </Sheet>
   );
 }
-
 
 function Sheet({
   title,

@@ -12,14 +12,13 @@ from app.debt_ledger.model import Debtor, DebtTransaction
 from app.debt_ledger.repository import DebtLedgerRepository
 from app.debt_ledger.schemas import (
     DebtMutationRead,
-    DebtTransactionCreate,
-    DebtTransactionRead,
     DebtorCreate,
     DebtorCreated,
     DebtorDetailRead,
     DebtorRead,
+    DebtTransactionCreate,
+    DebtTransactionRead,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
@@ -52,8 +51,7 @@ class DebtLedgerService:
                 business_account_id=business_account_id,
             )
             response = [
-                self._debtor_read(debtor, int(balance or 0))
-                for debtor, balance in rows
+                self._debtor_read(debtor, int(balance or 0)) for debtor, balance in rows
             ]
             await session.rollback()
             return response
@@ -186,20 +184,22 @@ class DebtLedgerService:
                     )
                     session.add(receipt)
                     await session.flush()
-                    session.add(CashReceiptLine(
-                        receipt_id=receipt.id,
-                        business_account_id=business_account_id,
-                        catalog_item_id=None,
-                        inventory_item_id=None,
-                        legacy_source_key=None,
-                        item_name=f"«{debtor.name}» qarz to'lovi"[:220],
-                        qty=1,
-                        unit="dona",
-                        unit_price=body.amount,
-                        total=body.amount,
-                        cost_total=0,
-                        created_at=receipt_time,
-                    ))
+                    session.add(
+                        CashReceiptLine(
+                            receipt_id=receipt.id,
+                            business_account_id=business_account_id,
+                            catalog_item_id=None,
+                            inventory_item_id=None,
+                            legacy_source_key=None,
+                            item_name=f"«{debtor.name}» qarz to'lovi"[:220],
+                            qty=1,
+                            unit="dona",
+                            unit_price=body.amount,
+                            total=body.amount,
+                            cost_total=0,
+                            created_at=receipt_time,
+                        )
+                    )
                     await session.flush()
                     cash_receipt_id = receipt.id
                 transaction = await self.create_transaction_in_session(

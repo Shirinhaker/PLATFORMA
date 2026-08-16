@@ -51,8 +51,12 @@ class SpecialistProfile(Base):
     available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class SpecialistCredential(Base):
@@ -70,9 +74,13 @@ class SpecialistCredential(Base):
     )
     legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
     object_key: Mapped[str] = mapped_column(String(600), nullable=False, default="")
-    legacy_media_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
+    legacy_media_url: Mapped[str] = mapped_column(
+        String(2048), nullable=False, default=""
+    )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class SpecialistOffer(Base):
@@ -103,10 +111,18 @@ class SpecialistOffer(Base):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     price_text: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     note: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
-    image_object_key: Mapped[str] = mapped_column(String(600), nullable=False, default="")
-    legacy_image_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    image_object_key: Mapped[str] = mapped_column(
+        String(600), nullable=False, default=""
+    )
+    legacy_image_url: Mapped[str] = mapped_column(
+        String(2048), nullable=False, default=""
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class SpecialistPortfolio(Base):
@@ -131,8 +147,12 @@ class SpecialistPortfolio(Base):
     legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
     media_type: Mapped[str] = mapped_column(String(12), nullable=False, default="photo")
     object_key: Mapped[str] = mapped_column(String(600), nullable=False, default="")
-    legacy_media_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    legacy_media_url: Mapped[str] = mapped_column(
+        String(2048), nullable=False, default=""
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 Index(

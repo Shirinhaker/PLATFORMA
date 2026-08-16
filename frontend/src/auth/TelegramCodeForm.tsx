@@ -4,7 +4,6 @@ import type { AccountType, SessionIdentity } from "../api/types";
 import type { AuthApi } from "./AuthFlow";
 import { openTelegramLink, refreshPendingAuth } from "./auth-pending";
 
-
 type Props = {
   api: AuthApi;
   purpose: "login" | "register";
@@ -25,11 +24,9 @@ type Credentials = {
   identity: SessionIdentity;
 };
 
-
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 export function TelegramCodeForm({
   api,
@@ -70,9 +67,10 @@ export function TelegramCodeForm({
         code,
         device_name: navigator.userAgent.slice(0, 100),
       };
-      const result = purpose === "register"
-        ? await api.verifyRegistration(body)
-        : await api.verifyLogin(body);
+      const result =
+        purpose === "register"
+          ? await api.verifyRegistration(body)
+          : await api.verifyLogin(body);
       onVerified?.();
       const identity = await api.getSession();
       if (purpose === "register") {
@@ -124,8 +122,14 @@ export function TelegramCodeForm({
               : "Quyidagi login va parolni xavfsiz joyda saqlab qo'ying."}
           </p>
           <dl className="cred-box">
-            <div><dt>🔑 Login</dt><dd>{credentials.login}</dd></div>
-            <div><dt>🔐 Parol</dt><dd>{credentials.password}</dd></div>
+            <div>
+              <dt>🔑 Login</dt>
+              <dd>{credentials.login}</dd>
+            </div>
+            <div>
+              <dt>🔐 Parol</dt>
+              <dd>{credentials.password}</dd>
+            </div>
           </dl>
           <button
             className="btn btn-primary btn-block"
@@ -139,14 +143,19 @@ export function TelegramCodeForm({
     );
   }
 
-  const resendLabel = purpose === "register" ? "Yangi kod olish" : "Kodni qayta yuborish";
-  const backLabel = purpose === "register"
-    ? "Ma'lumotlarni o'zgartirish"
-    : "← Login va parolga qaytish";
+  const resendLabel =
+    purpose === "register" ? "Yangi kod olish" : "Kodni qayta yuborish";
+  const backLabel =
+    purpose === "register"
+      ? "Ma'lumotlarni o'zgartirish"
+      : "← Login va parolga qaytish";
 
   return (
     <main className="koprik-auth-stage">
-      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={verify}>
+      <form
+        className="koprik-flow-shell koprik-auth-shell auth-v1656"
+        onSubmit={verify}
+      >
         <h1 className="lead">Telegram orqali tasdiqlash</h1>
         <p className="lead-sub">Telegram bot yuborgan 6 xonali kodni kiriting.</p>
         <label className="field">
@@ -161,12 +170,16 @@ export function TelegramCodeForm({
             placeholder="000000"
             required
             value={code}
-            onChange={(event) => setCode(
-              event.currentTarget.value.replace(/\D/g, "").slice(0, 6),
-            )}
+            onChange={(event) =>
+              setCode(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))
+            }
           />
         </label>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <button
           className="btn btn-primary btn-block"
           type="submit"
@@ -199,7 +212,11 @@ export function TelegramCodeForm({
               </button>
             </p>
           ) : (
-            <button className="btn btn-outline btn-block" type="button" onClick={onBack}>
+            <button
+              className="btn btn-outline btn-block"
+              type="button"
+              onClick={onBack}
+            >
               {backLabel}
             </button>
           )

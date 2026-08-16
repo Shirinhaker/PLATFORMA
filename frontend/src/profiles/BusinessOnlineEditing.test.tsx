@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -46,14 +45,16 @@ const profile = {
   recent_activity: [],
   cabinet_payload: {
     item_groups: [{ id: 1, name: "Asosiy", kind: "product" }],
-    items: [{
-      id: 11,
-      name: "Eski nom",
-      kind: "product",
-      group_id: 1,
-      price: 15000,
-      description: "Eski tavsif",
-    }],
+    items: [
+      {
+        id: 11,
+        name: "Eski nom",
+        kind: "product",
+        group_id: 1,
+        price: 15000,
+        description: "Eski tavsif",
+      },
+    ],
     listings: [],
     orders: [],
     messages: [],
@@ -67,7 +68,6 @@ const profile = {
     subscription_payments: [],
   },
 };
-
 
 describe("business online editing", () => {
   it("edits a migrated item through the typed patch endpoint", async () => {
@@ -100,15 +100,19 @@ describe("business online editing", () => {
     );
     await screen.findByRole("heading", { name: "Muhr" });
     expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", {
-      name: /Mahsulotlar/,
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: /Mahsulotlar/,
+      }),
+    );
     await screen.findByPlaceholderText("Tovar qidirish...");
     await user.click(screen.getByRole("button", { name: "Eski nom amallari" }));
     await user.click(screen.getByRole("button", { name: "Tahrirlash" }));
-    expect(await screen.findByRole("heading", {
-      name: "Tovarni tahrirlash",
-    })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Tovarni tahrirlash",
+      }),
+    ).toBeInTheDocument();
 
     const name = screen.getByLabelText("Nomi");
     await user.clear(name);

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from datetime import UTC, datetime
 import json
 import os
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
 from sqlalchemy import or_, select, update
@@ -12,7 +12,6 @@ from sqlalchemy import or_, select, update
 from app.core.config import Settings
 from app.db.session import Database
 from app.notifications.model import Notification, PushDevice, PushOutbox
-
 
 RETRY_DELAYS = (60, 300, 900, 3600)
 PERMANENT_FIREBASE_ERRORS = {
@@ -111,40 +110,44 @@ async def claim_pushes(
     now: int,
     limit: int = 50,
 ) -> list[PendingPush]:
-    rows = (await session.execute(
-        select(PushOutbox, Notification, PushDevice)
-        .join(Notification, Notification.id == PushOutbox.notification_id)
-        .join(PushDevice, PushDevice.id == PushOutbox.device_id)
-        .where(
-            or_(
-                PushOutbox.status == "pending",
-                (
-                    (PushOutbox.status == "sending")
-                    & (PushOutbox.last_attempt_at <= now - 300)
+    rows = (
+        await session.execute(
+            select(PushOutbox, Notification, PushDevice)
+            .join(Notification, Notification.id == PushOutbox.notification_id)
+            .join(PushDevice, PushDevice.id == PushOutbox.device_id)
+            .where(
+                or_(
+                    PushOutbox.status == "pending",
+                    (
+                        (PushOutbox.status == "sending")
+                        & (PushOutbox.last_attempt_at <= now - 300)
+                    ),
                 ),
-            ),
-            PushOutbox.attempts < 5,
-            PushOutbox.available_at <= now,
-            PushDevice.enabled.is_(True),
+                PushOutbox.attempts < 5,
+                PushOutbox.available_at <= now,
+                PushDevice.enabled.is_(True),
+            )
+            .order_by(PushOutbox.available_at, PushOutbox.id)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
         )
-        .order_by(PushOutbox.available_at, PushOutbox.id)
-        .limit(limit)
-        .with_for_update(skip_locked=True)
-    )).all()
+    ).all()
     claimed: list[PendingPush] = []
     for outbox, notification, device in rows:
         outbox.status = "sending"
         outbox.attempts += 1
         outbox.last_attempt_at = now
-        claimed.append(PendingPush(
-            outbox_id=int(outbox.id),
-            device_id=int(device.id),
-            token=device.token,
-            title=notification.title,
-            body=notification.body,
-            attempts=int(outbox.attempts),
-            data=_push_data(notification),
-        ))
+        claimed.append(
+            PendingPush(
+                outbox_id=int(outbox.id),
+                device_id=int(device.id),
+                token=device.token,
+                title=notification.title,
+                body=notification.body,
+                attempts=int(outbox.attempts),
+                data=_push_data(notification),
+            )
+        )
     return claimed
 
 
@@ -165,10 +168,7 @@ async def process_push_batch(
             await sender.send(push)
         except Exception as error:
             error_name = type(error).__name__
-            permanent = (
-                error_name in PERMANENT_FIREBASE_ERRORS
-                or push.attempts >= 5
-            )
+            permanent = error_name in PERMANENT_FIREBASE_ERRORS or push.attempts >= 5
             delay = RETRY_DELAYS[min(push.attempts - 1, len(RETRY_DELAYS) - 1)]
             async with database.session() as session:
                 await session.execute(

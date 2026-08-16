@@ -14,7 +14,6 @@ from app.taxi.model import TaxiDriver, TaxiRide
 from app.taxi.schemas import DriverWrite, RideCreate
 from app.taxi.service import TaxiService, calculate_price
 
-
 NOW = datetime(2026, 8, 11, 8, 0, tzinfo=UTC)
 
 
@@ -67,11 +66,22 @@ def account(account_id: int, name: str) -> tuple[Account, UserProfile]:
             name=name,
             phone=f"+9989000000{account_id}",
             public_username=f"taxi_{account_id}",
-            region="", district="", mahalla="",
-            latitude=None, longitude=None, location_exact=False,
-            avatar_object_key="", avatar_x=50, avatar_y=50, avatar_zoom=1,
-            followers_count=0, following_count=0, has_business=False,
-            dashboard_snapshot={}, recent_activity=[], specialist_profile={},
+            region="",
+            district="",
+            mahalla="",
+            latitude=None,
+            longitude=None,
+            location_exact=False,
+            avatar_object_key="",
+            avatar_x=50,
+            avatar_y=50,
+            avatar_zoom=1,
+            followers_count=0,
+            following_count=0,
+            has_business=False,
+            dashboard_snapshot={},
+            recent_activity=[],
+            specialist_profile={},
             cabinet_payload={},
         ),
     )
@@ -82,8 +92,10 @@ def service_store():
     Base.metadata.create_all(
         engine,
         tables=(
-            Account.__table__, UserProfile.__table__,
-            TaxiDriver.__table__, TaxiRide.__table__,
+            Account.__table__,
+            UserProfile.__table__,
+            TaxiDriver.__table__,
+            TaxiRide.__table__,
         ),
     )
     sync = Session(engine, expire_on_commit=False)
@@ -163,8 +175,11 @@ async def test_driver_validation_and_atomic_accept_commission_flow():
             await service.create_ride(
                 customer_account_id=1,
                 body=RideCreate(
-                    kind="taxi", from_addr="A", to_addr="B",
-                    from_lat=41.3, from_lng=69.2,
+                    kind="taxi",
+                    from_addr="A",
+                    to_addr="B",
+                    from_lat=41.3,
+                    from_lng=69.2,
                 ),
             )
         assert duplicate.value.message == "Sizda hali tugamagan zakaz bor."
@@ -180,8 +195,11 @@ async def test_taxi_and_delivery_status_sequences_remain_separate():
         await service.save_driver(
             user_account_id=2,
             body=DriverWrite(
-                phone="+998901234567", service="both", car_model="Cobalt",
-                car_plate="01 A 123 BC", car_color="oq",
+                phone="+998901234567",
+                service="both",
+                car_model="Cobalt",
+                car_plate="01 A 123 BC",
+                car_color="oq",
             ),
         )
         sync.query(TaxiDriver).filter_by(user_account_id=2).update({"balance": 5_000})
@@ -189,8 +207,11 @@ async def test_taxi_and_delivery_status_sequences_remain_separate():
         ride = await service.create_ride(
             customer_account_id=1,
             body=RideCreate(
-                kind="taxi", from_addr="A", to_addr="B",
-                from_lat=41.3, from_lng=69.2,
+                kind="taxi",
+                from_addr="A",
+                to_addr="B",
+                from_lat=41.3,
+                from_lng=69.2,
             ),
         )
         await service.accept_ride(user_account_id=2, ride_id=ride.id)
@@ -204,7 +225,9 @@ async def test_taxi_and_delivery_status_sequences_remain_separate():
                 user_account_id=2, ride_id=ride.id, new_status=status
             )
         assert result.status == "completed"
-        assert sync.query(TaxiDriver).filter_by(user_account_id=2).one().available is True
+        assert (
+            sync.query(TaxiDriver).filter_by(user_account_id=2).one().available is True
+        )
     finally:
         sync.close()
         engine.dispose()
@@ -241,6 +264,7 @@ async def test_ready_delivery_order_creates_one_linked_driver_job():
 
         async def get(self, model, _identity):
             from app.profiles.model import BusinessProfile
+
             assert model is BusinessProfile
             return business
 

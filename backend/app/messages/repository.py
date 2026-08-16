@@ -47,9 +47,13 @@ class MessageRepository:
             (UserProfile, AccountType.USER, "avatar_object_key"),
             (BusinessProfile, AccountType.BUSINESS, "logo_object_key"),
         ):
-            rows = list((await session.scalars(
-                select(model).where(model.account_id.in_(account_ids))
-            )).all())
+            rows = list(
+                (
+                    await session.scalars(
+                        select(model).where(model.account_id.in_(account_ids))
+                    )
+                ).all()
+            )
             for profile in rows:
                 result[int(profile.account_id)] = {
                     "kind": kind,
@@ -95,18 +99,20 @@ class MessageRepository:
             raise RuntimeError("message_conversation_create_failed")
         await session.execute(
             postgresql_insert(MessageConversationMember)
-            .values([
-                {
-                    "conversation_id": int(conversation_id),
-                    "account_id": low_account_id,
-                    "joined_at": now,
-                },
-                {
-                    "conversation_id": int(conversation_id),
-                    "account_id": high_account_id,
-                    "joined_at": now,
-                },
-            ])
+            .values(
+                [
+                    {
+                        "conversation_id": int(conversation_id),
+                        "account_id": low_account_id,
+                        "joined_at": now,
+                    },
+                    {
+                        "conversation_id": int(conversation_id),
+                        "account_id": high_account_id,
+                        "joined_at": now,
+                    },
+                ]
+            )
             .on_conflict_do_nothing(
                 index_elements=[
                     MessageConversationMember.conversation_id,
@@ -139,20 +145,24 @@ class MessageRepository:
         *,
         account_id: int,
     ) -> list[MessageConversation]:
-        return list((await session.scalars(
-            select(MessageConversation)
-            .join(
-                MessageConversationMember,
-                MessageConversationMember.conversation_id
-                == MessageConversation.id,
-            )
-            .where(MessageConversationMember.account_id == account_id)
-            .order_by(
-                MessageConversation.updated_at.desc(),
-                MessageConversation.id.desc(),
-            )
-            .limit(200)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(MessageConversation)
+                    .join(
+                        MessageConversationMember,
+                        MessageConversationMember.conversation_id
+                        == MessageConversation.id,
+                    )
+                    .where(MessageConversationMember.account_id == account_id)
+                    .order_by(
+                        MessageConversation.updated_at.desc(),
+                        MessageConversation.id.desc(),
+                    )
+                    .limit(200)
+                )
+            ).all()
+        )
 
     async def latest_messages(
         self,
@@ -161,16 +171,20 @@ class MessageRepository:
     ) -> dict[int, Message]:
         if not conversation_ids:
             return {}
-        rows = list((await session.scalars(
-            select(Message)
-            .where(Message.conversation_id.in_(conversation_ids))
-            .distinct(Message.conversation_id)
-            .order_by(
-                Message.conversation_id,
-                Message.created_at.desc(),
-                Message.id.desc(),
-            )
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(Message)
+                    .where(Message.conversation_id.in_(conversation_ids))
+                    .distinct(Message.conversation_id)
+                    .order_by(
+                        Message.conversation_id,
+                        Message.created_at.desc(),
+                        Message.id.desc(),
+                    )
+                )
+            ).all()
+        )
         return {int(row.conversation_id): row for row in rows}
 
     async def unread_counts(
@@ -182,15 +196,17 @@ class MessageRepository:
     ) -> dict[int, int]:
         if not conversation_ids:
             return {}
-        rows = (await session.execute(
-            select(Message.conversation_id, func.count(Message.id))
-            .where(
-                Message.conversation_id.in_(conversation_ids),
-                Message.receiver_account_id == account_id,
-                Message.read_at.is_(None),
+        rows = (
+            await session.execute(
+                select(Message.conversation_id, func.count(Message.id))
+                .where(
+                    Message.conversation_id.in_(conversation_ids),
+                    Message.receiver_account_id == account_id,
+                    Message.read_at.is_(None),
+                )
+                .group_by(Message.conversation_id)
             )
-            .group_by(Message.conversation_id)
-        )).all()
+        ).all()
         return {int(conversation_id): int(count) for conversation_id, count in rows}
 
     async def messages(
@@ -199,12 +215,16 @@ class MessageRepository:
         *,
         conversation_id: int,
     ) -> list[Message]:
-        return list((await session.scalars(
-            select(Message)
-            .where(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at, Message.id)
-            .limit(500)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(Message)
+                    .where(Message.conversation_id == conversation_id)
+                    .order_by(Message.created_at, Message.id)
+                    .limit(500)
+                )
+            ).all()
+        )
 
     async def messages_by_ids(
         self,
@@ -213,9 +233,13 @@ class MessageRepository:
     ) -> dict[int, Message]:
         if not message_ids:
             return {}
-        rows = list((await session.scalars(
-            select(Message).where(Message.id.in_(message_ids))
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(Message).where(Message.id.in_(message_ids))
+                )
+            ).all()
+        )
         return {int(row.id): row for row in rows}
 
     async def message(
@@ -228,9 +252,7 @@ class MessageRepository:
     ) -> Message | None:
         statement = select(Message).where(Message.id == message_id)
         if conversation_id is not None:
-            statement = statement.where(
-                Message.conversation_id == conversation_id
-            )
+            statement = statement.where(Message.conversation_id == conversation_id)
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement)

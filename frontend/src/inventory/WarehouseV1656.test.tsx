@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { WarehouseItem } from "../api/types";
 import { WarehouseV1656, type WarehouseApi } from "./WarehouseV1656";
 
-
 const ready: WarehouseItem = {
   id: 10,
   catalog_item_id: 110,
@@ -90,14 +89,16 @@ describe("v1656 Ombor", () => {
     });
     const api = warehouseApi({
       createWarehouseMove,
-      getWarehouseRecipe: vi.fn().mockResolvedValue([{
-        item_id: raw.id,
-        qty_per_unit: 0.5,
-        name: raw.name,
-        unit: raw.unit,
-        cost_price: raw.cost_price,
-        cost_per_ready_unit: 8000,
-      }]),
+      getWarehouseRecipe: vi.fn().mockResolvedValue([
+        {
+          item_id: raw.id,
+          qty_per_unit: 0.5,
+          name: raw.name,
+          unit: raw.unit,
+          cost_price: raw.cost_price,
+          cost_per_ready_unit: 8000,
+        },
+      ]),
     });
     render(
       <WarehouseV1656
@@ -116,15 +117,17 @@ describe("v1656 Ombor", () => {
     await user.type(screen.getByLabelText("Miqdor"), "2");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    await waitFor(() => expect(createWarehouseMove).toHaveBeenCalledWith({
-      item_id: ready.id,
-      delta: 2,
-      reason: "kirim",
-      note: "",
-      cost: 0,
-      ingredients: [{ item_id: raw.id, qty: 1 }],
-      save_recipe: true,
-    }));
+    await waitFor(() =>
+      expect(createWarehouseMove).toHaveBeenCalledWith({
+        item_id: ready.id,
+        delta: 2,
+        reason: "kirim",
+        note: "",
+        cost: 0,
+        ingredients: [{ item_id: raw.id, qty: 1 }],
+        save_recipe: true,
+      }),
+    );
   });
 
   it("chiqimni qoldiqdan oshirishga ruxsat bermaydi", async () => {

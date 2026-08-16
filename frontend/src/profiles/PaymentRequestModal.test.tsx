@@ -2,29 +2,29 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PaymentCatalog } from "../api/types";
-import {
-  PaymentRequestModal,
-  type PaymentRequestApi,
-} from "./PaymentRequestModal";
+import { PaymentRequestModal, type PaymentRequestApi } from "./PaymentRequestModal";
 import { SubscriptionsView } from "./BusinessOnlineViews";
 
-
 const CATALOG: PaymentCatalog = {
-  prices: [{
-    price_code: "subscription_plus_1m",
-    service_type: "subscription",
-    amount_uzs: 99000,
-    plan_code: "plus",
-    duration_months: 1,
-  }],
-  methods: [{
-    id: 1,
-    method_type: "manual_card",
-    name: "Bank kartasi",
-    recipient_name: "Bunyod Rahimov",
-    instructions: "To‘lovdan keyin chekni yuboring.",
-    details: { card_number: "5614 6819 1868 7751" },
-  }],
+  prices: [
+    {
+      price_code: "subscription_plus_1m",
+      service_type: "subscription",
+      amount_uzs: 99000,
+      plan_code: "plus",
+      duration_months: 1,
+    },
+  ],
+  methods: [
+    {
+      id: 1,
+      method_type: "manual_card",
+      name: "Bank kartasi",
+      recipient_name: "Bunyod Rahimov",
+      instructions: "To‘lovdan keyin chekni yuboring.",
+      details: { card_number: "5614 6819 1868 7751" },
+    },
+  ],
 };
 
 const TARGET = {
@@ -33,7 +33,6 @@ const TARGET = {
   planCode: "plus",
   durationMonths: 1,
 };
-
 
 function makeApi(overrides: Partial<PaymentRequestApi> = {}) {
   return {
@@ -51,7 +50,6 @@ function makeApi(overrides: Partial<PaymentRequestApi> = {}) {
   } as unknown as PaymentRequestApi;
 }
 
-
 describe("obuna tarifini sotib olish", () => {
   it("tarif tugmasi to'lov oynasini ochadi, request_plan emas", () => {
     const openPayment = vi.fn();
@@ -65,9 +63,7 @@ describe("obuna tarifini sotib olish", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Plus uchun to‘lov qilish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Plus uchun to‘lov qilish" }));
 
     expect(openPayment).toHaveBeenCalledWith("plus");
   });
@@ -114,14 +110,16 @@ describe("obuna tarifini sotib olish", () => {
         api={makeApi()}
         catalog={{
           ...CATALOG,
-          methods: [{
-            id: 1,
-            method_type: "manual_card",
-            name: "Bank kartasi",
-            recipient_name: "",
-            instructions: "",
-            details: {},
-          }],
+          methods: [
+            {
+              id: 1,
+              method_type: "manual_card",
+              name: "Bank kartasi",
+              recipient_name: "",
+              instructions: "",
+              details: {},
+            },
+          ],
         }}
         target={TARGET}
         onClose={vi.fn()}
@@ -146,9 +144,7 @@ describe("obuna tarifini sotib olish", () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }));
 
     expect(screen.getByText("To‘lov kvitansiyasini tanlang.")).toBeVisible();
     expect(api.createPaymentRequest).not.toHaveBeenCalled();
@@ -172,9 +168,7 @@ describe("obuna tarifini sotib olish", () => {
     fireEvent.change(screen.getByLabelText("To‘lov kvitansiyasi"), {
       target: { files: [file] },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }));
 
     await waitFor(() => {
       expect(api.createUploadGrant).toHaveBeenCalledWith({
@@ -216,9 +210,7 @@ describe("obuna tarifini sotib olish", () => {
       target: { files: [new File(["c"], "c.png", { type: "image/png" })] },
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "To‘lov so‘rovini yuborish" }));
 
     expect(await screen.findByText("Yuklanmadi.")).toBeVisible();
     expect(api.createPaymentRequest).not.toHaveBeenCalled();

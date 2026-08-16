@@ -8,26 +8,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.profile_parity_v7 import (
     reconcile_accounts as reconcile_accounts_v7,
+)
+from app.legacy_migration.profile_parity_v7 import (
     reconcile_businesses as reconcile_businesses_v7,
 )
 from app.legacy_migration.reconcile import StageResult, _find_mapping
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 # static/index.html v1656: orderIsActive()
-V1656_ACTIVE_ORDER_STATUSES = frozenset({
-    "new",
-    "accepted",
-    "preparing",
-    "tayyor",
-    "courier_assigned",
-    "courier_arrived_store",
-    "handoff_waiting_seller",
-    "in_delivery",
-    "courier_arrived_customer",
-    "delivered_waiting_customer",
-    "pickup_waiting_customer",
-})
+V1656_ACTIVE_ORDER_STATUSES = frozenset(
+    {
+        "new",
+        "accepted",
+        "preparing",
+        "tayyor",
+        "courier_assigned",
+        "courier_arrived_store",
+        "handoff_waiting_seller",
+        "in_delivery",
+        "courier_arrived_customer",
+        "delivered_waiting_customer",
+        "pickup_waiting_customer",
+    }
+)
 
 
 def _integer(value: object, default: int = 0) -> int:
@@ -199,22 +202,29 @@ async def repair_user_cabinet_parity(
             continue
 
         payload = dict(profile.cabinet_payload or {})
-        orders = [
-            row for row in payload.get("orders", [])
-            if isinstance(row, dict)
-        ] if isinstance(payload.get("orders"), list) else []
-        saved = [
-            row for row in payload.get("saved", [])
-            if isinstance(row, dict)
-        ] if isinstance(payload.get("saved"), list) else []
-        notifications = [
-            row for row in payload.get("notifications", [])
-            if isinstance(row, dict)
-            and _user_notification_visible(
-                row,
-                legacy_user_id=legacy_user_id,
-            )
-        ] if isinstance(payload.get("notifications"), list) else []
+        orders = (
+            [row for row in payload.get("orders", []) if isinstance(row, dict)]
+            if isinstance(payload.get("orders"), list)
+            else []
+        )
+        saved = (
+            [row for row in payload.get("saved", []) if isinstance(row, dict)]
+            if isinstance(payload.get("saved"), list)
+            else []
+        )
+        notifications = (
+            [
+                row
+                for row in payload.get("notifications", [])
+                if isinstance(row, dict)
+                and _user_notification_visible(
+                    row,
+                    legacy_user_id=legacy_user_id,
+                )
+            ]
+            if isinstance(payload.get("notifications"), list)
+            else []
+        )
 
         # 0011_notifications_relational aynan shu tozalangan payloaddan user
         # notificationlarini alohida jadvalga o'tkazadi. Business actor xabari
@@ -223,11 +233,13 @@ async def repair_user_cabinet_parity(
         profile.cabinet_payload = payload
 
         snapshot = dict(profile.dashboard_snapshot or {})
-        snapshot.update({
-            "active_orders": sum(v1656_order_is_active(row) for row in orders),
-            "following": int(profile.following_count or 0),
-            "saved": len(saved),
-            "unread": sum(_unread(row) for row in notifications),
-            "followers": int(profile.followers_count or 0),
-        })
+        snapshot.update(
+            {
+                "active_orders": sum(v1656_order_is_active(row) for row in orders),
+                "following": int(profile.following_count or 0),
+                "saved": len(saved),
+                "unread": sum(_unread(row) for row in notifications),
+                "followers": int(profile.followers_count or 0),
+            }
+        )
         profile.dashboard_snapshot = snapshot

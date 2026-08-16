@@ -11,7 +11,6 @@ import {
   ReviewsView,
 } from "./BusinessOnlineViews";
 
-
 function actions() {
   return {
     busy: false,
@@ -25,7 +24,6 @@ function actions() {
     action: vi.fn().mockResolvedValue(undefined),
   };
 }
-
 
 describe("Claude review v1656 interaktiv pariteti", () => {
   it("rad etilgan to'lov uchun kvitansiya tanlaydi va qayta yuboradi", async () => {
@@ -44,8 +42,9 @@ describe("Claude review v1656 interaktiv pariteti", () => {
 
     expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
     await user.upload(input, file);
-    expect(screen.getByRole("button", { name: "Kvitansiya tanlandi ✅" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Kvitansiya tanlandi ✅" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Qayta yuborish" }));
 
     expect(resubmit).toHaveBeenCalledWith(8, file);
@@ -63,14 +62,16 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     });
     const { rerender } = render(
       <MessagesView
-        rows={[{
-          id: 3,
-          target_id: 9,
-          target_kind: "user",
-          name: "Ali",
-          text: "Salom",
-          sender_kind: "business",
-        }]}
+        rows={[
+          {
+            id: 3,
+            target_id: 9,
+            target_kind: "user",
+            name: "Ali",
+            text: "Salom",
+            sender_kind: "business",
+          },
+        ]}
         value="Javob matni"
         setValue={setValue}
         busy={false}
@@ -83,34 +84,36 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     await user.click(screen.getByRole("button", { name: /Ali/ }));
     await user.click(screen.getByRole("button", { name: "Xabar amallari" }));
     const menu = screen.getByRole("menu");
-    expect(within(menu).getByRole("button", { name: "↩️ Javob berish" }))
-      .toBeInTheDocument();
-    expect(within(menu).getByRole("button", { name: "📋 Nusxalash" }))
-      .toBeInTheDocument();
-    expect(within(menu).getByRole("button", { name: "✏️ Tahrirlash" }))
-      .toBeInTheDocument();
-    expect(within(menu).getByRole("button", { name: "🗑 O‘chirish" }))
-      .toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "↩️ Javob berish" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "📋 Nusxalash" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "✏️ Tahrirlash" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("button", { name: "🗑 O‘chirish" }),
+    ).toBeInTheDocument();
 
     await user.click(within(menu).getByRole("button", { name: "↩️ Javob berish" }));
     expect(screen.getByText("Javob berilyapti")).toHaveClass("order-chat-state", "on");
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
-    expect(send).toHaveBeenCalledWith(
-      { id: "9", kind: "user" },
-      "Javob matni",
-      3,
-    );
+    expect(send).toHaveBeenCalledWith({ id: "9", kind: "user" }, "Javob matni", 3);
 
     rerender(
       <MessagesView
-        rows={[{
-          id: 3,
-          target_id: 9,
-          target_kind: "user",
-          name: "Ali",
-          text: "Salom",
-          sender_kind: "business",
-        }]}
+        rows={[
+          {
+            id: 3,
+            target_id: 9,
+            target_kind: "user",
+            name: "Ali",
+            text: "Salom",
+            sender_kind: "business",
+          },
+        ]}
         value="Tahrirlangan"
         setValue={setValue}
         busy={false}
@@ -129,7 +132,9 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     await user.click(screen.getByRole("button", { name: "🗑 O‘chirish" }));
     expect(remove).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toHaveTextContent("Bu xabar o‘chirilsinmi?");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "O‘chirish" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "O‘chirish" }),
+    );
     expect(remove).toHaveBeenCalledWith(3);
   });
 
@@ -152,22 +157,27 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     expect(screen.getByText("Uy-joy")).toBeInTheDocument();
     expect(screen.getByText("Qumqo‘rg‘on · «hovli»")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "➕ Yangi filtr qo'shish" }));
-    expect(screen.getByText("Faqat sizga kerakli e'lonlar haqida xabar olasiz."))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("Faqat sizga kerakli e'lonlar haqida xabar olasiz."),
+    ).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Tur (majburiy)"), "ish");
     await user.type(screen.getByLabelText("Viloyat — ixtiyoriy"), "Surxondaryo");
     await user.type(screen.getByLabelText("Tuman — ixtiyoriy"), "Qumqo‘rg‘on");
     await user.type(screen.getByLabelText("Kalit so'z — ixtiyoriy"), "dasturchi");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
-    expect(createFilter).toHaveBeenCalledWith(expect.objectContaining({
-      cat: "ish",
-      region: "Surxondaryo",
-      district: "Qumqo‘rg‘on",
-      keyword: "dasturchi",
-    }));
+    expect(createFilter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cat: "ish",
+        region: "Surxondaryo",
+        district: "Qumqo‘rg‘on",
+        keyword: "dasturchi",
+      }),
+    );
     await user.click(screen.getByRole("button", { name: "Filtrni o'chirish" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("Bu filtrni o'chirasizmi?");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "O'chirish" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "O'chirish" }),
+    );
     expect(removeFilter).toHaveBeenCalledWith(14);
   });
 
@@ -178,15 +188,17 @@ describe("Claude review v1656 interaktiv pariteti", () => {
       <CrudEditorView
         {...shared}
         resource="stories"
-        rows={[{
-          id: 6,
-          caption: "Bugungi ish",
-          state: "active",
-          media_type: "photo",
-          media_url: "/story.jpg",
-          created_at: 1_722_211_200,
-          expires_at: 4_102_444_800,
-        }]}
+        rows={[
+          {
+            id: 6,
+            caption: "Bugungi ish",
+            state: "active",
+            media_type: "photo",
+            media_url: "/story.jpg",
+            created_at: 1_722_211_200,
+            expires_at: 4_102_444_800,
+          },
+        ]}
         addLabel="+ Istoriya"
         empty="Hozircha istoriya yo‘q."
         fields={["caption", "media_type", "media_url"]}
@@ -194,14 +206,17 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Ko‘rish" }));
-    expect(screen.getByRole("dialog", { name: "Istoriya" }))
-      .toHaveTextContent("Bugungi ish");
+    expect(screen.getByRole("dialog", { name: "Istoriya" })).toHaveTextContent(
+      "Bugungi ish",
+    );
     await user.click(screen.getByRole("button", { name: "Istoriyani yopish" }));
     await user.click(screen.getByRole("button", { name: "O‘chirish" }));
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "Istoriya va uning media fayli butunlay o‘chiriladi.",
     );
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Bekor qilish" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Bekor qilish" }),
+    );
 
     rerender(
       <CrudEditorView
@@ -214,22 +229,28 @@ describe("Claude review v1656 interaktiv pariteti", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Istoriya joylash" }));
-    expect(screen.getByRole("dialog", { name: "Istoriya joylash" }))
-      .toBeInTheDocument();
-    expect(screen.getByLabelText("Istoriya media fayli"))
-      .toHaveAttribute(
-        "accept",
-        "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm",
-      );
+    expect(
+      screen.getByRole("dialog", { name: "Istoriya joylash" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Istoriya media fayli")).toHaveAttribute(
+      "accept",
+      "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm",
+    );
     const storyFile = new File(["story"], "story.jpg", { type: "image/jpeg" });
     await user.upload(screen.getByLabelText("Istoriya media fayli"), storyFile);
-    await user.type(screen.getByPlaceholderText("Istoriya haqida qisqa yozing"), "Yangi istoriya");
+    await user.type(
+      screen.getByPlaceholderText("Istoriya haqida qisqa yozing"),
+      "Yangi istoriya",
+    );
     await user.click(screen.getByRole("button", { name: "Joylash" }));
-    expect(shared.create).toHaveBeenCalledWith("stories", expect.objectContaining({
-      caption: "Yangi istoriya",
-      media_file: "story.jpg",
-      media_type: "photo",
-    }));
+    expect(shared.create).toHaveBeenCalledWith(
+      "stories",
+      expect.objectContaining({
+        caption: "Yangi istoriya",
+        media_file: "story.jpg",
+        media_type: "photo",
+      }),
+    );
   });
 
   it("buyurtmaning to'lov muammosi va topshirish amallarini bajaradi", async () => {
@@ -237,12 +258,14 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     const action = vi.fn().mockResolvedValue(undefined);
     const { rerender } = render(
       <OrdersView
-        rows={[{
-          id: 44,
-          title: "Buyurtma",
-          status: "accepted",
-          payment_status: "submitted",
-        }]}
+        rows={[
+          {
+            id: 44,
+            title: "Buyurtma",
+            status: "accepted",
+            payment_status: "submitted",
+          },
+        ]}
         filter="new"
         setFilter={vi.fn()}
         busy={false}
@@ -253,15 +276,28 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     await user.click(screen.getByRole("button", { name: "⚠️ To'lov muammosi" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("To'lov bo'yicha muammo");
     await user.type(screen.getByLabelText("Izoh"), "Chek o'qilmaydi");
-    await user.click(screen.getByRole("button", { name: "Muammoli buyurtmaga o'tkazish" }));
-    expect(action).toHaveBeenCalledWith(44, "report_problem", expect.objectContaining({
-      reason: "not_received",
-      note: "Chek o'qilmaydi",
-    }));
+    await user.click(
+      screen.getByRole("button", { name: "Muammoli buyurtmaga o'tkazish" }),
+    );
+    expect(action).toHaveBeenCalledWith(
+      44,
+      "report_problem",
+      expect.objectContaining({
+        reason: "not_received",
+        note: "Chek o'qilmaydi",
+      }),
+    );
 
     rerender(
       <OrdersView
-        rows={[{ id: 45, title: "Dostavka", status: "handoff_waiting_seller", order_type: "delivery" }]}
+        rows={[
+          {
+            id: 45,
+            title: "Dostavka",
+            status: "handoff_waiting_seller",
+            order_type: "delivery",
+          },
+        ]}
         filter="new"
         setFilter={vi.fn()}
         busy={false}
@@ -269,8 +305,12 @@ describe("Claude review v1656 interaktiv pariteti", () => {
         action={action}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "📦 Dostavkachiga topshirdim" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Buyurtma qarshi tomonga topshirildimi?");
+    await user.click(
+      screen.getByRole("button", { name: "📦 Dostavkachiga topshirdim" }),
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Buyurtma qarshi tomonga topshirildimi?",
+    );
     await user.click(screen.getByRole("button", { name: "Ha, topshirdim" }));
     expect(action).toHaveBeenCalledWith(45, "handoff");
   });
@@ -278,14 +318,16 @@ describe("Claude review v1656 interaktiv pariteti", () => {
   it("muammoli buyurtmada sabab va izohni monolit matni bilan ko'rsatadi", async () => {
     render(
       <OrdersView
-        rows={[{
-          id: 46,
-          title: "Muammoli buyurtma",
-          status: "accepted",
-          problem_open: 1,
-          problem_reason: "receipt_unreadable",
-          problem_note: "Rasm juda xira",
-        }]}
+        rows={[
+          {
+            id: 46,
+            title: "Muammoli buyurtma",
+            status: "accepted",
+            problem_open: 1,
+            problem_reason: "receipt_unreadable",
+            problem_note: "Rasm juda xira",
+          },
+        ]}
         filter="active"
         setFilter={vi.fn()}
         busy={false}
@@ -294,12 +336,9 @@ describe("Claude review v1656 interaktiv pariteti", () => {
       />,
     );
 
-    expect(screen.getByText("⚠️ To'lov aniqlashtirilmoqda"))
-      .toBeInTheDocument();
-    expect(screen.getByText("Chek rasmi o'qilmaydi"))
-      .toBeInTheDocument();
-    expect(screen.getByText("Izoh: Rasm juda xira"))
-      .toBeInTheDocument();
+    expect(screen.getByText("⚠️ To'lov aniqlashtirilmoqda")).toBeInTheDocument();
+    expect(screen.getByText("Chek rasmi o'qilmaydi")).toBeInTheDocument();
+    expect(screen.getByText("Izoh: Rasm juda xira")).toBeInTheDocument();
   });
 
   it("push sozlamasini server holatidan ko'rsatadi va o'zgarishni saqlaydi", async () => {
@@ -412,17 +451,19 @@ describe("Claude review v1656 interaktiv pariteti", () => {
     await user.selectOptions(screen.getByLabelText("Hudud darajasi"), "republic");
     await user.click(screen.getByRole("button", { name: "+ Hududni qo'shish" }));
 
-    await waitFor(() => expect(quoteAdvertisement).toHaveBeenCalledWith({
-      targets: [{ level: "republic", region: "", district: "" }],
-      duration_days: 1,
-      daily_all_day: true,
-      daily_start: "00:00",
-      daily_end: "00:00",
-    }));
-    expect(await screen.findByText(/82[\s\u00a0]560[\s\u00a0]000 so'm/))
-      .toBeInTheDocument();
-    expect(screen.getByText(/172 tuman × 24 soat × 1 kun ×/))
-      .toBeInTheDocument();
+    await waitFor(() =>
+      expect(quoteAdvertisement).toHaveBeenCalledWith({
+        targets: [{ level: "republic", region: "", district: "" }],
+        duration_days: 1,
+        daily_all_day: true,
+        daily_start: "00:00",
+        daily_end: "00:00",
+      }),
+    );
+    expect(
+      await screen.findByText(/82[\s\u00a0]560[\s\u00a0]000 so'm/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/172 tuman × 24 soat × 1 kun ×/)).toBeInTheDocument();
   });
 
   it("mijoz reytingini monolit kabi doim beshta yulduz bilan ko'rsatadi", () => {

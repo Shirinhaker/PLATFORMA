@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import importlib.util
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,6 @@ from app.public_discovery.repository import (
 )
 from app.public_discovery.schemas import PublicResultKind
 from app.queues.model import QueueProvider, QueueProviderService
-
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]
@@ -129,63 +128,65 @@ async def test_order_repository_resolves_only_requested_indexed_public_ids():
     business_public_id = build_public_id(PublicResultKind.BUSINESS, 7)
     item_public_id = build_content_public_id("product", 11)
     listing_public_id = build_listing_public_id(21)
-    session.add_all((
-        Account(
-            id=7,
-            account_type=AccountType.BUSINESS,
-            login="business_7",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        BusinessProfile(
-            account_id=7,
-            public_id=business_public_id,
-            name="Muhr",
-            phone="",
-        ),
-        CatalogItem(
-            id=11,
-            public_id=item_public_id,
-            business_account_id=7,
-            source_record_key="11",
-            catalog_group_id=None,
-            owner_name_snapshot="Muhr",
-            name="Non",
-            price_text="4 000 so'm",
-            unit="dona",
-            note="",
-            kind="product",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Listing(
-            id=21,
-            public_id=listing_public_id,
-            owner_user_account_id=None,
-            owner_business_account_id=7,
-            source_record_key="21",
-            category="uy",
-            title="Uy sotiladi",
-            price_text="",
-            description="",
-            address="",
-            visibility="all",
-            status="active",
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-    ))
+    session.add_all(
+        (
+            Account(
+                id=7,
+                account_type=AccountType.BUSINESS,
+                login="business_7",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            BusinessProfile(
+                account_id=7,
+                public_id=business_public_id,
+                name="Muhr",
+                phone="",
+            ),
+            CatalogItem(
+                id=11,
+                public_id=item_public_id,
+                business_account_id=7,
+                source_record_key="11",
+                catalog_group_id=None,
+                owner_name_snapshot="Muhr",
+                name="Non",
+                price_text="4 000 so'm",
+                unit="dona",
+                note="",
+                kind="product",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Listing(
+                id=21,
+                public_id=listing_public_id,
+                owner_user_account_id=None,
+                owner_business_account_id=7,
+                source_record_key="21",
+                category="uy",
+                title="Uy sotiladi",
+                price_text="",
+                description="",
+                address="",
+                visibility="all",
+                status="active",
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+        )
+    )
     session.commit()
     store = AsyncStore(session)
     repository = OrderRepository()
@@ -235,45 +236,47 @@ async def test_public_profile_and_catalog_detail_filter_by_indexed_public_id():
     session = Session(engine, expire_on_commit=False)
     business_public_id = build_public_id(PublicResultKind.BUSINESS, 7)
     item_public_id = build_content_public_id("product", 11)
-    session.add_all((
-        Account(
-            id=7,
-            account_type=AccountType.BUSINESS,
-            login="business_7",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        BusinessProfile(
-            account_id=7,
-            public_id=business_public_id,
-            name="Muhr",
-            phone="",
-        ),
-        CatalogItem(
-            id=11,
-            public_id=item_public_id,
-            business_account_id=7,
-            source_record_key="11",
-            catalog_group_id=None,
-            owner_name_snapshot="Muhr",
-            name="Non",
-            price_text="4 000 so'm",
-            unit="dona",
-            note="",
-            kind="product",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-    ))
+    session.add_all(
+        (
+            Account(
+                id=7,
+                account_type=AccountType.BUSINESS,
+                login="business_7",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            BusinessProfile(
+                account_id=7,
+                public_id=business_public_id,
+                name="Muhr",
+                phone="",
+            ),
+            CatalogItem(
+                id=11,
+                public_id=item_public_id,
+                business_account_id=7,
+                source_record_key="11",
+                catalog_group_id=None,
+                owner_name_snapshot="Muhr",
+                name="Non",
+                price_text="4 000 so'm",
+                unit="dona",
+                note="",
+                kind="product",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+        )
+    )
     session.commit()
     store = AsyncStore(session)
 
@@ -286,17 +289,13 @@ async def test_public_profile_and_catalog_detail_filter_by_indexed_public_id():
         )
         assert account_id == 7
         assert any(
-            "business_profiles.public_id =" in statement
-            for statement in statements
+            "business_profiles.public_id =" in statement for statement in statements
         )
 
         statements.clear()
         item = await get_public_catalog(store, item_public_id, lambda key: key)
         assert item is not None and item.public_id == item_public_id
-        assert any(
-            "catalog_items.public_id =" in statement
-            for statement in statements
-        )
+        assert any("catalog_items.public_id =" in statement for statement in statements)
     finally:
         session.close()
         engine.dispose()

@@ -12,7 +12,6 @@ from app.inventory.model import (
 )
 from app.inventory.router import router as inventory_router
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"
@@ -23,7 +22,9 @@ ALEMBIC_ENV = MIGRATION.parents[1] / "env.py"
 
 
 def _load_migration_module():
-    spec = importlib.util.spec_from_file_location("inventory_domain_migration", MIGRATION)
+    spec = importlib.util.spec_from_file_location(
+        "inventory_domain_migration", MIGRATION
+    )
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -117,12 +118,12 @@ def test_inventory_migration_is_reversible_without_touching_kassa_or_orders():
         "delete from orders",
     ):
         assert forbidden not in lowered
-    assert downgrade.index('drop_table("inventory_production_inputs")') < downgrade.index(
-        'drop_table("inventory_items")'
-    )
-    assert downgrade.index('drop_table("inventory_batch_consumptions")') < downgrade.index(
-        'drop_table("inventory_stock_batches")'
-    )
+    assert downgrade.index(
+        'drop_table("inventory_production_inputs")'
+    ) < downgrade.index('drop_table("inventory_items")')
+    assert downgrade.index(
+        'drop_table("inventory_batch_consumptions")'
+    ) < downgrade.index('drop_table("inventory_stock_batches")')
 
 
 def test_alembic_metadata_registers_inventory_models():

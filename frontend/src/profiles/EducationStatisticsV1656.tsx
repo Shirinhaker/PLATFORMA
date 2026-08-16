@@ -7,7 +7,6 @@ import type {
 } from "../api/types";
 import "./EducationStatisticsV1656.css";
 
-
 export type EducationStatisticsApi = Pick<ApiClient, "getEducationStatistics">;
 
 const PERIODS: Array<{ key: EducationStatisticsPeriod; label: string }> = [
@@ -17,8 +16,18 @@ const PERIODS: Array<{ key: EducationStatisticsPeriod; label: string }> = [
 ];
 
 const MONTHS = [
-  "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
-  "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
+  "Yanvar",
+  "Fevral",
+  "Mart",
+  "Aprel",
+  "May",
+  "Iyun",
+  "Iyul",
+  "Avgust",
+  "Sentabr",
+  "Oktabr",
+  "Noyabr",
+  "Dekabr",
 ];
 
 function localIsoDate(value = new Date()) {
@@ -67,9 +76,7 @@ function money(value: number) {
 }
 
 function message(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "Statistikani yuklab bo'lmadi.";
+  return error instanceof Error ? error.message : "Statistikani yuklab bo'lmadi.";
 }
 
 function Metric({
@@ -107,7 +114,8 @@ export function EducationStatisticsV1656({
     const version = ++requestVersion.current;
     setLoading(true);
     setError("");
-    api.getEducationStatistics(period, selectedDate)
+    api
+      .getEducationStatistics(period, selectedDate)
       .then((value) => {
         if (requestVersion.current === version) setData(value);
       })
@@ -130,7 +138,9 @@ export function EducationStatisticsV1656({
   return (
     <main className="education-statistics-v1656">
       <header className="education-statistics-v1656__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
         <div>
           <h1>Ta'lim statistikasi</h1>
           <p>Davomat, to'lovlar, maosh va natija</p>
@@ -142,43 +152,76 @@ export function EducationStatisticsV1656({
         <p>O'quv jarayoni va moliyaviy natijalar bitta joyda.</p>
       </section>
 
-      <nav className="education-statistics-v1656__periods" aria-label="Ta'lim statistikasi davri">
+      <nav
+        className="education-statistics-v1656__periods"
+        aria-label="Ta'lim statistikasi davri"
+      >
         {PERIODS.map((option) => (
           <button
             type="button"
             key={option.key}
             className={period === option.key ? "active" : ""}
             onClick={() => setPeriod(option.key)}
-          >{option.label}</button>
+          >
+            {option.label}
+          </button>
         ))}
       </nav>
 
-      <nav className="education-statistics-v1656__navigation" aria-label="Davr navigatsiyasi">
+      <nav
+        className="education-statistics-v1656__navigation"
+        aria-label="Davr navigatsiyasi"
+      >
         <button
           type="button"
           aria-label="Oldingi davr"
           onClick={() => setSelectedDate((value) => shiftDate(period, value, -1))}
-        >‹</button>
-        <div><b>{periodLabel(period, selectedDate)}</b><small>Tanlangan davr</small></div>
+        >
+          ‹
+        </button>
+        <div>
+          <b>{periodLabel(period, selectedDate)}</b>
+          <small>Tanlangan davr</small>
+        </div>
         <button
           type="button"
           aria-label="Keyingi davr"
           onClick={() => setSelectedDate((value) => shiftDate(period, value, 1))}
-        >›</button>
+        >
+          ›
+        </button>
       </nav>
 
-      {error ? <p className="education-statistics-v1656__error" role="alert">{error}</p> : null}
-      {loading ? <p className="education-statistics-v1656__loading">Statistika yuklanmoqda...</p> : null}
+      {error ? (
+        <p className="education-statistics-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="education-statistics-v1656__loading">Statistika yuklanmoqda...</p>
+      ) : null}
 
       {!loading && data ? (
         <div className="education-statistics-v1656__content">
           <section>
             <h2>Ta'lim jarayoni</h2>
             <div className="education-statistics-v1656__grid">
-              <Metric label="Faol o'quvchilar" value={`${process?.active_students ?? 0} nafar`} />
-              <Metric label="Faol guruhlar" value={`${process?.active_groups ?? 0} ta`} />
-              <Metric label="Yangi yozilishlar" value={`${process?.new_enrollments ?? 0} ta`} />
-              <Metric label="O'rtacha davomat" value={`${process?.attendance_percent ?? 0}%`} />
+              <Metric
+                label="Faol o'quvchilar"
+                value={`${process?.active_students ?? 0} nafar`}
+              />
+              <Metric
+                label="Faol guruhlar"
+                value={`${process?.active_groups ?? 0} ta`}
+              />
+              <Metric
+                label="Yangi yozilishlar"
+                value={`${process?.new_enrollments ?? 0} ta`}
+              />
+              <Metric
+                label="O'rtacha davomat"
+                value={`${process?.attendance_percent ?? 0}%`}
+              />
             </div>
           </section>
 
@@ -186,8 +229,16 @@ export function EducationStatisticsV1656({
             <h2>O'quvchi to'lovlari</h2>
             <div className="education-statistics-v1656__grid">
               <Metric label="Hisoblandi" value={money(student?.calculated ?? 0)} />
-              <Metric label="Qabul qilindi" value={money(student?.paid ?? 0)} tone="positive" />
-              <Metric label="Qarzdorlik" value={money(student?.debt ?? 0)} tone={(student?.debt ?? 0) > 0 ? "negative" : "positive"} />
+              <Metric
+                label="Qabul qilindi"
+                value={money(student?.paid ?? 0)}
+                tone="positive"
+              />
+              <Metric
+                label="Qarzdorlik"
+                value={money(student?.debt ?? 0)}
+                tone={(student?.debt ?? 0) > 0 ? "negative" : "positive"}
+              />
             </div>
           </section>
 
@@ -195,15 +246,26 @@ export function EducationStatisticsV1656({
             <h2>O'qituvchi maoshi</h2>
             <div className="education-statistics-v1656__grid">
               <Metric label="Hisoblandi" value={money(teacher?.calculated ?? 0)} />
-              <Metric label="To'landi" value={money(teacher?.paid ?? 0)} tone="positive" />
-              <Metric label="To'lanmagan" value={money(teacher?.debt ?? 0)} tone={(teacher?.debt ?? 0) > 0 ? "negative" : "positive"} />
+              <Metric
+                label="To'landi"
+                value={money(teacher?.paid ?? 0)}
+                tone="positive"
+              />
+              <Metric
+                label="To'lanmagan"
+                value={money(teacher?.debt ?? 0)}
+                tone={(teacher?.debt ?? 0) > 0 ? "negative" : "positive"}
+              />
             </div>
           </section>
 
           <section>
             <h2>Yakuniy natija</h2>
             <div className="education-statistics-v1656__grid">
-              <Metric label="Boshqa xarajatlar" value={money(result?.other_expenses ?? 0)} />
+              <Metric
+                label="Boshqa xarajatlar"
+                value={money(result?.other_expenses ?? 0)}
+              />
               <Metric
                 label="Haqiqiy pul oqimi"
                 value={`${(result?.cash_flow ?? 0) < 0 ? "Zarar" : "Qoldiq"} · ${money(result?.cash_flow ?? 0)}`}
@@ -224,13 +286,28 @@ export function EducationStatisticsV1656({
                 {data.groups.map((group) => (
                   <article key={group.id}>
                     <header>
-                      <div><b>{group.name || "Guruh"}</b><small>{group.active_students} o'quvchi · Davomat {group.attendance_percent}%</small></div>
+                      <div>
+                        <b>{group.name || "Guruh"}</b>
+                        <small>
+                          {group.active_students} o'quvchi · Davomat{" "}
+                          {group.attendance_percent}%
+                        </small>
+                      </div>
                       <em>Qarz {money(group.debt)}</em>
                     </header>
                     <div>
-                      <span>Hisoblandi<b>{money(group.calculated)}</b></span>
-                      <span>Olindi<b className="positive">{money(group.paid)}</b></span>
-                      <span>Qarz<b className={group.debt ? "negative" : "positive"}>{money(group.debt)}</b></span>
+                      <span>
+                        Hisoblandi<b>{money(group.calculated)}</b>
+                      </span>
+                      <span>
+                        Olindi<b className="positive">{money(group.paid)}</b>
+                      </span>
+                      <span>
+                        Qarz
+                        <b className={group.debt ? "negative" : "positive"}>
+                          {money(group.debt)}
+                        </b>
+                      </span>
                     </div>
                   </article>
                 ))}

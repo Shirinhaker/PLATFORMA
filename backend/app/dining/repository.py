@@ -19,11 +19,15 @@ class DiningRepository:
         *,
         business_account_id: int,
     ) -> list[DiningPlace]:
-        return list((await session.scalars(
-            select(DiningPlace)
-            .where(DiningPlace.business_account_id == business_account_id)
-            .order_by(DiningPlace.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(DiningPlace)
+                    .where(DiningPlace.business_account_id == business_account_id)
+                    .order_by(DiningPlace.id)
+                )
+            ).all()
+        )
 
     async def place(
         self,
@@ -71,9 +75,9 @@ class DiningRepository:
         )
         if active_only:
             statement = statement.where(DiningOrder.status == "active")
-        return list((await session.scalars(
-            statement.order_by(DiningOrder.id.desc())
-        )).all())
+        return list(
+            (await session.scalars(statement.order_by(DiningOrder.id.desc()))).all()
+        )
 
     async def active_orders_for_place(
         self,
@@ -90,9 +94,7 @@ class DiningRepository:
         )
         if lock:
             statement = statement.with_for_update()
-        return list((await session.scalars(
-            statement.order_by(DiningOrder.id)
-        )).all())
+        return list((await session.scalars(statement.order_by(DiningOrder.id))).all())
 
     async def items(
         self,
@@ -101,14 +103,12 @@ class DiningRepository:
         order_id: int,
         lock: bool = False,
     ) -> list[DiningOrderItem]:
-        statement = select(DiningOrderItem).where(
-            DiningOrderItem.order_id == order_id
-        )
+        statement = select(DiningOrderItem).where(DiningOrderItem.order_id == order_id)
         if lock:
             statement = statement.with_for_update()
-        return list((await session.scalars(
-            statement.order_by(DiningOrderItem.id)
-        )).all())
+        return list(
+            (await session.scalars(statement.order_by(DiningOrderItem.id))).all()
+        )
 
     async def items_for_orders(
         self,
@@ -119,11 +119,15 @@ class DiningRepository:
         """N+1 so'rovni oldini oladi — ro'yxat ekranlari shuni ishlatadi."""
         if not order_ids:
             return {}
-        rows = list((await session.scalars(
-            select(DiningOrderItem)
-            .where(DiningOrderItem.order_id.in_(order_ids))
-            .order_by(DiningOrderItem.order_id, DiningOrderItem.id)
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(DiningOrderItem)
+                    .where(DiningOrderItem.order_id.in_(order_ids))
+                    .order_by(DiningOrderItem.order_id, DiningOrderItem.id)
+                )
+            ).all()
+        )
         grouped: dict[int, list[DiningOrderItem]] = {}
         for row in rows:
             grouped.setdefault(row.order_id, []).append(row)
@@ -145,19 +149,23 @@ class DiningRepository:
         """
         if not catalog_item_ids:
             return []
-        return list((await session.scalars(
-            select(CatalogItem)
-            .outerjoin(
-                InventoryItem,
-                InventoryItem.catalog_item_id == CatalogItem.id,
-            )
-            .where(
-                CatalogItem.business_account_id == business_account_id,
-                CatalogItem.id.in_(catalog_item_ids),
-                (
-                    InventoryItem.stock_type.is_(None)
-                    | (InventoryItem.stock_type == "ready_food")
-                ),
-            )
-            .order_by(CatalogItem.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(CatalogItem)
+                    .outerjoin(
+                        InventoryItem,
+                        InventoryItem.catalog_item_id == CatalogItem.id,
+                    )
+                    .where(
+                        CatalogItem.business_account_id == business_account_id,
+                        CatalogItem.id.in_(catalog_item_ids),
+                        (
+                            InventoryItem.stock_type.is_(None)
+                            | (InventoryItem.stock_type == "ready_food")
+                        ),
+                    )
+                    .order_by(CatalogItem.id)
+                )
+            ).all()
+        )

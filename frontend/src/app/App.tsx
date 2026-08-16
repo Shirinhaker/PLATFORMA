@@ -18,28 +18,15 @@ import {
 import { ListingPageV1656 } from "../listings/ListingPageV1656";
 import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
 import { CartV1656 } from "../orders/CartV1656";
-import {
-  addCartItem,
-  cartLineCount,
-  type CartState,
-} from "../orders/order-store";
-import {
-  readHomeLocation,
-  type HomeLocation,
-} from "../legacy/public/location-storage";
+import { addCartItem, cartLineCount, type CartState } from "../orders/order-store";
+import { readHomeLocation, type HomeLocation } from "../legacy/public/location-storage";
 import {
   initialPublicNavigationState,
   publicNavigationReducer,
 } from "../legacy/public/public-navigation";
 import type { PublicView } from "../legacy/public/public-contract";
-import {
-  BusinessProfile,
-  type BusinessProfileApi,
-} from "../profiles/BusinessProfile";
-import {
-  UserProfile,
-  type UserProfileApi,
-} from "../profiles/UserProfile";
+import { BusinessProfile, type BusinessProfileApi } from "../profiles/BusinessProfile";
+import { UserProfile, type UserProfileApi } from "../profiles/UserProfile";
 import "./App.css";
 import { AppShell } from "./AppShell";
 import { SessionStatus } from "./SessionStatus";
@@ -57,7 +44,6 @@ import {
 import type { PublicReviewsApi } from "../reviews/ReviewsV1656";
 import { TaxiCallV1656 } from "../taxi/TaxiCallV1656";
 import { DriverCabinetV1656 } from "../taxi/DriverCabinetV1656";
-
 
 type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;
@@ -100,19 +86,16 @@ type TaxiAppApi = Pick<
   | "updateTaxiRideProgress"
   | "reverseGeocode"
 >;
-type AppApi = (
-  SessionApi
-  & Partial<AuthApi>
-  & Partial<ProfileApi>
-  & Partial<PublicSearchApi>
-  & Partial<OrderApi>
-  & Partial<QueueBookingApi>
-  & Partial<CourseEnrollmentApi>
-  & Partial<MessagesApi>
-  & Partial<PublicReviewsApi>
-  & Partial<TaxiAppApi>
-);
-
+type AppApi = SessionApi &
+  Partial<AuthApi> &
+  Partial<ProfileApi> &
+  Partial<PublicSearchApi> &
+  Partial<OrderApi> &
+  Partial<QueueBookingApi> &
+  Partial<CourseEnrollmentApi> &
+  Partial<MessagesApi> &
+  Partial<PublicReviewsApi> &
+  Partial<TaxiAppApi>;
 
 function supportsAuthFlow(api: AppApi): api is SessionApi & AuthApi {
   return [
@@ -123,7 +106,6 @@ function supportsAuthFlow(api: AppApi): api is SessionApi & AuthApi {
     "resendChallenge",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
-
 
 function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
   return [
@@ -142,17 +124,22 @@ function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
 
 function supportsMessages(api: AppApi): api is AppApi & MessagesApi {
   return [
-    "getMessageConversations", "getMessageThread", "sendMessage",
-    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "getMessageConversations",
+    "getMessageThread",
+    "sendMessage",
+    "sendMessageImage",
+    "editMessage",
+    "deleteMessage",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof AppApi] === "function");
 }
 
 function supportsPublicReviews(api: AppApi): api is AppApi & PublicReviewsApi {
-  return ["getReviews", "saveReview", "deleteReview"]
-    .every((method) => typeof api[method as keyof AppApi] === "function");
+  return ["getReviews", "saveReview", "deleteReview"].every(
+    (method) => typeof api[method as keyof AppApi] === "function",
+  );
 }
-
 
 function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
   const title = kind === "user" ? "Oddiy kabinet" : "Biznes kabinet";
@@ -164,7 +151,6 @@ function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
     </main>
   );
 }
-
 
 export function App({ api }: { api: AppApi }) {
   const initialLocation = useMemo(() => readHomeLocation(), []);
@@ -190,12 +176,13 @@ export function App({ api }: { api: AppApi }) {
   const [cartFilter, setCartFilter] = useState<string | null>(null);
   const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
   const [queueBooking, setQueueBooking] = useState<QueueBookingTarget | null>(null);
-  const [courseEnrollment, setCourseEnrollment] = useState<CourseEnrollmentTarget | null>(null);
+  const [courseEnrollment, setCourseEnrollment] =
+    useState<CourseEnrollmentTarget | null>(null);
   const [queueMessage, setQueueMessage] = useState({ id: 0, text: "" });
   const [authReason, setAuthReason] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">(() => (
-    document.documentElement.dataset.theme === "dark" ? "dark" : "light"
-  ));
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+  );
   const [attempt, setAttempt] = useState(0);
   const [navigation, dispatch] = useReducer(
     publicNavigationReducer,
@@ -213,39 +200,50 @@ export function App({ api }: { api: AppApi }) {
     systemization: false,
     taxi: false,
   });
-  const searchPublic = useMemo(() => (
-    typeof api.searchPublic === "function"
-      ? api.searchPublic.bind(api)
-      : undefined
-  ), [api]);
-  const getCatalogItems = useMemo(() => (
-    typeof api.getCatalogItems === "function"
-      ? api.getCatalogItems.bind(api)
-      : undefined
-  ), [api]);
-  const getAdvertisements = useMemo(() => (
-    typeof api.getAdvertisements === "function"
-      ? api.getAdvertisements.bind(api)
-      : undefined
-  ), [api]);
-  const getHomeMap = useMemo(() => (
-    typeof api.getHomeMap === "function" ? api.getHomeMap.bind(api) : undefined
-  ), [api]);
-  const getDistrictOffers = useMemo(() => (
-    typeof api.getDistrictOffers === "function"
-      ? api.getDistrictOffers.bind(api)
-      : undefined
-  ), [api]);
-  const getFollowedProfiles = useMemo(() => (
-    typeof api.getFollowedProfiles === "function"
-      ? api.getFollowedProfiles.bind(api)
-      : undefined
-  ), [api]);
-  const getPublicProfile = useMemo(() => (
-    typeof api.getPublicProfile === "function"
-      ? api.getPublicProfile.bind(api)
-      : undefined
-  ), [api]);
+  const searchPublic = useMemo(
+    () =>
+      typeof api.searchPublic === "function" ? api.searchPublic.bind(api) : undefined,
+    [api],
+  );
+  const getCatalogItems = useMemo(
+    () =>
+      typeof api.getCatalogItems === "function"
+        ? api.getCatalogItems.bind(api)
+        : undefined,
+    [api],
+  );
+  const getAdvertisements = useMemo(
+    () =>
+      typeof api.getAdvertisements === "function"
+        ? api.getAdvertisements.bind(api)
+        : undefined,
+    [api],
+  );
+  const getHomeMap = useMemo(
+    () => (typeof api.getHomeMap === "function" ? api.getHomeMap.bind(api) : undefined),
+    [api],
+  );
+  const getDistrictOffers = useMemo(
+    () =>
+      typeof api.getDistrictOffers === "function"
+        ? api.getDistrictOffers.bind(api)
+        : undefined,
+    [api],
+  );
+  const getFollowedProfiles = useMemo(
+    () =>
+      typeof api.getFollowedProfiles === "function"
+        ? api.getFollowedProfiles.bind(api)
+        : undefined,
+    [api],
+  );
+  const getPublicProfile = useMemo(
+    () =>
+      typeof api.getPublicProfile === "function"
+        ? api.getPublicProfile.bind(api)
+        : undefined,
+    [api],
+  );
   useEffect(() => {
     if (!sharedUserId || !getPublicProfile) return;
     setOpenedListing(null);
@@ -256,61 +254,74 @@ export function App({ api }: { api: AppApi }) {
     });
     dispatch({ type: "GO_HOME" });
   }, [getPublicProfile, sharedUserId]);
-  const recordAdvertisementViews = useMemo(() => (
-    typeof api.recordAdvertisementViews === "function"
-      ? api.recordAdvertisementViews.bind(api)
-      : undefined
-  ), [api]);
-  const recordAdvertisementClick = useMemo(() => (
-    typeof api.recordAdvertisementClick === "function"
-      ? api.recordAdvertisementClick.bind(api)
-      : undefined
-  ), [api]);
-  const getPublicListing = useMemo(() => (
-    typeof api.getPublicListing === "function"
-      ? api.getPublicListing.bind(api)
-      : undefined
-  ), [api]);
-  const createOrder = useMemo(() => (
-    typeof api.createOrder === "function"
-      ? api.createOrder.bind(api)
-      : async () => {
-          throw new Error("Buyurtma xizmati hozircha ulanmagan.");
-        }
-  ), [api]);
-  const listingApi = useMemo(() => (
-    typeof api.getListingCounts === "function"
-    && typeof api.getPublicListings === "function"
-    && typeof api.toggleListingSave === "function"
-      ? {
-          getListingCounts: api.getListingCounts.bind(api),
-          getPublicListings: api.getPublicListings.bind(api),
-          toggleListingSave: api.toggleListingSave.bind(api),
-        }
-      : undefined
-  ), [api]);
-  const storyApi = useMemo(() => (
-    typeof api.getStoryFeed === "function"
-    && typeof api.getOwnerStories === "function"
-    && typeof api.recordStoryView === "function"
-    && typeof api.getStoryViewers === "function"
-    && typeof api.deleteStory === "function"
-    && typeof api.reportStory === "function"
-      ? {
-          getStoryFeed: api.getStoryFeed.bind(api),
-          getOwnerStories: api.getOwnerStories.bind(api),
-          recordStoryView: api.recordStoryView.bind(api),
-          getStoryViewers: api.getStoryViewers.bind(api),
-          deleteStory: api.deleteStory.bind(api),
-          reportStory: api.reportStory.bind(api),
-        }
-      : undefined
-  ), [api]);
+  const recordAdvertisementViews = useMemo(
+    () =>
+      typeof api.recordAdvertisementViews === "function"
+        ? api.recordAdvertisementViews.bind(api)
+        : undefined,
+    [api],
+  );
+  const recordAdvertisementClick = useMemo(
+    () =>
+      typeof api.recordAdvertisementClick === "function"
+        ? api.recordAdvertisementClick.bind(api)
+        : undefined,
+    [api],
+  );
+  const getPublicListing = useMemo(
+    () =>
+      typeof api.getPublicListing === "function"
+        ? api.getPublicListing.bind(api)
+        : undefined,
+    [api],
+  );
+  const createOrder = useMemo(
+    () =>
+      typeof api.createOrder === "function"
+        ? api.createOrder.bind(api)
+        : async () => {
+            throw new Error("Buyurtma xizmati hozircha ulanmagan.");
+          },
+    [api],
+  );
+  const listingApi = useMemo(
+    () =>
+      typeof api.getListingCounts === "function" &&
+      typeof api.getPublicListings === "function" &&
+      typeof api.toggleListingSave === "function"
+        ? {
+            getListingCounts: api.getListingCounts.bind(api),
+            getPublicListings: api.getPublicListings.bind(api),
+            toggleListingSave: api.toggleListingSave.bind(api),
+          }
+        : undefined,
+    [api],
+  );
+  const storyApi = useMemo(
+    () =>
+      typeof api.getStoryFeed === "function" &&
+      typeof api.getOwnerStories === "function" &&
+      typeof api.recordStoryView === "function" &&
+      typeof api.getStoryViewers === "function" &&
+      typeof api.deleteStory === "function" &&
+      typeof api.reportStory === "function"
+        ? {
+            getStoryFeed: api.getStoryFeed.bind(api),
+            getOwnerStories: api.getOwnerStories.bind(api),
+            recordStoryView: api.recordStoryView.bind(api),
+            getStoryViewers: api.getStoryViewers.bind(api),
+            deleteStory: api.deleteStory.bind(api),
+            reportStory: api.reportStory.bind(api),
+          }
+        : undefined,
+    [api],
+  );
 
   useEffect(() => {
     if (typeof api.getPublicFeatures !== "function") return undefined;
     let active = true;
-    api.getPublicFeatures()
+    api
+      .getPublicFeatures()
       .then((features) => {
         if (active) setPublicFeatures(features);
       })
@@ -324,19 +335,21 @@ export function App({ api }: { api: AppApi }) {
     let active = true;
     setFailed(false);
     setSession({ status: "loading" });
-    api.getSession()
+    api
+      .getSession()
       .then((identity) => {
         if (!active) return;
         setSession({ status: identity.account_type, identity });
       })
       .catch((error: unknown) => {
         if (!active) return;
-        const status = (
-          error
-          && typeof error === "object"
-          && "status" in error
-          && typeof error.status === "number"
-        ) ? error.status : 0;
+        const status =
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          typeof error.status === "number"
+            ? error.status
+            : 0;
         setSession({ status: "guest" });
         if (status !== 401) setFailed(true);
       });
@@ -348,25 +361,32 @@ export function App({ api }: { api: AppApi }) {
   useEffect(() => {
     let active = true;
     if (session.status === "user" && typeof api.getUserProfile === "function") {
-      api.getUserProfile().then((profile) => {
-        if (!active) return;
-        setOrderCustomer({
-          phone: profile.phone || "",
-          address: [profile.region, profile.district, profile.mahalla]
-            .filter(Boolean)
-            .join(", "),
-        });
-      }).catch(() => undefined);
+      api
+        .getUserProfile()
+        .then((profile) => {
+          if (!active) return;
+          setOrderCustomer({
+            phone: profile.phone || "",
+            address: [profile.region, profile.district, profile.mahalla]
+              .filter(Boolean)
+              .join(", "),
+          });
+        })
+        .catch(() => undefined);
     } else if (
-      session.status === "business"
-      && typeof api.getBusinessProfile === "function"
+      session.status === "business" &&
+      typeof api.getBusinessProfile === "function"
     ) {
-      api.getBusinessProfile().then((profile) => {
-        if (active) setOrderCustomer({
-          phone: profile.phone || "",
-          address: profile.address || "",
-        });
-      }).catch(() => undefined);
+      api
+        .getBusinessProfile()
+        .then((profile) => {
+          if (active)
+            setOrderCustomer({
+              phone: profile.phone || "",
+              address: profile.address || "",
+            });
+        })
+        .catch(() => undefined);
     } else if (session.status === "guest") {
       setOrderCustomer({ phone: "", address: "" });
     }
@@ -378,19 +398,15 @@ export function App({ api }: { api: AppApi }) {
   useEffect(() => {
     if (!queueMessage.text) return;
     const timeout = window.setTimeout(() => {
-      setQueueMessage((current) => current.id === queueMessage.id
-        ? { ...current, text: "" }
-        : current);
+      setQueueMessage((current) =>
+        current.id === queueMessage.id ? { ...current, text: "" } : current,
+      );
     }, 2600);
     return () => window.clearTimeout(timeout);
   }, [queueMessage]);
 
-  const authenticated = (
-    session.status === "user" || session.status === "business"
-  );
-  const accountView = (
-    navigation.view === "auth" || navigation.view === "cabinet"
-  );
+  const authenticated = session.status === "user" || session.status === "business";
+  const accountView = navigation.view === "auth" || navigation.view === "cabinet";
   const category = navigation.categoryId
     ? findCatalogDirection(navigation.categoryId)
     : null;
@@ -419,44 +435,45 @@ export function App({ api }: { api: AppApi }) {
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
 
-  const openPublicResult = useCallback((
-    kind: "user" | "business" | "product" | "service" | "listing",
-    publicId: string,
-    ownerPublicId?: string,
-  ) => {
-    if ((kind === "user" || kind === "business") && getPublicProfile) {
-      setOpenedListing(null);
-      setOpenedChat(null);
-      setOpenedProfile({ kind, publicId, title: "Profil" });
-      setHomeSearchResultsActive(false);
-    } else if (
-      (kind === "product" || kind === "service")
-      && ownerPublicId
-      && getPublicProfile
-    ) {
-      setOpenedListing(null);
-      setOpenedChat(null);
-      setOpenedProfile({
-        kind: "business",
-        publicId: ownerPublicId,
-        title: "Profil",
-        focusItemPublicId: publicId,
-      });
-      setHomeSearchResultsActive(false);
-    } else if (kind === "listing" && getPublicListing) {
-      setOpenedProfile(null);
-      setOpenedListing({ publicId, title: "E’lon" });
-      setHomeSearchResultsActive(false);
-    }
-  }, [getPublicListing, getPublicProfile]);
+  const openPublicResult = useCallback(
+    (
+      kind: "user" | "business" | "product" | "service" | "listing",
+      publicId: string,
+      ownerPublicId?: string,
+    ) => {
+      if ((kind === "user" || kind === "business") && getPublicProfile) {
+        setOpenedListing(null);
+        setOpenedChat(null);
+        setOpenedProfile({ kind, publicId, title: "Profil" });
+        setHomeSearchResultsActive(false);
+      } else if (
+        (kind === "product" || kind === "service") &&
+        ownerPublicId &&
+        getPublicProfile
+      ) {
+        setOpenedListing(null);
+        setOpenedChat(null);
+        setOpenedProfile({
+          kind: "business",
+          publicId: ownerPublicId,
+          title: "Profil",
+          focusItemPublicId: publicId,
+        });
+        setHomeSearchResultsActive(false);
+      } else if (kind === "listing" && getPublicListing) {
+        setOpenedProfile(null);
+        setOpenedListing({ publicId, title: "E’lon" });
+        setHomeSearchResultsActive(false);
+      }
+    },
+    [getPublicListing, getPublicProfile],
+  );
 
   const updateOpenedProfileTitle = useCallback((title: string) => {
-    setOpenedProfile((current) => (
-      current ? { ...current, title } : current
-    ));
+    setOpenedProfile((current) => (current ? { ...current, title } : current));
   }, []);
   const updateOpenedListingTitle = useCallback((title: string) => {
-    setOpenedListing((current) => current ? { ...current, title } : current);
+    setOpenedListing((current) => (current ? { ...current, title } : current));
   }, []);
 
   const showQueueMessage = useCallback((text: string) => {
@@ -468,37 +485,43 @@ export function App({ api }: { api: AppApi }) {
     dispatch({ type: "OPEN_AUTH" });
   }, []);
 
-  const openQueueBooking = useCallback((target: QueueBookingTarget) => {
-    if (session.status === "guest") {
-      openAuth("Navbat olish");
-      return;
-    }
-    if (session.status !== "user") {
-      showQueueMessage("Avval oddiy profilga o'ting.");
-      return;
-    }
-    if (!supportsQueueBookingApi(api)) {
-      showQueueMessage("Navbat xizmati hozircha ulanmagan.");
-      return;
-    }
-    setQueueBooking(target);
-  }, [api, openAuth, session.status, showQueueMessage]);
+  const openQueueBooking = useCallback(
+    (target: QueueBookingTarget) => {
+      if (session.status === "guest") {
+        openAuth("Navbat olish");
+        return;
+      }
+      if (session.status !== "user") {
+        showQueueMessage("Avval oddiy profilga o'ting.");
+        return;
+      }
+      if (!supportsQueueBookingApi(api)) {
+        showQueueMessage("Navbat xizmati hozircha ulanmagan.");
+        return;
+      }
+      setQueueBooking(target);
+    },
+    [api, openAuth, session.status, showQueueMessage],
+  );
 
-  const openCourseEnrollment = useCallback((target: CourseEnrollmentTarget) => {
-    if (session.status === "guest") {
-      openAuth("Kursga yozilish");
-      return;
-    }
-    if (session.status !== "user") {
-      showQueueMessage("Avval oddiy profilga o'ting.");
-      return;
-    }
-    if (typeof api.createCourseEnrollment !== "function") {
-      showQueueMessage("Kursga yozilish xizmati hozircha ulanmagan.");
-      return;
-    }
-    setCourseEnrollment(target);
-  }, [api, openAuth, session.status, showQueueMessage]);
+  const openCourseEnrollment = useCallback(
+    (target: CourseEnrollmentTarget) => {
+      if (session.status === "guest") {
+        openAuth("Kursga yozilish");
+        return;
+      }
+      if (session.status !== "user") {
+        showQueueMessage("Avval oddiy profilga o'ting.");
+        return;
+      }
+      if (typeof api.createCourseEnrollment !== "function") {
+        showQueueMessage("Kursga yozilish xizmati hozircha ulanmagan.");
+        return;
+      }
+      setCourseEnrollment(target);
+    },
+    [api, openAuth, session.status, showQueueMessage],
+  );
 
   function toggleTheme() {
     setTheme((current) => {
@@ -523,7 +546,9 @@ export function App({ api }: { api: AppApi }) {
           reason={authReason}
         />
       ) : (
-        <main className="session-panel"><h1>Koprik’ga kirish</h1></main>
+        <main className="session-panel">
+          <h1>Koprik’ga kirish</h1>
+        </main>
       );
     }
     if (session.status === "loading") {
@@ -580,11 +605,7 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function renderPublicContent() {
-    if (
-      navigation.view === "home"
-      && openedChat
-      && supportsMessages(api)
-    ) {
+    if (navigation.view === "home" && openedChat && supportsMessages(api)) {
       return (
         <MessagesV1656
           api={api}
@@ -614,11 +635,7 @@ export function App({ api }: { api: AppApi }) {
         />
       );
     }
-    if (
-      navigation.view === "home"
-      && openedProfile
-      && getPublicProfile
-    ) {
+    if (navigation.view === "home" && openedProfile && getPublicProfile) {
       return (
         <PublicProfileV1656
           authenticated={authenticated}
@@ -633,11 +650,13 @@ export function App({ api }: { api: AppApi }) {
           onBookQueue={openQueueBooking}
           onEnrollCourse={openCourseEnrollment}
           onNeedLogin={() => openAuth()}
-          onMessage={publicFeatures.chat && supportsMessages(api)
-            ? (kind, publicId, name) => {
-              setOpenedChat({ kind, publicId, name });
-            }
-            : undefined}
+          onMessage={
+            publicFeatures.chat && supportsMessages(api)
+              ? (kind, publicId, name) => {
+                  setOpenedChat({ kind, publicId, name });
+                }
+              : undefined
+          }
           onNeedCourseLogin={() => openAuth("Kursga yozilish")}
           onNeedQueueLogin={() => openAuth("Navbat olish")}
           onOpenCart={() => {
@@ -670,10 +689,12 @@ export function App({ api }: { api: AppApi }) {
               setOpenedProfile({ kind: "business", publicId, title: "Profil" });
               dispatch({ type: "GO_HOME" });
             }}
-            onOpenCategory={(categoryId) => dispatch({
-              type: "OPEN_CATEGORY",
-              categoryId,
-            })}
+            onOpenCategory={(categoryId) =>
+              dispatch({
+                type: "OPEN_CATEGORY",
+                categoryId,
+              })
+            }
             onQueueMessage={showQueueMessage}
           />
         );
@@ -754,7 +775,9 @@ export function App({ api }: { api: AppApi }) {
       case "taxidrv":
         return session.status === "user" ? (
           <DriverCabinetV1656 api={api} />
-        ) : renderAccount();
+        ) : (
+          renderAccount()
+        );
       case "auth":
       case "cabinet":
         return renderAccount();
@@ -786,13 +809,17 @@ export function App({ api }: { api: AppApi }) {
   return (
     <AppShell
       authenticated={authenticated}
-      title={(openedChat || openedProfile || openedListing) && navigation.view === "home"
-        ? openedChat ? "Suhbat" : openedProfile?.title ?? openedListing?.title
-        : title}
-      isHome={navigation.view === "home" && !openedChat && !openedProfile && !openedListing}
-      searchResultsActive={(
-        navigation.view === "home" && homeSearchResultsActive
-      )}
+      title={
+        (openedChat || openedProfile || openedListing) && navigation.view === "home"
+          ? openedChat
+            ? "Suhbat"
+            : (openedProfile?.title ?? openedListing?.title)
+          : title
+      }
+      isHome={
+        navigation.view === "home" && !openedChat && !openedProfile && !openedListing
+      }
+      searchResultsActive={navigation.view === "home" && homeSearchResultsActive}
       publicFeatures={publicFeatures}
       cartCount={cartLineCount(carts)}
       theme={theme}
@@ -871,7 +898,9 @@ export function App({ api }: { api: AppApi }) {
               state="error"
               onRetry={() => setAttempt((value) => value + 1)}
             />
-          ) : renderPublicContent()}
+          ) : (
+            renderPublicContent()
+          )}
         </div>
         {queueBooking && supportsQueueBookingApi(api) ? (
           <QueueBookingV1656
@@ -892,7 +921,9 @@ export function App({ api }: { api: AppApi }) {
           />
         ) : null}
         {queueMessage.text ? (
-          <div className="app-toast on" role="status">{queueMessage.text}</div>
+          <div className="app-toast on" role="status">
+            {queueMessage.text}
+          </div>
         ) : null}
       </>
     </AppShell>

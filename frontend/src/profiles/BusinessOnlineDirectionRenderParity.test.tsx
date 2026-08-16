@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -72,31 +71,40 @@ function renderDirection(direction: string) {
 describe("CAB_PLANS render pariteti", () => {
   it("ovqatlanishda Stollar va xonalarni chiqarib, begona yo'nalish ekranlarini yashiradi", async () => {
     renderDirection("Umumiy ovqatlanish");
-    expect(await screen.findByRole("button", { name: /Stollar va xonalar/ }))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Navbat boshqaruvi/ }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Kursga yozilishlar/ }))
-      .not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Stollar va xonalar/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Navbat boshqaruvi/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Kursga yozilishlar/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("tibbiyotda Shifokorlar va Navbat boshqaruvini chiqaradi", async () => {
     renderDirection("Tibbiy xizmatlar");
-    expect(await screen.findByRole("button", { name: /Shifokorlar/ }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Navbat boshqaruvi/ }))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Stollar va xonalar/ }))
-      .not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Shifokorlar/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Navbat boshqaruvi/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Stollar va xonalar/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("ta'limda Kursga yozilishlarni chiqarib, buyurtma va navbatni yashiradi", async () => {
     renderDirection("Ta'lim faoliyati");
-    expect(await screen.findByRole("button", { name: /Kursga yozilishlar/ }))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Buyurtmalar/ }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Navbat boshqaruvi/ }))
-      .not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Kursga yozilishlar/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Buyurtmalar/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Navbat boshqaruvi/ }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -31,7 +31,6 @@ from app.payments.schemas import PaymentReceipt, PaymentRequestCreate
 from app.payments.service import PaymentService
 from app.profiles.model import UserProfile
 
-
 NOW = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
 STAMP = 1_785_600_000
 OWNER = 5
@@ -143,32 +142,36 @@ def listing_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            _account(OWNER), _account(STRANGER),
-            _profile(OWNER), _profile(STRANGER),
-            PaymentMethod(
-                id=1,
-                method_type="manual_card",
-                name="Bank kartasi",
-                details={},
-                recipient_name="",
-                instructions="",
-                sort_order=0,
-                active=1,
-                created_at=STAMP,
-                updated_at=STAMP,
-            ),
-            # v1656 `payments.py:57` — e'lon joylash 10 000 so'm.
-            PlatformPrice(
-                price_code="listing_publish",
-                amount_uzs=10_000,
-                service_type="listing",
-                config={},
-                active=1,
-                created_at=STAMP,
-                updated_at=STAMP,
-            ),
-        ))
+        seed.add_all(
+            (
+                _account(OWNER),
+                _account(STRANGER),
+                _profile(OWNER),
+                _profile(STRANGER),
+                PaymentMethod(
+                    id=1,
+                    method_type="manual_card",
+                    name="Bank kartasi",
+                    details={},
+                    recipient_name="",
+                    instructions="",
+                    sort_order=0,
+                    active=1,
+                    created_at=STAMP,
+                    updated_at=STAMP,
+                ),
+                # v1656 `payments.py:57` — e'lon joylash 10 000 so'm.
+                PlatformPrice(
+                    price_code="listing_publish",
+                    amount_uzs=10_000,
+                    service_type="listing",
+                    config={},
+                    active=1,
+                    created_at=STAMP,
+                    updated_at=STAMP,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -179,7 +182,9 @@ def listing_context():
     service = ListingService(sessions, lambda key: f"/media/{key}")
     activation = ListingActivationService(sessions)
     payments = PaymentService(
-        sessions, now=lambda: STAMP, listing_service=activation,
+        sessions,
+        now=lambda: STAMP,
+        listing_service=activation,
     )
     try:
         yield service, activation, sessions, engine, payments
@@ -205,12 +210,16 @@ async def test_new_listing_is_not_public_until_paid(listing_context):
     service, _activation, _sessions, engine, _payments = listing_context
 
     created = await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
     assert created.status == "payment_pending"
 
     public = await service.list_public(
-        category="moshina", query="", current_account_id=None,
+        category="moshina",
+        query="",
+        current_account_id=None,
     )
     assert public == []
     with Session(engine) as check:
@@ -221,11 +230,14 @@ async def test_owner_still_sees_the_pending_listing(listing_context):
     """Egasi o'z e'lonini ko'radi va holatini biladi."""
     service, _activation, _sessions, _engine, _payments = listing_context
     await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
 
     mine = await service.list_owner(
-        account_id=OWNER, account_type=AccountType.USER,
+        account_id=OWNER,
+        account_type=AccountType.USER,
     )
     assert len(mine) == 1
     assert mine[0].status == "payment_pending"
@@ -234,19 +246,26 @@ async def test_owner_still_sees_the_pending_listing(listing_context):
 async def test_payment_publishes_the_listing(listing_context):
     service, activation, sessions, engine, _payments = listing_context
     await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
     with Session(engine) as check:
         listing_id = check.scalar(select(Listing.id))
 
     async with sessions() as session:
         await activation.activate_paid(
-            session, listing_id=listing_id, account_id=OWNER, now=STAMP,
+            session,
+            listing_id=listing_id,
+            account_id=OWNER,
+            now=STAMP,
         )
         await session.commit()
 
     public = await service.list_public(
-        category="moshina", query="", current_account_id=None,
+        category="moshina",
+        query="",
+        current_account_id=None,
     )
     assert [row.title for row in public] == ["Nexia sotiladi"]
 
@@ -254,21 +273,29 @@ async def test_payment_publishes_the_listing(listing_context):
 async def test_second_activation_is_refused(listing_context):
     service, activation, sessions, engine, _payments = listing_context
     await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
     with Session(engine) as check:
         listing_id = check.scalar(select(Listing.id))
 
     async with sessions() as session:
         await activation.activate_paid(
-            session, listing_id=listing_id, account_id=OWNER, now=STAMP,
+            session,
+            listing_id=listing_id,
+            account_id=OWNER,
+            now=STAMP,
         )
         await session.commit()
 
     async with sessions() as session:
         with pytest.raises(ApiError) as failure:
             await activation.activate_paid(
-                session, listing_id=listing_id, account_id=OWNER, now=STAMP,
+                session,
+                listing_id=listing_id,
+                account_id=OWNER,
+                now=STAMP,
             )
         assert failure.value.code == "listing_not_pending"
 
@@ -287,7 +314,9 @@ async def test_payment_request_to_approval_publishes_the_listing(listing_context
     """Uchidan-uchiga: chek → admin tasdig'i → e'lon ko'rinadi."""
     service, _activation, _sessions, _engine, payments = listing_context
     created = await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
 
     request = await payments.create(
@@ -304,7 +333,9 @@ async def test_payment_request_to_approval_publishes_the_listing(listing_context
     )
 
     public = await service.list_public(
-        category="moshina", query="", current_account_id=None,
+        category="moshina",
+        query="",
+        current_account_id=None,
     )
     assert [row.public_id for row in public] == [created.public_id]
 
@@ -312,7 +343,9 @@ async def test_payment_request_to_approval_publishes_the_listing(listing_context
 async def test_rejected_payment_keeps_the_listing_hidden(listing_context):
     service, _activation, _sessions, engine, payments = listing_context
     created = await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
     request = await payments.create(
         account_id=OWNER,
@@ -335,7 +368,9 @@ async def test_payment_for_someone_elses_listing_is_refused(listing_context):
     """Begona e'lonning kalitini yuborish to'lov so'rovi yaratmaydi."""
     service, _activation, _sessions, engine, payments = listing_context
     created = await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
 
     with pytest.raises(ApiError) as failure:
@@ -372,7 +407,9 @@ async def test_stranger_payment_does_not_publish(listing_context):
     """Boshqa akkauntning to'lovi begona e'lonni chiqarmaydi."""
     service, activation, sessions, engine, _payments = listing_context
     await service.create(
-        account_id=OWNER, account_type=AccountType.USER, body=_body(),
+        account_id=OWNER,
+        account_type=AccountType.USER,
+        body=_body(),
     )
     with Session(engine) as check:
         listing_id = check.scalar(select(Listing.id))
@@ -380,7 +417,10 @@ async def test_stranger_payment_does_not_publish(listing_context):
     async with sessions() as session:
         with pytest.raises(ApiError) as failure:
             await activation.activate_paid(
-                session, listing_id=listing_id, account_id=STRANGER, now=STAMP,
+                session,
+                listing_id=listing_id,
+                account_id=STRANGER,
+                now=STAMP,
             )
         assert failure.value.code == "listing_owner_mismatch"
 

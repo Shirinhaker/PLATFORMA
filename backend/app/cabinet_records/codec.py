@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
-from typing import Any, Iterable
-
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Any
 
 MIN_BIGINT = -(2**63)
 MAX_BIGINT = 2**63 - 1
@@ -77,25 +77,25 @@ def inflate_records(
     records: Iterable[object],
     fields: Iterable[object],
 ) -> list[Any]:
-    ordered_records = sorted(records, key=lambda record: int(getattr(record, "ordinal")))
+    ordered_records = sorted(records, key=lambda record: int(record.ordinal))
     fields_by_key: dict[str, list[object]] = {}
     for field in fields:
-        key = str(getattr(field, "record_source_key"))
+        key = str(field.record_source_key)
         fields_by_key.setdefault(key, []).append(field)
 
     result: list[Any] = []
     for record in ordered_records:
-        source_key = str(getattr(record, "source_key"))
+        source_key = str(record.source_key)
         root: dict[str, Any] = {}
         record_fields = sorted(
             fields_by_key.get(source_key, []),
             key=lambda field: (
-                len(_decode_path(str(getattr(field, "path")))),
-                str(getattr(field, "path")),
+                len(_decode_path(str(field.path))),
+                str(field.path),
             ),
         )
         for field in record_fields:
-            segments = _decode_path(str(getattr(field, "path")))
+            segments = _decode_path(str(field.path))
             _assign(
                 root,
                 segments,
@@ -132,7 +132,9 @@ def _record_value_kind(value: object) -> str:
 
 
 def _source_key(row: dict[str, Any], ordinal: int, used_keys: set[str]) -> str:
-    candidate = str(row.get("id") if row.get("id") is not None else f"ordinal:{ordinal}")
+    candidate = str(
+        row.get("id") if row.get("id") is not None else f"ordinal:{ordinal}"
+    )
     suffix = 1
     key = _bounded_key(candidate)
     while key in used_keys:
@@ -248,7 +250,7 @@ def _flatten_value(
 
 
 def _field_value(field: object) -> object:
-    value_type = str(getattr(field, "value_type"))
+    value_type = str(field.value_type)
     if value_type == "object":
         return {}
     if value_type == "list":
@@ -256,14 +258,14 @@ def _field_value(field: object) -> object:
     if value_type == "null":
         return None
     if value_type == "boolean":
-        return bool(getattr(field, "value_boolean"))
+        return bool(field.value_boolean)
     if value_type == "integer":
-        return int(getattr(field, "value_integer"))
+        return int(field.value_integer)
     if value_type == "big_integer":
-        return int(str(getattr(field, "value_text")))
+        return int(str(field.value_text))
     if value_type == "float":
-        return float(getattr(field, "value_float"))
-    return str(getattr(field, "value_text"))
+        return float(field.value_float)
+    return str(field.value_text)
 
 
 def _assign(
@@ -309,4 +311,7 @@ def _encode_path(parts: tuple[str, ...]) -> str:
 def _decode_path(path: str) -> tuple[str, ...]:
     if not path:
         return ()
-    return tuple(part.replace("~1", "/").replace("~0", "~") for part in path.lstrip("/").split("/"))
+    return tuple(
+        part.replace("~1", "/").replace("~0", "~")
+        for part in path.lstrip("/").split("/")
+    )

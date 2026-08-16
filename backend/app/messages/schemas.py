@@ -4,7 +4,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.accounts.model import AccountType
 
-
 PROFILE_PUBLIC_ID_PATTERN = r"^[ub]_[0-9a-f]{16}$"
 
 

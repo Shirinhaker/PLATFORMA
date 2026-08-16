@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -23,7 +23,6 @@ from app.legacy_migration.model import (
 )
 from app.profiles.model import BusinessProfile
 
-
 NOW = datetime(2026, 7, 29, tzinfo=UTC)
 
 
@@ -41,9 +40,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -246,9 +243,7 @@ async def test_catalog_keeps_price_kind_status_and_owner(store):
 
     result = await import_catalog(db, source, run)
     item = (
-        await db.scalars(
-            select(CatalogItem).where(CatalogItem.name == "Mebel")
-        )
+        await db.scalars(select(CatalogItem).where(CatalogItem.name == "Mebel"))
     ).one()
 
     assert result.created == 2
@@ -342,9 +337,7 @@ async def test_changed_source_updates_and_identical_rerun_creates_zero(store):
     assert second.created == 0
     assert third.updated == 1
     assert item.price_text == "Kelishiladi"
-    assert (
-        await db.scalar(select(func.count()).select_from(CatalogItem))
-    ) == 1
+    assert (await db.scalar(select(func.count()).select_from(CatalogItem))) == 1
 
 
 @pytest.mark.asyncio

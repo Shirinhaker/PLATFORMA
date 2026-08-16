@@ -1,6 +1,5 @@
 import "./Cabinet.css";
 
-
 type RecordValue = Record<string, unknown>;
 
 const FIELD_LABELS: Record<string, string> = {
@@ -43,7 +42,6 @@ const FIELD_LABELS: Record<string, string> = {
   updated_at: "Yangilangan",
 };
 
-
 function present(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "Ha" : "Yo‘q";
@@ -51,7 +49,6 @@ function present(value: unknown): string {
   if (typeof value === "string") return value;
   return JSON.stringify(value);
 }
-
 
 function headingEntry(row: RecordValue, index: number) {
   for (const key of [
@@ -70,23 +67,22 @@ function headingEntry(row: RecordValue, index: number) {
   return { key: "", value: `#${row.id ?? index + 1}` };
 }
 
-
 function usefulEntries(row: RecordValue, headingKey: string) {
   const preferred = Object.keys(FIELD_LABELS)
     .filter((key) => key !== headingKey && key in row)
     .map((key) => [key, row[key]] as const);
   if (preferred.length) return preferred.slice(0, 10);
   return Object.entries(row)
-    .filter(([key]) => (
-      key !== headingKey
-      && !key.includes("hash")
-      && !key.includes("token")
-      && !key.includes("secret")
-      && key !== "content"
-    ))
+    .filter(
+      ([key]) =>
+        key !== headingKey &&
+        !key.includes("hash") &&
+        !key.includes("token") &&
+        !key.includes("secret") &&
+        key !== "content",
+    )
     .slice(0, 10);
 }
-
 
 export function CabinetDataView({
   title,
@@ -103,7 +99,9 @@ export function CabinetDataView({
   return (
     <main className="cabinet-data-view">
       <header className="cabinet-data-view__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
         <div>
           <h1>{title}</h1>
           <p>{list.length} ta haqiqiy yozuv</p>
@@ -116,9 +114,10 @@ export function CabinetDataView({
       ) : (
         <div className="cabinet-data-view__list">
           {list.map((item, index) => {
-            const row: RecordValue = item && typeof item === "object"
-              ? item as RecordValue
-              : { value: item };
+            const row: RecordValue =
+              item && typeof item === "object"
+                ? (item as RecordValue)
+                : { value: item };
             const heading = headingEntry(row, index);
             return (
               <article

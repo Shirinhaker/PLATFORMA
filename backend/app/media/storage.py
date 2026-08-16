@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import boto3
+
 from app.accounts.model import AccountType
 from app.core.config import Settings
 
@@ -76,42 +77,54 @@ class R2Storage:
         owner_type: AccountType,
         owner_id: int,
         purpose: Literal[
-            "avatar", "logo", "payment_qr", "listing_photo", "listing_video",
-            "order_chat_image", "chat_image", "payment_receipt", "advertisement_image",
-            "story_image", "story_video",
-            "specialist_credential", "specialist_offer_image",
-            "specialist_portfolio_image", "specialist_portfolio_video",
+            "avatar",
+            "logo",
+            "payment_qr",
+            "listing_photo",
+            "listing_video",
+            "order_chat_image",
+            "chat_image",
+            "payment_receipt",
+            "advertisement_image",
+            "story_image",
+            "story_video",
+            "specialist_credential",
+            "specialist_offer_image",
+            "specialist_portfolio_image",
+            "specialist_portfolio_video",
             "catalog_item_image",
         ],
         filename: str,
         content_type: str,
         size_bytes: int,
     ) -> UploadGrant:
-        profile_purpose = (
-            owner_type is AccountType.USER and purpose == "avatar"
-        ) or (
+        profile_purpose = (owner_type is AccountType.USER and purpose == "avatar") or (
             owner_type is AccountType.BUSINESS
             and purpose in {"logo", "payment_qr", "catalog_item_image"}
         )
         listing_purpose = purpose in {
-            "listing_photo", "listing_video", "order_chat_image",
-            "chat_image", "story_image", "story_video",
+            "listing_photo",
+            "listing_video",
+            "order_chat_image",
+            "chat_image",
+            "story_image",
+            "story_video",
         }
         # To'lov kvitansiyasini ikkala akkaunt turi ham yuklaydi:
         # e'lon va reklama uchun oddiy foydalanuvchi ham to'laydi.
         if purpose in {"payment_receipt", "advertisement_image"}:
             listing_purpose = True
-        specialist_purpose = (
-            owner_type is AccountType.USER
-            and purpose in {
-                "specialist_credential", "specialist_offer_image",
-                "specialist_portfolio_image", "specialist_portfolio_video",
-            }
-        )
+        specialist_purpose = owner_type is AccountType.USER and purpose in {
+            "specialist_credential",
+            "specialist_offer_image",
+            "specialist_portfolio_image",
+            "specialist_portfolio_video",
+        }
         if not profile_purpose and not listing_purpose and not specialist_purpose:
             raise UploadRejected("Bu rasm turi akkauntga mos emas.")
         if purpose in {
-            "specialist_credential", "specialist_offer_image",
+            "specialist_credential",
+            "specialist_offer_image",
             "specialist_portfolio_image",
         }:
             if content_type not in STORY_IMAGE_TYPES:
@@ -132,8 +145,12 @@ class R2Storage:
                 raise UploadRejected("Fayl hajmi 30 MB dan oshmasin.")
             suffix = LISTING_VIDEO_TYPES[content_type]
         elif purpose in {
-            "listing_photo", "order_chat_image", "chat_image", "payment_receipt",
-            "advertisement_image", "story_image",
+            "listing_photo",
+            "order_chat_image",
+            "chat_image",
+            "payment_receipt",
+            "advertisement_image",
+            "story_image",
         }:
             allowed_images = (
                 STORY_IMAGE_TYPES if purpose == "story_image" else LISTING_IMAGE_TYPES
@@ -197,8 +214,7 @@ class R2Storage:
         suffix: str,
     ) -> StoredObject:
         object_key = (
-            f"migration/{run_id}/{entity_type}/{legacy_id}/{slot}/"
-            f"{sha256}{suffix}"
+            f"migration/{run_id}/{entity_type}/{legacy_id}/{slot}/{sha256}{suffix}"
         )
         self.client.upload_fileobj(
             stream,

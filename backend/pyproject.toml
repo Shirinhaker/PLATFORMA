@@ -35,6 +35,52 @@ koprik-migrate-legacy = "app.legacy_migration.cli_v9:main"
 koprik-migrate-complete-cabinets = "app.legacy_migration.cli_v9:main"
 koprik-migrate-late-domains = "app.legacy_migration.late_domains_v9:main"
 
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+  "E501",    # qator uzunligini formatter hal qiladi
+  "B008",    # FastAPI Depends() default argumentda ishlatiladi
+  "RUF001",  # o'zbekcha matnlarda kirill/lotin belgilar aralashuvi
+  "RUF002",
+  "RUF003",
+
+  # --- VAQTINCHA: 59 ta qoldiq. Har birini alohida PR bilan tuzatib,
+  # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
+  "B007",    # 1  — ishlatilmagan sikl o'zgaruvchisi
+  "B904",    # 8  — except ichida `raise ... from` yo'q
+  "F841",    # 3  — ishlatilmagan lokal o'zgaruvchi (avval tekshiring: nojo'ya ta'sir bormi?)
+  "RUF005",  # 1
+  "RUF036",  # 1  — None union oxirida emas
+  "RUF046",  # 4  — keraksiz int() konversiyasi
+  "RUF059",  # 1
+  "SIM102",  # 3  — ichma-ich if
+  "SIM103",  # 2
+  "SIM105",  # 10 — contextlib.suppress ishlatish mumkin
+  "SIM110",  # 1
+  "SIM115",  # 2  — open() context manager'siz
+  "SIM117",  # 2  — ichma-ich with
+  "SIM401",  # 2  — dict.get() ishlatish mumkin
+  "UP031",   # 8  — eski % formatlash
+  "UP042",   # 10 — str + Enum o'rniga StrEnum
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+# Bosqichma-bosqich qat'iylashtiriladi:
+# disallow_untyped_defs = true
+exclude = ["migrations/", "app/legacy_migration/"]
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 asyncio_mode = "auto"

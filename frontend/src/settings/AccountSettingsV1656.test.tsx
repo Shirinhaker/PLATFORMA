@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AccountSettingsV1656 } from "./AccountSettingsV1656";
 
-
 const businessIdentity = {
   account_id: 7,
   account_type: "business" as const,
@@ -13,7 +12,6 @@ const businessIdentity = {
   csrf_token: "csrf",
   expires_at: "2026-08-27T08:00:00Z",
 };
-
 
 describe("AccountSettingsV1656", () => {
   it("keeps the exact v1656 settings rows and routes their actions", async () => {
@@ -71,10 +69,12 @@ describe("AccountSettingsV1656", () => {
     await user.type(screen.getByLabelText(/Yangi parolni takrorlang/), "parol123");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    await waitFor(() => expect(updateBusinessCredentials).toHaveBeenCalledWith({
-      new_login: "yangilogin",
-      new_password: "parol123",
-    }));
+    await waitFor(() =>
+      expect(updateBusinessCredentials).toHaveBeenCalledWith({
+        new_login: "yangilogin",
+        new_password: "parol123",
+      }),
+    );
     expect(await screen.findByRole("status")).toHaveTextContent("Saqlandi ✅");
     expect(screen.getByText("yangi_login")).toBeInTheDocument();
   });

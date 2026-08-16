@@ -13,7 +13,6 @@ import type {
 import { money } from "./business-profile-config";
 import "./StaffManagementV1656.css";
 
-
 export type StaffManagementApi = Pick<
   ApiClient,
   | "getStaffSetup"
@@ -40,8 +39,13 @@ type StaffForm = {
 };
 
 const WEEK = [
-  "Dushanba", "Seshanba", "Chorshanba", "Payshanba",
-  "Juma", "Shanba", "Yakshanba",
+  "Dushanba",
+  "Seshanba",
+  "Chorshanba",
+  "Payshanba",
+  "Juma",
+  "Shanba",
+  "Yakshanba",
 ];
 
 const EMPTY_FORM: StaffForm = {
@@ -86,14 +90,19 @@ function writeFrom(form: StaffForm): StaffMemberWrite {
 }
 
 function normalizedSchedule(value: StaffSchedule): StaffSchedule {
-  return Object.fromEntries(WEEK.map((_label, index) => {
-    const current = value[`d${index}`];
-    return [`d${index}`, {
-      on: Boolean(current?.on),
-      start: current?.start || "09:00",
-      end: current?.end || "18:00",
-    }];
-  }));
+  return Object.fromEntries(
+    WEEK.map((_label, index) => {
+      const current = value[`d${index}`];
+      return [
+        `d${index}`,
+        {
+          on: Boolean(current?.on),
+          start: current?.start || "09:00",
+          end: current?.end || "18:00",
+        },
+      ];
+    }),
+  );
 }
 
 function duration(minutes: number) {
@@ -132,7 +141,9 @@ function StaffFields({
         >
           <option value="">Tanlang</option>
           {professions.map((profession) => (
-            <option key={profession} value={profession}>{profession}</option>
+            <option key={profession} value={profession}>
+              {profession}
+            </option>
           ))}
         </select>
       </label>
@@ -244,7 +255,10 @@ export function StaffManagementV1656({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<StaffForm>(EMPTY_FORM);
   const [access, setAccess] = useState<StaffAccessWrite>({
-    can_login: false, login: "", password: "", permissions: [],
+    can_login: false,
+    login: "",
+    password: "",
+    permissions: [],
   });
   const [schedule, setSchedule] = useState<StaffSchedule>(() => normalizedSchedule({}));
   const [profession, setProfession] = useState("");
@@ -267,13 +281,18 @@ export function StaffManagementV1656({
     reload()
       .catch((reason) => active && setError(errorMessage(reason)))
       .finally(() => active && setLoading(false));
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [reload]);
 
-  const selected = useMemo(() => (
-    [...(setup?.active ?? []), ...(setup?.fired ?? [])]
-      .find((member) => member.id === selectedId) ?? null
-  ), [selectedId, setup]);
+  const selected = useMemo(
+    () =>
+      [...(setup?.active ?? []), ...(setup?.fired ?? [])].find(
+        (member) => member.id === selectedId,
+      ) ?? null,
+    [selectedId, setup],
+  );
 
   function openMember(member: StaffMember) {
     setSelectedId(member.id);
@@ -319,13 +338,17 @@ export function StaffManagementV1656({
   }
 
   if (loading) {
-    return <main className="staff-v1656 staff-v1656--message">Xodimlar yuklanmoqda…</main>;
+    return (
+      <main className="staff-v1656 staff-v1656--message">Xodimlar yuklanmoqda…</main>
+    );
   }
   if (!setup) {
     return (
       <main className="staff-v1656 staff-v1656--message">
         <p role="alert">{error || "Xodimlar ma’lumoti yuklanmadi."}</p>
-        <button type="button" onClick={onBack}>Orqaga</button>
+        <button type="button" onClick={onBack}>
+          Orqaga
+        </button>
       </main>
     );
   }
@@ -334,8 +357,18 @@ export function StaffManagementV1656({
     return (
       <main className="staff-v1656">
         <header className="staff-v1656__header">
-          <button type="button" aria-label="Kabinetga qaytish" className="staff-v1656__back" onClick={() => setScreen("list")}>←</button>
-          <div><h1>Yangi xodim</h1><p>Asosiy ish ma’lumotlarini kiriting</p></div>
+          <button
+            type="button"
+            aria-label="Kabinetga qaytish"
+            className="staff-v1656__back"
+            onClick={() => setScreen("list")}
+          >
+            ←
+          </button>
+          <div>
+            <h1>Yangi xodim</h1>
+            <p>Asosiy ish ma’lumotlarini kiriting</p>
+          </div>
         </header>
         <section className="staff-v1656__panel">
           <StaffFields
@@ -343,15 +376,21 @@ export function StaffManagementV1656({
             professions={setup.professions}
             onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
           />
-          {error && <p className="staff-v1656__error" role="alert">{error}</p>}
+          {error && (
+            <p className="staff-v1656__error" role="alert">
+              {error}
+            </p>
+          )}
           <button
             type="button"
             disabled={busy || !form.name.trim() || !form.profession}
-            onClick={() => void run(async () => {
-              await api.createStaffMember(writeFrom(form));
-              setForm(EMPTY_FORM);
-              setScreen("list");
-            }, "Xodim qo‘shildi.")}
+            onClick={() =>
+              void run(async () => {
+                await api.createStaffMember(writeFrom(form));
+                setForm(EMPTY_FORM);
+                setScreen("list");
+              }, "Xodim qo‘shildi.")
+            }
           >
             Saqlash
           </button>
@@ -364,8 +403,18 @@ export function StaffManagementV1656({
     return (
       <main className="staff-v1656">
         <header className="staff-v1656__header">
-          <button type="button" aria-label="Kabinetga qaytish" className="staff-v1656__back" onClick={() => setScreen("list")}>←</button>
-          <div><h1>Ish tabeli</h1><p>Kunlik davomat va oylik ishlangan vaqt</p></div>
+          <button
+            type="button"
+            aria-label="Kabinetga qaytish"
+            className="staff-v1656__back"
+            onClick={() => setScreen("list")}
+          >
+            ←
+          </button>
+          <div>
+            <h1>Ish tabeli</h1>
+            <p>Kunlik davomat va oylik ishlangan vaqt</p>
+          </div>
         </header>
         <section className="staff-v1656__panel">
           <div className="staff-v1656__attendance-date">
@@ -382,21 +431,27 @@ export function StaffManagementV1656({
               Ko‘rsatish
             </button>
           </div>
-          {error && <p className="staff-v1656__error" role="alert">{error}</p>}
+          {error && (
+            <p className="staff-v1656__error" role="alert">
+              {error}
+            </p>
+          )}
           {attendance?.staff.map((row) => (
             <AttendanceEditor
               key={row.id}
               row={row}
               busy={busy}
-              onSave={(draft) => void run(async () => {
-                const value = await api.updateStaffAttendance(row.id, {
-                  date: attendanceDay,
-                  status: draft.status,
-                  time_in: draft.status === "keldi" ? draft.time_in : "",
-                  time_out: draft.status === "keldi" ? draft.time_out : "",
-                });
-                setAttendance(value);
-              }, "Tabel saqlandi.")}
+              onSave={(draft) =>
+                void run(async () => {
+                  const value = await api.updateStaffAttendance(row.id, {
+                    date: attendanceDay,
+                    status: draft.status,
+                    time_in: draft.status === "keldi" ? draft.time_in : "",
+                    time_out: draft.status === "keldi" ? draft.time_out : "",
+                  });
+                  setAttendance(value);
+                }, "Tabel saqlandi.")
+              }
             />
           ))}
           {attendance && !attendance.staff.length && (
@@ -411,15 +466,35 @@ export function StaffManagementV1656({
     return (
       <main className="staff-v1656">
         <header className="staff-v1656__header">
-          <button type="button" aria-label="Kabinetga qaytish" className="staff-v1656__back" onClick={() => setScreen("list")}>←</button>
-          <div><h1>{selected.name}</h1><p>{selected.profession || "Xodim"}</p></div>
-          <span className={`staff-v1656__status staff-v1656__status--${selected.status}`}>
+          <button
+            type="button"
+            aria-label="Kabinetga qaytish"
+            className="staff-v1656__back"
+            onClick={() => setScreen("list")}
+          >
+            ←
+          </button>
+          <div>
+            <h1>{selected.name}</h1>
+            <p>{selected.profession || "Xodim"}</p>
+          </div>
+          <span
+            className={`staff-v1656__status staff-v1656__status--${selected.status}`}
+          >
             {selected.status === "active" ? "Faol" : "Ishdan bo‘shagan"}
           </span>
         </header>
 
-        {error && <p className="staff-v1656__error" role="alert">{error}</p>}
-        {notice && <p className="staff-v1656__notice" role="status">{notice}</p>}
+        {error && (
+          <p className="staff-v1656__error" role="alert">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="staff-v1656__notice" role="status">
+            {notice}
+          </p>
+        )}
 
         <section className="staff-v1656__panel">
           <h2>Asosiy ma’lumotlar</h2>
@@ -431,10 +506,12 @@ export function StaffManagementV1656({
           <button
             type="button"
             disabled={busy}
-            onClick={() => void run(
-              () => api.updateStaffMember(selected.id, writeFrom(form)),
-              "Xodim ma’lumoti saqlandi.",
-            )}
+            onClick={() =>
+              void run(
+                () => api.updateStaffMember(selected.id, writeFrom(form)),
+                "Xodim ma’lumoti saqlandi.",
+              )
+            }
           >
             Asosiy ma’lumotni saqlash
           </button>
@@ -443,13 +520,16 @@ export function StaffManagementV1656({
         <section className="staff-v1656__panel">
           <h2>Ilovaga kirish va vakolatlar</h2>
           <p className="staff-v1656__hint">
-            Firma logini: <b>{setup.firm_login}</b>. Xodim faqat belgilangan bo‘limlarni ko‘radi.
+            Firma logini: <b>{setup.firm_login}</b>. Xodim faqat belgilangan bo‘limlarni
+            ko‘radi.
           </p>
           <label className="staff-v1656__check-row">
             <input
               type="checkbox"
               checked={access.can_login}
-              onChange={(event) => setAccess({ ...access, can_login: event.target.checked })}
+              onChange={(event) =>
+                setAccess({ ...access, can_login: event.target.checked })
+              }
             />
             Ilovaga kirish huquqi
           </label>
@@ -459,7 +539,9 @@ export function StaffManagementV1656({
               <input
                 value={access.login}
                 disabled={!access.can_login}
-                onChange={(event) => setAccess({ ...access, login: event.target.value.toLowerCase() })}
+                onChange={(event) =>
+                  setAccess({ ...access, login: event.target.value.toLowerCase() })
+                }
               />
             </label>
             <label>
@@ -470,9 +552,15 @@ export function StaffManagementV1656({
                 autoComplete="new-password"
                 value={access.password}
                 disabled={!access.can_login}
-                onChange={(event) => setAccess({ ...access, password: event.target.value })}
+                onChange={(event) =>
+                  setAccess({ ...access, password: event.target.value })
+                }
               />
-              <small>{selected.has_password ? "Parol o‘rnatilgan" : "Yangi parol talab qilinadi"}</small>
+              <small>
+                {selected.has_password
+                  ? "Parol o‘rnatilgan"
+                  : "Yangi parol talab qilinadi"}
+              </small>
             </label>
           </div>
           <div className="staff-v1656__templates">
@@ -481,7 +569,9 @@ export function StaffManagementV1656({
                 type="button"
                 key={template.key}
                 disabled={!access.can_login}
-                onClick={() => setAccess({ ...access, permissions: [...template.permissions] })}
+                onClick={() =>
+                  setAccess({ ...access, permissions: [...template.permissions] })
+                }
               >
                 {template.label}
               </button>
@@ -494,24 +584,30 @@ export function StaffManagementV1656({
                   type="checkbox"
                   checked={access.permissions.includes(permission.key)}
                   disabled={!access.can_login}
-                  onChange={(event) => setAccess((current) => ({
-                    ...current,
-                    permissions: event.target.checked
-                      ? [...current.permissions, permission.key]
-                      : current.permissions.filter((key) => key !== permission.key),
-                  }))}
+                  onChange={(event) =>
+                    setAccess((current) => ({
+                      ...current,
+                      permissions: event.target.checked
+                        ? [...current.permissions, permission.key]
+                        : current.permissions.filter((key) => key !== permission.key),
+                    }))
+                  }
                 />
-                <span>{permission.icon} {permission.label}</span>
+                <span>
+                  {permission.icon} {permission.label}
+                </span>
               </label>
             ))}
           </div>
           <button
             type="button"
             disabled={busy}
-            onClick={() => void run(async () => {
-              await api.updateStaffAccess(selected.id, access);
-              setAccess((current) => ({ ...current, password: "" }));
-            }, "Kirish va vakolat saqlandi.")}
+            onClick={() =>
+              void run(async () => {
+                await api.updateStaffAccess(selected.id, access);
+                setAccess((current) => ({ ...current, password: "" }));
+              }, "Kirish va vakolat saqlandi.")
+            }
           >
             Kirish va vakolatni saqlash
           </button>
@@ -533,10 +629,12 @@ export function StaffManagementV1656({
                     <input
                       type="checkbox"
                       checked={value.on}
-                      onChange={(event) => setSchedule({
-                        ...schedule,
-                        [key]: { ...value, on: event.target.checked },
-                      })}
+                      onChange={(event) =>
+                        setSchedule({
+                          ...schedule,
+                          [key]: { ...value, on: event.target.checked },
+                        })
+                      }
                     />
                     {day}
                   </label>
@@ -545,20 +643,24 @@ export function StaffManagementV1656({
                     type="time"
                     disabled={!value.on}
                     value={value.start}
-                    onChange={(event) => setSchedule({
-                      ...schedule,
-                      [key]: { ...value, start: event.target.value },
-                    })}
+                    onChange={(event) =>
+                      setSchedule({
+                        ...schedule,
+                        [key]: { ...value, start: event.target.value },
+                      })
+                    }
                   />
                   <input
                     aria-label={`${day} tugashi`}
                     type="time"
                     disabled={!value.on}
                     value={value.end}
-                    onChange={(event) => setSchedule({
-                      ...schedule,
-                      [key]: { ...value, end: event.target.value },
-                    })}
+                    onChange={(event) =>
+                      setSchedule({
+                        ...schedule,
+                        [key]: { ...value, end: event.target.value },
+                      })
+                    }
                   />
                 </div>
               );
@@ -567,10 +669,12 @@ export function StaffManagementV1656({
           <button
             type="button"
             disabled={busy}
-            onClick={() => void run(
-              () => api.updateStaffSchedule(selected.id, schedule),
-              "Ish grafigi saqlandi.",
-            )}
+            onClick={() =>
+              void run(
+                () => api.updateStaffSchedule(selected.id, schedule),
+                "Ish grafigi saqlandi.",
+              )
+            }
           >
             Grafikni saqlash
           </button>
@@ -581,10 +685,12 @@ export function StaffManagementV1656({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(
-                () => api.fireStaffMember(selected.id),
-                "Xodim ishdan bo‘shatildi va sessiyalari yopildi.",
-              )}
+              onClick={() =>
+                void run(
+                  () => api.fireStaffMember(selected.id),
+                  "Xodim ishdan bo‘shatildi va sessiyalari yopildi.",
+                )
+              }
             >
               Ishdan bo‘shatish
             </button>
@@ -592,10 +698,12 @@ export function StaffManagementV1656({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void run(
-                () => api.rehireStaffMember(selected.id),
-                "Xodim qayta ishga olindi.",
-              )}
+              onClick={() =>
+                void run(
+                  () => api.rehireStaffMember(selected.id),
+                  "Xodim qayta ishga olindi.",
+                )
+              }
             >
               Qayta ishga olish
             </button>
@@ -622,18 +730,45 @@ export function StaffManagementV1656({
   return (
     <main className="staff-v1656">
       <header className="staff-v1656__header">
-        <button type="button" aria-label="Kabinetga qaytish" className="staff-v1656__back" onClick={onBack}>←</button>
-        <div><h1>Xodimlar</h1><p>Ro‘yxat, kasblar, oylik va vakolatlar</p></div>
+        <button
+          type="button"
+          aria-label="Kabinetga qaytish"
+          className="staff-v1656__back"
+          onClick={onBack}
+        >
+          ←
+        </button>
+        <div>
+          <h1>Xodimlar</h1>
+          <p>Ro‘yxat, kasblar, oylik va vakolatlar</p>
+        </div>
       </header>
 
       <section className="staff-v1656__stats">
-        <div><span>Faol</span><b>{setup.active_count}</b></div>
-        <div><span>Ishdan bo‘shagan</span><b>{setup.fired_count}</b></div>
-        <div><span>Jami oylik</span><b>Oyiga {money(setup.total_salary)}</b></div>
+        <div>
+          <span>Faol</span>
+          <b>{setup.active_count}</b>
+        </div>
+        <div>
+          <span>Ishdan bo‘shagan</span>
+          <b>{setup.fired_count}</b>
+        </div>
+        <div>
+          <span>Jami oylik</span>
+          <b>Oyiga {money(setup.total_salary)}</b>
+        </div>
       </section>
 
-      {error && <p className="staff-v1656__error" role="alert">{error}</p>}
-      {notice && <p className="staff-v1656__notice" role="status">{notice}</p>}
+      {error && (
+        <p className="staff-v1656__error" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="staff-v1656__notice" role="status">
+          {notice}
+        </p>
+      )}
 
       <div className="staff-v1656__actions">
         <button
@@ -645,7 +780,11 @@ export function StaffManagementV1656({
         >
           + Xodim qo‘shish
         </button>
-        <button type="button" className="staff-v1656__secondary" onClick={() => void openAttendance()}>
+        <button
+          type="button"
+          className="staff-v1656__secondary"
+          onClick={() => void openAttendance()}
+        >
           📅 Ish tabeli
         </button>
       </div>
@@ -662,10 +801,12 @@ export function StaffManagementV1656({
         <button
           type="button"
           disabled={busy || !profession.trim()}
-          onClick={() => void run(async () => {
-            await api.createStaffProfession(profession.trim());
-            setProfession("");
-          }, "Yangi lavozim qo‘shildi.")}
+          onClick={() =>
+            void run(async () => {
+              await api.createStaffProfession(profession.trim());
+              setProfession("");
+            }, "Yangi lavozim qo‘shildi.")
+          }
         >
           Lavozim qo‘shish
         </button>
@@ -674,12 +815,24 @@ export function StaffManagementV1656({
       <section className="staff-v1656__list">
         {setup.active.map((member) => (
           <button type="button" key={member.id} onClick={() => openMember(member)}>
-            <span className="staff-v1656__avatar">{member.name.trim().slice(0, 1).toUpperCase()}</span>
-            <span><b>{member.name}</b><small>{member.profession || "Xodim"} · {member.phone || "Telefon yo‘q"}</small></span>
-            <span><b>{money(member.salary)}</b><small>{member.can_login ? "Kirish yoqilgan" : "Kirish o‘chiq"}</small></span>
+            <span className="staff-v1656__avatar">
+              {member.name.trim().slice(0, 1).toUpperCase()}
+            </span>
+            <span>
+              <b>{member.name}</b>
+              <small>
+                {member.profession || "Xodim"} · {member.phone || "Telefon yo‘q"}
+              </small>
+            </span>
+            <span>
+              <b>{money(member.salary)}</b>
+              <small>{member.can_login ? "Kirish yoqilgan" : "Kirish o‘chiq"}</small>
+            </span>
           </button>
         ))}
-        {!setup.active.length && <p className="staff-v1656__empty">Hozircha faol xodim yo‘q.</p>}
+        {!setup.active.length && (
+          <p className="staff-v1656__empty">Hozircha faol xodim yo‘q.</p>
+        )}
       </section>
 
       {setup.fired.length > 0 && (
@@ -687,7 +840,8 @@ export function StaffManagementV1656({
           <summary>Ishdan bo‘shaganlar ({setup.fired.length})</summary>
           {setup.fired.map((member) => (
             <button type="button" key={member.id} onClick={() => openMember(member)}>
-              <b>{member.name}</b><span>{member.profession || "Xodim"}</span>
+              <b>{member.name}</b>
+              <span>{member.profession || "Xodim"}</span>
             </button>
           ))}
         </details>

@@ -17,7 +17,6 @@ from app.legacy_migration.demo_prune import (
     prune_demo_records,
 )
 
-
 SCHEMA = """
 CREATE TABLE users (id INTEGER PRIMARY KEY, login TEXT, tg_id INTEGER,
                     name TEXT);
@@ -66,9 +65,7 @@ def _database() -> sqlite3.Connection:
 
 
 def _rows(connection, table, column="id"):
-    return sorted(
-        row[0] for row in connection.execute(f"SELECT {column} FROM {table}")
-    )
+    return sorted(row[0] for row in connection.execute(f"SELECT {column} FROM {table}"))
 
 
 def test_real_accounts_and_their_data_survive():
@@ -109,9 +106,7 @@ def test_listing_owned_by_a_demo_business_is_removed():
 def test_telegram_linked_account_aborts_the_whole_prune():
     """Prefiks real akkauntga tegsa — hech narsa o'chmaydi."""
     connection = _database()
-    connection.execute(
-        "UPDATE users SET tg_id = 7249897428 WHERE id = 3"
-    )
+    connection.execute("UPDATE users SET tg_id = 7249897428 WHERE id = 3")
     connection.commit()
 
     with pytest.raises(PruneAbort) as abort:
@@ -124,12 +119,8 @@ def test_telegram_linked_account_aborts_the_whole_prune():
 
 def test_no_demo_records_leaves_the_database_untouched():
     connection = _database()
-    connection.execute(
-        "UPDATE users SET login = 'user000001' WHERE id = 3"
-    )
-    connection.execute(
-        "UPDATE users SET login = 'user000002' WHERE id = 4"
-    )
+    connection.execute("UPDATE users SET login = 'user000001' WHERE id = 3")
+    connection.execute("UPDATE users SET login = 'user000002' WHERE id = 4")
     connection.commit()
 
     assert prune_demo_records(connection) == {}

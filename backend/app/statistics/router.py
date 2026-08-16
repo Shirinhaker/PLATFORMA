@@ -8,7 +8,6 @@ from app.core.errors import ApiError
 from app.statistics.schemas import StatisticsNavigationRead, StatisticsReportRead
 from app.statistics.service import StatisticsService
 
-
 router = APIRouter(prefix="/api/v1/statistics", tags=["statistics"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 
@@ -57,10 +56,12 @@ async def navigate_statistics(
     anchor: Annotated[str, Query(max_length=10)] = "",
     direction: Annotated[int, Query(alias="dir")] = -1,
 ) -> StatisticsNavigationRead:
-    return StatisticsNavigationRead(anchor=await service.navigation(
-        business_account_id=_business_id(current),
-        permissions=_permissions(current),
-        period=period,
-        anchor=anchor,
-        direction=direction,
-    ))
+    return StatisticsNavigationRead(
+        anchor=await service.navigation(
+            business_account_id=_business_id(current),
+            permissions=_permissions(current),
+            period=period,
+            anchor=anchor,
+            direction=direction,
+        )
+    )

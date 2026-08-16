@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
+import secrets
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, date, datetime, time, timedelta, timezone
-import re
-import secrets
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,12 +40,19 @@ from app.staff.schemas import (
     StaffTemplateRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 DEFAULT_PROFESSIONS = (
-    "Sotuvchi", "Kassir", "Menejer", "Hisobchi", "Omborchi",
-    "Yuk tashuvchi", "Haydovchi", "Farrosh", "Qorovul", "Boshqa",
+    "Sotuvchi",
+    "Kassir",
+    "Menejer",
+    "Hisobchi",
+    "Omborchi",
+    "Yuk tashuvchi",
+    "Haydovchi",
+    "Farrosh",
+    "Qorovul",
+    "Boshqa",
 )
 LOGIN_RE = re.compile(r"^[a-z][a-z0-9_]{2,19}$")
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))
@@ -298,17 +305,21 @@ class StaffService:
             raise ApiError(422, "staff_profession_required", "Lavozim nomini kiriting.")
         async with self._session_factory() as session:
             await self._business_profile(session, business_account_id)
-            if clean.casefold() not in {value.casefold() for value in DEFAULT_PROFESSIONS}:
+            if clean.casefold() not in {
+                value.casefold() for value in DEFAULT_PROFESSIONS
+            }:
                 if not await self._repository.profession_exists(
                     session,
                     business_account_id=business_account_id,
                     name=clean,
                 ):
-                    session.add(StaffProfession(
-                        business_account_id=business_account_id,
-                        name=clean,
-                        created_at=self._now(),
-                    ))
+                    session.add(
+                        StaffProfession(
+                            business_account_id=business_account_id,
+                            name=clean,
+                            created_at=self._now(),
+                        )
+                    )
                     try:
                         await session.commit()
                     except IntegrityError:
@@ -350,7 +361,9 @@ class StaffService:
                     start = row.time_in.hour * 60 + row.time_in.minute
                     end = row.time_out.hour * 60 + row.time_out.minute
                     if end > start:
-                        minutes[row.staff_id] = minutes.get(row.staff_id, 0) + end - start
+                        minutes[row.staff_id] = (
+                            minutes.get(row.staff_id, 0) + end - start
+                        )
             result = []
             for member in members:
                 recorded = daily.get(member.id)
@@ -358,19 +371,21 @@ class StaffService:
                 planned = schedule.get(f"d{day.weekday()}", {})
                 if not isinstance(planned, dict):
                     planned = {}
-                result.append(StaffAttendanceRow(
-                    id=member.id,
-                    name=member.name,
-                    profession=member.profession,
-                    status=recorded.status if recorded else "",
-                    time_in=_clock_text(recorded.time_in) if recorded else "",
-                    time_out=_clock_text(recorded.time_out) if recorded else "",
-                    sched_on=bool(planned.get("on", False)),
-                    sched_start=str(planned.get("start") or planned.get("s") or ""),
-                    sched_end=str(planned.get("end") or planned.get("e") or ""),
-                    month_present=present.get(member.id, 0),
-                    month_minutes=minutes.get(member.id, 0),
-                ))
+                result.append(
+                    StaffAttendanceRow(
+                        id=member.id,
+                        name=member.name,
+                        profession=member.profession,
+                        status=recorded.status if recorded else "",
+                        time_in=_clock_text(recorded.time_in) if recorded else "",
+                        time_out=_clock_text(recorded.time_out) if recorded else "",
+                        sched_on=bool(planned.get("on", False)),
+                        sched_start=str(planned.get("start") or planned.get("s") or ""),
+                        sched_end=str(planned.get("end") or planned.get("e") or ""),
+                        month_present=present.get(member.id, 0),
+                        month_minutes=minutes.get(member.id, 0),
+                    )
+                )
             response = StaffAttendanceRead(
                 date=day,
                 weekday=day.weekday(),
@@ -414,16 +429,18 @@ class StaffService:
                     )
                 now = self._now()
                 if row is None:
-                    session.add(StaffAttendance(
-                        business_account_id=business_account_id,
-                        staff_id=member.id,
-                        date=body.date,
-                        status=body.status,
-                        time_in=time_in,
-                        time_out=time_out,
-                        created_at=now,
-                        updated_at=now,
-                    ))
+                    session.add(
+                        StaffAttendance(
+                            business_account_id=business_account_id,
+                            staff_id=member.id,
+                            date=body.date,
+                            status=body.status,
+                            time_in=time_in,
+                            time_out=time_out,
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
                 else:
                     row.status = body.status
                     row.time_in = time_in
@@ -464,14 +481,16 @@ class StaffService:
             raw_token = secrets.token_urlsafe(32)
             now = self._now()
             expires_at = now + timedelta(seconds=self._settings.session_ttl_seconds)
-            session.add(StaffSession(
-                staff_id=member.id,
-                token_hash=sha256_token(raw_token),
-                created_at=now,
-                expires_at=expires_at,
-                last_used_at=now,
-                revoked_at=None,
-            ))
+            session.add(
+                StaffSession(
+                    staff_id=member.id,
+                    token_hash=sha256_token(raw_token),
+                    created_at=now,
+                    expires_at=expires_at,
+                    last_used_at=now,
+                    revoked_at=None,
+                )
+            )
             await session.commit()
             return raw_token, self._identity(raw_token, member, expires_at)
 

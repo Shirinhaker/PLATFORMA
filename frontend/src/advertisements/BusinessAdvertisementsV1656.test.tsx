@@ -9,15 +9,18 @@ import {
   type BusinessAdvertisementsApi,
 } from "./BusinessAdvertisementsV1656";
 
-
 function advertisement(overrides: Partial<Advertisement> = {}): Advertisement {
   return {
     id: 12,
     title: "Choyxona ochildi",
     caption: "Yangi taomlar",
-    targets: [{
-      level: "district", region: "Toshkent shahri", district: "Chilonzor",
-    }],
+    targets: [
+      {
+        level: "district",
+        region: "Toshkent shahri",
+        district: "Chilonzor",
+      },
+    ],
     placement: "home",
     status: "payment_pending",
     daily_all_day: true,
@@ -75,20 +78,15 @@ function makeApi(
   } as unknown as BusinessAdvertisementsApi;
 }
 
-
 describe("reklama joylash yangi endpointlarga ulangan", () => {
   it("API to'liq bo'lsa qo'llab-quvvatlanadi", () => {
     expect(supportsAdvertisementApi(makeApi([]))).toBe(true);
-    expect(
-      supportsAdvertisementApi({ getMyAdvertisements: vi.fn() }),
-    ).toBe(false);
+    expect(supportsAdvertisementApi({ getMyAdvertisements: vi.fn() })).toBe(false);
   });
 
   it("reklamalar /api/v1/advertisements/my dan yuklanadi", async () => {
     const api = makeApi([advertisement()]);
-    render(
-      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
-    );
+    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
 
     await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
     expect(await screen.findByText("Choyxona ochildi")).toBeVisible();
@@ -96,14 +94,10 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
 
   it("maxsus vaqt yashirin 19:00–21:00 bilan boshlanmaydi", async () => {
     const api = makeApi([]);
-    render(
-      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
-    );
+    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
 
     await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
-    fireEvent.click(
-      screen.getByRole("button", { name: "+ Reklama joylashtirish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "+ Reklama joylashtirish" }));
 
     const allDay = screen.getByRole("checkbox", {
       name: "Kun bo'yi ko'rinsin",
@@ -123,22 +117,22 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       screen.getByText("Boshlanish va tugash vaqtini alohida tanlang."),
     ).toBeVisible();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "+ Hududni qo'shish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "+ Hududni qo'shish" }));
     expect(api.quoteAdvertisement).not.toHaveBeenCalled();
 
     fireEvent.change(start, { target: { value: "19:00" } });
     expect(api.quoteAdvertisement).not.toHaveBeenCalled();
     fireEvent.change(end, { target: { value: "21:00" } });
 
-    await waitFor(() => expect(api.quoteAdvertisement).toHaveBeenCalledWith(
-      expect.objectContaining({
-        daily_all_day: false,
-        daily_start: "19:00",
-        daily_end: "21:00",
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.quoteAdvertisement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          daily_all_day: false,
+          daily_start: "19:00",
+          daily_end: "21:00",
+        }),
+      ),
+    );
   });
 
   it("to'lov kutayotgan reklamada to'lov tugmasi bor", async () => {
@@ -150,9 +144,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       />,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     expect(openPayment).toHaveBeenCalledWith({
       serviceType: "advertisement",
@@ -173,9 +165,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
     );
 
     await screen.findByText("Choyxona ochildi");
-    expect(
-      screen.queryByRole("button", { name: "To‘lov qilish" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "To‘lov qilish" })).toBeNull();
   });
 
   it("kelajakdagi faol reklamani egasi hozir boshlaydi", async () => {
@@ -190,7 +180,8 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       start_at: now,
       end_at: now + 7 * 86_400,
     });
-    const getMyAdvertisements = vi.fn()
+    const getMyAdvertisements = vi
+      .fn()
       .mockResolvedValueOnce([future])
       .mockResolvedValueOnce([started]);
     const applyBusinessOnlineAction = vi.fn().mockResolvedValue({
@@ -203,43 +194,39 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       applyBusinessOnlineAction,
     });
 
-    render(
-      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
-    );
+    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Hozir boshlash" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Hozir boshlash" }));
 
-    await waitFor(() => expect(applyBusinessOnlineAction).toHaveBeenCalledWith(
-      "advertisements",
-      "start_now",
-      { record_id: 12, payload: {} },
-    ));
+    await waitFor(() =>
+      expect(applyBusinessOnlineAction).toHaveBeenCalledWith(
+        "advertisements",
+        "start_now",
+        { record_id: 12, payload: {} },
+      ),
+    );
     await waitFor(() => expect(getMyAdvertisements).toHaveBeenCalledTimes(2));
-    expect(
-      screen.queryByRole("button", { name: "Hozir boshlash" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hozir boshlash" })).toBeNull();
   });
 
   it("yuklanmasa sabab ko'rsatiladi", async () => {
     const api = makeApi([], {
       getMyAdvertisements: vi.fn().mockRejectedValue(new Error("Ulanmadi.")),
     });
-    render(
-      <BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />,
-    );
+    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
 
     expect(await screen.findByText("Ulanmadi.")).toBeVisible();
   });
 
   it("to'lov maqsadi tuman-soat soniga ko'ra tuziladi", () => {
-    const target = paymentTarget(advertisement({
-      district_count: 3,
-      duration_days: 30,
-      billable_district_hours: 2160,
-      id: 99,
-    }));
+    const target = paymentTarget(
+      advertisement({
+        district_count: 3,
+        duration_days: 30,
+        billable_district_hours: 2160,
+        id: 99,
+      }),
+    );
 
     // Summa serverda tarif × miqdor bo'lib hisoblanadi.
     expect(target.quantity).toBe(2160);

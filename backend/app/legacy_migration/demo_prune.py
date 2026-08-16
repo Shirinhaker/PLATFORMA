@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import sqlite3
 
-
 DEMO_LOGIN_PREFIX = "demo_v1616_"
 
 #: (jadval, ustun) — o'chirish tartibi bolalardan ota-onaga qarab.
@@ -68,21 +67,16 @@ def prune_demo_records(
     connection.execute("PRAGMA foreign_keys = OFF")
     cursor = connection.cursor()
 
-    users = _ids(
-        cursor, "SELECT id FROM users WHERE login LIKE ? || '%'", login_prefix
-    )
+    users = _ids(cursor, "SELECT id FROM users WHERE login LIKE ? || '%'", login_prefix)
     if not users:
         return {}
 
     linked = _ids(
         cursor,
-        "SELECT id FROM users WHERE id IN (%s) AND tg_id IS NOT NULL"
-        % _joined(users),
+        "SELECT id FROM users WHERE id IN (%s) AND tg_id IS NOT NULL" % _joined(users),
     )
     if linked:
-        raise PruneAbort(
-            "demo_prune_would_drop_linked_account:" + _joined(linked)
-        )
+        raise PruneAbort("demo_prune_would_drop_linked_account:" + _joined(linked))
 
     businesses = _ids(
         cursor,
@@ -95,23 +89,25 @@ def prune_demo_records(
     items = (
         _ids(
             cursor,
-            "SELECT id FROM items WHERE business_id IN (%s)"
-            % _joined(businesses),
+            "SELECT id FROM items WHERE business_id IN (%s)" % _joined(businesses),
         )
         if businesses
         else []
     )
 
-    groups = {"listings": listings, "items": items,
-              "businesses": businesses, "users": users}
+    groups = {
+        "listings": listings,
+        "items": items,
+        "businesses": businesses,
+        "users": users,
+    }
     removed: dict[str, int] = {}
     for table, column, group in _DELETE_ORDER:
         values = groups[group]
         if not values or not _table_exists(cursor, table):
             continue
         cursor.execute(
-            'DELETE FROM "%s" WHERE "%s" IN (%s)'
-            % (table, column, _joined(values))
+            'DELETE FROM "%s" WHERE "%s" IN (%s)' % (table, column, _joined(values))
         )
         if cursor.rowcount:
             removed[table] = cursor.rowcount
@@ -133,8 +129,7 @@ def main() -> None:
         print("DEMO_PRUNE_SKIPPED reason=no_match")
         return
     print(
-        "DEMO_PRUNE_OK "
-        + " ".join("%s=%d" % pair for pair in sorted(removed.items()))
+        "DEMO_PRUNE_OK " + " ".join("%s=%d" % pair for pair in sorted(removed.items()))
     )
 
 

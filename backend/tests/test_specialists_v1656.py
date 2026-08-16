@@ -22,7 +22,6 @@ from app.specialists.schemas import (
 )
 from app.specialists.service import SpecialistService
 
-
 NOW = datetime(2026, 8, 10, 9, 0, tzinfo=UTC)
 
 
@@ -82,11 +81,13 @@ async def test_specialist_service_preserves_v1656_profile_and_media_limits():
         ),
     )
     with engine.begin() as connection:
-        connection.execute(text(
-            "CREATE TABLE reviews ("
-            "id INTEGER PRIMARY KEY, target_kind VARCHAR(16) NOT NULL, "
-            "target_account_id BIGINT NOT NULL)"
-        ))
+        connection.execute(
+            text(
+                "CREATE TABLE reviews ("
+                "id INTEGER PRIMARY KEY, target_kind VARCHAR(16) NOT NULL, "
+                "target_account_id BIGINT NOT NULL)"
+            )
+        )
     sync = Session(engine, expire_on_commit=False)
     sync.add_all((account(7), account(8)))
     sync.commit()
@@ -184,7 +185,12 @@ def test_specialist_tables_are_tenant_indexed_and_constrained():
     assert SpecialistPortfolio.__table__.c.user_account_id.foreign_keys
     indexes = {
         index.name
-        for model in (SpecialistProfile, SpecialistCredential, SpecialistOffer, SpecialistPortfolio)
+        for model in (
+            SpecialistProfile,
+            SpecialistCredential,
+            SpecialistOffer,
+            SpecialistPortfolio,
+        )
         for index in model.__table__.indexes
     }
     assert "ix_specialist_profiles_visible_location" in indexes

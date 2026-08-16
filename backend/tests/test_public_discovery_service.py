@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import fakeredis.aioredis
+
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
 from app.public_discovery.schemas import (
@@ -124,12 +125,8 @@ async def test_concurrent_identical_searches_share_one_database_load():
         search_loader=loader,
     )
     try:
-        first = asyncio.create_task(
-            service.search(PublicSearchParams(q="savdo"))
-        )
-        second = asyncio.create_task(
-            service.search(PublicSearchParams(q="savdo"))
-        )
+        first = asyncio.create_task(service.search(PublicSearchParams(q="savdo")))
+        second = asyncio.create_task(service.search(PublicSearchParams(q="savdo")))
         await asyncio.sleep(0)
         release.set()
         await asyncio.gather(first, second)
@@ -141,15 +138,9 @@ async def test_concurrent_identical_searches_share_one_database_load():
 
 
 def test_public_search_cache_key_changes_with_filters_and_pagination():
-    first = PublicDiscoveryService.cache_key(
-        PublicSearchParams(q="savdo", page=1)
-    )
-    second = PublicDiscoveryService.cache_key(
-        PublicSearchParams(q="savdo", page=2)
-    )
-    third = PublicDiscoveryService.cache_key(
-        PublicSearchParams(q="xizmat", page=1)
-    )
+    first = PublicDiscoveryService.cache_key(PublicSearchParams(q="savdo", page=1))
+    second = PublicDiscoveryService.cache_key(PublicSearchParams(q="savdo", page=2))
+    third = PublicDiscoveryService.cache_key(PublicSearchParams(q="xizmat", page=1))
 
     assert len({first, second, third}) == 3
     assert "savdo" not in first

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-
 router = APIRouter()
 
 
@@ -41,13 +40,10 @@ async def readyz(request: Request):
     database_ready = await request.app.state.database.ready()
     redis_ready = await request.app.state.redis.ready()
     settings = request.app.state.settings
-    r2_configured = (
-        settings.environment in {"development", "test"}
-        or bool(
-            settings.r2_bucket
-            and settings.r2_access_key_id
-            and settings.r2_secret_access_key
-        )
+    r2_configured = settings.environment in {"development", "test"} or bool(
+        settings.r2_bucket
+        and settings.r2_access_key_id
+        and settings.r2_secret_access_key
     )
     ready = database_ready and redis_ready and r2_configured
     payload = {

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MAIN = ROOT / "frontend" / "src" / "main.tsx"
 STYLES = ROOT / "frontend" / "src" / "profiles" / "BusinessProfileV2.css"

@@ -1,21 +1,12 @@
 import { useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type {
-  ReviewListRead,
-  ReviewRead,
-  ReviewTargetKind,
-} from "../api/types";
+import type { ReviewListRead, ReviewRead, ReviewTargetKind } from "../api/types";
 import "./ReviewsV1656.css";
-
 
 export type ReviewsApi = Pick<
   ApiClient,
-  | "getReviews"
-  | "saveReview"
-  | "deleteReview"
-  | "getReceivedReviews"
-  | "replyToReview"
+  "getReviews" | "saveReview" | "deleteReview" | "getReceivedReviews" | "replyToReview"
 >;
 
 export type PublicReviewsApi = Pick<
@@ -28,24 +19,29 @@ export type ReceivedReviewsApi = Pick<
   "getReceivedReviews" | "replyToReview"
 >;
 
-
 function errorMessage(reason: unknown) {
   return reason instanceof Error ? reason.message : "Amal bajarilmadi.";
 }
-
 
 function Stars({ value, large = false }: { value: number; large?: boolean }) {
   return (
     <span className={`reviews-v1656__stars${large ? " is-large" : ""}`}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <span className={star <= value ? "is-on" : ""} key={star}>★</span>
+        <span className={star <= value ? "is-on" : ""} key={star}>
+          ★
+        </span>
       ))}
     </span>
   );
 }
 
-
-function ReviewCard({ review, owner = false }: { review: ReviewRead; owner?: boolean }) {
+function ReviewCard({
+  review,
+  owner = false,
+}: {
+  review: ReviewRead;
+  owner?: boolean;
+}) {
   return (
     <article className="reviews-v1656__card">
       <div className="reviews-v1656__card-head">
@@ -70,19 +66,13 @@ function ReviewCard({ review, owner = false }: { review: ReviewRead; owner?: boo
   );
 }
 
-
 type PublicProps = {
   api: PublicReviewsApi;
   targetKind: ReviewTargetKind;
   targetPublicId: string;
 };
 
-
-export function PublicReviewsV1656({
-  api,
-  targetKind,
-  targetPublicId,
-}: PublicProps) {
+export function PublicReviewsV1656({ api, targetKind, targetPublicId }: PublicProps) {
   const [data, setData] = useState<ReviewListRead | null>(null);
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
@@ -105,7 +95,9 @@ export function PublicReviewsV1656({
     void load(() => active).catch((reason) => {
       if (active) setError(errorMessage(reason));
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, targetKind, targetPublicId]);
 
   async function save() {
@@ -153,7 +145,9 @@ export function PublicReviewsV1656({
 
   return (
     <section className="reviews-v1656 public-reviews-v1656">
-      <div className="sec-head"><h2>Baholar va fikrlar</h2></div>
+      <div className="sec-head">
+        <h2>Baholar va fikrlar</h2>
+      </div>
       {data?.count ? (
         <div className="reviews-v1656__summary">
           <strong>{data.avg.toFixed(1)}</strong>
@@ -175,7 +169,9 @@ export function PublicReviewsV1656({
                 key={star}
                 type="button"
                 onClick={() => setStars(star)}
-              >★</button>
+              >
+                ★
+              </button>
             ))}
           </div>
           <textarea
@@ -194,22 +190,33 @@ export function PublicReviewsV1656({
               type="button"
               disabled={busy}
               onClick={() => void remove()}
-            >Bahoni o‘chirish</button>
+            >
+              Bahoni o‘chirish
+            </button>
           ) : null}
         </div>
       ) : null}
 
-      {error ? <p role="alert" className="reviews-v1656__error">{error}</p> : null}
-      {saved ? <p role="status" className="reviews-v1656__saved">{saved}</p> : null}
+      {error ? (
+        <p role="alert" className="reviews-v1656__error">
+          {error}
+        </p>
+      ) : null}
+      {saved ? (
+        <p role="status" className="reviews-v1656__saved">
+          {saved}
+        </p>
+      ) : null}
       <div className="reviews-v1656__list">
-        {data?.reviews.length
-          ? data.reviews.map((review) => <ReviewCard key={review.id} review={review} />)
-          : <div className="reviews-v1656__muted is-center">Hozircha fikr yo‘q</div>}
+        {data?.reviews.length ? (
+          data.reviews.map((review) => <ReviewCard key={review.id} review={review} />)
+        ) : (
+          <div className="reviews-v1656__muted is-center">Hozircha fikr yo‘q</div>
+        )}
       </div>
     </section>
   );
 }
-
 
 function OwnerReviewCard({
   api,
@@ -254,12 +261,15 @@ function OwnerReviewCard({
         <button type="button" disabled={busy} onClick={() => void save()}>
           {review.owner_reply ? "Javobni yangilash" : "Javob berish"}
         </button>
-        {error ? <p role="alert" className="reviews-v1656__error">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="reviews-v1656__error">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );
 }
-
 
 export function ReceivedReviewsV1656({
   api,
@@ -273,31 +283,48 @@ export function ReceivedReviewsV1656({
 
   useEffect(() => {
     let active = true;
-    api.getReceivedReviews()
-      .then((next) => { if (active) setData(next); })
-      .catch((reason) => { if (active) setError(errorMessage(reason)); });
-    return () => { active = false; };
+    api
+      .getReceivedReviews()
+      .then((next) => {
+        if (active) setData(next);
+      })
+      .catch((reason) => {
+        if (active) setError(errorMessage(reason));
+      });
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   function replaceReview(next: ReviewRead) {
-    setData((current) => current ? {
-      ...current,
-      reviews: current.reviews.map((row) => row.id === next.id ? next : row),
-    } : current);
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            reviews: current.reviews.map((row) => (row.id === next.id ? next : row)),
+          }
+        : current,
+    );
   }
 
   return (
     <main className="profile-shell reviews-v1656 received-reviews-v1656">
       <header className="profile-heading">
         <div>
-          <p className="session-panel__eyebrow">{data ? `${data.count} ta fikr` : "Koprik"}</p>
+          <p className="session-panel__eyebrow">
+            {data ? `${data.count} ta fikr` : "Koprik"}
+          </p>
           <h1>Baholar va fikrlar</h1>
         </div>
         <button className="button-secondary" type="button" onClick={onBack}>
           Kabinetga qaytish
         </button>
       </header>
-      {error ? <p role="alert" className="reviews-v1656__error">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="reviews-v1656__error">
+          {error}
+        </p>
+      ) : null}
       {!data && !error ? <p>Fikrlar yuklanmoqda...</p> : null}
       {data && !data.reviews.length ? (
         <div className="reviews-v1656__empty">

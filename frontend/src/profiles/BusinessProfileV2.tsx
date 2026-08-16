@@ -25,7 +25,6 @@ import {
 import { CabinetDataView } from "./CabinetDataView";
 import "./Cabinet.css";
 
-
 export type BusinessProfileApiV2 = Pick<
   ApiClient,
   | "getSession"
@@ -36,7 +35,8 @@ export type BusinessProfileApiV2 = Pick<
   | "attachBusinessLogo"
   | "switchCabinet"
   | "logout"
-> & Partial<Pick<ApiClient, "attachBusinessPaymentQr">>;
+> &
+  Partial<Pick<ApiClient, "attachBusinessPaymentQr">>;
 
 type Props = {
   api: BusinessProfileApiV2;
@@ -47,22 +47,23 @@ type Props = {
 
 type DataView = { title: string; rows: unknown[] };
 
-
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
 function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object"
-    ? value as Record<string, unknown>
-    : {};
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
 function activeCount(payload: Record<string, unknown>) {
   return payloadRows(payload, "orders").filter((row) => {
     const status = String(record(row).status ?? "");
     return ![
-      "done", "delivered", "cancelled", "canceled", "rejected",
+      "done",
+      "delivered",
+      "cancelled",
+      "canceled",
+      "rejected",
       "pickup_waiting_customer",
     ].includes(status);
   }).length;
@@ -86,12 +87,9 @@ function menuRows(profile: BusinessProfileData | null, menu: Menu): unknown[] {
 function visibleMenus(profile: BusinessProfileData | null, menus: Menu[]) {
   if (!profile) return [];
   return menus
-    .filter((menu) => (
-      !menu.directions || menu.directions.includes(profile.direction)
-    ))
+    .filter((menu) => !menu.directions || menu.directions.includes(profile.direction))
     .map((menu) => adaptMenuForDirection(menu, profile.direction));
 }
-
 
 export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props) {
   const [profile, setProfile] = useState<BusinessProfileData | null>(null);
@@ -105,7 +103,8 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
     let mounted = true;
     setLoading(true);
     setError("");
-    api.getBusinessProfile()
+    api
+      .getBusinessProfile()
       .then((value) => {
         if (mounted) setProfile(value);
       })
@@ -121,18 +120,24 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
   }, [api]);
 
   const metrics = useMemo(
-    () => profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS,
+    () => (profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS),
     [profile],
   );
 
   if (loading) {
-    return <main className="session-panel session-panel--message">Kabinet yuklanmoqda…</main>;
+    return (
+      <main className="session-panel session-panel--message">Kabinet yuklanmoqda…</main>
+    );
   }
   if (!profile) {
     return (
       <main className="session-panel">
-        <p className="form-error" role="alert">{error || "Biznes profil topilmadi."}</p>
-        <button type="button" onClick={() => window.location.reload()}>Qayta urinish</button>
+        <p className="form-error" role="alert">
+          {error || "Biznes profil topilmadi."}
+        </p>
+        <button type="button" onClick={() => window.location.reload()}>
+          Qayta urinish
+        </button>
       </main>
     );
   }
@@ -161,7 +166,8 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
     ...loadedProfile.dashboard_snapshot,
-    active_orders: loadedProfile.dashboard_snapshot.active_orders ?? activeCount(payload),
+    active_orders:
+      loadedProfile.dashboard_snapshot.active_orders ?? activeCount(payload),
     followers: loadedProfile.followers_count,
   };
   const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS);
@@ -253,21 +259,29 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
                 }
                 onClick={() => openMenu(menu)}
               >
-                <span className={
-                  menu.view === "education-enrollments" ? "menu-ic" : undefined
-                }>{menu.icon}</span>
-                <span className={
-                  menu.view === "education-enrollments" ? "menu-main" : undefined
-                }>
+                <span
+                  className={
+                    menu.view === "education-enrollments" ? "menu-ic" : undefined
+                  }
+                >
+                  {menu.icon}
+                </span>
+                <span
+                  className={
+                    menu.view === "education-enrollments" ? "menu-main" : undefined
+                  }
+                >
                   <b>{menu.label}</b>
                   <small>{menu.caption}</small>
                 </span>
                 {count > 0 && (
-                  <em className={
-                    menu.view === "education-enrollments"
-                      ? "order-badge"
-                      : undefined
-                  }>{count}</em>
+                  <em
+                    className={
+                      menu.view === "education-enrollments" ? "order-badge" : undefined
+                    }
+                  >
+                    {count}
+                  </em>
                 )}
               </button>
             );
@@ -291,47 +305,69 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
                   transform: `scale(${loadedProfile.logo_zoom})`,
                 }}
               />
-            ) : initials(loadedProfile.name)}
+            ) : (
+              initials(loadedProfile.name)
+            )}
           </div>
           <div className="business-cabinet__identity-copy">
             <h1>{loadedProfile.name}</h1>
             <p>{loadedProfile.direction || "Yo‘nalish tanlanmagan"}</p>
             <span>{loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}</span>
           </div>
-          <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+          <button type="button" disabled={busy} onClick={() => void logout()}>
+            Chiqish
+          </button>
         </header>
 
         <div className="business-cabinet__stats">
           {metrics.map((metric, index) => (
             <button
               type="button"
-              className={index === 0 ? "business-cabinet__stat business-cabinet__stat--active" : "business-cabinet__stat"}
+              className={
+                index === 0
+                  ? "business-cabinet__stat business-cabinet__stat--active"
+                  : "business-cabinet__stat"
+              }
               key={metric.key}
               onClick={() => {
-                const menu = [...onlineMenus, ...systemMenus, ...directionMenus]
-                  .find((candidate) => candidate.view === metric.view);
+                const menu = [...onlineMenus, ...systemMenus, ...directionMenus].find(
+                  (candidate) => candidate.view === metric.view,
+                );
                 if (menu) openMenu(menu);
               }}
             >
               <span>{metric.label}</span>
-              <strong>{metric.money ? money(summary[metric.key] ?? 0) : String(summary[metric.key] ?? 0)}</strong>
+              <strong>
+                {metric.money
+                  ? money(summary[metric.key] ?? 0)
+                  : String(summary[metric.key] ?? 0)}
+              </strong>
               <small>{metric.sub}</small>
             </button>
           ))}
         </div>
 
-        {error && <p className="business-cabinet__error" role="alert">{error}</p>}
+        {error && (
+          <p className="business-cabinet__error" role="alert">
+            {error}
+          </p>
+        )}
 
         <div className="business-cabinet__content">
           <div>
-            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenus)}
+            {group(
+              "Onlaynlashtirish",
+              "Mijozlar, buyurtmalar va onlayn savdo",
+              onlineMenus,
+            )}
             {group("Tizimlashtirish", "Hisob-kitob, ombor va boshqaruv", systemMenus)}
             {group("Ma’muriyat", "Xodimlar, hujjatlar va hamkorlar", adminMenus)}
-            {directionMenus.length > 0 && group(
-              "Yo‘nalishga xos bo‘limlar",
-              `${loadedProfile.direction} uchun maxsus boshqaruv`,
-              directionMenus,
-            )}
+            {directionMenus.length > 0 &&
+              group(
+                "Yo‘nalishga xos bo‘limlar",
+                `${loadedProfile.direction} uchun maxsus boshqaruv`,
+                directionMenus,
+              )}
             <button
               type="button"
               className="business-cabinet__switch"
@@ -350,30 +386,38 @@ export function BusinessProfileV2({ api, identity, onLogout, onSwitched }: Props
             {!loadedProfile.recent_activity.length ? (
               <div className="business-cabinet__empty">
                 <b>Hozircha faollik yo‘q</b>
-                <span>Yangi buyurtma yoki xizmat paydo bo‘lsa shu yerda ko‘rinadi.</span>
+                <span>
+                  Yangi buyurtma yoki xizmat paydo bo‘lsa shu yerda ko‘rinadi.
+                </span>
               </div>
-            ) : loadedProfile.recent_activity.slice(0, 5).map((activity) => (
-              <button
-                type="button"
-                className="business-cabinet__activity-row"
-                key={`${activity.kind}-${activity.id}`}
-                onClick={() => {
-                  const target = isService(activity) ? "service-orders" : "orders";
-                  const menu = onlineMenus.find((candidate) => candidate.view === target);
-                  if (menu) openMenu(menu);
-                }}
-              >
-                <span className="business-cabinet__activity-icon">{activity.kind === "order" ? "B" : "X"}</span>
-                <span className="business-cabinet__activity-copy">
-                  <b>{activityLabel(activity)}</b>
-                  <small>{activityDate(activity.created_at)}</small>
-                </span>
-                <span className="business-cabinet__activity-meta">
-                  <b>{activity.amount ? money(activity.amount) : activity.status}</b>
-                  <small>{activity.status}</small>
-                </span>
-              </button>
-            ))}
+            ) : (
+              loadedProfile.recent_activity.slice(0, 5).map((activity) => (
+                <button
+                  type="button"
+                  className="business-cabinet__activity-row"
+                  key={`${activity.kind}-${activity.id}`}
+                  onClick={() => {
+                    const target = isService(activity) ? "service-orders" : "orders";
+                    const menu = onlineMenus.find(
+                      (candidate) => candidate.view === target,
+                    );
+                    if (menu) openMenu(menu);
+                  }}
+                >
+                  <span className="business-cabinet__activity-icon">
+                    {activity.kind === "order" ? "B" : "X"}
+                  </span>
+                  <span className="business-cabinet__activity-copy">
+                    <b>{activityLabel(activity)}</b>
+                    <small>{activityDate(activity.created_at)}</small>
+                  </span>
+                  <span className="business-cabinet__activity-meta">
+                    <b>{activity.amount ? money(activity.amount) : activity.status}</b>
+                    <small>{activity.status}</small>
+                  </span>
+                </button>
+              ))
+            )}
           </aside>
         </div>
       </section>

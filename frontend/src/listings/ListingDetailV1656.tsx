@@ -2,7 +2,6 @@ import type { ListingRead } from "../api/types";
 import { ListingLocationMapV1656 } from "./ListingLocationMapV1656";
 import { ListingMediaGridV1656 } from "./ListingMediaGridV1656";
 
-
 type Props = {
   listing: ListingRead;
   onContact(): void;
@@ -11,7 +10,6 @@ type Props = {
   compactMedia?: boolean;
 };
 
-
 export function ListingDetailV1656({
   listing,
   onContact,
@@ -19,7 +17,8 @@ export function ListingDetailV1656({
   saving = false,
   compactMedia = false,
 }: Props) {
-  const hasLocation = Boolean(listing.address) || (listing.lat != null && listing.lng != null);
+  const hasLocation =
+    Boolean(listing.address) || (listing.lat != null && listing.lng != null);
 
   return (
     <div className="el-detail">
@@ -31,10 +30,14 @@ export function ListingDetailV1656({
         <div className="el-price">{listing.price || "Narx kelishilgan"}</div>
         {hasLocation ? (
           <div className="el-location" aria-label="Xarita manzili">
-            <span className="el-location-icon" aria-hidden="true">📍</span>
+            <span className="el-location-icon" aria-hidden="true">
+              📍
+            </span>
             <span>
               <strong>Xarita manzili</strong>
-              {listing.address ? <span className="el-addr">{listing.address}</span> : null}
+              {listing.address ? (
+                <span className="el-addr">{listing.address}</span>
+              ) : null}
               {listing.lat != null && listing.lng != null ? (
                 <span className="el-coordinates">
                   {listing.lat.toFixed(5)}, {listing.lng.toFixed(5)}

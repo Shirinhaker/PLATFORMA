@@ -131,9 +131,7 @@ async def test_user_switches_to_linked_business_without_new_login(
     assert auth_service.revoked == ["user-token"]
 
     old_session = await db_session.scalar(
-        select(AuthSession).where(
-            AuthSession.token_hash == sha256_token("user-token")
-        )
+        select(AuthSession).where(AuthSession.token_hash == sha256_token("user-token"))
     )
     assert old_session is not None
     assert old_session.revoked_at is not None

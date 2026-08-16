@@ -9,7 +9,6 @@ from app.catalog.schemas import (
 )
 from app.core.errors import ApiError
 
-
 router = APIRouter(
     prefix="/api/v1/public/catalog",
     tags=["public-catalog"],
@@ -48,4 +47,3 @@ async def get_catalog_item(
             "Mahsulot yoki xizmat topilmadi.",
         )
     return item
-

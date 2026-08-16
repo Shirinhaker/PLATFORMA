@@ -19,15 +19,30 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 ORDER_STATUSES = (
-    "new", "accepted", "rejected", "preparing", "tayyor", "cancelled",
-    "courier_assigned", "courier_arrived_store", "handoff_waiting_seller",
-    "in_delivery", "courier_arrived_customer", "pickup_waiting_customer",
-    "delivered_waiting_customer", "done",
+    "new",
+    "accepted",
+    "rejected",
+    "preparing",
+    "tayyor",
+    "cancelled",
+    "courier_assigned",
+    "courier_arrived_store",
+    "handoff_waiting_seller",
+    "in_delivery",
+    "courier_arrived_customer",
+    "pickup_waiting_customer",
+    "delivered_waiting_customer",
+    "done",
 )
 PAYMENT_STATUSES = (
-    "", "pending", "submitted", "recheck", "disputed", "confirmed", "rejected"
+    "",
+    "pending",
+    "submitted",
+    "recheck",
+    "disputed",
+    "confirmed",
+    "rejected",
 )
 
 
@@ -103,7 +118,9 @@ class Order(Base):
     note: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
     phone: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     order_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    order_category: Mapped[str] = mapped_column(String(20), nullable=False, default="product")
+    order_category: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="product"
+    )
     address: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     desired_time: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     delivery_lat: Mapped[float | None] = mapped_column(Float)
@@ -120,19 +137,31 @@ class Order(Base):
     problem_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     problem_reason: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     problem_note: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
-    problem_solution: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    problem_solution: Mapped[str] = mapped_column(
+        String(30), nullable=False, default=""
+    )
     problem_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    problem_resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    problem_resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     last_event: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     customer_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     provider_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     handed_off_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    seller_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    customer_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    seller_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    customer_received_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class OrderItem(Base):
@@ -161,7 +190,9 @@ class OrderItem(Base):
     line_total: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     note: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="product")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class OrderMessage(Base):
@@ -188,8 +219,12 @@ class OrderMessage(Base):
     sender_kind: Mapped[str] = mapped_column(String(20), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     media_type: Mapped[str] = mapped_column(String(20), nullable=False, default="text")
-    media_object_key: Mapped[str] = mapped_column(String(1024), nullable=False, default="")
-    legacy_media_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
+    media_object_key: Mapped[str] = mapped_column(
+        String(1024), nullable=False, default=""
+    )
+    legacy_media_url: Mapped[str] = mapped_column(
+        String(2048), nullable=False, default=""
+    )
     file_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     reply_to_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("order_messages.id", ondelete="SET NULL")
@@ -197,31 +232,50 @@ class OrderMessage(Base):
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 Index("ix_orders_customer_created", Order.customer_account_id, Order.created_at)
 Index("ix_orders_provider_created", Order.provider_account_id, Order.created_at)
 Index(
-    "ix_orders_provider_unread", Order.provider_account_id, Order.updated_at,
+    "ix_orders_provider_unread",
+    Order.provider_account_id,
+    Order.updated_at,
     postgresql_where=text("provider_seen_at IS NULL"),
 )
 Index(
-    "ix_orders_customer_unread", Order.customer_account_id, Order.updated_at,
+    "ix_orders_customer_unread",
+    Order.customer_account_id,
+    Order.updated_at,
     postgresql_where=text("customer_seen_at IS NULL"),
 )
 Index("ix_orders_item_id", Order.item_id)
 Index("ix_orders_listing_id", Order.listing_id)
 Index("ix_order_items_order", OrderItem.order_id, OrderItem.id)
 Index("ix_order_items_catalog_item", OrderItem.catalog_item_id)
-Index("ix_order_messages_order_created", OrderMessage.order_id, OrderMessage.created_at, OrderMessage.id)
-Index("ix_order_messages_sender", OrderMessage.sender_account_id, OrderMessage.created_at)
-Index("ix_order_messages_reply_to", OrderMessage.reply_to_id)
 Index(
-    "uq_order_items_legacy", OrderItem.order_id, OrderItem.legacy_source_id,
-    unique=True, postgresql_where=text("legacy_source_id IS NOT NULL"),
+    "ix_order_messages_order_created",
+    OrderMessage.order_id,
+    OrderMessage.created_at,
+    OrderMessage.id,
 )
 Index(
-    "uq_order_messages_legacy", OrderMessage.order_id, OrderMessage.legacy_source_id,
-    unique=True, postgresql_where=text("legacy_source_id IS NOT NULL"),
+    "ix_order_messages_sender", OrderMessage.sender_account_id, OrderMessage.created_at
+)
+Index("ix_order_messages_reply_to", OrderMessage.reply_to_id)
+Index(
+    "uq_order_items_legacy",
+    OrderItem.order_id,
+    OrderItem.legacy_source_id,
+    unique=True,
+    postgresql_where=text("legacy_source_id IS NOT NULL"),
+)
+Index(
+    "uq_order_messages_legacy",
+    OrderMessage.order_id,
+    OrderMessage.legacy_source_id,
+    unique=True,
+    postgresql_where=text("legacy_source_id IS NOT NULL"),
 )

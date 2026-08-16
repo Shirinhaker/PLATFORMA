@@ -5,7 +5,6 @@ import type { ListingRead } from "../api/types";
 import { ListingMediaGridV1656 } from "./ListingMediaGridV1656";
 import "./ListingsV1656.css";
 
-
 type Props = {
   publicId: string;
   getPublicListing: ApiClient["getPublicListing"];
@@ -15,7 +14,6 @@ type Props = {
   onOpenOwner(kind: "user" | "business", publicId: string): void;
   onTitleChange?(title: string): void;
 };
-
 
 export function ListingPageV1656({
   publicId,
@@ -46,7 +44,9 @@ export function ListingPageV1656({
         if (!active) return;
         setError(reason instanceof Error ? reason.message : "E'lon topilmadi.");
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [getPublicListing, onTitleChange, publicId]);
 
   async function save() {
@@ -60,7 +60,9 @@ export function ListingPageV1656({
     setSaving(true);
     try {
       const result = await toggleListingSave(listing.public_id);
-      setListing((current) => current ? { ...current, is_saved: result.saved } : current);
+      setListing((current) =>
+        current ? { ...current, is_saved: result.saved } : current,
+      );
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : "E'lon saqlanmadi.");
     } finally {
@@ -71,7 +73,10 @@ export function ListingPageV1656({
   if (error) {
     return (
       <main className="screen active public-listing-page-v1656" data-screen="list">
-        <div className="empty"><h3>Topilmadi</h3><p>{error}</p></div>
+        <div className="empty">
+          <h3>Topilmadi</h3>
+          <p>{error}</p>
+        </div>
       </main>
     );
   }
@@ -96,10 +101,19 @@ export function ListingPageV1656({
         <h1 className="biz-title">{listing.title}</h1>
         <div className="biz-sub">
           <span className="listing-page-price">{listing.price}</span>
-          {listing.address ? <><span className="dot-sep" /><span>{listing.address}</span></> : null}
+          {listing.address ? (
+            <>
+              <span className="dot-sep" />
+              <span>{listing.address}</span>
+            </>
+          ) : null}
         </div>
         {listing.descr ? <div className="biz-desc">{listing.descr}</div> : null}
-        {actionError ? <p className="elon-hint" role="alert">{actionError}</p> : null}
+        {actionError ? (
+          <p className="elon-hint" role="alert">
+            {actionError}
+          </p>
+        ) : null}
         <div className="actionbar">
           <button
             aria-label={listing.is_saved ? "Saqlangan" : "Saqlash"}

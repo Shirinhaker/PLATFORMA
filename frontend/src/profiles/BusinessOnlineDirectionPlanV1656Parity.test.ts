@@ -6,13 +6,15 @@ import {
   isOnlineMenuVisibleForDirection,
 } from "./business-profile-config";
 
-
-const plans: Record<string, {
-  items: [string, string];
-  order?: string;
-  service?: string;
-  hide?: string[];
-}> = {
+const plans: Record<
+  string,
+  {
+    items: [string, string];
+    order?: string;
+    service?: string;
+    hide?: string[];
+  }
+> = {
   Savdo: {
     items: ["Mahsulotlar", "Tovar, narx va rasm qo'shish"],
     order: "Onlayn mahsulot buyurtmalari",
@@ -119,16 +121,18 @@ describe("v1656 CAB_PLANS Onlaynlashtirish matritsasi", () => {
   );
 
   it("maxsus ekranlarni faqat monolitdagi yo'nalishlarda ko'rsatadi", () => {
-    expect(menu("Umumiy ovqatlanish", "dining-places")?.label)
-      .toBe("Stollar va xonalar");
+    expect(menu("Umumiy ovqatlanish", "dining-places")?.label).toBe(
+      "Stollar va xonalar",
+    );
     expect(menu("Savdo", "dining-places")).toBeNull();
-    expect(menu("Ta'lim faoliyati", "education-enrollments")?.label)
-      .toBe("Kursga yozilishlar");
+    expect(menu("Ta'lim faoliyati", "education-enrollments")?.label).toBe(
+      "Kursga yozilishlar",
+    );
     expect(menu("Savdo", "education-enrollments")).toBeNull();
-    expect(menu("Tibbiy xizmatlar", "medical-providers")?.label)
-      .toBe("Shifokorlar");
-    expect(menu("Transport va logistika", "medical-providers")?.label)
-      .toBe("Xizmat ko‘rsatuvchilar");
+    expect(menu("Tibbiy xizmatlar", "medical-providers")?.label).toBe("Shifokorlar");
+    expect(menu("Transport va logistika", "medical-providers")?.label).toBe(
+      "Xizmat ko‘rsatuvchilar",
+    );
     expect(menu("Savdo", "medical-providers")).toBeNull();
   });
 });

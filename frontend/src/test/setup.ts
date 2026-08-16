@@ -4,7 +4,6 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
-
 // jsdom `crypto.subtle` ni bermaydi. Kvitansiya SHA-256 sini brauzerda
 // hisoblaydigan kod shu API'ga tayanadi, shuning uchun testda Node'ning
 // haqiqiy webcrypto realizatsiyasi qo'yiladi — soxta emas.

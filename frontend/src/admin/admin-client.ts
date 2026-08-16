@@ -187,7 +187,6 @@ export type AdminTaxiTopup = { id: number; balance: number };
 
 type Fetcher = typeof fetch;
 
-
 export class AdminApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: Fetcher;
@@ -201,26 +200,20 @@ export class AdminApiClient {
     this.fetcher = fetcher ?? globalThis.fetch.bind(globalThis);
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const response = await this.fetcher(`${this.baseUrl}${path}`, {
       method,
       credentials: "include",
-      headers: body === undefined
-        ? {}
-        : { "Content-Type": "application/json" },
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (response.status === 204) return undefined as T;
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message = payload && typeof payload === "object"
-        && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : "So‘rov bajarilmadi.";
+      const message =
+        payload && typeof payload === "object" && "message" in payload
+          ? String((payload as { message: unknown }).message)
+          : "So‘rov bajarilmadi.";
       throw new AdminApiError(message, response.status);
     }
     return payload as T;
@@ -256,17 +249,13 @@ export class AdminApiClient {
     amount: number,
     reason: string,
   ): Promise<AdminTaxiTopup> {
-    return this.request(
-      "POST",
-      `/api/v1/admin/taxi/drivers/${driverId}/topup`,
-      { amount, reason },
-    );
+    return this.request("POST", `/api/v1/admin/taxi/drivers/${driverId}/topup`, {
+      amount,
+      reason,
+    });
   }
 
-  payments(
-    status: string,
-    serviceType: string,
-  ): Promise<AdminPaymentRow[]> {
+  payments(status: string, serviceType: string): Promise<AdminPaymentRow[]> {
     const query = new URLSearchParams();
     if (status) query.set("status", status);
     if (serviceType) query.set("service_type", serviceType);
@@ -313,13 +302,8 @@ export class AdminApiClient {
     return this.request("POST", "/api/v1/admin/payment-methods", body);
   }
 
-  updateMethod(
-    methodId: number,
-    body: AdminMethodWrite,
-  ): Promise<AdminMethodRow> {
-    return this.request(
-      "PUT", `/api/v1/admin/payment-methods/${methodId}`, body,
-    );
+  updateMethod(methodId: number, body: AdminMethodWrite): Promise<AdminMethodRow> {
+    return this.request("PUT", `/api/v1/admin/payment-methods/${methodId}`, body);
   }
 
   accounts(
@@ -334,13 +318,8 @@ export class AdminApiClient {
     return this.request("GET", `/api/v1/admin/accounts/${actorType}${suffix}`);
   }
 
-  account(
-    actorType: string,
-    accountId: number,
-  ): Promise<AdminAccountDetail> {
-    return this.request(
-      "GET", `/api/v1/admin/accounts/${actorType}/${accountId}`,
-    );
+  account(actorType: string, accountId: number): Promise<AdminAccountDetail> {
+    return this.request("GET", `/api/v1/admin/accounts/${actorType}/${accountId}`);
   }
 
   restrict(
@@ -349,7 +328,9 @@ export class AdminApiClient {
     body: { restriction: string; reason: string },
   ): Promise<{ id: number; already_active: boolean }> {
     return this.request(
-      "POST", `/api/v1/admin/accounts/${actorType}/${accountId}/restrict`, body,
+      "POST",
+      `/api/v1/admin/accounts/${actorType}/${accountId}/restrict`,
+      body,
     );
   }
 
@@ -365,24 +346,16 @@ export class AdminApiClient {
     );
   }
 
-  addNote(
-    actorType: string,
-    accountId: number,
-    note: string,
-  ): Promise<AdminNoteRow> {
+  addNote(actorType: string, accountId: number, note: string): Promise<AdminNoteRow> {
     return this.request(
-      "POST", `/api/v1/admin/accounts/${actorType}/${accountId}/notes`,
+      "POST",
+      `/api/v1/admin/accounts/${actorType}/${accountId}/notes`,
       { note },
     );
   }
 
-  contentStatus(
-    contentKind: string,
-    contentId: number,
-  ): Promise<AdminContentStatus> {
-    return this.request(
-      "GET", `/api/v1/admin/content/${contentKind}/${contentId}`,
-    );
+  contentStatus(contentKind: string, contentId: number): Promise<AdminContentStatus> {
+    return this.request("GET", `/api/v1/admin/content/${contentKind}/${contentId}`);
   }
 
   setContentStatus(
@@ -392,7 +365,8 @@ export class AdminApiClient {
     reason: string,
   ): Promise<unknown> {
     return this.request(
-      "POST", `/api/v1/admin/content/${contentKind}/${contentId}/${action}`,
+      "POST",
+      `/api/v1/admin/content/${contentKind}/${contentId}/${action}`,
       { reason },
     );
   }
@@ -403,9 +377,7 @@ export class AdminApiClient {
   }
 
   assignReport(reportId: number): Promise<ReportRow> {
-    return this.request(
-      "POST", `/api/v1/admin/reports/${reportId}/assign`,
-    );
+    return this.request("POST", `/api/v1/admin/reports/${reportId}/assign`);
   }
 
   decideReport(
@@ -413,9 +385,9 @@ export class AdminApiClient {
     decision: "resolve" | "dismiss",
     resolution: string,
   ): Promise<ReportRow> {
-    return this.request(
-      "POST", `/api/v1/admin/reports/${reportId}/${decision}`, { resolution },
-    );
+    return this.request("POST", `/api/v1/admin/reports/${reportId}/${decision}`, {
+      resolution,
+    });
   }
 
   audit(action: string): Promise<AuditRow[]> {
@@ -432,7 +404,6 @@ export class AdminApiClient {
     return `${this.baseUrl}/api/v1/admin/audit/export.csv${search}`;
   }
 }
-
 
 export class AdminApiError extends Error {
   readonly status: number;

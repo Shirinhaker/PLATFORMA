@@ -4,7 +4,6 @@ import type { ApiClient } from "../api/client";
 import type { BusinessQueueEntry } from "../api/types";
 import "./MyQueuesV1656.css";
 
-
 export type MyQueuesApi = Pick<ApiClient, "getMyQueues" | "cancelMyQueue">;
 
 type Props = {
@@ -16,30 +15,29 @@ type Props = {
 const ACTIVE_STATUSES = new Set(["waiting", "called", "in_service"]);
 const CANCELLABLE_STATUSES = new Set(["waiting", "called"]);
 
-
 function statusText(status: string) {
-  return ({
-    waiting: "Kutilmoqda",
-    called: "Chaqirildi",
-    in_service: "Qabulda",
-    done: "Yakunlandi",
-    no_show: "Kelmadi",
-    cancelled: "Bekor qilindi",
-    skipped: "O‘tkazib yuborildi",
-  } as Record<string, string>)[status] ?? status ?? "—";
+  return (
+    (
+      {
+        waiting: "Kutilmoqda",
+        called: "Chaqirildi",
+        in_service: "Qabulda",
+        done: "Yakunlandi",
+        no_show: "Kelmadi",
+        cancelled: "Bekor qilindi",
+        skipped: "O‘tkazib yuborildi",
+      } as Record<string, string>
+    )[status] ??
+    status ??
+    "—"
+  );
 }
-
 
 function errorText(reason: unknown) {
   return reason instanceof Error ? reason.message : "Navbatlar yuklanmadi.";
 }
 
-
-export function MyQueuesV1656({
-  api,
-  focusQueueId = null,
-  onFocusHandled,
-}: Props) {
+export function MyQueuesV1656({ api, focusQueueId = null, onFocusHandled }: Props) {
   const [rows, setRows] = useState<BusinessQueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -53,7 +51,8 @@ export function MyQueuesV1656({
     let active = true;
     setLoading(true);
     setError("");
-    api.getMyQueues()
+    api
+      .getMyQueues()
       .then((value) => {
         if (active) setRows(value);
       })
@@ -87,9 +86,9 @@ export function MyQueuesV1656({
     setNotice("");
     try {
       const updated = await api.cancelMyQueue(queueId);
-      setRows((current) => current.map((row) => (
-        row.id === updated.id ? updated : row
-      )));
+      setRows((current) =>
+        current.map((row) => (row.id === updated.id ? updated : row)),
+      );
       setCancelTarget(null);
       setNotice("Navbat bekor qilindi.");
     } catch (reason) {
@@ -105,8 +104,16 @@ export function MyQueuesV1656({
         <h2>📋 Navbatlar</h2>
         <span>{rows.length} ta</span>
       </div>
-      {error ? <p className="my-queues-v1656__message" role="alert">{error}</p> : null}
-      {notice ? <p className="my-queues-v1656__message" role="status">{notice}</p> : null}
+      {error ? (
+        <p className="my-queues-v1656__message" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="my-queues-v1656__message" role="status">
+          {notice}
+        </p>
+      ) : null}
       {loading ? (
         <div className="idesc">Yuklanmoqda...</div>
       ) : rows.length ? (
@@ -131,9 +138,9 @@ export function MyQueuesV1656({
                     <div className="iname">{queue.service_name || "Xizmat"}</div>
                     <div className="idesc">🏢 {queue.business_name || "Biznes"}</div>
                     <div className="idesc">
-                      {medical ? "🩺" : "🧑‍💼"} {queue.provider_name || (
-                        medical ? "Shifokor" : "Xizmat ko'rsatuvchi"
-                      )}
+                      {medical ? "🩺" : "🧑‍💼"}{" "}
+                      {queue.provider_name ||
+                        (medical ? "Shifokor" : "Xizmat ko'rsatuvchi")}
                     </div>
                   </div>
                   <span className={`tx-amt${active ? " st-ok" : ""}`}>
@@ -141,9 +148,13 @@ export function MyQueuesV1656({
                   </span>
                 </div>
                 <div className="my-queues-v1656__details">
-                  <div className="idesc">📅 Sana: <b>{queue.queue_date || "—"}</b></div>
+                  <div className="idesc">
+                    📅 Sana: <b>{queue.queue_date || "—"}</b>
+                  </div>
                   {queue.slot_time ? (
-                    <div className="idesc">🕐 Qabul vaqti: <b>{queue.slot_time}</b></div>
+                    <div className="idesc">
+                      🕐 Qabul vaqti: <b>{queue.slot_time}</b>
+                    </div>
                   ) : active ? (
                     <>
                       <div className="idesc">
@@ -199,7 +210,9 @@ export function MyQueuesV1656({
                 className="mini-btn danger"
                 disabled={busyId !== null}
                 type="button"
-                onClick={() => { void cancelQueue(); }}
+                onClick={() => {
+                  void cancelQueue();
+                }}
               >
                 Ha, bekor qilaman
               </button>

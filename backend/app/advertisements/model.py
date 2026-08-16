@@ -2,6 +2,7 @@ from datetime import datetime, time
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -9,7 +10,6 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Integer,
-    JSON,
     String,
     Time,
 )

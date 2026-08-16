@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthFlow } from "./AuthFlow";
 import { TelegramCodeForm } from "./TelegramCodeForm";
 
-
 function authApi() {
   return {
     startRegistration: vi.fn().mockResolvedValue({
@@ -52,7 +51,6 @@ function authApi() {
   };
 }
 
-
 describe("AuthFlow v1656 parity", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -66,21 +64,18 @@ describe("AuthFlow v1656 parity", () => {
 
   it("opens directly on the exact v1656 login screen", () => {
     render(
-      <AuthFlow
-        api={authApi()}
-        onAuthenticated={vi.fn()}
-        reason="Navbat olish"
-      />,
+      <AuthFlow api={authApi()} onAuthenticated={vi.fn()} reason="Navbat olish" />,
     );
 
-    expect(screen.getByRole("heading", { name: "Kabinetga kirish" }))
-      .toBeInTheDocument();
-    expect(screen.getByText(
-      "Ro'yxatdan o'tganda berilgan login va parolni kiriting.",
-    )).toBeInTheDocument();
-    expect(screen.getByText(
-      "🔒 Navbat olish uchun tizimga kiring yoki ro'yxatdan o'ting.",
-    )).toHaveAttribute("id", "loginReason");
+    expect(
+      screen.getByRole("heading", { name: "Kabinetga kirish" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Ro'yxatdan o'tganda berilgan login va parolni kiriting."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("🔒 Navbat olish uchun tizimga kiring yoki ro'yxatdan o'ting."),
+    ).toHaveAttribute("id", "loginReason");
     expect(screen.getByPlaceholderText("Login")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Parol")).toBeInTheDocument();
     expect(screen.queryByLabelText("Kabinet turi")).not.toBeInTheDocument();
@@ -93,9 +88,11 @@ describe("AuthFlow v1656 parity", () => {
 
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", {
-      name: "Telegram orqali tasdiqlash",
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Telegram orqali tasdiqlash",
+      }),
+    );
 
     expect(api.startLogin).toHaveBeenCalledWith({
       login: "b_turon",
@@ -105,12 +102,16 @@ describe("AuthFlow v1656 parity", () => {
       "https://t.me/koprik_bot?start=login-token",
       "_blank",
     );
-    expect(await screen.findByLabelText("Tasdiqlash kodi"))
-      .toHaveAttribute("placeholder", "000000");
-    expect(screen.getByRole("button", { name: "Tasdiqlash va kirish" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "✈️ Telegramni ochish" }))
-      .toBeInTheDocument();
+    expect(await screen.findByLabelText("Tasdiqlash kodi")).toHaveAttribute(
+      "placeholder",
+      "000000",
+    );
+    expect(
+      screen.getByRole("button", { name: "Tasdiqlash va kirish" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "✈️ Telegramni ochish" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the exact role cards and all twenty v1656 directions", async () => {
@@ -118,22 +119,26 @@ describe("AuthFlow v1656 parity", () => {
     render(<AuthFlow api={authApi()} onAuthenticated={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Ro'yxatdan o'tish" }));
-    expect(screen.getByText("Kim sifatida ro'yxatdan o'tmoqchisiz?"))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Biznes Mahsulot/ }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Oddiy foydalanuvchi Bizneslarni/ }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("Kim sifatida ro'yxatdan o'tmoqchisiz?"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Biznes Mahsulot/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Oddiy foydalanuvchi Bizneslarni/ }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Biznes Mahsulot/ }));
-    expect(screen.getByRole("heading", { name: "Biznes ro'yxati" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Biznes ro'yxati" }),
+    ).toBeInTheDocument();
     const directions = screen.getByLabelText("Faoliyat yo'nalishi");
     expect(within(directions).getAllByRole("option")).toHaveLength(21);
-    expect(within(directions).getByRole("option", { name: "🛒 Savdo" }))
-      .toBeInTheDocument();
-    expect(within(directions).getByRole("option", { name: "🚢 Import-eksport" }))
-      .toBeInTheDocument();
+    expect(
+      within(directions).getByRole("option", { name: "🛒 Savdo" }),
+    ).toBeInTheDocument();
+    expect(
+      within(directions).getByRole("option", { name: "🚢 Import-eksport" }),
+    ).toBeInTheDocument();
   });
 
   it("preserves registration fields when returning from Telegram code", async () => {
@@ -146,10 +151,15 @@ describe("AuthFlow v1656 parity", () => {
     await user.type(screen.getByLabelText("Biznes nomi"), "Turon Savdo");
     await user.selectOptions(screen.getByLabelText("Faoliyat yo'nalishi"), "Savdo");
     await user.type(screen.getByLabelText("Manzil"), "Qumqo'rg'on");
-    await user.type(screen.getByLabelText("Telefon raqami — ixtiyoriy"), "+998901234567");
-    await user.click(screen.getByRole("button", {
-      name: "✈️ Telegram orqali kod olish",
-    }));
+    await user.type(
+      screen.getByLabelText("Telefon raqami — ixtiyoriy"),
+      "+998901234567",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "✈️ Telegram orqali kod olish",
+      }),
+    );
 
     expect(api.startRegistration).toHaveBeenCalledWith({
       account_type: "business",
@@ -158,9 +168,11 @@ describe("AuthFlow v1656 parity", () => {
       direction: "Savdo",
       address: "Qumqo'rg'on",
     });
-    await user.click(screen.getByRole("button", {
-      name: "Ma'lumotlarni o'zgartirish",
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ma'lumotlarni o'zgartirish",
+      }),
+    );
     expect(screen.getByLabelText("Biznes nomi")).toHaveValue("Turon Savdo");
     expect(screen.getByLabelText("Faoliyat yo'nalishi")).toHaveValue("Savdo");
     expect(screen.getByLabelText("Manzil")).toHaveValue("Qumqo'rg'on");
@@ -172,17 +184,20 @@ describe("AuthFlow v1656 parity", () => {
     const first = render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", {
-      name: "Telegram orqali tasdiqlash",
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Telegram orqali tasdiqlash",
+      }),
+    );
     await screen.findByLabelText("Tasdiqlash kodi");
 
     first.unmount();
     render(<AuthFlow api={api} onAuthenticated={vi.fn()} />);
 
     expect(screen.getByLabelText("Tasdiqlash kodi")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "✈️ Telegramni ochish" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "✈️ Telegramni ochish" }),
+    ).toBeInTheDocument();
   });
 
   it("lets staff sign in with the exact firm-scoped screen", async () => {
@@ -205,14 +220,12 @@ describe("AuthFlow v1656 parity", () => {
     render(<AuthFlow api={api} onAuthenticated={authenticated} />);
 
     await user.click(screen.getByRole("button", { name: "👥 Xodimlar uchun kirish" }));
-    expect(screen.getByRole("heading", { name: "Xodim kirishi" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Do'kon rahbari bergan login va parol bilan kiring."))
-      .toBeInTheDocument();
-    expect(screen.getByPlaceholderText("masalan: biz123456"))
-      .toBeInTheDocument();
-    expect(screen.getByPlaceholderText("masalan: vali01"))
-      .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Xodim kirishi" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Do'kon rahbari bergan login va parol bilan kiring."),
+    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("masalan: biz123456")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("masalan: vali01")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Firma logini"), "b_turon");
     await user.type(screen.getByLabelText("Xodim logini"), "ali01");
     await user.type(screen.getByLabelText("Xodim paroli"), "safe-pass-42");
@@ -223,11 +236,13 @@ describe("AuthFlow v1656 parity", () => {
       login: "ali01",
       password: "safe-pass-42",
     });
-    expect(authenticated).toHaveBeenCalledWith(expect.objectContaining({
-      actor_type: "staff",
-      staff_id: 11,
-      permissions: ["kassa"],
-    }));
+    expect(authenticated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_type: "staff",
+        staff_id: 11,
+        permissions: ["kassa"],
+      }),
+    );
   });
 
   it("shows the exact generated credentials screen once", async () => {
@@ -250,8 +265,9 @@ describe("AuthFlow v1656 parity", () => {
     await user.type(screen.getByLabelText("Tasdiqlash kodi"), "123456");
     await user.click(screen.getByRole("button", { name: "Tasdiqlash va kirish" }));
 
-    expect(await screen.findByRole("heading", { name: "Ro'yxatdan o'tdingiz! ✅" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Ro'yxatdan o'tdingiz! ✅" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("🔑 Login")).toBeInTheDocument();
     expect(screen.getByText("u_test")).toBeInTheDocument();
     expect(screen.getByText("🔐 Parol")).toBeInTheDocument();

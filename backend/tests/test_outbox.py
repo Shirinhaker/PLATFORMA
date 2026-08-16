@@ -9,7 +9,6 @@ from app.outbox.repository import (
     mark_processed,
 )
 
-
 DATABASE_URL = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
 
 

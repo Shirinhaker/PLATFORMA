@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, time
 import sqlite3
+from datetime import UTC, datetime, time
 
 import pytest
 from sqlalchemy import create_engine, func, select
@@ -21,7 +21,6 @@ from app.legacy_migration.model import (
 )
 from app.profiles.model import BusinessProfile
 
-
 NOW = datetime(2026, 7, 29, tzinfo=UTC)
 
 
@@ -39,9 +38,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                maximum = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                maximum = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(maximum or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -147,9 +144,7 @@ def source_with(overrides: dict[str, object] | None = None):
         "daily_all_day": 0,
         "daily_start": "18:00",
         "daily_end": "19:00",
-        "targets_json": (
-            '[{"region":"Surxondaryo","district":"Qumqo‘rg‘on"}]'
-        ),
+        "targets_json": ('[{"region":"Surxondaryo","district":"Qumqo‘rg‘on"}]'),
         "start_at": 1_722_211_200,
         "end_at": 1_722_297_600,
         "duration_days": 1,
@@ -226,12 +221,8 @@ async def test_ad_snapshot_is_not_repriced_or_turned_into_business(store):
     assert ad.hours_per_day == 1
     assert ad.district_hour_rate == 50_000
     assert ad.billable_district_hours == 7
-    assert ad.targets_json == [
-        {"region": "Surxondaryo", "district": "Qumqo‘rg‘on"}
-    ]
-    assert (
-        await db.scalar(select(func.count()).select_from(BusinessProfile))
-    ) == 0
+    assert ad.targets_json == [{"region": "Surxondaryo", "district": "Qumqo‘rg‘on"}]
+    assert (await db.scalar(select(func.count()).select_from(BusinessProfile))) == 0
 
 
 @pytest.mark.asyncio
@@ -268,11 +259,7 @@ async def test_desktop_and_mobile_media_slots_are_separate(store):
     source = source_with()
 
     await import_advertisements(db, source, run)
-    slots = list(
-        await db.scalars(
-            select(MediaMigration).order_by(MediaMigration.slot)
-        )
-    )
+    slots = list(await db.scalars(select(MediaMigration).order_by(MediaMigration.slot)))
 
     assert [item.slot for item in slots] == ["desktop", "mobile"]
     assert all(item.entity_type == "advertisement" for item in slots)
@@ -317,9 +304,7 @@ async def test_rerun_is_idempotent_and_changed_snapshot_updates(store):
     assert second.created == 0
     assert third.updated == 1
     assert ad.views == 99
-    assert (
-        await db.scalar(select(func.count()).select_from(Advertisement))
-    ) == 1
+    assert (await db.scalar(select(func.count()).select_from(Advertisement))) == 1
 
 
 @pytest.mark.asyncio

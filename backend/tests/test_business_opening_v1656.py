@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
@@ -18,7 +18,6 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.base import Base
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-
 
 NOW = datetime(2026, 8, 11, 11, 0, tzinfo=UTC)
 OUTBOX_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -231,11 +230,13 @@ def test_business_opening_route_is_typed_versioned_and_owner_only():
     assert ("/api/v1/business-opening", "POST") in routes
 
     with pytest.raises(ApiError) as staff:
-        require_business_opening_owner(CurrentAccount(
-            account_id=1,
-            account_type=AccountType.USER,
-            session_token="staff-token",
-            actor_type="staff",
-            staff_id=3,
-        ))
+        require_business_opening_owner(
+            CurrentAccount(
+                account_id=1,
+                account_type=AccountType.USER,
+                session_token="staff-token",
+                actor_type="staff",
+                staff_id=3,
+            )
+        )
     assert staff.value.code == "business_opening_owner_required"

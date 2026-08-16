@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,9 @@ def pick_document_type(
     lowered = prompt.lower()
     if doc_type and doc_type != "Erkin shakldagi hujjat":
         return direction or "ichki", doc_type
-    if any(token in lowered for token in ("shartnoma", "xizmat ko'rsatish", "oldi-sotdi")):
+    if any(
+        token in lowered for token in ("shartnoma", "xizmat ko'rsatish", "oldi-sotdi")
+    ):
         return "chiquvchi", "Shartnoma"
     if any(token in lowered for token in ("hisob", "invoice", "faktura")):
         return "chiquvchi", "Hisob-faktura"
@@ -56,7 +58,9 @@ def pick_document_type(
     return direction or "ichki", doc_type or "Erkin shakldagi hujjat"
 
 
-def build_document_context(business, body, contractor, *, today: str) -> DocumentContext:
+def build_document_context(
+    business, body, contractor, *, today: str
+) -> DocumentContext:
     def contractor_value(field: str) -> str:
         return str(getattr(contractor, field, "") or "").strip()
 

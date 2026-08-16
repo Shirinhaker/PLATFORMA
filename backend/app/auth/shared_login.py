@@ -4,6 +4,8 @@ from app.accounts.model import AccountType
 from app.accounts.repository import find_accounts_by_login
 from app.auth.repository import (
     create_challenge,
+)
+from app.auth.repository import (
     resolve_session as resolve_stored_session,
 )
 from app.auth.schemas import LoginStarted, SessionIdentity
@@ -13,9 +15,9 @@ from app.auth.security import (
     verify_password_with_rehash,
 )
 from app.auth.service import (
-    AuthService,
-    INVALID_CREDENTIALS,
     _SESSION_TOUCH_INTERVAL,
+    INVALID_CREDENTIALS,
+    AuthService,
 )
 from app.core.errors import ApiError
 
@@ -74,9 +76,7 @@ class SharedLoginAuthService(AuthService):
                     now=now,
                     start_expires_at=(
                         now
-                        + timedelta(
-                            seconds=self._settings.telegram_link_ttl_seconds
-                        )
+                        + timedelta(seconds=self._settings.telegram_link_ttl_seconds)
                     ),
                     max_attempts=self._settings.telegram_max_attempts,
                 )

@@ -1,15 +1,8 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { AdminMethodRow, AdminPriceRow } from "./admin-client";
 import { AdminPricing, priceLabel, type AdminPricingApi } from "./AdminPricing";
-
 
 function price(overrides: Partial<AdminPriceRow> = {}): AdminPriceRow {
   return {
@@ -42,48 +35,68 @@ function makeApi(overrides: Partial<AdminPricingApi> = {}) {
   return {
     prices: vi.fn().mockResolvedValue([price()]),
     methods: vi.fn().mockResolvedValue([method()]),
-    updatePrice: vi.fn().mockImplementation(
-      async (id: number, body: { amount_uzs: number; active: boolean }) =>
-        price({ id, ...body }),
-    ),
+    updatePrice: vi
+      .fn()
+      .mockImplementation(
+        async (id: number, body: { amount_uzs: number; active: boolean }) =>
+          price({ id, ...body }),
+      ),
     createMethod: vi.fn().mockResolvedValue(method({ id: 6 })),
-    updateMethod: vi.fn().mockImplementation(
-      async (id: number, body: Record<string, unknown>) =>
-        ({ ...method(), id, ...body }),
-    ),
+    updateMethod: vi
+      .fn()
+      .mockImplementation(async (id: number, body: Record<string, unknown>) => ({
+        ...method(),
+        id,
+        ...body,
+      })),
     ...overrides,
   } as unknown as AdminPricingApi;
 }
 
-
 describe("narx nomlari o'zbekcha", () => {
   it("obuna tariflari tushunarli nom oladi", () => {
     expect(priceLabel(price())).toBe("Plus obuna · 1 oy");
-    expect(priceLabel(price({
-      price_code: "subscription_pro_12m",
-      config: { plan_code: "pro", duration_months: 12 },
-    }))).toBe("Pro obuna · 12 oy");
+    expect(
+      priceLabel(
+        price({
+          price_code: "subscription_pro_12m",
+          config: { plan_code: "pro", duration_months: 12 },
+        }),
+      ),
+    ).toBe("Pro obuna · 12 oy");
   });
 
   it("reklama va e'lon ham tarjima qilinadi", () => {
-    expect(priceLabel(price({
-      price_code: "advertisement_district_day",
-      service_type: "advertisement",
-      config: {},
-    }))).toBe("Reklama · tumanda · bir kun");
-    expect(priceLabel(price({
-      price_code: "listing_publish",
-      service_type: "listing",
-      config: {},
-    }))).toBe("E’lon joylash");
+    expect(
+      priceLabel(
+        price({
+          price_code: "advertisement_district_day",
+          service_type: "advertisement",
+          config: {},
+        }),
+      ),
+    ).toBe("Reklama · tumanda · bir kun");
+    expect(
+      priceLabel(
+        price({
+          price_code: "listing_publish",
+          service_type: "listing",
+          config: {},
+        }),
+      ),
+    ).toBe("E’lon joylash");
   });
 
   it("notanish kod bo'lsa kodning o'zi qoladi", () => {
-    expect(priceLabel(price({
-      price_code: "kelajakdagi_tarif",
-      service_type: "listing",
-      config: {},
-    }))).toBe("kelajakdagi_tarif");
+    expect(
+      priceLabel(
+        price({
+          price_code: "kelajakdagi_tarif",
+          service_type: "listing",
+          config: {},
+        }),
+      ),
+    ).toBe("kelajakdagi_tarif");
   });
 
   it("ro'yxatda kod emas, nom ko'rsatiladi", async () => {
@@ -94,20 +107,16 @@ describe("narx nomlari o'zbekcha", () => {
   });
 });
 
-
 /** Narx qatorlarida ham "Saqlash" bor — formani ajratib olamiz. */
 function methodForm() {
   return within(screen.getByRole("group", { name: "To‘lov usuli formasi" }));
 }
 
-
 describe("to'lov rekvizitlarini tahrirlash", () => {
   it("har bir usulda tahrirlash tugmasi bor", async () => {
     render(<AdminPricing api={makeApi()} />);
 
-    expect(
-      await screen.findByRole("button", { name: "Tahrirlash" }),
-    ).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Tahrirlash" })).toBeVisible();
   });
 
   it("tahrirlash formasi mavjud qiymatlar bilan ochiladi", async () => {
@@ -115,10 +124,8 @@ describe("to'lov rekvizitlarini tahrirlash", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Tahrirlash" }));
 
     expect(screen.getByLabelText("Usul nomi")).toHaveValue("bunyod");
-    expect(screen.getByLabelText("Qabul qiluvchi"))
-      .toHaveValue("Bunyod Rahimov");
-    expect(screen.getByLabelText("Karta raqami"))
-      .toHaveValue("5614681918687751");
+    expect(screen.getByLabelText("Qabul qiluvchi")).toHaveValue("Bunyod Rahimov");
+    expect(screen.getByLabelText("Karta raqami")).toHaveValue("5614681918687751");
     expect(screen.getByLabelText("Ko‘rsatma")).toHaveValue("Chekni yuboring.");
   });
 
@@ -136,15 +143,16 @@ describe("to'lov rekvizitlarini tahrirlash", () => {
     fireEvent.click(methodForm().getByRole("button", { name: "Saqlash" }));
 
     await waitFor(() => {
-      expect(api.updateMethod).toHaveBeenCalledWith(5, expect.objectContaining({
-        name: "bunyod",
-        recipient_name: "Yangi egasi",
-        details: { card_number: "8600 1234 5678 9012" },
-      }));
+      expect(api.updateMethod).toHaveBeenCalledWith(
+        5,
+        expect.objectContaining({
+          name: "bunyod",
+          recipient_name: "Yangi egasi",
+          details: { card_number: "8600 1234 5678 9012" },
+        }),
+      );
     });
-    expect(
-      await screen.findByText("To‘lov usuli saqlandi ✅"),
-    ).toBeVisible();
+    expect(await screen.findByText("To‘lov usuli saqlandi ✅")).toBeVisible();
   });
 
   it("nomsiz usul saqlanmaydi", async () => {
@@ -172,10 +180,12 @@ describe("to'lov rekvizitlarini tahrirlash", () => {
     fireEvent.click(methodForm().getByRole("button", { name: "Saqlash" }));
 
     await waitFor(() => {
-      expect(api.createMethod).toHaveBeenCalledWith(expect.objectContaining({
-        name: "Uzcard",
-        details: { card_number: "8600111122223333" },
-      }));
+      expect(api.createMethod).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Uzcard",
+          details: { card_number: "8600111122223333" },
+        }),
+      );
     });
     expect(api.updateMethod).not.toHaveBeenCalled();
   });
@@ -191,13 +201,15 @@ describe("to'lov rekvizitlarini tahrirlash", () => {
     fireEvent.click(methodForm().getByRole("button", { name: "Saqlash" }));
 
     await waitFor(() => {
-      expect(api.updateMethod).toHaveBeenCalledWith(5, expect.objectContaining({
-        details: {},
-      }));
+      expect(api.updateMethod).toHaveBeenCalledWith(
+        5,
+        expect.objectContaining({
+          details: {},
+        }),
+      );
     });
   });
 });
-
 
 describe("tugmalar faqat o'z qatorida kutadi", () => {
   it("bir narx saqlanayotganda boshqasi o'chmaydi", async () => {
@@ -213,9 +225,10 @@ describe("tugmalar faqat o'z qatorida kutadi", () => {
         }),
       ]),
       updatePrice: vi.fn().mockImplementation(
-        () => new Promise<AdminPriceRow>((resolve) => {
-          deferred.resolve = resolve;
-        }),
+        () =>
+          new Promise<AdminPriceRow>((resolve) => {
+            deferred.resolve = resolve;
+          }),
       ),
     });
     render(<AdminPricing api={api} />);
@@ -242,9 +255,7 @@ describe("tugmalar faqat o'z qatorida kutadi", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(
-      await screen.findByText("Narx noldan katta bo‘lishi kerak."),
-    ).toBeVisible();
+    expect(await screen.findByText("Narx noldan katta bo‘lishi kerak.")).toBeVisible();
     expect(api.updatePrice).not.toHaveBeenCalled();
   });
 });

@@ -6,8 +6,8 @@ import { StoryComposerV1656 } from "./StoryComposerV1656";
 import { StoryViewerV1656 } from "./StoryViewerV1656";
 import "./StoriesV1656.css";
 
-
-export type OwnerStoriesApi = Pick<ApiClient,
+export type OwnerStoriesApi = Pick<
+  ApiClient,
   | "getMyStories"
   | "createStory"
   | "recordStoryView"
@@ -27,7 +27,6 @@ type Props = {
   onBack(): void;
 };
 
-
 export function OwnerStoriesV1656({
   actor,
   api,
@@ -41,22 +40,27 @@ export function OwnerStoriesV1656({
   const [composer, setComposer] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const actions = useMemo(() => ({
-    createStory: api.createStory.bind(api),
-    createUploadGrant: api.createUploadGrant.bind(api),
-    uploadGrantedFile: api.uploadGrantedFile.bind(api),
-    recordStoryView: api.recordStoryView.bind(api),
-    getStoryViewers: api.getStoryViewers.bind(api),
-    deleteStory: api.deleteStory.bind(api),
-    reportStory: api.reportStory.bind(api),
-  }), [api]);
+  const actions = useMemo(
+    () => ({
+      createStory: api.createStory.bind(api),
+      createUploadGrant: api.createUploadGrant.bind(api),
+      uploadGrantedFile: api.uploadGrantedFile.bind(api),
+      recordStoryView: api.recordStoryView.bind(api),
+      getStoryViewers: api.getStoryViewers.bind(api),
+      deleteStory: api.deleteStory.bind(api),
+      reportStory: api.reportStory.bind(api),
+    }),
+    [api],
+  );
 
   const load = useCallback(async () => {
     try {
       setStories(await api.getMyStories("all"));
       setError("");
     } catch (reasonValue) {
-      setError(reasonValue instanceof Error ? reasonValue.message : "Istoriyalar yuklanmadi.");
+      setError(
+        reasonValue instanceof Error ? reasonValue.message : "Istoriyalar yuklanmadi.",
+      );
     }
   }, [api]);
 
@@ -83,25 +87,50 @@ export function OwnerStoriesV1656({
   return (
     <main className="owner-stories-v1656">
       <header className="owner-stories__header">
-        <button type="button" onClick={onBack}>← Orqaga</button>
+        <button type="button" onClick={onBack}>
+          ← Orqaga
+        </button>
         <h1>Istoriyalarim</h1>
-        <button type="button" onClick={() => setComposer(true)}>+ Istoriya</button>
+        <button type="button" onClick={() => setComposer(true)}>
+          + Istoriya
+        </button>
       </header>
       <div className="owner-stories__tabs">
-        <button className={tab === "active" ? "is-active" : ""} type="button" onClick={() => setTab("active")}>Faol</button>
-        <button className={tab === "archived" ? "is-active" : ""} type="button" onClick={() => setTab("archived")}>Arxiv</button>
+        <button
+          className={tab === "active" ? "is-active" : ""}
+          type="button"
+          onClick={() => setTab("active")}
+        >
+          Faol
+        </button>
+        <button
+          className={tab === "archived" ? "is-active" : ""}
+          type="button"
+          onClick={() => setTab("archived")}
+        >
+          Arxiv
+        </button>
       </div>
-      {error ? <p className="story-v1656__error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="story-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
       {visible.length ? (
         <div className="owner-stories__grid">
           {visible.map((story, index) => (
             <button key={story.id} type="button" onClick={() => setViewerIndex(index)}>
-              <img alt={story.caption || "Istoriya"} src={story.thumbnail_url || story.media_url} />
+              <img
+                alt={story.caption || "Istoriya"}
+                src={story.thumbnail_url || story.media_url}
+              />
               <span>{story.view_count} ko‘rish</span>
             </button>
           ))}
         </div>
-      ) : <p className="owner-stories__empty">Bu bo‘limda istoriya yo‘q.</p>}
+      ) : (
+        <p className="owner-stories__empty">Bu bo‘limda istoriya yo‘q.</p>
+      )}
       {composer ? (
         <StoryComposerV1656
           createStory={actions.createStory}
@@ -121,7 +150,9 @@ export function OwnerStoriesV1656({
           recordView={actions.recordStoryView}
           reportStory={actions.reportStory}
           onClose={() => setViewerIndex(null)}
-          onDeleted={(storyId) => setStories((current) => current.filter((item) => item.id !== storyId))}
+          onDeleted={(storyId) =>
+            setStories((current) => current.filter((item) => item.id !== storyId))
+          }
         />
       ) : null}
     </main>

@@ -169,7 +169,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(16px);
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
 }
 
 .business-medical-v1656 .app-toast.on {
@@ -204,7 +206,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.96);
-  transition: opacity 0.18s, transform 0.18s;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
 }
 
 .business-medical-v1656 .app-confirm.on {

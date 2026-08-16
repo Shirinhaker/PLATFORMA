@@ -14,7 +14,11 @@ body {
   margin: 0;
   background: var(--admin-bg);
   color: var(--admin-text);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   font-size: 14px;
 }
 
@@ -134,8 +138,14 @@ button.compact {
   font-size: 12px;
 }
 
-.admin-taxi-topup { max-width: 560px; margin-bottom: 18px; }
-.admin-taxi-topup button { width: 100%; margin-top: 14px; }
+.admin-taxi-topup {
+  max-width: 560px;
+  margin-bottom: 18px;
+}
+.admin-taxi-topup button {
+  width: 100%;
+  margin-top: 14px;
+}
 
 .message {
   margin-top: 12px;

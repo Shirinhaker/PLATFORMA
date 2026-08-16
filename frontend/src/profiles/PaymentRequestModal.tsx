@@ -1,17 +1,15 @@
 import { useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type {
-  PaymentCatalog,
-  PaymentMethod,
-} from "../api/types";
+import type { PaymentCatalog, PaymentMethod } from "../api/types";
 import { uploadPaymentReceipt } from "../payments/payment-receipt";
 import "./PaymentRequestModal.css";
 
-
 export type PaymentRequestApi = Pick<
   ApiClient,
-  "getPaymentCatalog" | "createPaymentRequest" | "createUploadGrant"
+  | "getPaymentCatalog"
+  | "createPaymentRequest"
+  | "createUploadGrant"
   | "uploadGrantedFile"
 >;
 
@@ -35,7 +33,6 @@ export type PaymentTarget = {
 
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
-
 function money(value: number) {
   return Number(value || 0).toLocaleString("uz-UZ");
 }
@@ -57,10 +54,8 @@ export function paymentMethodText(method: PaymentMethod | undefined) {
     }
   }
   if (method.instructions) lines.push(method.instructions);
-  return lines.join("\n")
-    || "Rekvizitlar administrator tomonidan kiritiladi.";
+  return lines.join("\n") || "Rekvizitlar administrator tomonidan kiritiladi.";
 }
-
 
 export function PaymentRequestModal({
   api,
@@ -75,9 +70,7 @@ export function PaymentRequestModal({
   onClose(): void;
   onSubmitted(): void;
 }) {
-  const price = catalog.prices.find(
-    (row) => row.price_code === target.priceCode,
-  );
+  const price = catalog.prices.find((row) => row.price_code === target.priceCode);
   const quantity = Math.max(1, Math.trunc(target.quantity ?? 1));
   const catalogAmount = (price?.amount_uzs ?? 0) * quantity;
   const amount = Number.isFinite(target.expectedAmountUzs)
@@ -176,13 +169,13 @@ export function PaymentRequestModal({
             onChange={(event) => setMethodId(Number(event.target.value))}
           >
             {catalog.methods.map((method) => (
-              <option key={method.id} value={method.id}>{method.name}</option>
+              <option key={method.id} value={method.id}>
+                {method.name}
+              </option>
             ))}
           </select>
           <div className="payment-method-details">
-            {paymentMethodText(
-              catalog.methods.find((row) => row.id === methodId),
-            )}
+            {paymentMethodText(catalog.methods.find((row) => row.id === methodId))}
           </div>
         </div>
 

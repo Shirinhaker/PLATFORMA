@@ -34,7 +34,6 @@ from app.admin.moderation_model import (
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
@@ -69,20 +68,25 @@ class AdminModerationService:
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         _require(
-            actor_type, ACTOR_TYPES, "admin_actor_type_invalid",
+            actor_type,
+            ACTOR_TYPES,
+            "admin_actor_type_invalid",
             "Akkaunt turi noto‘g‘ri.",
         )
         if restriction and restriction not in RESTRICTIONS:
-            raise ApiError(
-                400, "admin_restriction_invalid", "Cheklov turi noto‘g‘ri."
-            )
+            raise ApiError(400, "admin_restriction_invalid", "Cheklov turi noto‘g‘ri.")
         profile = UserProfile if actor_type == "user" else BusinessProfile
         account_type = (
             AccountType.USER if actor_type == "user" else AccountType.BUSINESS
         )
         statement = (
-            select(Account.id, Account.login, Account.telegram_user_id,
-                   profile.name, profile.phone)
+            select(
+                Account.id,
+                Account.login,
+                Account.telegram_user_id,
+                profile.name,
+                profile.phone,
+            )
             .join(profile, profile.account_id == Account.id, isouter=True)
             .where(Account.account_type == account_type)
         )
@@ -97,9 +101,7 @@ class AdminModerationService:
             if needle.isdigit():
                 conditions.append(Account.telegram_user_id == int(needle))
             statement = statement.where(or_(*conditions))
-        statement = statement.order_by(Account.id.desc()).limit(
-            max(1, min(200, limit))
-        )
+        statement = statement.order_by(Account.id.desc()).limit(max(1, min(200, limit)))
 
         async with self._session_factory() as session:
             rows = (await session.execute(statement)).all()
@@ -115,53 +117,65 @@ class AdminModerationService:
             marks = active.get(account_id, ())
             if restriction and restriction not in marks:
                 continue
-            result.append({
-                "actor_type": actor_type,
-                "account_id": account_id,
-                "login": login,
-                "telegram_user_id": telegram_id,
-                "name": name or "",
-                "phone": phone or "",
-                "restrictions": sorted(marks),
-            })
+            result.append(
+                {
+                    "actor_type": actor_type,
+                    "account_id": account_id,
+                    "login": login,
+                    "telegram_user_id": telegram_id,
+                    "name": name or "",
+                    "phone": phone or "",
+                    "restrictions": sorted(marks),
+                }
+            )
         return result
 
     async def account_detail(
         self, *, actor_type: str, account_id: int
     ) -> dict[str, Any]:
         _require(
-            actor_type, ACTOR_TYPES, "admin_actor_type_invalid",
+            actor_type,
+            ACTOR_TYPES,
+            "admin_actor_type_invalid",
             "Akkaunt turi noto‘g‘ri.",
         )
         profile = UserProfile if actor_type == "user" else BusinessProfile
         async with self._session_factory() as session:
-            row = (await session.execute(
-                select(Account, profile)
-                .join(profile, profile.account_id == Account.id, isouter=True)
-                .where(Account.id == account_id)
-            )).first()
+            row = (
+                await session.execute(
+                    select(Account, profile)
+                    .join(profile, profile.account_id == Account.id, isouter=True)
+                    .where(Account.id == account_id)
+                )
+            ).first()
             if row is None:
-                raise ApiError(
-                    404, "admin_account_not_found", "Akkaunt topilmadi."
-                )
+                raise ApiError(404, "admin_account_not_found", "Akkaunt topilmadi.")
             account, profile_row = row
-            restrictions = list((await session.scalars(
-                select(AccountRestriction)
-                .where(
-                    AccountRestriction.actor_type == actor_type,
-                    AccountRestriction.actor_id == account_id,
-                )
-                .order_by(AccountRestriction.id.desc())
-            )).all())
-            notes = list((await session.scalars(
-                select(AdminAccountNote)
-                .where(
-                    AdminAccountNote.actor_type == actor_type,
-                    AdminAccountNote.actor_id == account_id,
-                )
-                .order_by(AdminAccountNote.id.desc())
-                .limit(50)
-            )).all())
+            restrictions = list(
+                (
+                    await session.scalars(
+                        select(AccountRestriction)
+                        .where(
+                            AccountRestriction.actor_type == actor_type,
+                            AccountRestriction.actor_id == account_id,
+                        )
+                        .order_by(AccountRestriction.id.desc())
+                    )
+                ).all()
+            )
+            notes = list(
+                (
+                    await session.scalars(
+                        select(AdminAccountNote)
+                        .where(
+                            AdminAccountNote.actor_type == actor_type,
+                            AdminAccountNote.actor_id == account_id,
+                        )
+                        .order_by(AdminAccountNote.id.desc())
+                        .limit(50)
+                    )
+                ).all()
+            )
             detail = {
                 "actor_type": actor_type,
                 "account_id": account.id,
@@ -210,18 +224,20 @@ class AdminModerationService:
         meta: dict[str, str] | None,
     ) -> dict[str, Any]:
         _require(
-            actor_type, ACTOR_TYPES, "admin_actor_type_invalid",
+            actor_type,
+            ACTOR_TYPES,
+            "admin_actor_type_invalid",
             "Akkaunt turi noto‘g‘ri.",
         )
         _require(
-            restriction, RESTRICTIONS, "admin_restriction_invalid",
+            restriction,
+            RESTRICTIONS,
+            "admin_restriction_invalid",
             "Cheklov turi noto‘g‘ri.",
         )
         reason = reason.strip()
         if not reason:
-            raise ApiError(
-                400, "admin_reason_required", "Sabab kiritilishi shart."
-            )
+            raise ApiError(400, "admin_reason_required", "Sabab kiritilishi shart.")
         now = self._now()
         async with self._session_factory() as session:
             await self._require_account(session, actor_type, account_id)
@@ -278,18 +294,20 @@ class AdminModerationService:
         meta: dict[str, str] | None,
     ) -> dict[str, Any]:
         _require(
-            actor_type, ACTOR_TYPES, "admin_actor_type_invalid",
+            actor_type,
+            ACTOR_TYPES,
+            "admin_actor_type_invalid",
             "Akkaunt turi noto‘g‘ri.",
         )
         _require(
-            restriction, RESTRICTIONS, "admin_restriction_invalid",
+            restriction,
+            RESTRICTIONS,
+            "admin_restriction_invalid",
             "Cheklov turi noto‘g‘ri.",
         )
         reason = reason.strip()
         if not reason:
-            raise ApiError(
-                400, "admin_reason_required", "Sabab kiritilishi shart."
-            )
+            raise ApiError(400, "admin_reason_required", "Sabab kiritilishi shart.")
         now = self._now()
         async with self._session_factory() as session:
             row = await session.scalar(
@@ -338,7 +356,9 @@ class AdminModerationService:
         meta: dict[str, str] | None,
     ) -> dict[str, Any]:
         _require(
-            actor_type, ACTOR_TYPES, "admin_actor_type_invalid",
+            actor_type,
+            ACTOR_TYPES,
+            "admin_actor_type_invalid",
             "Akkaunt turi noto‘g‘ri.",
         )
         note = note.strip()
@@ -390,18 +410,20 @@ class AdminModerationService:
         meta: dict[str, str] | None,
     ) -> dict[str, Any]:
         _require(
-            content_kind, CONTENT_KINDS, "admin_content_kind_invalid",
+            content_kind,
+            CONTENT_KINDS,
+            "admin_content_kind_invalid",
             "Kontent turi noto‘g‘ri.",
         )
         _require(
-            status, CONTENT_STATUSES, "admin_content_status_invalid",
+            status,
+            CONTENT_STATUSES,
+            "admin_content_status_invalid",
             "Kontent holati noto‘g‘ri.",
         )
         reason = reason.strip()
         if status != "visible" and not reason:
-            raise ApiError(
-                400, "admin_reason_required", "Sabab kiritilishi shart."
-            )
+            raise ApiError(400, "admin_reason_required", "Sabab kiritilishi shart.")
         now = self._now()
         async with self._session_factory() as session:
             previous = await self._content_status(
@@ -443,7 +465,9 @@ class AdminModerationService:
         self, *, content_kind: str, content_id: int
     ) -> dict[str, Any]:
         _require(
-            content_kind, CONTENT_KINDS, "admin_content_kind_invalid",
+            content_kind,
+            CONTENT_KINDS,
+            "admin_content_kind_invalid",
             "Kontent turi noto‘g‘ri.",
         )
         async with self._session_factory() as session:
@@ -456,15 +480,19 @@ class AdminModerationService:
                 .order_by(ContentModeration.id.desc())
                 .limit(1)
             )
-            history = list((await session.scalars(
-                select(ContentModeration)
-                .where(
-                    ContentModeration.content_kind == content_kind,
-                    ContentModeration.content_id == content_id,
-                )
-                .order_by(ContentModeration.id.desc())
-                .limit(20)
-            )).all())
+            history = list(
+                (
+                    await session.scalars(
+                        select(ContentModeration)
+                        .where(
+                            ContentModeration.content_kind == content_kind,
+                            ContentModeration.content_id == content_id,
+                        )
+                        .order_by(ContentModeration.id.desc())
+                        .limit(20)
+                    )
+                ).all()
+            )
             detail = {
                 "content_kind": content_kind,
                 "content_id": content_id,
@@ -513,9 +541,7 @@ class AdminModerationService:
             )
         )
         if found is None:
-            raise ApiError(
-                404, "admin_account_not_found", "Akkaunt topilmadi."
-            )
+            raise ApiError(404, "admin_account_not_found", "Akkaunt topilmadi.")
 
     @staticmethod
     async def _active_restrictions(
@@ -523,14 +549,17 @@ class AdminModerationService:
     ) -> dict[int, set[str]]:
         if not actor_ids:
             return {}
-        rows = (await session.execute(
-            select(AccountRestriction.actor_id, AccountRestriction.restriction)
-            .where(
-                AccountRestriction.actor_type == actor_type,
-                AccountRestriction.actor_id.in_(actor_ids),
-                AccountRestriction.status == "active",
+        rows = (
+            await session.execute(
+                select(
+                    AccountRestriction.actor_id, AccountRestriction.restriction
+                ).where(
+                    AccountRestriction.actor_type == actor_type,
+                    AccountRestriction.actor_id.in_(actor_ids),
+                    AccountRestriction.status == "active",
+                )
             )
-        )).all()
+        ).all()
         grouped: dict[int, set[str]] = {}
         for actor_id, restriction in rows:
             grouped.setdefault(actor_id, set()).add(restriction)

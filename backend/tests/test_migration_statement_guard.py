@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 
-
 VERSIONS = Path(__file__).resolve().parents[1] / "migrations" / "versions"
 # Satr ichidagi `;` dan keyin yana SQL kelsa — ikkinchi buyruq.
 TRAILING_SQL = re.compile(r";\s*\S")
@@ -32,9 +31,7 @@ def _execute_arguments(tree: ast.AST):
         if not isinstance(function, ast.Attribute) or function.attr != "execute":
             continue
         for argument in node.args:
-            if isinstance(argument, ast.Constant) and isinstance(
-                argument.value, str
-            ):
+            if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
                 yield argument.lineno, argument.value
 
 
@@ -50,11 +47,7 @@ def _statement_sources(path: Path):
             continue
         if not isinstance(node.value.value, str):
             continue
-        names = [
-            target.id
-            for target in node.targets
-            if isinstance(target, ast.Name)
-        ]
+        names = [target.id for target in node.targets if isinstance(target, ast.Name)]
         if any(name.endswith("SQL") for name in names):
             yield node.lineno, node.value.value
 

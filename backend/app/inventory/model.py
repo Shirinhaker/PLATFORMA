@@ -49,9 +49,7 @@ class InventoryItem(Base):
         Numeric(18, 3), nullable=False, default=0
     )
     cost_price: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    min_qty: Mapped[Decimal] = mapped_column(
-        Numeric(18, 3), nullable=False, default=0
-    )
+    min_qty: Mapped[Decimal] = mapped_column(Numeric(18, 3), nullable=False, default=0)
     fifo_initialized: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True
     )
@@ -111,9 +109,7 @@ class StockBatch(Base):
             "qty_remaining >= 0 AND qty_remaining <= qty_in",
             name="ck_inventory_stock_batches_remaining",
         ),
-        CheckConstraint(
-            "unit_cost >= 0", name="ck_inventory_stock_batches_unit_cost"
-        ),
+        CheckConstraint("unit_cost >= 0", name="ck_inventory_stock_batches_unit_cost"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
@@ -236,8 +232,12 @@ class ProductionInput(Base):
     __tablename__ = "inventory_production_inputs"
     __table_args__ = (
         CheckConstraint("qty > 0", name="ck_inventory_production_inputs_qty"),
-        CheckConstraint("unit_cost >= 0", name="ck_inventory_production_inputs_unit_cost"),
-        CheckConstraint("total_cost >= 0", name="ck_inventory_production_inputs_total_cost"),
+        CheckConstraint(
+            "unit_cost >= 0", name="ck_inventory_production_inputs_unit_cost"
+        ),
+        CheckConstraint(
+            "total_cost >= 0", name="ck_inventory_production_inputs_total_cost"
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)

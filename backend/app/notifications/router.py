@@ -24,7 +24,6 @@ from app.notifications.schemas import (
 )
 from app.notifications.service import NotificationService
 
-
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

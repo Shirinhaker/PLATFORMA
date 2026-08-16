@@ -21,7 +21,6 @@ from app.education.cabinet_service import EducationCabinetService
 from app.education.management_repository import EducationManagementRepository
 from app.education.model import (
     EducationAttendance,
-    EducationGroup,
     EducationPayment,
     EducationStudent,
     EducationTeacher,
@@ -51,10 +50,6 @@ from app.education.schemas import (
     EducationPayrollHistoryRead,
     EducationPayrollRead,
     EducationPayrollTeacherRead,
-    EducationTeacherCreated,
-    EducationTeacherRead,
-    EducationTeacherUpdated,
-    EducationTeacherWrite,
     EducationStudentAttendanceCounts,
     EducationStudentAttendanceSummary,
     EducationStudentCardRead,
@@ -65,10 +60,13 @@ from app.education.schemas import (
     EducationStudentTransferred,
     EducationStudentTransferWrite,
     EducationStudentWrite,
+    EducationTeacherCreated,
+    EducationTeacherRead,
+    EducationTeacherUpdated,
+    EducationTeacherWrite,
     EducationUpdated,
 )
 from app.expenses.model import Expense
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
@@ -322,7 +320,9 @@ class EducationManagementService:
                 student_id=student_id,
             )
             if student is None:
-                raise ApiError(404, "education_student_not_found", "O'quvchi topilmadi.")
+                raise ApiError(
+                    404, "education_student_not_found", "O'quvchi topilmadi."
+                )
             groups = {
                 group.id: group
                 for group in await self._groups_in_session(
@@ -338,7 +338,7 @@ class EducationManagementService:
                 student_ids=[student.id],
                 start_date="0001-01-01",
             )
-            counts = {name: 0 for name in ATTENDANCE_STATUSES}
+            counts = dict.fromkeys(ATTENDANCE_STATUSES, 0)
             for row in attendances:
                 if row.attendance_status in counts:
                     counts[row.attendance_status] += 1
@@ -350,16 +350,25 @@ class EducationManagementService:
                 student_id=student.id,
             )
             active_payments = [row for row in all_payments if row.voided_at is None]
-            month_attendance = [row for row in attendances if row.lesson_date.startswith(month)]
-            month_payments = [row for row in active_payments if row.payment_month == month]
+            month_attendance = [
+                row for row in attendances if row.lesson_date.startswith(month)
+            ]
+            month_payments = [
+                row for row in active_payments if row.payment_month == month
+            ]
             expected = student.monthly_fee
-            if group and group.billing_type == "attendance" and group.package_lessons > 0:
+            if (
+                group
+                and group.billing_type == "attendance"
+                and group.package_lessons > 0
+            ):
                 lessons = sum(
                     row.attendance_status in CHARGEABLE_STATUSES
                     for row in month_attendance
                 )
                 expected = round(
-                    group.package_price / group.package_lessons
+                    group.package_price
+                    / group.package_lessons
                     * min(lessons, group.package_lessons)
                 )
             paid = sum(row.amount for row in month_payments)
@@ -497,7 +506,9 @@ class EducationManagementService:
                     student_id=student.id,
                     full_name=student.full_name,
                     phone=student.phone,
-                    attendance_status=(attendance.attendance_status if attendance else ""),
+                    attendance_status=(
+                        attendance.attendance_status if attendance else ""
+                    ),
                     attendance_note=(attendance.note if attendance else ""),
                 )
                 for student, attendance in rows
@@ -529,9 +540,7 @@ class EducationManagementService:
                     lock=True,
                 )
                 if group is None:
-                    raise ApiError(
-                        404, "education_group_not_found", "Guruh topilmadi."
-                    )
+                    raise ApiError(404, "education_group_not_found", "Guruh topilmadi.")
                 roster = await self._repository.active_students_with_groups(
                     session,
                     business_account_id=business_account_id,
@@ -638,16 +647,20 @@ class EducationManagementService:
                     attendances=attendance_by_student.get(student.id, []),
                     payments=payments_by_student.get(student.id, []),
                 )
-                output.append(EducationPaymentControlStudentRead(
-                    id=student.id,
-                    group_id=student.group_id,
-                    full_name=student.full_name,
-                    phone=student.phone,
-                    parent_phone=student.parent_phone,
-                    group_name=group.name if group else "",
-                    **values,
-                ))
-                setattr(summary, values["status"], getattr(summary, values["status"]) + 1)
+                output.append(
+                    EducationPaymentControlStudentRead(
+                        id=student.id,
+                        group_id=student.group_id,
+                        full_name=student.full_name,
+                        phone=student.phone,
+                        parent_phone=student.parent_phone,
+                        group_name=group.name if group else "",
+                        **values,
+                    )
+                )
+                setattr(
+                    summary, values["status"], getattr(summary, values["status"]) + 1
+                )
                 summary.total_debt += values["debt"]
             await session.rollback()
             return EducationPaymentControlRead(
@@ -702,7 +715,8 @@ class EducationManagementService:
             students: list[EducationPaymentStudentRead] = []
             for student, group in rows:
                 billing_type = (
-                    group.billing_type if group and group.billing_type == "attendance"
+                    group.billing_type
+                    if group and group.billing_type == "attendance"
                     else "monthly"
                 )
                 lessons = chargeable.get(student.id, 0)
@@ -716,21 +730,23 @@ class EducationManagementService:
                     expected = student.monthly_fee
                     per_lesson = 0
                 paid_amount = paid.get(student.id, 0)
-                students.append(EducationPaymentStudentRead(
-                    student_id=student.id,
-                    full_name=student.full_name,
-                    phone=student.phone,
-                    monthly_fee=student.monthly_fee,
-                    group_name=group.name if group else "",
-                    billing_type=billing_type,
-                    package_lessons=package_lessons,
-                    package_price=package_price,
-                    chargeable_lessons=lessons,
-                    per_lesson_price=per_lesson,
-                    expected=expected,
-                    paid=paid_amount,
-                    debt=max(0, expected - paid_amount),
-                ))
+                students.append(
+                    EducationPaymentStudentRead(
+                        student_id=student.id,
+                        full_name=student.full_name,
+                        phone=student.phone,
+                        monthly_fee=student.monthly_fee,
+                        group_name=group.name if group else "",
+                        billing_type=billing_type,
+                        package_lessons=package_lessons,
+                        package_price=package_price,
+                        chargeable_lessons=lessons,
+                        per_lesson_price=per_lesson,
+                        expected=expected,
+                        paid=paid_amount,
+                        debt=max(0, expected - paid_amount),
+                    )
+                )
             history_rows = await self._repository.payment_history(
                 session,
                 business_account_id=business_account_id,
@@ -859,7 +875,9 @@ class EducationManagementService:
                     debtor_id=None,
                     debtor_name_snapshot="",
                     legacy_debtor_source_id=None,
-                    note=("Ta'lim to'lovi" + (f": {body.note}" if body.note else ""))[:200],
+                    note=("Ta'lim to'lovi" + (f": {body.note}" if body.note else ""))[
+                        :200
+                    ],
                     created_by_staff_id=actor_staff_id,
                     actor_name_snapshot="",
                     waiter_staff_id=None,
@@ -954,9 +972,9 @@ class EducationManagementService:
                             business_account_id=business_account_id,
                             receipt_id=receipt.id,
                         )
-                        receipt.note = (
-                            "Ta'lim to'lovi bekor qilindi: " + body.reason
-                        )[:200]
+                        receipt.note = ("Ta'lim to'lovi bekor qilindi: " + body.reason)[
+                            :200
+                        ]
                 await session.flush()
                 await session.commit()
                 return EducationPaymentVoided()
@@ -977,7 +995,9 @@ class EducationManagementService:
                 session,
                 business_account_id=business_account_id,
             )
-            result = [_teacher_read(teacher, group_count) for teacher, group_count in rows]
+            result = [
+                _teacher_read(teacher, group_count) for teacher, group_count in rows
+            ]
             await session.rollback()
             return result
 
@@ -1102,7 +1122,9 @@ class EducationManagementService:
             lesson_counts: dict[int, int] = {}
             for teacher_id, _group_id, _lesson_date in lesson_rows:
                 if teacher_id is not None:
-                    lesson_counts[int(teacher_id)] = lesson_counts.get(int(teacher_id), 0) + 1
+                    lesson_counts[int(teacher_id)] = (
+                        lesson_counts.get(int(teacher_id), 0) + 1
+                    )
             total_rows = await self._repository.teacher_payment_totals(
                 session,
                 business_account_id=business_account_id,
@@ -1122,16 +1144,18 @@ class EducationManagementService:
                     else lessons * teacher.salary_amount
                 )
                 paid_amount = paid.get(teacher.id, 0)
-                output.append(EducationPayrollTeacherRead(
-                    id=teacher.id,
-                    full_name=teacher.full_name,
-                    salary_type=teacher.salary_type,
-                    salary_amount=teacher.salary_amount,
-                    lesson_count=lessons,
-                    expected=expected,
-                    paid=paid_amount,
-                    debt=max(0, expected - paid_amount),
-                ))
+                output.append(
+                    EducationPayrollTeacherRead(
+                        id=teacher.id,
+                        full_name=teacher.full_name,
+                        salary_type=teacher.salary_type,
+                        salary_amount=teacher.salary_amount,
+                        lesson_count=lessons,
+                        expected=expected,
+                        paid=paid_amount,
+                        debt=max(0, expected - paid_amount),
+                    )
+                )
             history_rows = await self._repository.teacher_payment_history(
                 session,
                 business_account_id=business_account_id,
@@ -1186,7 +1210,11 @@ class EducationManagementService:
                     business_account_id=business_account_id,
                     payment_month=month,
                 )
-                lessons = sum(1 for teacher_id, _group, _day in lesson_rows if teacher_id == teacher.id)
+                lessons = sum(
+                    1
+                    for teacher_id, _group, _day in lesson_rows
+                    if teacher_id == teacher.id
+                )
                 expected = (
                     teacher.salary_amount
                     if teacher.salary_type == "monthly"
@@ -1333,7 +1361,9 @@ class EducationManagementService:
     ):
         profile = await self._repository.profile(session, business_account_id)
         if profile is None:
-            raise ApiError(404, "business_profile_not_found", "Biznes profil topilmadi.")
+            raise ApiError(
+                404, "business_profile_not_found", "Biznes profil topilmadi."
+            )
         if profile.direction not in EDUCATION_DIRECTIONS:
             raise ApiError(
                 403,
@@ -1442,7 +1472,8 @@ def _billing_status(student, group, *, today, attendances, payments):
         package_price = group.package_price
         chargeable = sorted(
             (
-                row for row in attendances
+                row
+                for row in attendances
                 if row.lesson_date >= start.isoformat()
                 and row.attendance_status in CHARGEABLE_STATUSES
             ),
@@ -1459,18 +1490,21 @@ def _billing_status(student, group, *, today, attendances, payments):
         debt = max(0, expected - paid_total)
         payable_now = (
             min(debt, package_price - (paid_total % package_price))
-            if debt and package_price else debt
+            if debt and package_price
+            else debt
         )
-        paid_packages = min(completed, paid_total // package_price) if package_price else 0
+        paid_packages = (
+            min(completed, paid_total // package_price) if package_price else 0
+        )
         if debt and package_lessons:
             offset = paid_packages * package_lessons + package_lessons - 1
             next_due = (
                 chargeable[offset].lesson_date
-                if offset < len(chargeable) else today.isoformat()
+                if offset < len(chargeable)
+                else today.isoformat()
             )
         lessons_remaining = (
-            package_lessons - (lessons_done % package_lessons)
-            if package_lessons else 0
+            package_lessons - (lessons_done % package_lessons) if package_lessons else 0
         )
     else:
         fee = student.monthly_fee
@@ -1482,17 +1516,14 @@ def _billing_status(student, group, *, today, attendances, payments):
         expected = len(due_dates) * fee
         first_key = (
             due_dates[0].strftime("%Y-%m")
-            if due_dates else _add_month(start).strftime("%Y-%m")
+            if due_dates
+            else _add_month(start).strftime("%Y-%m")
         )
         paid_total = sum(
-            payment.amount
-            for payment in payments
-            if payment.payment_month >= first_key
+            payment.amount for payment in payments if payment.payment_month >= first_key
         )
         debt = max(0, expected - paid_total)
-        payable_now = (
-            min(debt, fee - (paid_total % fee)) if debt and fee else debt
-        )
+        payable_now = min(debt, fee - (paid_total % fee)) if debt and fee else debt
         if debt and fee and due_dates:
             paid_cycles = min(len(due_dates) - 1, paid_total // fee)
             next_due = due_dates[paid_cycles].isoformat()

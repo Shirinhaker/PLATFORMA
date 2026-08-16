@@ -7,7 +7,6 @@ import {
   UserCabinetDashboardV1656,
 } from "./UserCabinetDashboardV1656";
 
-
 const sections = [
   {
     caption: "Qiziqishlaringizni belgilang",
@@ -16,7 +15,6 @@ const sections = [
     view: "notifications",
   },
 ] as const;
-
 
 function profile(): UserProfile {
   return {
@@ -62,7 +60,6 @@ function profile(): UserProfile {
   } as unknown as UserProfile;
 }
 
-
 describe("v1656 user dashboard parity", () => {
   it("uses the exact v1656 active-order predicate", () => {
     expect(isV1656ActiveUserOrder({ status: "new" })).toBe(true);
@@ -88,15 +85,21 @@ describe("v1656 user dashboard parity", () => {
       />,
     );
 
-    expect(screen.getByRole("button", {
-      name: /Faol buyurtmalar 0 Joriy buyurtmalar/,
-    })).toBeInTheDocument();
-    expect(screen.getByRole("button", {
-      name: /Bildirishnomalar 0 O‘qilmagan xabarlar/,
-    })).toBeInTheDocument();
-    expect(screen.getByRole("button", {
-      name: "🏪 Biznes kabinetga o‘tish",
-    })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Faol buyurtmalar 0 Joriy buyurtmalar/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Bildirishnomalar 0 O‘qilmagan xabarlar/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "🏪 Biznes kabinetga o‘tish",
+      }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("5")).not.toBeInTheDocument();
   });
 });

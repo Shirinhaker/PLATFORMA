@@ -11,7 +11,6 @@ from app.education.model import (
 )
 from app.education.router import router as education_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0021_education_statistics.py"
 MAIN = ROOT / "backend/app/main.py"
@@ -58,13 +57,25 @@ def test_models_preserve_v1656_billing_attendance_and_payroll_fields():
     student_columns = EducationStudent.__table__.columns
 
     for name in (
-        "legacy_teacher_id", "teacher_name", "room_name", "capacity",
-        "weekdays", "lesson_from", "lesson_to", "start_date", "end_date",
-        "billing_type", "package_lessons", "package_price",
+        "legacy_teacher_id",
+        "teacher_name",
+        "room_name",
+        "capacity",
+        "weekdays",
+        "lesson_from",
+        "lesson_to",
+        "start_date",
+        "end_date",
+        "billing_type",
+        "package_lessons",
+        "package_price",
     ):
         assert name in group_columns
     for name in (
-        "parent_name", "parent_phone", "birth_date", "payment_start_date",
+        "parent_name",
+        "parent_phone",
+        "birth_date",
+        "payment_start_date",
         "lesson_package_override",
     ):
         assert name in student_columns
@@ -83,4 +94,6 @@ def test_typed_education_statistics_api_is_wired_into_the_application():
     assert ("/api/v1/education/statistics", "GET") in routes
 
     source = MAIN.read_text(encoding="utf-8")
-    assert "app.state.education_statistics_service = EducationStatisticsService(" in source
+    assert (
+        "app.state.education_statistics_service = EducationStatisticsService(" in source
+    )

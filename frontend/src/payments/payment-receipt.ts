@@ -1,12 +1,10 @@
 import type { ApiClient } from "../api/client";
 import type { PaymentReceiptRef } from "../api/types";
 
-
 export type PaymentReceiptUploadApi = Pick<
   ApiClient,
   "createUploadGrant" | "uploadGrantedFile"
 >;
-
 
 async function fileDigest(file: File) {
   const buffer = await file.arrayBuffer();
@@ -15,7 +13,6 @@ async function fileDigest(file: File) {
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
-
 
 export async function uploadPaymentReceipt(
   api: PaymentReceiptUploadApi,

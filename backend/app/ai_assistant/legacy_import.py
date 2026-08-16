@@ -79,12 +79,14 @@ async def import_ai_chat_history(
             counters["created"] += 1
             continue
 
-        changed = any((
-            existing.role != role,
-            existing.text != text,
-            existing.source != "legacy",
-            existing.created_at != created_at,
-        ))
+        changed = any(
+            (
+                existing.role != role,
+                existing.text != text,
+                existing.source != "legacy",
+                existing.created_at != created_at,
+            )
+        )
         if changed:
             existing.role = role
             existing.text = text
@@ -99,7 +101,10 @@ async def import_ai_chat_history(
 
 
 def _table_exists(source: sqlite3.Connection, table: str) -> bool:
-    return source.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    ).fetchone() is not None
+    return (
+        source.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        is not None
+    )

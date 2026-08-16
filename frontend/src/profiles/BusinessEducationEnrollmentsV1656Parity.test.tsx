@@ -9,7 +9,6 @@ import type {
 } from "../api/business-online-types";
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -120,18 +119,24 @@ function api(
   business = profile(),
   cabinetPayload: Record<string, BusinessOnlineRecord[]> = payload,
 ) {
-  const getBusinessOnlineResource = vi.fn(async (
-    resource: BusinessOnlineResource,
-  ) => ({ resource, items: cabinetPayload[resource] ?? [] }));
-  const applyBusinessOnlineAction = vi.fn(async (
-    resource: BusinessOnlineResource,
-    action: string,
-    body: BusinessOnlineActionInput,
-  ) => ({
+  const getBusinessOnlineResource = vi.fn(async (resource: BusinessOnlineResource) => ({
     resource,
-    item: { id: body.record_id, status: action === "accept" ? "accepted" : "rejected" },
     items: cabinetPayload[resource] ?? [],
   }));
+  const applyBusinessOnlineAction = vi.fn(
+    async (
+      resource: BusinessOnlineResource,
+      action: string,
+      body: BusinessOnlineActionInput,
+    ) => ({
+      resource,
+      item: {
+        id: body.record_id,
+        status: action === "accept" ? "accepted" : "rejected",
+      },
+      items: cabinetPayload[resource] ?? [],
+    }),
+  );
   return {
     getSession: vi.fn().mockResolvedValue(identity),
     getBusinessProfile: vi.fn().mockResolvedValue(business),
@@ -173,7 +178,6 @@ async function openEnrollments(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole("heading", { name: "Kursga yozilishlar" });
 }
 
-
 describe("v1656 kursga yozilishlar pariteti", () => {
   it("faqat Ta'lim faoliyatida Onlaynlashtirish ichida va yangi arizalar soni bilan ko'rinadi", async () => {
     const { unmount } = await renderCabinet();
@@ -189,26 +193,31 @@ describe("v1656 kursga yozilishlar pariteti", () => {
 
     unmount();
     await renderCabinet(profile("Savdo"));
-    expect(screen.queryByRole("button", { name: /Kursga yozilishlar/ }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Kursga yozilishlar/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("cab-education-enrollments matnlari, klasslari va mos guruhlarni aynan ko'rsatadi", async () => {
     const { user, client, container } = await renderCabinet();
     await openEnrollments(user);
 
-    expect(screen.queryByText("v1656’dan ko‘chirilgan haqiqiy ma’lumotlar"))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Yangilash" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByText("v1656’dan ko‘chirilgan haqiqiy ma’lumotlar"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yangilash" })).not.toBeInTheDocument();
     expect(screen.getByText("Kursga yozilish arizalari")).toBeInTheDocument();
-    expect(screen.getByText(
-      "Arizani qabul qilishda o'quvchi biriktiriladigan guruhni tanlang.",
-    )).toHaveClass("idesc");
+    expect(
+      screen.getByText(
+        "Arizani qabul qilishda o'quvchi biriktiriladigan guruhni tanlang.",
+      ),
+    ).toHaveClass("idesc");
     expect(container.querySelector(".form-wrap")).toBeInTheDocument();
     expect(container.querySelector(".ad-tabs")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Yangi" })).toHaveClass("ad-tab", "on");
-    expect(screen.getByRole("button", { name: "Qabul qilingan" })).toHaveClass("ad-tab");
+    expect(screen.getByRole("button", { name: "Qabul qilingan" })).toHaveClass(
+      "ad-tab",
+    );
     expect(screen.getByRole("button", { name: "Rad etilgan" })).toHaveClass("ad-tab");
 
     const card = screen.getByText("Ali Valiyev").closest(".panel-card");
@@ -218,21 +227,27 @@ describe("v1656 kursga yozilishlar pariteti", () => {
     expect(card).toHaveTextContent("Izoh: Kechki guruh");
     const select = within(card as HTMLElement).getByRole("combobox");
     expect(select).toHaveClass("input");
-    expect(within(select).getByRole("option", { name: "Guruhni tanlang" }))
-      .toBeInTheDocument();
-    expect(within(select).getByRole("option", { name: "English A1" }))
-      .toBeInTheDocument();
-    expect(within(select).getByRole("option", { name: "Umumiy guruh" }))
-      .toBeInTheDocument();
-    expect(within(select).queryByRole("option", { name: "Algebra" }))
-      .not.toBeInTheDocument();
-    expect(within(card as HTMLElement).getByRole("button", { name: "Qabul qilish" }))
-      .toHaveClass("btn", "btn-primary");
-    expect(within(card as HTMLElement).getByRole("button", { name: "Rad etish" }))
-      .toHaveClass("btn", "btn-outline");
-    await waitFor(() => expect(client.getBusinessOnlineResource).toHaveBeenCalledWith(
-      "education_groups",
-    ));
+    expect(
+      within(select).getByRole("option", { name: "Guruhni tanlang" }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: "English A1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: "Umumiy guruh" }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).queryByRole("option", { name: "Algebra" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(card as HTMLElement).getByRole("button", { name: "Qabul qilish" }),
+    ).toHaveClass("btn", "btn-primary");
+    expect(
+      within(card as HTMLElement).getByRole("button", { name: "Rad etish" }),
+    ).toHaveClass("btn", "btn-outline");
+    await waitFor(() =>
+      expect(client.getBusinessOnlineResource).toHaveBeenCalledWith("education_groups"),
+    );
     expect(client.getBusinessOnlineResource).toHaveBeenCalledWith(
       "education_enrollments",
     );
@@ -280,10 +295,10 @@ describe("v1656 kursga yozilishlar pariteti", () => {
       emptyPayload,
     );
     await openEnrollments(empty.user);
-    expect(screen.getByRole("heading", { name: "Arizalar yo'q" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Bu bo'limda hozircha ariza mavjud emas."))
-      .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Arizalar yo'q" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Bu bo'limda hozircha ariza mavjud emas."),
+    ).toBeInTheDocument();
   });
 
   it("rad etish tasdig'i va amalini aynan bajaradi", async () => {

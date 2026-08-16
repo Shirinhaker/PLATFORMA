@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime, timedelta
-import math
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,10 +26,9 @@ from app.stories.schemas import (
     StoryCreated,
     StoryGroup,
     StoryRead,
-    StoryViewResult,
     StoryViewerRead,
+    StoryViewResult,
 )
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
@@ -172,9 +171,7 @@ class StoryService:
             except Exception:
                 pass
             if isinstance(exc, (StoryValidationError, UploadRejected)):
-                raise ApiError(
-                    400, "story_upload_rejected", str(exc)
-                ) from None
+                raise ApiError(400, "story_upload_rejected", str(exc)) from None
             raise ApiError(
                 500,
                 "story_processing_failed",
@@ -195,9 +192,9 @@ class StoryService:
                 saved.duration_seconds = processed.duration_seconds
                 saved.status = "active"
                 await session.commit()
-                profile = (
-                    await self._repository.profiles(session, {account_id})
-                ).get(account_id)
+                profile = (await self._repository.profiles(session, {account_id})).get(
+                    account_id
+                )
                 return StoryCreated(
                     story=self._story_read(saved, profile or {}, viewed=False)
                 )
@@ -255,25 +252,27 @@ class StoryService:
                     self._story_read(story, profile, viewed=viewed)
                     for story, viewed in story_rows
                 ]
-                result.append({
-                    "owner_type": profile["kind"],
-                    "owner_public_id": self._public_id(profile, owner_id),
-                    "name": str(profile["name"]),
-                    "avatar_url": self._url(str(profile["avatar_object_key"])),
-                    "is_own": bool(
-                        account_id == owner_id and account_type is not None
-                    ),
-                    "is_followed": owner_id in followed,
-                    "has_unseen": any(not story.viewed for story in stories),
-                    "distance_km": _distance_km(
-                        latitude,
-                        longitude,
-                        profile.get("latitude"),
-                        profile.get("longitude"),
-                    ),
-                    "stories": stories,
-                    "latest_story_at": max(story.created_at for story in stories),
-                })
+                result.append(
+                    {
+                        "owner_type": profile["kind"],
+                        "owner_public_id": self._public_id(profile, owner_id),
+                        "name": str(profile["name"]),
+                        "avatar_url": self._url(str(profile["avatar_object_key"])),
+                        "is_own": bool(
+                            account_id == owner_id and account_type is not None
+                        ),
+                        "is_followed": owner_id in followed,
+                        "has_unseen": any(not story.viewed for story in stories),
+                        "distance_km": _distance_km(
+                            latitude,
+                            longitude,
+                            profile.get("latitude"),
+                            profile.get("longitude"),
+                        ),
+                        "stories": stories,
+                        "latest_story_at": max(story.created_at for story in stories),
+                    }
+                )
             ranked = rank_story_groups(result)
             for item in ranked:
                 item.pop("latest_story_at", None)
@@ -504,8 +503,7 @@ class StoryService:
     def _public_id(profile: dict[str, object], account_id: int) -> str:
         kind = str(profile.get("kind") or "user")
         return str(
-            profile.get("public_id")
-            or build_profile_public_id(kind, account_id)
+            profile.get("public_id") or build_profile_public_id(kind, account_id)
         )
 
     def _url(self, object_key: str) -> str:

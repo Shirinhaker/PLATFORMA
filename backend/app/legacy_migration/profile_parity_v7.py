@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections import defaultdict
 import sqlite3
-from typing import Any, Iterable
+from collections import defaultdict
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +16,12 @@ from app.legacy_migration.model import MigrationRun
 from app.legacy_migration.reconcile import StageResult, _find_mapping
 from app.legacy_migration.reconcile_v6 import (
     reconcile_accounts as reconcile_accounts_v6,
+)
+from app.legacy_migration.reconcile_v6 import (
     reconcile_businesses as reconcile_businesses_v6,
 )
 from app.profiles.model import BusinessProfile, UserProfile
 from app.taxi.legacy_import import import_taxi_domain
-
 
 EXPLICIT_DEMO_FLAGS = (
     "is_demo",
@@ -173,31 +175,15 @@ async def import_late_typed_domains(
     taxi_result = await import_taxi_domain(session, source, run)
     await session.flush()
     return StageResult(
-        created=(
-            ai_result.created
-            + subscription_result.created
-            + taxi_result.created
-        ),
-        reused=(
-            ai_result.reused
-            + subscription_result.reused
-            + taxi_result.reused
-        ),
-        updated=(
-            ai_result.updated
-            + subscription_result.updated
-            + taxi_result.updated
-        ),
+        created=(ai_result.created + subscription_result.created + taxi_result.created),
+        reused=(ai_result.reused + subscription_result.reused + taxi_result.reused),
+        updated=(ai_result.updated + subscription_result.updated + taxi_result.updated),
         quarantined=(
             ai_result.quarantined
             + subscription_result.quarantined
             + taxi_result.quarantined
         ),
-        issues=(
-            ai_result.issues
-            + subscription_result.issues
-            + taxi_result.issues
-        ),
+        issues=(ai_result.issues + subscription_result.issues + taxi_result.issues),
     )
 
 
@@ -255,8 +241,7 @@ async def enrich_user_cabinets(
     rides = _real_rows(_rows(source, "rides"))
     reviews = _real_rows(_rows(source, "reviews"))
     user_modules = {
-        table: _real_rows(_rows(source, table))
-        for table in USER_MODULE_TABLES
+        table: _real_rows(_rows(source, table)) for table in USER_MODULE_TABLES
     }
 
     for user in users:
@@ -269,36 +254,35 @@ async def enrich_user_cabinets(
             continue
 
         payload = _clean_payload(profile.cabinet_payload)
-        user_orders = [
-            row for row in orders
-            if _order_belongs_to_user(row, legacy_id)
-        ]
+        user_orders = [row for row in orders if _order_belongs_to_user(row, legacy_id)]
         user_listings = [
-            row for row in listings
+            row
+            for row in listings
             if _integer(row.get("user_id")) == legacy_id
             and not _integer(row.get("business_id"))
         ]
         user_stories = [
-            row for row in stories
+            row
+            for row in stories
             if str(row.get("owner_type") or "") == "user"
             and _integer(row.get("owner_id")) == legacy_id
         ]
         user_payments = [
-            row for row in payment_requests
+            row
+            for row in payment_requests
             if _integer(row.get("user_id")) == legacy_id
             and str(row.get("actor_type") or "user") == "user"
         ]
         user_drivers = [
-            row for row in drivers
-            if _integer(row.get("user_id")) == legacy_id
+            row for row in drivers if _integer(row.get("user_id")) == legacy_id
         ]
         driver_ids = {_integer(row.get("id")) for row in user_drivers}
         reviews_given = [
-            row for row in reviews
-            if _integer(row.get("reviewer_user_id")) == legacy_id
+            row for row in reviews if _integer(row.get("reviewer_user_id")) == legacy_id
         ]
         reviews_received = [
-            row for row in reviews
+            row
+            for row in reviews
             if str(row.get("target_kind") or "") in {"user", "specialist"}
             and _integer(row.get("target_id")) == legacy_id
         ]
@@ -323,7 +307,8 @@ async def enrich_user_cabinets(
                 ),
                 "drivers": _safe_rows(user_drivers),
                 "rides": _safe_rows(
-                    row for row in rides
+                    row
+                    for row in rides
                     if _integer(row.get("customer_id")) == legacy_id
                     or _integer(row.get("driver_id")) in driver_ids
                 ),
@@ -332,10 +317,7 @@ async def enrich_user_cabinets(
             }
         )
         for table, rows in user_modules.items():
-            matched = [
-                row for row in rows
-                if _integer(row.get("user_id")) == legacy_id
-            ]
+            matched = [row for row in rows if _integer(row.get("user_id")) == legacy_id]
             if matched or table in payload:
                 payload[table] = _safe_rows(matched)
 
@@ -416,33 +398,34 @@ async def enrich_business_cabinets(
 
         payload = _clean_payload(profile.cabinet_payload)
         business_orders = [
-            row for row in orders
+            row
+            for row in orders
             if _order_belongs_to_business(row, legacy_id, owner_user_id)
         ]
         business_groups = [
-            row for row in item_groups
-            if _integer(row.get("business_id")) == legacy_id
+            row for row in item_groups if _integer(row.get("business_id")) == legacy_id
         ]
         business_items = [
-            row for row in items
-            if _integer(row.get("business_id")) == legacy_id
+            row for row in items if _integer(row.get("business_id")) == legacy_id
         ]
         business_listings = [
-            row for row in listings
-            if _integer(row.get("business_id")) == legacy_id
+            row for row in listings if _integer(row.get("business_id")) == legacy_id
         ]
         business_stories = [
-            row for row in stories
+            row
+            for row in stories
             if str(row.get("owner_type") or "") == "business"
             and _integer(row.get("owner_id")) == legacy_id
         ]
         business_payments = [
-            row for row in payment_requests
+            row
+            for row in payment_requests
             if str(row.get("actor_type") or "") == "business"
             and _integer(row.get("business_id")) == legacy_id
         ]
         business_reviews = [
-            row for row in reviews
+            row
+            for row in reviews
             if str(row.get("target_kind") or "") == "business"
             and _integer(row.get("target_id")) == legacy_id
         ]
@@ -481,7 +464,8 @@ async def enrich_business_cabinets(
             if table == "payment_requests":
                 continue
             matched = [
-                row for row in rows
+                row
+                for row in rows
                 if _row_belongs_to_business(row, legacy_id, owner_user_id)
             ]
             if table == "production_batches":
@@ -509,14 +493,13 @@ async def enrich_business_cabinets(
                 payload[table] = _safe_rows(matched)
 
         debtors = payload.get("debtors")
-        debtor_ids = {
-            _integer(row.get("id"))
-            for row in debtors
-            if isinstance(row, dict)
-        } if isinstance(debtors, list) else set()
+        debtor_ids = (
+            {_integer(row.get("id")) for row in debtors if isinstance(row, dict)}
+            if isinstance(debtors, list)
+            else set()
+        )
         payload["qarz_transactions"] = _safe_rows(
-            row for row in qarz_rows
-            if _integer(row.get("debtor_id")) in debtor_ids
+            row for row in qarz_rows if _integer(row.get("debtor_id")) in debtor_ids
         )
 
         documents = payload.get("documents")
@@ -632,21 +615,27 @@ def _filter_documents(rows: list[object], wanted: str) -> list[dict[str, Any]]:
         if not isinstance(row, dict):
             continue
         direction = str(row.get("direction") or "").strip().casefold()
-        if wanted == "incoming" and (
-            "incoming" in direction
-            or "kirim" in direction
-            or "kiruvchi" in direction
-        ):
-            result.append(row)
-        elif wanted == "outgoing" and (
-            "outgoing" in direction
-            or "chiq" in direction
-            or "chiquvchi" in direction
-        ):
-            result.append(row)
-        elif wanted == "internal" and (
-            "internal" in direction
-            or "ichki" in direction
+        if (
+            (
+                wanted == "incoming"
+                and (
+                    "incoming" in direction
+                    or "kirim" in direction
+                    or "kiruvchi" in direction
+                )
+            )
+            or (
+                wanted == "outgoing"
+                and (
+                    "outgoing" in direction
+                    or "chiq" in direction
+                    or "chiquvchi" in direction
+                )
+            )
+            or (
+                wanted == "internal"
+                and ("internal" in direction or "ichki" in direction)
+            )
         ):
             result.append(row)
     return result
@@ -714,8 +703,7 @@ def _rows(source: sqlite3.Connection, table: str) -> list[dict[str, object]]:
         return []
     try:
         return [
-            dict(row)
-            for row in source.execute(f'SELECT * FROM "{table}"').fetchall()
+            dict(row) for row in source.execute(f'SELECT * FROM "{table}"').fetchall()
         ]
     except sqlite3.DatabaseError:
         return []
@@ -736,11 +724,7 @@ def _real_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
 
 
 def _is_explicit_demo(row: dict[str, object]) -> bool:
-    return any(
-        _truthy(row.get(key))
-        for key in EXPLICIT_DEMO_FLAGS
-        if key in row
-    )
+    return any(_truthy(row.get(key)) for key in EXPLICIT_DEMO_FLAGS if key in row)
 
 
 def _truthy(value: object) -> bool:

@@ -72,7 +72,7 @@
 
 @media (min-width: 1080px) {
   .user-cabinet-v1656__main {
-    grid-template-columns: minmax(0, 1.04fr) minmax(380px, .96fr);
+    grid-template-columns: minmax(0, 1.04fr) minmax(380px, 0.96fr);
     gap: 20px;
   }
 

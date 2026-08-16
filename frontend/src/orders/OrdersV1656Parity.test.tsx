@@ -14,7 +14,6 @@ import {
   setCartItemSum,
 } from "./order-store";
 
-
 const leaflet = vi.hoisted(() => {
   const state = { center: { lat: 37.82, lng: 67.58 }, zoom: 15 };
   const listeners: Record<string, () => void> = {};
@@ -27,13 +26,15 @@ const leaflet = vi.hoisted(() => {
       return map;
     }),
     remove: vi.fn(),
-    setView: vi.fn((point: [number, number] | { lat: number; lng: number }, zoom: number) => {
-      state.center = Array.isArray(point)
-        ? { lat: point[0], lng: point[1] }
-        : { ...point };
-      state.zoom = zoom;
-      return map;
-    }),
+    setView: vi.fn(
+      (point: [number, number] | { lat: number; lng: number }, zoom: number) => {
+        state.center = Array.isArray(point)
+          ? { lat: point[0], lng: point[1] }
+          : { ...point };
+        state.zoom = zoom;
+        return map;
+      },
+    ),
   };
   const tileLayer = { addTo: vi.fn() };
   return {
@@ -51,7 +52,6 @@ vi.mock("leaflet", () => ({
     tileLayer: leaflet.tileLayerFactory,
   },
 }));
-
 
 const non: PublicProfileItem = {
   kind: "product",
@@ -74,10 +74,14 @@ const sut: PublicProfileItem = {
 };
 
 function oneStoreCart(): CartState {
-  return addCartItem({}, {
-    public_id: "b_turon",
-    name: "Turon savdo",
-  }, non);
+  return addCartItem(
+    {},
+    {
+      public_id: "b_turon",
+      name: "Turon savdo",
+    },
+    non,
+  );
 }
 
 function StatefulCart({
@@ -105,14 +109,12 @@ function StatefulCart({
   );
 }
 
-
 beforeEach(() => {
   leaflet.state.center = { lat: 37.82, lng: 67.58 };
   leaflet.state.zoom = 15;
   Object.keys(leaflet.listeners).forEach((key) => delete leaflet.listeners[key]);
   vi.clearAllMocks();
 });
-
 
 describe("v1656 savat state parity", () => {
   it("keeps a separate receipt for every business and counts distinct lines", () => {
@@ -149,7 +151,6 @@ describe("v1656 savat state parity", () => {
   });
 });
 
-
 describe("v1656 Savat screen parity", () => {
   it("shows the exact empty and multiple-store copy", () => {
     const { rerender } = render(
@@ -161,10 +162,10 @@ describe("v1656 Savat screen parity", () => {
         onNeedLogin={vi.fn()}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Do'kon sahifasidan mahsulot qo'shing."))
-      .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Do'kon sahifasidan mahsulot qo'shing."),
+    ).toBeInTheDocument();
 
     const twoStores = addCartItem(
       oneStoreCart(),
@@ -180,9 +181,11 @@ describe("v1656 Savat screen parity", () => {
         onNeedLogin={vi.fn()}
       />,
     );
-    expect(screen.getByText(
-      "Har do'kon uchun alohida chek. Har birini alohida buyurtma qilasiz.",
-    )).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Har do'kon uchun alohida chek. Har birini alohida buyurtma qilasiz.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("keeps quantity and sum inputs live-linked without losing focus", async () => {
@@ -210,18 +213,18 @@ describe("v1656 Savat screen parity", () => {
     await user.click(screen.getByRole("button", { name: "Chekni tozalash" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Bu do'kon cheki tozalansinmi?");
-    expect(within(dialog).getByRole("button", { name: "Tozalash" }))
-      .toHaveClass("acf-ok", "danger");
+    expect(within(dialog).getByRole("button", { name: "Tozalash" })).toHaveClass(
+      "acf-ok",
+      "danger",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Bekor qilish" }));
     expect(screen.getByText("Non")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Chekni tozalash" }));
-    await user.click(within(screen.getByRole("dialog")).getByRole(
-      "button",
-      { name: "Tozalash" },
-    ));
-    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" }))
-      .toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Tozalash" }),
+    );
+    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" })).toBeInTheDocument();
   });
 
   it("submits getCenter coordinates and clears only the successful business", async () => {
@@ -236,15 +239,16 @@ describe("v1656 Savat screen parity", () => {
 
     const turonReceipt = screen.getByText("🏪 Turon savdo").closest(".panel-card");
     expect(turonReceipt).not.toBeNull();
-    await user.click(within(turonReceipt as HTMLElement).getByRole(
-      "button",
-      { name: "Buyurtma qilish" },
-    ));
+    await user.click(
+      within(turonReceipt as HTMLElement).getByRole("button", {
+        name: "Buyurtma qilish",
+      }),
+    );
 
     expect(screen.getByText("Buyurtma berish")).toBeInTheDocument();
-    expect(screen.getByText(
-      "Turon savdo — tanlangan mahsulot/xizmatlar bo‘yicha",
-    )).toBeInTheDocument();
+    expect(
+      screen.getByText("Turon savdo — tanlangan mahsulot/xizmatlar bo‘yicha"),
+    ).toBeInTheDocument();
     await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
     const mapNode = document.getElementById("orderMap");
     const pin = document.querySelector(".order-center-pin");
@@ -253,25 +257,27 @@ describe("v1656 Savat screen parity", () => {
 
     leaflet.state.center = { lat: 37.838933, lng: 67.583453 };
     leaflet.listeners.moveend?.();
-    expect(await screen.findByText(
-      "✅ Metka belgilandi: 37.838933, 67.583453",
-    )).toBeInTheDocument();
+    expect(
+      await screen.findByText("✅ Metka belgilandi: 37.838933, 67.583453"),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "✅ Buyurtma yuborish" }));
 
-    await waitFor(() => expect(createOrder).toHaveBeenCalledWith({
-      provider_kind: "business",
-      provider_public_id: "b_turon",
-      items: [{ public_id: "p_non", qty: 1 }],
-      listing_public_id: "",
-      title: "Buyurtma: Turon savdo",
-      phone: "+998901234567",
-      order_type: "delivery",
-      address: "Surxondaryo, Qumqo‘rg‘on",
-      desired_time: "",
-      delivery_lat: 37.838933,
-      delivery_lng: 67.583453,
-      note: "",
-    }));
+    await waitFor(() =>
+      expect(createOrder).toHaveBeenCalledWith({
+        provider_kind: "business",
+        provider_public_id: "b_turon",
+        items: [{ public_id: "p_non", qty: 1 }],
+        listing_public_id: "",
+        title: "Buyurtma: Turon savdo",
+        phone: "+998901234567",
+        order_type: "delivery",
+        address: "Surxondaryo, Qumqo‘rg‘on",
+        desired_time: "",
+        delivery_lat: 37.838933,
+        delivery_lng: 67.583453,
+        note: "",
+      }),
+    );
     expect(screen.queryByText("🏪 Turon savdo")).not.toBeInTheDocument();
     expect(screen.getByText("🏪 Muhr")).toBeInTheDocument();
   });
@@ -298,10 +304,9 @@ describe("v1656 Savat screen parity", () => {
 
     await user.click(screen.getByRole("button", { name: "Buyurtma qilish" }));
 
-    await waitFor(() => expect(leaflet.map.setView).toHaveBeenCalledWith(
-      [37.834, 67.585],
-      15,
-    ));
+    await waitFor(() =>
+      expect(leaflet.map.setView).toHaveBeenCalledWith([37.834, 67.585], 15),
+    );
   });
 
   it("switches pickup and booking fields exactly like v1656", async () => {
@@ -313,10 +318,12 @@ describe("v1656 Savat screen parity", () => {
     expect(screen.queryByLabelText("Yetkazib berish manzili")).not.toBeInTheDocument();
     expect(screen.getByText("Qachonga kerak? — ixtiyoriy")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /🗓 Navbat \/ qabulga yozilish/ }));
-    expect(screen.getByText(
-      "Qaysi vaqtga yozilmoqchisiz? — ixtiyoriy",
-    )).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: /🗓 Navbat \/ qabulga yozilish/ }),
+    );
+    expect(
+      screen.getByText("Qaysi vaqtga yozilmoqchisiz? — ixtiyoriy"),
+    ).toBeInTheDocument();
   });
 
   it("shows the exact phone and delivery-point validation messages", async () => {
@@ -334,8 +341,9 @@ describe("v1656 Savat screen parity", () => {
     );
     await user.click(screen.getByRole("button", { name: "Buyurtma qilish" }));
     await user.click(screen.getByRole("button", { name: "✅ Buyurtma yuborish" }));
-    expect(screen.getByRole("alert"))
-      .toHaveTextContent("Telefon raqam kiritish kerak.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Telefon raqam kiritish kerak.",
+    );
     expect(screen.getByLabelText("Aloqa telefon raqami *")).toHaveFocus();
     unmount();
 
@@ -351,8 +359,9 @@ describe("v1656 Savat screen parity", () => {
     );
     await user.click(screen.getByRole("button", { name: "Buyurtma qilish" }));
     await user.click(screen.getByRole("button", { name: "✅ Buyurtma yuborish" }));
-    expect(screen.getByRole("alert"))
-      .toHaveTextContent("Yetkazib berish joyini xaritada belgilang.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Yetkazib berish joyini xaritada belgilang.",
+    );
   });
 
   it("retains the receipt when the create API fails", async () => {

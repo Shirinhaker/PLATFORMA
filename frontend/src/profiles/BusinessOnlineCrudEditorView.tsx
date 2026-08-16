@@ -21,10 +21,7 @@ function v1656Money(value: number): string {
 }
 
 function storyRemaining(value: unknown): string {
-  const seconds = Math.max(
-    0,
-    Number(value ?? 0) - Math.floor(Date.now() / 1000),
-  );
+  const seconds = Math.max(0, Number(value ?? 0) - Math.floor(Date.now() / 1000));
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return hours > 0
@@ -37,18 +34,16 @@ function localDateInputValue(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-
 function cleanDraft(row: BusinessOnlineRecord): BusinessOnlineRecord {
-  return Object.fromEntries(Object.entries(row).filter(([key]) => (
-    !["id", "created_at", "updated_at"].includes(key)
-    && !key.endsWith("_url")
-  )));
+  return Object.fromEntries(
+    Object.entries(row).filter(
+      ([key]) =>
+        !["id", "created_at", "updated_at"].includes(key) && !key.endsWith("_url"),
+    ),
+  );
 }
 
-function formId(
-  resource: BusinessOnlineResource,
-  mode: "new" | "edit",
-) {
+function formId(resource: BusinessOnlineResource, mode: "new" | "edit") {
   return `${resource}:${mode}`;
 }
 
@@ -100,25 +95,31 @@ function EditorForm({
           {longText.has(field) ? (
             <textarea
               value={String(draft[field] ?? "")}
-              onChange={(event) => setDraft({
-                ...draft,
-                [field]: event.currentTarget.value,
-              })}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  [field]: event.currentTarget.value,
+                })
+              }
             />
           ) : (
             <input
               type={field === "price" ? "number" : "text"}
               value={String(draft[field] ?? "")}
-              onChange={(event) => setDraft({
-                ...draft,
-                [field]: event.currentTarget.value,
-              })}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  [field]: event.currentTarget.value,
+                })
+              }
             />
           )}
         </label>
       ))}
       <div>
-        <button type="button" onClick={onCancel}>Bekor qilish</button>
+        <button type="button" onClick={onCancel}>
+          Bekor qilish
+        </button>
         <button type="button" disabled={busy} onClick={() => void onSave()}>
           Saqlash
         </button>
@@ -126,7 +127,6 @@ function EditorForm({
     </div>
   );
 }
-
 
 export function CrudEditorView({
   resource,
@@ -223,10 +223,12 @@ export function CrudEditorView({
       return;
     }
     if (
-      resource === "listings"
-      && (!Number.isFinite(Number(draft.lat)) || !Number.isFinite(Number(draft.lng)))
+      resource === "listings" &&
+      (!Number.isFinite(Number(draft.lat)) || !Number.isFinite(Number(draft.lng)))
     ) {
-      setValidationError("Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash).");
+      setValidationError(
+        "Iltimos, e'lon joyini xaritada belgilang (📍 Xaritada joy belgilash).",
+      );
       return;
     }
     await actions.create(resource, cleanDraft(draft));
@@ -249,7 +251,11 @@ export function CrudEditorView({
           {confirm.title && <div className="acf-title">{confirm.title}</div>}
           <p className="acf-text">{confirm.text}</p>
           <div className="acf-btns">
-            <button type="button" className="acf-cancel" onClick={() => setConfirm(null)}>
+            <button
+              type="button"
+              className="acf-cancel"
+              onClick={() => setConfirm(null)}
+            >
               Bekor qilish
             </button>
             <button
@@ -295,60 +301,80 @@ export function CrudEditorView({
           </button>
         </div>
         <div className="my-stories-grid">
-          {visible.length ? visible.map((row, index) => {
-            const id = recordId(row, index);
-            const archived = ["archived", "expired"].includes(
-              recordText(row, "state", "status"),
-            );
-            return (
-              <article className="my-story-card" data-my-story-id={id} key={String(id)}>
-                <div className="my-story-thumb">
-                  {recordText(row, "thumbnail_url", "media_url") ? (
-                    <img
-                      src={recordText(row, "thumbnail_url", "media_url")}
-                      alt="Istoriya muqovasi"
-                    />
-                  ) : <span className="my-story-thumb-fallback">Media topilmadi</span>}
-                  {recordText(row, "media_type") === "video" && (
-                    <span className="my-story-video-badge">▶ Video</span>
-                  )}
-                </div>
-                <div className="my-story-main">
-                  <div className="my-story-caption">
-                    {recordText(row, "caption") || "Matnsiz istoriya"}
+          {visible.length ? (
+            visible.map((row, index) => {
+              const id = recordId(row, index);
+              const archived = ["archived", "expired"].includes(
+                recordText(row, "state", "status"),
+              );
+              return (
+                <article
+                  className="my-story-card"
+                  data-my-story-id={id}
+                  key={String(id)}
+                >
+                  <div className="my-story-thumb">
+                    {recordText(row, "thumbnail_url", "media_url") ? (
+                      <img
+                        src={recordText(row, "thumbnail_url", "media_url")}
+                        alt="Istoriya muqovasi"
+                      />
+                    ) : (
+                      <span className="my-story-thumb-fallback">Media topilmadi</span>
+                    )}
+                    {recordText(row, "media_type") === "video" && (
+                      <span className="my-story-video-badge">▶ Video</span>
+                    )}
                   </div>
-                  <div className="my-story-meta">
-                    {new Date(Number(row.created_at ?? 0) * 1000).toLocaleString("uz-UZ", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    <br />👁 {Number(row.view_count ?? 0)} ko‘rish
-                  </div>
-                  <span className={archived ? "my-story-state archived" : "my-story-state"}>
-                    {archived ? "Arxiv" : `Faol · ${storyRemaining(row.expires_at)}`}
-                  </span>
-                  <div className="my-story-actions">
-                    <button type="button" onClick={() => setStoryViewer(row)}>Ko‘rish</button>
-                    <button
-                      type="button"
-                      className="danger"
-                      onClick={() => setConfirm({
-                        id,
-                        title: "Istoriyani o‘chirish",
-                        text: "Istoriya va uning media fayli butunlay o‘chiriladi.",
-                        ok: "O‘chirish",
-                      })}
+                  <div className="my-story-main">
+                    <div className="my-story-caption">
+                      {recordText(row, "caption") || "Matnsiz istoriya"}
+                    </div>
+                    <div className="my-story-meta">
+                      {new Date(Number(row.created_at ?? 0) * 1000).toLocaleString(
+                        "uz-UZ",
+                        {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
+                      <br />
+                      👁 {Number(row.view_count ?? 0)} ko‘rish
+                    </div>
+                    <span
+                      className={
+                        archived ? "my-story-state archived" : "my-story-state"
+                      }
                     >
-                      O‘chirish
-                    </button>
+                      {archived ? "Arxiv" : `Faol · ${storyRemaining(row.expires_at)}`}
+                    </span>
+                    <div className="my-story-actions">
+                      <button type="button" onClick={() => setStoryViewer(row)}>
+                        Ko‘rish
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() =>
+                          setConfirm({
+                            id,
+                            title: "Istoriyani o‘chirish",
+                            text: "Istoriya va uning media fayli butunlay o‘chiriladi.",
+                            ok: "O‘chirish",
+                          })
+                        }
+                      >
+                        O‘chirish
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          }) : storyState === "archived" ? (
+                </article>
+              );
+            })
+          ) : storyState === "archived" ? (
             <div className="empty my-stories-status">
               <h3>Arxiv hozircha bo‘sh</h3>
               <p>24 soati tugagan istoriyalar shu yerda saqlanadi.</p>
@@ -357,7 +383,11 @@ export function CrudEditorView({
             <div className="empty my-stories-status">
               <h3>Hali istoriya joylamagansiz</h3>
               <p>Rasm yoki 1 daqiqagacha video joylang.</p>
-              <button type="button" className="btn btn-primary" onClick={() => begin({ status: "active" })}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => begin({ status: "active" })}
+              >
                 Istoriya joylash
               </button>
             </div>
@@ -365,10 +395,21 @@ export function CrudEditorView({
         </div>
         {openForm && (
           <div className="story-layer on">
-            <div className="story-sheet" role="dialog" aria-modal="true" aria-label="Istoriya joylash">
+            <div
+              className="story-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Istoriya joylash"
+            >
               <div className="story-sheet-head">
                 <div className="story-sheet-title">Istoriya joylash</div>
-                <button type="button" className="story-text-btn" onClick={() => setOpenForm(false)}>Yopish</button>
+                <button
+                  type="button"
+                  className="story-text-btn"
+                  onClick={() => setOpenForm(false)}
+                >
+                  Yopish
+                </button>
               </div>
               <input
                 type="file"
@@ -378,10 +419,17 @@ export function CrudEditorView({
                 accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
                 onChange={(event) => {
                   const file = event.currentTarget.files?.[0] ?? null;
-                  if (file && ![
-                    "image/jpeg", "image/png", "image/webp",
-                    "video/mp4", "video/quicktime", "video/webm",
-                  ].includes(file.type)) {
+                  if (
+                    file &&
+                    ![
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "video/mp4",
+                      "video/quicktime",
+                      "video/webm",
+                    ].includes(file.type)
+                  ) {
                     setStoryFile(null);
                     setValidationError("Rasm yoki video tanlang.");
                     event.currentTarget.value = "";
@@ -393,7 +441,10 @@ export function CrudEditorView({
                     event.currentTarget.value = "";
                     return;
                   }
-                  if (file?.type.startsWith("video/") && file.size > 100 * 1024 * 1024) {
+                  if (
+                    file?.type.startsWith("video/") &&
+                    file.size > 100 * 1024 * 1024
+                  ) {
                     setStoryFile(null);
                     setValidationError("Video hajmi 100 MB dan oshmasin.");
                     event.currentTarget.value = "";
@@ -404,37 +455,54 @@ export function CrudEditorView({
                 }}
               />
               <div className="story-source-grid">
-                <button type="button" className="story-source-btn" onClick={() => {
-                  const input = document.getElementById("reactStoryFileInput");
-                  input?.setAttribute("capture", "environment");
-                  input?.click();
-                }}>
+                <button
+                  type="button"
+                  className="story-source-btn"
+                  onClick={() => {
+                    const input = document.getElementById("reactStoryFileInput");
+                    input?.setAttribute("capture", "environment");
+                    input?.click();
+                  }}
+                >
                   Kamera orqali<small>Hozir rasm yoki video oling</small>
                 </button>
-                <button type="button" className="story-source-btn" onClick={() => {
-                  const input = document.getElementById("reactStoryFileInput");
-                  input?.removeAttribute("capture");
-                  input?.click();
-                }}>
+                <button
+                  type="button"
+                  className="story-source-btn"
+                  onClick={() => {
+                    const input = document.getElementById("reactStoryFileInput");
+                    input?.removeAttribute("capture");
+                    input?.click();
+                  }}
+                >
                   Galereyadan<small>Telefondagi rasm yoki videoni tanlang</small>
                 </button>
               </div>
               {storyFile && (
                 <div className="story-compose-fields on">
                   <div className="idesc">{storyFile.name}</div>
-                  <label className="field">Qisqa matn — ixtiyoriy
+                  <label className="field">
+                    Qisqa matn — ixtiyoriy
                     <textarea
                       className="textarea"
                       maxLength={200}
                       placeholder="Istoriya haqida qisqa yozing"
                       value={recordText(draft, "caption")}
-                      onChange={(event) => setDraft({ ...draft, caption: event.currentTarget.value })}
+                      onChange={(event) =>
+                        setDraft({ ...draft, caption: event.currentTarget.value })
+                      }
                     />
-                    <span className="idesc">{recordText(draft, "caption").length} / 200</span>
+                    <span className="idesc">
+                      {recordText(draft, "caption").length} / 200
+                    </span>
                   </label>
                 </div>
               )}
-              {validationError && <div className="story-upload-error on" role="alert">{validationError}</div>}
+              {validationError && (
+                <div className="story-upload-error on" role="alert">
+                  {validationError}
+                </div>
+              )}
               <button
                 type="button"
                 className="btn btn-primary btn-block"
@@ -453,18 +521,28 @@ export function CrudEditorView({
                   setStoryFile(null);
                   setOpenForm(false);
                 }}
-              >Joylash</button>
+              >
+                Joylash
+              </button>
             </div>
           </div>
         )}
         {storyViewer && (
           <div className="story-viewer on">
-            <div className="story-stage" role="dialog" aria-modal="true" aria-label="Istoriya">
+            <div
+              className="story-stage"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Istoriya"
+            >
               <div className="story-viewer-media">
                 {recordText(storyViewer, "media_type") === "video" ? (
                   <video src={recordText(storyViewer, "media_url")} controls />
                 ) : (
-                  <img src={recordText(storyViewer, "media_url", "thumbnail_url")} alt="Istoriya" />
+                  <img
+                    src={recordText(storyViewer, "media_url", "thumbnail_url")}
+                    alt="Istoriya"
+                  />
                 )}
               </div>
               <button
@@ -472,8 +550,12 @@ export function CrudEditorView({
                 className="story-viewer-close"
                 aria-label="Istoriyani yopish"
                 onClick={() => setStoryViewer(null)}
-              >×</button>
-              <div className="story-viewer-caption">{recordText(storyViewer, "caption")}</div>
+              >
+                ×
+              </button>
+              <div className="story-viewer-caption">
+                {recordText(storyViewer, "caption")}
+              </div>
             </div>
           </div>
         )}
@@ -496,44 +578,61 @@ export function CrudEditorView({
               + E'lon joylash
             </button>
             <div>
-              {rows.length ? rows.map((row, index) => {
-                const id = recordId(row, index);
-                const icon = ({
-                  uy: "🏠", ish: "💼", moshina: "🚙", hayvon: "🐾",
-                  texnika: "📱", boshqa: "📦",
-                } as Record<string, string>)[recordText(row, "cat", "category")] || "📦";
-                const visibility = recordText(row, "visibility") === "own"
-                  ? "🏪 Faqat mehmonlar"
-                  : "🌍 Butun platforma";
-                const status = recordText(row, "status") === "active" ? "Faol" : "O'chiq";
-                const mediaCount = Array.isArray(row.media) ? row.media.length : 0;
-                return (
-                  <article className="elon-item" key={String(id)}>
-                    <div className="li-thumb"><span>{icon}</span></div>
-                    <div className="li-main">
-                      <div className="li-title">{recordText(row, "title")}</div>
-                      <div className="li-price">{recordText(row, "price")}</div>
-                      <div className="li-meta">
-                        {visibility} · {status}{mediaCount ? ` · 📎 ${mediaCount}` : ""}
+              {rows.length ? (
+                rows.map((row, index) => {
+                  const id = recordId(row, index);
+                  const icon =
+                    (
+                      {
+                        uy: "🏠",
+                        ish: "💼",
+                        moshina: "🚙",
+                        hayvon: "🐾",
+                        texnika: "📱",
+                        boshqa: "📦",
+                      } as Record<string, string>
+                    )[recordText(row, "cat", "category")] || "📦";
+                  const visibility =
+                    recordText(row, "visibility") === "own"
+                      ? "🏪 Faqat mehmonlar"
+                      : "🌍 Butun platforma";
+                  const status =
+                    recordText(row, "status") === "active" ? "Faol" : "O'chiq";
+                  const mediaCount = Array.isArray(row.media) ? row.media.length : 0;
+                  return (
+                    <article className="elon-item" key={String(id)}>
+                      <div className="li-thumb">
+                        <span>{icon}</span>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="mini-ic"
-                      aria-label="E'lonni o'chirish"
-                      onClick={() => setConfirm({
-                        id,
-                        text: "Bu e'lon o'chirilsinmi?",
-                        ok: "O'chirish",
-                      })}
-                    >
-                      🗑
-                    </button>
-                  </article>
-                );
-              }) : (
+                      <div className="li-main">
+                        <div className="li-title">{recordText(row, "title")}</div>
+                        <div className="li-price">{recordText(row, "price")}</div>
+                        <div className="li-meta">
+                          {visibility} · {status}
+                          {mediaCount ? ` · 📎 ${mediaCount}` : ""}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="mini-ic"
+                        aria-label="E'lonni o'chirish"
+                        onClick={() =>
+                          setConfirm({
+                            id,
+                            text: "Bu e'lon o'chirilsinmi?",
+                            ok: "O'chirish",
+                          })
+                        }
+                      >
+                        🗑
+                      </button>
+                    </article>
+                  );
+                })
+              ) : (
                 <div className="empty listing-empty">
-                  <h3>Hozircha e'lon yo'q</h3><p>Yuqoridagi tugma orqali joylang.</p>
+                  <h3>Hozircha e'lon yo'q</h3>
+                  <p>Yuqoridagi tugma orqali joylang.</p>
                 </div>
               )}
             </div>
@@ -560,84 +659,103 @@ export function CrudEditorView({
         {!openForm ? (
           <div className="biz-ads-pane">
             <div className="ad-info">
-              Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va
-              davomiyligini o'zingiz tanlaysiz.
+              Bosh sahifadagi banner reklama. Hudud, boshlanish vaqti va davomiyligini
+              o'zingiz tanlaysiz.
             </div>
             <button
               type="button"
               className="btn btn-primary btn-block"
-              onClick={() => begin({
-                status: "payment_pending",
-                daily_all_day: 1,
-                daily_start: "",
-                daily_end: "",
-                duration_days: 1,
-                start_date: localDateInputValue(),
-                target_level: "district",
-                targets: [],
-              })}
+              onClick={() =>
+                begin({
+                  status: "payment_pending",
+                  daily_all_day: 1,
+                  daily_start: "",
+                  daily_end: "",
+                  duration_days: 1,
+                  start_date: localDateInputValue(),
+                  target_level: "district",
+                  targets: [],
+                })
+              }
             >
               + Reklama joylashtirish
             </button>
             <div>
-              {rows.length ? rows.map((row, index) => {
-                const id = recordId(row, index);
-                const status = recordText(row, "status");
-                const label = ({
-                  active: "Faol", scheduled: "Rejalashtirilgan",
-                  payment_pending: "To‘lov kutilmoqda", ended: "Yakunlangan",
-                  cancelled: "Bekor qilingan",
-                } as Record<string, string>)[status] || status;
-                const targets = Array.isArray(row.targets)
-                  ? row.targets.map((target) => {
-                    const item = target as BusinessOnlineRecord;
-                    if (item.level === "republic") return "🇺🇿 Respublika";
-                    if (item.level === "region") return `Viloyat: ${recordText(item, "region")}`;
-                    return `${recordText(item, "region")} · ${recordText(item, "district")}`;
-                  }).join(", ")
-                  : "";
-                return (
-                  <article className="ad-own-card" key={String(id)}>
-                    <div className="ad-own-top">
-                      <div className="ad-own-thumb">
-                        {recordText(row, "image_file", "image_url") && (
-                          <img src={recordText(row, "image_file", "image_url")} alt="" />
-                        )}
-                      </div>
-                      <div className="ad-own-main">
-                        <div className="li-title">{recordText(row, "title")}</div>
-                        <div className="li-meta">{targets}</div>
-                        <div className="li-meta">
-                          {Number(row.duration_days ?? 1)} kun · {row.daily_all_day ? "Kun bo'yi" : "Belgilangan vaqtda"}
+              {rows.length ? (
+                rows.map((row, index) => {
+                  const id = recordId(row, index);
+                  const status = recordText(row, "status");
+                  const label =
+                    (
+                      {
+                        active: "Faol",
+                        scheduled: "Rejalashtirilgan",
+                        payment_pending: "To‘lov kutilmoqda",
+                        ended: "Yakunlangan",
+                        cancelled: "Bekor qilingan",
+                      } as Record<string, string>
+                    )[status] || status;
+                  const targets = Array.isArray(row.targets)
+                    ? row.targets
+                        .map((target) => {
+                          const item = target as BusinessOnlineRecord;
+                          if (item.level === "republic") return "🇺🇿 Respublika";
+                          if (item.level === "region")
+                            return `Viloyat: ${recordText(item, "region")}`;
+                          return `${recordText(item, "region")} · ${recordText(item, "district")}`;
+                        })
+                        .join(", ")
+                    : "";
+                  return (
+                    <article className="ad-own-card" key={String(id)}>
+                      <div className="ad-own-top">
+                        <div className="ad-own-thumb">
+                          {recordText(row, "image_file", "image_url") && (
+                            <img
+                              src={recordText(row, "image_file", "image_url")}
+                              alt=""
+                            />
+                          )}
                         </div>
+                        <div className="ad-own-main">
+                          <div className="li-title">{recordText(row, "title")}</div>
+                          <div className="li-meta">{targets}</div>
+                          <div className="li-meta">
+                            {Number(row.duration_days ?? 1)} kun ·{" "}
+                            {row.daily_all_day ? "Kun bo'yi" : "Belgilangan vaqtda"}
+                          </div>
+                        </div>
+                        <span className={`ad-status ${status}`}>{label}</span>
                       </div>
-                      <span className={`ad-status ${status}`}>{label}</span>
-                    </div>
-                    <div className="ad-own-stats">
-                      <b>{v1656Money(recordNumber(row, "price"))}</b>
-                      <span className="li-meta">
-                        👁 {Number(row.views ?? 0)} · ↗ {Number(row.clicks ?? 0)}
-                      </span>
-                    </div>
-                    {rowAction?.(row, index)}
-                    {!['cancelled', 'ended'].includes(status) && (
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-block"
-                        onClick={() => setConfirm({
-                          id,
-                          text: "Reklama bekor qilinsinmi?",
-                          ok: "Bekor qilish",
-                        })}
-                      >
-                        Bekor qilish
-                      </button>
-                    )}
-                  </article>
-                );
-              }) : (
+                      <div className="ad-own-stats">
+                        <b>{v1656Money(recordNumber(row, "price"))}</b>
+                        <span className="li-meta">
+                          👁 {Number(row.views ?? 0)} · ↗ {Number(row.clicks ?? 0)}
+                        </span>
+                      </div>
+                      {rowAction?.(row, index)}
+                      {!["cancelled", "ended"].includes(status) && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-block"
+                          onClick={() =>
+                            setConfirm({
+                              id,
+                              text: "Reklama bekor qilinsinmi?",
+                              ok: "Bekor qilish",
+                            })
+                          }
+                        >
+                          Bekor qilish
+                        </button>
+                      )}
+                    </article>
+                  );
+                })
+              ) : (
                 <div className="empty ad-empty">
-                  <div className="ic">📣</div><h3>Reklama yo'q</h3>
+                  <div className="ic">📣</div>
+                  <h3>Reklama yo'q</h3>
                   <p>Bosh sahifaga hududiy reklama joylashtirishingiz mumkin.</p>
                 </div>
               )}
@@ -736,13 +854,8 @@ function ListingForm({
     return (
       <BusinessLocationPickerV1656View
         prefix="be"
-        value={latitude && longitude
-          ? normalizeLatLng(latitude, longitude)
-          : null}
-        fallback={normalizeLatLng(
-          homeLocation?.latitude,
-          homeLocation?.longitude,
-        )}
+        value={latitude && longitude ? normalizeLatLng(latitude, longitude) : null}
+        fallback={normalizeLatLng(homeLocation?.latitude, homeLocation?.longitude)}
         onCancel={() => setLocationOpen(false)}
         onConfirm={(point) => {
           setDraft({
@@ -763,9 +876,11 @@ function ListingForm({
           {categories.map((category) => (
             <button
               type="button"
-              className={recordText(draft, "cat", "category") === category.key
-                ? "sort-chip on"
-                : "sort-chip"}
+              className={
+                recordText(draft, "cat", "category") === category.key
+                  ? "sort-chip on"
+                  : "sort-chip"
+              }
               key={category.key}
               onClick={() => setDraft({ ...draft, cat: category.key })}
             >
@@ -774,7 +889,8 @@ function ListingForm({
           ))}
         </div>
       </div>
-      <label className="field">Sarlavha
+      <label className="field">
+        Sarlavha
         <input
           className="input"
           aria-label="Sarlavha"
@@ -783,7 +899,8 @@ function ListingForm({
           onChange={(event) => setDraft({ ...draft, title: event.currentTarget.value })}
         />
       </label>
-      <label className="field">Narx
+      <label className="field">
+        Narx
         <input
           className="input"
           aria-label="Narx"
@@ -792,13 +909,16 @@ function ListingForm({
           onChange={(event) => setDraft({ ...draft, price: event.currentTarget.value })}
         />
       </label>
-      <label className="field">Tavsif
+      <label className="field">
+        Tavsif
         <textarea
           className="textarea"
           aria-label="Tavsif"
           placeholder="E'lon haqida batafsil"
           value={recordText(draft, "description", "descr")}
-          onChange={(event) => setDraft({ ...draft, description: event.currentTarget.value })}
+          onChange={(event) =>
+            setDraft({ ...draft, description: event.currentTarget.value })
+          }
         />
       </label>
       <div className="field">
@@ -814,11 +934,19 @@ function ListingForm({
             const files = [...(event.currentTarget.files ?? [])];
             setDraft({
               ...draft,
-              media: files.map((file) => ({ name: file.name, type: file.type, size: file.size })),
+              media: files.map((file) => ({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+              })),
             });
           }}
         />
-        <button type="button" className="upload" onClick={() => mediaInput.current?.click()}>
+        <button
+          type="button"
+          className="upload"
+          onClick={() => mediaInput.current?.click()}
+        >
           📷 Galereya yoki papkadan tanlash
         </button>
         {Array.isArray(draft.media) && draft.media.length > 0 && (
@@ -839,31 +967,56 @@ function ListingForm({
           className="input"
           placeholder="Manzil nomi (ixtiyoriy)"
           value={recordText(draft, "address")}
-          onChange={(event) => setDraft({ ...draft, address: event.currentTarget.value })}
+          onChange={(event) =>
+            setDraft({ ...draft, address: event.currentTarget.value })
+          }
         />
       </div>
       <div className="field">
         <label>Kimlarga ko'rinadi?</label>
         <button
           type="button"
-          className={recordText(draft, "visibility") !== "own" ? "vis-card on" : "vis-card"}
+          className={
+            recordText(draft, "visibility") !== "own" ? "vis-card on" : "vis-card"
+          }
           onClick={() => setDraft({ ...draft, visibility: "all" })}
         >
-          <span className="v-ic">🌍</span><span><b>Butun platformaga</b><small>Bosh sahifa, xarita va qidiruvda hammaga ko'rinadi.</small></span>
+          <span className="v-ic">🌍</span>
+          <span>
+            <b>Butun platformaga</b>
+            <small>Bosh sahifa, xarita va qidiruvda hammaga ko'rinadi.</small>
+          </span>
         </button>
         <button
           type="button"
-          className={recordText(draft, "visibility") === "own" ? "vis-card on" : "vis-card"}
+          className={
+            recordText(draft, "visibility") === "own" ? "vis-card on" : "vis-card"
+          }
           onClick={() => setDraft({ ...draft, visibility: "own" })}
         >
-          <span className="v-ic">🏪</span><span><b>Faqat sahifam mehmonlariga</b><small>Faqat sahifangizga kirganlar ko'radi.</small></span>
+          <span className="v-ic">🏪</span>
+          <span>
+            <b>Faqat sahifam mehmonlariga</b>
+            <small>Faqat sahifangizga kirganlar ko'radi.</small>
+          </span>
         </button>
       </div>
-      {error && <div className="app-toast on" role="alert">{error}</div>}
-      <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void save()}>
+      {error && (
+        <div className="app-toast on" role="alert">
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        disabled={busy}
+        onClick={() => void save()}
+      >
         Joylash
       </button>
-      <button type="button" className="btn btn-soft btn-block" onClick={cancel}>Bekor qilish</button>
+      <button type="button" className="btn btn-soft btn-block" onClick={cancel}>
+        Bekor qilish
+      </button>
     </div>
   );
 }
@@ -898,23 +1051,23 @@ function AdvertisementForm({
   const quoteAdvertisementRef = useRef(quoteAdvertisement);
   quoteAdvertisementRef.current = quoteAdvertisement;
   const targets = Array.isArray(draft.targets)
-    ? draft.targets.filter((target): target is BusinessOnlineRecord => (
-      Boolean(target && typeof target === "object")
-    ))
+    ? draft.targets.filter((target): target is BusinessOnlineRecord =>
+        Boolean(target && typeof target === "object"),
+      )
     : [];
   const level = recordText(draft, "target_level") || "district";
-  const selectedRegion = recordText(draft, "target_region")
-    || UZBEKISTAN_REGIONS[0]?.name
-    || "";
-  const districts = UZBEKISTAN_REGIONS.find(
-    (region) => region.name === selectedRegion,
-  )?.districts ?? [];
+  const selectedRegion =
+    recordText(draft, "target_region") || UZBEKISTAN_REGIONS[0]?.name || "";
+  const districts =
+    UZBEKISTAN_REGIONS.find((region) => region.name === selectedRegion)?.districts ??
+    [];
   const selectedDistrict = districts.includes(recordText(draft, "target_district"))
     ? recordText(draft, "target_district")
-    : districts[0] ?? "";
-  const hours = Array.from({ length: 24 }, (_, hour) => (
-    String(hour).padStart(2, "0") + ":00"
-  ));
+    : (districts[0] ?? "");
+  const hours = Array.from(
+    { length: 24 },
+    (_, hour) => String(hour).padStart(2, "0") + ":00",
+  );
   const targetsKey = JSON.stringify(targets);
   const durationDays = Number(draft.duration_days ?? 1);
   const dailyAllDay = Boolean(draft.daily_all_day);
@@ -924,36 +1077,39 @@ function AdvertisementForm({
   useEffect(() => {
     let current = true;
     if (
-      !targets.length
-      || !quoteAdvertisementRef.current
-      || (!dailyAllDay && (!dailyStart || !dailyEnd))
+      !targets.length ||
+      !quoteAdvertisementRef.current ||
+      (!dailyAllDay && (!dailyStart || !dailyEnd))
     ) {
       setQuote(null);
       setQuoteError("");
-      return () => { current = false; };
+      return () => {
+        current = false;
+      };
     }
     setQuoteError("");
-    void quoteAdvertisementRef.current({
-      targets,
-      duration_days: durationDays,
-      daily_all_day: dailyAllDay,
-      daily_start: dailyAllDay ? "00:00" : dailyStart,
-      daily_end: dailyAllDay ? "00:00" : dailyEnd,
-    }).then((value) => {
-      if (current && value) setQuote(value);
-    }).catch((reason: unknown) => {
-      if (!current) return;
-      setQuote(null);
-      setQuoteError(reason instanceof Error ? reason.message : "Reklama narxi hisoblanmadi.");
-    });
-    return () => { current = false; };
-  }, [
-    targetsKey,
-    durationDays,
-    dailyAllDay,
-    dailyStart,
-    dailyEnd,
-  ]);
+    void quoteAdvertisementRef
+      .current({
+        targets,
+        duration_days: durationDays,
+        daily_all_day: dailyAllDay,
+        daily_start: dailyAllDay ? "00:00" : dailyStart,
+        daily_end: dailyAllDay ? "00:00" : dailyEnd,
+      })
+      .then((value) => {
+        if (current && value) setQuote(value);
+      })
+      .catch((reason: unknown) => {
+        if (!current) return;
+        setQuote(null);
+        setQuoteError(
+          reason instanceof Error ? reason.message : "Reklama narxi hisoblanmadi.",
+        );
+      });
+    return () => {
+      current = false;
+    };
+  }, [targetsKey, durationDays, dailyAllDay, dailyStart, dailyEnd]);
 
   async function selectImage(
     file: File | undefined,
@@ -980,9 +1136,7 @@ function AdvertisementForm({
       setFileError("");
       setDraft({ ...draft, [key]: file.name, [`${key}_key`]: objectKey });
     } catch (reason) {
-      setFileError(
-        reason instanceof Error ? reason.message : "Rasm yuklanmadi.",
-      );
+      setFileError(reason instanceof Error ? reason.message : "Rasm yuklanmadi.");
     }
   }
 
@@ -995,42 +1149,56 @@ function AdvertisementForm({
   return (
     <div className="form-wrap advertisement-form-v1656">
       <div className="ad-quality">
-        <b>Rasm talabi:</b> kompyuter uchun 2744 × 368 px (7.46:1), telefon
-        uchun 800 × 250 px (3.2:1) tavsiya etiladi. JPG, PNG yoki WEBP;
-        har biri 5 MB gacha.
+        <b>Rasm talabi:</b> kompyuter uchun 2744 × 368 px (7.46:1), telefon uchun 800 ×
+        250 px (3.2:1) tavsiya etiladi. JPG, PNG yoki WEBP; har biri 5 MB gacha.
       </div>
-      <div className="field"><label>Kompyuter uchun rasm — majburiy</label>
+      <div className="field">
+        <label>Kompyuter uchun rasm — majburiy</label>
         <input
           ref={desktopInput}
           type="file"
           hidden
           accept="image/jpeg,image/png,image/webp"
           aria-label="Kompyuter uchun rasm"
-          onChange={(event) => void selectImage(
-            event.currentTarget.files?.[0], "image_file",
-          )}
+          onChange={(event) =>
+            void selectImage(event.currentTarget.files?.[0], "image_file")
+          }
         />
-        <button type="button" className="upload" onClick={() => desktopInput.current?.click()}>
-          {recordText(draft, "image_file") ? "Rasm tanlandi ✅" : "🖼 Galereyadan rasm tanlash"}
+        <button
+          type="button"
+          className="upload"
+          onClick={() => desktopInput.current?.click()}
+        >
+          {recordText(draft, "image_file")
+            ? "Rasm tanlandi ✅"
+            : "🖼 Galereyadan rasm tanlash"}
         </button>
       </div>
-      <div className="field"><label>Telefon uchun rasm — ixtiyoriy</label>
+      <div className="field">
+        <label>Telefon uchun rasm — ixtiyoriy</label>
         <input
           ref={mobileInput}
           type="file"
           hidden
           accept="image/jpeg,image/png,image/webp"
           aria-label="Telefon uchun rasm"
-          onChange={(event) => void selectImage(
-            event.currentTarget.files?.[0], "mobile_image_file",
-          )}
+          onChange={(event) =>
+            void selectImage(event.currentTarget.files?.[0], "mobile_image_file")
+          }
         />
-        <button type="button" className="upload" onClick={() => mobileInput.current?.click()}>
-          {recordText(draft, "mobile_image_file") ? "Telefon rasmi tanlandi ✅" : "📱 Telefon rasmini tanlash"}
+        <button
+          type="button"
+          className="upload"
+          onClick={() => mobileInput.current?.click()}
+        >
+          {recordText(draft, "mobile_image_file")
+            ? "Telefon rasmi tanlandi ✅"
+            : "📱 Telefon rasmini tanlash"}
         </button>
         <div className="idesc">Yuklanmasa, telefonda kompyuter rasmi ko‘rsatiladi.</div>
       </div>
-      <label className="field">Reklama sarlavhasi
+      <label className="field">
+        Reklama sarlavhasi
         <input
           className="input"
           value={recordText(draft, "title")}
@@ -1038,25 +1206,31 @@ function AdvertisementForm({
           onChange={(event) => setDraft({ ...draft, title: event.currentTarget.value })}
         />
       </label>
-      <label className="field">Qisqa matn
+      <label className="field">
+        Qisqa matn
         <textarea
           className="textarea"
           value={recordText(draft, "caption")}
           placeholder="Reklama haqida qisqa va aniq ma'lumot"
-          onChange={(event) => setDraft({ ...draft, caption: event.currentTarget.value })}
+          onChange={(event) =>
+            setDraft({ ...draft, caption: event.currentTarget.value })
+          }
         />
       </label>
-      <div className="field"><label>Qayerda ko'rinsin?</label>
+      <div className="field">
+        <label>Qayerda ko'rinsin?</label>
         <select
           className="input full"
           aria-label="Hudud darajasi"
           value={level}
-          onChange={(event) => setDraft({
-            ...draft,
-            target_level: event.currentTarget.value,
-            target_region: selectedRegion,
-            target_district: selectedDistrict,
-          })}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              target_level: event.currentTarget.value,
+              target_region: selectedRegion,
+              target_district: selectedDistrict,
+            })
+          }
         >
           <option value="district">Tuman kesimida</option>
           <option value="region">Viloyat kesimida</option>
@@ -1069,9 +1243,9 @@ function AdvertisementForm({
             value={selectedRegion}
             onChange={(event) => {
               const region = event.currentTarget.value;
-              const district = UZBEKISTAN_REGIONS.find(
-                (item) => item.name === region,
-              )?.districts[0] ?? "";
+              const district =
+                UZBEKISTAN_REGIONS.find((item) => item.name === region)?.districts[0] ??
+                "";
               setDraft({
                 ...draft,
                 target_region: region,
@@ -1080,7 +1254,9 @@ function AdvertisementForm({
             }}
           >
             {UZBEKISTAN_REGIONS.map((region) => (
-              <option value={region.name} key={region.name}>{region.name}</option>
+              <option value={region.name} key={region.name}>
+                {region.name}
+              </option>
             ))}
           </select>
         )}
@@ -1089,10 +1265,14 @@ function AdvertisementForm({
             className="input"
             aria-label="Reklama tumani"
             value={selectedDistrict}
-            onChange={(event) => setDraft({ ...draft, target_district: event.currentTarget.value })}
+            onChange={(event) =>
+              setDraft({ ...draft, target_district: event.currentTarget.value })
+            }
           >
             {districts.map((district) => (
-              <option value={district} key={district}>{district}</option>
+              <option value={district} key={district}>
+                {district}
+              </option>
             ))}
           </select>
         )}
@@ -1107,55 +1287,103 @@ function AdvertisementForm({
             };
             if (level !== "republic" && !target.region) return;
             if (level === "district" && !target.district) return;
-            const next = level === "republic"
-              ? [target]
-              : [
-                ...targets.filter((value) => value.level !== "republic"),
-                target,
-              ].filter((value, index, all) => (
-                all.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(value)) === index
-              ));
+            const next =
+              level === "republic"
+                ? [target]
+                : [
+                    ...targets.filter((value) => value.level !== "republic"),
+                    target,
+                  ].filter(
+                    (value, index, all) =>
+                      all.findIndex(
+                        (candidate) =>
+                          JSON.stringify(candidate) === JSON.stringify(value),
+                      ) === index,
+                  );
             setDraft({ ...draft, targets: next });
           }}
-        >+ Hududni qo'shish</button>
+        >
+          + Hududni qo'shish
+        </button>
         <div className="ad-targets">
           {targets.map((target, index) => (
             <span className="ad-target-chip" key={`${targetLabel(target)}-${index}`}>
               {targetLabel(target)}
-              <button type="button" aria-label="Hududni o'chirish" onClick={() => setDraft({
-                ...draft,
-                targets: targets.filter((_, targetIndex) => targetIndex !== index),
-              })}>×</button>
+              <button
+                type="button"
+                aria-label="Hududni o'chirish"
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    targets: targets.filter((_, targetIndex) => targetIndex !== index),
+                  })
+                }
+              >
+                ×
+              </button>
             </span>
           ))}
         </div>
       </div>
-      <label className="field">Qachondan ko'rinsin?
+      <label className="field">
+        Qachondan ko'rinsin?
         <input
           className="input"
           type="date"
           value={recordText(draft, "start_date")}
-          onChange={(event) => setDraft({ ...draft, start_date: event.currentTarget.value })}
+          onChange={(event) =>
+            setDraft({ ...draft, start_date: event.currentTarget.value })
+          }
         />
       </label>
-      <div className="field"><label>Har kuni qaysi vaqtda ko'rinsin?</label>
+      <div className="field">
+        <label>Har kuni qaysi vaqtda ko'rinsin?</label>
         <label className="ad-all-day">
           <input
             type="checkbox"
             checked={Boolean(draft.daily_all_day)}
-            onChange={(event) => setDraft({ ...draft, daily_all_day: event.currentTarget.checked ? 1 : 0 })}
-          /> Kun bo'yi ko'rinsin
+            onChange={(event) =>
+              setDraft({ ...draft, daily_all_day: event.currentTarget.checked ? 1 : 0 })
+            }
+          />{" "}
+          Kun bo'yi ko'rinsin
         </label>
         {!draft.daily_all_day && (
           <div className="ad-daily-times">
-            <select className="input" aria-label="Kunlik boshlanish" value={dailyStart} onChange={(event) => setDraft({ ...draft, daily_start: event.currentTarget.value })}>
-              <option value="" disabled>Boshlanishni tanlang</option>
-              {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
+            <select
+              className="input"
+              aria-label="Kunlik boshlanish"
+              value={dailyStart}
+              onChange={(event) =>
+                setDraft({ ...draft, daily_start: event.currentTarget.value })
+              }
+            >
+              <option value="" disabled>
+                Boshlanishni tanlang
+              </option>
+              {hours.map((hour) => (
+                <option value={hour} key={hour}>
+                  {hour}
+                </option>
+              ))}
             </select>
             <span>—</span>
-            <select className="input" aria-label="Kunlik tugash" value={dailyEnd} onChange={(event) => setDraft({ ...draft, daily_end: event.currentTarget.value })}>
-              <option value="" disabled>Tugashni tanlang</option>
-              {hours.map((hour) => <option value={hour} key={hour}>{hour}</option>)}
+            <select
+              className="input"
+              aria-label="Kunlik tugash"
+              value={dailyEnd}
+              onChange={(event) =>
+                setDraft({ ...draft, daily_end: event.currentTarget.value })
+              }
+            >
+              <option value="" disabled>
+                Tugashni tanlang
+              </option>
+              {hours.map((hour) => (
+                <option value={hour} key={hour}>
+                  {hour}
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -1167,25 +1395,61 @@ function AdvertisementForm({
               : "Boshlanish va tugash vaqtini alohida tanlang."}
         </div>
       </div>
-      <label className="field">Qancha vaqt?
-        <select className="input" value={Number(draft.duration_days ?? 1)} onChange={(event) => setDraft({ ...draft, duration_days: Number(event.currentTarget.value) })}>
-          {[1, 3, 7, 14, 30].map((days) => <option value={days} key={days}>{days} kun</option>)}
+      <label className="field">
+        Qancha vaqt?
+        <select
+          className="input"
+          value={Number(draft.duration_days ?? 1)}
+          onChange={(event) =>
+            setDraft({ ...draft, duration_days: Number(event.currentTarget.value) })
+          }
+        >
+          {[1, 3, 7, 14, 30].map((days) => (
+            <option value={days} key={days}>
+              {days} kun
+            </option>
+          ))}
         </select>
       </label>
       <div className="ad-price-box">
         <div className="idesc">Hisoblangan reklama narxi</div>
-        <div className="price">{v1656Money(recordNumber(quote ?? draft, "total", "price"))}</div>
-        <div className="idesc">{quoteError || (quote
-          ? `${Number(quote.district_count ?? 0)} tuman × ${Number(quote.hours_per_day ?? 0)} soat × ${Number(quote.duration_days ?? 1)} kun × ${v1656Money(Number(quote.district_hour_rate ?? 0))}`
-          : targets.length
-            ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun`
-            : "Hududni tanlang.")}</div>
+        <div className="price">
+          {v1656Money(recordNumber(quote ?? draft, "total", "price"))}
+        </div>
+        <div className="idesc">
+          {quoteError ||
+            (quote
+              ? `${Number(quote.district_count ?? 0)} tuman × ${Number(quote.hours_per_day ?? 0)} soat × ${Number(quote.duration_days ?? 1)} kun × ${v1656Money(Number(quote.district_hour_rate ?? 0))}`
+              : targets.length
+                ? `${targets.length} ta hudud · ${Number(draft.duration_days ?? 1)} kun`
+                : "Hududni tanlang.")}
+        </div>
       </div>
-      <div className="ad-info">Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama tasdiqlangandan keyin jadval bo'yicha ko'rinadi.</div>
-      {fileError && <div className="app-toast on" role="alert">{fileError}</div>}
-      {error && <div className="app-toast on" role="alert">{error}</div>}
-      <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void save()}>Reklamani joylashtirish</button>
-      <button type="button" className="btn btn-soft btn-block" onClick={cancel}>Bekor qilish</button>
+      <div className="ad-info">
+        Kvitansiya yuborilgach to'lov administrator tomonidan tekshiriladi. Reklama
+        tasdiqlangandan keyin jadval bo'yicha ko'rinadi.
+      </div>
+      {fileError && (
+        <div className="app-toast on" role="alert">
+          {fileError}
+        </div>
+      )}
+      {error && (
+        <div className="app-toast on" role="alert">
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        className="btn btn-primary btn-block"
+        disabled={busy}
+        onClick={() => void save()}
+      >
+        Reklamani joylashtirish
+      </button>
+      <button type="button" className="btn btn-soft btn-block" onClick={cancel}>
+        Bekor qilish
+      </button>
     </div>
   );
 }

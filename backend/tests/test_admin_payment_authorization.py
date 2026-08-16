@@ -18,7 +18,6 @@ from app.core.config import Settings
 from app.main import create_app
 from app.payments.schemas import PaymentRequestRead
 
-
 ADMIN_TG = 1423181561
 BUSINESS_ACCOUNT = 7
 
@@ -66,22 +65,24 @@ async def api():
         resolve=AsyncMock(return_value=None),
     )
     app.state.payment_service = SimpleNamespace(
-        review=AsyncMock(return_value=PaymentRequestRead(
-            id=1,
-            request_code="PAY-TEST",
-            service_type="subscription",
-            status="approved",
-            plan_code="plus",
-            duration_months=1,
-            quantity=1,
-            amount=99000,
-            currency="UZS",
-            price_code="subscription_plus_1m",
-            public_reason="",
-            created_at=1785200000,
-            updated_at=1785200000,
-            attempts=[],
-        )),
+        review=AsyncMock(
+            return_value=PaymentRequestRead(
+                id=1,
+                request_code="PAY-TEST",
+                service_type="subscription",
+                status="approved",
+                plan_code="plus",
+                duration_months=1,
+                quantity=1,
+                amount=99000,
+                currency="UZS",
+                price_code="subscription_plus_1m",
+                public_reason="",
+                created_at=1785200000,
+                updated_at=1785200000,
+                attempts=[],
+            )
+        ),
     )
     app.state.admin_payment_service = SimpleNamespace(
         list_payments=AsyncMock(return_value=[]),

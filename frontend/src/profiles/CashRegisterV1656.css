@@ -44,7 +44,7 @@
 
 .cash-v1656 button:disabled {
   cursor: not-allowed;
-  opacity: .55;
+  opacity: 0.55;
 }
 
 .cash-v1656__add {
@@ -301,7 +301,7 @@
   }
 
   .cash-v1656__draft-lines article {
-    grid-template-columns: minmax(0, 1fr) minmax(100px, .45fr);
+    grid-template-columns: minmax(0, 1fr) minmax(100px, 0.45fr);
   }
 
   .cash-v1656__draft-lines article > input,

@@ -6,7 +6,6 @@ from pathlib import Path
 from app.legacy_migration.real_source_v7 import copy_real_source as copy_v7
 from app.legacy_migration.source import open_immutable
 
-
 PRESERVE_DEMO_FLAG_TABLES = frozenset({"business_subscriptions"})
 
 

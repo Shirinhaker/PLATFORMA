@@ -14,7 +14,6 @@ import type {
 import { recordId } from "./BusinessOnlineViews";
 import "./BusinessDiningV1656View.css";
 
-
 type DiningAction = (
   resource: BusinessOnlineResource,
   name: string,
@@ -28,10 +27,7 @@ type Props = {
   groups: BusinessOnlineRecord[];
   busy: boolean;
   createPlace: (record: BusinessOnlineRecord) => Promise<boolean>;
-  patchPlace: (
-    id: number | string,
-    patch: BusinessOnlineRecord,
-  ) => Promise<boolean>;
+  patchPlace: (id: number | string, patch: BusinessOnlineRecord) => Promise<boolean>;
   removePlace: (id: number | string) => Promise<boolean>;
   action: DiningAction;
   refresh: (...resources: BusinessOnlineResource[]) => Promise<void>;
@@ -41,10 +37,10 @@ type Props = {
 type Modal =
   | { kind: "choose" }
   | {
-    kind: "form";
-    placeKind: "table" | "room";
-    place: BusinessOnlineRecord | null;
-  }
+      kind: "form";
+      placeKind: "table" | "room";
+      place: BusinessOnlineRecord | null;
+    }
   | { kind: "booking"; place: BusinessOnlineRecord }
   | { kind: "delete"; place: BusinessOnlineRecord }
   | { kind: "clear"; place: BusinessOnlineRecord };
@@ -55,7 +51,6 @@ type DragState = {
   dx: number;
   dy: number;
 } | null;
-
 
 export function BusinessDiningV1656View({
   places,
@@ -79,9 +74,9 @@ export function BusinessDiningV1656View({
   const menu = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ left: 8, top: 8 });
 
-  const selectedMenuPlace = places.find(
-    (place, index) => String(recordId(place, index)) === String(menuId),
-  ) ?? null;
+  const selectedMenuPlace =
+    places.find((place, index) => String(recordId(place, index)) === String(menuId)) ??
+    null;
 
   function showMessage(value: string) {
     setFeedback(value);
@@ -128,7 +123,9 @@ export function BusinessDiningV1656View({
     return (
       <div className="business-dining-v1656">
         {feedback && (
-          <div className="app-toast on" role="alert">{feedback}</div>
+          <div className="app-toast on" role="alert">
+            {feedback}
+          </div>
         )}
         <DiningOrderView
           place={orderPlace}
@@ -147,7 +144,9 @@ export function BusinessDiningV1656View({
   return (
     <div className="business-dining-v1656">
       {feedback && (
-        <div className="app-toast on" role="alert">{feedback}</div>
+        <div className="app-toast on" role="alert">
+          {feedback}
+        </div>
       )}
       <div className="dining-wrap">
         <div className="dining-toolbar">
@@ -193,7 +192,9 @@ export function BusinessDiningV1656View({
               placeKind === "room" ? "room" : "",
               activeKind,
               canMove ? "moving" : "",
-            ].filter(Boolean).join(" ");
+            ]
+              .filter(Boolean)
+              .join(" ");
             return (
               <div
                 className={classes}
@@ -258,7 +259,8 @@ export function BusinessDiningV1656View({
           style={{ left: menuPosition.left, top: menuPosition.top }}
         >
           <button type="button" onClick={() => openOrder(selectedMenuPlace)}>
-            🛒 {selectedMenuPlace.active_kind === "order"
+            🛒{" "}
+            {selectedMenuPlace.active_kind === "order"
               ? "Zakazga taom qo‘shish"
               : "Zakaz qilish"}
           </button>
@@ -340,21 +342,25 @@ export function BusinessDiningV1656View({
       {modal?.kind === "choose" && (
         <DiningModal close={() => setModal(null)}>
           <div className="acf-title">Nima qo'shamiz?</div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            margin: "15px 0",
-          }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+              margin: "15px 0",
+            }}
+          >
             <button
               className="btn btn-soft"
               type="button"
               style={{ height: 74, fontSize: 17 }}
-              onClick={() => setModal({
-                kind: "form",
-                placeKind: "table",
-                place: null,
-              })}
+              onClick={() =>
+                setModal({
+                  kind: "form",
+                  placeKind: "table",
+                  place: null,
+                })
+              }
             >
               🪑 Stol
             </button>
@@ -362,11 +368,13 @@ export function BusinessDiningV1656View({
               className="btn btn-soft"
               type="button"
               style={{ height: 74, fontSize: 17 }}
-              onClick={() => setModal({
-                kind: "form",
-                placeKind: "room",
-                place: null,
-              })}
+              onClick={() =>
+                setModal({
+                  kind: "form",
+                  placeKind: "room",
+                  place: null,
+                })
+              }
             >
               🚪 Xona
             </button>
@@ -460,7 +468,6 @@ export function BusinessDiningV1656View({
   );
 }
 
-
 function DiningModal({
   children,
   close,
@@ -471,16 +478,12 @@ function DiningModal({
   return (
     <>
       <div className="app-modal-back on" onClick={close} />
-      <div
-        className="app-confirm on"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="app-confirm on" onClick={(event) => event.stopPropagation()}>
         {children}
       </div>
     </>
   );
 }
-
 
 function DiningPlaceForm({
   modal,
@@ -503,14 +506,16 @@ function DiningPlaceForm({
   return (
     <DiningModal close={close}>
       <div className="acf-title">
-        {modal.place ? "Tahrirlash" : (isTable ? "Yangi stol" : "Yangi xona")}
+        {modal.place ? "Tahrirlash" : isTable ? "Yangi stol" : "Yangi xona"}
       </div>
-      <div style={{
-        margin: "12px 2px 4px",
-        fontSize: 13,
-        color: "var(--koprik-soft)",
-        textAlign: "left",
-      }}>
+      <div
+        style={{
+          margin: "12px 2px 4px",
+          fontSize: 13,
+          color: "var(--koprik-soft)",
+          textAlign: "left",
+        }}
+      >
         {isTable ? "Stol raqami yoki nomi" : "Xona nomi"}
       </div>
       <input
@@ -523,12 +528,14 @@ function DiningPlaceForm({
       />
       {isTable && (
         <>
-          <div style={{
-            margin: "10px 2px 4px",
-            fontSize: 13,
-            color: "var(--koprik-soft)",
-            textAlign: "left",
-          }}>
+          <div
+            style={{
+              margin: "10px 2px 4px",
+              fontSize: 13,
+              color: "var(--koprik-soft)",
+              textAlign: "left",
+            }}
+          >
             O'rindiqlar soni
           </div>
           <input
@@ -551,9 +558,7 @@ function DiningPlaceForm({
           onClick={() => {
             const cleanName = name.trim();
             if (!cleanName) {
-              showMessage(isTable
-                ? "Stol nomini kiriting."
-                : "Xona nomini kiriting.");
+              showMessage(isTable ? "Stol nomini kiriting." : "Xona nomini kiriting.");
               return;
             }
             void save({
@@ -569,7 +574,6 @@ function DiningPlaceForm({
     </DiningModal>
   );
 }
-
 
 function DiningBookingForm({
   place,
@@ -593,9 +597,7 @@ function DiningBookingForm({
   const [note, setNote] = useState("");
   return (
     <DiningModal close={close}>
-      <div className="acf-title">
-        📅 {String(place.name ?? "")} — bron
-      </div>
+      <div className="acf-title">📅 {String(place.name ?? "")} — bron</div>
       <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
         <input
           className="input"
@@ -610,11 +612,13 @@ function DiningBookingForm({
           placeholder="Telefon raqami"
           onChange={(event) => setPhone(event.target.value)}
         />
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 8,
-        }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+          }}
+        >
           <input
             className="input"
             type="date"
@@ -674,7 +678,6 @@ function DiningBookingForm({
   );
 }
 
-
 function DiningConfirm({
   text,
   okText,
@@ -710,7 +713,6 @@ function DiningConfirm({
   );
 }
 
-
 function DiningOrderView({
   place,
   rows,
@@ -730,48 +732,48 @@ function DiningOrderView({
   close: () => void;
   showMessage: (value: string) => void;
 }) {
-  const orderId = place.active_kind === "order"
-    ? numberValue(place.active_id)
-    : 0;
+  const orderId = place.active_kind === "order" ? numberValue(place.active_id) : 0;
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [note, setNote] = useState("");
   const groupNames = useMemo(
-    () => new Map(groups.map((group, index) => [
-      String(recordId(group, index)),
-      String(group.name ?? ""),
-    ])),
+    () =>
+      new Map(
+        groups.map((group, index) => [
+          String(recordId(group, index)),
+          String(group.name ?? ""),
+        ]),
+      ),
     [groups],
   );
   const menuRows = useMemo<BusinessOnlineRecord[]>(
-    () => rows.filter(
-      (row) => String(row.stock_type ?? "ready_food") === "ready_food",
-    ).map((row): BusinessOnlineRecord => {
-      const groupName = row.group_name
-        ?? groupNames.get(String(row.group_id ?? row.item_group_id ?? ""));
-      return {
-        ...row,
-        group_name: groupName === undefined ? "" : String(groupName),
-      };
-    }),
+    () =>
+      rows
+        .filter((row) => String(row.stock_type ?? "ready_food") === "ready_food")
+        .map((row): BusinessOnlineRecord => {
+          const groupName =
+            row.group_name ??
+            groupNames.get(String(row.group_id ?? row.item_group_id ?? ""));
+          return {
+            ...row,
+            group_name: groupName === undefined ? "" : String(groupName),
+          };
+        }),
     [groupNames, rows],
   );
   const visible = useMemo(() => {
     const clean = normalizeSearch(query);
     if (!clean) return menuRows;
-    return menuRows.filter((item) => normalizeSearch([
-      item.name,
-      item.group_name,
-      item.group_kind,
-      item.kind,
-      item.note,
-    ].join(" ")).includes(clean));
+    return menuRows.filter((item) =>
+      normalizeSearch(
+        [item.name, item.group_name, item.group_kind, item.kind, item.note].join(" "),
+      ).includes(clean),
+    );
   }, [menuRows, query]);
   const total = menuRows.reduce(
-    (sum, item, index) => sum
-      + (cart[String(recordId(item, index))] ?? 0)
-      * parsePriceAmount(item.price),
+    (sum, item, index) =>
+      sum + (cart[String(recordId(item, index))] ?? 0) * parsePriceAmount(item.price),
     0,
   );
 
@@ -808,18 +810,21 @@ function DiningOrderView({
       return;
     }
     await refresh("dining_places", "dining_orders");
-    showMessage(orderId
-      ? "Taomlar shu stol zakaziga qo‘shildi ✅"
-      : "Zakaz saqlandi, ichki buyurtma va kassaga yuborildi ✅");
+    showMessage(
+      orderId
+        ? "Taomlar shu stol zakaziga qo‘shildi ✅"
+        : "Zakaz saqlandi, ichki buyurtma va kassaga yuborildi ✅",
+    );
     close();
   }
 
   return (
     <div className="form-wrap">
       <div className="panel-card" style={{ marginBottom: 10 }}>
-        <b>{String(place.name ?? "")}{orderId
-          ? " — zakazga qo‘shish"
-          : " — yangi zakaz"}</b>
+        <b>
+          {String(place.name ?? "")}
+          {orderId ? " — zakazga qo‘shish" : " — yangi zakaz"}
+        </b>
         <div className="idesc">Mahsulotlarni + va − orqali tanlang.</div>
       </div>
       <div className="item-search" style={{ marginBottom: 10 }}>
@@ -836,55 +841,59 @@ function DiningOrderView({
         {!menuRows.length ? (
           <div className="empty">
             <h3>Mahsulot yo'q</h3>
-            <p>
-              Avval Mahsulot va xizmatlar bo'limida mahsulot qo'shing.
-            </p>
+            <p>Avval Mahsulot va xizmatlar bo'limida mahsulot qo'shing.</p>
           </div>
         ) : !visible.length ? (
           <div className="empty" style={{ padding: "35px 16px" }}>
             <h3>Topilmadi</h3>
             <p>Boshqa nom bilan qidirib ko'ring.</p>
           </div>
-        ) : visible.map((item, index) => {
-          const id = recordId(item, index);
-          const quantity = cart[String(id)] ?? 0;
-          return (
-            <div className="dorder-row" key={String(id)}>
-              <div>
-                <b>{String(item.name ?? "")}</b>
-                {Boolean(item.group_name) && (
-                  <div className="idesc">{String(item.group_name)}</div>
-                )}
-                <div className="idesc">
-                  {legacyMoneyWithSuffix(parsePriceAmount(item.price))}
-                  {" · "}
-                  {String(item.unit ?? "dona")}
+        ) : (
+          visible.map((item, index) => {
+            const id = recordId(item, index);
+            const quantity = cart[String(id)] ?? 0;
+            return (
+              <div className="dorder-row" key={String(id)}>
+                <div>
+                  <b>{String(item.name ?? "")}</b>
+                  {Boolean(item.group_name) && (
+                    <div className="idesc">{String(item.group_name)}</div>
+                  )}
+                  <div className="idesc">
+                    {legacyMoneyWithSuffix(parsePriceAmount(item.price))}
+                    {" · "}
+                    {String(item.unit ?? "dona")}
+                  </div>
+                </div>
+                <div className="dorder-step">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCart((current) => ({
+                        ...current,
+                        [String(id)]: Math.max(0, quantity - 1),
+                      }))
+                    }
+                  >
+                    −
+                  </button>
+                  <b>{quantity}</b>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCart((current) => ({
+                        ...current,
+                        [String(id)]: quantity + 1,
+                      }))
+                    }
+                  >
+                    +
+                  </button>
                 </div>
               </div>
-              <div className="dorder-step">
-                <button
-                  type="button"
-                  onClick={() => setCart((current) => ({
-                    ...current,
-                    [String(id)]: Math.max(0, quantity - 1),
-                  }))}
-                >
-                  −
-                </button>
-                <b>{quantity}</b>
-                <button
-                  type="button"
-                  onClick={() => setCart((current) => ({
-                    ...current,
-                    [String(id)]: quantity + 1,
-                  }))}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
       <div className="dorder-total">
         <div
@@ -912,9 +921,7 @@ function DiningOrderView({
           className="input"
           style={{ marginBottom: 8 }}
           value={note}
-          placeholder={orderId
-            ? "Qo‘shimcha izoh — ixtiyoriy"
-            : "Izoh — ixtiyoriy"}
+          placeholder={orderId ? "Qo‘shimcha izoh — ixtiyoriy" : "Izoh — ixtiyoriy"}
           onChange={(event) => setNote(event.target.value)}
         />
         <button
@@ -929,7 +936,6 @@ function DiningOrderView({
     </div>
   );
 }
-
 
 function movePlace(
   event: ReactPointerEvent<HTMLDivElement>,
@@ -959,12 +965,11 @@ function movePlace(
   setPositions((current) => ({
     ...current,
     [String(id)]: {
-      x: left / bounds.width * 100,
-      y: top / bounds.height * 100,
+      x: (left / bounds.width) * 100,
+      y: (top / bounds.height) * 100,
     },
   }));
 }
-
 
 function placeSubtitle(place: BusinessOnlineRecord): string {
   if (place.active_kind === "order") {
@@ -981,30 +986,25 @@ function placeSubtitle(place: BusinessOnlineRecord): string {
   return "Bo'sh";
 }
 
-
 function legacyMoneyText(value: number): string {
   const amount = Math.trunc(value || 0);
   if (!amount) return "";
   return `${String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} so'm`;
 }
 
-
 function legacyMoneyWithSuffix(value: number): string {
   return `${legacyMoneyText(value)} so'm`;
 }
-
 
 function parsePriceAmount(value: unknown): number {
   const digits = String(value ?? "").replace(/[^0-9]/g, "");
   return digits ? Number.parseInt(digits, 10) || 0 : 0;
 }
 
-
 function numberValue(value: unknown): number {
   const result = Number(value ?? 0);
   return Number.isFinite(result) ? result : 0;
 }
-
 
 function normalizeSearch(value: string): string {
   return value
@@ -1012,7 +1012,6 @@ function normalizeSearch(value: string): string {
     .replace(/[ʻʼ‘’`]/g, "'")
     .trim();
 }
-
 
 function todayYmd(): string {
   const today = new Date();

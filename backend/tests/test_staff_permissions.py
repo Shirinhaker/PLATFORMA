@@ -36,11 +36,21 @@ def test_direction_permissions_match_v1656_templates_and_drop_unknown_values():
     templates = permission_templates("Savdo")
 
     assert {item.key for item in definitions} >= {
-        "items", "buyurtma", "kassa", "ombor", "expenses", "debts",
-        "chats", "notifications", "ads", "documents",
+        "items",
+        "buyurtma",
+        "kassa",
+        "ombor",
+        "expenses",
+        "debts",
+        "chats",
+        "notifications",
+        "ads",
+        "documents",
     }
     assert next(item for item in templates if item.key == "cashier").permissions == (
-        "buyurtma", "kassa", "debts",
+        "buyurtma",
+        "kassa",
+        "debts",
     )
     assert clean_permissions(["kassa", "unknown", "kassa"], "Savdo") == ["kassa"]
 
@@ -96,15 +106,17 @@ def test_staff_profile_payload_is_limited_to_granted_resources():
 
 
 def test_staff_order_permissions_are_split_by_server_side_category():
-    assert staff_order_categories(current(permissions=("service_orders",))) == frozenset({
-        "service"
-    })
-    assert staff_order_categories(current(permissions=("buyurtma",))) == frozenset({
-        "product"
-    })
-    assert staff_order_categories(current(
-        permissions=("buyurtma", "service_orders"),
-    )) == frozenset({"product", "service"})
+    assert staff_order_categories(
+        current(permissions=("service_orders",))
+    ) == frozenset({"service"})
+    assert staff_order_categories(current(permissions=("buyurtma",))) == frozenset(
+        {"product"}
+    )
+    assert staff_order_categories(
+        current(
+            permissions=("buyurtma", "service_orders"),
+        )
+    ) == frozenset({"product", "service"})
     assert staff_order_categories(current(actor="owner")) is None
 
 

@@ -26,12 +26,19 @@ async def import_taxi_domain(
         for row in _rows(source, "drivers"):
             legacy_id = _optional_int(row.get("id"))
             legacy_user_id = _optional_int(row.get("user_id"))
-            mapping = await _find_mapping(session, "user_account", legacy_user_id) if legacy_user_id else None
+            mapping = (
+                await _find_mapping(session, "user_account", legacy_user_id)
+                if legacy_user_id
+                else None
+            )
             if legacy_id is None or mapping is None or mapping.target_id is None:
                 counters["quarantined"] += 1
                 counters["issues"] += await _ensure_issue(
-                    session, run, entity_type="taxi_driver",
-                    legacy_id=legacy_id or 0, issue_code="taxi_driver.user_unresolved",
+                    session,
+                    run,
+                    entity_type="taxi_driver",
+                    legacy_id=legacy_id or 0,
+                    issue_code="taxi_driver.user_unresolved",
                 )
                 continue
             existing = await session.scalar(
@@ -44,7 +51,9 @@ async def import_taxi_domain(
                 "car_model": str(row.get("car_model") or "").strip(),
                 "car_color": str(row.get("car_color") or "").strip(),
                 "car_plate": str(row.get("car_plate") or "").strip(),
-                "service": str(row.get("service") or "taxi") if str(row.get("service") or "taxi") in {"taxi", "dostavka", "both"} else "taxi",
+                "service": str(row.get("service") or "taxi")
+                if str(row.get("service") or "taxi") in {"taxi", "dostavka", "both"}
+                else "taxi",
                 "available": bool(row.get("available")),
                 "rating_sum": max(0, _optional_int(row.get("rating_sum")) or 0),
                 "rating_count": max(0, _optional_int(row.get("rating_cnt")) or 0),
@@ -62,7 +71,9 @@ async def import_taxi_domain(
                 await session.flush()
                 counters["created"] += 1
             else:
-                changed = any(getattr(existing, key) != value for key, value in values.items())
+                changed = any(
+                    getattr(existing, key) != value for key, value in values.items()
+                )
                 for key, value in values.items():
                     setattr(existing, key, value)
                 counters["updated" if changed else "reused"] += 1
@@ -72,23 +83,38 @@ async def import_taxi_domain(
         for row in _rows(source, "rides"):
             legacy_id = _optional_int(row.get("id"))
             legacy_customer_id = _optional_int(row.get("customer_id"))
-            mapping = await _find_mapping(session, "user_account", legacy_customer_id) if legacy_customer_id else None
+            mapping = (
+                await _find_mapping(session, "user_account", legacy_customer_id)
+                if legacy_customer_id
+                else None
+            )
             if legacy_id is None or mapping is None or mapping.target_id is None:
                 counters["quarantined"] += 1
                 counters["issues"] += await _ensure_issue(
-                    session, run, entity_type="taxi_ride",
-                    legacy_id=legacy_id or 0, issue_code="taxi_ride.customer_unresolved",
+                    session,
+                    run,
+                    entity_type="taxi_ride",
+                    legacy_id=legacy_id or 0,
+                    issue_code="taxi_ride.customer_unresolved",
                 )
                 continue
             existing = await session.scalar(
                 select(TaxiRide).where(TaxiRide.legacy_source_id == legacy_id)
             )
             legacy_order_id = _optional_int(row.get("src_order_id"))
-            source_order_id = await session.scalar(
-                select(Order.id).where(Order.legacy_source_id == legacy_order_id)
-            ) if legacy_order_id else None
+            source_order_id = (
+                await session.scalar(
+                    select(Order.id).where(Order.legacy_source_id == legacy_order_id)
+                )
+                if legacy_order_id
+                else None
+            )
             created_at = _unix_datetime(row.get("created_at"))
-            accepted_at = _unix_datetime(row.get("accepted_at")) if row.get("accepted_at") else None
+            accepted_at = (
+                _unix_datetime(row.get("accepted_at"))
+                if row.get("accepted_at")
+                else None
+            )
             status = str(row.get("status") or "pending")
             values = {
                 "customer_account_id": mapping.target_id,
@@ -102,7 +128,9 @@ async def import_taxi_domain(
                 "to_lat": _number(row.get("to_lat")),
                 "to_lng": _number(row.get("to_lng")),
                 "dist_km": _nonnegative_number(row.get("dist_km")),
-                "dur_min": max(0, _optional_int(row.get("dur_min")) or 0) if row.get("dur_min") is not None else None,
+                "dur_min": max(0, _optional_int(row.get("dur_min")) or 0)
+                if row.get("dur_min") is not None
+                else None,
                 "meter_km": _nonnegative_number(row.get("meter_km")),
                 "ozim": bool(row.get("ozim")),
                 "cargo": str(row.get("cargo") or ""),
@@ -113,14 +141,18 @@ async def import_taxi_domain(
                 "updated_at": accepted_at or created_at,
             }
             if existing is None:
-                session.add(TaxiRide(
-                    legacy_source_id=legacy_id,
-                    created_at=created_at,
-                    **values,
-                ))
+                session.add(
+                    TaxiRide(
+                        legacy_source_id=legacy_id,
+                        created_at=created_at,
+                        **values,
+                    )
+                )
                 counters["created"] += 1
             else:
-                changed = any(getattr(existing, key) != value for key, value in values.items())
+                changed = any(
+                    getattr(existing, key) != value for key, value in values.items()
+                )
                 for key, value in values.items():
                     setattr(existing, key, value)
                 counters["updated" if changed else "reused"] += 1
@@ -129,9 +161,12 @@ async def import_taxi_domain(
 
 
 def _table_exists(source: sqlite3.Connection, table: str) -> bool:
-    return source.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
-    ).fetchone() is not None
+    return (
+        source.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        is not None
+    )
 
 
 def _rows(source: sqlite3.Connection, table: str) -> list[dict[str, object]]:

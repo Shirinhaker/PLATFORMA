@@ -1,6 +1,6 @@
+import re
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
-import re
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -17,8 +17,12 @@ from app.auth.dependencies import (
 from app.auth.repository import create_session, lock_session
 from app.auth.router import _set_session_cookie
 from app.auth.security import derive_csrf
+from app.business_online.service_relational import (
+    RELATIONAL_EDUCATION_RESOURCES,
+)
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
+from app.education.repository import EducationEnrollmentRepository
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
@@ -40,12 +44,7 @@ from app.profiles.schemas import (
 )
 from app.profiles.summary_service import ProfileSummaryService
 from app.public_ids import build_profile_public_id
-from app.business_online.service_relational import (
-    RELATIONAL_EDUCATION_RESOURCES,
-)
-from app.education.repository import EducationEnrollmentRepository
 from app.staff.permissions import allowed_payload_resources
-
 
 router = APIRouter(prefix="/api/v1", tags=["profiles"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
@@ -156,9 +155,7 @@ def dashboard_with_notification_count(
     rows = cabinet_payload.get("notifications")
     if isinstance(rows, list):
         snapshot["unread"] = sum(
-            not is_read(row)
-            for row in rows
-            if isinstance(row, dict)
+            not is_read(row) for row in rows if isinstance(row, dict)
         )
     return snapshot
 
@@ -170,9 +167,7 @@ def business_profile_read(
     cabinet_payload: dict[str, Any] | None = None,
 ) -> BusinessProfileRead:
     updates: dict[str, Any] = {
-        "logo_url": request.app.state.r2.create_download_url(
-            profile.logo_object_key
-        ),
+        "logo_url": request.app.state.r2.create_download_url(profile.logo_object_key),
         "pay_qr_url": request.app.state.r2.create_download_url(
             profile.pay_qr_object_key
         ),
@@ -199,7 +194,8 @@ async def user_profile_response(
     )
     return UserProfileRead.model_validate(profile).model_copy(
         update={
-            "public_id": profile.public_id or build_profile_public_id(
+            "public_id": profile.public_id
+            or build_profile_public_id(
                 "user",
                 profile.account_id,
             ),
@@ -233,17 +229,19 @@ async def business_profile_response(
         return response
     allowed = allowed_payload_resources(current.permissions)
     filtered = {name: value for name, value in payload.items() if name in allowed}
-    return response.model_copy(update={
-        "pay_card": "",
-        "pay_holder": "",
-        "pay_qr_object_key": "",
-        "pay_qr_url": "",
-        "director": "",
-        "tax_id": "",
-        "cabinet_payload": filtered,
-        "dashboard_snapshot": {},
-        "recent_activity": [],
-    })
+    return response.model_copy(
+        update={
+            "pay_card": "",
+            "pay_holder": "",
+            "pay_qr_object_key": "",
+            "pay_qr_url": "",
+            "director": "",
+            "tax_id": "",
+            "cabinet_payload": filtered,
+            "dashboard_snapshot": {},
+            "recent_activity": [],
+        }
+    )
 
 
 @router.get("/me", response_model=MeRead)
@@ -312,10 +310,7 @@ async def update_business_profile(
 ):
     require_account_type(current, AccountType.BUSINESS)
     require_business_owner(current)
-    if (
-        "pay_qr_object_key" in body.model_fields_set
-        and body.pay_qr_object_key
-    ):
+    if "pay_qr_object_key" in body.model_fields_set and body.pay_qr_object_key:
         require_profile_object_key(
             body.pay_qr_object_key,
             account_type=AccountType.BUSINESS,
@@ -343,7 +338,9 @@ async def switch_cabinet(
 ):
     require_staff_permission(current, "__business_owner__")
     if body.target_type is current.account_type:
-        raise ApiError(409, "cabinet_already_active", "Tanlangan kabinet allaqachon ochiq.")
+        raise ApiError(
+            409, "cabinet_already_active", "Tanlangan kabinet allaqachon ochiq."
+        )
 
     link = (
         await session.get(ProfileLink, current.account_id)
@@ -367,7 +364,11 @@ async def switch_cabinet(
         else link.user_account_id
     )
     target = await session.get(Account, target_id)
-    if target is None or target.status != "active" or target.account_type is not body.target_type:
+    if (
+        target is None
+        or target.status != "active"
+        or target.account_type is not body.target_type
+    ):
         raise ApiError(404, "linked_cabinet_not_found", "Bog‘langan kabinet topilmadi.")
 
     now = datetime.now(UTC)

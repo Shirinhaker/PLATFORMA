@@ -4,11 +4,8 @@ import "leaflet/dist/leaflet.css";
 
 import "./BusinessLocationPickerV1656View.css";
 
-
 export type PicklocPrefix = "bp" | "be" | "ue";
-export type PicklocReturnScreen = (
-  "cab-profil" | "cab-elon-form" | "ucab-elon-form"
-);
+export type PicklocReturnScreen = "cab-profil" | "cab-elon-form" | "ucab-elon-form";
 export type PicklocPoint = { latitude: number; longitude: number };
 
 type Props = {
@@ -16,10 +13,7 @@ type Props = {
   value?: PicklocPoint | null;
   fallback?: PicklocPoint | null;
   onCancel: (screen: PicklocReturnScreen) => void;
-  onConfirm: (
-    point: PicklocPoint,
-    screen: PicklocReturnScreen,
-  ) => void | Promise<void>;
+  onConfirm: (point: PicklocPoint, screen: PicklocReturnScreen) => void | Promise<void>;
 };
 
 const TASHKENT_CENTER: PicklocPoint = {
@@ -28,12 +22,10 @@ const TASHKENT_CENTER: PicklocPoint = {
 };
 const BUSINESS_PICK_POINT_KEY = "business_pick_point";
 
-
 function safeNumber(value: unknown): number | null {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
-
 
 export function normalizeLatLng(
   latitudeValue: unknown,
@@ -50,22 +42,20 @@ export function normalizeLatLng(
   return { latitude, longitude };
 }
 
-
 export function pickReturnScreen(prefix: PicklocPrefix): PicklocReturnScreen {
   if (prefix === "be") return "cab-elon-form";
   if (prefix === "ue") return "ucab-elon-form";
   return "cab-profil";
 }
 
-
 export function buildAddrText(address: Record<string, unknown>): string {
   const district = String(
-    address.city_district
-      || address.county
-      || address.suburb
-      || address.town
-      || address.village
-      || "",
+    address.city_district ||
+      address.county ||
+      address.suburb ||
+      address.town ||
+      address.village ||
+      "",
   );
   const region = String(address.state || address.region || "");
   const street = String(address.road || address.neighbourhood || "");
@@ -75,7 +65,6 @@ export function buildAddrText(address: Record<string, unknown>): string {
   if (region && region !== district) parts.push(region);
   return parts.join(", ");
 }
-
 
 function storedBusinessPoint(): PicklocPoint | null {
   try {
@@ -88,18 +77,19 @@ function storedBusinessPoint(): PicklocPoint | null {
   }
 }
 
-
 function saveBusinessPoint(point: PicklocPoint) {
   try {
-    localStorage.setItem(BUSINESS_PICK_POINT_KEY, JSON.stringify({
-      lat: point.latitude,
-      lng: point.longitude,
-    }));
+    localStorage.setItem(
+      BUSINESS_PICK_POINT_KEY,
+      JSON.stringify({
+        lat: point.latitude,
+        lng: point.longitude,
+      }),
+    );
   } catch {
     // Monolit kabi storage ishlamasa ham tanlash oqimi davom etadi.
   }
 }
-
 
 export function BusinessLocationPickerV1656View({
   prefix,
@@ -114,13 +104,12 @@ export function BusinessLocationPickerV1656View({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const returnScreen = pickReturnScreen(prefix);
-  const start = (
-    normalizeLatLng(value?.latitude, value?.longitude)
-    ?? (prefix === "bp"
+  const start =
+    normalizeLatLng(value?.latitude, value?.longitude) ??
+    (prefix === "bp"
       ? storedBusinessPoint()
-      : normalizeLatLng(fallback?.latitude, fallback?.longitude))
-    ?? TASHKENT_CENTER
-  );
+      : normalizeLatLng(fallback?.latitude, fallback?.longitude)) ??
+    TASHKENT_CENTER;
   const startLatitude = start.latitude;
   const startLongitude = start.longitude;
 
@@ -145,27 +134,35 @@ export function BusinessLocationPickerV1656View({
       }, 40);
     };
 
-    void import("leaflet").then(({ default: leaflet }) => {
-      if (disposed) return;
-      map = leaflet.map(node, {
-        zoomControl: true,
-        attributionControl: false,
-      }).setView([startLatitude, startLongitude], 14);
-      leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-      }).addTo(map);
-      mapRef.current = map;
+    void import("leaflet")
+      .then(({ default: leaflet }) => {
+        if (disposed) return;
+        map = leaflet
+          .map(node, {
+            zoomControl: true,
+            attributionControl: false,
+          })
+          .setView([startLatitude, startLongitude], 14);
+        leaflet
+          .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+          })
+          .addTo(map);
+        mapRef.current = map;
 
-      screenNode.addEventListener("animationend", syncMapSize);
-      window.addEventListener("resize", syncMapSize);
-      window.addEventListener("orientationchange", syncMapSize);
-      window.visualViewport?.addEventListener("resize", syncMapSize);
-      animationFallback = window.setTimeout(syncMapSize, 240);
-    }).catch(() => {
-      if (!disposed) {
-        setError("Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring.");
-      }
-    });
+        screenNode.addEventListener("animationend", syncMapSize);
+        window.addEventListener("resize", syncMapSize);
+        window.addEventListener("orientationchange", syncMapSize);
+        window.visualViewport?.addEventListener("resize", syncMapSize);
+        animationFallback = window.setTimeout(syncMapSize, 240);
+      })
+      .catch(() => {
+        if (!disposed) {
+          setError(
+            "Xarita hali yuklanmoqda, bir lahza kuting va qayta urinib ko'ring.",
+          );
+        }
+      });
 
     return () => {
       disposed = true;
@@ -227,7 +224,9 @@ export function BusinessLocationPickerV1656View({
             filter: "drop-shadow(0 3px 5px rgba(0,0,0,.35))",
             pointerEvents: "none",
           }}
-        >📍</div>
+        >
+          📍
+        </div>
         <div
           style={{
             position: "absolute",
@@ -249,25 +248,35 @@ export function BusinessLocationPickerV1656View({
               fontWeight: 600,
               boxShadow: "var(--shadow)",
             }}
-          >Xaritani suring — markerni joyga to'g'rilang</span>
+          >
+            Xaritani suring — markerni joyga to'g'rilang
+          </span>
         </div>
       </div>
       <div style={{ padding: "14px 16px" }}>
-        {error && <div className="app-toast on" role="alert">{error}</div>}
+        {error && (
+          <div className="app-toast on" role="alert">
+            {error}
+          </div>
+        )}
         <button
           className="btn btn-primary btn-block"
           id="pickConfirm"
           type="button"
           disabled={busy}
           onClick={() => void confirm()}
-        >✅ Shu joyni tanlash</button>
+        >
+          ✅ Shu joyni tanlash
+        </button>
         <button
           className="btn btn-soft btn-block"
           id="pickCancel"
           type="button"
           style={{ marginTop: 9 }}
           onClick={() => onCancel(returnScreen)}
-        >Bekor qilish</button>
+        >
+          Bekor qilish
+        </button>
       </div>
     </section>
   );

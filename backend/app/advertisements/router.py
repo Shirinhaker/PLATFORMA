@@ -8,7 +8,6 @@ from app.advertisements.schemas import (
     PublicAdvertisementViews,
 )
 
-
 router = APIRouter(prefix="/api/v1/public", tags=["public-advertisements"])
 
 
@@ -46,7 +45,5 @@ async def record_public_advertisement_click(
     request: Request,
     public_id: Annotated[str, Path(pattern=r"^a_[0-9a-f]{16}$")],
 ) -> Response:
-    await request.app.state.advertisement_service.record_public_click(
-        public_id
-    )
+    await request.app.state.advertisement_service.record_public_click(public_id)
     return Response(status_code=204)

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +16,6 @@ from app.cabinet_records.verify import (
     verify_payload_parity,
 )
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 
@@ -80,7 +78,7 @@ async def execute_backfill_batches(
 
     try:
         for start in range(0, len(refs), batch_size):
-            batch = refs[start:start + batch_size]
+            batch = refs[start : start + batch_size]
             async with session_factory() as session:
                 run = await session.get(CabinetNormalizationRun, run_id)
                 if run is None:
@@ -184,7 +182,11 @@ async def execute_backfill_batches(
 
 async def profile_refs(session: AsyncSession) -> list[ProfileRef]:
     user_ids = list(
-        (await session.scalars(select(UserProfile.account_id).order_by(UserProfile.account_id))).all()
+        (
+            await session.scalars(
+                select(UserProfile.account_id).order_by(UserProfile.account_id)
+            )
+        ).all()
     )
     business_ids = list(
         (
@@ -208,9 +210,7 @@ async def load_profile(
     model = UserProfile if ref.account_type == "user" else BusinessProfile
     if lock:
         profile = await session.scalar(
-            select(model)
-            .where(model.account_id == ref.account_id)
-            .with_for_update()
+            select(model).where(model.account_id == ref.account_id).with_for_update()
         )
     else:
         profile = await session.get(model, ref.account_id)

@@ -2,12 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { AdminApiClient, AdminTaxiDriver } from "./admin-client";
 
-
-export type AdminTaxiApi = Pick<
-  AdminApiClient,
-  "taxiDrivers" | "topupTaxiDriver"
->;
-
+export type AdminTaxiApi = Pick<AdminApiClient, "taxiDrivers" | "topupTaxiDriver">;
 
 export function AdminTaxiDrivers({ api }: { api: AdminTaxiApi }) {
   const [drivers, setDrivers] = useState<AdminTaxiDriver[]>([]);
@@ -30,7 +25,9 @@ export function AdminTaxiDrivers({ api }: { api: AdminTaxiApi }) {
     }
   }, [api]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function topup() {
     const value = Number(amount);
@@ -67,20 +64,86 @@ export function AdminTaxiDrivers({ api }: { api: AdminTaxiApi }) {
 
   return (
     <section className="page active">
-      <div className="page-head"><div><div className="eyebrow">TAXI VA DOSTAVKA</div><h1>Haydovchi balanslari</h1></div></div>
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">TAXI VA DOSTAVKA</div>
+          <h1>Haydovchi balanslari</h1>
+        </div>
+      </div>
       <div className="panel admin-taxi-topup">
         <label htmlFor="taxiDriver">Haydovchi</label>
-        <select id="taxiDriver" value={selected} onChange={(event) => setSelected(Number(event.currentTarget.value))}>
-          {!drivers.length ? <option value={0}>Haydovchi yo‘q</option> : drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name || "—"} · {driver.balance.toLocaleString("uz-UZ")} so‘m</option>)}
+        <select
+          id="taxiDriver"
+          value={selected}
+          onChange={(event) => setSelected(Number(event.currentTarget.value))}
+        >
+          {!drivers.length ? (
+            <option value={0}>Haydovchi yo‘q</option>
+          ) : (
+            drivers.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.name || "—"} · {driver.balance.toLocaleString("uz-UZ")} so‘m
+              </option>
+            ))
+          )}
         </select>
         <label htmlFor="taxiAmount">Summa (so‘m)</label>
-        <input id="taxiAmount" type="number" inputMode="numeric" min={1} max={10_000_000} value={amount} onChange={(event) => setAmount(event.currentTarget.value)} />
+        <input
+          id="taxiAmount"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={10_000_000}
+          value={amount}
+          onChange={(event) => setAmount(event.currentTarget.value)}
+        />
         <label htmlFor="taxiReason">Sabab (audit jurnaliga yoziladi)</label>
-        <input id="taxiReason" value={reason} onChange={(event) => setReason(event.currentTarget.value)} placeholder="Masalan: bank o‘tkazmasi tasdiqlandi" />
-        <button disabled={busy || !drivers.length} type="button" onClick={() => void topup()}>Balansni qo‘shish</button>
-        {message ? <div className={`message${failed ? " error" : ""}`} role={failed ? "alert" : "status"}>{message}</div> : null}
+        <input
+          id="taxiReason"
+          value={reason}
+          onChange={(event) => setReason(event.currentTarget.value)}
+          placeholder="Masalan: bank o‘tkazmasi tasdiqlandi"
+        />
+        <button
+          disabled={busy || !drivers.length}
+          type="button"
+          onClick={() => void topup()}
+        >
+          Balansni qo‘shish
+        </button>
+        {message ? (
+          <div
+            className={`message${failed ? " error" : ""}`}
+            role={failed ? "alert" : "status"}
+          >
+            {message}
+          </div>
+        ) : null}
       </div>
-      <div className="table-wrap"><table><thead><tr><th>Haydovchi</th><th>Telefon</th><th>Xizmat</th><th>Holat</th><th>Balans</th></tr></thead><tbody>{drivers.map((driver) => <tr key={driver.id}><td>{driver.name}</td><td>{driver.phone || "—"}</td><td>{driver.service}</td><td>{driver.available ? "Bo‘sh" : "Band"}</td><td>{driver.balance.toLocaleString("uz-UZ")} so‘m</td></tr>)}</tbody></table></div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Haydovchi</th>
+              <th>Telefon</th>
+              <th>Xizmat</th>
+              <th>Holat</th>
+              <th>Balans</th>
+            </tr>
+          </thead>
+          <tbody>
+            {drivers.map((driver) => (
+              <tr key={driver.id}>
+                <td>{driver.name}</td>
+                <td>{driver.phone || "—"}</td>
+                <td>{driver.service}</td>
+                <td>{driver.available ? "Bo‘sh" : "Band"}</td>
+                <td>{driver.balance.toLocaleString("uz-UZ")} so‘m</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

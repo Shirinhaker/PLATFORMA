@@ -6,7 +6,6 @@ import type {
 } from "../api/business-online-types";
 import "./BusinessEducationEnrollmentsV1656View.css";
 
-
 type Props = {
   rows: BusinessOnlineRecord[];
   groups: BusinessOnlineRecord[];
@@ -43,7 +42,6 @@ function recordId(row: BusinessOnlineRecord) {
   return (row.id ?? "") as number | string;
 }
 
-
 export function BusinessEducationEnrollmentsV1656View({
   rows,
   groups,
@@ -79,12 +77,9 @@ export function BusinessEducationEnrollmentsV1656View({
       setToast({ text: "Guruhni tanlang.", role: "alert" });
       return;
     }
-    const saved = await action(
-      "education_enrollments",
-      "accept",
-      id,
-      { group_id: groupId },
-    );
+    const saved = await action("education_enrollments", "accept", id, {
+      group_id: groupId,
+    });
     if (!saved) return;
     await reload();
     setToast({
@@ -96,12 +91,7 @@ export function BusinessEducationEnrollmentsV1656View({
   async function reject() {
     if (!rejecting) return;
     const id = recordId(rejecting);
-    const saved = await action(
-      "education_enrollments",
-      "reject",
-      id,
-      {},
-    );
+    const saved = await action("education_enrollments", "reject", id, {});
     if (!saved) return;
     setRejecting(null);
     await reload();
@@ -141,80 +131,90 @@ export function BusinessEducationEnrollmentsV1656View({
           </button>
         </div>
         <div>
-          {loading ? <div className="idesc">Yuklanmoqda...</div> : filtered.map((row) => {
-            const id = recordId(row);
-            const status = text(row.status) as Filter;
-            const compatibleGroups = groups.filter((group) => (
-              !number(group.course_item_id)
-              || number(group.course_item_id) === number(row.course_item_id)
-            ));
-            return (
-              <div className="panel-card" key={String(id)}>
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}>
-                  <div>
-                    <b>{text(row.customer_name) || "Mijoz"}</b>
-                    <div className="idesc">
-                      📚 {text(row.course_name) || "Kurs"} · 📞 {text(row.phone) || "—"}
+          {loading ? (
+            <div className="idesc">Yuklanmoqda...</div>
+          ) : (
+            filtered.map((row) => {
+              const id = recordId(row);
+              const status = text(row.status) as Filter;
+              const compatibleGroups = groups.filter(
+                (group) =>
+                  !number(group.course_item_id) ||
+                  number(group.course_item_id) === number(row.course_item_id),
+              );
+              return (
+                <div className="panel-card" key={String(id)}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <b>{text(row.customer_name) || "Mijoz"}</b>
+                      <div className="idesc">
+                        📚 {text(row.course_name) || "Kurs"} · 📞{" "}
+                        {text(row.phone) || "—"}
+                      </div>
                     </div>
+                    <span className="sort-chip">{STATUS_LABELS[status] ?? status}</span>
                   </div>
-                  <span className="sort-chip">{STATUS_LABELS[status] ?? status}</span>
+                  {row.note ? (
+                    <div className="idesc" style={{ marginTop: 8 }}>
+                      Izoh: {text(row.note)}
+                    </div>
+                  ) : null}
+                  {status === "new" ? (
+                    <>
+                      <select
+                        className="input"
+                        style={{ marginTop: 10 }}
+                        value={selectedGroups[String(id)] ?? ""}
+                        onChange={(event) =>
+                          setSelectedGroups((current) => ({
+                            ...current,
+                            [String(id)]: event.target.value,
+                          }))
+                        }
+                      >
+                        <option value="">Guruhni tanlang</option>
+                        {compatibleGroups.map((group) => (
+                          <option key={String(group.id)} value={text(group.id)}>
+                            {text(group.name)}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ flex: 1, height: 40 }}
+                          onClick={() => void accept(row)}
+                          disabled={busy}
+                        >
+                          Qabul qilish
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ flex: 1, height: 40, color: "#dc2626" }}
+                          onClick={() => setRejecting(row)}
+                          disabled={busy}
+                        >
+                          Rad etish
+                        </button>
+                      </div>
+                    </>
+                  ) : row.group_name ? (
+                    <div className="idesc" style={{ marginTop: 8 }}>
+                      Guruh: {text(row.group_name)}
+                    </div>
+                  ) : null}
                 </div>
-                {row.note ? (
-                  <div className="idesc" style={{ marginTop: 8 }}>
-                    Izoh: {text(row.note)}
-                  </div>
-                ) : null}
-                {status === "new" ? (
-                  <>
-                    <select
-                      className="input"
-                      style={{ marginTop: 10 }}
-                      value={selectedGroups[String(id)] ?? ""}
-                      onChange={(event) => setSelectedGroups((current) => ({
-                        ...current,
-                        [String(id)]: event.target.value,
-                      }))}
-                    >
-                      <option value="">Guruhni tanlang</option>
-                      {compatibleGroups.map((group) => (
-                        <option key={String(group.id)} value={text(group.id)}>
-                          {text(group.name)}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ display: "flex", gap: 7, marginTop: 8 }}>
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ flex: 1, height: 40 }}
-                        onClick={() => void accept(row)}
-                        disabled={busy}
-                      >
-                        Qabul qilish
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline"
-                        style={{ flex: 1, height: 40, color: "#dc2626" }}
-                        onClick={() => setRejecting(row)}
-                        disabled={busy}
-                      >
-                        Rad etish
-                      </button>
-                    </div>
-                  </>
-                ) : row.group_name ? (
-                  <div className="idesc" style={{ marginTop: 8 }}>
-                    Guruh: {text(row.group_name)}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
           {!loading && !filtered.length ? (
             <div className="empty">
               <h3>Arizalar yo'q</h3>
@@ -225,7 +225,9 @@ export function BusinessEducationEnrollmentsV1656View({
       </div>
 
       {toast ? (
-        <div className="app-toast on" role={toast.role}>{toast.text}</div>
+        <div className="app-toast on" role={toast.role}>
+          {toast.text}
+        </div>
       ) : null}
 
       {rejecting ? (

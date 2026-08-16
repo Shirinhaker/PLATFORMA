@@ -1,7 +1,7 @@
-from importlib import import_module
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -19,10 +19,9 @@ from app.orders.model import Order
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
 from app.reviews.model import Review
-from app.specialists.model import SpecialistProfile
 from app.reviews.schemas import ReviewReplyWrite, ReviewTargetKind, ReviewWrite
 from app.reviews.service import ReviewService
-
+from app.specialists.model import SpecialistProfile
 
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime(2026, 8, 10, 8, 0, tzinfo=UTC)
@@ -297,44 +296,46 @@ async def test_review_service_upserts_replies_deletes_and_recomputes_rating():
         ),
     )
     sync = Session(engine, expire_on_commit=False)
-    sync.add_all([
-        _account(70, AccountType.USER),
-        _account(71, AccountType.USER),
-        _account(72, AccountType.USER),
-        _account(7, AccountType.BUSINESS),
-        _account(8, AccountType.BUSINESS),
-        _user(70, "Ali"),
-        _user(71, "Usta", specialist=True),
-        SpecialistProfile(
-            user_account_id=71,
-            profession="Usta",
-            description="",
-            price_text="",
-            service_area="",
-            is_government=False,
-            organization="",
-            department="",
-            position="",
-            work_hours="",
-            after_hours="",
-            visible=True,
-            available=True,
-            latitude=None,
-            longitude=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        _user(72, "Vali"),
-        _business(7),
-        _business(8),
-        ProfileLink(
-            user_account_id=70,
-            business_account_id=8,
-            created_at=NOW,
-        ),
-        _order(101, 7, "business"),
-        _order(102, 71, "user"),
-    ])
+    sync.add_all(
+        [
+            _account(70, AccountType.USER),
+            _account(71, AccountType.USER),
+            _account(72, AccountType.USER),
+            _account(7, AccountType.BUSINESS),
+            _account(8, AccountType.BUSINESS),
+            _user(70, "Ali"),
+            _user(71, "Usta", specialist=True),
+            SpecialistProfile(
+                user_account_id=71,
+                profession="Usta",
+                description="",
+                price_text="",
+                service_area="",
+                is_government=False,
+                organization="",
+                department="",
+                position="",
+                work_hours="",
+                after_hours="",
+                visible=True,
+                available=True,
+                latitude=None,
+                longitude=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            _user(72, "Vali"),
+            _business(7),
+            _business(8),
+            ProfileLink(
+                user_account_id=70,
+                business_account_id=8,
+                created_at=NOW,
+            ),
+            _order(101, 7, "business"),
+            _order(102, 71, "user"),
+        ]
+    )
     sync.commit()
     store = AsyncStore(sync)
 
@@ -409,9 +410,7 @@ async def test_review_service_upserts_replies_deletes_and_recomputes_rating():
     assert (updated.avg, updated.count) == (5, 1)
     assert sync.scalar(select(func.count(Review.id))) == 1
 
-    owner_list = await service.received(
-        account_id=7, account_type=AccountType.BUSINESS
-    )
+    owner_list = await service.received(account_id=7, account_type=AccountType.BUSINESS)
     replied = await service.reply(
         review_id=owner_list.reviews[0].id,
         account_id=7,

@@ -13,7 +13,6 @@ from app.business_online.service import (
     MEDICAL_RESOURCES,
     RESOURCE_SPECS,
     append_medical_user_notification,
-    apply_action as apply_payload_action,
     cascade_after_delete,
     display_resource_rows,
     ensure_resource_direction,
@@ -34,24 +33,32 @@ from app.business_online.service import (
     sync_medical_doctor_links,
     unix_now,
 )
+from app.business_online.service import (
+    apply_action as apply_payload_action,
+)
 from app.cabinet_records.dual_write import sync_json_fallback
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.live_sync import CATALOG_RESOURCES, sync_business_catalog
 from app.core.errors import ApiError
+from app.education.cabinet_service import EducationCabinetService
 from app.education.repository import (
     ENROLLMENTS as EDUCATION_ENROLLMENTS,
+)
+from app.education.repository import (
     GROUPS as EDUCATION_GROUPS,
+)
+from app.education.repository import (
     STUDENTS as EDUCATION_STUDENTS,
+)
+from app.education.repository import (
     EducationEnrollmentRepository,
 )
-from app.education.cabinet_service import EducationCabinetService
 from app.education.service import EducationEnrollmentService
 from app.inventory.live_sync import sync_business_inventory
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 SessionFactory = Callable[[], AsyncIterator[AsyncSession]]
 CatalogSync = Callable[..., Awaitable[None]]
@@ -295,11 +302,14 @@ class BusinessOnlineService:
                         "Biznes profil topilmadi.",
                     )
                 ensure_resource_direction(profile, resource)
-                rows = await self._notifications.list_rows(
-                    session,
-                    account_id=account_id,
-                    account_type="business",
-                ) or []
+                rows = (
+                    await self._notifications.list_rows(
+                        session,
+                        account_id=account_id,
+                        account_type="business",
+                    )
+                    or []
+                )
                 find_resource_record(rows, record_id, resource)
                 try:
                     notification_id = int(record_id)
@@ -316,19 +326,18 @@ class BusinessOnlineService:
                     notification_id=notification_id,
                 )
                 await session.commit()
-                return [
-                    row for row in rows
-                    if str(row.get("id")) != str(record_id)
-                ]
+                return [row for row in rows if str(row.get("id")) != str(record_id)]
             profile = await locked_profile(session, account_id)
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             rows = resource_rows(payload, resource)
-            deleted = rows.pop(find_resource_record_index(
-                rows,
-                record_id,
-                resource,
-            ))
+            deleted = rows.pop(
+                find_resource_record_index(
+                    rows,
+                    record_id,
+                    resource,
+                )
+            )
             payload[resource] = rows
             changed = cascade_after_delete(payload, resource, deleted)
             catalog_changed = await self._persist_resources(
@@ -382,11 +391,14 @@ class BusinessOnlineService:
                 else:
                     if record_id is None:
                         raise missing_record_id()
-                    rows = await self._notifications.list_rows(
-                        session,
-                        account_id=account_id,
-                        account_type="business",
-                    ) or []
+                    rows = (
+                        await self._notifications.list_rows(
+                            session,
+                            account_id=account_id,
+                            account_type="business",
+                        )
+                        or []
+                    )
                     find_resource_record(rows, record_id, resource)
                     try:
                         notification_id = int(record_id)
@@ -404,11 +416,14 @@ class BusinessOnlineService:
                         read_at=now,
                     )
                     item = None
-                rows = await self._notifications.list_rows(
-                    session,
-                    account_id=account_id,
-                    account_type="business",
-                ) or []
+                rows = (
+                    await self._notifications.list_rows(
+                        session,
+                        account_id=account_id,
+                        account_type="business",
+                    )
+                    or []
+                )
                 if record_id is not None:
                     item = find_resource_record(rows, record_id, resource)
                 await session.commit()
@@ -443,8 +458,7 @@ class BusinessOnlineService:
             ensure_resource_direction(profile, resource)
             payload = await self._hybrid_payload(session, profile)
             before = {
-                name: deepcopy(resource_rows(payload, name))
-                for name in RESOURCE_SPECS
+                name: deepcopy(resource_rows(payload, name)) for name in RESOURCE_SPECS
             }
             notification_events: list[dict[str, Any]] = []
             item = apply_payload_action(
@@ -464,10 +478,7 @@ class BusinessOnlineService:
             }
             if not changed:
                 changed.add(resource)
-            if (
-                "notifications" in changed
-                and self._notifications.supported(session)
-            ):
+            if "notifications" in changed and self._notifications.supported(session):
                 await self._persist_business_notifications(
                     session,
                     account_id=account_id,
@@ -504,19 +515,13 @@ class BusinessOnlineService:
                 return f"event:{event_key}"
             return f"id:{row.get('id')}"
 
-        existing = {
-            identity(row)
-            for row in previous
-            if isinstance(row, dict)
-        }
+        existing = {identity(row) for row in previous if isinstance(row, dict)}
         for row in current:
             if not isinstance(row, dict) or identity(row) in existing:
                 continue
             saved = deepcopy(row)
             if not str(saved.get("event_key") or "").strip():
-                saved["event_key"] = (
-                    f"business:{account_id}:{uuid4().hex}"
-                )
+                saved["event_key"] = f"business:{account_id}:{uuid4().hex}"
             await self._notifications.append(
                 session,
                 account_id=account_id,
@@ -562,11 +567,13 @@ class BusinessOnlineService:
             if profile is None:
                 continue
             payload = normalized_payload(profile.cabinet_payload)
-            payload.update(await self._repository.read_payload(
-                session,
-                account_id=user_id,
-                account_type="user",
-            ))
+            payload.update(
+                await self._repository.read_payload(
+                    session,
+                    account_id=user_id,
+                    account_type="user",
+                )
+            )
             for event in user_events:
                 append_medical_user_notification(payload, event)
             notifications = resource_rows(payload, "notifications")
@@ -580,8 +587,7 @@ class BusinessOnlineService:
             sync_json_fallback(profile, payload)
             snapshot = deepcopy(profile.dashboard_snapshot or {})
             snapshot["unread"] = sum(
-                not bool(int(row.get("is_read") or 0))
-                for row in notifications
+                not bool(int(row.get("is_read") or 0)) for row in notifications
             )
             profile.dashboard_snapshot = snapshot
 

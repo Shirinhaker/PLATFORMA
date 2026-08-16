@@ -118,10 +118,7 @@ async def test_parallel_cache_misses_share_one_database_read():
     )
     try:
         summaries = await asyncio.gather(
-            *(
-                service.resolve(AccountType.USER, 1)
-                for _ in range(50)
-            )
+            *(service.resolve(AccountType.USER, 1) for _ in range(50))
         )
     finally:
         await redis.aclose()
@@ -141,9 +138,7 @@ async def test_user_and_business_profile_summaries_use_separate_keys():
     try:
         user = await service.resolve(AccountType.USER, 1)
         business = await service.resolve(AccountType.BUSINESS, 2)
-        keys = {
-            key async for key in redis.scan_iter("profile:me:v1:*")
-        }
+        keys = {key async for key in redis.scan_iter("profile:me:v1:*")}
     finally:
         await redis.aclose()
 
@@ -209,9 +204,7 @@ async def test_invalidate_deletes_only_the_selected_account_cache():
         await service.resolve(AccountType.BUSINESS, 2)
         await service.invalidate(AccountType.USER, 1)
         user_cache = await redis.get("profile:me:v1:user:1")
-        business_cache = await redis.get(
-            "profile:me:v1:business:2"
-        )
+        business_cache = await redis.get("profile:me:v1:business:2")
     finally:
         await redis.aclose()
 
@@ -228,17 +221,13 @@ async def test_invalidation_prevents_inflight_read_from_repopulating_cache():
         Settings(environment="test"),
     )
     try:
-        stale_read = asyncio.create_task(
-            service.resolve(AccountType.USER, 1)
-        )
+        stale_read = asyncio.create_task(service.resolve(AccountType.USER, 1))
         await database.read_started.wait()
         database.profiles[(UserProfile, 1)].name = "Yangi Ali"
         await service.invalidate(AccountType.USER, 1)
         database.allow_read_to_finish.set()
         stale = await stale_read
-        cached_after_stale_read = await redis.get(
-            "profile:me:v1:user:1"
-        )
+        cached_after_stale_read = await redis.get("profile:me:v1:user:1")
         fresh = await service.resolve(AccountType.USER, 1)
     finally:
         await redis.aclose()

@@ -1,21 +1,19 @@
-from importlib import import_module
+import secrets
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from importlib import import_module
 from pathlib import Path
-import secrets
 
 import pytest
 from pydantic import ValidationError
 
-from app.accounts.model import AccountType
-from app.accounts.model import Account
+from app.accounts.model import Account, AccountType
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.main import create_app
 from app.messages.schemas import MessageCreate, MessageEdit, MessageImageCreate
 from app.messages.service import MessageService
 from app.profiles.model import BusinessProfile, UserProfile
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,7 +26,9 @@ def test_message_models_define_one_conversation_per_account_pair():
     model = module("model")
 
     assert model.MessageConversation.__tablename__ == "message_conversations"
-    assert model.MessageConversationMember.__tablename__ == "message_conversation_members"
+    assert (
+        model.MessageConversationMember.__tablename__ == "message_conversation_members"
+    )
     assert model.Message.__tablename__ == "messages"
     assert model.Message.__table__.c.reply_to_id.foreign_keys
     assert model.Message.__table__.c.sender_account_id.foreign_keys
@@ -52,15 +52,20 @@ def test_message_pair_and_preview_rules_match_v1656():
     with pytest.raises(ValueError, match="same_account"):
         service.canonical_account_pair(7, 7)
 
-    assert service.message_preview_text(
-        text="", media_type="text", is_deleted=True
-    ) == "Xabar o‘chirildi"
-    assert service.message_preview_text(
-        text="", media_type="photo", is_deleted=False
-    ) == "📷 Rasm"
-    assert service.message_preview_text(
-        text=" Salom ", media_type="photo", is_deleted=False
-    ) == "Salom"
+    assert (
+        service.message_preview_text(text="", media_type="text", is_deleted=True)
+        == "Xabar o‘chirildi"
+    )
+    assert (
+        service.message_preview_text(text="", media_type="photo", is_deleted=False)
+        == "📷 Rasm"
+    )
+    assert (
+        service.message_preview_text(
+            text=" Salom ", media_type="photo", is_deleted=False
+        )
+        == "Salom"
+    )
 
 
 def test_message_schemas_enforce_v1656_text_photo_and_reply_limits():
@@ -123,9 +128,7 @@ def test_messages_migration_backfills_legacy_json_idempotently_and_reverses():
 
     assert 'revision = "0031_messages"' in source
     assert 'down_revision = "0030_stories"' in source
-    for table in (
-        "message_conversations", "message_conversation_members", "messages"
-    ):
+    for table in ("message_conversations", "message_conversation_members", "messages"):
         assert f'"{table}"' in source
         assert f'op.drop_table("{table}")' in source
     assert "user_profiles" in source
@@ -161,12 +164,8 @@ def test_messages_are_registered_and_feature_can_be_closed_or_opened():
 
 
 def test_media_grant_has_dedicated_general_chat_image_purpose():
-    router_source = (ROOT / "app" / "media" / "router.py").read_text(
-        encoding="utf-8"
-    )
-    storage_source = (ROOT / "app" / "media" / "storage.py").read_text(
-        encoding="utf-8"
-    )
+    router_source = (ROOT / "app" / "media" / "router.py").read_text(encoding="utf-8")
+    storage_source = (ROOT / "app" / "media" / "storage.py").read_text(encoding="utf-8")
 
     assert '"chat_image"' in router_source
     assert '"chat_image"' in storage_source
@@ -198,20 +197,22 @@ async def test_two_actors_text_image_reply_edit_delete_read_flow(db_session):
     await db_session.flush()
     user_public_id = f"u_{int(user.id):016x}"
     business_public_id = f"b_{int(business.id):016x}"
-    db_session.add_all([
-        UserProfile(
-            account_id=user.id,
-            public_id=user_public_id,
-            name="Ali",
-            phone="",
-        ),
-        BusinessProfile(
-            account_id=business.id,
-            public_id=business_public_id,
-            name="Turon savdo",
-            phone="",
-        ),
-    ])
+    db_session.add_all(
+        [
+            UserProfile(
+                account_id=user.id,
+                public_id=user_public_id,
+                name="Ali",
+                phone="",
+            ),
+            BusinessProfile(
+                account_id=business.id,
+                public_id=business_public_id,
+                name="Turon savdo",
+                phone="",
+            ),
+        ]
+    )
     await db_session.flush()
 
     @asynccontextmanager

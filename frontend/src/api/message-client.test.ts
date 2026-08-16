@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApiClient } from "./client";
 
-
 function response(body: unknown) {
   return {
     ok: true,
@@ -11,18 +10,20 @@ function response(body: unknown) {
   };
 }
 
-
 describe("typed general message API client", () => {
   it("uses public profile ids and protects all message writes with CSRF", async () => {
-    const fetcher = vi.fn()
-      .mockResolvedValueOnce(response({
-        account_id: 5,
-        account_type: "user",
-        name: "Ali",
-        login: "u_ali",
-        csrf_token: "message-csrf",
-        expires_at: "2026-08-09T08:00:00Z",
-      }))
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({
+          account_id: 5,
+          account_type: "user",
+          name: "Ali",
+          login: "u_ali",
+          csrf_token: "message-csrf",
+          expires_at: "2026-08-09T08:00:00Z",
+        }),
+      )
       .mockResolvedValue(response([]));
     const client = new ApiClient("https://api.test", fetcher, { kind: "web" });
     await client.getSession();
@@ -58,11 +59,8 @@ describe("typed general message API client", () => {
         "X-CSRF-Token": "message-csrf",
       });
     }
-    expect(fetcher.mock.calls[1]?.[1]?.headers)
-      .not.toHaveProperty("X-CSRF-Token");
-    expect(fetcher.mock.calls[2]?.[1]?.headers)
-      .not.toHaveProperty("X-CSRF-Token");
-    expect(fetcher.mock.calls[7]?.[1]?.headers)
-      .not.toHaveProperty("X-CSRF-Token");
+    expect(fetcher.mock.calls[1]?.[1]?.headers).not.toHaveProperty("X-CSRF-Token");
+    expect(fetcher.mock.calls[2]?.[1]?.headers).not.toHaveProperty("X-CSRF-Token");
+    expect(fetcher.mock.calls[7]?.[1]?.headers).not.toHaveProperty("X-CSRF-Token");
   });
 });

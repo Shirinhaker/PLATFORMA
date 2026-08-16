@@ -33,10 +33,11 @@ type Props = {
 };
 
 function receiptIds(carts: CartState, filter?: string | null): string[] {
-  return Object.keys(carts).filter((publicId) => (
-    Object.keys(carts[publicId]?.items ?? {}).length > 0
-    && (!filter || publicId === filter)
-  ));
+  return Object.keys(carts).filter(
+    (publicId) =>
+      Object.keys(carts[publicId]?.items ?? {}).length > 0 &&
+      (!filter || publicId === filter),
+  );
 }
 
 export function CartV1656({
@@ -58,17 +59,19 @@ export function CartV1656({
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const ids = receiptIds(carts, filterProviderPublicId);
   const checkout = checkoutId ? carts[checkoutId] : undefined;
-  const savedLocationPoint = homeLocation
-    && Number.isFinite(homeLocation.latitude)
-    && Number.isFinite(homeLocation.longitude)
-    ? {
-        latitude: Number(homeLocation.latitude),
-        longitude: Number(homeLocation.longitude),
-      }
-    : null;
-  const checkoutHomePoint = savedLocationPoint
-    ?? homePoint
-    ?? (homeLocation
+  const savedLocationPoint =
+    homeLocation &&
+    Number.isFinite(homeLocation.latitude) &&
+    Number.isFinite(homeLocation.longitude)
+      ? {
+          latitude: Number(homeLocation.latitude),
+          longitude: Number(homeLocation.longitude),
+        }
+      : null;
+  const checkoutHomePoint =
+    savedLocationPoint ??
+    homePoint ??
+    (homeLocation
       ? findLocationCenter(homeLocation.region, homeLocation.district)
       : null);
 
@@ -97,13 +100,15 @@ export function CartV1656({
       delete next[draftKey];
       return next;
     });
-    onCartsChange(setCartItemQuantity(
-      carts,
-      providerPublicId,
-      itemPublicId,
-      Number.isFinite(quantity) ? quantity : 0,
-      commit,
-    ));
+    onCartsChange(
+      setCartItemQuantity(
+        carts,
+        providerPublicId,
+        itemPublicId,
+        Number.isFinite(quantity) ? quantity : 0,
+        commit,
+      ),
+    );
   }
 
   function updateSum(providerPublicId: string, itemPublicId: string, raw: string) {
@@ -131,9 +136,9 @@ export function CartV1656({
       return next;
     });
     const quantity = carts[providerPublicId]?.items[itemPublicId]?.qty ?? 0;
-    onCartsChange(setCartItemQuantity(
-      carts, providerPublicId, itemPublicId, quantity, true,
-    ));
+    onCartsChange(
+      setCartItemQuantity(carts, providerPublicId, itemPublicId, quantity, true),
+    );
   }
 
   function clear(providerPublicId: string) {
@@ -177,11 +182,22 @@ export function CartV1656({
   return (
     <main className="screen active cart-v1656" data-screen="cart">
       <div className="form-wrap" id="cartBody">
-        {notice ? <div className="app-toast on" role="status">{notice}</div> : null}
+        {notice ? (
+          <div className="app-toast on" role="status">
+            {notice}
+          </div>
+        ) : null}
         {!ids.length ? (
           <div className="empty" style={{ padding: "48px 20px" }}>
             <div className="ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="9" cy="20" r="1.4" />
                 <circle cx="18" cy="20" r="1.4" />
                 <path d="M2 3h3l2.4 12.5a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L23 7H6" />
@@ -202,41 +218,101 @@ export function CartV1656({
               const items = Object.values(receipt.items);
               const total = cartReceiptTotal(receipt);
               return (
-                <section className="panel-card" key={providerPublicId} style={{ marginBottom: 14 }}>
+                <section
+                  className="panel-card"
+                  key={providerPublicId}
+                  style={{ marginBottom: 14 }}
+                >
                   <div className="cart-receipt-head">
                     <div className="cart-receipt-name">
                       <b>🏪 {receipt.provider_name || "Do'kon"}</b>
                       <div className="idesc">{items.length} xil mahsulot</div>
                     </div>
-                    {total > 0 ? <div className="cart-receipt-total">{moneyText(total)}</div> : null}
+                    {total > 0 ? (
+                      <div className="cart-receipt-total">{moneyText(total)}</div>
+                    ) : null}
                   </div>
                   {items.map((item) => {
                     const price = parsePriceAmount(item.price_text);
                     const sumDraftKey = `${providerPublicId}:${item.public_id}`;
-                    const quantityValue = sumDraftKey in quantityDrafts
-                      ? quantityDrafts[sumDraftKey]
-                      : formatQuantity(item.qty);
-                    const sumValue = sumDraftKey in sumDrafts
-                      ? sumDrafts[sumDraftKey]
-                      : item.qty > 0 ? String(Math.round(price * item.qty)) : "";
+                    const quantityValue =
+                      sumDraftKey in quantityDrafts
+                        ? quantityDrafts[sumDraftKey]
+                        : formatQuantity(item.qty);
+                    const sumValue =
+                      sumDraftKey in sumDrafts
+                        ? sumDrafts[sumDraftKey]
+                        : item.qty > 0
+                          ? String(Math.round(price * item.qty))
+                          : "";
                     return (
                       <div className="item cart-line" key={item.public_id}>
                         <div className="cart-line-head">
                           <div className="iname">{item.name}</div>
-                          <div className="idesc">{item.price_text || "Narx kelishiladi"}</div>
+                          <div className="idesc">
+                            {item.price_text || "Narx kelishiladi"}
+                          </div>
                         </div>
                         <div className="cart-line-controls">
-                          <button aria-label={`${item.name} miqdorini kamaytirish`} className="mini-btn" type="button" onClick={() => onCartsChange(changeCartItem(carts, providerPublicId, item.public_id, -1))}>−</button>
+                          <button
+                            aria-label={`${item.name} miqdorini kamaytirish`}
+                            className="mini-btn"
+                            type="button"
+                            onClick={() =>
+                              onCartsChange(
+                                changeCartItem(
+                                  carts,
+                                  providerPublicId,
+                                  item.public_id,
+                                  -1,
+                                ),
+                              )
+                            }
+                          >
+                            −
+                          </button>
                           <input
                             aria-label={`${item.name} miqdori`}
                             className="input"
-                            inputMode={unitAllowsFraction(item.unit) ? "decimal" : "numeric"}
+                            inputMode={
+                              unitAllowsFraction(item.unit) ? "decimal" : "numeric"
+                            }
                             value={quantityValue}
-                            onChange={(event) => updateQuantity(providerPublicId, item.public_id, event.target.value, false)}
-                            onBlur={(event) => updateQuantity(providerPublicId, item.public_id, event.target.value, true)}
+                            onChange={(event) =>
+                              updateQuantity(
+                                providerPublicId,
+                                item.public_id,
+                                event.target.value,
+                                false,
+                              )
+                            }
+                            onBlur={(event) =>
+                              updateQuantity(
+                                providerPublicId,
+                                item.public_id,
+                                event.target.value,
+                                true,
+                              )
+                            }
                           />
                           <span className="idesc">{item.unit || "dona"}</span>
-                          <button aria-label={`${item.name} miqdorini oshirish`} className="mini-btn" type="button" onClick={() => onCartsChange(changeCartItem(carts, providerPublicId, item.public_id, 1))}>+</button>
+                          <button
+                            aria-label={`${item.name} miqdorini oshirish`}
+                            className="mini-btn"
+                            type="button"
+                            onClick={() =>
+                              onCartsChange(
+                                changeCartItem(
+                                  carts,
+                                  providerPublicId,
+                                  item.public_id,
+                                  1,
+                                ),
+                              )
+                            }
+                          >
+                            +
+                          </button>
                           {price > 0 ? (
                             <input
                               aria-label={`${item.name} summasi`}
@@ -244,7 +320,13 @@ export function CartV1656({
                               inputMode="numeric"
                               placeholder="so'm"
                               value={sumValue}
-                              onChange={(event) => updateSum(providerPublicId, item.public_id, event.target.value)}
+                              onChange={(event) =>
+                                updateSum(
+                                  providerPublicId,
+                                  item.public_id,
+                                  event.target.value,
+                                )
+                              }
                               onBlur={() => commitSum(providerPublicId, item.public_id)}
                             />
                           ) : null}
@@ -252,8 +334,22 @@ export function CartV1656({
                       </div>
                     );
                   })}
-                  <button className="btn btn-amber btn-block" style={{ marginTop: 12 }} type="button" onClick={() => openCheckout(providerPublicId)}>Buyurtma qilish</button>
-                  <button className="btn btn-soft btn-block" style={{ marginTop: 8 }} type="button" onClick={() => setClearId(providerPublicId)}>Chekni tozalash</button>
+                  <button
+                    className="btn btn-amber btn-block"
+                    style={{ marginTop: 12 }}
+                    type="button"
+                    onClick={() => openCheckout(providerPublicId)}
+                  >
+                    Buyurtma qilish
+                  </button>
+                  <button
+                    className="btn btn-soft btn-block"
+                    style={{ marginTop: 8 }}
+                    type="button"
+                    onClick={() => setClearId(providerPublicId)}
+                  >
+                    Chekni tozalash
+                  </button>
                 </section>
               );
             })}
@@ -281,10 +377,18 @@ export function CartV1656({
           <div className="app-confirm on" role="dialog" aria-modal="true">
             <p className="acf-text">Bu do'kon cheki tozalansinmi?</p>
             <div className="acf-btns">
-              <button className="acf-cancel" type="button" onClick={() => setClearId(null)}>
+              <button
+                className="acf-cancel"
+                type="button"
+                onClick={() => setClearId(null)}
+              >
                 Bekor qilish
               </button>
-              <button className="acf-ok danger" type="button" onClick={() => clear(clearId)}>
+              <button
+                className="acf-ok danger"
+                type="button"
+                onClick={() => clear(clearId)}
+              >
                 Tozalash
               </button>
             </div>

@@ -2,13 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { BusinessOnlineRecord } from "../api/business-online-types";
-import type {
-  Advertisement,
-  AdvertisementTarget,
-} from "../api/advertisement-types";
+import type { Advertisement, AdvertisementTarget } from "../api/advertisement-types";
 import { CrudEditorView } from "../profiles/BusinessOnlineCrudEditorView";
 import type { PaymentTarget } from "../profiles/PaymentRequestModal";
-
 
 type AdvertisementBaseApi = Pick<
   ApiClient,
@@ -20,9 +16,8 @@ type AdvertisementBaseApi = Pick<
   | "uploadGrantedFile"
 >;
 
-export type BusinessAdvertisementsApi = AdvertisementBaseApi & Partial<
-  Pick<ApiClient, "applyBusinessOnlineAction">
->;
+export type BusinessAdvertisementsApi = AdvertisementBaseApi &
+  Partial<Pick<ApiClient, "applyBusinessOnlineAction">>;
 
 const METHODS: ReadonlyArray<keyof AdvertisementBaseApi> = [
   "getMyAdvertisements",
@@ -36,9 +31,9 @@ const METHODS: ReadonlyArray<keyof AdvertisementBaseApi> = [
 export function supportsAdvertisementApi(
   api: object,
 ): api is BusinessAdvertisementsApi {
-  return METHODS.every((method) => (
-    typeof (api as Partial<AdvertisementBaseApi>)[method] === "function"
-  ));
+  return METHODS.every(
+    (method) => typeof (api as Partial<AdvertisementBaseApi>)[method] === "function",
+  );
 }
 
 type Props = {
@@ -47,7 +42,6 @@ type Props = {
   openPayment: (target: PaymentTarget) => void;
   onOpenListings?: () => void;
 };
-
 
 function text(value: unknown, fallback = "") {
   return typeof value === "string" && value ? value : fallback;
@@ -66,11 +60,13 @@ function targetsOf(raw: unknown): AdvertisementTarget[] {
     if (level !== "district" && level !== "region" && level !== "republic") {
       return [];
     }
-    return [{
-      level,
-      region: text(value.region),
-      district: text(value.district),
-    }];
+    return [
+      {
+        level,
+        region: text(value.region),
+        district: text(value.district),
+      },
+    ];
   });
 }
 
@@ -103,7 +99,6 @@ function record(row: Advertisement): BusinessOnlineRecord {
   } as unknown as BusinessOnlineRecord;
 }
 
-
 export function BusinessAdvertisementsV1656({
   api,
   openPayment,
@@ -118,9 +113,7 @@ export function BusinessAdvertisementsV1656({
       setRows(await api.getMyAdvertisements());
       setError("");
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Reklamalar yuklanmadi.",
-      );
+      setError(reason instanceof Error ? reason.message : "Reklamalar yuklanmadi.");
     }
   }, [api]);
 
@@ -173,28 +166,19 @@ export function BusinessAdvertisementsV1656({
       // to'lov oynasi ochiladi.
       openPayment(paymentTarget(created));
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Reklama saqlanmadi.",
-      );
+      setError(reason instanceof Error ? reason.message : "Reklama saqlanmadi.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(
-    _resource: unknown,
-    id: number | string,
-  ): Promise<void> {
+  async function remove(_resource: unknown, id: number | string): Promise<void> {
     setBusy(true);
     try {
       await api.deleteAdvertisement(Number(id));
-      setRows((current) => current.filter(
-        (row) => String(row.id) !== String(id),
-      ));
+      setRows((current) => current.filter((row) => String(row.id) !== String(id)));
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Reklama o‘chirilmadi.",
-      );
+      setError(reason instanceof Error ? reason.message : "Reklama o‘chirilmadi.");
     } finally {
       setBusy(false);
     }
@@ -213,9 +197,7 @@ export function BusinessAdvertisementsV1656({
       });
       await load();
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Reklama hozir boshlanmadi.",
-      );
+      setError(reason instanceof Error ? reason.message : "Reklama hozir boshlanmadi.");
     } finally {
       setBusy(false);
     }
@@ -235,7 +217,9 @@ export function BusinessAdvertisementsV1656({
   return (
     <>
       {error ? (
-        <div className="advertisement-load-error" role="status">{error}</div>
+        <div className="advertisement-load-error" role="status">
+          {error}
+        </div>
       ) : null}
       <CrudEditorView
         resource="advertisements"
@@ -243,8 +227,13 @@ export function BusinessAdvertisementsV1656({
         addLabel="+ Reklama"
         empty="Hozircha reklama yo‘q."
         fields={[
-          "title", "caption", "placement",
-          "region", "district", "start_at", "end_at",
+          "title",
+          "caption",
+          "placement",
+          "region",
+          "district",
+          "start_at",
+          "end_at",
         ]}
         busy={busy}
         form=""
@@ -268,9 +257,7 @@ export function BusinessAdvertisementsV1656({
                 type="button"
                 className="mini-btn advertisement-pay"
                 onClick={() => {
-                  const found = rows.find(
-                    (item) => String(item.id) === String(row.id),
-                  );
+                  const found = rows.find((item) => String(item.id) === String(row.id));
                   if (found) openPayment(paymentTarget(found));
                 }}
               >
@@ -279,9 +266,9 @@ export function BusinessAdvertisementsV1656({
             );
           }
           if (
-            typeof api.applyBusinessOnlineAction === "function"
-            && status === "active"
-            && number(row.start_at) > Math.floor(Date.now() / 1000)
+            typeof api.applyBusinessOnlineAction === "function" &&
+            status === "active" &&
+            number(row.start_at) > Math.floor(Date.now() / 1000)
           ) {
             return (
               <button
@@ -300,7 +287,6 @@ export function BusinessAdvertisementsV1656({
     </>
   );
 }
-
 
 export function paymentTarget(row: Advertisement): PaymentTarget {
   return {

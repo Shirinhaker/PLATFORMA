@@ -5,7 +5,6 @@ from app.cash_register.model import CashReceipt
 from app.inventory.model import InventoryItem
 from app.statistics.router import router as statistics_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0020_statistics_query_indexes.py"
 MAIN = ROOT / "backend/app/main.py"

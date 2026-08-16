@@ -8,7 +8,6 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-
 TARGET_SERVICE_ID = "8e765ac7-2bde-4b6c-a7db-639e3dc2442c"
 TARGET_ENVIRONMENT_ID = "3c37f08c-227b-4560-9c4d-f7c8ef8fca86"
 LEGACY_FREEZE_URL = "https://web-production-302eb.up.railway.app/readyz"

@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 
-
 const userIdentity = {
   account_id: 5,
   account_type: "user" as const,
@@ -125,7 +124,6 @@ function profileApi(identity = userIdentity) {
   };
 }
 
-
 describe("App", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -142,10 +140,10 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Hududingizni tanlang" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Kabinet" }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Kabinetga kirish" }))
-      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kabinet" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Kabinetga kirish" }),
+    ).not.toBeInTheDocument();
   });
 
   it("starts a returning guest on the public Home", async () => {
@@ -157,10 +155,8 @@ describe("App", () => {
         name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kabinet" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Savat" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kabinet" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Savat" })).toBeInTheDocument();
   });
 
   it("opens the migrated empty Savat screen from Home", async () => {
@@ -173,10 +169,10 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Savat" }));
 
-    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Do'kon sahifasidan mahsulot qo'shing."))
-      .toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Savatcha bo'sh" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Do'kon sahifasidan mahsulot qo'shing."),
+    ).toBeInTheDocument();
   });
 
   it("opens the migrated E’lonlar screen while still hiding unowned actions", async () => {
@@ -204,10 +200,10 @@ describe("App", () => {
     const listings = screen.getByRole("button", { name: "E’lonlar" });
     await user.click(listings);
     expect(screen.getByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Savat" }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Taxi bo'limi" }))
-      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Savat" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Taxi bo'limi" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens a district listing offer in the migrated detail screen", async () => {
@@ -235,19 +231,21 @@ describe("App", () => {
       ...guestApi(),
       getDistrictOffers: vi.fn().mockResolvedValue({
         needs_district: false,
-        items: [{
-          kind: "listing" as const,
-          business_id: 7,
-          business_public_id: "b_1234567890abcdef",
-          content_id: 31,
-          content_public_id: detail.public_id,
-          title: detail.title,
-          business_name: "Muhr",
-          image: "",
-          business_logo: "",
-          price: detail.price,
-          unit: "",
-        }],
+        items: [
+          {
+            kind: "listing" as const,
+            business_id: 7,
+            business_public_id: "b_1234567890abcdef",
+            content_id: 31,
+            content_public_id: detail.public_id,
+            title: detail.title,
+            business_name: "Muhr",
+            image: "",
+            business_logo: "",
+            price: detail.price,
+            unit: "",
+          },
+        ],
       }),
       getPublicListing: vi.fn().mockResolvedValue(detail),
       toggleListingSave: vi.fn(),
@@ -256,8 +254,9 @@ describe("App", () => {
     render(<App api={api} />);
     await user.click(await screen.findByRole("button", { name: /3 xonali kvartira/ }));
 
-    expect(await screen.findByRole("heading", { name: "3 xonali kvartira" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "3 xonali kvartira" }),
+    ).toBeInTheDocument();
     expect(api.getPublicListing).toHaveBeenCalledWith(detail.public_id);
   });
 
@@ -269,8 +268,10 @@ describe("App", () => {
       name: "Rang rejimini almashtirish",
     });
 
-    expect(button.querySelector("path"))
-      .toHaveAttribute("d", "M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z");
+    expect(button.querySelector("path")).toHaveAttribute(
+      "d",
+      "M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z",
+    );
     await userEvent.click(button);
 
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
@@ -321,9 +322,11 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
     await user.type(screen.getByLabelText("Login"), "b_turon");
     await user.type(screen.getByLabelText("Parol"), "secret-42");
-    await user.click(screen.getByRole("button", {
-      name: "Telegram orqali tasdiqlash",
-    }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Telegram orqali tasdiqlash",
+      }),
+    );
     await user.type(await screen.findByLabelText("Tasdiqlash kodi"), "123456");
     await user.click(screen.getByRole("button", { name: "Tasdiqlash va kirish" }));
 
@@ -346,13 +349,12 @@ describe("App", () => {
         name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Biznes kabinet" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Biznes kabinet" }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Kabinet" }));
-    expect(
-      screen.getByRole("heading", { name: "Biznes kabinet" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Biznes kabinet" })).toBeInTheDocument();
   });
 
   it("returns to the public home after cabinet logout", async () => {
@@ -375,8 +377,7 @@ describe("App", () => {
         name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Kabinet" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kabinet" })).toBeInTheDocument();
   });
 
   it("opens the driver cabinet as its own v1656 screen", async () => {
@@ -421,17 +422,22 @@ describe("App", () => {
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(await screen.findByRole("button", {
-      name: "Taxi bo'limi",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Taxi bo'limi",
+      }),
+    );
 
     expect(await screen.findByText("Taxi — haydovchi")).toBeInTheDocument();
-    expect(await screen.findByText("Akkaunt ismingiz — shu ishlatiladi"))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Haydovchi kabineti" }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Kabinetga qaytish" }))
-      .not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Akkaunt ismingiz — shu ishlatiladi"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Haydovchi kabineti" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Kabinetga qaytish" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps Home search results inline", async () => {
@@ -440,19 +446,21 @@ describe("App", () => {
     const api = {
       ...guestApi(),
       searchPublic: vi.fn().mockResolvedValue({
-        items: [{
-          kind: "business",
-          public_id: "biz_41",
-          name: "Telefon ustasi",
-          public_username: "telefon-ustasi",
-          description: "Telefon ta’miri",
-          direction: "Maishiy xizmatlar",
-          activity_type: "Usta",
-          region: "Surxondaryo viloyati",
-          district: "Qumqo‘rg‘on tumani",
-          mahalla: "",
-          image_url: "",
-        }],
+        items: [
+          {
+            kind: "business",
+            public_id: "biz_41",
+            name: "Telefon ustasi",
+            public_username: "telefon-ustasi",
+            description: "Telefon ta’miri",
+            direction: "Maishiy xizmatlar",
+            activity_type: "Usta",
+            region: "Surxondaryo viloyati",
+            district: "Qumqo‘rg‘on tumani",
+            mahalla: "",
+            image_url: "",
+          },
+        ],
         page: 1,
         page_size: 20,
         total: 1,
@@ -468,12 +476,9 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Qidirish" }));
 
     expect(await screen.findByText("Natijalar — 1 ta")).toBeInTheDocument();
-    expect(document.querySelector(".app-shell"))
-      .toHaveClass("search-results-active");
-    expect(document.querySelector("#resList"))
-      .toHaveTextContent("Telefon ustasi");
-    expect(document.querySelector("#leafletMap .leaflet-pin"))
-      .not.toBeInTheDocument();
+    expect(document.querySelector(".app-shell")).toHaveClass("search-results-active");
+    expect(document.querySelector("#resList")).toHaveTextContent("Telefon ustasi");
+    expect(document.querySelector("#leafletMap .leaflet-pin")).not.toBeInTheDocument();
     expect(api.searchPublic).toHaveBeenCalledWith({
       q: "telefon",
       region: "Surxondaryo viloyati",
@@ -487,16 +492,12 @@ describe("App", () => {
       }),
     ).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: "Qidiruvni tozalash" }),
+    await user.click(screen.getByRole("button", { name: "Qidiruvni tozalash" }));
+    expect(document.querySelector(".app-shell")).toHaveClass("search-results-active");
+    await user.click(screen.getByRole("button", { name: /Qidiruv natijalari/ }));
+    expect(document.querySelector(".app-shell")).not.toHaveClass(
+      "search-results-active",
     );
-    expect(document.querySelector(".app-shell"))
-      .toHaveClass("search-results-active");
-    await user.click(
-      screen.getByRole("button", { name: /Qidiruv natijalari/ }),
-    );
-    expect(document.querySelector(".app-shell"))
-      .not.toHaveClass("search-results-active");
   });
 
   it("opens the owner profile and highlights the searched catalog item", async () => {
@@ -505,22 +506,24 @@ describe("App", () => {
     const api = {
       ...guestApi(),
       searchPublic: vi.fn().mockResolvedValue({
-        items: [{
-          kind: "product" as const,
-          public_id: "p_banan",
-          name: "Banan",
-          public_username: "",
-          description: "",
-          direction: "Savdo",
-          activity_type: "Oziq-ovqat do‘koni",
-          region: "Surxondaryo viloyati",
-          district: "Qumqo‘rg‘on tumani",
-          mahalla: "",
-          image_url: "/media/banan.webp",
-          price_text: "25 000 so‘m",
-          owner_label: "Muhr",
-          owner_public_id: "b_muhr",
-        }],
+        items: [
+          {
+            kind: "product" as const,
+            public_id: "p_banan",
+            name: "Banan",
+            public_username: "",
+            description: "",
+            direction: "Savdo",
+            activity_type: "Oziq-ovqat do‘koni",
+            region: "Surxondaryo viloyati",
+            district: "Qumqo‘rg‘on tumani",
+            mahalla: "",
+            image_url: "/media/banan.webp",
+            price_text: "25 000 so‘m",
+            owner_label: "Muhr",
+            owner_public_id: "b_muhr",
+          },
+        ],
         page: 1,
         page_size: 20,
         total: 1,
@@ -542,17 +545,19 @@ describe("App", () => {
         crop_zoom: 1,
         followers_count: 0,
         specialist: null,
-        items: [{
-          kind: "product" as const,
-          public_id: "p_banan",
-          name: "Banan",
-          price_text: "25 000 so‘m",
-          unit: "kg",
-          note: "",
-          image_url: "/media/banan.webp",
-          group_name: "Mevalar",
-          queue_enabled: false,
-        }],
+        items: [
+          {
+            kind: "product" as const,
+            public_id: "p_banan",
+            name: "Banan",
+            price_text: "25 000 so‘m",
+            unit: "kg",
+            note: "",
+            image_url: "/media/banan.webp",
+            group_name: "Mevalar",
+            queue_enabled: false,
+          },
+        ],
         listings: [],
       }),
     };
@@ -565,11 +570,11 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Qidirish" }));
     await user.click(await screen.findByRole("button", { name: /Banan/ }));
 
-    expect(await screen.findByText("Mahsulot va xizmatlar"))
-      .toBeInTheDocument();
+    expect(await screen.findByText("Mahsulot va xizmatlar")).toBeInTheDocument();
     expect(api.getPublicProfile).toHaveBeenCalledWith("business", "b_muhr");
-    expect(screen.getByText("Banan").closest("article"))
-      .toHaveClass("is-search-target");
+    expect(screen.getByText("Banan").closest("article")).toHaveClass(
+      "is-search-target",
+    );
   });
 
   it("opens an followed business profile from its Home card", async () => {
@@ -620,15 +625,14 @@ describe("App", () => {
 
     render(<App api={api} />);
 
-    await user.click(await screen.findByRole("button", {
-      name: "Ikkinchi biznes profilini ochish",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Ikkinchi biznes profilini ochish",
+      }),
+    );
 
     expect(await screen.findByText("Savdo · Do‘kon")).toBeInTheDocument();
-    expect(api.getPublicProfile).toHaveBeenCalledWith(
-      "business",
-      "b_second",
-    );
+    expect(api.getPublicProfile).toHaveBeenCalledWith("business", "b_second");
   });
 
   it("opens a shared user profile from the v1656 user query", async () => {
@@ -660,10 +664,7 @@ describe("App", () => {
     render(<App api={api} />);
 
     expect((await screen.findAllByText("Ali Valiyev")).length).toBeGreaterThan(0);
-    expect(api.getPublicProfile).toHaveBeenCalledWith(
-      "user",
-      "u_0123456789abcdef",
-    );
+    expect(api.getPublicProfile).toHaveBeenCalledWith("user", "u_0123456789abcdef");
   });
 
   it("opens the relational general chat from an authenticated public profile", async () => {
@@ -678,15 +679,17 @@ describe("App", () => {
         systemization: false,
         taxi: false,
       }),
-      getFollowedProfiles: vi.fn().mockResolvedValue([{
-        kind: "business",
-        public_id: "b_turon",
-        name: "Turon savdo",
-        image_url: "",
-        crop_x: 50,
-        crop_y: 50,
-        crop_zoom: 1,
-      }]),
+      getFollowedProfiles: vi.fn().mockResolvedValue([
+        {
+          kind: "business",
+          public_id: "b_turon",
+          name: "Turon savdo",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+        },
+      ]),
       getPublicProfile: vi.fn().mockResolvedValue({
         kind: "business",
         public_id: "b_turon",
@@ -723,15 +726,18 @@ describe("App", () => {
     };
 
     render(<App api={api} />);
-    await user.click(await screen.findByRole("button", {
-      name: "Turon savdo profilini ochish",
-    }));
-    await user.click(await screen.findByRole("button", {
-      name: "✍️ Xabar yozish",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Turon savdo profilini ochish",
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "✍️ Xabar yozish",
+      }),
+    );
 
-    expect(await screen.findByPlaceholderText("Xabar yozing..."))
-      .toBeInTheDocument();
+    expect(await screen.findByPlaceholderText("Xabar yozing...")).toBeInTheDocument();
     expect(api.getMessageThread).toHaveBeenCalledWith("business", "b_turon");
   });
 
@@ -744,15 +750,17 @@ describe("App", () => {
         ...userProfile,
         phone: "+998901234567",
       }),
-      getFollowedProfiles: vi.fn().mockResolvedValue([{
-        kind: "business",
-        public_id: "b_english",
-        name: "English House",
-        image_url: "",
-        crop_x: 50,
-        crop_y: 50,
-        crop_zoom: 1,
-      }]),
+      getFollowedProfiles: vi.fn().mockResolvedValue([
+        {
+          kind: "business",
+          public_id: "b_english",
+          name: "English House",
+          image_url: "",
+          crop_x: 50,
+          crop_y: 50,
+          crop_zoom: 1,
+        },
+      ]),
       getPublicProfile: vi.fn().mockResolvedValue({
         kind: "business",
         public_id: "b_english",
@@ -769,35 +777,40 @@ describe("App", () => {
         crop_zoom: 1,
         followers_count: 2,
         specialist: null,
-        items: [{
-          kind: "service",
-          public_id: "s_english",
-          name: "Ingliz tili",
-          price_text: "500 000 so'm",
-          unit: "oy",
-          note: "",
-          image_url: "",
-          group_name: "",
-          queue_enabled: false,
-          course_mode: "offline",
-          enrollment_status: "open",
-        }],
+        items: [
+          {
+            kind: "service",
+            public_id: "s_english",
+            name: "Ingliz tili",
+            price_text: "500 000 so'm",
+            unit: "oy",
+            note: "",
+            image_url: "",
+            group_name: "",
+            queue_enabled: false,
+            course_mode: "offline",
+            enrollment_status: "open",
+          },
+        ],
         listings: [],
       }),
       createCourseEnrollment: vi.fn().mockResolvedValue({ ok: true, id: 91 }),
     };
 
     render(<App api={api} />);
-    await user.click(await screen.findByRole("button", {
-      name: "English House profilini ochish",
-    }));
-    await user.click(await screen.findByRole("button", {
-      name: "Kursga yozilish",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "English House profilini ochish",
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Kursga yozilish",
+      }),
+    );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByLabelText("Telefon raqamingiz"))
-      .toHaveValue("+998901234567");
+    expect(screen.getByLabelText("Telefon raqamingiz")).toHaveValue("+998901234567");
     await user.type(screen.getByLabelText("Izoh"), "Kechki guruh");
     await user.click(screen.getByRole("button", { name: "Ariza yuborish" }));
 
@@ -806,8 +819,9 @@ describe("App", () => {
       phone: "+998901234567",
       note: "Kechki guruh",
     });
-    expect(await screen.findByRole("status"))
-      .toHaveTextContent("Arizangiz yuborildi ✅");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Arizangiz yuborildi ✅",
+    );
   });
 
   it("navigates Catalog to Category and back", async () => {
@@ -818,14 +832,9 @@ describe("App", () => {
     await screen.findByRole("heading", {
       name: "Kerakli mahsulot va xizmatni yaqiningizdan toping",
     });
-    await user.click(
-      screen.getByRole("button", { name: /^Katalog bo‘yicha/ }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: /^Savdo —/ }),
-    );
-    expect(screen.getByRole("heading", { name: "Savdo" }))
-      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Katalog bo‘yicha/ }));
+    await user.click(screen.getByRole("button", { name: /^Savdo —/ }));
+    expect(screen.getByRole("heading", { name: "Savdo" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Orqaga" }));
     expect(
@@ -845,8 +854,7 @@ describe("App", () => {
     await user.selectOptions(screen.getByLabelText("Tuman"), "Chilonzor");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect((await screen.findAllByText("Chilonzor")).length)
-      .toBeGreaterThanOrEqual(2);
+    expect((await screen.findAllByText("Chilonzor")).length).toBeGreaterThanOrEqual(2);
   });
 
   it("keeps public location usable when session bootstrap fails", async () => {
@@ -867,7 +875,8 @@ describe("App", () => {
     const user = userEvent.setup();
     saveHomeLocation();
     const api = {
-      getSession: vi.fn()
+      getSession: vi
+        .fn()
         .mockRejectedValueOnce(new TypeError("offline"))
         .mockResolvedValueOnce(userIdentity),
     };

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
 import os
 import signal
 import socket
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -17,16 +17,15 @@ from app.auth.security import decrypt_outbox_secret, derive_otp
 from app.auth.telegram import TelegramClient
 from app.core.config import Settings
 from app.db.session import Database
+from app.notifications.push_worker import (
+    build_firebase_sender,
+    process_push_batch,
+)
 from app.outbox.repository import (
     claim_events,
     mark_failed,
     mark_processed,
 )
-from app.notifications.push_worker import (
-    build_firebase_sender,
-    process_push_batch,
-)
-
 
 Handler = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -77,9 +76,7 @@ async def send_admin_code(
 ) -> None:
     """Admin kodi bazada ham, navbatda ham saqlanmaydi — qayta hisoblanadi."""
     async with database.session() as session:
-        challenge = await session.get(
-            AdminAuthChallenge, int(payload["challenge_id"])
-        )
+        challenge = await session.get(AdminAuthChallenge, int(payload["challenge_id"]))
         if (
             challenge is None
             or challenge.consumed_at is not None
@@ -173,52 +170,46 @@ async def process_batch(
     limit: int = 50,
 ) -> int:
     active_handlers = (
-        handlers
-        if handlers is not None
-        else {"foundation.echo": foundation_echo}
+        handlers if handlers is not None else {"foundation.echo": foundation_echo}
     )
-    async with database.session() as session:
-        async with session.begin():
-            events = await claim_events(session, worker_id, limit=limit)
+    async with database.session() as session, session.begin():
+        events = await claim_events(session, worker_id, limit=limit)
     for event in events:
         handler = active_handlers.get(event.topic)
         if handler is None:
-            async with database.session() as session:
-                async with session.begin():
-                    await mark_failed(
-                        session,
-                        event.id,
-                        f"Ro‘yxatdan o‘tmagan topic: {event.topic}",
-                    )
+            async with database.session() as session, session.begin():
+                await mark_failed(
+                    session,
+                    event.id,
+                    f"Ro‘yxatdan o‘tmagan topic: {event.topic}",
+                )
             continue
         try:
             await handler(event.payload)
         except Exception:
-            async with database.session() as session:
-                async with session.begin():
-                    error = (
-                        "Telegram xabarni yuborib bo‘lmadi."
-                        if event.topic.startswith("telegram.")
-                        else "Outbox handler xatosi."
-                    )
-                    await mark_failed(session, event.id, error)
+            async with database.session() as session, session.begin():
+                error = (
+                    "Telegram xabarni yuborib bo‘lmadi."
+                    if event.topic.startswith("telegram.")
+                    else "Outbox handler xatosi."
+                )
+                await mark_failed(session, event.id, error)
         else:
-            async with database.session() as session:
-                async with session.begin():
-                    sanitized_payload = None
-                    if event.topic in {
-                        "telegram.credentials.send",
-                        "telegram.business_credentials.send",
-                    }:
-                        sanitized_payload = {
-                            "account_id": event.payload.get("account_id"),
-                            "delivery": "telegram",
-                        }
-                    await mark_processed(
-                        session,
-                        event.id,
-                        sanitized_payload=sanitized_payload,
-                    )
+            async with database.session() as session, session.begin():
+                sanitized_payload = None
+                if event.topic in {
+                    "telegram.credentials.send",
+                    "telegram.business_credentials.send",
+                }:
+                    sanitized_payload = {
+                        "account_id": event.payload.get("account_id"),
+                        "delivery": "telegram",
+                    }
+                await mark_processed(
+                    session,
+                    event.id,
+                    sanitized_payload=sanitized_payload,
+                )
     return len(events)
 
 
@@ -276,10 +267,7 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
             handlers = build_handlers(settings, database, telegram)
             while not stop.is_set():
                 now = datetime.now(UTC)
-                if (
-                    last_cleanup is None
-                    or now - last_cleanup >= timedelta(hours=1)
-                ):
+                if last_cleanup is None or now - last_cleanup >= timedelta(hours=1):
                     await cleanup_expired_auth(database, now)
                     last_cleanup = now
                 count = await process_batch(

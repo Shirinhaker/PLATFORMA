@@ -13,12 +13,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     DateTime,
     Identity,
     Index,
-    JSON,
     String,
     Text,
     text,
@@ -27,13 +27,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-
 ACTOR_TYPES = ("user", "business")
 RESTRICTIONS = ("content_hidden", "account_blocked")
 CONTENT_STATUSES = ("hidden", "visible", "removed")
 CONTENT_KINDS = (
-    "product", "service", "advertisement", "business", "profile",
-    "listing", "story",
+    "product",
+    "service",
+    "advertisement",
+    "business",
+    "profile",
+    "listing",
+    "story",
 )
 REPORT_REASONS = ("fraud", "spam", "illegal", "abuse", "other")
 REPORT_STATUSES = ("open", "reviewing", "resolved", "dismissed")
@@ -75,12 +79,8 @@ class AccountRestriction(Base):
         DateTime(timezone=True), nullable=False
     )
     revoked_by_tg_id: Mapped[int | None] = mapped_column(BigInteger)
-    revoked_reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    revoked_reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AdminAccountNote(Base):
@@ -140,22 +140,16 @@ class ModerationReport(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    reporter_account_id: Mapped[int] = mapped_column(
-        BigInteger, nullable=False
-    )
+    reporter_account_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     content_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     reason_code: Mapped[str] = mapped_column(String(16), nullable=False)
-    comment: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    comment: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="open"
     )
     assigned_admin_tg_id: Mapped[int | None] = mapped_column(BigInteger)
-    resolution: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    resolution: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -182,13 +176,9 @@ class AdminAuditLog(Base):
     after_state: Mapped[dict[str, Any]] = mapped_column(
         "after_json", JSON, nullable=False, default=dict
     )
-    reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     # Xom IP hech qachon saqlanmaydi, faqat HMAC xeshi.
-    ip_hash: Mapped[str] = mapped_column(
-        String(128), nullable=False, server_default=""
-    )
+    ip_hash: Mapped[str] = mapped_column(String(128), nullable=False, server_default="")
     user_agent: Mapped[str] = mapped_column(
         String(500), nullable=False, server_default=""
     )

@@ -139,7 +139,7 @@
 .user-cabinet-v1656__metrics span {
   font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: .055em;
+  letter-spacing: 0.055em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -148,7 +148,7 @@
   display: block;
   margin-top: 8px;
   font-size: 26px;
-  letter-spacing: -.035em;
+  letter-spacing: -0.035em;
 }
 
 .user-cabinet-v1656__metrics small {
@@ -688,7 +688,7 @@
 
 @media (min-width: 1080px) {
   .user-cabinet-v1656__main {
-    grid-template-columns: minmax(0, 1.04fr) minmax(380px, .96fr);
+    grid-template-columns: minmax(0, 1.04fr) minmax(380px, 0.96fr);
     gap: 20px;
   }
 

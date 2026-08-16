@@ -27,7 +27,6 @@ from app.profiles.router import (
     dashboard_with_notification_count,
 )
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"
@@ -35,10 +34,7 @@ MIGRATION = (
     / "0011_notifications_relational.py"
 )
 ORDER_NOTIFICATIONS = (
-    Path(__file__).resolve().parents[1]
-    / "app"
-    / "orders"
-    / "notifications.py"
+    Path(__file__).resolve().parents[1] / "app" / "orders" / "notifications.py"
 )
 ALEMBIC_ENV = MIGRATION.parents[1] / "env.py"
 NOW = datetime(2026, 8, 2, 12, 0, tzinfo=UTC)
@@ -85,28 +81,30 @@ def notification_store():
         ),
     )
     session = Session(engine, expire_on_commit=False)
-    session.add_all((
-        Account(
-            id=5,
-            account_type=AccountType.USER,
-            login="user_5",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Account(
-            id=7,
-            account_type=AccountType.BUSINESS,
-            login="business_7",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-    ))
+    session.add_all(
+        (
+            Account(
+                id=5,
+                account_type=AccountType.USER,
+                login="user_5",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Account(
+                id=7,
+                account_type=AccountType.BUSINESS,
+                login="business_7",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+        )
+    )
     session.commit()
     try:
         yield engine, AsyncStore(session)
@@ -273,11 +271,14 @@ async def test_marking_read_updates_only_owner_order_rows(notification_store):
     assert business_rows is not None
     assert [row["is_read"] for row in user_rows] == [1, 0]
     assert business_rows[0]["is_read"] == 0
-    assert await repository.unread_count(
-        store,
-        account_id=5,
-        account_type="user",
-    ) == 1
+    assert (
+        await repository.unread_count(
+            store,
+            account_id=5,
+            account_type="user",
+        )
+        == 1
+    )
 
 
 @pytest.mark.asyncio

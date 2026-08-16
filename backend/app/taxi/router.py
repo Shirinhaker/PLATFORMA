@@ -21,7 +21,6 @@ from app.taxi.schemas import (
 )
 from app.taxi.service import TaxiService
 
-
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]
 RideId = Annotated[int, Path(gt=0)]
@@ -37,7 +36,9 @@ def require_user_owner(current: CurrentAccount) -> None:
         or current.actor_type != "owner"
         or current.staff_id is not None
     ):
-        raise ApiError(403, "user_owner_required", "Bu amal faqat oddiy profil egasi uchun.")
+        raise ApiError(
+            403, "user_owner_required", "Bu amal faqat oddiy profil egasi uchun."
+        )
 
 
 def require_enabled(request: Request) -> None:

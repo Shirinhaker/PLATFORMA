@@ -99,26 +99,33 @@ class StaffRepository:
         login: str,
         excluding_staff_id: int,
     ) -> bool:
-        return await session.scalar(
-            select(StaffMember.id)
-            .where(
-                StaffMember.business_account_id == business_account_id,
-                func.lower(StaffMember.login) == login,
-                StaffMember.id != excluding_staff_id,
+        return (
+            await session.scalar(
+                select(StaffMember.id)
+                .where(
+                    StaffMember.business_account_id == business_account_id,
+                    func.lower(StaffMember.login) == login,
+                    StaffMember.id != excluding_staff_id,
+                )
+                .limit(1)
             )
-            .limit(1)
-        ) is not None
+            is not None
+        )
 
     async def professions(
         self,
         session: AsyncSession,
         business_account_id: int,
     ) -> list[StaffProfession]:
-        return list((await session.scalars(
-            select(StaffProfession)
-            .where(StaffProfession.business_account_id == business_account_id)
-            .order_by(func.lower(StaffProfession.name), StaffProfession.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(StaffProfession)
+                    .where(StaffProfession.business_account_id == business_account_id)
+                    .order_by(func.lower(StaffProfession.name), StaffProfession.id)
+                )
+            ).all()
+        )
 
     async def profession_exists(
         self,
@@ -127,14 +134,17 @@ class StaffRepository:
         business_account_id: int,
         name: str,
     ) -> bool:
-        return await session.scalar(
-            select(StaffProfession.id)
-            .where(
-                StaffProfession.business_account_id == business_account_id,
-                func.lower(StaffProfession.name) == name.casefold(),
+        return (
+            await session.scalar(
+                select(StaffProfession.id)
+                .where(
+                    StaffProfession.business_account_id == business_account_id,
+                    func.lower(StaffProfession.name) == name.casefold(),
+                )
+                .limit(1)
             )
-            .limit(1)
-        ) is not None
+            is not None
+        )
 
     async def attendance_for_day(
         self,
@@ -143,12 +153,14 @@ class StaffRepository:
         business_account_id: int,
         day: date,
     ) -> dict[int, StaffAttendance]:
-        rows = (await session.scalars(
-            select(StaffAttendance).where(
-                StaffAttendance.business_account_id == business_account_id,
-                StaffAttendance.date == day,
+        rows = (
+            await session.scalars(
+                select(StaffAttendance).where(
+                    StaffAttendance.business_account_id == business_account_id,
+                    StaffAttendance.date == day,
+                )
             )
-        )).all()
+        ).all()
         return {row.staff_id: row for row in rows}
 
     async def attendance_for_month(
@@ -159,13 +171,17 @@ class StaffRepository:
         first_day: date,
         next_month: date,
     ) -> list[StaffAttendance]:
-        return list((await session.scalars(
-            select(StaffAttendance).where(
-                StaffAttendance.business_account_id == business_account_id,
-                StaffAttendance.date >= first_day,
-                StaffAttendance.date < next_month,
-            )
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(StaffAttendance).where(
+                        StaffAttendance.business_account_id == business_account_id,
+                        StaffAttendance.date >= first_day,
+                        StaffAttendance.date < next_month,
+                    )
+                )
+            ).all()
+        )
 
     async def attendance(
         self,

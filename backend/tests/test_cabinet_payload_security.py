@@ -21,7 +21,9 @@ def test_sensitive_fields_stop_normalization(payload):
 
 
 def test_normal_migrated_cabinet_payload_is_allowed():
-    assert_payload_safe({
-        "orders": [{"id": 1, "status": "new", "items": []}],
-        "documents": [{"id": 2, "title": "Shartnoma"}],
-    })
+    assert_payload_safe(
+        {
+            "orders": [{"id": 1, "status": "new", "items": []}],
+            "documents": [{"id": 2, "title": "Shartnoma"}],
+        }
+    )

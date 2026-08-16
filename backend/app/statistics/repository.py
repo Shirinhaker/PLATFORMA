@@ -17,8 +17,7 @@ class StatisticsRepository:
     def _effective_cost():
         fallback = cast(
             func.round(
-                CashReceiptLine.qty
-                * func.coalesce(InventoryItem.cost_price, 0)
+                CashReceiptLine.qty * func.coalesce(InventoryItem.cost_price, 0)
             ),
             BigInteger,
         )
@@ -28,9 +27,7 @@ class StatisticsRepository:
         )
 
     @staticmethod
-    def _sales_filters(
-        *, business_account_id: int, start: datetime, end: datetime
-    ):
+    def _sales_filters(*, business_account_id: int, start: datetime, end: datetime):
         return (
             CashReceipt.business_account_id == business_account_id,
             CashReceipt.created_at >= start,
@@ -50,19 +47,36 @@ class StatisticsRepository:
         cash_sale = sale & CashReceipt.pay_type.in_(("naqd", "karta"))
         statement = (
             select(
-                func.coalesce(func.sum(case((sale, CashReceiptLine.total), else_=0)), 0).label("revenue"),
-                func.coalesce(func.sum(case(
-                    (
-                        (CashReceipt.source == "debt_payment") | cash_sale,
-                        CashReceiptLine.total,
+                func.coalesce(
+                    func.sum(case((sale, CashReceiptLine.total), else_=0)), 0
+                ).label("revenue"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                (CashReceipt.source == "debt_payment") | cash_sale,
+                                CashReceiptLine.total,
+                            ),
+                            else_=0,
+                        )
                     ),
-                    else_=0,
-                )), 0).label("cash_in"),
-                func.coalesce(func.sum(case((sale, effective_cost), else_=0)), 0).label("cogs"),
-                func.coalesce(func.sum(case(
-                    (CashReceipt.source == "debt_payment", CashReceiptLine.total),
-                    else_=0,
-                )), 0).label("qarzpay"),
+                    0,
+                ).label("cash_in"),
+                func.coalesce(func.sum(case((sale, effective_cost), else_=0)), 0).label(
+                    "cogs"
+                ),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                CashReceipt.source == "debt_payment",
+                                CashReceiptLine.total,
+                            ),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("qarzpay"),
             )
             .select_from(CashReceiptLine)
             .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
@@ -73,11 +87,13 @@ class StatisticsRepository:
                     InventoryItem.business_account_id == business_account_id,
                 ),
             )
-            .where(*self._sales_filters(
-                business_account_id=business_account_id,
-                start=start,
-                end=end,
-            ))
+            .where(
+                *self._sales_filters(
+                    business_account_id=business_account_id,
+                    start=start,
+                    end=end,
+                )
+            )
         )
         return (await session.execute(statement)).one()
 
@@ -89,26 +105,28 @@ class StatisticsRepository:
         start: datetime,
         end: datetime,
     ):
-        return (await session.execute(
-            select(
-                CashReceipt.source,
-                CashReceipt.pay_type,
-                func.count(CashReceiptLine.id).label("line_count"),
-                func.count(func.distinct(CashReceipt.id)).label("receipt_count"),
-                func.coalesce(func.sum(CashReceiptLine.total), 0).label("total"),
+        return (
+            await session.execute(
+                select(
+                    CashReceipt.source,
+                    CashReceipt.pay_type,
+                    func.count(CashReceiptLine.id).label("line_count"),
+                    func.count(func.distinct(CashReceipt.id)).label("receipt_count"),
+                    func.coalesce(func.sum(CashReceiptLine.total), 0).label("total"),
+                )
+                .select_from(CashReceiptLine)
+                .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
+                .where(
+                    *self._sales_filters(
+                        business_account_id=business_account_id,
+                        start=start,
+                        end=end,
+                    ),
+                    CashReceipt.source != "debt_payment",
+                )
+                .group_by(CashReceipt.source, CashReceipt.pay_type)
             )
-            .select_from(CashReceiptLine)
-            .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
-            .where(
-                *self._sales_filters(
-                    business_account_id=business_account_id,
-                    start=start,
-                    end=end,
-                ),
-                CashReceipt.source != "debt_payment",
-            )
-            .group_by(CashReceipt.source, CashReceipt.pay_type)
-        )).all()
+        ).all()
 
     async def sales_trend_rows(
         self,
@@ -131,32 +149,34 @@ class StatisticsRepository:
             else_=None,
         )
         effective_cost = self._effective_cost()
-        return (await session.execute(
-            select(
-                bucket.label("bucket"),
-                func.coalesce(func.sum(CashReceiptLine.total), 0).label("revenue"),
-                func.coalesce(func.sum(effective_cost), 0).label("cogs"),
+        return (
+            await session.execute(
+                select(
+                    bucket.label("bucket"),
+                    func.coalesce(func.sum(CashReceiptLine.total), 0).label("revenue"),
+                    func.coalesce(func.sum(effective_cost), 0).label("cogs"),
+                )
+                .select_from(CashReceiptLine)
+                .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
+                .outerjoin(
+                    InventoryItem,
+                    and_(
+                        InventoryItem.id == CashReceiptLine.inventory_item_id,
+                        InventoryItem.business_account_id == business_account_id,
+                    ),
+                )
+                .where(
+                    *self._sales_filters(
+                        business_account_id=business_account_id,
+                        start=start,
+                        end=end,
+                    ),
+                    CashReceipt.source != "debt_payment",
+                )
+                .group_by(bucket)
+                .order_by(bucket)
             )
-            .select_from(CashReceiptLine)
-            .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
-            .outerjoin(
-                InventoryItem,
-                and_(
-                    InventoryItem.id == CashReceiptLine.inventory_item_id,
-                    InventoryItem.business_account_id == business_account_id,
-                ),
-            )
-            .where(
-                *self._sales_filters(
-                    business_account_id=business_account_id,
-                    start=start,
-                    end=end,
-                ),
-                CashReceipt.source != "debt_payment",
-            )
-            .group_by(bucket)
-            .order_by(bucket)
-        )).all()
+        ).all()
 
     async def top_products(
         self,
@@ -168,35 +188,37 @@ class StatisticsRepository:
     ):
         effective_cost = self._effective_cost()
         total = func.coalesce(func.sum(CashReceiptLine.total), 0)
-        return (await session.execute(
-            select(
-                CashReceiptLine.item_name.label("name"),
-                func.coalesce(func.sum(CashReceiptLine.qty), 0).label("qty"),
-                func.min(CashReceiptLine.unit).label("unit"),
-                total.label("total"),
-                func.coalesce(func.sum(effective_cost), 0).label("cost_total"),
+        return (
+            await session.execute(
+                select(
+                    CashReceiptLine.item_name.label("name"),
+                    func.coalesce(func.sum(CashReceiptLine.qty), 0).label("qty"),
+                    func.min(CashReceiptLine.unit).label("unit"),
+                    total.label("total"),
+                    func.coalesce(func.sum(effective_cost), 0).label("cost_total"),
+                )
+                .select_from(CashReceiptLine)
+                .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
+                .outerjoin(
+                    InventoryItem,
+                    and_(
+                        InventoryItem.id == CashReceiptLine.inventory_item_id,
+                        InventoryItem.business_account_id == business_account_id,
+                    ),
+                )
+                .where(
+                    *self._sales_filters(
+                        business_account_id=business_account_id,
+                        start=start,
+                        end=end,
+                    ),
+                    CashReceipt.source != "debt_payment",
+                )
+                .group_by(CashReceiptLine.item_name)
+                .order_by(total.desc(), CashReceiptLine.item_name)
+                .limit(12)
             )
-            .select_from(CashReceiptLine)
-            .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
-            .outerjoin(
-                InventoryItem,
-                and_(
-                    InventoryItem.id == CashReceiptLine.inventory_item_id,
-                    InventoryItem.business_account_id == business_account_id,
-                ),
-            )
-            .where(
-                *self._sales_filters(
-                    business_account_id=business_account_id,
-                    start=start,
-                    end=end,
-                ),
-                CashReceipt.source != "debt_payment",
-            )
-            .group_by(CashReceiptLine.item_name)
-            .order_by(total.desc(), CashReceiptLine.item_name)
-            .limit(12)
-        )).all()
+        ).all()
 
     async def employee_rows(
         self,
@@ -236,16 +258,17 @@ class StatisticsRepository:
                 CashReceipt.source != "debt_payment",
             )
         )
-        return (await session.execute(
-            statement
-            .group_by(
-                CashReceipt.created_by_staff_id,
-                StaffMember.name,
-                CashReceipt.actor_name_snapshot,
+        return (
+            await session.execute(
+                statement.group_by(
+                    CashReceipt.created_by_staff_id,
+                    StaffMember.name,
+                    CashReceipt.actor_name_snapshot,
+                )
+                .order_by(total.desc(), name)
+                .limit(12)
             )
-            .order_by(total.desc(), name)
-            .limit(12)
-        )).all()
+        ).all()
 
     async def waiter_rows(
         self,
@@ -261,37 +284,39 @@ class StatisticsRepository:
             "Rahbar",
         )
         total = func.coalesce(func.sum(CashReceiptLine.total), 0)
-        return (await session.execute(
-            select(
-                name.label("name"),
-                func.count(func.distinct(CashReceipt.id)).label("count"),
-                total.label("total"),
+        return (
+            await session.execute(
+                select(
+                    name.label("name"),
+                    func.count(func.distinct(CashReceipt.id)).label("count"),
+                    total.label("total"),
+                )
+                .select_from(CashReceiptLine)
+                .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
+                .outerjoin(
+                    StaffMember,
+                    and_(
+                        StaffMember.id == CashReceipt.waiter_staff_id,
+                        StaffMember.business_account_id == business_account_id,
+                    ),
+                )
+                .where(
+                    *self._sales_filters(
+                        business_account_id=business_account_id,
+                        start=start,
+                        end=end,
+                    ),
+                    CashReceipt.source == "dining",
+                )
+                .group_by(
+                    CashReceipt.waiter_staff_id,
+                    StaffMember.name,
+                    CashReceipt.waiter_name_snapshot,
+                )
+                .order_by(total.desc(), name)
+                .limit(12)
             )
-            .select_from(CashReceiptLine)
-            .join(CashReceipt, CashReceipt.id == CashReceiptLine.receipt_id)
-            .outerjoin(
-                StaffMember,
-                and_(
-                    StaffMember.id == CashReceipt.waiter_staff_id,
-                    StaffMember.business_account_id == business_account_id,
-                ),
-            )
-            .where(
-                *self._sales_filters(
-                    business_account_id=business_account_id,
-                    start=start,
-                    end=end,
-                ),
-                CashReceipt.source == "dining",
-            )
-            .group_by(
-                CashReceipt.waiter_staff_id,
-                StaffMember.name,
-                CashReceipt.waiter_name_snapshot,
-            )
-            .order_by(total.desc(), name)
-            .limit(12)
-        )).all()
+        ).all()
 
     async def expense_rows(
         self,
@@ -313,20 +338,22 @@ class StatisticsRepository:
             ],
             else_=None,
         )
-        return (await session.execute(
-            select(
-                Expense.category,
-                bucket.label("bucket"),
-                func.coalesce(func.sum(Expense.amount), 0).label("amount"),
+        return (
+            await session.execute(
+                select(
+                    Expense.category,
+                    bucket.label("bucket"),
+                    func.coalesce(func.sum(Expense.amount), 0).label("amount"),
+                )
+                .where(
+                    Expense.business_account_id == business_account_id,
+                    Expense.created_at >= start,
+                    Expense.created_at < end,
+                )
+                .group_by(Expense.category, bucket)
+                .order_by(Expense.category, bucket)
             )
-            .where(
-                Expense.business_account_id == business_account_id,
-                Expense.created_at >= start,
-                Expense.created_at < end,
-            )
-            .group_by(Expense.category, bucket)
-            .order_by(Expense.category, bucket)
-        )).all()
+        ).all()
 
     async def low_stock(
         self,
@@ -334,24 +361,26 @@ class StatisticsRepository:
         *,
         business_account_id: int,
     ):
-        return (await session.execute(
-            select(
-                CatalogItem.name,
-                CatalogItem.unit,
-                InventoryItem.stock_qty,
+        return (
+            await session.execute(
+                select(
+                    CatalogItem.name,
+                    CatalogItem.unit,
+                    InventoryItem.stock_qty,
+                )
+                .select_from(InventoryItem)
+                .join(
+                    CatalogItem,
+                    and_(
+                        CatalogItem.id == InventoryItem.catalog_item_id,
+                        CatalogItem.business_account_id == business_account_id,
+                    ),
+                )
+                .where(
+                    InventoryItem.business_account_id == business_account_id,
+                    InventoryItem.track_stock.is_(True),
+                )
+                .order_by(InventoryItem.stock_qty, InventoryItem.id)
+                .limit(8)
             )
-            .select_from(InventoryItem)
-            .join(
-                CatalogItem,
-                and_(
-                    CatalogItem.id == InventoryItem.catalog_item_id,
-                    CatalogItem.business_account_id == business_account_id,
-                ),
-            )
-            .where(
-                InventoryItem.business_account_id == business_account_id,
-                InventoryItem.track_stock.is_(True),
-            )
-            .order_by(InventoryItem.stock_qty, InventoryItem.id)
-            .limit(8)
-        )).all()
+        ).all()

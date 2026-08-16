@@ -2,7 +2,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 PublicAdvertisementId = Annotated[
     str,
     Field(pattern=r"^a_[0-9a-f]{16}$"),

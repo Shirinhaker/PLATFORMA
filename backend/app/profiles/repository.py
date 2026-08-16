@@ -5,7 +5,6 @@ from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 from app.profiles.schemas import BusinessProfilePatch, UserProfilePatch
 
-
 PROFILE_NOT_FOUND = ApiError(
     404,
     "profile_not_found",

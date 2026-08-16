@@ -1,12 +1,8 @@
 import { useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
-import type {
-  BusinessQueueEntry,
-  BusinessQueueProvider,
-} from "../api/types";
+import type { BusinessQueueEntry, BusinessQueueProvider } from "../api/types";
 import "./QueueBookingV1656.css";
-
 
 export type QueueBookingApi = Pick<
   ApiClient,
@@ -36,13 +32,11 @@ const QUEUE_METHODS: ReadonlyArray<keyof QueueBookingApi> = [
   "createQueue",
 ];
 
-
 export function supportsQueueBookingApi(api: object): api is QueueBookingApi {
-  return QUEUE_METHODS.every((method) => (
-    typeof (api as Partial<QueueBookingApi>)[method] === "function"
-  ));
+  return QUEUE_METHODS.every(
+    (method) => typeof (api as Partial<QueueBookingApi>)[method] === "function",
+  );
 }
-
 
 function localIsoDate() {
   const value = new Date();
@@ -52,16 +46,13 @@ function localIsoDate() {
   return `${year}-${month}-${day}`;
 }
 
-
 function providerLabel(direction: string) {
   return direction === "Tibbiy xizmatlar" ? "Shifokor" : "Xizmat ko'rsatuvchi";
 }
 
-
 function errorText(reason: unknown, fallback: string) {
   return reason instanceof Error ? reason.message : fallback;
 }
-
 
 function ModalFrame({
   title,
@@ -93,11 +84,9 @@ function ModalFrame({
   );
 }
 
-
 function FieldLabel({ children }: { children: ReactNode }) {
   return <div className="queue-booking-v1656__label">{children}</div>;
 }
-
 
 export function QueueBookingV1656({
   api,
@@ -208,7 +197,9 @@ export function QueueBookingV1656({
       <ModalFrame
         title={`${target.serviceName} — navbat`}
         close={onClose}
-        submit={() => { void submitDate(); }}
+        submit={() => {
+          void submitDate();
+        }}
       >
         <FieldLabel>Sana (YYYY-MM-DD)</FieldLabel>
         <input
@@ -225,7 +216,9 @@ export function QueueBookingV1656({
       <ModalFrame
         title={`${label}ni tanlang`}
         close={onClose}
-        submit={() => { void submitProvider(); }}
+        submit={() => {
+          void submitProvider();
+        }}
       >
         <FieldLabel>{label}</FieldLabel>
         <select
@@ -252,7 +245,9 @@ export function QueueBookingV1656({
       <ModalFrame
         title="Qabul vaqtini tanlang"
         close={onClose}
-        submit={() => { void submitSlot(); }}
+        submit={() => {
+          void submitSlot();
+        }}
       >
         <FieldLabel>Bo'sh vaqtlar</FieldLabel>
         <select
@@ -262,7 +257,11 @@ export function QueueBookingV1656({
           onChange={(event) => setSlotTime(event.target.value)}
         >
           <option value="">Vaqtni tanlang</option>
-          {slots.map((slot) => <option value={slot} key={slot}>{slot}</option>)}
+          {slots.map((slot) => (
+            <option value={slot} key={slot}>
+              {slot}
+            </option>
+          ))}
         </select>
       </ModalFrame>
     );

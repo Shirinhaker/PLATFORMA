@@ -1,11 +1,9 @@
 import { useEffect } from "react";
 
-
 type Props = {
   media: { type: "photo" | "video"; url: string } | null;
   onClose(): void;
 };
-
 
 export function ListingMediaViewerV1656({ media, onClose }: Props) {
   useEffect(() => {

@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 ListingCategory = Literal["uy", "ish", "moshina", "hayvon", "texnika", "boshqa"]
 ListingVisibility = Literal["all", "own"]
 # `payment_pending` — to'lov tasdiqlanmaguncha e'lon ko'rinmaydi.

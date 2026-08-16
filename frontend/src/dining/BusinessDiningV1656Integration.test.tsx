@@ -9,7 +9,6 @@ import {
   supportsDiningApi,
 } from "./BusinessDiningV1656";
 
-
 function place(overrides: Partial<DiningPlace> = {}): DiningPlace {
   return {
     id: 700,
@@ -56,7 +55,15 @@ function order(overrides: Partial<DiningOrder> = {}): DiningOrder {
     created_at: 1_785_000_000,
     updated_at: 1_785_000_000,
     items: [
-      { id: 11, item_id: 5, name: "Osh", qty: 2, unit: "dona", price: 12000, total: 24000 },
+      {
+        id: 11,
+        item_id: 5,
+        name: "Osh",
+        qty: 2,
+        unit: "dona",
+        price: 12000,
+        total: 24000,
+      },
     ],
     ...overrides,
   };
@@ -75,9 +82,7 @@ function makeApi(
     getDiningPlaces: vi.fn().mockResolvedValue(places),
     getDiningOrders: vi.fn().mockResolvedValue(orders),
     createDiningPlace: vi.fn().mockResolvedValue(place({ id: 701 })),
-    updateDiningPlace: vi.fn().mockImplementation(
-      async (id: number) => place({ id }),
-    ),
+    updateDiningPlace: vi.fn().mockImplementation(async (id: number) => place({ id })),
     deleteDiningPlace: vi.fn().mockResolvedValue(undefined),
     clearDiningPlace: vi.fn().mockResolvedValue(undefined),
     bookDiningPlace: vi.fn().mockResolvedValue(order({ kind: "booking" })),
@@ -86,7 +91,6 @@ function makeApi(
     ...overrides,
   } as unknown as BusinessDiningApi;
 }
-
 
 describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("API to'liq bo'lsa qo'llab-quvvatlanadi", () => {
@@ -126,15 +130,18 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   });
 
   it("bron ma'lumoti stol ostida ko'rinadi", async () => {
-    const api = makeApi([place()], [
-      order({
-        id: 9,
-        kind: "booking",
-        booking_time: "19:30",
-        customer_name: "Anvar",
-        total: 0,
-      }),
-    ]);
+    const api = makeApi(
+      [place()],
+      [
+        order({
+          id: 9,
+          kind: "booking",
+          booking_time: "19:30",
+          customer_name: "Anvar",
+          total: 0,
+        }),
+      ],
+    );
     render(
       <BusinessDiningV1656
         api={api}
@@ -190,9 +197,9 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
     await screen.findByText("1-stol");
 
     // Konteynerda kabinet resurs metodlari yo'q — oqim faqat REST orqali.
-    expect(
-      Object.keys(api).some((name) => name.includes("BusinessOnline")),
-    ).toBe(false);
+    expect(Object.keys(api).some((name) => name.includes("BusinessOnline"))).toBe(
+      false,
+    );
     await waitFor(() => {
       expect(api.getDiningOrders).toHaveBeenCalled();
     });
@@ -210,14 +217,10 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Menyu" }));
-    fireEvent.click(
-      await screen.findByRole("button", { name: "🛒 Zakaz qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "🛒 Zakaz qilish" }));
     // Menyudan bitta "Osh" tanlanadi.
     fireEvent.click((await screen.findAllByRole("button", { name: "+" }))[0]!);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Zakazni saqlash" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Zakazni saqlash" }));
 
     await waitFor(() => {
       expect(api.createDiningOrder).toHaveBeenCalledWith(700, {
@@ -248,14 +251,10 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
       await screen.findByRole("button", { name: "🛒 Zakazga taom qo‘shish" }),
     );
     fireEvent.click((await screen.findAllByRole("button", { name: "+" }))[0]!);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Zakazga qo‘shish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Zakazga qo‘shish" }));
 
     await waitFor(() => {
-      expect(api.addDiningOrderItems).toHaveBeenCalledWith(5, [
-        { item_id: 5, qty: 1 },
-      ]);
+      expect(api.addDiningOrderItems).toHaveBeenCalledWith(5, [{ item_id: 5, qty: 1 }]);
     });
     expect(api.createDiningOrder).not.toHaveBeenCalled();
   });
@@ -272,9 +271,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "Menyu" }));
-    fireEvent.click(
-      await screen.findByRole("button", { name: "✅ Bo'shatish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "✅ Bo'shatish" }));
     fireEvent.click(await screen.findByRole("button", { name: "Bo'shatish" }));
 
     await waitFor(() => {

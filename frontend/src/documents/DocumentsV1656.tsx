@@ -9,12 +9,8 @@ import type {
   DocumentCounterpartyWrite,
   DocumentDirection,
 } from "../api/types";
-import {
-  DOCUMENT_TYPES,
-  generateDocumentTemplate,
-} from "./templates";
+import { DOCUMENT_TYPES, generateDocumentTemplate } from "./templates";
 import "./DocumentsV1656.css";
-
 
 export type DocumentsApi = Pick<
   ApiClient,
@@ -119,8 +115,7 @@ function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) 
   return (
     <header className="documents-v1656__header">
       <button type="button" className="documents-v1656__back" onClick={onBack}>
-        <span className="documents-v1656__sr-only">Orqaga</span>
-        ←
+        <span className="documents-v1656__sr-only">Orqaga</span>←
       </button>
       <h1>{title}</h1>
     </header>
@@ -139,7 +134,10 @@ export function DocumentsV1656({
   const [direction, setDirection] = useState<DocumentDirection>("ichki");
   const [counterparties, setCounterparties] = useState<DocumentCounterparty[]>([]);
   const [counterpartyTypes, setCounterpartyTypes] = useState([
-    "Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa",
+    "Yetkazib beruvchi",
+    "Mijoz",
+    "Hamkor",
+    "Boshqa",
   ]);
   const [counterparty, setCounterparty] = useState<DocumentCounterparty | null>(null);
   const [counterpartyForm, setCounterpartyForm] = useState(EMPTY_COUNTERPARTY);
@@ -178,10 +176,13 @@ export function DocumentsV1656({
     if (result.types.length) setCounterpartyTypes(result.types);
   }, [api]);
 
-  const loadDocuments = useCallback(async (nextDirection: DocumentDirection) => {
-    const result = await api.getDocuments(nextDirection);
-    setDocuments(result.documents);
-  }, [api]);
+  const loadDocuments = useCallback(
+    async (nextDirection: DocumentDirection) => {
+      const result = await api.getDocuments(nextDirection);
+      setDocuments(result.documents);
+    },
+    [api],
+  );
 
   useEffect(() => {
     if (view !== "counterparties" && view !== "compose") return;
@@ -189,9 +190,15 @@ export function DocumentsV1656({
     setLoading(true);
     setError("");
     loadCounterparties()
-      .catch((reason) => { if (active) setError(errorText(reason)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((reason) => {
+        if (active) setError(errorText(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [loadCounterparties, view]);
 
   useEffect(() => {
@@ -200,9 +207,15 @@ export function DocumentsV1656({
     setLoading(true);
     setError("");
     loadDocuments(direction)
-      .catch((reason) => { if (active) setError(errorText(reason)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((reason) => {
+        if (active) setError(errorText(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [direction, loadDocuments, view]);
 
   function clearMessage() {
@@ -237,18 +250,22 @@ export function DocumentsV1656({
   function openCounterparty(row?: DocumentCounterparty) {
     clearMessage();
     setCounterparty(row ?? null);
-    setCounterpartyForm(row ? {
-      name: row.name,
-      ctype: row.ctype,
-      director: row.director,
-      phone: row.phone,
-      address: row.address,
-      inn: row.inn,
-      account: row.account,
-      bank: row.bank,
-      mfo: row.mfo,
-      note: row.note,
-    } : { ...EMPTY_COUNTERPARTY });
+    setCounterpartyForm(
+      row
+        ? {
+            name: row.name,
+            ctype: row.ctype,
+            director: row.director,
+            phone: row.phone,
+            address: row.address,
+            inn: row.inn,
+            account: row.account,
+            bank: row.bank,
+            mfo: row.mfo,
+            note: row.note,
+          }
+        : { ...EMPTY_COUNTERPARTY },
+    );
     setView("counterparty-form");
   }
 
@@ -315,18 +332,17 @@ export function DocumentsV1656({
       ...current,
       direction: nextDirection,
       doc_type: DOCUMENT_TYPES[nextDirection][0] ?? "Erkin shakldagi hujjat",
-      contractor_id: nextDirection === "chiquvchi"
-        ? current.contractor_id
-        : null,
+      contractor_id: nextDirection === "chiquvchi" ? current.contractor_id : null,
     }));
   }
 
   function generateTemplate() {
     clearMessage();
     if (
-      compose.body.trim()
-      && !window.confirm("Matn maydonida yozuv bor. Shablon bilan almashtirilsinmi?")
-    ) return;
+      compose.body.trim() &&
+      !window.confirm("Matn maydonida yozuv bor. Shablon bilan almashtirilsinmi?")
+    )
+      return;
     setCompose((current) => ({
       ...current,
       body: generateDocumentTemplate(current.doc_type, {
@@ -407,10 +423,7 @@ export function DocumentsV1656({
     try {
       await api.deleteDocument(selected.id);
       setNotice("O'chirildi");
-      openList(
-        selected.direction === "chiquvchi" ? "chiquvchi" : "ichki",
-        true,
-      );
+      openList(selected.direction === "chiquvchi" ? "chiquvchi" : "ichki", true);
     } catch (reason) {
       setError(errorText(reason));
     } finally {
@@ -472,8 +485,16 @@ export function DocumentsV1656({
 
   const feedback = (
     <>
-      {error ? <p className="documents-v1656__error" role="alert">{error}</p> : null}
-      {notice ? <p className="documents-v1656__notice" role="status">{notice}</p> : null}
+      {error ? (
+        <p className="documents-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="documents-v1656__notice" role="status">
+          {notice}
+        </p>
+      ) : null}
     </>
   );
 
@@ -483,17 +504,20 @@ export function DocumentsV1656({
         <ScreenHeader title="Mening hujjatlarim" onBack={onBack} />
         <section className="documents-v1656__form">
           <p className="documents-v1656__info">
-            Bu ma'lumotlar shartnoma, dalolatnoma, hisob va boshqa rasmiy
-            hujjatlarda avtomatik ishlatiladi.
+            Bu ma'lumotlar shartnoma, dalolatnoma, hisob va boshqa rasmiy hujjatlarda
+            avtomatik ishlatiladi.
           </p>
           <label>
             Rahbar F.I.Sh.
             <input
               value={profileForm.director}
               placeholder="Masalan: Aliyev Vali Akramovich"
-              onChange={(event) => setProfileForm((current) => ({
-                ...current, director: event.target.value,
-              }))}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  director: event.target.value,
+                }))
+              }
             />
           </label>
           <label>
@@ -503,13 +527,21 @@ export function DocumentsV1656({
               inputMode="numeric"
               maxLength={20}
               placeholder="9 xonali soliq raqami"
-              onChange={(event) => setProfileForm((current) => ({
-                ...current, tax_id: event.target.value,
-              }))}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  tax_id: event.target.value,
+                }))
+              }
             />
           </label>
           {feedback}
-          <button type="button" className="documents-v1656__primary" disabled={busy} onClick={saveProfile}>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            disabled={busy}
+            onClick={saveProfile}
+          >
             Saqlash
           </button>
         </section>
@@ -518,12 +550,42 @@ export function DocumentsV1656({
   }
 
   if (view === "center") {
-    const cards: Array<{ icon: string; title: string; text: string; action: () => void }> = [
-      { icon: "🤝", title: "Kontragentlar", text: "Hamkorlar bazasi", action: () => setView("counterparties") },
-      { icon: "📥", title: "Kiruvchi", text: "Kelgan hujjatlar", action: () => openList("kiruvchi") },
-      { icon: "📤", title: "Chiquvchi", text: "Yuborilgan hujjatlar", action: () => openList("chiquvchi") },
-      { icon: "📋", title: "Ichki", text: "Firma ichki hujjatlari", action: () => openList("ichki") },
-      { icon: "✍️", title: "Hujjat yaratish", text: "Tayyor shablon asosida", action: () => openCompose() },
+    const cards: Array<{
+      icon: string;
+      title: string;
+      text: string;
+      action: () => void;
+    }> = [
+      {
+        icon: "🤝",
+        title: "Kontragentlar",
+        text: "Hamkorlar bazasi",
+        action: () => setView("counterparties"),
+      },
+      {
+        icon: "📥",
+        title: "Kiruvchi",
+        text: "Kelgan hujjatlar",
+        action: () => openList("kiruvchi"),
+      },
+      {
+        icon: "📤",
+        title: "Chiquvchi",
+        text: "Yuborilgan hujjatlar",
+        action: () => openList("chiquvchi"),
+      },
+      {
+        icon: "📋",
+        title: "Ichki",
+        text: "Firma ichki hujjatlari",
+        action: () => openList("ichki"),
+      },
+      {
+        icon: "✍️",
+        title: "Hujjat yaratish",
+        text: "Tayyor shablon asosida",
+        action: () => openCompose(),
+      },
     ];
     return (
       <main className="documents-v1656">
@@ -532,7 +594,10 @@ export function DocumentsV1656({
           {cards.map((card) => (
             <button type="button" key={card.title} onClick={card.action}>
               <span>{card.icon}</span>
-              <span><b>{card.title}</b><small>{card.text}</small></span>
+              <span>
+                <b>{card.title}</b>
+                <small>{card.text}</small>
+              </span>
               <span aria-hidden="true">›</span>
             </button>
           ))}
@@ -546,10 +611,15 @@ export function DocumentsV1656({
       <main className="documents-v1656">
         <ScreenHeader title="Kontragentlar" onBack={() => setView("center")} />
         <section className="documents-v1656__total">
-          <small>Kontragentlar</small><strong>{counterparties.length}</strong>
+          <small>Kontragentlar</small>
+          <strong>{counterparties.length}</strong>
         </section>
         {canManageCounterparties ? (
-          <button type="button" className="documents-v1656__primary" onClick={() => openCounterparty()}>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            onClick={() => openCounterparty()}
+          >
             + Kontragent qo'shish
           </button>
         ) : null}
@@ -565,18 +635,35 @@ export function DocumentsV1656({
             const content = (
               <>
                 <b>{row.name}</b>
-                {row.ctype || row.phone ? <small>{[row.ctype, row.phone].filter(Boolean).join(" · ")}</small> : null}
+                {row.ctype || row.phone ? (
+                  <small>{[row.ctype, row.phone].filter(Boolean).join(" · ")}</small>
+                ) : null}
                 {row.director ? <small>Rahbar: {row.director}</small> : null}
-                {row.inn || row.account ? <small>{[
-                  row.inn ? `STIR: ${row.inn}` : "",
-                  row.account ? `h/r: ${row.account}` : "",
-                ].filter(Boolean).join(" · ")}</small> : null}
-                {row.bank ? <small>{row.bank}{row.mfo ? ` (MFO ${row.mfo})` : ""}</small> : null}
+                {row.inn || row.account ? (
+                  <small>
+                    {[
+                      row.inn ? `STIR: ${row.inn}` : "",
+                      row.account ? `h/r: ${row.account}` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                ) : null}
+                {row.bank ? (
+                  <small>
+                    {row.bank}
+                    {row.mfo ? ` (MFO ${row.mfo})` : ""}
+                  </small>
+                ) : null}
               </>
             );
             return canManageCounterparties ? (
-              <button type="button" key={row.id} onClick={() => openCounterparty(row)}>{content}</button>
-            ) : <article key={row.id}>{content}</article>;
+              <button type="button" key={row.id} onClick={() => openCounterparty(row)}>
+                {content}
+              </button>
+            ) : (
+              <article key={row.id}>{content}</article>
+            );
           })}
         </section>
       </main>
@@ -584,13 +671,32 @@ export function DocumentsV1656({
   }
 
   if (view === "counterparty-form") {
-    const fields: Array<{ key: keyof DocumentCounterpartyWrite; label: string; placeholder: string; inputMode?: "numeric" | "tel" }> = [
-      { key: "name", label: "Nomi (firma yoki shaxs)", placeholder: "Masalan: Olma Savdo MChJ" },
+    const fields: Array<{
+      key: keyof DocumentCounterpartyWrite;
+      label: string;
+      placeholder: string;
+      inputMode?: "numeric" | "tel";
+    }> = [
+      {
+        key: "name",
+        label: "Nomi (firma yoki shaxs)",
+        placeholder: "Masalan: Olma Savdo MChJ",
+      },
       { key: "director", label: "Rahbari", placeholder: "Ism-familiya" },
       { key: "phone", label: "Telefon", placeholder: "+998 ...", inputMode: "tel" },
       { key: "address", label: "Manzil", placeholder: "Viloyat, tuman, ko'cha" },
-      { key: "inn", label: "STIR (INN)", placeholder: "9 xonali", inputMode: "numeric" },
-      { key: "account", label: "Hisob raqami", placeholder: "20208...", inputMode: "numeric" },
+      {
+        key: "inn",
+        label: "STIR (INN)",
+        placeholder: "9 xonali",
+        inputMode: "numeric",
+      },
+      {
+        key: "account",
+        label: "Hisob raqami",
+        placeholder: "20208...",
+        inputMode: "numeric",
+      },
       { key: "bank", label: "Bank nomi", placeholder: "Masalan: Ipoteka Bank" },
       { key: "mfo", label: "MFO kodi", placeholder: "5 xonali", inputMode: "numeric" },
       { key: "note", label: "Izoh", placeholder: "Ixtiyoriy" },
@@ -604,39 +710,66 @@ export function DocumentsV1656({
             <input
               value={counterpartyForm.name}
               placeholder="Masalan: Olma Savdo MChJ"
-              onChange={(event) => setCounterpartyForm((current) => ({
-                ...current, name: event.target.value,
-              }))}
+              onChange={(event) =>
+                setCounterpartyForm((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
             />
           </label>
           <label>
             Turi
             <select
               value={counterpartyForm.ctype}
-              onChange={(event) => setCounterpartyForm((current) => ({
-                ...current, ctype: event.target.value,
-              }))}
+              onChange={(event) =>
+                setCounterpartyForm((current) => ({
+                  ...current,
+                  ctype: event.target.value,
+                }))
+              }
             >
-              {counterpartyTypes.map((type) => <option key={type}>{type}</option>)}
+              {counterpartyTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
             </select>
           </label>
-          {fields.filter((field) => field.key !== "name").map((field) => (
-            <label key={field.key}>
-              {field.label}
-              <input
-                value={counterpartyForm[field.key]}
-                inputMode={field.inputMode}
-                placeholder={field.placeholder}
-                onChange={(event) => setCounterpartyForm((current) => ({
-                  ...current, [field.key]: event.target.value,
-                }))}
-              />
-            </label>
-          ))}
+          {fields
+            .filter((field) => field.key !== "name")
+            .map((field) => (
+              <label key={field.key}>
+                {field.label}
+                <input
+                  value={counterpartyForm[field.key]}
+                  inputMode={field.inputMode}
+                  placeholder={field.placeholder}
+                  onChange={(event) =>
+                    setCounterpartyForm((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            ))}
           {feedback}
-          <button type="button" className="documents-v1656__primary" disabled={busy} onClick={saveCounterparty}>Saqlash</button>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            disabled={busy}
+            onClick={saveCounterparty}
+          >
+            Saqlash
+          </button>
           {counterparty ? (
-            <button type="button" className="documents-v1656__soft" disabled={busy} onClick={removeCounterparty}>O'chirish</button>
+            <button
+              type="button"
+              className="documents-v1656__soft"
+              disabled={busy}
+              onClick={removeCounterparty}
+            >
+              O'chirish
+            </button>
           ) : null}
         </section>
       </main>
@@ -650,7 +783,12 @@ export function DocumentsV1656({
         <section className="documents-v1656__form">
           <label>
             1. Yo'nalish
-            <select value={compose.direction} onChange={(event) => changeComposeDirection(event.target.value as DocumentDirection)}>
+            <select
+              value={compose.direction}
+              onChange={(event) =>
+                changeComposeDirection(event.target.value as DocumentDirection)
+              }
+            >
               <option value="ichki">📋 Ichki hujjat</option>
               <option value="chiquvchi">📤 Chiquvchi hujjat</option>
               <option value="kiruvchi">📥 Kiruvchi hujjat</option>
@@ -658,59 +796,153 @@ export function DocumentsV1656({
           </label>
           <label>
             2. Hujjat turi
-            <select value={compose.doc_type} onChange={(event) => setCompose((current) => ({ ...current, doc_type: event.target.value }))}>
-              {DOCUMENT_TYPES[compose.direction].map((type) => <option key={type}>{type}</option>)}
+            <select
+              value={compose.doc_type}
+              onChange={(event) =>
+                setCompose((current) => ({ ...current, doc_type: event.target.value }))
+              }
+            >
+              {DOCUMENT_TYPES[compose.direction].map((type) => (
+                <option key={type}>{type}</option>
+              ))}
             </select>
           </label>
           <label>
             Sarlavha (ixtiyoriy)
-            <input value={compose.title} placeholder="Masalan: Ta'til to'g'risida" onChange={(event) => setCompose((current) => ({ ...current, title: event.target.value }))} />
+            <input
+              value={compose.title}
+              placeholder="Masalan: Ta'til to'g'risida"
+              onChange={(event) =>
+                setCompose((current) => ({ ...current, title: event.target.value }))
+              }
+            />
           </label>
           <div className="documents-v1656__pair">
-            <label>Raqami<input value={compose.number} placeholder="№" onChange={(event) => setCompose((current) => ({ ...current, number: event.target.value }))} /></label>
-            <label>Sana<input type="date" value={compose.doc_date} onChange={(event) => setCompose((current) => ({ ...current, doc_date: event.target.value }))} /></label>
+            <label>
+              Raqami
+              <input
+                value={compose.number}
+                placeholder="№"
+                onChange={(event) =>
+                  setCompose((current) => ({ ...current, number: event.target.value }))
+                }
+              />
+            </label>
+            <label>
+              Sana
+              <input
+                type="date"
+                value={compose.doc_date}
+                onChange={(event) =>
+                  setCompose((current) => ({
+                    ...current,
+                    doc_date: event.target.value,
+                  }))
+                }
+              />
+            </label>
           </div>
-          <label>Firma nomi<input value={firmName} placeholder="Firma nomi" onChange={(event) => setFirmName(event.target.value)} /></label>
-          <label>Rahbar F.I.Sh.<input value={director} placeholder="Rahbar" onChange={(event) => setDirector(event.target.value)} /></label>
-          <label>Firma STIR (INN)<input value={taxId} inputMode="numeric" placeholder="9 xonali" onChange={(event) => setTaxId(event.target.value)} /></label>
+          <label>
+            Firma nomi
+            <input
+              value={firmName}
+              placeholder="Firma nomi"
+              onChange={(event) => setFirmName(event.target.value)}
+            />
+          </label>
+          <label>
+            Rahbar F.I.Sh.
+            <input
+              value={director}
+              placeholder="Rahbar"
+              onChange={(event) => setDirector(event.target.value)}
+            />
+          </label>
+          <label>
+            Firma STIR (INN)
+            <input
+              value={taxId}
+              inputMode="numeric"
+              placeholder="9 xonali"
+              onChange={(event) => setTaxId(event.target.value)}
+            />
+          </label>
           {compose.direction === "chiquvchi" ? (
             <label>
               Kontragent (kimga)
-              <select value={compose.contractor_id ?? 0} onChange={(event) => setCompose((current) => ({
-                ...current, contractor_id: Number(event.target.value) || null,
-              }))}>
+              <select
+                value={compose.contractor_id ?? 0}
+                onChange={(event) =>
+                  setCompose((current) => ({
+                    ...current,
+                    contractor_id: Number(event.target.value) || null,
+                  }))
+                }
+              >
                 <option value={0}>— tanlanmagan —</option>
-                {counterparties.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+                {counterparties.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
               </select>
             </label>
           ) : null}
-          <button type="button" className="documents-v1656__soft" onClick={generateTemplate}>📄 Shablonni yuklash</button>
+          <button
+            type="button"
+            className="documents-v1656__soft"
+            onClick={generateTemplate}
+          >
+            📄 Shablonni yuklash
+          </button>
           <label>
             Hujjat matni
             <textarea
               rows={16}
               value={compose.body}
               placeholder="Yuqoridan tur tanlab «Shablonni yuklash» tugmasini bosing — tayyor andoza shu yerga chiqadi. So'ng to'ldiring."
-              onChange={(event) => setCompose((current) => ({ ...current, body: event.target.value }))}
+              onChange={(event) =>
+                setCompose((current) => ({ ...current, body: event.target.value }))
+              }
             />
           </label>
           {feedback}
-          <button type="button" className="documents-v1656__primary" disabled={busy} onClick={saveNewDocument}>💾 Hujjatni saqlash</button>
-          <button type="button" className="documents-v1656__soft" onClick={() => copy(compose.body)}>📋 Nusxa olish</button>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            disabled={busy}
+            onClick={saveNewDocument}
+          >
+            💾 Hujjatni saqlash
+          </button>
+          <button
+            type="button"
+            className="documents-v1656__soft"
+            onClick={() => copy(compose.body)}
+          >
+            📋 Nusxa olish
+          </button>
         </section>
       </main>
     );
   }
 
   if (view === "list") {
-    const title = direction === "kiruvchi"
-      ? "Kiruvchi hujjatlar"
-      : direction === "chiquvchi" ? "Chiquvchi hujjatlar" : "Ichki hujjatlar";
+    const title =
+      direction === "kiruvchi"
+        ? "Kiruvchi hujjatlar"
+        : direction === "chiquvchi"
+          ? "Chiquvchi hujjatlar"
+          : "Ichki hujjatlar";
     return (
       <main className="documents-v1656">
         <ScreenHeader title={title} onBack={() => setView("center")} />
         {direction !== "kiruvchi" ? (
-          <button type="button" className="documents-v1656__primary" onClick={() => openCompose(direction)}>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            onClick={() => openCompose(direction)}
+          >
             + Yangi {direction === "ichki" ? "ichki" : "chiquvchi"} hujjat
           </button>
         ) : null}
@@ -720,21 +952,34 @@ export function DocumentsV1656({
           <p className="documents-v1656__empty">
             {direction === "kiruvchi"
               ? "Kiruvchi hujjat yo'q. Boshqa firmalar sizning STIR raqamingizga hujjat yuborsa, shu yerda ko'rinadi."
-              : "Hozircha hujjat yo'q. \"+ Yangi\" bilan yarating."}
+              : 'Hozircha hujjat yo\'q. "+ Yangi" bilan yarating.'}
           </p>
         ) : null}
         <section className="documents-v1656__list">
           {documents.map((row) => (
             <button type="button" key={row.id} onClick={() => openDocument(row)}>
-              <b>{row.doc_type || "Hujjat"}{row.title ? ` — ${row.title}` : ""}</b>
-              {direction === "kiruvchi" ? <small>Yuboruvchi: {row.sender_name || "?"}</small> : null}
-              <small>{[
-                row.number ? `№ ${row.number}` : "",
-                row.doc_date,
-                row.contractor_name,
-              ].filter(Boolean).join(" · ")}</small>
+              <b>
+                {row.doc_type || "Hujjat"}
+                {row.title ? ` — ${row.title}` : ""}
+              </b>
+              {direction === "kiruvchi" ? (
+                <small>Yuboruvchi: {row.sender_name || "?"}</small>
+              ) : null}
+              <small>
+                {[
+                  row.number ? `№ ${row.number}` : "",
+                  row.doc_date,
+                  row.contractor_name,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </small>
               {row.status ? <StatusBadge status={row.status} /> : null}
-              {direction !== "kiruvchi" && preview(row.body) ? <small className="documents-v1656__preview">{preview(row.body)}...</small> : null}
+              {direction !== "kiruvchi" && preview(row.body) ? (
+                <small className="documents-v1656__preview">
+                  {preview(row.body)}...
+                </small>
+              ) : null}
             </button>
           ))}
         </section>
@@ -756,9 +1001,14 @@ export function DocumentsV1656({
     <main className="documents-v1656">
       <ScreenHeader title="Hujjat" onBack={() => openList(selected.direction)} />
       <section className="documents-v1656__document-head">
-        <b>{selected.doc_type || "Hujjat"}{selected.title ? ` — ${selected.title}` : ""}</b>
+        <b>
+          {selected.doc_type || "Hujjat"}
+          {selected.title ? ` — ${selected.title}` : ""}
+        </b>
         <small>
-          {incoming ? `Kiruvchi · Yuboruvchi: ${selected.sender_name || "?"}` : DIRECTION_TEXT[selected.direction]}
+          {incoming
+            ? `Kiruvchi · Yuboruvchi: ${selected.sender_name || "?"}`
+            : DIRECTION_TEXT[selected.direction]}
           {selected.number ? ` · № ${selected.number}` : ""}
           {selected.doc_date ? ` · ${selected.doc_date}` : ""}
           {selected.contractor_name ? ` · ${selected.contractor_name}` : ""}
@@ -788,25 +1038,71 @@ export function DocumentsV1656({
               placeholder="STIR (9 xonali)"
               onChange={(event) => setReceiverInn(event.target.value)}
             />
-            <button type="button" disabled={busy} onClick={sendSelected}>Yuborish</button>
+            <button type="button" disabled={busy} onClick={sendSelected}>
+              Yuborish
+            </button>
           </div>
-          {selected.status ? <small>Holat: <StatusBadge status={selected.status} /></small> : null}
+          {selected.status ? (
+            <small>
+              Holat: <StatusBadge status={selected.status} />
+            </small>
+          ) : null}
         </section>
       ) : null}
       {feedback}
       {!incoming ? (
         <>
-          <button type="button" className="documents-v1656__primary" disabled={busy} onClick={saveSelected}>💾 O'zgarishni saqlash</button>
-          <button type="button" className="documents-v1656__soft" onClick={() => copy(selected.body)}>📋 Nusxa olish</button>
-          <button type="button" className="documents-v1656__soft documents-v1656__danger" disabled={busy} onClick={removeSelected}>🗑️ O'chirish</button>
+          <button
+            type="button"
+            className="documents-v1656__primary"
+            disabled={busy}
+            onClick={saveSelected}
+          >
+            💾 O'zgarishni saqlash
+          </button>
+          <button
+            type="button"
+            className="documents-v1656__soft"
+            onClick={() => copy(selected.body)}
+          >
+            📋 Nusxa olish
+          </button>
+          <button
+            type="button"
+            className="documents-v1656__soft documents-v1656__danger"
+            disabled={busy}
+            onClick={removeSelected}
+          >
+            🗑️ O'chirish
+          </button>
         </>
       ) : (
         <>
-          <button type="button" className="documents-v1656__soft" onClick={() => copy(selected.body)}>📋 Nusxa olish</button>
+          <button
+            type="button"
+            className="documents-v1656__soft"
+            onClick={() => copy(selected.body)}
+          >
+            📋 Nusxa olish
+          </button>
           {selected.status === "kutilmoqda" ? (
             <section className="documents-v1656__actions">
-              <button type="button" className="documents-v1656__primary" disabled={busy} onClick={() => respond("qabul")}>✅ Qabul qilish</button>
-              <button type="button" className="documents-v1656__soft documents-v1656__danger" disabled={busy} onClick={() => respond("rad")}>❌ Rad etish</button>
+              <button
+                type="button"
+                className="documents-v1656__primary"
+                disabled={busy}
+                onClick={() => respond("qabul")}
+              >
+                ✅ Qabul qilish
+              </button>
+              <button
+                type="button"
+                className="documents-v1656__soft documents-v1656__danger"
+                disabled={busy}
+                onClick={() => respond("rad")}
+              >
+                ❌ Rad etish
+              </button>
             </section>
           ) : null}
         </>

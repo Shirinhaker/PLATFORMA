@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -16,7 +16,6 @@ from app.legacy_migration.profile_parity_v7 import (
     reconcile_businesses,
 )
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-
 
 NOW = datetime(2026, 7, 30, 0, 0, tzinfo=UTC)
 
@@ -142,12 +141,32 @@ def source_snapshot() -> sqlite3.Connection:
         "INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             (
-                46, "user", 5, "business", 4, "product", "Muhr", "new",
-                350000, 1722211200, 1722211200, 0,
+                46,
+                "user",
+                5,
+                "business",
+                4,
+                "product",
+                "Muhr",
+                "new",
+                350000,
+                1722211200,
+                1722211200,
+                0,
             ),
             (
-                47, "user", 9, "business", 4, "service", "Dizayn",
-                "accepted", 15000, 1722211300, 1722211300, 0,
+                47,
+                "user",
+                9,
+                "business",
+                4,
+                "service",
+                "Dizayn",
+                "accepted",
+                15000,
+                1722211300,
+                1722211300,
+                0,
             ),
         ],
     )
@@ -231,9 +250,7 @@ def source_snapshot() -> sqlite3.Connection:
             (2, 4, "Demo xodim", "must-not-leak", 1),
         ],
     )
-    source.execute(
-        "INSERT INTO documents VALUES (1,4,'Shartnoma','active',0)"
-    )
+    source.execute("INSERT INTO documents VALUES (1,4,'Shartnoma','active',0)")
     source.commit()
     return source
 
@@ -371,9 +388,7 @@ async def test_complete_cabinet_migration_preserves_only_real_data(db_session):
     assert user_payload["orders"][0]["items"][0]["item_name"] == "Muhr"
     assert "pass_hash" not in user_payload["orders"][0]["items"][0]
     assert "secret" not in user_payload["orders"][0]["messages"][0]
-    assert [row["title"] for row in user_payload["listings"]] == [
-        "Uy sotiladi"
-    ]
+    assert [row["title"] for row in user_payload["listings"]] == ["Uy sotiladi"]
     assert user_payload["listings"][0]["media"][0]["tg_file_id"] == "real-photo"
     assert [row["caption"] for row in user_payload["stories"]] == [
         "Haqiqiy user istoriya"
@@ -393,18 +408,12 @@ async def test_complete_cabinet_migration_preserves_only_real_data(db_session):
     assert len(business_payload["orders"]) == 2
     assert business_payload["orders"][0]["items"][0]["item_name"] == "Muhr"
     assert business_payload["items"][0]["name"] == "Muhr"
-    assert [row["title"] for row in business_payload["listings"]] == [
-        "Biznes e’loni"
-    ]
+    assert [row["title"] for row in business_payload["listings"]] == ["Biznes e’loni"]
     assert [row["caption"] for row in business_payload["stories"]] == [
         "Haqiqiy biznes istoriya"
     ]
     assert len(business_payload["payment_requests"]) == 1
     assert len(business_payload["subscription_payments"]) == 1
-    assert [row["name"] for row in business_payload["staff"]] == [
-        "Haqiqiy xodim"
-    ]
+    assert [row["name"] for row in business_payload["staff"]] == ["Haqiqiy xodim"]
     assert "pass_hash" not in business_payload["staff"][0]
-    assert [row["title"] for row in business_payload["documents"]] == [
-        "Shartnoma"
-    ]
+    assert [row["title"] for row in business_payload["documents"]] == ["Shartnoma"]

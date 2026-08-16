@@ -4,7 +4,6 @@ from pathlib import Path
 from app.expenses.model import Expense, ExpenseCategory
 from app.expenses.router import router as expenses_router
 
-
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "backend/migrations/versions/0018_expense_domain.py"
 ALEMBIC_ENV = ROOT / "backend/migrations/env.py"
@@ -59,7 +58,7 @@ def test_migration_relinks_stock_expenses_to_normalized_inventory_moves():
     assert "legacy_source_id" in migration.EXPENSE_BACKFILL_SQL
     assert "stock_move_id" in migration.EXPENSE_BACKFILL_SQL
     assert "inventory_stock_move_id" in migration.EXPENSE_BACKFILL_SQL
-    assert "ondelete=\"CASCADE\"" in MIGRATION.read_text(encoding="utf-8")
+    assert 'ondelete="CASCADE"' in MIGRATION.read_text(encoding="utf-8")
 
 
 def test_alembic_metadata_and_router_register_expense_domain():

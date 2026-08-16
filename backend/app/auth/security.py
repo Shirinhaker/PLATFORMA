@@ -1,9 +1,9 @@
 import base64
-from dataclasses import dataclass
 import hashlib
 import hmac
 import json
 import secrets
+from dataclasses import dataclass
 
 from cryptography.exceptions import InvalidKey
 from cryptography.fernet import Fernet
@@ -11,7 +11,6 @@ from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 from app.accounts.model import AccountType
 from app.legacy_migration.passwords import verify_legacy_pbkdf2
-
 
 try:
     from argon2 import PasswordHasher
@@ -90,17 +89,22 @@ def _hmac_bytes(value: str, secret: str) -> bytes:
 
 
 def derive_otp(challenge_id: int, version: int, secret: str) -> str:
-    number = int.from_bytes(
-        _hmac_bytes(f"otp:{challenge_id}:{version}", secret)[:8],
-        "big",
-    ) % 1_000_000
+    number = (
+        int.from_bytes(
+            _hmac_bytes(f"otp:{challenge_id}:{version}", secret)[:8],
+            "big",
+        )
+        % 1_000_000
+    )
     return f"{number:06d}"
 
 
 def derive_csrf(session_token: str, secret: str) -> str:
-    return base64.urlsafe_b64encode(
-        _hmac_bytes(f"csrf:{session_token}", secret)
-    ).decode("ascii").rstrip("=")
+    return (
+        base64.urlsafe_b64encode(_hmac_bytes(f"csrf:{session_token}", secret))
+        .decode("ascii")
+        .rstrip("=")
+    )
 
 
 def encrypt_outbox_secret(payload: dict[str, str], key: str) -> str:

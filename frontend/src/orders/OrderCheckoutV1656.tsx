@@ -67,33 +67,39 @@ export function OrderCheckoutV1656({
     };
 
     openTimer = window.setTimeout(() => {
-      void import("leaflet").then(({ default: leaflet }) => {
-        if (disposed) return;
-        const initial = pointRef.current ?? {
-          latitude: startLatitude,
-          longitude: startLongitude,
-        };
-        map = leaflet.map(node, {
-          zoomControl: true,
-          attributionControl: false,
-        }).setView([initial.latitude, initial.longitude], 15);
-        leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-        }).addTo(map);
-        map.on("moveend", captureCenter);
-        map.on("click", (event) => {
-          map?.setView(event.latlng, map.getZoom());
+      void import("leaflet")
+        .then(({ default: leaflet }) => {
+          if (disposed) return;
+          const initial = pointRef.current ?? {
+            latitude: startLatitude,
+            longitude: startLongitude,
+          };
+          map = leaflet
+            .map(node, {
+              zoomControl: true,
+              attributionControl: false,
+            })
+            .setView([initial.latitude, initial.longitude], 15);
+          leaflet
+            .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+              maxZoom: 19,
+            })
+            .addTo(map);
+          map.on("moveend", captureCenter);
+          map.on("click", (event) => {
+            map?.setView(event.latlng, map.getZoom());
+          });
+          mapRef.current = map;
+          sizeTimer = window.setTimeout(() => {
+            mapRef.current?.invalidateSize();
+            captureCenter();
+          }, 160);
+        })
+        .catch(() => {
+          if (!disposed) {
+            setError("Xarita yuklanmoqda. Birozdan keyin qayta urinib ko‘ring.");
+          }
         });
-        mapRef.current = map;
-        sizeTimer = window.setTimeout(() => {
-          mapRef.current?.invalidateSize();
-          captureCenter();
-        }, 160);
-      }).catch(() => {
-        if (!disposed) {
-          setError("Xarita yuklanmoqda. Birozdan keyin qayta urinib ko‘ring.");
-        }
-      });
     }, 160);
 
     return () => {
@@ -128,8 +134,8 @@ export function OrderCheckoutV1656({
         order_type: type,
         address: cleanAddress,
         desired_time: desiredTime.trim(),
-        delivery_lat: type === "delivery" ? point?.latitude ?? null : null,
-        delivery_lng: type === "delivery" ? point?.longitude ?? null : null,
+        delivery_lat: type === "delivery" ? (point?.latitude ?? null) : null,
+        delivery_lng: type === "delivery" ? (point?.longitude ?? null) : null,
         note: note.trim(),
       });
     } catch (reason) {
@@ -141,59 +147,146 @@ export function OrderCheckoutV1656({
 
   return (
     <>
-      <button aria-label="Buyurtma oynasini yopish" className="sheet-backdrop on" id="orderSheetBackdrop" type="button" onClick={onCancel} />
-      <section aria-modal="true" className="order-sheet on" id="orderSheet" role="dialog">
-        <button className="order-close" aria-label="Yopish" type="button" onClick={onCancel}>×</button>
+      <button
+        aria-label="Buyurtma oynasini yopish"
+        className="sheet-backdrop on"
+        id="orderSheetBackdrop"
+        type="button"
+        onClick={onCancel}
+      />
+      <section
+        aria-modal="true"
+        className="order-sheet on"
+        id="orderSheet"
+        role="dialog"
+      >
+        <button
+          className="order-close"
+          aria-label="Yopish"
+          type="button"
+          onClick={onCancel}
+        >
+          ×
+        </button>
         <div className="order-grip" />
-        <div className="lead" style={{ fontSize: 21, marginTop: 0 }}>Buyurtma berish</div>
+        <div className="lead" style={{ fontSize: 21, marginTop: 0 }}>
+          Buyurtma berish
+        </div>
         <div className="lead-sub" style={{ marginBottom: 14 }}>
-          {businessName || "Biznes"}{useItems ? " — tanlangan mahsulot/xizmatlar bo‘yicha" : " — umumiy buyurtma"}
+          {businessName || "Biznes"}
+          {useItems ? " — tanlangan mahsulot/xizmatlar bo‘yicha" : " — umumiy buyurtma"}
         </div>
         <div className="order-type-row">
-          <button className={`order-type-btn${type === "delivery" ? " on" : ""}`} type="button" onClick={() => setType("delivery")}>
+          <button
+            className={`order-type-btn${type === "delivery" ? " on" : ""}`}
+            type="button"
+            onClick={() => setType("delivery")}
+          >
             🚚 Yetkazib berish<span>Manzilni xaritada metka qilib belgilang</span>
           </button>
-          <button className={`order-type-btn${type === "pickup" ? " on" : ""}`} type="button" onClick={() => setType("pickup")}>
+          <button
+            className={`order-type-btn${type === "pickup" ? " on" : ""}`}
+            type="button"
+            onClick={() => setType("pickup")}
+          >
             🏪 Olib ketish<span>O‘zingiz borib olib ketasiz</span>
           </button>
-          <button className={`order-type-btn${type === "booking" ? " on" : ""}`} type="button" onClick={() => setType("booking")}>
+          <button
+            className={`order-type-btn${type === "booking" ? " on" : ""}`}
+            type="button"
+            onClick={() => setType("booking")}
+          >
             🗓 Navbat / qabulga yozilish<span>Xizmat yoki qabul vaqtiga yozilasiz</span>
           </button>
         </div>
         <div className="field">
           <label htmlFor="orderPhone">Aloqa telefon raqami *</label>
-          <input ref={phoneRef} className="input" id="orderPhone" inputMode="tel" placeholder="+998 __ ___ __ __" value={phone} onChange={(event) => setPhone(event.target.value)} />
+          <input
+            ref={phoneRef}
+            className="input"
+            id="orderPhone"
+            inputMode="tel"
+            placeholder="+998 __ ___ __ __"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+          />
         </div>
         <div className="field">
-          <label htmlFor="orderTime">{type === "booking" ? "Qaysi vaqtga yozilmoqchisiz? — ixtiyoriy" : "Qachonga kerak? — ixtiyoriy"}</label>
-          <input className="input" id="orderTime" placeholder="Masalan: bugun 18:00" value={desiredTime} onChange={(event) => setDesiredTime(event.target.value)} />
+          <label htmlFor="orderTime">
+            {type === "booking"
+              ? "Qaysi vaqtga yozilmoqchisiz? — ixtiyoriy"
+              : "Qachonga kerak? — ixtiyoriy"}
+          </label>
+          <input
+            className="input"
+            id="orderTime"
+            placeholder="Masalan: bugun 18:00"
+            value={desiredTime}
+            onChange={(event) => setDesiredTime(event.target.value)}
+          />
         </div>
         {type === "delivery" ? (
           <div id="orderDeliveryBlock">
             <div className="field">
               <label htmlFor="orderAddress">Yetkazib berish manzili</label>
-              <input className="input" id="orderAddress" placeholder="Tuman, mahalla, ko‘cha, uy" value={address} onChange={(event) => setAddress(event.target.value)} />
+              <input
+                className="input"
+                id="orderAddress"
+                placeholder="Tuman, mahalla, ko‘cha, uy"
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+              />
             </div>
             <div className="field">
               <label>Xaritada metka belgilang</label>
               <div className="order-map-wrap">
                 <div id="orderMap" ref={mapNodeRef} />
                 <div className="order-center-pin">📍</div>
-                <div className="order-map-help"><span>Xaritani suring — metka markazda turadi</span></div>
+                <div className="order-map-help">
+                  <span>Xaritani suring — metka markazda turadi</span>
+                </div>
               </div>
               <div className="idesc" id="orderMapInfo" style={{ marginTop: 7 }}>
-                {point ? `✅ Metka belgilandi: ${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}` : "Joy hali belgilanmagan"}
+                {point
+                  ? `✅ Metka belgilandi: ${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`
+                  : "Joy hali belgilanmagan"}
               </div>
             </div>
           </div>
         ) : null}
         <div className="field">
           <label htmlFor="orderNote">Izoh — ixtiyoriy</label>
-          <textarea className="textarea" id="orderNote" placeholder="Masalan: qo‘ng‘iroq qilib keling, 2-qavat..." value={note} onChange={(event) => setNote(event.target.value)} />
+          <textarea
+            className="textarea"
+            id="orderNote"
+            placeholder="Masalan: qo‘ng‘iroq qilib keling, 2-qavat..."
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
         </div>
-        {error ? <div className="app-toast on" role="alert">{error}</div> : null}
-        <button className="btn btn-primary btn-block" id="orderSubmit" type="button" disabled={busy} onClick={() => void submit()}>✅ Buyurtma yuborish</button>
-        <button className="btn btn-soft btn-block" id="orderCancel" style={{ marginTop: 9 }} type="button" onClick={onCancel}>Bekor qilish</button>
+        {error ? (
+          <div className="app-toast on" role="alert">
+            {error}
+          </div>
+        ) : null}
+        <button
+          className="btn btn-primary btn-block"
+          id="orderSubmit"
+          type="button"
+          disabled={busy}
+          onClick={() => void submit()}
+        >
+          ✅ Buyurtma yuborish
+        </button>
+        <button
+          className="btn btn-soft btn-block"
+          id="orderCancel"
+          style={{ marginTop: 9 }}
+          type="button"
+          onClick={onCancel}
+        >
+          Bekor qilish
+        </button>
       </section>
     </>
   );

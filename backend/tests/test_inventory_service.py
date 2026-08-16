@@ -19,12 +19,11 @@ from app.inventory.model import (
     StockBatch,
     StockMove,
 )
-from app.inventory.schemas import IngredientWrite, InventoryItemWrite, StockMoveCreate
 from app.inventory.repository import InventoryRepository
+from app.inventory.schemas import IngredientWrite, InventoryItemWrite, StockMoveCreate
 from app.inventory.service import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
-
 
 NOW = datetime(2026, 8, 4, 9, 0, tzinfo=UTC)
 
@@ -87,7 +86,9 @@ def account(identifier: int) -> Account:
     )
 
 
-def catalog_item(identifier: int, business_id: int, name: str, unit: str) -> CatalogItem:
+def catalog_item(
+    identifier: int, business_id: int, name: str, unit: str
+) -> CatalogItem:
     return CatalogItem(
         id=identifier,
         business_account_id=business_id,
@@ -163,58 +164,60 @@ def inventory_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            account(1),
-            account(2),
-            business_profile(1, "Umumiy ovqatlanish"),
-            business_profile(2, "Savdo"),
-            catalog_item(11, 1, "Un", "kg"),
-            catalog_item(12, 1, "Non", "dona"),
-            catalog_item(13, 1, "Suv", "l"),
-            catalog_item(21, 2, "Begona mahsulot", "dona"),
-            InventoryItem(
-                id=101,
-                business_account_id=1,
-                catalog_item_id=11,
-                legacy_source_id=11,
-                track_stock=True,
-                stock_type="raw_material",
-                stock_qty=Decimal("0"),
-                cost_price=0,
-                min_qty=Decimal("1"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            InventoryItem(
-                id=102,
-                business_account_id=1,
-                catalog_item_id=12,
-                legacy_source_id=12,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("0"),
-                cost_price=0,
-                min_qty=Decimal("0"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            InventoryItem(
-                id=201,
-                business_account_id=2,
-                catalog_item_id=21,
-                legacy_source_id=21,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("0"),
-                cost_price=0,
-                min_qty=Decimal("0"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                account(1),
+                account(2),
+                business_profile(1, "Umumiy ovqatlanish"),
+                business_profile(2, "Savdo"),
+                catalog_item(11, 1, "Un", "kg"),
+                catalog_item(12, 1, "Non", "dona"),
+                catalog_item(13, 1, "Suv", "l"),
+                catalog_item(21, 2, "Begona mahsulot", "dona"),
+                InventoryItem(
+                    id=101,
+                    business_account_id=1,
+                    catalog_item_id=11,
+                    legacy_source_id=11,
+                    track_stock=True,
+                    stock_type="raw_material",
+                    stock_qty=Decimal("0"),
+                    cost_price=0,
+                    min_qty=Decimal("1"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                InventoryItem(
+                    id=102,
+                    business_account_id=1,
+                    catalog_item_id=12,
+                    legacy_source_id=12,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("0"),
+                    cost_price=0,
+                    min_qty=Decimal("0"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                InventoryItem(
+                    id=201,
+                    business_account_id=2,
+                    catalog_item_id=21,
+                    legacy_source_id=21,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("0"),
+                    cost_price=0,
+                    min_qty=Decimal("0"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -376,9 +379,11 @@ async def test_fifo_uses_oldest_batches_and_calculates_weighted_cost(inventory_c
 
     assert outgoing.unit_cost == 150
     with Session(engine) as session:
-        batches = list(session.scalars(
-            select(StockBatch).order_by(StockBatch.created_at, StockBatch.id)
-        ).all())
+        batches = list(
+            session.scalars(
+                select(StockBatch).order_by(StockBatch.created_at, StockBatch.id)
+            ).all()
+        )
         assert [row.qty_remaining for row in batches] == [
             Decimal("0.000"),
             Decimal("1.000"),

@@ -11,7 +11,6 @@ from app.accounts.model import Account, AccountType
 from app.follows.model import ProfileFollow
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 FollowListKind = Literal["followers", "following"]
 
 
@@ -88,8 +87,7 @@ class FollowRepository:
                 case((profiles.c.kind == "user", 0), else_=1),
             )
         result = await session.execute(
-            select(profiles, func.count().over().label("total"))
-            .order_by(*order_by)
+            select(profiles, func.count().over().label("total")).order_by(*order_by)
         )
         rows = [dict(row) for row in result.mappings().all()]
         total = int(rows[0]["total"]) if rows else 0

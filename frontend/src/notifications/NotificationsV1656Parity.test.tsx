@@ -2,16 +2,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type {
-  NotificationFilterRead,
-  NotificationRead,
-} from "../api/types";
+import type { NotificationFilterRead, NotificationRead } from "../api/types";
 import {
   ActionNotificationsV1656,
   NotificationsV1656,
   type NotificationsApi,
 } from "./NotificationsV1656";
-
 
 const notification: NotificationRead = {
   id: 11,
@@ -41,7 +37,6 @@ const filter: NotificationFilterRead = {
   keyword: "hovli",
   created_at: 1_754_814_400,
 };
-
 
 function api(overrides: Partial<NotificationsApi> = {}): NotificationsApi {
   return {
@@ -74,17 +69,12 @@ function api(overrides: Partial<NotificationsApi> = {}): NotificationsApi {
   };
 }
 
-
 describe("v1656 bildirishnomalar migratsiyasi", () => {
   it("loads normalized notifications, push preference and filters in parallel", async () => {
     const client = api();
     const unread = vi.fn();
     render(
-      <NotificationsV1656
-        api={client}
-        onBack={vi.fn()}
-        onUnreadChange={unread}
-      />,
+      <NotificationsV1656 api={client} onBack={vi.fn()} onUnreadChange={unread} />,
     );
 
     expect(await screen.findByText("Yangi buyurtma")).toBeInTheDocument();
@@ -135,26 +125,23 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
     await user.type(screen.getByPlaceholderText(/mushuk/), "hovli");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    await waitFor(() => expect(client.createNotificationFilter).toHaveBeenCalledWith({
-      cat: "uy",
-      region: "Toshkent shahri",
-      district: "Chilonzor",
-      price_min: 0,
-      price_max: 0,
-      keyword: "hovli",
-    }));
+    await waitFor(() =>
+      expect(client.createNotificationFilter).toHaveBeenCalledWith({
+        cat: "uy",
+        region: "Toshkent shahri",
+        district: "Chilonzor",
+        price_min: 0,
+        price_max: 0,
+        keyword: "hovli",
+      }),
+    );
   });
 
   it("polls actionable notifications and opens the selected workflow", async () => {
     const client = api();
     const open = vi.fn();
     const user = userEvent.setup();
-    render(
-      <ActionNotificationsV1656
-        api={client}
-        onOpenNotification={open}
-      />,
-    );
+    render(<ActionNotificationsV1656 api={client} onOpenNotification={open} />);
 
     await user.click(await screen.findByRole("button", { name: /Yangi buyurtma/ }));
     expect(client.markNotificationRead).toHaveBeenCalledWith(11);

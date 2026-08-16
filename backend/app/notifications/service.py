@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
-import re
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +28,6 @@ from app.notifications.schemas import (
     PushStatusRead,
 )
 from app.profiles.model import ProfileLink
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
@@ -81,17 +80,22 @@ class NotificationService:
         permissions: tuple[str, ...] = (),
     ) -> NotificationListRead:
         async with self._session_factory() as session:
-            rows = await self._repository.list_rows(
-                session,
-                account_id=account_id,
-                account_type=account_type.value,
-            ) or []
+            rows = (
+                await self._repository.list_rows(
+                    session,
+                    account_id=account_id,
+                    account_type=account_type.value,
+                )
+                or []
+            )
             visible = [
-                row for row in rows
+                row
+                for row in rows
                 if self._visible(row, staff_id=staff_id, permissions=permissions)
             ]
             unread = sum(
-                1 for row in visible
+                1
+                for row in visible
                 if not int(row.get("is_read") or 0)
                 and not int(row.get("resolved_at") or 0)
             )
@@ -115,7 +119,8 @@ class NotificationService:
                 account_type=account_type.value,
             )
             visible = [
-                row for row in rows
+                row
+                for row in rows
                 if self._visible(row, staff_id=staff_id, permissions=permissions)
             ]
             return ActionNotificationListRead(
@@ -177,18 +182,19 @@ class NotificationService:
                     read_at=now,
                 )
             else:
-                rows = await self._repository.list_rows(
-                    session,
-                    account_id=account_id,
-                    account_type=account_type.value,
-                ) or []
+                rows = (
+                    await self._repository.list_rows(
+                        session,
+                        account_id=account_id,
+                        account_type=account_type.value,
+                    )
+                    or []
+                )
                 ids = [
                     int(row["id"])
                     for row in rows
                     if not int(row.get("is_read") or 0)
-                    and self._visible(
-                        row, staff_id=staff_id, permissions=permissions
-                    )
+                    and self._visible(row, staff_id=staff_id, permissions=permissions)
                 ]
                 await self._repository.mark_ids_read(
                     session,
@@ -385,8 +391,7 @@ class NotificationService:
         if listing.owner_business_account_id is not None:
             linked_owner = await session.scalar(
                 select(ProfileLink.user_account_id).where(
-                    ProfileLink.business_account_id
-                    == listing.owner_business_account_id
+                    ProfileLink.business_account_id == listing.owner_business_account_id
                 )
             )
             if linked_owner is not None:
@@ -399,12 +404,16 @@ class NotificationService:
         }
         if not candidates:
             return 0
-        telegram_accounts = set((await session.scalars(
-            select(Account.id).where(
-                Account.id.in_(candidates),
-                Account.telegram_user_id.is_not(None),
-            )
-        )).all())
+        telegram_accounts = set(
+            (
+                await session.scalars(
+                    select(Account.id).where(
+                        Account.id.in_(candidates),
+                        Account.telegram_user_id.is_not(None),
+                    )
+                )
+            ).all()
+        )
         notified: set[int] = set()
         for row in filters:
             account_id = int(row.account_id)
@@ -514,11 +523,13 @@ class NotificationService:
 
     @staticmethod
     def _matches_filter(row: NotificationFilter, listing: Listing) -> bool:
-        haystack = " ".join((
-            listing.title,
-            listing.description,
-            listing.address,
-        )).casefold()
+        haystack = " ".join(
+            (
+                listing.title,
+                listing.description,
+                listing.address,
+            )
+        ).casefold()
         if row.region and row.region.casefold() not in haystack:
             return False
         if row.district and row.district.casefold() not in haystack:

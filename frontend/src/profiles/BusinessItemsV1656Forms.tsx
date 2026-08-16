@@ -4,7 +4,6 @@ import type { BusinessOnlineRecord } from "../api/business-online-types";
 import { QUEUE_DIRECTIONS } from "./business-profile-config";
 import { recordId, recordText } from "./BusinessOnlineViews";
 
-
 const UNITS = [
   "dona",
   "kg",
@@ -23,13 +22,13 @@ const UNITS = [
   "marta",
 ];
 
-export function cleanItemDraft(
-  row: BusinessOnlineRecord,
-): BusinessOnlineRecord {
-  return Object.fromEntries(Object.entries(row).filter(([key]) => (
-    !["id", "created_at", "updated_at"].includes(key)
-    && !key.endsWith("_url")
-  )));
+export function cleanItemDraft(row: BusinessOnlineRecord): BusinessOnlineRecord {
+  return Object.fromEntries(
+    Object.entries(row).filter(
+      ([key]) =>
+        !["id", "created_at", "updated_at"].includes(key) && !key.endsWith("_url"),
+    ),
+  );
 }
 
 function rowKind(row: BusinessOnlineRecord): "product" | "service" {
@@ -62,9 +61,18 @@ export function GroupForm({
         onClick={onCancel}
       />
       <section className="order-sheet on" role="dialog" aria-modal="true">
-        <button type="button" className="order-close" aria-label="Yopish" onClick={onCancel}>×</button>
+        <button
+          type="button"
+          className="order-close"
+          aria-label="Yopish"
+          onClick={onCancel}
+        >
+          ×
+        </button>
         <div className="order-grip" />
-        <div className="lead">{editing ? "Guruh nomini o'zgartirish" : "Yangi guruh"}</div>
+        <div className="lead">
+          {editing ? "Guruh nomini o'zgartirish" : "Yangi guruh"}
+        </div>
         <label className="field">
           Guruh nomi
           <input
@@ -72,10 +80,12 @@ export function GroupForm({
             aria-label="Guruh nomi"
             placeholder="Masalan: Ho'l mevalar"
             value={String(draft.name ?? "")}
-            onChange={(event) => setDraft({
-              ...draft,
-              name: event.currentTarget.value,
-            })}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                name: event.currentTarget.value,
+              })
+            }
           />
         </label>
         {!editing && (
@@ -99,10 +109,17 @@ export function GroupForm({
             </div>
           </div>
         )}
-        <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={() => void onSave()}>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          disabled={busy}
+          onClick={() => void onSave()}
+        >
           Saqlash
         </button>
-        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>Bekor qilish</button>
+        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>
+          Bekor qilish
+        </button>
       </section>
     </>
   );
@@ -132,26 +149,24 @@ export function ItemForm({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [localPreview, setLocalPreview] = useState("");
-  const selectedGroup = groups.find((group, index) => (
-    String(recordId(group, index)) === String(draft.group_id ?? "")
-  ));
+  const selectedGroup = groups.find(
+    (group, index) => String(recordId(group, index)) === String(draft.group_id ?? ""),
+  );
   const kind = selectedGroup ? rowKind(selectedGroup) : rowKind(draft);
   const trackStock = Boolean(Number(draft.track_stock ?? 0));
   const dining = direction === "Umumiy ovqatlanish";
   const note = String(draft.note ?? draft.description ?? "");
-  const queueVisible = kind === "service" && QUEUE_DIRECTIONS.some(
-    (value) => value === direction,
-  );
-  const imagePreview = localPreview || recordText(
-    draft,
-    "image_url",
-    "photo_file",
-    "photo_url",
-  );
+  const queueVisible =
+    kind === "service" && QUEUE_DIRECTIONS.some((value) => value === direction);
+  const imagePreview =
+    localPreview || recordText(draft, "image_url", "photo_file", "photo_url");
 
-  useEffect(() => () => {
-    if (localPreview.startsWith("blob:")) URL.revokeObjectURL(localPreview);
-  }, [localPreview]);
+  useEffect(
+    () => () => {
+      if (localPreview.startsWith("blob:")) URL.revokeObjectURL(localPreview);
+    },
+    [localPreview],
+  );
 
   async function selectImage(file: File | undefined) {
     if (!file) return;
@@ -159,12 +174,7 @@ export function ItemForm({
       setUploadError("Rasm yuklash xizmati hozir mavjud emas.");
       return;
     }
-    if (![
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-    ].includes(file.type)) {
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
       setUploadError("JPG, PNG, WEBP yoki GIF rasm tanlang.");
       return;
     }
@@ -194,11 +204,7 @@ export function ItemForm({
 
   return (
     <section className="item-form-card form-wrap">
-      <h2>
-        {editing
-          ? "Tovarni tahrirlash"
-          : "Yangi tovar"}
-      </h2>
+      <h2>{editing ? "Tovarni tahrirlash" : "Yangi tovar"}</h2>
       <div className="field">
         <label>Rasm — ixtiyoriy</label>
         {imagePreview ? (
@@ -230,7 +236,9 @@ export function ItemForm({
           </span>
         </label>
         {uploadError ? (
-          <span className="item-photo-error" role="alert">{uploadError}</span>
+          <span className="item-photo-error" role="alert">
+            {uploadError}
+          </span>
         ) : null}
       </div>
       <label className="field">
@@ -240,10 +248,12 @@ export function ItemForm({
           aria-label="Nomi"
           value={String(draft.name ?? "")}
           placeholder="Masalan: Non"
-          onChange={(event) => setDraft({
-            ...draft,
-            name: event.currentTarget.value,
-          })}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              name: event.currentTarget.value,
+            })
+          }
         />
       </label>
       <label className="field">
@@ -253,10 +263,12 @@ export function ItemForm({
           aria-label="Narxi"
           value={String(draft.price ?? "")}
           placeholder="Masalan: 2 000 so'm"
-          onChange={(event) => setDraft({
-            ...draft,
-            price: event.currentTarget.value,
-          })}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              price: event.currentTarget.value,
+            })
+          }
         />
       </label>
       {kind === "product" && (
@@ -266,13 +278,17 @@ export function ItemForm({
             <select
               className="input"
               value={String(draft.unit ?? "dona")}
-              onChange={(event) => setDraft({
-                ...draft,
-                unit: event.currentTarget.value,
-              })}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  unit: event.currentTarget.value,
+                })
+              }
             >
               {UNITS.map((unit) => (
-                <option key={unit} value={unit}>{unit}</option>
+                <option key={unit} value={unit}>
+                  {unit}
+                </option>
               ))}
             </select>
           </label>
@@ -281,10 +297,12 @@ export function ItemForm({
             <select
               className="input"
               value={trackStock ? "1" : "0"}
-              onChange={(event) => setDraft({
-                ...draft,
-                track_stock: Number(event.currentTarget.value),
-              })}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  track_stock: Number(event.currentTarget.value),
+                })
+              }
             >
               <option value="0">Yo'q</option>
               <option value="1">Ha — qoldiq yuritiladi</option>
@@ -297,10 +315,12 @@ export function ItemForm({
                 className="input"
                 aria-label="Ombor turi"
                 value={String(draft.stock_type ?? "ready_food")}
-                onChange={(event) => setDraft({
-                  ...draft,
-                  stock_type: event.currentTarget.value,
-                })}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    stock_type: event.currentTarget.value,
+                  })
+                }
               >
                 <option value="ready_food">Tayyor taom</option>
                 <option value="raw_material">Xomashyo</option>
@@ -316,10 +336,12 @@ export function ItemForm({
                 inputMode="decimal"
                 value={String(draft.stock_qty ?? "")}
                 placeholder="0"
-                onChange={(event) => setDraft({
-                  ...draft,
-                  stock_qty: event.currentTarget.value,
-                })}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    stock_qty: event.currentTarget.value,
+                  })
+                }
               />
             </label>
           )}
@@ -332,10 +354,12 @@ export function ItemForm({
                 inputMode="decimal"
                 value={String(draft.min_qty ?? "")}
                 placeholder="0"
-                onChange={(event) => setDraft({
-                  ...draft,
-                  min_qty: event.currentTarget.value,
-                })}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    min_qty: event.currentTarget.value,
+                  })
+                }
               />
             </label>
           )}
@@ -347,11 +371,13 @@ export function ItemForm({
           className="input"
           value={note}
           placeholder="Izoh"
-          onChange={(event) => setDraft({
-            ...draft,
-            note: event.currentTarget.value,
-            description: event.currentTarget.value,
-          })}
+          onChange={(event) =>
+            setDraft({
+              ...draft,
+              note: event.currentTarget.value,
+              description: event.currentTarget.value,
+            })
+          }
         />
       </label>
       <label className="field">
@@ -361,17 +387,15 @@ export function ItemForm({
           value={String(draft.group_id ?? "")}
           onChange={(event) => {
             const groupId = event.currentTarget.value;
-            const group = groups.find((candidate, index) => (
-              String(recordId(candidate, index)) === groupId
-            ));
+            const group = groups.find(
+              (candidate, index) => String(recordId(candidate, index)) === groupId,
+            );
             const nextKind = group ? rowKind(group) : rowKind(draft);
             setDraft({
               ...draft,
               group_id: groupId || null,
               kind: nextKind,
-              queue_enabled: nextKind === "service"
-                ? draft.queue_enabled ?? 0
-                : 0,
+              queue_enabled: nextKind === "service" ? (draft.queue_enabled ?? 0) : 0,
             });
           }}
         >
@@ -391,30 +415,33 @@ export function ItemForm({
       <div className="field">
         {selectedGroup ? (
           <div className="item-auto-kind">
-            Tur avtomatik: {kind === "service" ? "Xizmat" : "Mahsulot"} ({String(selectedGroup.name ?? "")} guruhi bo'yicha)
+            Tur avtomatik: {kind === "service" ? "Xizmat" : "Mahsulot"} (
+            {String(selectedGroup.name ?? "")} guruhi bo'yicha)
           </div>
         ) : (
           <>
             <label>Turi</label>
             <div className="item-kind-row" role="group" aria-label="Tovar turi">
-          <button
-            type="button"
-            className={kind === "product" ? "sort-chip on" : "sort-chip"}
-            onClick={() => setDraft({
-              ...draft,
-              kind: "product",
-              queue_enabled: 0,
-            })}
-          >
-            Mahsulot
-          </button>
-          <button
-            type="button"
-            className={kind === "service" ? "sort-chip on" : "sort-chip"}
-            onClick={() => setDraft({ ...draft, kind: "service" })}
-          >
-            Xizmat
-          </button>
+              <button
+                type="button"
+                className={kind === "product" ? "sort-chip on" : "sort-chip"}
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    kind: "product",
+                    queue_enabled: 0,
+                  })
+                }
+              >
+                Mahsulot
+              </button>
+              <button
+                type="button"
+                className={kind === "service" ? "sort-chip on" : "sort-chip"}
+                onClick={() => setDraft({ ...draft, kind: "service" })}
+              >
+                Xizmat
+              </button>
             </div>
           </>
         )}
@@ -426,10 +453,12 @@ export function ItemForm({
             className="input"
             id="itQueueEnabled"
             value={Number(draft.queue_enabled ?? 0) ? "1" : "0"}
-            onChange={(event) => setDraft({
-              ...draft,
-              queue_enabled: Number(event.currentTarget.value),
-            })}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                queue_enabled: Number(event.currentTarget.value),
+              })
+            }
           >
             <option value="0">O‘chirilgan</option>
             <option value="1">Yoqilgan</option>
@@ -448,7 +477,9 @@ export function ItemForm({
         >
           Saqlash
         </button>
-        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>Bekor qilish</button>
+        <button type="button" className="btn btn-soft btn-block" onClick={onCancel}>
+          Bekor qilish
+        </button>
       </div>
     </section>
   );

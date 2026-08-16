@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { QueueBookingV1656 } from "./QueueBookingV1656";
 
-
 const target = {
   businessPublicId: "b_shifo",
   itemPublicId: "s_qabul",
@@ -96,15 +95,20 @@ describe("v1656 ommaviy navbat olish pariteti", () => {
     expect(screen.getByLabelText("Sana (YYYY-MM-DD)")).toHaveValue("2026-08-02");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
     expect(api.getQueueOptions).toHaveBeenCalledWith(
-      "b_shifo", "s_qabul", "2026-08-02",
+      "b_shifo",
+      "s_qabul",
+      "2026-08-02",
     );
 
     const providerDialog = await screen.findByRole("dialog");
-    expect(providerDialog.querySelector(".acf-title"))
-      .toHaveTextContent("Shifokorni tanlang");
-    expect(screen.getByRole("option", {
-      name: "Ali Valiyev — Kardiolog (navbat 2 ta)",
-    })).toBeInTheDocument();
+    expect(providerDialog.querySelector(".acf-title")).toHaveTextContent(
+      "Shifokorni tanlang",
+    );
+    expect(
+      screen.getByRole("option", {
+        name: "Ali Valiyev — Kardiolog (navbat 2 ta)",
+      }),
+    ).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Shifokor"), "5");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
@@ -155,16 +159,21 @@ describe("v1656 ommaviy navbat olish pariteti", () => {
     await user.selectOptions(await screen.findByLabelText("Shifokor"), "5");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
     expect(api.getQueueSlots).toHaveBeenCalledWith(
-      "b_shifo", "s_qabul", 5, "2026-08-02",
+      "b_shifo",
+      "s_qabul",
+      5,
+      "2026-08-02",
     );
     expect(await screen.findByText("Qabul vaqtini tanlang")).toHaveClass("acf-title");
     await user.selectOptions(screen.getByLabelText("Bo'sh vaqtlar"), "12:20");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(api.createQueue).toHaveBeenCalledWith(expect.objectContaining({
-      provider_id: 5,
-      slot_time: "12:20",
-    }));
+    expect(api.createQueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider_id: 5,
+        slot_time: "12:20",
+      }),
+    );
   });
 
   it("provider yoki slot topilmasa monolitdagi xabarni aynan beradi", async () => {

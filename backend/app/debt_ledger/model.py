@@ -34,15 +34,9 @@ class Debtor(Base):
     )
     legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
-    phone: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=""
-    )
-    note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    due: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=""
-    )
+    phone: Mapped[str] = mapped_column(String(40), nullable=False, server_default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    due: Mapped[str] = mapped_column(String(40), nullable=False, server_default="")
     created_by_staff_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("staff_members.id", ondelete="SET NULL"),
@@ -83,9 +77,7 @@ class DebtTransaction(Base):
     transaction_type: Mapped[str] = mapped_column(String(16), nullable=False)
     amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
     transaction_date: Mapped[date] = mapped_column(Date, nullable=False)
-    note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     order_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("orders.id", ondelete="SET NULL"),
@@ -141,10 +133,6 @@ Index(
     "uq_debt_transactions_order_debt",
     DebtTransaction.order_id,
     unique=True,
-    postgresql_where=text(
-        "order_id IS NOT NULL AND transaction_type = 'debt'"
-    ),
-    sqlite_where=text(
-        "order_id IS NOT NULL AND transaction_type = 'debt'"
-    ),
+    postgresql_where=text("order_id IS NOT NULL AND transaction_type = 'debt'"),
+    sqlite_where=text("order_id IS NOT NULL AND transaction_type = 'debt'"),
 )

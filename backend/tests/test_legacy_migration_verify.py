@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -20,12 +20,12 @@ from app.legacy_migration.model import (
     OwnerState,
     ReviewState,
 )
-from app.listings.model import Listing
 from app.legacy_migration.verify import (
     VerificationInput,
     evaluate_gates,
     verify_migration,
 )
+from app.listings.model import Listing
 
 
 def valid_input(**changes):
@@ -61,9 +61,7 @@ def test_all_exact_gates_pass_for_consistent_migration():
 
 
 def test_failed_media_and_identity_conflicts_block_gate():
-    report = evaluate_gates(
-        valid_input(media_failed=1, identity_conflicts=2)
-    )
+    report = evaluate_gates(valid_input(media_failed=1, identity_conflicts=2))
 
     assert report.passed is False
     failed = {gate.code for gate in report.gates if not gate.passed}
@@ -272,27 +270,29 @@ async def test_catalog_gate_counts_rows_created_outside_the_run():
         error_count=0,
         started_at=now,
     )
-    session.add_all([
-        run,
-        CatalogItem(
-            id=1,
-            business_account_id=30,
-            source_record_key="8",
-            owner_name_snapshot="",
-            name="Backfill nusxasi",
-            price_text="",
-            note="",
-            kind="product",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=now,
-            updated_at=now,
-        ),
-    ])
+    session.add_all(
+        [
+            run,
+            CatalogItem(
+                id=1,
+                business_account_id=30,
+                source_record_key="8",
+                owner_name_snapshot="",
+                name="Backfill nusxasi",
+                price_text="",
+                note="",
+                kind="product",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=now,
+                updated_at=now,
+            ),
+        ]
+    )
     session.commit()
 
     source = empty_source()

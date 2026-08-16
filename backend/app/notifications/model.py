@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -10,7 +11,6 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -101,9 +101,7 @@ Index(
     postgresql_where=text(
         "requires_action = true AND is_read = false AND resolved_at IS NULL"
     ),
-    sqlite_where=text(
-        "requires_action = 1 AND is_read = 0 AND resolved_at IS NULL"
-    ),
+    sqlite_where=text("requires_action = 1 AND is_read = 0 AND resolved_at IS NULL"),
 )
 Index(
     "ix_notifications_owner_listing",

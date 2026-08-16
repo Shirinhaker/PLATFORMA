@@ -1,6 +1,6 @@
+import hmac
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import hmac
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
@@ -21,9 +21,7 @@ class CurrentAccount:
 
 
 async def require_current_account(request: Request) -> CurrentAccount:
-    session_token = request.cookies.get(
-        request.app.state.settings.auth_cookie_name
-    )
+    session_token = request.cookies.get(request.app.state.settings.auth_cookie_name)
     if not session_token:
         raise ApiError(
             401,

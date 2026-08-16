@@ -2,11 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { BusinessProfile, OrderRead, UserProfile as UserProfileData } from "../api/types";
+import type {
+  BusinessProfile,
+  OrderRead,
+  UserProfile as UserProfileData,
+} from "../api/types";
 import { BusinessOnlineScreen } from "../profiles/BusinessOnlineScreen";
 import { NotificationsView } from "../profiles/BusinessOnlineViews";
 import { UserProfile } from "../profiles/UserProfile";
-
 
 const liveOrder = {
   id: 91,
@@ -61,7 +64,9 @@ const userProfile = {
 function orderMethods(rows = [liveOrder]) {
   return {
     getMyOrders: vi.fn().mockResolvedValue(rows),
-    getOrderInbox: vi.fn().mockResolvedValue(rows.map((row) => ({ ...row, view: "provider" }))),
+    getOrderInbox: vi
+      .fn()
+      .mockResolvedValue(rows.map((row) => ({ ...row, view: "provider" }))),
     markOrderSeen: vi.fn(),
     changeOrderStatus: vi.fn(),
     submitOrderPayment: vi.fn(),
@@ -79,7 +84,6 @@ function orderMethods(rows = [liveOrder]) {
     uploadGrantedFile: vi.fn(),
   };
 }
-
 
 describe("v1656 order kabinet wiring", () => {
   it("queue bildirishnomasini o'qib xizmat ekranidagi tegishli navbatga fokuslaydi", async () => {
@@ -112,14 +116,16 @@ describe("v1656 order kabinet wiring", () => {
     const queueProfile = {
       ...userProfile,
       cabinet_payload: {
-        notifications: [{
-          id: 8,
-          title: "Navbatingiz yaqinlashdi",
-          body: "Oldingizda 2 ta navbat qoldi.",
-          is_read: 0,
-          medical_queue_id: 41,
-          action_type: "medical_queue_soon",
-        }],
+        notifications: [
+          {
+            id: 8,
+            title: "Navbatingiz yaqinlashdi",
+            body: "Oldingizda 2 ta navbat qoldi.",
+            is_read: 0,
+            medical_queue_id: 41,
+            action_type: "medical_queue_soon",
+          },
+        ],
       },
     };
     const api = {
@@ -160,10 +166,10 @@ describe("v1656 order kabinet wiring", () => {
 
     expect(api.markQueueNotificationRead).toHaveBeenCalledWith(8);
     expect(await screen.findByText("NAVBAT QAB-003")).toBeInTheDocument();
-    expect(screen.getByTestId("medical-queue-41"))
-      .toHaveClass("medical-queue-focus");
-    expect(screen.getByRole("heading", { name: "Boshqa xizmat buyurtmalari" }))
-      .toBeInTheDocument();
+    expect(screen.getByTestId("medical-queue-41")).toHaveClass("medical-queue-focus");
+    expect(
+      screen.getByRole("heading", { name: "Boshqa xizmat buyurtmalari" }),
+    ).toBeInTheDocument();
   });
 
   it("biznes order ekranini snapshot emas, jonli inbox bilan ochadi", async () => {
@@ -225,13 +231,15 @@ describe("v1656 order kabinet wiring", () => {
     const onOpenOrder = vi.fn();
     render(
       <NotificationsView
-        rows={[{
-          id: 8,
-          order_id: 91,
-          title: "Status yangilandi",
-          body: "Buyurtma qabul qilindi",
-          is_read: 0,
-        }]}
+        rows={[
+          {
+            id: 8,
+            order_id: 91,
+            title: "Status yangilandi",
+            body: "Buyurtma qabul qilindi",
+            is_read: 0,
+          },
+        ]}
         busy={false}
         markAll={vi.fn()}
         markOne={markOne}

@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 import sqlite3
+from types import SimpleNamespace
 
 import pytest
 
@@ -129,9 +129,7 @@ def pruned_copy() -> sqlite3.Connection:
 def test_v9_real_source_preserves_real_business_demo_activated_subscription():
     copied = pruned_copy()
     try:
-        subscription = copied.execute(
-            "SELECT * FROM business_subscriptions"
-        ).fetchone()
+        subscription = copied.execute("SELECT * FROM business_subscriptions").fetchone()
         assert subscription is not None
         assert subscription["business_id"] == 7
         assert subscription["plan_code"] == "plus"

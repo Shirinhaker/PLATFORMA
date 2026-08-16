@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -9,7 +10,6 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
-    JSON,
     String,
     Time,
     func,
@@ -49,8 +49,12 @@ class StaffMember(Base):
     can_login: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     permissions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     schedule: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -64,7 +68,9 @@ class StaffProfession(Base):
         nullable=False,
     )
     name: Mapped[str] = mapped_column(String(80), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class StaffAttendance(Base):
@@ -91,8 +97,12 @@ class StaffAttendance(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     time_in: Mapped[time | None] = mapped_column(Time)
     time_out: Mapped[time | None] = mapped_column(Time)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class StaffSession(Base):
@@ -105,9 +115,15 @@ class StaffSession(Base):
         nullable=False,
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    last_used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

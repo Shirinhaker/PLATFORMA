@@ -16,7 +16,6 @@ from app.public_discovery.schemas import PublicResultKind
 from app.public_ids import build_content_public_id as _build_content_public_id
 from app.queues.repository import active_provider_count
 
-
 ImageUrlProvider = Callable[[str], str]
 
 
@@ -111,10 +110,7 @@ async def list_public_catalog(
     rows = (await session.execute(data)).mappings().all()
     total = int((await session.execute(count)).scalar_one())
     return PublicCatalogResponse(
-        items=[
-            _public_item(row, image_url_provider)
-            for row in rows
-        ],
+        items=[_public_item(row, image_url_provider) for row in rows],
         page=params.page,
         page_size=params.page_size,
         total=total,
@@ -158,11 +154,7 @@ def _public_item(row, image_url_provider: ImageUrlProvider):
         owner_state="linked" if linked else "unlinked",
         owner_public_id=owner_public_id,
         owner_name=owner_name,
-        owner_label=(
-            owner_name
-            if linked
-            else "Egasi hali akkauntini bog‘lamagan"
-        ),
+        owner_label=(owner_name if linked else "Egasi hali akkauntini bog‘lamagan"),
         direction=row["direction"] or "",
         activity_type=row["activity_type"] or "",
         region="",

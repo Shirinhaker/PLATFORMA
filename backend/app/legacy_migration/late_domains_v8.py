@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import asdict
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from app.core.config import Settings
@@ -50,35 +50,34 @@ async def run(*, snapshot: Path, run_id: int, environment: str) -> int:
     storage = build_r2_storage(settings)
     await database.start()
     try:
-        async with database.session() as session:
-            async with session.begin():
-                migration_run = await session.get(MigrationRun, run_id)
-                _validate_run(
+        async with database.session() as session, session.begin():
+            migration_run = await session.get(MigrationRun, run_id)
+            _validate_run(
+                migration_run,
+                snapshot_sha256=snapshot_sha256,
+                manifest_sha256=manifest_sha256,
+            )
+            source = open_real_snapshot(snapshot_path)
+            try:
+                typed_result = await import_late_typed_domains(
+                    session,
+                    source,
                     migration_run,
-                    snapshot_sha256=snapshot_sha256,
-                    manifest_sha256=manifest_sha256,
                 )
-                source = open_real_snapshot(snapshot_path)
-                try:
-                    typed_result = await import_late_typed_domains(
-                        session,
-                        source,
-                        migration_run,
-                    )
-                    profile_media_result = await migrate_profile_images(
-                        session,
-                        source,
-                        storage,
-                        migration_run,
-                    )
-                finally:
-                    source.close()
+                profile_media_result = await migrate_profile_images(
+                    session,
+                    source,
+                    storage,
+                    migration_run,
+                )
+            finally:
+                source.close()
 
-                counters = dict(migration_run.counters_json)
-                counters["late_typed_domains"] = asdict(typed_result)
-                counters["profile_media"] = asdict(profile_media_result)
-                migration_run.counters_json = counters
-                await session.flush()
+            counters = dict(migration_run.counters_json)
+            counters["late_typed_domains"] = asdict(typed_result)
+            counters["profile_media"] = asdict(profile_media_result)
+            migration_run.counters_json = counters
+            await session.flush()
     finally:
         await database.stop()
 

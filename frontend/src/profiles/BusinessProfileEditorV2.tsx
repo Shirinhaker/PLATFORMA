@@ -13,14 +13,14 @@ import {
 } from "./BusinessLocationPickerV1656View";
 import "./BusinessProfileEditor.css";
 
-
 type EditorApi = Pick<
   ApiClient,
   | "updateBusinessProfile"
   | "createUploadGrant"
   | "uploadGrantedFile"
   | "attachBusinessLogo"
-> & Partial<Pick<ApiClient, "attachBusinessPaymentQr" | "reverseGeocode">>;
+> &
+  Partial<Pick<ApiClient, "attachBusinessPaymentQr" | "reverseGeocode">>;
 
 type Props = {
   api: EditorApi;
@@ -60,7 +60,6 @@ const PATCH_FIELDS = [
   "pay_holder",
   "map_visible",
 ] as const;
-
 
 function errorText(reason: unknown) {
   return reason instanceof Error ? reason.message : "So‘rov bajarilmadi.";
@@ -126,7 +125,13 @@ function QrCode({ value }: { value: string }) {
       colorLight: "#ffffff",
     });
   }, [value]);
-  return <div ref={root} className="business-profile-share__qr" aria-label="Do‘kon QR kodi" />;
+  return (
+    <div
+      ref={root}
+      className="business-profile-share__qr"
+      aria-label="Do‘kon QR kodi"
+    />
+  );
 }
 
 export function BusinessProfileEditorV2({
@@ -159,10 +164,14 @@ export function BusinessProfileEditorV2({
     () => directionActivities(draft.direction, draft.activity_type),
     [draft.direction, draft.activity_type],
   );
-  const link = useMemo(() => shopLink(draft), [draft.account_id, draft.public_username]);
-  const point = draft.latitude !== null && draft.longitude !== null
-    ? { latitude: draft.latitude, longitude: draft.longitude }
-    : null;
+  const link = useMemo(
+    () => shopLink(draft),
+    [draft.account_id, draft.public_username],
+  );
+  const point =
+    draft.latitude !== null && draft.longitude !== null
+      ? { latitude: draft.latitude, longitude: draft.longitude }
+      : null;
   const logoStyle = {
     objectPosition: `${finite(draft.logo_x, 50)}% ${finite(draft.logo_y, 50)}%`,
     transform: `scale(${Math.min(5, Math.max(1, finite(draft.logo_zoom, 1)))})`,
@@ -204,12 +213,14 @@ export function BusinessProfileEditorV2({
         size_bytes: file.size,
       });
       await api.uploadGrantedFile(grant, file);
-      apply(await api.attachBusinessLogo({
-        object_key: grant.object_key,
-        x: draft.logo_x,
-        y: draft.logo_y,
-        zoom: draft.logo_zoom,
-      }));
+      apply(
+        await api.attachBusinessLogo({
+          object_key: grant.object_key,
+          x: draft.logo_x,
+          y: draft.logo_y,
+          zoom: draft.logo_zoom,
+        }),
+      );
       setCrop(true);
     } catch (reason) {
       setError(errorText(reason));
@@ -247,12 +258,14 @@ export function BusinessProfileEditorV2({
     setBusy(true);
     setError("");
     try {
-      apply(await api.attachBusinessLogo({
-        object_key: draft.logo_object_key,
-        x: draft.logo_x,
-        y: draft.logo_y,
-        zoom: draft.logo_zoom,
-      }));
+      apply(
+        await api.attachBusinessLogo({
+          object_key: draft.logo_object_key,
+          x: draft.logo_x,
+          y: draft.logo_y,
+          zoom: draft.logo_zoom,
+        }),
+      );
       setCrop(false);
       setSaved(true);
     } catch (reason) {
@@ -332,19 +345,18 @@ export function BusinessProfileEditorV2({
       let address = draft.address;
       if (api.reverseGeocode) {
         try {
-          const geocode = await api.reverseGeocode(
-            next.latitude,
-            next.longitude,
-          );
+          const geocode = await api.reverseGeocode(next.latitude, next.longitude);
           address = geocode.address || address;
         } catch {
           // Monolit kabi geokodlash ishlamasa ham koordinata saqlanadi.
         }
       }
-      apply(await api.updateBusinessProfile({
-        ...localPatch,
-        address,
-      }));
+      apply(
+        await api.updateBusinessProfile({
+          ...localPatch,
+          address,
+        }),
+      );
       setSaved(true);
     } catch (reason) {
       setError(errorText(reason));
@@ -372,7 +384,9 @@ export function BusinessProfileEditorV2({
           <p>Profil</p>
           <h1>Profil / Mening sahifam</h1>
         </div>
-        <button type="button" className="button-secondary" onClick={onBack}>Kabinetga qaytish</button>
+        <button type="button" className="button-secondary" onClick={onBack}>
+          Kabinetga qaytish
+        </button>
       </header>
 
       <section className="business-profile-card user-profile-card koprik-profile-surface">
@@ -382,18 +396,31 @@ export function BusinessProfileEditorV2({
           aria-label="Biznes rasmini kattalashtirish"
           onClick={() => draft.logo_url && setLightbox(true)}
         >
-          {draft.logo_url
-            ? <img src={draft.logo_url} alt="" style={logoStyle} />
-            : <span>{initials(draft.name)}</span>}
+          {draft.logo_url ? (
+            <img src={draft.logo_url} alt="" style={logoStyle} />
+          ) : (
+            <span>{initials(draft.name)}</span>
+          )}
         </button>
         <div className="business-profile-card__main user-profile-main">
           <h2 className="user-profile-name">{draft.name || "Biznes"}</h2>
-          <p className="user-profile-location">{draft.direction || "Yo'nalish tanlanmagan"}{draft.activity_type ? ` · ${draft.activity_type}` : ""}</p>
+          <p className="user-profile-location">
+            {draft.direction || "Yo'nalish tanlanmagan"}
+            {draft.activity_type ? ` · ${draft.activity_type}` : ""}
+          </p>
           <div className="user-profile-stats">
-            <button type="button" className="user-profile-stat" onClick={() => onOpenOnline?.("followers")}>
+            <button
+              type="button"
+              className="user-profile-stat"
+              onClick={() => onOpenOnline?.("followers")}
+            >
               {draft.followers_count ?? 0} obunachi
             </button>
-            <button type="button" className="user-profile-stat following" onClick={() => onOpenOnline?.("following")}>
+            <button
+              type="button"
+              className="user-profile-stat following"
+              onClick={() => onOpenOnline?.("following")}
+            >
               {draft.following_count ?? 0} obuna
             </button>
           </div>
@@ -404,7 +431,9 @@ export function BusinessProfileEditorV2({
           aria-label="Biznes rasmini yuklash"
           disabled={busy}
           onClick={() => logoInput.current?.click()}
-        >📷</button>
+        >
+          📷
+        </button>
         <input
           ref={logoInput}
           type="file"
@@ -420,7 +449,11 @@ export function BusinessProfileEditorV2({
       </section>
 
       {draft.logo_object_key && (
-        <button type="button" className="business-profile-editor__adjust btn btn-outline btn-block" onClick={() => setCrop((value) => !value)}>
+        <button
+          type="button"
+          className="business-profile-editor__adjust btn btn-outline btn-block"
+          onClick={() => setCrop((value) => !value)}
+        >
           🖼 Rasm joylashuvini sozlash
         </button>
       )}
@@ -429,34 +462,100 @@ export function BusinessProfileEditorV2({
           <div className="business-logo-crop__stage avatar-crop-stage">
             <img src={draft.logo_url} alt="Biznes rasmi" style={logoStyle} />
           </div>
-          <label>Gorizontal joylashuv
-            <input type="range" min="0" max="100" value={draft.logo_x} onChange={(event) => field("logo_x", Number(event.currentTarget.value))} />
+          <label>
+            Gorizontal joylashuv
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={draft.logo_x}
+              onChange={(event) => field("logo_x", Number(event.currentTarget.value))}
+            />
           </label>
-          <label>Vertikal joylashuv
-            <input type="range" min="0" max="100" value={draft.logo_y} onChange={(event) => field("logo_y", Number(event.currentTarget.value))} />
+          <label>
+            Vertikal joylashuv
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={draft.logo_y}
+              onChange={(event) => field("logo_y", Number(event.currentTarget.value))}
+            />
           </label>
-          <label>Kattalashtirish
-            <input type="range" min="1" max="3" step="0.05" value={draft.logo_zoom} onChange={(event) => field("logo_zoom", Number(event.currentTarget.value))} />
+          <label>
+            Kattalashtirish
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.05"
+              value={draft.logo_zoom}
+              onChange={(event) =>
+                field("logo_zoom", Number(event.currentTarget.value))
+              }
+            />
           </label>
-          <p className="idesc">Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.</p>
+          <p className="idesc">
+            Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.
+          </p>
           <div className="avatar-crop-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setDraft((current) => ({ ...current, logo_x: 50, logo_y: 50, logo_zoom: 1 }))}>Markazga</button>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void saveCrop()}>Saqlash</button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() =>
+                setDraft((current) => ({
+                  ...current,
+                  logo_x: 50,
+                  logo_y: 50,
+                  logo_zoom: 1,
+                }))
+              }
+            >
+              Markazga
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void saveCrop()}
+            >
+              Saqlash
+            </button>
           </div>
         </section>
       )}
 
       <form className="business-profile-form" onSubmit={save}>
-        <label className="field">Biznes nomi
-          <input className="input" placeholder="Biznes nomi" value={draft.name} onChange={(event) => field("name", event.currentTarget.value)} />
+        <label className="field">
+          Biznes nomi
+          <input
+            className="input"
+            placeholder="Biznes nomi"
+            value={draft.name}
+            onChange={(event) => field("name", event.currentTarget.value)}
+          />
         </label>
-        <label className="field">Telefon raqami
-          <input className="input" type="tel" placeholder="+998 __ ___ __ __" value={draft.phone} onChange={(event) => field("phone", event.currentTarget.value)} />
+        <label className="field">
+          Telefon raqami
+          <input
+            className="input"
+            type="tel"
+            placeholder="+998 __ ___ __ __"
+            value={draft.phone}
+            onChange={(event) => field("phone", event.currentTarget.value)}
+          />
         </label>
-        <label className="field">Qisqa tavsif
-          <textarea className="textarea" placeholder="Biznesingiz haqida qisqacha" value={draft.description} onChange={(event) => field("description", event.currentTarget.value)} />
+        <label className="field">
+          Qisqa tavsif
+          <textarea
+            className="textarea"
+            placeholder="Biznesingiz haqida qisqacha"
+            value={draft.description}
+            onChange={(event) => field("description", event.currentTarget.value)}
+          />
         </label>
-        <label className="field">Username (do'kon manzili)
+        <label className="field">
+          Username (do'kon manzili)
           <span className="business-profile-form__username">
             <b>@</b>
             <input
@@ -464,26 +563,46 @@ export function BusinessProfileEditorV2({
               placeholder="dokonanvar"
               autoComplete="off"
               value={draft.public_username}
-              onChange={(event) => field(
-                "public_username",
-                event.currentTarget.value.toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, ""),
-              )}
+              onChange={(event) =>
+                field(
+                  "public_username",
+                  event.currentTarget.value
+                    .toLowerCase()
+                    .replace(/^@+/, "")
+                    .replace(/[^a-z0-9_]/g, ""),
+                )
+              }
             />
           </span>
-          <small className="idesc">Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom orqali oson topadi. Ixtiyoriy.</small>
+          <small className="idesc">
+            Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom
+            orqali oson topadi. Ixtiyoriy.
+          </small>
         </label>
 
         <section className="business-profile-share">
-          <strong>🔗 <span>Do'kon havolasi</span></strong>
-          <p className="idesc">Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.</p>
+          <strong>
+            🔗 <span>Do'kon havolasi</span>
+          </strong>
+          <p className="idesc">
+            Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.
+          </p>
           <div className="business-profile-share__row">
-            <input className="input" readOnly value={link} aria-label="Do'kon havolasi manzili" />
-            <button type="button" className="mini-btn" onClick={() => void copyLink()}>{copyText}</button>
+            <input
+              className="input"
+              readOnly
+              value={link}
+              aria-label="Do'kon havolasi manzili"
+            />
+            <button type="button" className="mini-btn" onClick={() => void copyLink()}>
+              {copyText}
+            </button>
           </div>
           <QrCode value={link} />
         </section>
 
-        <label className="field">Faoliyat yo'nalishi
+        <label className="field">
+          Faoliyat yo'nalishi
           <select
             className="input"
             value={draft.direction}
@@ -496,40 +615,86 @@ export function BusinessProfileEditorV2({
           >
             <option value="">Yo'nalishni tanlang</option>
             {BUSINESS_DIRECTIONS.map((item) => (
-              <option value={item.name} key={item.name}>{item.icon} {item.name}</option>
+              <option value={item.name} key={item.name}>
+                {item.icon} {item.name}
+              </option>
             ))}
           </select>
         </label>
-        <label className="field">Faoliyat turi
-          <select className="input" value={draft.activity_type} disabled={!draft.direction} onChange={(event) => field("activity_type", event.currentTarget.value)}>
+        <label className="field">
+          Faoliyat turi
+          <select
+            className="input"
+            value={draft.activity_type}
+            disabled={!draft.direction}
+            onChange={(event) => field("activity_type", event.currentTarget.value)}
+          >
             {!activities.length && <option value="">Avval yo'nalishni tanlang</option>}
-            {activities.map((activity) => <option key={activity} value={activity}>{activity}</option>)}
+            {activities.map((activity) => (
+              <option key={activity} value={activity}>
+                {activity}
+              </option>
+            ))}
           </select>
         </label>
 
         <section className="business-profile-map field">
           <strong>Xaritadagi joy</strong>
-          <button type="button" className="btn btn-outline btn-block" onClick={() => setMapOpen(true)}>📍 Xaritada joy belgilash</button>
+          <button
+            type="button"
+            className="btn btn-outline btn-block"
+            onClick={() => setMapOpen(true)}
+          >
+            📍 Xaritada joy belgilash
+          </button>
           {point ? (
             <>
               <span className="business-profile-map__status">✅ Joy belgilangan</span>
-              <iframe title="Belgilangan joy xaritasi" src={mapUrl(point)} loading="lazy" />
+              <iframe
+                title="Belgilangan joy xaritasi"
+                src={mapUrl(point)}
+                loading="lazy"
+              />
             </>
           ) : (
             <>
               <p className="idesc">Biznesingiz xaritada shu joyda ko'rinadi</p>
-              <p className="business-profile-map__warning">⚠️ Qidiruv va xaritada ko‘rinish uchun biznes joylashuvini xaritada belgilang.</p>
+              <p className="business-profile-map__warning">
+                ⚠️ Qidiruv va xaritada ko‘rinish uchun biznes joylashuvini xaritada
+                belgilang.
+              </p>
             </>
           )}
         </section>
 
         <section className="business-payment-section">
-          <header><strong>💳 <span>To'lov ma'lumotlari</span></strong><p className="idesc">Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.</p></header>
-          <label className="field">To'lov kartasi raqami
-            <input className="input" inputMode="numeric" placeholder="8600 XXXX XXXX XXXX" value={draft.pay_card} onChange={(event) => field("pay_card", event.currentTarget.value)} />
+          <header>
+            <strong>
+              💳 <span>To'lov ma'lumotlari</span>
+            </strong>
+            <p className="idesc">
+              Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi.
+              Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.
+            </p>
+          </header>
+          <label className="field">
+            To'lov kartasi raqami
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="8600 XXXX XXXX XXXX"
+              value={draft.pay_card}
+              onChange={(event) => field("pay_card", event.currentTarget.value)}
+            />
           </label>
-          <label className="field">Karta egasi (ism-familiya)
-            <input className="input" placeholder="Masalan: Anvar Karimov" value={draft.pay_holder} onChange={(event) => field("pay_holder", event.currentTarget.value)} />
+          <label className="field">
+            Karta egasi (ism-familiya)
+            <input
+              className="input"
+              placeholder="Masalan: Anvar Karimov"
+              value={draft.pay_holder}
+              onChange={(event) => field("pay_holder", event.currentTarget.value)}
+            />
           </label>
           <div className="business-payment-section__qr">
             <strong>To'lov QR kodi (rasm)</strong>
@@ -544,21 +709,37 @@ export function BusinessProfileEditorV2({
                 if (file) void uploadPaymentQr(file);
               }}
             />
-            <button type="button" className="btn btn-outline btn-block" disabled={busy} onClick={() => paymentInput.current?.click()}>📷 QR rasm yuklash</button>
+            <button
+              type="button"
+              className="btn btn-outline btn-block"
+              disabled={busy}
+              onClick={() => paymentInput.current?.click()}
+            >
+              📷 QR rasm yuklash
+            </button>
             {draft.pay_qr_url && (
               <div className="business-payment-section__preview">
                 <img src={draft.pay_qr_url} alt="To'lov QR kodi" />
                 <button
                   type="button"
                   aria-label="O'chirish"
-                  onClick={() => api.attachBusinessPaymentQr && void api.attachBusinessPaymentQr({ object_key: "" }).then(apply).catch((reason) => setError(errorText(reason)))}
-                >×</button>
+                  onClick={() =>
+                    api.attachBusinessPaymentQr &&
+                    void api
+                      .attachBusinessPaymentQr({ object_key: "" })
+                      .then(apply)
+                      .catch((reason) => setError(errorText(reason)))
+                  }
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>
         </section>
 
-        <label className="field">Ish vaqti
+        <label className="field">
+          Ish vaqti
           <span className="business-hours-row">
             <input
               className="input"
@@ -587,13 +768,32 @@ export function BusinessProfileEditorV2({
           <small className="idesc">Ish boshlanish va tugash vaqtini belgilang.</small>
         </label>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
-        {saved && <p className="form-success" role="status">Saqlandi</p>}
-        <button type="submit" className="business-profile-form__save btn btn-primary btn-block" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {saved && (
+          <p className="form-success" role="status">
+            Saqlandi
+          </p>
+        )}
+        <button
+          type="submit"
+          className="business-profile-form__save btn btn-primary btn-block"
+          disabled={busy}
+        >
+          {busy ? "Saqlanmoqda…" : "Saqlash"}
+        </button>
       </form>
 
       {lightbox && draft.logo_url && (
-        <button type="button" className="business-logo-lightbox" aria-label="Kattalashtirilgan biznes rasmini yopish" onClick={() => setLightbox(false)}>
+        <button
+          type="button"
+          className="business-logo-lightbox"
+          aria-label="Kattalashtirilgan biznes rasmini yopish"
+          onClick={() => setLightbox(false)}
+        >
           <img src={draft.logo_url} alt={draft.name} />
         </button>
       )}

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import type { StoryGroup, StoryViewer } from "../api/types";
 import "./StoriesV1656.css";
 
-
 type Props = {
   groups: StoryGroup[];
   initialGroupIndex: number;
@@ -17,7 +16,6 @@ type Props = {
   onDeleted?(storyId: number): void;
   onViewed?(storyId: number): void;
 };
-
 
 export function StoryViewerV1656({
   groups,
@@ -74,9 +72,10 @@ export function StoryViewerV1656({
         .then(() => onViewed?.(story.id))
         .catch(() => undefined);
     }, 700);
-    const seconds = story.media_type === "image"
-      ? 5
-      : Math.min(60, Math.max(1, story.duration_seconds || 60));
+    const seconds =
+      story.media_type === "image"
+        ? 5
+        : Math.min(60, Math.max(1, story.duration_seconds || 60));
     const timer = window.setTimeout(() => move(1), seconds * 1000);
     return () => {
       window.clearTimeout(viewTimer);
@@ -90,7 +89,9 @@ export function StoryViewerV1656({
   const ownerCard = (
     <>
       <span className="story-viewer__owner-avatar">
-        {group.avatar_url ? <img alt="" src={group.avatar_url} /> : (
+        {group.avatar_url ? (
+          <img alt="" src={group.avatar_url} />
+        ) : (
           <span>{ownerName.trim().charAt(0) || "K"}</span>
         )}
       </span>
@@ -113,7 +114,9 @@ export function StoryViewerV1656({
     try {
       setViewers(await getViewers(storyId));
     } catch (reasonValue) {
-      setError(reasonValue instanceof Error ? reasonValue.message : "Ko‘ruvchilar yuklanmadi.");
+      setError(
+        reasonValue instanceof Error ? reasonValue.message : "Ko‘ruvchilar yuklanmadi.",
+      );
     }
   }
 
@@ -124,7 +127,9 @@ export function StoryViewerV1656({
       onDeleted?.(storyId);
       onClose();
     } catch (reasonValue) {
-      setError(reasonValue instanceof Error ? reasonValue.message : "Istoriya o‘chirilmadi.");
+      setError(
+        reasonValue instanceof Error ? reasonValue.message : "Istoriya o‘chirilmadi.",
+      );
     }
   }
 
@@ -139,12 +144,19 @@ export function StoryViewerV1656({
       setReporting(false);
       setReason("");
     } catch (reasonValue) {
-      setError(reasonValue instanceof Error ? reasonValue.message : "Shikoyat yuborilmadi.");
+      setError(
+        reasonValue instanceof Error ? reasonValue.message : "Shikoyat yuborilmadi.",
+      );
     }
   }
 
   return (
-    <div aria-label="Istoriya ko‘ruvchisi" aria-modal="true" className="story-viewer-v1656" role="dialog">
+    <div
+      aria-label="Istoriya ko‘ruvchisi"
+      aria-modal="true"
+      className="story-viewer-v1656"
+      role="dialog"
+    >
       <div className="story-viewer__panel">
         <div className="story-viewer__progress" aria-hidden="true">
           {group.stories.map((item, index) => (
@@ -165,11 +177,16 @@ export function StoryViewerV1656({
               {ownerCard}
             </button>
           ) : (
-            <div className="story-viewer__owner">
-              {ownerCard}
-            </div>
+            <div className="story-viewer__owner">{ownerCard}</div>
           )}
-          <button aria-label="Yopish" className="story-viewer__close" type="button" onClick={onClose}>×</button>
+          <button
+            aria-label="Yopish"
+            className="story-viewer__close"
+            type="button"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </header>
         <div className="story-viewer__media">
           {story.media_type === "video" ? (
@@ -187,38 +204,76 @@ export function StoryViewerV1656({
               }}
             />
           ) : (
-            <img alt={story.caption || `${group.name} istoriyasi`} src={story.media_url} />
+            <img
+              alt={story.caption || `${group.name} istoriyasi`}
+              src={story.media_url}
+            />
           )}
-          <button aria-label="Oldingi istoriya" className="story-viewer__nav story-viewer__nav--prev" type="button" onClick={() => move(-1)} />
-          <button aria-label="Keyingi istoriya" className="story-viewer__nav story-viewer__nav--next" type="button" onClick={() => move(1)} />
+          <button
+            aria-label="Oldingi istoriya"
+            className="story-viewer__nav story-viewer__nav--prev"
+            type="button"
+            onClick={() => move(-1)}
+          />
+          <button
+            aria-label="Keyingi istoriya"
+            className="story-viewer__nav story-viewer__nav--next"
+            type="button"
+            onClick={() => move(1)}
+          />
         </div>
-        {story.caption ? <p className="story-viewer__caption">{story.caption}</p> : null}
+        {story.caption ? (
+          <p className="story-viewer__caption">{story.caption}</p>
+        ) : null}
         <footer className="story-viewer__actions">
           {group.is_own ? (
             <>
-              <button type="button" onClick={() => void showViewers()}>Ko‘rganlar</button>
-              <button type="button" onClick={() => void remove()}>O‘chirish</button>
+              <button type="button" onClick={() => void showViewers()}>
+                Ko‘rganlar
+              </button>
+              <button type="button" onClick={() => void remove()}>
+                O‘chirish
+              </button>
             </>
           ) : (
-            <button type="button" onClick={() => setReporting(true)}>Shikoyat</button>
+            <button type="button" onClick={() => setReporting(true)}>
+              Shikoyat
+            </button>
           )}
         </footer>
         {viewers ? (
           <div className="story-viewer__drawer">
             <strong>Ko‘rganlar</strong>
-            {viewers.length ? viewers.map((viewer) => (
-              <div key={`${viewer.account_public_id}:${viewer.viewed_at}`}>{viewer.name}</div>
-            )) : <p>Hali hech kim ko‘rmagan.</p>}
+            {viewers.length ? (
+              viewers.map((viewer) => (
+                <div key={`${viewer.account_public_id}:${viewer.viewed_at}`}>
+                  {viewer.name}
+                </div>
+              ))
+            ) : (
+              <p>Hali hech kim ko‘rmagan.</p>
+            )}
           </div>
         ) : null}
         {reporting ? (
           <div className="story-viewer__drawer">
             <label htmlFor="story-report-reason">Shikoyat sababi</label>
-            <textarea id="story-report-reason" maxLength={300} value={reason} onChange={(event) => setReason(event.currentTarget.value)} />
-            <button type="button" onClick={() => void sendReport()}>Yuborish</button>
+            <textarea
+              id="story-report-reason"
+              maxLength={300}
+              value={reason}
+              onChange={(event) => setReason(event.currentTarget.value)}
+            />
+            <button type="button" onClick={() => void sendReport()}>
+              Yuborish
+            </button>
           </div>
         ) : null}
-        {error ? <p className="story-v1656__error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="story-v1656__error" role="alert">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );

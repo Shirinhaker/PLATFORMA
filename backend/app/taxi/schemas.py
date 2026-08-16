@@ -3,13 +3,20 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 DriverService = Literal["taxi", "dostavka", "both"]
 RideKind = Literal["taxi", "dostavka"]
 RideStatus = Literal[
-    "pending", "accepted", "arrived", "ongoing", "arrived_store",
-    "pickup_requested", "in_delivery", "arrived_customer",
-    "delivered_waiting_customer", "completed", "canceled",
+    "pending",
+    "accepted",
+    "arrived",
+    "ongoing",
+    "arrived_store",
+    "pickup_requested",
+    "in_delivery",
+    "arrived_customer",
+    "delivered_waiting_customer",
+    "completed",
+    "canceled",
 ]
 
 
@@ -71,6 +78,8 @@ class RideCreate(BaseModel):
     cargo: str = Field(default="", max_length=500)
     car_type: str = Field(default="", max_length=80)
     note: str = Field(default="", max_length=2000)
+
+
 class RidePerson(BaseModel):
     name: str = ""
     phone: str = ""

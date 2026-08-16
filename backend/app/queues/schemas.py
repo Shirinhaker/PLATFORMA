@@ -1,9 +1,8 @@
-from datetime import date, datetime
 import re
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
-
 
 TIME_PATTERN = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
@@ -52,7 +51,9 @@ class QueueProviderWrite(BaseModel):
     @classmethod
     def valid_work_days(cls, value: str) -> str:
         days = [part.strip() for part in str(value or "").split(",") if part.strip()]
-        if not days or any(day not in {"1", "2", "3", "4", "5", "6", "7"} for day in days):
+        if not days or any(
+            day not in {"1", "2", "3", "4", "5", "6", "7"} for day in days
+        ):
             raise ValueError("Ish kunlari noto'g'ri.")
         return ",".join(dict.fromkeys(days))
 

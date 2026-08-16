@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,11 @@ from app.cabinet_records.contract import NORMALIZATION_SCHEMA_VERSION
 from app.cabinet_records.model import CabinetNormalizationRun
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.cabinet_records.security import assert_payload_safe
-from app.cabinet_records.verify import PayloadParity, payload_digest, verify_payload_parity
+from app.cabinet_records.verify import (
+    PayloadParity,
+    payload_digest,
+    verify_payload_parity,
+)
 from app.profiles.model import BusinessProfile, UserProfile
 
 
@@ -56,7 +60,11 @@ async def backfill_all_profiles(
 
     try:
         user_profiles = list(
-            (await session.scalars(select(UserProfile).order_by(UserProfile.account_id))).all()
+            (
+                await session.scalars(
+                    select(UserProfile).order_by(UserProfile.account_id)
+                )
+            ).all()
         )
         business_profiles = list(
             (
@@ -103,7 +111,9 @@ async def backfill_all_profiles(
         source_digest = payload_digest(source_bundle)
         target_digest = payload_digest(target_bundle)
         if source_digest != target_digest:
-            raise NormalizationParityError("cabinet_normalization_global_digest_mismatch")
+            raise NormalizationParityError(
+                "cabinet_normalization_global_digest_mismatch"
+            )
 
         run.status = "verified"
         run.completed_at = datetime.now(UTC)

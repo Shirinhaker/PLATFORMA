@@ -14,7 +14,6 @@ from app.auth.dependencies import (
 )
 from app.core.errors import ApiError
 
-
 router = APIRouter(prefix="/api/v1/account-settings", tags=["account-settings"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

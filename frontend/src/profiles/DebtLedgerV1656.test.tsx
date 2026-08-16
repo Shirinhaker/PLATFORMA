@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DebtLedgerV1656 } from "./DebtLedgerV1656";
 
-
 const debtor = {
   id: 30,
   name: "Ali Valiyev",
@@ -16,16 +15,18 @@ const debtor = {
 
 const detail = {
   ...debtor,
-  tx: [{
-    id: 41,
-    type: "debt" as const,
-    amount: 500,
-    date: "2026-08-04",
-    note: "Olma",
-    source: "manual",
-    cash_receipt_id: null,
-    order_id: null,
-  }],
+  tx: [
+    {
+      id: 41,
+      type: "debt" as const,
+      amount: 500,
+      date: "2026-08-04",
+      note: "Olma",
+      source: "manual",
+      cash_receipt_id: null,
+      order_id: null,
+    },
+  ],
 };
 
 function debtApi() {
@@ -53,7 +54,9 @@ describe("DebtLedgerV1656", () => {
     render(<DebtLedgerV1656 api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Ali Valiyev")).toBeInTheDocument();
-    expect(screen.getByText("Umumiy qarz").closest("section")).toHaveTextContent("1 ta qarzdor");
+    expect(screen.getByText("Umumiy qarz").closest("section")).toHaveTextContent(
+      "1 ta qarzdor",
+    );
     await user.click(screen.getByRole("button", { name: /Ali Valiyev/ }));
     expect(await screen.findByText("Amaliyotlar tarixi")).toBeInTheDocument();
     expect(screen.getByText(/Olma/)).toBeInTheDocument();
@@ -64,11 +67,13 @@ describe("DebtLedgerV1656", () => {
     await user.type(within(dialog).getByLabelText(/Izoh/), "Qaytardi");
     await user.click(within(dialog).getByRole("button", { name: "Saqlash" }));
 
-    await waitFor(() => expect(api.addDebtTransaction).toHaveBeenCalledWith(30, {
-      type: "payment",
-      amount: 200,
-      note: "Qaytardi",
-    }));
+    await waitFor(() =>
+      expect(api.addDebtTransaction).toHaveBeenCalledWith(30, {
+        type: "payment",
+        amount: 200,
+        note: "Qaytardi",
+      }),
+    );
     expect(api.getDebtor).toHaveBeenCalledTimes(2);
   });
 
@@ -84,12 +89,14 @@ describe("DebtLedgerV1656", () => {
     await user.type(within(dialog).getByLabelText(/Boshlang‘ich qarz/), "75000");
     await user.click(within(dialog).getByRole("button", { name: "Qo‘shish" }));
 
-    await waitFor(() => expect(api.createDebtor).toHaveBeenCalledWith({
-      name: "Vali Karimov",
-      phone: "+998909999999",
-      note: "",
-      due: "",
-      initial_debt: 75000,
-    }));
+    await waitFor(() =>
+      expect(api.createDebtor).toHaveBeenCalledWith({
+        name: "Vali Karimov",
+        phone: "+998909999999",
+        note: "",
+        due: "",
+        initial_debt: 75000,
+      }),
+    );
   });
 });

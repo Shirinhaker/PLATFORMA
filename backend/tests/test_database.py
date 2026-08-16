@@ -5,7 +5,6 @@ from sqlalchemy import text
 
 from app.db.session import Database
 
-
 DATABASE_URL = os.environ.get("KOPRIK_TEST_DATABASE_URL", "")
 
 

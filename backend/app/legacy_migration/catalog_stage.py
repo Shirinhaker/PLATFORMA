@@ -23,7 +23,6 @@ from app.legacy_migration.reconcile import (
     source_row_hash,
 )
 
-
 VALID_KINDS = {"product", "service"}
 
 
@@ -54,11 +53,7 @@ async def import_catalog_groups(
         if raw_kind not in VALID_KINDS:
             issue_codes.append("catalog_group.required.kind")
         kind = raw_kind if raw_kind in VALID_KINDS else "product"
-        review_state = (
-            ReviewState.REVIEW_REQUIRED
-            if issue_codes
-            else ReviewState.READY
-        )
+        review_state = ReviewState.REVIEW_REQUIRED if issue_codes else ReviewState.READY
         for code in issue_codes:
             counters["issues"] += await _ensure_issue(
                 session,
@@ -116,11 +111,7 @@ async def import_catalog_items(
         if raw_kind not in VALID_KINDS:
             issue_codes.append("catalog.required.kind")
         kind = raw_kind if raw_kind in VALID_KINDS else "product"
-        review_state = (
-            ReviewState.REVIEW_REQUIRED
-            if issue_codes
-            else ReviewState.READY
-        )
+        review_state = ReviewState.REVIEW_REQUIRED if issue_codes else ReviewState.READY
         for code in issue_codes:
             counters["issues"] += await _ensure_issue(
                 session,
@@ -194,9 +185,7 @@ async def ensure_media_mapping(
     slot: str,
     source_reference: str,
 ) -> MediaMigration:
-    fingerprint = hashlib.sha256(
-        source_reference.encode("utf-8")
-    ).hexdigest()
+    fingerprint = hashlib.sha256(source_reference.encode("utf-8")).hexdigest()
     media = (
         await session.scalars(
             select(MediaMigration).where(

@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { AccountType, ChallengeStarted } from "../api/types";
 import type { AuthApi } from "./AuthFlow";
 
-
 export type LoginDraft = {
   login: string;
   password: string;
@@ -19,17 +18,14 @@ type Props = {
   onRegister: () => void;
 };
 
-
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 function errorCode(error: unknown) {
   if (!error || typeof error !== "object" || !("code" in error)) return "";
   return typeof error.code === "string" ? error.code : "";
 }
-
 
 export function LoginForm({
   api,
@@ -78,7 +74,10 @@ export function LoginForm({
 
   return (
     <main className="koprik-auth-stage">
-      <form className="koprik-flow-shell koprik-auth-shell auth-v1656" onSubmit={submit}>
+      <form
+        className="koprik-flow-shell koprik-auth-shell auth-v1656"
+        onSubmit={submit}
+      >
         <h1 className="lead">Kabinetga kirish</h1>
         {reason ? (
           <p className="lead-sub auth-v1656__reason" id="loginReason">
@@ -118,9 +117,9 @@ export function LoginForm({
               className="input"
               required
               value={cabinetType}
-              onChange={(event) => setCabinetType(
-                event.currentTarget.value as "" | AccountType,
-              )}
+              onChange={(event) =>
+                setCabinetType(event.currentTarget.value as "" | AccountType)
+              }
             >
               <option value="">Kabinet turini tanlang</option>
               <option value="user">Oddiy kabinet</option>
@@ -128,7 +127,11 @@ export function LoginForm({
             </select>
           </label>
         ) : null}
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
           {busy ? "Tekshirilmoqda..." : "Telegram orqali tasdiqlash"}
         </button>

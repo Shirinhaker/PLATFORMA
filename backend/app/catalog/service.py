@@ -1,9 +1,9 @@
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 import asyncio
 import hashlib
 import json
 import logging
+from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,6 @@ from app.catalog.schemas import (
     PublicCatalogResponse,
 )
 from app.core.config import Settings
-
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 CatalogLoader = Callable[
@@ -54,9 +53,7 @@ class CatalogService:
         self._image_url_provider = image_url_provider
         self._list_loader = list_loader
         self._detail_loader = detail_loader
-        self._catalog_cache_epoch = (
-            catalog_cache_epoch or CatalogCacheEpoch(redis)
-        )
+        self._catalog_cache_epoch = catalog_cache_epoch or CatalogCacheEpoch(redis)
         self._tasks: dict[str, asyncio.Task] = {}
 
     async def list_items(
@@ -120,9 +117,7 @@ class CatalogService:
             self._tasks[key] = task
             task.add_done_callback(
                 lambda done: (
-                    self._tasks.pop(key, None)
-                    if self._tasks.get(key) is done
-                    else None
+                    self._tasks.pop(key, None) if self._tasks.get(key) is done else None
                 )
             )
         return await asyncio.shield(task)

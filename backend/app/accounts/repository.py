@@ -23,9 +23,7 @@ async def find_account_by_login(
     normalized_login: str,
     account_type: AccountType | None = None,
 ) -> Account | None:
-    statement = select(Account).where(
-        func.lower(Account.login) == normalized_login
-    )
+    statement = select(Account).where(func.lower(Account.login) == normalized_login)
     if account_type is not None:
         statement = statement.where(Account.account_type == account_type)
     result = await session.execute(statement)

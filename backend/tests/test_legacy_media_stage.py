@@ -1,9 +1,9 @@
+import sqlite3
 from datetime import UTC, datetime
 from io import BytesIO
-import sqlite3
 
-import pytest
 import httpx
+import pytest
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,6 @@ from app.legacy_migration.model import (
 from app.media.storage import StoredObject
 from app.messages.model import Message, MessageConversation
 
-
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
 NOW = datetime(2026, 7, 29, tzinfo=UTC)
 
@@ -52,9 +51,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                maximum = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                maximum = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(maximum or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -153,9 +150,7 @@ def store():
 def legacy_source(reference="uploads/mebel.png"):
     connection = sqlite3.connect(":memory:")
     connection.row_factory = sqlite3.Row
-    connection.execute(
-        "CREATE TABLE items(id INTEGER PRIMARY KEY, photo_file TEXT)"
-    )
+    connection.execute("CREATE TABLE items(id INTEGER PRIMARY KEY, photo_file TEXT)")
     connection.execute(
         "CREATE TABLE listing_media(id INTEGER PRIMARY KEY, tg_file_id TEXT)"
     )
@@ -225,10 +220,7 @@ def resolved_png():
             stream=BytesIO(PNG_BYTES),
             content_type="image/png",
             size_bytes=len(PNG_BYTES),
-            sha256=(
-                "9656be35bd353ebedd79d7d24a14df408ef96b99fb4e4b4542"
-                "e3bdd56de73134"
-            ),
+            sha256=("9656be35bd353ebedd79d7d24a14df408ef96b99fb4e4b4542e3bdd56de73134"),
         ),
         code="",
     )
@@ -286,53 +278,55 @@ async def test_general_chat_image_is_copied_to_its_relational_message(store):
         ("/uploads/chat/photo.png",),
     )
     source.commit()
-    db.sync.add_all([
-        Account(
-            id=21,
-            account_type=AccountType.USER,
-            login="chat-user",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Account(
-            id=22,
-            account_type=AccountType.BUSINESS,
-            login="chat-business",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        MessageConversation(
-            id=30,
-            low_account_id=21,
-            high_account_id=22,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Message(
-            id=40,
-            legacy_source_id=55,
-            conversation_id=30,
-            sender_account_id=21,
-            receiver_account_id=22,
-            text="",
-            media_type="photo",
-            media_object_key="",
-            legacy_media_url="/uploads/chat/photo.png",
-            file_name="photo.png",
-            reply_to_id=None,
-            edited_at=None,
-            deleted_at=None,
-            read_at=None,
-            is_deleted=False,
-            created_at=NOW,
-        ),
-    ])
+    db.sync.add_all(
+        [
+            Account(
+                id=21,
+                account_type=AccountType.USER,
+                login="chat-user",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Account(
+                id=22,
+                account_type=AccountType.BUSINESS,
+                login="chat-business",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            MessageConversation(
+                id=30,
+                low_account_id=21,
+                high_account_id=22,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Message(
+                id=40,
+                legacy_source_id=55,
+                conversation_id=30,
+                sender_account_id=21,
+                receiver_account_id=22,
+                text="",
+                media_type="photo",
+                media_object_key="",
+                legacy_media_url="/uploads/chat/photo.png",
+                file_name="photo.png",
+                reply_to_id=None,
+                edited_at=None,
+                deleted_at=None,
+                read_at=None,
+                is_deleted=False,
+                created_at=NOW,
+            ),
+        ]
+    )
     db.sync.commit()
     resolver = StaticResolver(resolved_png())
 
@@ -395,9 +389,7 @@ async def test_missing_local_listing_video_is_not_sent_to_telegram(
     source.commit()
     media = db.sync.get(MediaMigration, 1)
     media.entity_type = "listing_media"
-    telegram = StaticResolver(
-        MediaResolution(None, "media.telegram_failed")
-    )
+    telegram = StaticResolver(MediaResolution(None, "media.telegram_failed"))
 
     await migrate_media(
         db,

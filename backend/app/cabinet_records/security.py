@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-
 SENSITIVE_NAMES = {
     "password",
     "password_hash",

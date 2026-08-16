@@ -8,7 +8,6 @@ import type {
 import type { DiningOrder, DiningPlace, DiningPlaceKind } from "../api/types";
 import { BusinessDiningV1656View } from "../profiles/BusinessDiningV1656View";
 
-
 export type BusinessDiningApi = Pick<
   ApiClient,
   | "getDiningPlaces"
@@ -35,9 +34,9 @@ const DINING_METHODS: ReadonlyArray<keyof BusinessDiningApi> = [
 ];
 
 export function supportsDiningApi(api: object): api is BusinessDiningApi {
-  return DINING_METHODS.every((method) => (
-    typeof (api as Partial<BusinessDiningApi>)[method] === "function"
-  ));
+  return DINING_METHODS.every(
+    (method) => typeof (api as Partial<BusinessDiningApi>)[method] === "function",
+  );
 }
 
 type Props = {
@@ -47,7 +46,6 @@ type Props = {
   groups: BusinessOnlineRecord[];
   onBackHandlerChange: (handler: (() => void) | null) => void;
 };
-
 
 function text(value: unknown, fallback = "") {
   return typeof value === "string" && value ? value : fallback;
@@ -96,10 +94,7 @@ function activityOf(place: DiningPlace, orders: DiningOrder[]) {
   };
 }
 
-function placeRecord(
-  place: DiningPlace,
-  orders: DiningOrder[],
-): BusinessOnlineRecord {
+function placeRecord(place: DiningPlace, orders: DiningOrder[]): BusinessOnlineRecord {
   return {
     id: place.id,
     kind: place.kind,
@@ -161,7 +156,6 @@ function itemInputs(payload: BusinessOnlineRecord | undefined) {
   });
 }
 
-
 export function BusinessDiningV1656({
   api,
   menuItems,
@@ -183,9 +177,7 @@ export function BusinessDiningV1656({
       setOrders(nextOrders);
       setError("");
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Zal rejasi yuklanmadi.",
-      );
+      setError(reason instanceof Error ? reason.message : "Zal rejasi yuklanmadi.");
     }
   }, [api]);
 
@@ -218,10 +210,7 @@ export function BusinessDiningV1656({
     return saved !== null;
   }
 
-  async function patchPlace(
-    id: number | string,
-    patch: BusinessOnlineRecord,
-  ) {
+  async function patchPlace(id: number | string, patch: BusinessOnlineRecord) {
     const current = places.find((place) => String(place.id) === String(id));
     if (!current) return false;
     // Ekran faqat o'zgargan maydonlarni yuboradi (surishda x/y).
@@ -233,13 +222,9 @@ export function BusinessDiningV1656({
       y: patch.y ?? current.y,
       locked: patch.locked ?? (current.locked ? 1 : 0),
     } as BusinessOnlineRecord);
-    const saved = await guard(
-      () => api.updateDiningPlace(Number(id), merged),
-    );
+    const saved = await guard(() => api.updateDiningPlace(Number(id), merged));
     if (saved) {
-      setPlaces((rows) => rows.map(
-        (place) => (place.id === saved.id ? saved : place),
-      ));
+      setPlaces((rows) => rows.map((place) => (place.id === saved.id ? saved : place)));
     }
     return saved !== null;
   }
@@ -250,9 +235,7 @@ export function BusinessDiningV1656({
       return true;
     });
     if (done) {
-      setPlaces((rows) => rows.filter(
-        (place) => String(place.id) !== String(id),
-      ));
+      setPlaces((rows) => rows.filter((place) => String(place.id) !== String(id)));
     }
     return done !== null;
   }
@@ -266,25 +249,29 @@ export function BusinessDiningV1656({
     if (id === undefined) return null;
 
     if (resource === "dining_places" && name === "book") {
-      const saved = await guard(() => api.bookDiningPlace(Number(id), {
-        customer_name: text(payload?.customer_name),
-        booking_date: text(payload?.booking_date),
-        booking_time: text(payload?.booking_time),
-        phone: text(payload?.phone),
-        guests: Math.max(1, Math.trunc(number(payload?.guests, 1))),
-        note: text(payload?.note),
-      }));
+      const saved = await guard(() =>
+        api.bookDiningPlace(Number(id), {
+          customer_name: text(payload?.customer_name),
+          booking_date: text(payload?.booking_date),
+          booking_time: text(payload?.booking_time),
+          phone: text(payload?.phone),
+          guests: Math.max(1, Math.trunc(number(payload?.guests, 1))),
+          note: text(payload?.note),
+        }),
+      );
       if (!saved) return null;
       await load();
       return orderRecord(saved);
     }
 
     if (resource === "dining_places" && name === "create_order") {
-      const saved = await guard(() => api.createDiningOrder(Number(id), {
-        items: itemInputs(payload),
-        customer_name: text(payload?.customer_name),
-        note: text(payload?.note),
-      }));
+      const saved = await guard(() =>
+        api.createDiningOrder(Number(id), {
+          items: itemInputs(payload),
+          customer_name: text(payload?.customer_name),
+          note: text(payload?.note),
+        }),
+      );
       if (!saved) return null;
       await load();
       return orderRecord(saved);
@@ -301,8 +288,8 @@ export function BusinessDiningV1656({
     }
 
     if (resource === "dining_orders" && name === "add_items") {
-      const saved = await guard(
-        () => api.addDiningOrderItems(Number(id), itemInputs(payload)),
+      const saved = await guard(() =>
+        api.addDiningOrderItems(Number(id), itemInputs(payload)),
       );
       if (!saved) return null;
       await load();
@@ -317,7 +304,9 @@ export function BusinessDiningV1656({
   return (
     <>
       {error ? (
-        <div className="dining-load-error" role="status">{error}</div>
+        <div className="dining-load-error" role="status">
+          {error}
+        </div>
       ) : null}
       <BusinessDiningV1656View
         places={placeRecords}
@@ -328,7 +317,9 @@ export function BusinessDiningV1656({
         patchPlace={patchPlace}
         removePlace={removePlace}
         action={action}
-        refresh={async () => { await load(); }}
+        refresh={async () => {
+          await load();
+        }}
         onBackHandlerChange={onBackHandlerChange}
       />
     </>

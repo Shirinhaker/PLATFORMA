@@ -1,8 +1,7 @@
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 
 from redis.asyncio import Redis
-
 
 SCRIPT = """
 local count = redis.call('INCR', KEYS[1])

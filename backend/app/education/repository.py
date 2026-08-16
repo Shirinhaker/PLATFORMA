@@ -18,7 +18,6 @@ from app.education.model import (
 from app.legacy_migration.model import LegacyIdMap, ReviewState
 from app.profiles.model import BusinessProfile, UserProfile
 
-
 # Kabinet payloadidagi resurs nomlari — frontend shu nomlarni kutadi.
 ENROLLMENTS = "education_enrollments"
 GROUPS = "education_groups"
@@ -110,10 +109,7 @@ class EducationEnrollmentRepository:
 
     @staticmethod
     def supported(session: AsyncSession) -> bool:
-        return all(
-            hasattr(session, name)
-            for name in ("execute", "scalars", "scalar")
-        )
+        return all(hasattr(session, name) for name in ("execute", "scalars", "scalar"))
 
     async def user_profile(
         self,
@@ -201,11 +197,15 @@ class EducationEnrollmentRepository:
         if projection is None or not self.supported(session):
             return None
         model, to_row = projection
-        rows = list((await session.scalars(
-            select(model)
-            .where(model.business_account_id == business_account_id)
-            .order_by(model.id)
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(model)
+                    .where(model.business_account_id == business_account_id)
+                    .order_by(model.id)
+                )
+            ).all()
+        )
         return [to_row(row) for row in rows]
 
     async def catalog_rows(
@@ -231,9 +231,7 @@ class EducationEnrollmentRepository:
             )
             return [dict(row) for row in rows if isinstance(row, dict)]
         payload = (
-            profile.cabinet_payload
-            if isinstance(profile.cabinet_payload, dict)
-            else {}
+            profile.cabinet_payload if isinstance(profile.cabinet_payload, dict) else {}
         )
         rows = payload.get("items", [])
         if not isinstance(rows, list):
@@ -290,13 +288,9 @@ class EducationEnrollmentRepository:
         """Arizachi allaqachon o'quvchi bo'lsa — o'sha yozuvni topadi."""
         conditions = []
         if user_account_id:
-            conditions.append(
-                EducationStudent.user_account_id == user_account_id
-            )
+            conditions.append(EducationStudent.user_account_id == user_account_id)
         if legacy_user_id:
-            conditions.append(
-                EducationStudent.legacy_user_id == legacy_user_id
-            )
+            conditions.append(EducationStudent.legacy_user_id == legacy_user_id)
         if not conditions:
             return None
         from sqlalchemy import or_
@@ -387,8 +381,7 @@ class EducationEnrollmentRepository:
         return await session.scalar(
             select(EducationStudentGroupHistory)
             .where(
-                EducationStudentGroupHistory.business_account_id
-                == business_account_id,
+                EducationStudentGroupHistory.business_account_id == business_account_id,
                 EducationStudentGroupHistory.student_id == student_id,
                 EducationStudentGroupHistory.ended_date == "",
             )

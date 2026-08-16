@@ -37,14 +37,18 @@ class OrderRepository:
     ) -> list[CatalogItem]:
         if not public_ids:
             return []
-        return list((await session.scalars(
-            select(CatalogItem).where(
-                CatalogItem.public_id.in_(public_ids),
-                CatalogItem.status == "active",
-                CatalogItem.review_state == ReviewState.READY,
-                CatalogItem.owner_state == OwnerState.LINKED,
-            )
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(CatalogItem).where(
+                        CatalogItem.public_id.in_(public_ids),
+                        CatalogItem.status == "active",
+                        CatalogItem.review_state == ReviewState.READY,
+                        CatalogItem.owner_state == OwnerState.LINKED,
+                    )
+                )
+            ).all()
+        )
 
     async def listing_by_public_id(
         self,
@@ -95,29 +99,41 @@ class OrderRepository:
         statement = select(Order).where(owner == account_id)
         if allowed_categories is not None:
             statement = statement.where(Order.order_category.in_(allowed_categories))
-        return list((await session.scalars(
-            statement
-            .order_by(Order.created_at.desc(), Order.id.desc())
-            .limit(200)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    statement.order_by(Order.created_at.desc(), Order.id.desc()).limit(
+                        200
+                    )
+                )
+            ).all()
+        )
 
     async def items(self, session: AsyncSession, order_id: int) -> list[OrderItem]:
-        return list((await session.scalars(
-            select(OrderItem)
-            .where(OrderItem.order_id == order_id)
-            .order_by(OrderItem.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(OrderItem)
+                    .where(OrderItem.order_id == order_id)
+                    .order_by(OrderItem.id)
+                )
+            ).all()
+        )
 
     async def items_for_orders(
         self, session: AsyncSession, order_ids: list[int]
     ) -> dict[int, list[OrderItem]]:
         if not order_ids:
             return {}
-        rows = list((await session.scalars(
-            select(OrderItem)
-            .where(OrderItem.order_id.in_(order_ids))
-            .order_by(OrderItem.order_id, OrderItem.id)
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(OrderItem)
+                    .where(OrderItem.order_id.in_(order_ids))
+                    .order_by(OrderItem.order_id, OrderItem.id)
+                )
+            ).all()
+        )
         grouped: dict[int, list[OrderItem]] = {order_id: [] for order_id in order_ids}
         for row in rows:
             grouped.setdefault(row.order_id, []).append(row)
@@ -126,44 +142,58 @@ class OrderRepository:
     async def messages(
         self, session: AsyncSession, order_id: int
     ) -> list[OrderMessage]:
-        return list((await session.scalars(
-            select(OrderMessage)
-            .where(OrderMessage.order_id == order_id)
-            .order_by(OrderMessage.created_at, OrderMessage.id)
-            .limit(500)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(OrderMessage)
+                    .where(OrderMessage.order_id == order_id)
+                    .order_by(OrderMessage.created_at, OrderMessage.id)
+                    .limit(500)
+                )
+            ).all()
+        )
 
     async def message_summaries(
         self, session: AsyncSession, order_ids: list[int]
     ) -> dict[int, dict[str, object]]:
         if not order_ids:
             return {}
-        counts = (await session.execute(
-            select(OrderMessage.order_id, func.count(OrderMessage.id))
-            .where(OrderMessage.order_id.in_(order_ids))
-            .group_by(OrderMessage.order_id)
-        )).all()
-        ranked = select(
-            OrderMessage.order_id.label("order_id"),
-            OrderMessage.text.label("text"),
-            OrderMessage.media_type.label("media_type"),
-            OrderMessage.created_at.label("created_at"),
-            func.row_number().over(
-                partition_by=OrderMessage.order_id,
-                order_by=(OrderMessage.created_at.desc(), OrderMessage.id.desc()),
-            ).label("message_rank"),
-        ).where(
-            OrderMessage.order_id.in_(order_ids),
-            OrderMessage.is_deleted.is_(False),
-        ).subquery()
-        latest = (await session.execute(
+        counts = (
+            await session.execute(
+                select(OrderMessage.order_id, func.count(OrderMessage.id))
+                .where(OrderMessage.order_id.in_(order_ids))
+                .group_by(OrderMessage.order_id)
+            )
+        ).all()
+        ranked = (
             select(
-                ranked.c.order_id,
-                ranked.c.text,
-                ranked.c.media_type,
-                ranked.c.created_at,
-            ).where(ranked.c.message_rank == 1)
-        )).all()
+                OrderMessage.order_id.label("order_id"),
+                OrderMessage.text.label("text"),
+                OrderMessage.media_type.label("media_type"),
+                OrderMessage.created_at.label("created_at"),
+                func.row_number()
+                .over(
+                    partition_by=OrderMessage.order_id,
+                    order_by=(OrderMessage.created_at.desc(), OrderMessage.id.desc()),
+                )
+                .label("message_rank"),
+            )
+            .where(
+                OrderMessage.order_id.in_(order_ids),
+                OrderMessage.is_deleted.is_(False),
+            )
+            .subquery()
+        )
+        latest = (
+            await session.execute(
+                select(
+                    ranked.c.order_id,
+                    ranked.c.text,
+                    ranked.c.media_type,
+                    ranked.c.created_at,
+                ).where(ranked.c.message_rank == 1)
+            )
+        ).all()
         summaries: dict[int, dict[str, object]] = {
             int(order_id): {
                 "chat_count": int(count),
@@ -174,7 +204,9 @@ class OrderRepository:
         }
         for order_id, message, media_type, created_at in latest:
             summary = summaries.setdefault(int(order_id), {"chat_count": 0})
-            summary["last_chat"] = message or ("📷 Rasm" if media_type == "photo" else "")
+            summary["last_chat"] = message or (
+                "📷 Rasm" if media_type == "photo" else ""
+            )
             summary["last_chat_at"] = created_at
         return summaries
 

@@ -1,7 +1,6 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
-
 MIGRATION = (
     Path(__file__).resolve().parents[1]
     / "migrations"

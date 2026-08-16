@@ -20,7 +20,6 @@ import { StaffLoginForm } from "./StaffLoginForm";
 import { TelegramCodeForm } from "./TelegramCodeForm";
 import "./AuthV1656.css";
 
-
 export type AuthApi = Pick<
   ApiClient,
   | "startRegistration"
@@ -29,7 +28,8 @@ export type AuthApi = Pick<
   | "verifyLogin"
   | "resendChallenge"
   | "getSession"
-> & Partial<Pick<ApiClient, "loginStaff">>;
+> &
+  Partial<Pick<ApiClient, "loginStaff">>;
 
 type TelegramStep = {
   name: "telegram";
@@ -54,7 +54,6 @@ type AuthStep =
     }
   | TelegramStep;
 
-
 function initialStep(): AuthStep {
   const pending = readPendingAuth();
   if (!pending) return { name: "login" };
@@ -69,7 +68,6 @@ function initialStep(): AuthStep {
     registrationDraft: pending.kind === "register" ? pending.payload : undefined,
   };
 }
-
 
 export function AuthFlow({
   api,
@@ -87,9 +85,8 @@ export function AuthFlow({
     challenge: ChallengeStarted,
     draft: LoginDraft | RegistrationStart,
   ) {
-    const registration = purpose === "register"
-      ? draft as RegistrationStart
-      : undefined;
+    const registration =
+      purpose === "register" ? (draft as RegistrationStart) : undefined;
     savePendingAuth(purpose, challenge, registration);
     setStep({
       name: "telegram",
@@ -99,7 +96,7 @@ export function AuthFlow({
       deepLink: challenge.deep_link,
       codeSent: challenge.code_sent ?? false,
       resendAfter: challenge.resend_after,
-      loginDraft: purpose === "login" ? draft as LoginDraft : undefined,
+      loginDraft: purpose === "login" ? (draft as LoginDraft) : undefined,
       registrationDraft: registration,
     });
     openTelegramLink(challenge.deep_link);
@@ -118,9 +115,7 @@ export function AuthFlow({
         reason={reason}
         onStarted={(challenge, draft) => telegramStep("login", challenge, draft)}
         onRegister={() => setStep({ name: "registration-choice" })}
-        onStaff={api.loginStaff
-          ? () => setStep({ name: "staff-login" })
-          : undefined}
+        onStaff={api.loginStaff ? () => setStep({ name: "staff-login" }) : undefined}
       />
     );
   }
@@ -139,9 +134,9 @@ export function AuthFlow({
         api={api}
         accountType={step.accountType}
         initialValue={step.initialValue}
-        onStarted={(challenge, registration) => (
+        onStarted={(challenge, registration) =>
           telegramStep("register", challenge, registration)
-        )}
+        }
       />
     );
   }
@@ -181,32 +176,46 @@ export function AuthFlow({
           <button
             className="role-card"
             type="button"
-            onClick={() => setStep({
-              name: "registration",
-              accountType: "business",
-            })}
+            onClick={() =>
+              setStep({
+                name: "registration",
+                accountType: "business",
+              })
+            }
           >
-            <span className="role-ic role-ic--business" aria-hidden="true">🏪</span>
+            <span className="role-ic role-ic--business" aria-hidden="true">
+              🏪
+            </span>
             <span className="role-main">
               <strong>Biznes</strong>
-              <span>Mahsulot va xizmatlaringizni joylashtiring, mijozlar bilan ishlang.</span>
+              <span>
+                Mahsulot va xizmatlaringizni joylashtiring, mijozlar bilan ishlang.
+              </span>
             </span>
-            <span className="chev" aria-hidden="true">›</span>
+            <span className="chev" aria-hidden="true">
+              ›
+            </span>
           </button>
           <button
             className="role-card"
             type="button"
-            onClick={() => setStep({
-              name: "registration",
-              accountType: "user",
-            })}
+            onClick={() =>
+              setStep({
+                name: "registration",
+                accountType: "user",
+              })
+            }
           >
-            <span className="role-ic role-ic--user" aria-hidden="true">🙂</span>
+            <span className="role-ic role-ic--user" aria-hidden="true">
+              🙂
+            </span>
             <span className="role-main">
               <strong>Oddiy foydalanuvchi</strong>
               <span>Bizneslarni toping, buyurtma bering, navbatga yoziling.</span>
             </span>
-            <span className="chev" aria-hidden="true">›</span>
+            <span className="chev" aria-hidden="true">
+              ›
+            </span>
           </button>
         </div>
       </section>

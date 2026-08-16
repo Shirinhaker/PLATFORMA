@@ -73,9 +73,7 @@ def _with_item_image_urls(
         enriched = dict(item)
         object_key = str(enriched.get("image_object_key") or "").strip()
         enriched["image_url"] = (
-            request.app.state.r2.create_download_url(object_key)
-            if object_key
-            else ""
+            request.app.state.r2.create_download_url(object_key) if object_key else ""
         )
         result.append(enriched)
     return result

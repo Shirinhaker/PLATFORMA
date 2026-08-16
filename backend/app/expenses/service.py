@@ -20,7 +20,6 @@ from app.expenses.schemas import (
     ExpenseRead,
 )
 
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 # O'zbekistonda yozgi vaqt yo'q — qat'iy UTC+5 (qarang: cash_register).
@@ -90,12 +89,14 @@ class ExpenseService:
                 if existing is not None:
                     await session.rollback()
                     return ExpenseCategoryCreated(exists=True)
-                session.add(ExpenseCategory(
-                    business_account_id=business_account_id,
-                    legacy_source_id=None,
-                    name=body.name,
-                    created_at=self._now_provider(),
-                ))
+                session.add(
+                    ExpenseCategory(
+                        business_account_id=business_account_id,
+                        legacy_source_id=None,
+                        name=body.name,
+                        created_at=self._now_provider(),
+                    )
+                )
                 await session.flush()
                 await session.commit()
                 return ExpenseCategoryCreated(exists=False)
@@ -132,15 +133,17 @@ class ExpenseService:
                 by_category[expense.category] = (
                     by_category.get(expense.category, 0) + expense.amount
                 )
-                result.append(ExpenseRead(
-                    id=expense.id,
-                    category=expense.category,
-                    amount=expense.amount,
-                    note=expense.note,
-                    source=expense.source,
-                    who=expense.actor_name_snapshot,
-                    created_at=expense.created_at,
-                ))
+                result.append(
+                    ExpenseRead(
+                        id=expense.id,
+                        category=expense.category,
+                        amount=expense.amount,
+                        note=expense.note,
+                        source=expense.source,
+                        who=expense.actor_name_snapshot,
+                        created_at=expense.created_at,
+                    )
+                )
             await session.rollback()
             return ExpenseDayRead(
                 day=selected_day,

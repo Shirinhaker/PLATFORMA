@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminApiClient, AdminApiError } from "./admin-client";
 
-
 /** Brauzerdagi `fetch` ni taqlid qiladi.
  *
  * Haqiqiy brauzer `fetch` ni `window` dan ajratib chaqirsa
@@ -12,15 +11,9 @@ import { AdminApiClient, AdminApiError } from "./admin-client";
  */
 function installWindowBoundFetch(response: unknown, status = 200) {
   const calls: Array<[string, RequestInit | undefined]> = [];
-  const guarded = function (
-    this: unknown,
-    url: string,
-    init?: RequestInit,
-  ) {
+  const guarded = function (this: unknown, url: string, init?: RequestInit) {
     if (this !== globalThis) {
-      throw new TypeError(
-        "Failed to execute 'fetch' on 'Window': Illegal invocation",
-      );
+      throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
     }
     calls.push([url, init]);
     return Promise.resolve({
@@ -33,27 +26,34 @@ function installWindowBoundFetch(response: unknown, status = 200) {
   return calls;
 }
 
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
 
 describe("admin API klienti", () => {
   it("uses the isolated admin Taxi balance endpoints", async () => {
     const responses = [
       { ok: true, status: 200, json: async () => [] } as Response,
-      { ok: true, status: 200, json: async () => ({ id: 7, balance: 6000 }) } as Response,
+      {
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 7, balance: 6000 }),
+      } as Response,
     ];
     const fetcher = vi.fn().mockImplementation(async () => responses.shift()!);
     const api = new AdminApiClient("https://api.test", fetcher);
     await api.taxiDrivers();
     await api.topupTaxiDriver(7, 5000, "Bank o'tkazmasi");
-    expect(fetcher.mock.calls.map(([url, init]) => [url, init?.method, init?.body]))
-      .toEqual([
-        ["https://api.test/api/v1/admin/taxi/drivers", "GET", undefined],
-        ["https://api.test/api/v1/admin/taxi/drivers/7/topup", "POST", JSON.stringify({ amount: 5000, reason: "Bank o'tkazmasi" })],
-      ]);
+    expect(
+      fetcher.mock.calls.map(([url, init]) => [url, init?.method, init?.body]),
+    ).toEqual([
+      ["https://api.test/api/v1/admin/taxi/drivers", "GET", undefined],
+      [
+        "https://api.test/api/v1/admin/taxi/drivers/7/topup",
+        "POST",
+        JSON.stringify({ amount: 5000, reason: "Bank o'tkazmasi" }),
+      ],
+    ]);
   });
   it("fetch window bilan chaqiriladi (Illegal invocation bo'lmaydi)", async () => {
     const calls = installWindowBoundFetch({ telegram_user_id: 42 });
@@ -86,13 +86,11 @@ describe("admin API klienti", () => {
   it("filtrlar so'rov satriga tushadi", async () => {
     const calls = installWindowBoundFetch([]);
 
-    await new AdminApiClient("https://api.test").payments(
-      "pending", "subscription",
-    );
+    await new AdminApiClient("https://api.test").payments("pending", "subscription");
 
     expect(calls[0]![0]).toBe(
-      "https://api.test/api/v1/admin/payments"
-      + "?status=pending&service_type=subscription",
+      "https://api.test/api/v1/admin/payments" +
+        "?status=pending&service_type=subscription",
     );
   });
 
