@@ -825,9 +825,12 @@ def test_queue_repository_uses_atomic_upsert_not_max_scan_for_live_numbers():
     assert "max(QueueEntry.queue_no" not in repository_source
     assert "max(queue_no" not in lowered
 
-    service_source = (
-        Path(__file__).resolve().parents[1] / "app" / "queues" / "service.py"
-    ).read_text(encoding="utf-8")
+    # Xizmat mixin'larga bo'lingan, shuning uchun butun paket bo'ylab
+    # qidiriladi — keyingi bo'lishlarda ham bu tekshiruv buzilmaydi.
+    service_parts = Path(__file__).resolve().parents[1] / "app" / "queues"
+    service_source = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(service_parts.rglob("*.py"))
+    )
     assert "except IntegrityError" in service_source
     assert "await session.rollback()" in service_source
 
