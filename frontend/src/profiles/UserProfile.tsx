@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type { ApiClient } from "../api/client";
-import type {
-  NotificationRead,
-  SessionIdentity,
-  UserProfile as UserProfileData,
-} from "../api/types";
+import type { NotificationRead, UserProfile as UserProfileData } from "../api/types";
 import { CabinetDataView } from "./CabinetDataView";
 import { OwnerListings, type OwnerListingsApi } from "../listings/OwnerListings";
 import { SavedListings } from "../listings/SavedListings";
@@ -33,371 +28,29 @@ import {
   UserAdvertisements,
   type UserAdvertisementsApi,
 } from "../advertisements/UserAdvertisements";
+import {
+  type CabinetView,
+  isServiceOrder,
+  markLegacyNotificationRead,
+  message,
+  payloadRows,
+  SECTIONS,
+  supportsBusinessOpening,
+  supportsFollowLists,
+  supportsMessages,
+  supportsMyQueues,
+  supportsNotifications,
+  supportsOrders,
+  supportsOwnerListings,
+  supportsOwnerStories,
+  supportsReceivedReviews,
+  supportsSpecialist,
+  supportsTaxi,
+  supportsUserAdvertisements,
+} from "./user-profile-helpers";
 
-export type UserProfileApi = Pick<
-  ApiClient,
-  | "getSession"
-  | "getUserProfile"
-  | "updateUserProfile"
-  | "createUploadGrant"
-  | "uploadGrantedFile"
-  | "attachUserAvatar"
-  | "switchCabinet"
-  | "logout"
-> &
-  Partial<
-    Pick<
-      ApiClient,
-      | "getBusinessCredentials"
-      | "updateBusinessCredentials"
-      | "openBusiness"
-      | "getMyListings"
-      | "createListing"
-      | "deleteListing"
-      | "getMyAdvertisements"
-      | "createAdvertisement"
-      | "deleteAdvertisement"
-      | "quoteAdvertisement"
-      | "getSavedListings"
-      | "getPaymentCatalog"
-      | "createPaymentRequest"
-      | "getMyOrders"
-      | "getOrderInbox"
-      | "markOrderSeen"
-      | "changeOrderStatus"
-      | "submitOrderPayment"
-      | "decideOrderPayment"
-      | "openOrderProblem"
-      | "chooseOrderProblemSolution"
-      | "handoffOrder"
-      | "receiveOrder"
-      | "getOrderChat"
-      | "sendOrderChatMessage"
-      | "sendOrderChatImage"
-      | "editOrderChatMessage"
-      | "deleteOrderChatMessage"
-      | "getMyQueues"
-      | "cancelMyQueue"
-      | "markQueueNotificationRead"
-      | "getMyStories"
-      | "createStory"
-      | "recordStoryView"
-      | "getStoryViewers"
-      | "deleteStory"
-      | "reportStory"
-      | "getMessageConversations"
-      | "getMessageThread"
-      | "sendMessage"
-      | "sendMessageImage"
-      | "editMessage"
-      | "deleteMessage"
-      | "getMessageUnreadCount"
-      | "getReceivedReviews"
-      | "replyToReview"
-      | "getNotifications"
-      | "getActionNotifications"
-      | "markNotificationRead"
-      | "markAllNotificationsRead"
-      | "getNotificationPreference"
-      | "saveNotificationPreference"
-      | "getNotificationFilters"
-      | "createNotificationFilter"
-      | "deleteNotificationFilter"
-      | "getPushStatus"
-      | "getFollowers"
-      | "getFollowing"
-      | "getMyPayments"
-      | "resubmitPayment"
-      | "getMySpecialist"
-      | "updateMySpecialist"
-      | "addSpecialistCredential"
-      | "deleteSpecialistCredential"
-      | "createSpecialistOffer"
-      | "updateSpecialistOffer"
-      | "deleteSpecialistOffer"
-      | "addSpecialistPortfolio"
-      | "deleteSpecialistPortfolio"
-      | "getTaxiPricing"
-      | "getTaxiDriver"
-      | "saveTaxiDriver"
-      | "setTaxiDriverAvailable"
-      | "getMyTaxiRides"
-      | "getPendingTaxiRides"
-      | "acceptTaxiRide"
-      | "setTaxiRideStatus"
-      | "updateTaxiRideProgress"
-    >
-  >;
-
-type Props = {
-  api: UserProfileApi;
-  identity: SessionIdentity;
-  onLogout: () => void;
-  onOpenPublicListing?: (publicId: string) => void;
-  onOpenPublicProfile?: (kind: "user" | "business", publicId: string) => void;
-  onOpenDriverCabinet?: () => void;
-  onSwitched: (identity: SessionIdentity) => void;
-};
-
-type CabinetView = "dashboard" | "profile" | "specialist" | string;
-type PayloadSource = string | readonly string[];
-
-type Section = UserCabinetSection & {
-  payload?: PayloadSource;
-};
-
-const SECTIONS: Section[] = [
-  {
-    icon: "👤",
-    label: "Profilim",
-    caption: "Ism, telefon, yashash tumani",
-    view: "profile",
-  },
-  {
-    icon: "💳",
-    label: "To‘lovlarim",
-    caption: "Reklama to‘lovlari va tekshiruv holati",
-    view: "payments",
-    payload: "payments",
-  },
-  {
-    icon: "📢",
-    label: "Reklamalarim",
-    caption: "Bosh sahifa reklamalarini boshqarish",
-    view: "advertisements",
-  },
-  {
-    icon: "🎞️",
-    label: "Istoriya arxivi",
-    caption: "Faol va arxivdagi shaxsiy istoriyalar",
-    view: "stories",
-    payload: "stories",
-  },
-  {
-    icon: "💬",
-    label: "Suhbatlar",
-    caption: "Xabarlar va chatlar",
-    view: "messages",
-    payload: "messages",
-  },
-  {
-    icon: "🔔",
-    label: "Bildirishnomalarim",
-    caption: "Qiziqishlaringizni belgilang",
-    view: "notifications",
-    payload: "notifications",
-  },
-  {
-    icon: "🧰",
-    label: "Mutaxassisligim va xizmatlarim",
-    caption: "Qidiruv va xaritada mutaxassis sifatida chiqish",
-    view: "specialist",
-  },
-  {
-    icon: "📦",
-    label: "Buyurtmalarim",
-    caption: "Mahsulot buyurtmalarim",
-    view: "orders",
-    payload: "orders",
-  },
-  {
-    icon: "🧰",
-    label: "Xizmat buyurtmalarim",
-    caption: "Xizmat va qabullarim",
-    view: "service-orders",
-    payload: "orders",
-  },
-  {
-    icon: "🔖",
-    label: "Saqlanganlar",
-    caption: "Saqlangan e'lon va bizneslar",
-    view: "saved",
-    payload: "saved",
-  },
-  {
-    icon: "⚙️",
-    label: "Sozlamalar",
-    caption: "Akkaunt, til, chiqish",
-    view: "settings",
-  },
-];
-
-function supportsOwnerStories(
-  api: UserProfileApi,
-): api is UserProfileApi & OwnerStoriesApi {
-  return [
-    "getMyStories",
-    "createStory",
-    "recordStoryView",
-    "getStoryViewers",
-    "deleteStory",
-    "reportStory",
-    "createUploadGrant",
-    "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function supportsTaxi(
-  api: UserProfileApi,
-): api is UserProfileApi &
-  DriverCabinetApi &
-  Required<Pick<UserProfileApi, "getMyTaxiRides">> {
-  return [
-    "getTaxiDriver",
-    "getTaxiPricing",
-    "saveTaxiDriver",
-    "setTaxiDriverAvailable",
-    "getMyTaxiRides",
-    "getPendingTaxiRides",
-    "acceptTaxiRide",
-    "setTaxiRideStatus",
-    "updateTaxiRideProgress",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function message(error: unknown) {
-  return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
-}
-
-function isServiceOrder(row: unknown) {
-  if (!row || typeof row !== "object") return false;
-  const value = row as Record<string, unknown>;
-  if (String(value.order_category ?? "") === "service") return true;
-  return ["booking", "service", "queue", "medical"].includes(
-    String(value.order_type ?? value.kind ?? ""),
-  );
-}
-
-function payloadRows(
-  payload: Record<string, unknown>,
-  source: PayloadSource,
-): unknown[] {
-  const keys = typeof source === "string" ? [source] : source;
-  return keys.flatMap((key) => {
-    const value = payload[key];
-    return Array.isArray(value) ? value : [];
-  });
-}
-
-function supportsOwnerListings(
-  api: UserProfileApi,
-): api is UserProfileApi & OwnerListingsApi {
-  return ["getMyListings", "createListing", "deleteListing"].every(
-    (method) => typeof api[method as keyof UserProfileApi] === "function",
-  );
-}
-
-function supportsUserAdvertisements(
-  api: UserProfileApi,
-): api is UserProfileApi & UserAdvertisementsApi {
-  return (
-    supportsAdvertisementApi(api) &&
-    [
-      "getPaymentCatalog",
-      "createPaymentRequest",
-      "createUploadGrant",
-      "uploadGrantedFile",
-    ].every((method) => typeof api[method as keyof UserProfileApi] === "function")
-  );
-}
-
-function supportsOrders(api: UserProfileApi): api is UserProfileApi & OrdersApi {
-  return [
-    "getMyOrders",
-    "getOrderInbox",
-    "markOrderSeen",
-    "changeOrderStatus",
-    "submitOrderPayment",
-    "decideOrderPayment",
-    "openOrderProblem",
-    "chooseOrderProblemSolution",
-    "handoffOrder",
-    "receiveOrder",
-    "getOrderChat",
-    "sendOrderChatMessage",
-    "sendOrderChatImage",
-    "editOrderChatMessage",
-    "deleteOrderChatMessage",
-    "createUploadGrant",
-    "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function supportsMyQueues(api: UserProfileApi): api is UserProfileApi & MyQueuesApi {
-  return ["getMyQueues", "cancelMyQueue"].every(
-    (method) => typeof api[method as keyof UserProfileApi] === "function",
-  );
-}
-
-function supportsMessages(api: UserProfileApi): api is UserProfileApi & MessagesApi {
-  return [
-    "getMessageConversations",
-    "getMessageThread",
-    "sendMessage",
-    "sendMessageImage",
-    "editMessage",
-    "deleteMessage",
-    "createUploadGrant",
-    "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function supportsReceivedReviews(
-  api: UserProfileApi,
-): api is UserProfileApi & ReceivedReviewsApi {
-  return ["getReceivedReviews", "replyToReview"].every(
-    (method) => typeof api[method as keyof UserProfileApi] === "function",
-  );
-}
-
-function supportsNotifications(
-  api: UserProfileApi,
-): api is UserProfileApi & NotificationsApi {
-  return [
-    "getNotifications",
-    "getActionNotifications",
-    "markNotificationRead",
-    "markAllNotificationsRead",
-    "getNotificationPreference",
-    "saveNotificationPreference",
-    "getNotificationFilters",
-    "createNotificationFilter",
-    "deleteNotificationFilter",
-    "getPushStatus",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function supportsFollowLists(
-  api: UserProfileApi,
-): api is UserProfileApi & FollowListsApi {
-  return ["getFollowers", "getFollowing"].every(
-    (method) => typeof api[method as keyof UserProfileApi] === "function",
-  );
-}
-
-function supportsSpecialist(
-  api: UserProfileApi,
-): api is UserProfileApi & SpecialistApi {
-  return [
-    "getMySpecialist",
-    "updateMySpecialist",
-    "addSpecialistCredential",
-    "deleteSpecialistCredential",
-    "createSpecialistOffer",
-    "updateSpecialistOffer",
-    "deleteSpecialistOffer",
-    "addSpecialistPortfolio",
-    "deleteSpecialistPortfolio",
-    "createUploadGrant",
-    "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
-}
-
-function supportsBusinessOpening(
-  api: UserProfileApi,
-): api is UserProfileApi & Required<Pick<UserProfileApi, "openBusiness">> {
-  return typeof api.openBusiness === "function";
-}
+export type { UserProfileApi } from "./user-profile-api";
+import type { UserProfileProps } from "./user-profile-api";
 
 export function UserProfile({
   api,
@@ -407,7 +60,7 @@ export function UserProfile({
   onOpenPublicListing,
   onOpenPublicProfile,
   onSwitched,
-}: Props) {
+}: UserProfileProps) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [view, setView] = useState<CabinetView>("dashboard");
   const [busy, setBusy] = useState(false);
@@ -523,38 +176,6 @@ export function UserProfile({
       setError(message(reason));
       setBusy(false);
     }
-  }
-
-  function markLegacyNotificationRead(notificationId: number) {
-    setProfile((current) => {
-      if (!current) return current;
-      const payload = { ...(current.cabinet_payload ?? {}) };
-      const notifications = Array.isArray(payload.notifications)
-        ? payload.notifications.map((value) => {
-            if (!value || typeof value !== "object") return value;
-            const row = value as Record<string, unknown>;
-            return Number(row.id ?? 0) === notificationId
-              ? { ...row, is_read: 1 }
-              : row;
-          })
-        : [];
-      payload.notifications = notifications;
-      const unread = notifications.filter(
-        (value) =>
-          value &&
-          typeof value === "object" &&
-          !Boolean(Number((value as Record<string, unknown>).is_read ?? 0)),
-      ).length;
-      setNotificationUnread(unread);
-      return {
-        ...current,
-        cabinet_payload: payload,
-        dashboard_snapshot: {
-          ...(current.dashboard_snapshot ?? {}),
-          unread,
-        },
-      };
-    });
   }
 
   if (!profile) {
@@ -780,7 +401,13 @@ export function UserProfile({
                   ) {
                     void api
                       .markQueueNotificationRead(notificationId)
-                      .then(() => markLegacyNotificationRead(notificationId))
+                      .then(() =>
+                        markLegacyNotificationRead(
+                          setProfile,
+                          setNotificationUnread,
+                          notificationId,
+                        ),
+                      )
                       .catch((reason) => setError(message(reason)));
                   }
                   return;
