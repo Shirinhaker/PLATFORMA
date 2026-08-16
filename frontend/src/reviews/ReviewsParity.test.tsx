@@ -3,11 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ReviewListRead } from "../api/types";
-import {
-  PublicReviews,
-  ReceivedReviews,
-  type ReviewsApi,
-} from "./Reviews";
+import { PublicReviews, ReceivedReviews, type ReviewsApi } from "./Reviews";
 
 const review = {
   id: 11,

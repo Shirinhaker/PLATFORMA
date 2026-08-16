@@ -46,10 +46,7 @@ import { StaffManagement, type StaffManagementApi } from "./StaffManagement";
 import { Statistics, type StatisticsApi } from "./Statistics";
 import { Warehouse, type WarehouseApi } from "../inventory/Warehouse";
 import { Documents, type DocumentsApi } from "../documents/Documents";
-import {
-  AIAssistant,
-  type AIAssistantApi,
-} from "../ai-assistant/AIAssistant";
+import { AIAssistant, type AIAssistantApi } from "../ai-assistant/AIAssistant";
 import { Messages, type MessagesApi } from "../messages/Messages";
 import {
   ActionNotifications,
@@ -940,9 +937,7 @@ export function BusinessProfile({
   }
 
   if (screen === "expenses" && supportsExpenses(api)) {
-    return withActionBanner(
-      <Expenses api={api} onBack={() => setScreen("cabinet")} />,
-    );
+    return withActionBanner(<Expenses api={api} onBack={() => setScreen("cabinet")} />);
   }
 
   if (screen === "warehouse" && supportsWarehouse(api)) {

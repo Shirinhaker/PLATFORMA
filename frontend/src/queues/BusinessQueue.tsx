@@ -114,12 +114,7 @@ function providerWrite(record: BusinessOnlineRecord): BusinessQueueProviderWrite
   };
 }
 
-export function BusinessQueue({
-  api,
-  direction,
-  view,
-  onBackHandlerChange,
-}: Props) {
+export function BusinessQueue({ api, direction, view, onBackHandlerChange }: Props) {
   const [setup, setSetup] = useState<BusinessQueueSetup>({
     services: [],
     staff: [],

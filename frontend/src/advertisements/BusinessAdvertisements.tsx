@@ -99,11 +99,7 @@ function record(row: Advertisement): BusinessOnlineRecord {
   } as unknown as BusinessOnlineRecord;
 }
 
-export function BusinessAdvertisements({
-  api,
-  openPayment,
-  onOpenListings,
-}: Props) {
+export function BusinessAdvertisements({ api, openPayment, onOpenListings }: Props) {
   const [rows, setRows] = useState<Advertisement[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

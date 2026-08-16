@@ -73,9 +73,7 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
   it("loads normalized notifications, push preference and filters in parallel", async () => {
     const client = api();
     const unread = vi.fn();
-    render(
-      <Notifications api={client} onBack={vi.fn()} onUnreadChange={unread} />,
-    );
+    render(<Notifications api={client} onBack={vi.fn()} onUnreadChange={unread} />);
 
     expect(await screen.findByText("Yangi buyurtma")).toBeInTheDocument();
     expect(screen.getByText("Push xizmati faol · 1 ta qurilma")).toBeInTheDocument();

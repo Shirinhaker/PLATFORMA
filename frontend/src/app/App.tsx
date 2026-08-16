@@ -36,11 +36,7 @@ import {
   type QueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
-import {
-  Messages,
-  type MessagePeer,
-  type MessagesApi,
-} from "../messages/Messages";
+import { Messages, type MessagePeer, type MessagesApi } from "../messages/Messages";
 import type { PublicReviewsApi } from "../reviews/Reviews";
 import { TaxiCall } from "../taxi/TaxiCall";
 import { DriverCabinet } from "../taxi/DriverCabinet";

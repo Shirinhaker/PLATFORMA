@@ -38,9 +38,7 @@ describe("v1656 mijoz navbatlari pariteti", () => {
       cancelMyQueue: vi.fn(),
     };
 
-    render(
-      <MyQueues api={api} focusQueueId={41} onFocusHandled={onFocusHandled} />,
-    );
+    render(<MyQueues api={api} focusQueueId={41} onFocusHandled={onFocusHandled} />);
 
     expect(
       await screen.findByRole("heading", { name: "📋 Navbatlar" }),

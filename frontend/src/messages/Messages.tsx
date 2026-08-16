@@ -81,12 +81,7 @@ function peerFromConversation(row: MessageConversationRead): MessagePeer {
   };
 }
 
-export function Messages({
-  api,
-  onBack,
-  initialPeer = null,
-  onOpenProfile,
-}: Props) {
+export function Messages({ api, onBack, initialPeer = null, onOpenProfile }: Props) {
   const [peer, setPeer] = useState<MessagePeer | null>(initialPeer);
   const [other, setOther] = useState<MessageProfileRead | null>(null);
   const [conversations, setConversations] = useState<MessageConversationRead[]>([]);

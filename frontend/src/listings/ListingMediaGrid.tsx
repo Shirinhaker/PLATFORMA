@@ -58,10 +58,7 @@ export function ListingMediaGrid({ media, compact = false }: Props) {
           </button>
         ))}
       </div>
-      <ListingMediaViewer
-        media={openedMedia}
-        onClose={() => setOpenedMedia(null)}
-      />
+      <ListingMediaViewer media={openedMedia} onClose={() => setOpenedMedia(null)} />
     </>
   );
 }

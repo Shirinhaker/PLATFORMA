@@ -7,10 +7,7 @@ import type {
   UserProfile as UserProfileData,
 } from "../api/types";
 import { CabinetDataView } from "./CabinetDataView";
-import {
-  OwnerListings,
-  type OwnerListingsApi,
-} from "../listings/OwnerListings";
+import { OwnerListings, type OwnerListingsApi } from "../listings/OwnerListings";
 import { SavedListings } from "../listings/SavedListings";
 import { OrdersCabinet, type OrdersApi } from "../orders/OrdersCabinet";
 import { MyQueues, type MyQueuesApi } from "../queues/MyQueues";
@@ -23,19 +20,13 @@ import {
   type NotificationsApi,
 } from "../notifications/Notifications";
 import { FollowLists, type FollowListsApi } from "../follows/FollowLists";
-import {
-  Payments,
-  supportsPaymentsApi,
-} from "../payments/SubscriptionsPayments";
+import { Payments, supportsPaymentsApi } from "../payments/SubscriptionsPayments";
 import { Specialist, type SpecialistApi } from "../specialists/Specialist";
 import { DriverCabinet, type DriverCabinetApi } from "../taxi/DriverCabinet";
 import { MyRides } from "../taxi/MyRides";
 import { AccountSettings } from "../settings/AccountSettings";
 import { BusinessOpening } from "../business-opening/BusinessOpening";
-import {
-  UserCabinetDashboard,
-  type UserCabinetSection,
-} from "./UserCabinetDashboard";
+import { UserCabinetDashboard, type UserCabinetSection } from "./UserCabinetDashboard";
 import { UserProfileEditor } from "./UserProfileEditor";
 import { supportsAdvertisementApi } from "../advertisements/BusinessAdvertisements";
 import {
@@ -660,9 +651,7 @@ export function UserProfile({
   }
 
   if (view === "payments" && supportsPaymentsApi(api)) {
-    return withActionBanner(
-      <Payments api={api} onBack={() => setView("dashboard")} />,
-    );
+    return withActionBanner(<Payments api={api} onBack={() => setView("dashboard")} />);
   }
 
   if (view === "saved" && getSavedListings) {
@@ -677,9 +666,7 @@ export function UserProfile({
   }
 
   if (view === "messages" && supportsMessages(api)) {
-    return withActionBanner(
-      <Messages api={api} onBack={() => setView("dashboard")} />,
-    );
+    return withActionBanner(<Messages api={api} onBack={() => setView("dashboard")} />);
   }
 
   if (view === "specialist-reviews" && supportsReceivedReviews(api)) {
@@ -740,9 +727,7 @@ export function UserProfile({
   }
 
   if (view === "rides" && supportsTaxi(api)) {
-    return withActionBanner(
-      <MyRides api={api} onBack={() => setView("dashboard")} />,
-    );
+    return withActionBanner(<MyRides api={api} onBack={() => setView("dashboard")} />);
   }
 
   if (view === "settings") {

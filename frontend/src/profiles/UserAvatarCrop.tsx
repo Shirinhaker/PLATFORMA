@@ -41,14 +41,7 @@ export function avatarImageStyle(value: Partial<AvatarCrop>): CSSProperties {
   };
 }
 
-export function UserAvatarCrop({
-  alt,
-  busy,
-  src,
-  value,
-  onChange,
-  onSave,
-}: Props) {
+export function UserAvatarCrop({ alt, busy, src, value, onChange, onSave }: Props) {
   const stage = useRef<HTMLDivElement | null>(null);
   const drag = useRef<DragState | null>(null);
   const current = useRef(normalizedAvatarCrop(value));

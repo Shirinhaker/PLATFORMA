@@ -157,9 +157,7 @@ describe("v1656 Istoriyalar pariteti", () => {
     const client = new ApiClient("https://api.example", fetcher, { kind: "web" });
     await client.getSession();
 
-    render(
-      <OwnerStories actor="user" api={client} ownerName="Ali" onBack={vi.fn()} />,
-    );
+    render(<OwnerStories actor="user" api={client} ownerName="Ali" onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "+ Istoriya" }));
     fireEvent.change(screen.getByLabelText("Rasm yoki video"), {

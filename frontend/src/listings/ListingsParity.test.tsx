@@ -162,9 +162,7 @@ describe("v1656 public E'lonlar", () => {
 
   it("opens listing photos in the v1656 media viewer", async () => {
     const user = userEvent.setup();
-    render(
-      <ListingDetail listing={listing} onContact={vi.fn()} onSave={vi.fn()} />,
-    );
+    render(<ListingDetail listing={listing} onContact={vi.fn()} onSave={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Rasmni katta ko‘rish" }));
 

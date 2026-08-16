@@ -88,13 +88,7 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <div className="queue-booking-v1656__label">{children}</div>;
 }
 
-export function QueueBooking({
-  api,
-  target,
-  onClose,
-  onMessage,
-  onBooked,
-}: Props) {
+export function QueueBooking({ api, target, onClose, onMessage, onBooked }: Props) {
   const [stage, setStage] = useState<Stage>("date");
   const [queueDate, setQueueDate] = useState(localIsoDate);
   const [providers, setProviders] = useState<BusinessQueueProvider[]>([]);

@@ -95,11 +95,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockResolvedValue([order({ place_kind: "room", place_name: "VIP xona" })]),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByText("🚪 VIP xona")).toBeVisible();
@@ -108,11 +104,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
   it("'Tayyor bo'ldi' tugmasi oshxona holatini done qiladi", async () => {
     const api = makeApi();
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }));
@@ -146,11 +138,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockResolvedValue([order({ kitchen_status: "done" })]),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByText("👨‍🍳 Tayyor")).toBeVisible();
@@ -164,11 +152,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockResolvedValue([order({ id: 2, problem_open: true })]),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByRole("tab", { name: "Muammoli (1)" })).toBeVisible();
@@ -182,11 +166,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockResolvedValue([]),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByText("Buyurtma yo‘q")).toBeVisible();
@@ -201,11 +181,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         ]),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByText("Buyurtma yo‘q")).toBeVisible();
@@ -217,11 +193,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockRejectedValue(new Error("Ulanmadi.")),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     expect(await screen.findByText("Ulanmadi.")).toBeVisible();
@@ -234,11 +206,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockRejectedValue(new Error("Muammoli zakazni avval kassada hal qiling.")),
     });
     render(
-      <BusinessKitchen
-        api={api}
-        permissions={null}
-        onBackHandlerChange={vi.fn()}
-      />,
+      <BusinessKitchen api={api} permissions={null} onBackHandlerChange={vi.fn()} />,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }));

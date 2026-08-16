@@ -182,13 +182,7 @@ export function BusinessSubscriptions({
   );
 }
 
-export function Payments({
-  api,
-  onBack,
-}: {
-  api: PaymentsApi;
-  onBack: () => void;
-}) {
+export function Payments({ api, onBack }: { api: PaymentsApi; onBack: () => void }) {
   const [rows, setRows] = useState<PaymentRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

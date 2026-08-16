@@ -95,9 +95,7 @@ describe("Specialist", () => {
   it("renders the exact v1656 sections and saves the typed profile", async () => {
     const specialistApi = api();
     const onReviews = vi.fn();
-    render(
-      <Specialist api={specialistApi} onBack={vi.fn()} onReviews={onReviews} />,
-    );
+    render(<Specialist api={specialistApi} onBack={vi.fn()} onReviews={onReviews} />);
 
     expect(
       await screen.findByRole("heading", { name: "Mutaxassisligim" }),
@@ -126,9 +124,7 @@ describe("Specialist", () => {
 
   it("uploads a credential through R2 and attaches its object key", async () => {
     const specialistApi = api();
-    const { container } = render(
-      <Specialist api={specialistApi} onBack={vi.fn()} />,
-    );
+    const { container } = render(<Specialist api={specialistApi} onBack={vi.fn()} />);
     await screen.findByText("Hujjat rasmi qo‘shish");
     const input = container.querySelector(
       'input[accept="image/jpeg,image/png,image/webp"][multiple]',

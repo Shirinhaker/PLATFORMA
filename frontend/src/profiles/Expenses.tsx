@@ -49,13 +49,7 @@ function timeLabel(value: string) {
   }).format(new Date(value));
 }
 
-export function Expenses({
-  api,
-  onBack,
-}: {
-  api: ExpensesApi;
-  onBack: () => void;
-}) {
+export function Expenses({ api, onBack }: { api: ExpensesApi; onBack: () => void }) {
   const [day, setDay] = useState("");
   const [data, setData] = useState<ExpenseDay>(EMPTY_DAY);
   const [categories, setCategories] = useState<ExpenseCategories>({

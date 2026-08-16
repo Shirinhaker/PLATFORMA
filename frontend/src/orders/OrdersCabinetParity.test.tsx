@@ -222,24 +222,14 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const api = apiFor([product, service]);
 
     const { rerender } = render(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="product" onBack={vi.fn()} />,
     );
     expect(await screen.findByText("Buyurtma: Turon savdo")).toBeInTheDocument();
     expect(screen.queryByText("Stomatolog")).not.toBeInTheDocument();
     expect(api.getMyOrders).toHaveBeenCalledOnce();
 
     rerender(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="service"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="service" onBack={vi.fn()} />,
     );
     expect(await screen.findByText("Stomatolog")).toBeInTheDocument();
   });
@@ -250,12 +240,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const current = order({ last_event: "msg" });
     const api = apiFor([current]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="product" onBack={vi.fn()} />,
     );
 
     expect(await screen.findByText("BUYURTMA №91")).toBeInTheDocument();
@@ -318,12 +303,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
 
     render(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     expect(await screen.findByText("Kvitansiyani yuboring")).toBeInTheDocument();
@@ -350,12 +330,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
       expires_in_seconds: 300,
     });
     render(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await screen.findByText("Chek yuborildi");
@@ -423,12 +398,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const ready = order({ view: "provider", order_type: "pickup", status: "tayyor" });
     const api = apiFor([ready]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await user.click(
@@ -449,12 +419,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([waiting]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await user.click(
@@ -470,12 +435,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const submitted = order({ view: "provider", payment_status: "submitted" });
     const api = apiFor([submitted]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     expect(
@@ -495,12 +455,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const accepted = order({ view: "provider", status: "accepted" });
     const api = apiFor([accepted]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
 
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
@@ -528,12 +483,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([fresh]);
     const first = render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
 
@@ -580,12 +530,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([fresh]);
     render(
-      <OrdersCabinet
-        api={api}
-        side="provider"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="provider" category="product" onBack={vi.fn()} />,
     );
 
     await user.click(await screen.findByRole("button", { name: "Qabul qilish" }));
@@ -605,12 +550,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([problematic]);
     const first = render(
-      <OrdersCabinet
-        api={api}
-        side="customer"
-        category="product"
-        onBack={vi.fn()}
-      />,
+      <OrdersCabinet api={api} side="customer" category="product" onBack={vi.fn()} />,
     );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     expect(screen.getByText("Boshqa to'lov muammosi")).toBeInTheDocument();

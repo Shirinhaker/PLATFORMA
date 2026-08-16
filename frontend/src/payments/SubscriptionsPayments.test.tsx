@@ -6,10 +6,7 @@ import type {
   PaymentCatalog,
   PaymentRequestRecord,
 } from "../api/types";
-import {
-  BusinessSubscriptions,
-  Payments,
-} from "./SubscriptionsPayments";
+import { BusinessSubscriptions, Payments } from "./SubscriptionsPayments";
 
 const CATALOG: PaymentCatalog = {
   prices: [

@@ -65,11 +65,7 @@ describe("v1656 pickloc parity", () => {
 
   it("keeps the pin tip at the container center while the map moves", async () => {
     render(
-      <BusinessLocationPickerView
-        prefix="be"
-        onCancel={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
+      <BusinessLocationPickerView prefix="be" onCancel={vi.fn()} onConfirm={vi.fn()} />,
     );
 
     await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
@@ -166,11 +162,7 @@ describe("v1656 pickloc parity", () => {
 
   it("invalidates after screen animation and viewport resize without shifting center", async () => {
     render(
-      <BusinessLocationPickerView
-        prefix="ue"
-        onCancel={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
+      <BusinessLocationPickerView prefix="ue" onCancel={vi.fn()} onConfirm={vi.fn()} />,
     );
     await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
     leaflet.state.center = { lat: 40.5, lng: 66.75 };
@@ -215,11 +207,7 @@ describe("v1656 pickloc parity", () => {
 
   it("keeps the exact v1656 copy and button classes", () => {
     render(
-      <BusinessLocationPickerView
-        prefix="bp"
-        onCancel={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
+      <BusinessLocationPickerView prefix="bp" onCancel={vi.fn()} onConfirm={vi.fn()} />,
     );
 
     expect(

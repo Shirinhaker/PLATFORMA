@@ -11,30 +11,21 @@ import type {
   BusinessOnlineResource,
 } from "../api/business-online-types";
 import type { BusinessProfile, NotificationRead, PaymentCatalog } from "../api/types";
-import {
-  OwnerListings,
-  type OwnerListingsApi,
-} from "../listings/OwnerListings";
+import { OwnerListings, type OwnerListingsApi } from "../listings/OwnerListings";
 import { BusinessDiningView } from "./BusinessDiningView";
 import {
   BusinessAdvertisements,
   supportsAdvertisementApi,
 } from "../advertisements/BusinessAdvertisements";
 import { BusinessDining, supportsDiningApi } from "../dining/BusinessDining";
-import {
-  BusinessKitchen,
-  supportsDiningKitchenApi,
-} from "../dining/BusinessKitchen";
+import { BusinessKitchen, supportsDiningKitchenApi } from "../dining/BusinessKitchen";
 import { OrdersCabinet, type OrdersApi } from "../orders/OrdersCabinet";
 import { BusinessEducationEnrollmentsView } from "./BusinessEducationEnrollmentsView";
 import {
   BusinessMedicalProvidersView,
   BusinessMedicalQueueView,
 } from "./BusinessMedicalView";
-import {
-  BusinessQueue,
-  supportsBusinessQueueApi,
-} from "../queues/BusinessQueue";
+import { BusinessQueue, supportsBusinessQueueApi } from "../queues/BusinessQueue";
 import { CrudEditorView, ItemsEditorView } from "./BusinessOnlineEditingViews";
 import {
   isServiceOrder,
@@ -52,10 +43,7 @@ import {
 } from "./BusinessOnlineViews";
 import { OwnerStories, type OwnerStoriesApi } from "../stories/OwnerStories";
 import { ReceivedReviews, type ReceivedReviewsApi } from "../reviews/Reviews";
-import {
-  Notifications,
-  type NotificationsApi,
-} from "../notifications/Notifications";
+import { Notifications, type NotificationsApi } from "../notifications/Notifications";
 import "./BusinessOnlineScreen.css";
 import "./BusinessExistingOnline.css";
 

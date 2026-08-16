@@ -16,10 +16,7 @@ import type {
   EducationTeacherWrite,
 } from "../api/types";
 import "./EducationManagement.css";
-import {
-  EducationGroups,
-  EducationStudents,
-} from "./EducationDirectory";
+import { EducationGroups, EducationStudents } from "./EducationDirectory";
 
 export type EducationManagementView =
   | "education-groups"
@@ -1554,8 +1551,7 @@ export function EducationManagement({
   onBack: () => void;
   canVoidPayments?: boolean;
 }) {
-  if (view === "education-groups")
-    return <EducationGroups api={api} onBack={onBack} />;
+  if (view === "education-groups") return <EducationGroups api={api} onBack={onBack} />;
   if (view === "education-students")
     return <EducationStudents api={api} onBack={onBack} />;
   if (view === "education-schedule") return <ScheduleView api={api} onBack={onBack} />;

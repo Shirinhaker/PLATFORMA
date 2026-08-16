@@ -15,11 +15,7 @@ describe("BusinessOpening", () => {
     });
     const onSwitch = vi.fn();
     render(
-      <BusinessOpening
-        api={{ openBusiness }}
-        onBack={vi.fn()}
-        onSwitch={onSwitch}
-      />,
+      <BusinessOpening api={{ openBusiness }} onBack={vi.fn()} onSwitch={onSwitch} />,
     );
 
     await user.click(screen.getByRole("button", { name: "Biznes ochish" }));

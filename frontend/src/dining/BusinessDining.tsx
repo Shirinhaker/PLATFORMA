@@ -156,12 +156,7 @@ function itemInputs(payload: BusinessOnlineRecord | undefined) {
   });
 }
 
-export function BusinessDining({
-  api,
-  menuItems,
-  groups,
-  onBackHandlerChange,
-}: Props) {
+export function BusinessDining({ api, menuItems, groups, onBackHandlerChange }: Props) {
   const [places, setPlaces] = useState<DiningPlace[]>([]);
   const [orders, setOrders] = useState<DiningOrder[]>([]);
   const [busy, setBusy] = useState(false);
