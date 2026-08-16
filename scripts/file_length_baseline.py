@@ -47,7 +47,6 @@ BASELINE: dict[str, int] = {
     "frontend/src/profiles/CashRegister.tsx": 665,
     "frontend/src/profiles/StaffManagement.tsx": 851,
     "frontend/src/profiles/Statistics.tsx": 501,
-    "frontend/src/profiles/UserProfile.tsx": 864,
     "frontend/src/profiles/business-profile-config.ts": 1036,
     "frontend/src/specialists/Specialist.tsx": 687,
     "frontend/src/taxi/DriverCabinet.tsx": 718,
