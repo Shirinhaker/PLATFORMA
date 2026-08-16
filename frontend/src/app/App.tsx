@@ -2,40 +2,24 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
 import type { PublicFeatures, SessionIdentity } from "../api/types";
 import type { AppSession } from "../auth/types";
-import { CatalogScreen } from "../legacy/public/CatalogScreen";
-import { CategoryScreen } from "../legacy/public/CategoryScreen";
-import { findCatalogDirection } from "../legacy/public/catalog-data";
-import { HomeScreen } from "../legacy/public/HomeScreen";
-import { LocationScreen } from "../legacy/public/LocationScreen";
-import { PublicProfile } from "../legacy/public/PublicProfile";
-import {
-  CourseEnrollment,
-  type CourseEnrollmentApi,
-  type CourseEnrollmentTarget,
-} from "../education/CourseEnrollment";
-import { ListingPage } from "../listings/ListingPage";
-import { PublicListings } from "../listings/PublicListings";
-import { Cart } from "../orders/Cart";
-import { addCartItem, cartLineCount, type CartState } from "../orders/order-store";
+import type { CourseEnrollmentTarget } from "../education/CourseEnrollment";
+import type { CartState } from "../orders/order-store";
 import { readHomeLocation, type HomeLocation } from "../legacy/public/location-storage";
 import {
   initialPublicNavigationState,
   publicNavigationReducer,
 } from "../legacy/public/public-navigation";
-import type { PublicView } from "../legacy/public/public-contract";
 import "./App.css";
-import { AppShell } from "./AppShell";
-import { SessionStatus } from "./SessionStatus";
 import {
-  QueueBooking,
   supportsQueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
-import { Messages, type MessagePeer } from "../messages/Messages";
-import { TaxiCall } from "../taxi/TaxiCall";
-import { DriverCabinet } from "../taxi/DriverCabinet";
+import type { MessagePeer } from "../messages/Messages";
 import { AccountContent } from "./AccountContent";
-import { type AppApi, supportsMessages, supportsPublicReviews } from "./app-api";
+import { AppFrame } from "./AppFrame";
+import type { AppApi } from "./app-api";
+import { appTitle } from "./app-title";
+import { type OpenedListing, type OpenedProfile, PublicContent } from "./PublicContent";
 
 export function App({ api }: { api: AppApi }) {
   const initialLocation = useMemo(() => readHomeLocation(), []);
@@ -46,16 +30,8 @@ export function App({ api }: { api: AppApi }) {
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
-  const [openedProfile, setOpenedProfile] = useState<{
-    kind: "user" | "business";
-    publicId: string;
-    title: string;
-    focusItemPublicId?: string;
-  } | null>(null);
-  const [openedListing, setOpenedListing] = useState<{
-    publicId: string;
-    title: string;
-  } | null>(null);
+  const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
+  const [openedListing, setOpenedListing] = useState<OpenedListing | null>(null);
   const [openedChat, setOpenedChat] = useState<MessagePeer | null>(null);
   const [carts, setCarts] = useState<CartState>({});
   const [cartFilter, setCartFilter] = useState<string | null>(null);
@@ -292,22 +268,7 @@ export function App({ api }: { api: AppApi }) {
 
   const authenticated = session.status === "user" || session.status === "business";
   const accountView = navigation.view === "auth" || navigation.view === "cabinet";
-  const category = navigation.categoryId
-    ? findCatalogDirection(navigation.categoryId)
-    : null;
-  const titles: Record<PublicView, string | undefined> = {
-    auth: "Kirish",
-    cabinet: "Mening kabinetim",
-    catalog: "Katalog",
-    category: category?.name ?? "Yo‘nalish",
-    home: undefined,
-    listings: "E’lonlar",
-    location: "Manzil",
-    cart: "Savat",
-    "taxi-call": "Taxi chaqirish",
-    taxidrv: "Taxi — haydovchi",
-  };
-  const title = titles[navigation.view];
+  const title = appTitle(navigation);
 
   function openHome() {
     setOpenedProfile(null);
@@ -452,328 +413,87 @@ export function App({ api }: { api: AppApi }) {
     );
   }
 
-  function renderPublicContent() {
-    if (navigation.view === "home" && openedChat && supportsMessages(api)) {
-      return (
-        <Messages
-          api={api}
-          initialPeer={openedChat}
-          onBack={() => setOpenedChat(null)}
-          onOpenProfile={(kind, publicId) => {
-            setOpenedChat(null);
-            setOpenedListing(null);
-            setOpenedProfile({ kind, publicId, title: "Profil" });
-          }}
-        />
-      );
-    }
-    if (navigation.view === "home" && openedListing && getPublicListing) {
-      return (
-        <ListingPage
-          authenticated={authenticated}
-          getPublicListing={getPublicListing}
-          publicId={openedListing.publicId}
-          toggleListingSave={listingApi?.toggleListingSave}
-          onNeedLogin={() => openAuth()}
-          onOpenOwner={(kind, publicId) => {
-            setOpenedListing(null);
-            setOpenedProfile({ kind, publicId, title: "Profil" });
-          }}
-          onTitleChange={updateOpenedListingTitle}
-        />
-      );
-    }
-    if (navigation.view === "home" && openedProfile && getPublicProfile) {
-      return (
-        <PublicProfile
-          authenticated={authenticated}
-          cart={carts[openedProfile.publicId]}
-          focusItemPublicId={openedProfile.focusItemPublicId}
-          kind={openedProfile.kind}
-          publicId={openedProfile.publicId}
-          getPublicProfile={getPublicProfile}
-          onAddCartItem={(item, provider) => {
-            setCarts((current) => addCartItem(current, provider, item));
-          }}
-          onBookQueue={openQueueBooking}
-          onEnrollCourse={openCourseEnrollment}
-          onNeedLogin={() => openAuth()}
-          onMessage={
-            publicFeatures.chat && supportsMessages(api)
-              ? (kind, publicId, name) => {
-                  setOpenedChat({ kind, publicId, name });
-                }
-              : undefined
-          }
-          onNeedCourseLogin={() => openAuth("Kursga yozilish")}
-          onNeedQueueLogin={() => openAuth("Navbat olish")}
-          onOpenCart={() => {
-            setCartFilter(openedProfile.publicId);
-            dispatch({ type: "OPEN_CART" });
-          }}
-          onOpenListing={(publicId) => {
-            setOpenedProfile(null);
-            setOpenedListing({ publicId, title: "E’lon" });
-          }}
-          onQueueMessage={showQueueMessage}
-          onTitleChange={updateOpenedProfileTitle}
-          reviewApi={supportsPublicReviews(api) ? api : undefined}
-          storyApi={publicFeatures.stories ? storyApi : undefined}
-        />
-      );
-    }
-    switch (navigation.view) {
-      case "catalog":
-        return (
-          <CatalogScreen
-            authenticated={authenticated}
-            initialQuery={navigation.query}
-            location={homeLocation}
-            searchPublic={searchPublic}
-            getCatalogItems={getCatalogItems}
-            onBookQueue={openQueueBooking}
-            onNeedQueueLogin={() => openAuth("Navbat olish")}
-            onOpenOwner={(publicId) => {
-              setOpenedProfile({ kind: "business", publicId, title: "Profil" });
-              dispatch({ type: "GO_HOME" });
-            }}
-            onOpenCategory={(categoryId) =>
-              dispatch({
-                type: "OPEN_CATEGORY",
-                categoryId,
-              })
-            }
-            onQueueMessage={showQueueMessage}
-          />
-        );
-      case "category":
-        return (
-          <CategoryScreen
-            authenticated={authenticated}
-            categoryId={navigation.categoryId ?? ""}
-            searchPublic={searchPublic}
-            getCatalogItems={getCatalogItems}
-            onBookQueue={openQueueBooking}
-            onNeedQueueLogin={() => openAuth("Navbat olish")}
-            onOpenOwner={(publicId) => {
-              setOpenedProfile({ kind: "business", publicId, title: "Profil" });
-              dispatch({ type: "GO_HOME" });
-            }}
-            onQueueMessage={showQueueMessage}
-          />
-        );
-      case "location":
-        return (
-          <LocationScreen
-            initialLocation={homeLocation}
-            onSaved={(location) => {
-              setHomeLocation(location);
-              dispatch({ type: "GO_HOME" });
-            }}
-          />
-        );
-      case "listings":
-        return listingApi ? (
-          <PublicListings
-            api={listingApi}
-            authenticated={authenticated}
-            onNeedLogin={() => openAuth()}
-            onOpenOwner={(kind, publicId) => {
-              setOpenedListing(null);
-              setOpenedProfile({ kind, publicId, title: "Profil" });
-              dispatch({ type: "GO_HOME" });
-            }}
-          />
-        ) : (
-          <main className="screen active" data-screen="listings" />
-        );
-      case "cart":
-        return (
-          <Cart
-            authenticated={authenticated}
-            carts={carts}
-            createOrder={createOrder}
-            customer={orderCustomer}
-            filterProviderPublicId={cartFilter}
-            homeLocation={homeLocation}
-            onCartsChange={setCarts}
-            onNeedLogin={() => openAuth()}
-          />
-        );
-      case "taxi-call":
-        return (
-          <TaxiCall
-            api={api}
-            authenticated={session.status === "user"}
-            center={{
-              latitude: homeLocation?.latitude ?? 41.3111,
-              longitude: homeLocation?.longitude ?? 69.2797,
-            }}
-            district={homeLocation?.district}
-            onBack={() => dispatch({ type: "GO_HOME" })}
-            onNeedLogin={(reason) => {
-              if (session.status === "business") {
-                showQueueMessage("Avval oddiy profilga o'ting.");
-              } else {
-                openAuth(reason);
-              }
-            }}
-          />
-        );
-      case "taxidrv":
-        return session.status === "user" ? (
-          <DriverCabinet api={api} />
-        ) : (
-          renderAccount()
-        );
-      case "auth":
-      case "cabinet":
-        return renderAccount();
-      case "home":
-        return (
-          <HomeScreen
-            authenticated={authenticated}
-            currentDistrict={homeLocation?.district}
-            getAdvertisements={getAdvertisements}
-            getDistrictOffers={getDistrictOffers}
-            getFollowedProfiles={getFollowedProfiles}
-            getHomeMap={getHomeMap}
-            location={homeLocation}
-            searchPublic={searchPublic}
-            onOpenCatalog={() => dispatch({ type: "OPEN_CATALOG", query: "" })}
-            onOpenLocation={() => dispatch({ type: "OPEN_LOCATION" })}
-            onOpenPublicResult={openPublicResult}
-            onResultsActiveChange={setHomeSearchResultsActive}
-            recordAdvertisementClick={recordAdvertisementClick}
-            recordAdvertisementViews={recordAdvertisementViews}
-            storyApi={publicFeatures.stories ? storyApi : undefined}
-            taxiEnabled={publicFeatures.taxi}
-            onTaxiCall={() => dispatch({ type: "OPEN_TAXI_CALL" })}
-          />
-        );
-    }
-  }
+  const publicContent = (
+    <PublicContent
+      api={api}
+      session={session}
+      navigation={navigation}
+      authenticated={authenticated}
+      publicFeatures={publicFeatures}
+      openedChat={openedChat}
+      openedListing={openedListing}
+      openedProfile={openedProfile}
+      carts={carts}
+      cartFilter={cartFilter}
+      orderCustomer={orderCustomer}
+      homeLocation={homeLocation}
+      getPublicListing={getPublicListing}
+      getPublicProfile={getPublicProfile}
+      getCatalogItems={getCatalogItems}
+      searchPublic={searchPublic}
+      getAdvertisements={getAdvertisements}
+      getDistrictOffers={getDistrictOffers}
+      getFollowedProfiles={getFollowedProfiles}
+      getHomeMap={getHomeMap}
+      recordAdvertisementClick={recordAdvertisementClick}
+      recordAdvertisementViews={recordAdvertisementViews}
+      listingApi={listingApi}
+      storyApi={storyApi}
+      createOrder={createOrder}
+      accountContent={renderAccount()}
+      dispatch={dispatch}
+      setOpenedChat={setOpenedChat}
+      setOpenedListing={setOpenedListing}
+      setOpenedProfile={setOpenedProfile}
+      setCarts={setCarts}
+      setCartFilter={setCartFilter}
+      setHomeLocation={setHomeLocation}
+      setHomeSearchResultsActive={setHomeSearchResultsActive}
+      openAuth={openAuth}
+      openQueueBooking={openQueueBooking}
+      openCourseEnrollment={openCourseEnrollment}
+      openPublicResult={openPublicResult}
+      showQueueMessage={showQueueMessage}
+      updateOpenedListingTitle={updateOpenedListingTitle}
+      updateOpenedProfileTitle={updateOpenedProfileTitle}
+    />
+  );
 
   return (
-    <AppShell
+    <AppFrame
+      api={api}
+      session={session}
+      navigation={navigation}
       authenticated={authenticated}
-      title={
-        (openedChat || openedProfile || openedListing) && navigation.view === "home"
-          ? openedChat
-            ? "Suhbat"
-            : (openedProfile?.title ?? openedListing?.title)
-          : title
-      }
-      isHome={
-        navigation.view === "home" && !openedChat && !openedProfile && !openedListing
-      }
-      searchResultsActive={navigation.view === "home" && homeSearchResultsActive}
+      title={title}
       publicFeatures={publicFeatures}
-      cartCount={cartLineCount(carts)}
+      openedChat={openedChat}
+      openedListing={openedListing}
+      openedProfile={openedProfile}
+      courseEnrollment={courseEnrollment}
+      queueBooking={queueBooking}
+      homeLocation={homeLocation}
+      homeSearchResultsActive={homeSearchResultsActive}
+      carts={carts}
       theme={theme}
+      failed={failed}
+      accountView={accountView}
+      orderCustomer={orderCustomer}
+      queueMessage={queueMessage}
+      content={publicContent}
+      dispatch={dispatch}
+      setOpenedChat={setOpenedChat}
+      setOpenedListing={setOpenedListing}
+      setOpenedProfile={setOpenedProfile}
+      setCartFilter={setCartFilter}
+      setCourseEnrollment={setCourseEnrollment}
+      setQueueBooking={setQueueBooking}
       onHome={openHome}
-      onLocation={() => {
-        setOpenedChat(null);
-        setOpenedProfile(null);
-        setOpenedListing(null);
-        dispatch({ type: "OPEN_LOCATION" });
-      }}
-      onAccount={() => {
-        setOpenedChat(null);
-        setOpenedProfile(null);
-        setOpenedListing(null);
-        setAuthReason("");
-        dispatch({
-          type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH",
-        });
-      }}
-      onBack={() => {
-        if (courseEnrollment) {
-          setCourseEnrollment(null);
-          return;
-        }
-        if (navigation.view === "cart") {
-          dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
-          return;
-        }
-        if (openedChat) {
-          setOpenedChat(null);
-          return;
-        }
-        if (openedListing) {
-          setOpenedListing(null);
-          return;
-        }
-        if (openedProfile) {
-          setOpenedProfile(null);
-          return;
-        }
-        dispatch({ type: homeLocation ? "BACK" : "OPEN_LOCATION" });
-      }}
-      onListings={() => {
-        setOpenedChat(null);
-        setOpenedProfile(null);
-        setOpenedListing(null);
-        dispatch({ type: "OPEN_LISTINGS" });
-      }}
-      onCart={() => {
-        setOpenedChat(null);
-        setOpenedProfile(null);
-        setOpenedListing(null);
-        setCartFilter(null);
-        dispatch({ type: "OPEN_CART" });
-      }}
-      onTaxi={() => {
-        setOpenedChat(null);
-        setOpenedProfile(null);
-        setOpenedListing(null);
-        if (session.status === "guest") {
-          openAuth("Taxi bo'limi");
-          return;
-        }
-        if (session.status !== "user") {
-          showQueueMessage("Avval oddiy profilga o'ting.");
-          return;
-        }
-        dispatch({ type: "OPEN_TAXI_DRIVER" });
-      }}
+      onClearAuthReason={() => setAuthReason("")}
+      onOpenAuth={openAuth}
+      onMessage={showQueueMessage}
+      onRetry={() => setAttempt((value) => value + 1)}
       onToggleTheme={toggleTheme}
-    >
-      <>
-        <div className="app-shell__content" tabIndex={-1}>
-          {failed && accountView ? (
-            <SessionStatus
-              state="error"
-              onRetry={() => setAttempt((value) => value + 1)}
-            />
-          ) : (
-            renderPublicContent()
-          )}
-        </div>
-        {queueBooking && supportsQueueBookingApi(api) ? (
-          <QueueBooking
-            api={api}
-            key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
-            target={queueBooking}
-            onClose={() => setQueueBooking(null)}
-            onMessage={showQueueMessage}
-          />
-        ) : null}
-        {courseEnrollment && typeof api.createCourseEnrollment === "function" ? (
-          <CourseEnrollment
-            api={api as CourseEnrollmentApi}
-            customerPhone={session.status === "user" ? orderCustomer.phone : ""}
-            target={courseEnrollment}
-            onClose={() => setCourseEnrollment(null)}
-            onMessage={showQueueMessage}
-          />
-        ) : null}
-        {queueMessage.text ? (
-          <div className="app-toast on" role="status">
-            {queueMessage.text}
-          </div>
-        ) : null}
-      </>
-    </AppShell>
+    />
   );
 }
