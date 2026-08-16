@@ -2,8 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import businessProfileSource from "./BusinessProfileV3.tsx?raw";
-import { BusinessProfileV3, type BusinessProfileApiV3 } from "./BusinessProfileV3";
+import businessProfileSource from "./BusinessProfile.tsx?raw";
+import { BusinessProfile, type BusinessProfileApi } from "./BusinessProfile";
 
 const identity = {
   account_id: 7,
@@ -76,7 +76,7 @@ function api() {
     applyBusinessOnlineAction: vi.fn(),
     switchCabinet: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),
-  } as unknown as BusinessProfileApiV3;
+  } as unknown as BusinessProfileApi;
 }
 
 function menuTexts(section: HTMLElement) {
@@ -94,7 +94,7 @@ describe("v1656 business cabinet dashboard parity", () => {
 
   it("shows the owner dashboard with the exact v1656 group hierarchy", async () => {
     const { container } = render(
-      <BusinessProfileV3
+      <BusinessProfile
         api={api()}
         identity={identity}
         onLogout={vi.fn()}
@@ -169,7 +169,7 @@ describe("v1656 business cabinet dashboard parity", () => {
   it("keeps v1656 administration and promotion routes reachable from their hubs", async () => {
     const user = userEvent.setup();
     render(
-      <BusinessProfileV3
+      <BusinessProfile
         api={api()}
         identity={identity}
         onLogout={vi.fn()}
@@ -229,7 +229,7 @@ describe("v1656 business cabinet dashboard parity", () => {
       setDiningKitchenStatus: vi.fn(),
     });
     render(
-      <BusinessProfileV3
+      <BusinessProfile
         api={client}
         identity={identity}
         onLogout={vi.fn()}
@@ -262,7 +262,7 @@ describe("v1656 business cabinet dashboard parity", () => {
     const client = api();
     const onSwitched = vi.fn();
     render(
-      <BusinessProfileV3
+      <BusinessProfile
         api={client}
         identity={identity}
         onLogout={vi.fn()}
