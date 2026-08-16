@@ -1,8 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Map as LeafletMap } from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-import type { ApiClient } from "../api/client";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   OrderMessageRead,
   OrderProblemReason,
@@ -11,276 +7,32 @@ import type {
   OrderStatus,
 } from "../api/types";
 import { DebtorPicker } from "../profiles/DebtorPicker";
+import { OrderConfirmDialog } from "./OrderConfirmDialog";
+import { OrderLocationMap } from "./OrderLocationMap";
+import {
+  PROBLEM_REASONS,
+  createdText,
+  errorText,
+  isActive,
+  isMessageEvent,
+  isService,
+  messagePreview,
+  paymentText,
+  problemReasonText,
+  qtyText,
+  statusText,
+  typeText,
+  workHoursText,
+} from "./order-cabinet-helpers";
+import type {
+  OrderConfirmation,
+  OrdersApi,
+  OrdersCabinetProps,
+  OrdersTab,
+} from "./order-cabinet-types";
 import "./Orders.css";
 
-export type OrdersApi = Pick<
-  ApiClient,
-  | "getMyOrders"
-  | "getOrderInbox"
-  | "markOrderSeen"
-  | "changeOrderStatus"
-  | "submitOrderPayment"
-  | "decideOrderPayment"
-  | "openOrderProblem"
-  | "chooseOrderProblemSolution"
-  | "handoffOrder"
-  | "receiveOrder"
-  | "getOrderChat"
-  | "sendOrderChatMessage"
-  | "sendOrderChatImage"
-  | "editOrderChatMessage"
-  | "deleteOrderChatMessage"
-  | "createUploadGrant"
-  | "uploadGrantedFile"
-  | "getDebtors"
-  | "createDebtor"
->;
-
-type Props = {
-  api: OrdersApi;
-  side: "customer" | "provider";
-  category: "product" | "service";
-  onBack(): void;
-  onUnreadChange?(count: number): void;
-  initialOrderId?: number | null;
-  beforeList?: ReactNode;
-};
-
-type Tab = "active" | "problem" | "done";
-type Confirmation =
-  "handoff" | "received" | "delete-message" | "payment-confirm" | null;
-
-const ACTIVE = new Set([
-  "new",
-  "accepted",
-  "preparing",
-  "tayyor",
-  "courier_assigned",
-  "courier_arrived_store",
-  "handoff_waiting_seller",
-  "in_delivery",
-  "courier_arrived_customer",
-  "delivered_waiting_customer",
-  "pickup_waiting_customer",
-]);
-const PROBLEM_REASONS: ReadonlyArray<readonly [OrderProblemReason, string]> = [
-  ["not_received", "Pul hisobga tushmadi"],
-  ["amount_short", "To'langan summa kam"],
-  ["receipt_mismatch", "Chek ma'lumoti mos kelmadi"],
-  ["receipt_unreadable", "Chek rasmi o'qilmaydi"],
-  ["wrong_receipt", "Noto'g'ri chek yuborilgan"],
-  ["other", "Boshqa muammo"],
-];
-
-function problemReasonText(reason: string) {
-  if (reason === "other") return "Boshqa to'lov muammosi";
-  return PROBLEM_REASONS.find(([key]) => key === reason)?.[1] ?? reason;
-}
-
-function workHoursText(value: Record<string, unknown>) {
-  const raw = String(value.raw ?? value.text ?? "").trim();
-  if (raw) return raw;
-  const from = String(value.from ?? value.start ?? value.open ?? "").trim();
-  const to = String(value.to ?? value.end ?? value.close ?? "").trim();
-  return from && to ? `${from}–${to}` : "";
-}
-
-function isMessageEvent(value: string) {
-  return value === "msg" || value.includes("message");
-}
-
-function errorText(reason: unknown) {
-  return reason instanceof Error ? reason.message : "Amal bajarilmadi.";
-}
-
-function isService(order: OrderRead) {
-  return (
-    order.order_category === "service" ||
-    ["booking", "service", "queue", "medical"].includes(order.order_type)
-  );
-}
-
-function isActive(order: OrderRead) {
-  return !order.problem_open && ACTIVE.has(order.status);
-}
-
-function statusText(status: string) {
-  return (
-    (
-      {
-        new: "Yangi",
-        accepted: "To'lov kutilmoqda",
-        preparing: "Tayyorlanmoqda",
-        rejected: "Rad etildi",
-        done: "Yakunlandi",
-        cancelled: "Bekor qilindi",
-        tayyor: "Tayyor",
-        courier_assigned: "Dostavkachi biriktirildi",
-        courier_arrived_store: "Dostavkachi sotuvchiga yetib keldi",
-        handoff_waiting_seller: "Topshirish tasdig'i kutilmoqda",
-        in_delivery: "Yo'lda",
-        courier_arrived_customer: "Dostavkachi yetib keldi",
-        delivered_waiting_customer: "Qabul tasdig'i kutilmoqda",
-        pickup_waiting_customer: "Qabul tasdig'i kutilmoqda",
-      } as Record<string, string>
-    )[status] ??
-    status ??
-    "—"
-  );
-}
-
-function typeText(type: string) {
-  return (
-    (
-      {
-        delivery: "Yetkazib berish",
-        pickup: "Olib ketish",
-        booking: "Navbat/qabul",
-      } as Record<string, string>
-    )[type] ??
-    type ??
-    "—"
-  );
-}
-
-function createdText(value: string) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return "—";
-  return `${date.toLocaleDateString("uz-UZ", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })} · ${date.toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function qtyText(qty: number, unit: string) {
-  return `${Number.isInteger(qty) ? qty : qty.toLocaleString("uz-UZ")} ${unit || "dona"}`;
-}
-
-function paymentText(status: string) {
-  return (
-    (
-      {
-        confirmed: "To'lov tasdiqlandi",
-        rejected: "To'lov rad etildi",
-        submitted: "To'lov tekshirilmoqda",
-        recheck: "To'lov aniqlashtirilmoqda",
-        disputed: "To'lov aniqlashtirilmoqda",
-        pending: "To'lov kutilmoqda",
-      } as Record<string, string>
-    )[status] ?? "To'lov kutilmoqda"
-  );
-}
-
-function messagePreview(
-  message: Pick<OrderMessageRead, "is_deleted" | "media_type" | "text">,
-) {
-  if (message.is_deleted) return "Xabar o‘chirildi";
-  const text = message.text.trim();
-  const value =
-    message.media_type === "photo"
-      ? `📷 Rasm${text ? `: ${text}` : ""}`
-      : text || "Xabar";
-  return value.length > 70 ? `${value.slice(0, 70)}…` : value;
-}
-
-function OrderLocationMap({
-  latitude,
-  longitude,
-}: {
-  latitude: number;
-  longitude: number;
-}) {
-  const node = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!node.current) return undefined;
-    let disposed = false;
-    let map: LeafletMap | null = null;
-    void import("leaflet")
-      .then(({ default: leaflet }) => {
-        if (disposed || !node.current) return;
-        map = leaflet
-          .map(node.current, { attributionControl: false })
-          .setView([latitude, longitude], 16);
-        leaflet
-          .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            maxZoom: 19,
-          })
-          .addTo(map);
-        leaflet.marker([latitude, longitude]).addTo(map);
-        window.setTimeout(() => map?.invalidateSize(), 240);
-      })
-      .catch(() => undefined);
-    return () => {
-      disposed = true;
-      map?.remove();
-    };
-  }, [latitude, longitude]);
-
-  return <div className="order-detail-map" ref={node} />;
-}
-
-function ConfirmDialog({
-  kind,
-  onCancel,
-  onConfirm,
-}: {
-  kind: Exclude<Confirmation, null>;
-  onCancel(): void;
-  onConfirm(): void;
-}) {
-  const received = kind === "received";
-  const deleting = kind === "delete-message";
-  const payment = kind === "payment-confirm";
-  return (
-    <div className="order-confirm-backdrop">
-      <section
-        aria-label={
-          payment
-            ? "To'lovni tasdiqlash"
-            : received
-              ? "Buyurtmani qabul qilish"
-              : deleting
-                ? "Xabarni o‘chirish"
-                : "Buyurtmani topshirish"
-        }
-        aria-modal="true"
-        className="order-confirm"
-        role="dialog"
-      >
-        <b>
-          {payment
-            ? "To'lovni tasdiqlashni tasdiqlaysizmi?"
-            : deleting
-              ? "Bu xabar o‘chirilsinmi?"
-              : received
-                ? "Buyurtmani to'liq qabul qildingizmi?"
-                : "Buyurtma qarshi tomonga topshirildimi?"}
-        </b>
-        <div className="order-confirm-actions">
-          <button type="button" className="mini-btn" onClick={onCancel}>
-            Bekor qilish
-          </button>
-          <button
-            type="button"
-            className={deleting ? "mini-btn danger" : "mini-btn ok"}
-            onClick={onConfirm}
-          >
-            {payment
-              ? "Tasdiqlash"
-              : deleting
-                ? "O‘chirish"
-                : received
-                  ? "Ha, qabul qildim"
-                  : "Ha, topshirdim"}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
+export type { OrdersApi } from "./order-cabinet-types";
 
 export function OrdersCabinet({
   api,
@@ -290,9 +42,9 @@ export function OrdersCabinet({
   onUnreadChange,
   initialOrderId = null,
   beforeList,
-}: Props) {
+}: OrdersCabinetProps) {
   const [orders, setOrders] = useState<OrderRead[]>([]);
-  const [tab, setTab] = useState<Tab>("active");
+  const [tab, setTab] = useState<OrdersTab>("active");
   const [selected, setSelected] = useState<OrderRead | null>(null);
   const [messages, setMessages] = useState<OrderMessageRead[]>([]);
   const [text, setText] = useState("");
@@ -301,7 +53,7 @@ export function OrdersCabinet({
   const [messageMenu, setMessageMenu] = useState<OrderMessageRead | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<OrderMessageRead | null>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation>(null);
+  const [confirmation, setConfirmation] = useState<OrderConfirmation>(null);
   const [problemOpen, setProblemOpen] = useState(false);
   const [problemReason, setProblemReason] =
     useState<OrderProblemReason>("not_received");
@@ -1320,7 +1072,7 @@ export function OrdersCabinet({
             </div>
           ) : null}
           {confirmation ? (
-            <ConfirmDialog
+            <OrderConfirmDialog
               kind={confirmation}
               onCancel={() => {
                 setConfirmation(null);
