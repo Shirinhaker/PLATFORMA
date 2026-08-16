@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import func, select
 
 from app.accounts.model import Account, AccountType
-from app.auth import service as auth_service_module
 from app.auth.model import AuthChallenge, AuthSession, PendingRegistration
 from app.auth.schemas import Authenticated, RegistrationStart
 from app.auth.security import (
@@ -18,6 +17,12 @@ from app.auth.security import (
     verify_password,
 )
 from app.auth.service import AuthService
+
+# Diqqat: nom **ishlatilgan** modulda almashtiriladi. `service.py` endi
+# qayta-eksport qobig'i, undagi almashtirish mixin'larga yetib bormaydi.
+from app.auth.service_parts import login as auth_login_module
+from app.auth.service_parts import registration as auth_registration_module
+from app.auth.service_parts import sessions as auth_sessions_module
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.outbox.model import OutboxEvent
@@ -277,12 +282,12 @@ async def test_first_legacy_login_rehashes_and_second_login_uses_argon2(
         )
 
     monkeypatch.setattr(
-        auth_service_module,
+        auth_login_module,
         "find_account_by_login",
         find_account,
     )
     monkeypatch.setattr(
-        auth_service_module,
+        auth_login_module,
         "create_challenge",
         create_login_challenge,
     )
@@ -418,7 +423,7 @@ async def test_registration_is_atomic(
     async def broken_enqueue(*args, **kwargs):
         raise RuntimeError("outbox unavailable")
 
-    monkeypatch.setattr(auth_service_module, "enqueue_event", broken_enqueue)
+    monkeypatch.setattr(auth_registration_module, "enqueue_event", broken_enqueue)
     code = derive_otp(started.request_id, 1, "test-otp-secret")
 
     with pytest.raises(RuntimeError, match="outbox unavailable"):
@@ -536,7 +541,7 @@ async def test_concurrent_session_resolution_is_coalesced_and_cached(
         return auth_session, account
 
     monkeypatch.setattr(
-        auth_service_module,
+        auth_sessions_module,
         "resolve_stored_session",
         resolve_from_database,
     )
@@ -609,7 +614,7 @@ async def test_cached_session_rechecks_database_after_touch_window(
         return auth_session, account
 
     monkeypatch.setattr(
-        auth_service_module,
+        auth_sessions_module,
         "resolve_stored_session",
         resolve_from_database,
     )
@@ -685,12 +690,12 @@ async def test_revoke_session_invalidates_cached_identity(
         return auth_session
 
     monkeypatch.setattr(
-        auth_service_module,
+        auth_sessions_module,
         "resolve_stored_session",
         resolve_from_database,
     )
     monkeypatch.setattr(
-        auth_service_module,
+        auth_sessions_module,
         "lock_session",
         lock_stored_session,
     )
