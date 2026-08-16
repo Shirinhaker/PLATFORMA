@@ -151,8 +151,11 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
                 )
             ]
 
+        # Diqqat: nom **ishlatilgan** joyda almashtiriladi, e'lon qilingan
+        # joyda emas. `home_map` uni to'g'ridan-to'g'ri import qiladi,
+        # shuning uchun qayta-eksport qobig'ini almashtirish yetmaydi.
         monkeypatch.setattr(
-            "app.public_discovery.repository.load_followed_profiles",
+            "app.public_discovery.queries.home_map.load_followed_profiles",
             followed,
         )
 
@@ -160,7 +163,7 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
             return set()
 
         monkeypatch.setattr(
-            "app.public_discovery.repository._active_pro_business_ids",
+            "app.public_discovery.queries.home_map._active_pro_business_ids",
             no_native_pro,
         )
         payload = await load_public_home_map(

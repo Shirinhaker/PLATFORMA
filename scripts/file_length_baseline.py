@@ -25,7 +25,6 @@ BASELINE: dict[str, int] = {
     "backend/app/notifications/repository.py": 655,
     "backend/app/notifications/service.py": 544,
     "backend/app/payments/service.py": 688,
-    "backend/app/public_discovery/repository.py": 1446,
     "backend/app/queues/repository.py": 619,
     "backend/app/queues/service.py": 1173,
     "backend/app/staff/service.py": 646,

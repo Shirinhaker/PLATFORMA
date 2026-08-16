@@ -16,8 +16,10 @@ from app.listings.repository import ListingRepository
 from app.listings.service import ListingService
 from app.orders.repository import OrderRepository
 from app.profiles.model import BusinessProfile, UserProfile
-from app.public_discovery.repository import (
+from app.public_discovery.queries.profile import (
     _resolve_public_profile_account_id,
+)
+from app.public_discovery.repository import (
     build_listing_public_id,
     build_public_id,
 )
