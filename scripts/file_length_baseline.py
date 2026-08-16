@@ -34,7 +34,6 @@ BASELINE: dict[str, int] = {
     "backend/app/staff/service.py": 646,
     "backend/app/stories/service.py": 521,
     "backend/app/taxi/service.py": 793,
-    "frontend/src/api/client.ts": 1863,
     "frontend/src/app/App.tsx": 927,
     "frontend/src/dining/BusinessDiningCash.tsx": 761,
     "frontend/src/documents/Documents.tsx": 1112,
