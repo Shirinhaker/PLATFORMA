@@ -27,7 +27,7 @@ from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
 from app.business_online.router import router as business_online_router
-from app.business_online.service_relational import BusinessOnlineService
+from app.business_online.service import BusinessOnlineService
 from app.business_opening.router import router as business_opening_router
 from app.business_opening.service import BusinessOpeningService
 from app.cache.client import RedisClient

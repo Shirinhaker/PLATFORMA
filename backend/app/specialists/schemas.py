@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core.schemas import CreatedRead, MutationRead  # noqa: F401
+
 
 class SpecialistProfileWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -90,12 +92,3 @@ class SpecialistRead(BaseModel):
     credentials: list[SpecialistCredentialRead]
     offers: list[SpecialistOfferRead]
     portfolio: list[SpecialistPortfolioRead]
-
-
-class CreatedRead(BaseModel):
-    ok: bool = True
-    id: int
-
-
-class MutationRead(BaseModel):
-    ok: bool = True
