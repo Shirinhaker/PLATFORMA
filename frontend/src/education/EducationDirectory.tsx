@@ -144,7 +144,7 @@ function Modal({
   );
 }
 
-export function EducationGroupsV1656({
+export function EducationGroups({
   api,
   onBack,
 }: {
@@ -512,7 +512,7 @@ export function EducationGroupsV1656({
   );
 }
 
-export function EducationStudentsV1656({
+export function EducationStudents({
   api,
   onBack,
 }: {

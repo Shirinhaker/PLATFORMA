@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ReviewListRead } from "../api/types";
 import {
-  PublicReviewsV1656,
-  ReceivedReviewsV1656,
+  PublicReviews,
+  ReceivedReviews,
   type ReviewsApi,
 } from "./Reviews";
 
@@ -41,7 +41,7 @@ function api(overrides: Partial<ReviewsApi> = {}): ReviewsApi {
 describe("v1656 baholar va fikrlar", () => {
   it("shows public average, customer review and owner reply", async () => {
     render(
-      <PublicReviewsV1656
+      <PublicReviews
         api={api()}
         targetKind="business"
         targetPublicId="b_0123456789abcdef"
@@ -61,7 +61,7 @@ describe("v1656 baholar va fikrlar", () => {
     const client = api();
     const user = userEvent.setup();
     render(
-      <PublicReviewsV1656
+      <PublicReviews
         api={client}
         targetKind="specialist"
         targetPublicId="u_0123456789abcdef"
@@ -86,7 +86,7 @@ describe("v1656 baholar va fikrlar", () => {
   it("lets the owner reply without exposing customer review deletion", async () => {
     const client = api();
     const user = userEvent.setup();
-    render(<ReceivedReviewsV1656 api={client} onBack={vi.fn()} />);
+    render(<ReceivedReviews api={client} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Juda yaxshi xizmat")).toBeInTheDocument();
     expect(

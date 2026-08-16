@@ -9,15 +9,15 @@ import { CategoryScreen } from "../legacy/public/CategoryScreen";
 import { findCatalogDirection } from "../legacy/public/catalog-data";
 import { HomeScreen } from "../legacy/public/HomeScreen";
 import { LocationScreen } from "../legacy/public/LocationScreen";
-import { PublicProfileV1656 } from "../legacy/public/PublicProfile";
+import { PublicProfile } from "../legacy/public/PublicProfile";
 import {
-  CourseEnrollmentV1656,
+  CourseEnrollment,
   type CourseEnrollmentApi,
   type CourseEnrollmentTarget,
 } from "../education/CourseEnrollment";
-import { ListingPageV1656 } from "../listings/ListingPage";
-import { PublicListingsV1656 } from "../listings/PublicListings";
-import { CartV1656 } from "../orders/Cart";
+import { ListingPage } from "../listings/ListingPage";
+import { PublicListings } from "../listings/PublicListings";
+import { Cart } from "../orders/Cart";
 import { addCartItem, cartLineCount, type CartState } from "../orders/order-store";
 import { readHomeLocation, type HomeLocation } from "../legacy/public/location-storage";
 import {
@@ -31,19 +31,19 @@ import "./App.css";
 import { AppShell } from "./AppShell";
 import { SessionStatus } from "./SessionStatus";
 import {
-  QueueBookingV1656,
+  QueueBooking,
   supportsQueueBookingApi,
   type QueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
 import {
-  MessagesV1656,
+  Messages,
   type MessagePeer,
   type MessagesApi,
 } from "../messages/Messages";
 import type { PublicReviewsApi } from "../reviews/Reviews";
-import { TaxiCallV1656 } from "../taxi/TaxiCall";
-import { DriverCabinetV1656 } from "../taxi/DriverCabinet";
+import { TaxiCall } from "../taxi/TaxiCall";
+import { DriverCabinet } from "../taxi/DriverCabinet";
 
 type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;
@@ -607,7 +607,7 @@ export function App({ api }: { api: AppApi }) {
   function renderPublicContent() {
     if (navigation.view === "home" && openedChat && supportsMessages(api)) {
       return (
-        <MessagesV1656
+        <Messages
           api={api}
           initialPeer={openedChat}
           onBack={() => setOpenedChat(null)}
@@ -621,7 +621,7 @@ export function App({ api }: { api: AppApi }) {
     }
     if (navigation.view === "home" && openedListing && getPublicListing) {
       return (
-        <ListingPageV1656
+        <ListingPage
           authenticated={authenticated}
           getPublicListing={getPublicListing}
           publicId={openedListing.publicId}
@@ -637,7 +637,7 @@ export function App({ api }: { api: AppApi }) {
     }
     if (navigation.view === "home" && openedProfile && getPublicProfile) {
       return (
-        <PublicProfileV1656
+        <PublicProfile
           authenticated={authenticated}
           cart={carts[openedProfile.publicId]}
           focusItemPublicId={openedProfile.focusItemPublicId}
@@ -726,7 +726,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "listings":
         return listingApi ? (
-          <PublicListingsV1656
+          <PublicListings
             api={listingApi}
             authenticated={authenticated}
             onNeedLogin={() => openAuth()}
@@ -741,7 +741,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "cart":
         return (
-          <CartV1656
+          <Cart
             authenticated={authenticated}
             carts={carts}
             createOrder={createOrder}
@@ -754,7 +754,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "taxi-call":
         return (
-          <TaxiCallV1656
+          <TaxiCall
             api={api}
             authenticated={session.status === "user"}
             center={{
@@ -774,7 +774,7 @@ export function App({ api }: { api: AppApi }) {
         );
       case "taxidrv":
         return session.status === "user" ? (
-          <DriverCabinetV1656 api={api} />
+          <DriverCabinet api={api} />
         ) : (
           renderAccount()
         );
@@ -903,7 +903,7 @@ export function App({ api }: { api: AppApi }) {
           )}
         </div>
         {queueBooking && supportsQueueBookingApi(api) ? (
-          <QueueBookingV1656
+          <QueueBooking
             api={api}
             key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
             target={queueBooking}
@@ -912,7 +912,7 @@ export function App({ api }: { api: AppApi }) {
           />
         ) : null}
         {courseEnrollment && typeof api.createCourseEnrollment === "function" ? (
-          <CourseEnrollmentV1656
+          <CourseEnrollment
             api={api as CourseEnrollmentApi}
             customerPhone={session.status === "user" ? orderCustomer.phone : ""}
             target={courseEnrollment}

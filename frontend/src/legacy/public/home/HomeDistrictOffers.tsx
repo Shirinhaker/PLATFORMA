@@ -3,7 +3,7 @@ import { type FocusEvent, useState } from "react";
 import type { PublicDistrictOffer } from "../../../api/types";
 
 
-interface HomeDistrictOffersV1656Props {
+interface HomeDistrictOffersProps {
   items: PublicDistrictOffer[];
   needsDistrict: boolean;
   onOpenLocation(): void;
@@ -66,12 +66,12 @@ function OfferCard({
 }
 
 
-export function HomeDistrictOffersV1656({
+export function HomeDistrictOffers({
   items,
   needsDistrict,
   onOpenLocation,
   onOpenOffer,
-}: HomeDistrictOffersV1656Props) {
+}: HomeDistrictOffersProps) {
   const [paused, setPaused] = useState(false);
   const pauseProps = {
     className: `district-offers${paused ? " is-paused" : ""}`,

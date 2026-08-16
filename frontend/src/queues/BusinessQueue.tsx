@@ -12,8 +12,8 @@ import type {
   QueueProviderStatus,
 } from "../api/types";
 import {
-  BusinessMedicalProvidersV1656View,
-  BusinessMedicalQueueV1656View,
+  BusinessMedicalProvidersView,
+  BusinessMedicalQueueView,
 } from "../profiles/BusinessMedicalView";
 
 export type BusinessQueueApi = Pick<
@@ -114,7 +114,7 @@ function providerWrite(record: BusinessOnlineRecord): BusinessQueueProviderWrite
   };
 }
 
-export function BusinessQueueV1656({
+export function BusinessQueue({
   api,
   direction,
   view,
@@ -234,7 +234,7 @@ export function BusinessQueueV1656({
 
   const content =
     view === "medical-providers" ? (
-      <BusinessMedicalProvidersV1656View
+      <BusinessMedicalProvidersView
         direction={direction}
         doctors={doctorRecords}
         staff={records.staff}
@@ -246,7 +246,7 @@ export function BusinessQueueV1656({
         onBackHandlerChange={onBackHandlerChange}
       />
     ) : (
-      <BusinessMedicalQueueV1656View
+      <BusinessMedicalQueueView
         direction={direction}
         rows={entries.map(entryRecord)}
         doctors={doctorRecords}

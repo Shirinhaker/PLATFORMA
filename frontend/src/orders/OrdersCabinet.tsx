@@ -10,7 +10,7 @@ import type {
   OrderRead,
   OrderStatus,
 } from "../api/types";
-import { DebtorPickerV1656 } from "../profiles/DebtorPicker";
+import { DebtorPicker } from "../profiles/DebtorPicker";
 import "./Orders.css";
 
 export type OrdersApi = Pick<
@@ -282,7 +282,7 @@ function ConfirmDialog({
   );
 }
 
-export function OrdersCabinetV1656({
+export function OrdersCabinet({
   api,
   side,
   category,
@@ -1351,7 +1351,7 @@ export function OrdersCabinetV1656({
             />
           ) : null}
           {debtPickerOpen ? (
-            <DebtorPickerV1656
+            <DebtorPicker
               api={api}
               title="Tashqi buyurtmani qarzga yozish"
               onCancel={() => setDebtPickerOpen(false)}

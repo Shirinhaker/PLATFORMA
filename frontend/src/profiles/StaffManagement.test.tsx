@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
-import { StaffManagementV1656 } from "./StaffManagement";
+import { StaffManagement } from "./StaffManagement";
 
 const member = {
   id: 11,
@@ -63,7 +63,7 @@ function api() {
 it("replaces the read-only cabinet list with live staff management", async () => {
   const user = userEvent.setup();
   const client = api();
-  render(<StaffManagementV1656 api={client} onBack={vi.fn()} />);
+  render(<StaffManagement api={client} onBack={vi.fn()} />);
 
   expect(await screen.findByText("Ali Valiyev")).toBeInTheDocument();
   expect(screen.getByText("2 500 000 so‘m")).toBeInTheDocument();
@@ -85,7 +85,7 @@ it("replaces the read-only cabinet list with live staff management", async () =>
 it("edits access without ever displaying the stored password", async () => {
   const user = userEvent.setup();
   const client = api();
-  render(<StaffManagementV1656 api={client} onBack={vi.fn()} />);
+  render(<StaffManagement api={client} onBack={vi.fn()} />);
 
   await user.click(await screen.findByRole("button", { name: /Ali Valiyev/ }));
   expect(screen.getByText("Parol o‘rnatilgan")).toBeInTheDocument();

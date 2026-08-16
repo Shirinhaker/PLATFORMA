@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  EducationManagementV1656,
+  EducationManagement,
   type EducationManagementApi,
   type EducationManagementView,
 } from "./EducationManagement";
@@ -118,11 +118,11 @@ function api(): EducationManagementApi {
 }
 
 function open(view: EducationManagementView, client = api()) {
-  render(<EducationManagementV1656 api={client} view={view} onBack={vi.fn()} />);
+  render(<EducationManagement api={client} view={view} onBack={vi.fn()} />);
   return client;
 }
 
-describe("EducationManagementV1656", () => {
+describe("EducationManagement", () => {
   it("guruhni typed modul orqali tahrirlaydi", async () => {
     const user = userEvent.setup();
     const client = open("education-groups");

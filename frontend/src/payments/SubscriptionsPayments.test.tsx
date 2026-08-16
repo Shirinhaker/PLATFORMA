@@ -7,8 +7,8 @@ import type {
   PaymentRequestRecord,
 } from "../api/types";
 import {
-  BusinessSubscriptionsV1656,
-  PaymentsV1656,
+  BusinessSubscriptions,
+  Payments,
 } from "./SubscriptionsPayments";
 
 const CATALOG: PaymentCatalog = {
@@ -76,7 +76,7 @@ describe("K23 typed obuna va to'lov ekranlari", () => {
     };
 
     render(
-      <BusinessSubscriptionsV1656
+      <BusinessSubscriptions
         api={api as never}
         onBack={vi.fn()}
         onOpenPayments={vi.fn()}
@@ -106,7 +106,7 @@ describe("K23 typed obuna va to'lov ekranlari", () => {
       uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
     };
 
-    render(<PaymentsV1656 api={api as never} onBack={vi.fn()} />);
+    render(<Payments api={api as never} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Chek xira")).toBeVisible();
     const file = new File(["new receipt"], "new.png", { type: "image/png" });

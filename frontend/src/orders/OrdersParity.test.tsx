@@ -4,7 +4,7 @@ import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { OrderCreate, OrderCreateResponse, PublicProfileItem } from "../api/types";
-import { CartV1656 } from "./Cart";
+import { Cart } from "./Cart";
 import {
   addCartItem,
   cartLineCount,
@@ -93,7 +93,7 @@ function StatefulCart({
 }) {
   const [carts, setCarts] = useState(initial);
   return (
-    <CartV1656
+    <Cart
       authenticated
       carts={carts}
       createOrder={createOrder}
@@ -154,7 +154,7 @@ describe("v1656 savat state parity", () => {
 describe("v1656 Savat screen parity", () => {
   it("shows the exact empty and multiple-store copy", () => {
     const { rerender } = render(
-      <CartV1656
+      <Cart
         authenticated
         carts={{}}
         createOrder={vi.fn()}
@@ -173,7 +173,7 @@ describe("v1656 Savat screen parity", () => {
       sut,
     );
     rerender(
-      <CartV1656
+      <Cart
         authenticated
         carts={twoStores}
         createOrder={vi.fn()}
@@ -285,7 +285,7 @@ describe("v1656 Savat screen parity", () => {
   it("starts the delivery map from the selected district when coordinates are absent", async () => {
     const user = userEvent.setup();
     render(
-      <CartV1656
+      <Cart
         authenticated
         carts={oneStoreCart()}
         createOrder={vi.fn()}
@@ -330,7 +330,7 @@ describe("v1656 Savat screen parity", () => {
     const user = userEvent.setup();
     const [carts, setCarts] = [oneStoreCart(), vi.fn()];
     const { unmount } = render(
-      <CartV1656
+      <Cart
         authenticated
         carts={carts}
         createOrder={vi.fn()}
@@ -348,7 +348,7 @@ describe("v1656 Savat screen parity", () => {
     unmount();
 
     render(
-      <CartV1656
+      <Cart
         authenticated
         carts={oneStoreCart()}
         createOrder={vi.fn()}

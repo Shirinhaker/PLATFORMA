@@ -42,7 +42,7 @@ function recordId(row: BusinessOnlineRecord) {
   return (row.id ?? "") as number | string;
 }
 
-export function BusinessEducationEnrollmentsV1656View({
+export function BusinessEducationEnrollmentsView({
   rows,
   groups,
   busy,

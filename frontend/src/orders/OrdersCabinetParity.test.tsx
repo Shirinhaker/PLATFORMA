@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { OrderChatRead, OrderRead } from "../api/types";
-import { OrdersCabinetV1656, type OrdersApi } from "./OrdersCabinet";
+import { OrdersCabinet, type OrdersApi } from "./OrdersCabinet";
 
 const leaflet = vi.hoisted(() => {
   const map = {
@@ -222,7 +222,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const api = apiFor([product, service]);
 
     const { rerender } = render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="product"
@@ -234,7 +234,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     expect(api.getMyOrders).toHaveBeenCalledOnce();
 
     rerender(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="service"
@@ -250,7 +250,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const current = order({ last_event: "msg" });
     const api = apiFor([current]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="product"
@@ -318,7 +318,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
 
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="product"
@@ -350,7 +350,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
       expires_in_seconds: 300,
     });
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="product"
@@ -423,7 +423,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const ready = order({ view: "provider", order_type: "pickup", status: "tayyor" });
     const api = apiFor([ready]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -449,7 +449,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([waiting]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -470,7 +470,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const submitted = order({ view: "provider", payment_status: "submitted" });
     const api = apiFor([submitted]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -495,7 +495,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const accepted = order({ view: "provider", status: "accepted" });
     const api = apiFor([accepted]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -528,7 +528,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([fresh]);
     const first = render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -544,7 +544,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const submitted = order({ view: "provider", payment_status: "submitted" });
     const submittedApi = apiFor([submitted]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={submittedApi}
         side="provider"
         category="product"
@@ -580,7 +580,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([fresh]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="provider"
         category="product"
@@ -605,7 +605,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const api = apiFor([problematic]);
     const first = render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={api}
         side="customer"
         category="product"
@@ -629,7 +629,7 @@ describe("v1656 jonli buyurtma kabineti", () => {
     });
     const deliveredApi = apiFor([delivered]);
     render(
-      <OrdersCabinetV1656
+      <OrdersCabinet
         api={deliveredApi}
         side="customer"
         category="product"

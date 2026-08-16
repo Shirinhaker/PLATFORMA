@@ -26,7 +26,7 @@ function errorMessage(reason: unknown) {
   return reason instanceof Error ? reason.message : "So‘rov bajarilmadi.";
 }
 
-export function BusinessOpeningV1656({ api, onBack, onSwitch, onOpened }: Props) {
+export function BusinessOpening({ api, onBack, onSwitch, onOpened }: Props) {
   const [form, setForm] = useState<BusinessOpeningWrite>(EMPTY_FORM);
   const [result, setResult] = useState<BusinessOpeningRead | null>(null);
   const [busy, setBusy] = useState(false);

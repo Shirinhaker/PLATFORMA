@@ -7,7 +7,7 @@ import {
   type PaymentTarget,
 } from "../profiles/PaymentRequestModal";
 import {
-  BusinessAdvertisementsV1656,
+  BusinessAdvertisements,
   type BusinessAdvertisementsApi,
 } from "./BusinessAdvertisements";
 
@@ -19,7 +19,7 @@ type Props = {
   onOpenListings(): void;
 };
 
-export function UserAdvertisementsV1656({ api, onBack, onOpenListings }: Props) {
+export function UserAdvertisements({ api, onBack, onOpenListings }: Props) {
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
   const [paymentError, setPaymentError] = useState("");
@@ -65,7 +65,7 @@ export function UserAdvertisementsV1656({ api, onBack, onOpenListings }: Props) 
           {paymentError}
         </div>
       ) : null}
-      <BusinessAdvertisementsV1656
+      <BusinessAdvertisements
         api={api}
         onOpenListings={onOpenListings}
         openPayment={(target) => {

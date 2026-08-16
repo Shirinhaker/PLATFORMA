@@ -69,7 +69,7 @@ function ProfileRow({ row, onOpen }: { row: FollowProfileRead; onOpen: () => voi
   );
 }
 
-export function FollowListsV1656({ api, kind, onBack, onOpenProfile }: Props) {
+export function FollowLists({ api, kind, onBack, onOpenProfile }: Props) {
   const [items, setItems] = useState<FollowProfileRead[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);

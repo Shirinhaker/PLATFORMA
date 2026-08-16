@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { ApiClient } from "../api/client";
 import { findLocationCenter } from "../legacy/public/location-centers";
 import type { HomeLocation } from "../legacy/public/location-storage";
-import { OrderCheckoutV1656, type OrderDetails } from "./OrderCheckout";
+import { OrderCheckout, type OrderDetails } from "./OrderCheckout";
 import {
   cartReceiptTotal,
   changeCartItem,
@@ -40,7 +40,7 @@ function receiptIds(carts: CartState, filter?: string | null): string[] {
   );
 }
 
-export function CartV1656({
+export function Cart({
   authenticated,
   carts,
   createOrder,
@@ -357,7 +357,7 @@ export function CartV1656({
         )}
       </div>
       {checkout ? (
-        <OrderCheckoutV1656
+        <OrderCheckout
           businessName={checkout.provider_name}
           customer={customer}
           homePoint={checkoutHomePoint}

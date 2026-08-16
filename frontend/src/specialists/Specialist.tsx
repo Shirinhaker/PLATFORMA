@@ -140,7 +140,7 @@ function SpecialistMap({
   );
 }
 
-export function SpecialistV1656({ api, onBack, onReviews }: Props) {
+export function Specialist({ api, onBack, onReviews }: Props) {
   const [profile, setProfile] = useState<SpecialistProfile | null>(null);
   const [offer, setOffer] = useState<SpecialistOfferWrite>(EMPTY_OFFER);
   const [offerId, setOfferId] = useState<number | null>(null);

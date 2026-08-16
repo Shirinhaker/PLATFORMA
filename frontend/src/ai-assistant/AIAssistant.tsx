@@ -15,7 +15,7 @@ const CHIPS = [
   "Buyurtmalar",
 ];
 
-export function AIAssistantV1656({
+export function AIAssistant({
   api,
   onBack,
 }: {

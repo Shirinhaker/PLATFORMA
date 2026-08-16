@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { ListingRead } from "../api/types";
-import { ListingMediaGridV1656 } from "./ListingMediaGrid";
+import { ListingMediaGrid } from "./ListingMediaGrid";
 import "./Listings.css";
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
   onTitleChange?(title: string): void;
 };
 
-export function ListingPageV1656({
+export function ListingPage({
   publicId,
   getPublicListing,
   toggleListingSave,
@@ -92,7 +92,7 @@ export function ListingPageV1656({
     <main className="screen active public-listing-page-v1656" data-screen="list">
       <article className="listing-page-card" id="bizBody">
         {listing.media.length ? (
-          <ListingMediaGridV1656 media={listing.media} />
+          <ListingMediaGrid media={listing.media} />
         ) : (
           <div className="biz-hero" style={{ background: "var(--primary-tint)" }}>
             <div className="emoji">📦</div>

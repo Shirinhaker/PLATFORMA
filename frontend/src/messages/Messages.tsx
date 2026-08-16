@@ -81,7 +81,7 @@ function peerFromConversation(row: MessageConversationRead): MessagePeer {
   };
 }
 
-export function MessagesV1656({
+export function Messages({
   api,
   onBack,
   initialPeer = null,

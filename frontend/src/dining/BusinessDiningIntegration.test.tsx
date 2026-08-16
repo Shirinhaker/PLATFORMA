@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { BusinessOnlineRecord } from "../api/business-online-types";
 import type { DiningOrder, DiningPlace } from "../api/types";
 import {
-  BusinessDiningV1656,
+  BusinessDining,
   type BusinessDiningApi,
   supportsDiningApi,
 } from "./BusinessDining";
@@ -101,7 +101,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("stollar /api/v1/dining dan yuklanadi", async () => {
     const api = makeApi([place()], []);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -117,7 +117,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("faol zakaz stolda ko'rinadi — kassa bilan bitta manba", async () => {
     const api = makeApi([place({ occupied: true })], [order()]);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -143,7 +143,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
       ],
     );
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -157,7 +157,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("bo'sh stolda joy soni ko'rsatiladi", async () => {
     const api = makeApi([place()], []);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -173,7 +173,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
       getDiningPlaces: vi.fn().mockRejectedValue(new Error("Ulanmadi.")),
     });
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -187,7 +187,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("eski JSON yo'liga umuman murojaat qilmaydi", async () => {
     const api = makeApi([place()], [order()]);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -208,7 +208,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("zakaz ochish yangi endpointga yoziladi, JSON yo'liga emas", async () => {
     const api = makeApi([place()], []);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -238,7 +238,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("mavjud zakazga taom qo'shish add_items endpointiga boradi", async () => {
     const api = makeApi([place({ occupied: true })], [order()]);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}
@@ -262,7 +262,7 @@ describe("ofitsiant zal rejasi yangi endpointlarga ulangan", () => {
   it("stolni bo'shatish clear endpointini chaqiradi", async () => {
     const api = makeApi([place({ occupied: true })], [order()]);
     render(
-      <BusinessDiningV1656
+      <BusinessDining
         api={api}
         menuItems={MENU}
         groups={[]}

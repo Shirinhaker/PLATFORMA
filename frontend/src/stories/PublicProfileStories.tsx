@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { StoryGroup } from "../api/types";
-import { StoryFeedV1656, type StoryViewerApi } from "./StoryFeed";
+import { StoryFeed, type StoryViewerApi } from "./StoryFeed";
 
 type Props = StoryViewerApi & {
   kind: "user" | "business";
@@ -12,7 +12,7 @@ type Props = StoryViewerApi & {
   getOwnerStories: ApiClient["getOwnerStories"];
 };
 
-export function PublicProfileStoriesV1656({
+export function PublicProfileStories({
   kind,
   publicId,
   name,
@@ -38,5 +38,5 @@ export function PublicProfileStoriesV1656({
     ];
   }, [avatarUrl, getOwnerStories, kind, name, publicId]);
 
-  return <StoryFeedV1656 load={load} {...viewerApi} />;
+  return <StoryFeed load={load} {...viewerApi} />;
 }

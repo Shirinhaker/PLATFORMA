@@ -10,7 +10,7 @@ type Props = {
   longitude: number;
 };
 
-export function ListingLocationMapV1656({ latitude, longitude }: Props) {
+export function ListingLocationMap({ latitude, longitude }: Props) {
   const node = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

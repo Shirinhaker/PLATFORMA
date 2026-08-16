@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { DriverCabinetV1656 } from "./DriverCabinet";
+import { DriverCabinet } from "./DriverCabinet";
 
 const emptyDriver = {
   exists: false,
@@ -30,7 +30,7 @@ const pricing = {
   commission: 1000,
 };
 
-describe("DriverCabinetV1656", () => {
+describe("DriverCabinet", () => {
   it("keeps the form controls self-contained inside the v1656 driver screen", () => {
     const css = readFileSync("src/taxi/taxi.css", "utf8");
 
@@ -44,7 +44,7 @@ describe("DriverCabinetV1656", () => {
 
   it("uses the app shell heading without adding a duplicate cabinet header", async () => {
     render(
-      <DriverCabinetV1656
+      <DriverCabinet
         api={{
           getTaxiDriver: vi.fn().mockResolvedValue(emptyDriver),
           getTaxiPricing: vi.fn().mockResolvedValue(pricing),
@@ -66,7 +66,7 @@ describe("DriverCabinetV1656", () => {
   it("keeps taxi car fields required and saves the typed driver profile", async () => {
     const saveTaxiDriver = vi.fn().mockResolvedValue({ ...emptyDriver, exists: true });
     render(
-      <DriverCabinetV1656
+      <DriverCabinet
         api={{
           getTaxiDriver: vi.fn().mockResolvedValue(emptyDriver),
           getTaxiPricing: vi.fn().mockResolvedValue(pricing),

@@ -17,7 +17,7 @@ type Props = {
   onViewed?(storyId: number): void;
 };
 
-export function StoryViewerV1656({
+export function StoryViewerScreen({
   groups,
   initialGroupIndex,
   initialStoryIndex,

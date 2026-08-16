@@ -11,7 +11,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
-export function DebtorPickerV1656({
+export function DebtorPicker({
   api,
   title = "Qarzga rasmiylashtirish",
   onCancel,

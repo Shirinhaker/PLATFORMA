@@ -2,14 +2,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { HomeMapV1656 } from "./HomeMap";
+import { HomeMap } from "./HomeMap";
 
 
-describe("HomeMapV1656", () => {
+describe("HomeMap", () => {
   it("renders both followed business pins and opens the selected profile", async () => {
     const onOpenResult = vi.fn();
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[
           {
             id: 41,
@@ -62,7 +62,7 @@ describe("HomeMapV1656", () => {
 
   it("uses the exact direction pin and migrated logo crop", async () => {
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[{
           id: 41,
           public_id: "b_41",
@@ -107,7 +107,7 @@ describe("HomeMapV1656", () => {
   it("shows the map Taxi call action only when enabled", async () => {
     const onTaxiCall = vi.fn();
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[]}
         district="Qumqo‘rg‘on"
         resultItems={null}
@@ -124,7 +124,7 @@ describe("HomeMapV1656", () => {
 
   it("uses government specialist color, initial, avatar, and exact attribution", async () => {
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[]}
         district="Qumqo‘rg‘on"
         resultItems={null}
@@ -169,7 +169,7 @@ describe("HomeMapV1656", () => {
       longitude: 67.5789,
     };
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[]}
         district="Qumqo‘rg‘on"
         resultItems={[
@@ -232,7 +232,7 @@ describe("HomeMapV1656", () => {
 
     try {
       render(
-        <HomeMapV1656
+        <HomeMap
           businesses={[]}
           district="Qumqo‘rg‘on"
           resultItems={[
@@ -314,7 +314,7 @@ describe("HomeMapV1656", () => {
   it("keeps a searched E'lon as its own marker and opens the E'lon", async () => {
     const onOpenResult = vi.fn();
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[]}
         district="Qumqo‘rg‘on"
         resultItems={[{
@@ -355,7 +355,7 @@ describe("HomeMapV1656", () => {
 
   it("hides normal pins when search results have no visible coordinates", async () => {
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[{
           id: 41,
           public_id: "b_muhr",
@@ -400,7 +400,7 @@ describe("HomeMapV1656", () => {
   it("uses an authorised followed pin for its searched product only", async () => {
     const onOpenResult = vi.fn();
     render(
-      <HomeMapV1656
+      <HomeMap
         businesses={[{
           id: 41,
           public_id: "b_muhr",

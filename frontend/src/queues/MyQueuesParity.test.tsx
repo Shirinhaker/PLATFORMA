@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { MyQueuesV1656 } from "./MyQueues";
+import { MyQueues } from "./MyQueues";
 
 const liveQueue = {
   id: 41,
@@ -39,7 +39,7 @@ describe("v1656 mijoz navbatlari pariteti", () => {
     };
 
     render(
-      <MyQueuesV1656 api={api} focusQueueId={41} onFocusHandled={onFocusHandled} />,
+      <MyQueues api={api} focusQueueId={41} onFocusHandled={onFocusHandled} />,
     );
 
     expect(
@@ -72,7 +72,7 @@ describe("v1656 mijoz navbatlari pariteti", () => {
       cancelMyQueue: vi.fn().mockResolvedValue(cancelled),
     };
 
-    render(<MyQueuesV1656 api={api} />);
+    render(<MyQueues api={api} />);
 
     const buttons = await screen.findAllByRole("button", {
       name: "Navbatni bekor qilish",
@@ -93,7 +93,7 @@ describe("v1656 mijoz navbatlari pariteti", () => {
 
   it("slot navbatida oldindagi odam o'rniga qabul vaqtini ko'rsatadi", async () => {
     render(
-      <MyQueuesV1656
+      <MyQueues
         api={{
           getMyQueues: vi.fn().mockResolvedValue([
             {

@@ -2,9 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { BusinessOpeningV1656 } from "./BusinessOpening";
+import { BusinessOpening } from "./BusinessOpening";
 
-describe("BusinessOpeningV1656", () => {
+describe("BusinessOpening", () => {
   it("keeps the exact v1656 form and reveals new credentials once", async () => {
     const user = userEvent.setup();
     const openBusiness = vi.fn().mockResolvedValue({
@@ -15,7 +15,7 @@ describe("BusinessOpeningV1656", () => {
     });
     const onSwitch = vi.fn();
     render(
-      <BusinessOpeningV1656
+      <BusinessOpening
         api={{ openBusiness }}
         onBack={vi.fn()}
         onSwitch={onSwitch}

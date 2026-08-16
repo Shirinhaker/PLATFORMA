@@ -96,7 +96,7 @@ function Metric({
   );
 }
 
-export function EducationStatisticsV1656({
+export function EducationStatistics({
   api,
   onBack,
 }: {

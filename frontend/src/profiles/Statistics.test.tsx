@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { StatisticsReport } from "../api/types";
-import { StatisticsV1656 } from "./Statistics";
+import { Statistics } from "./Statistics";
 
 function report(overrides: Partial<StatisticsReport> = {}): StatisticsReport {
   return {
@@ -55,10 +55,10 @@ function statisticsApi() {
   };
 }
 
-describe("StatisticsV1656", () => {
+describe("Statistics", () => {
   it("renders the complete v1656 financial, source and employee parity", async () => {
     const api = statisticsApi();
-    render(<StatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<Statistics api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("1 250 000")).toBeInTheDocument();
     expect(
@@ -93,7 +93,7 @@ describe("StatisticsV1656", () => {
         label: `${period}:${anchor}`,
       }),
     );
-    render(<StatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<Statistics api={api} onBack={vi.fn()} />);
 
     await screen.findByText("oy:");
     await user.click(screen.getByRole("button", { name: "Kun" }));
@@ -124,7 +124,7 @@ describe("StatisticsV1656", () => {
         .mockResolvedValueOnce(report({ period: "kun", label: "2026-08-04" })),
       getStatisticsNav: vi.fn(),
     };
-    render(<StatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<Statistics api={api} onBack={vi.fn()} />);
 
     await user.click(screen.getByRole("button", { name: "Kun" }));
     expect(await screen.findByText("2026-08-04")).toBeInTheDocument();
@@ -151,7 +151,7 @@ describe("StatisticsV1656", () => {
       }),
     );
     api.getStatisticsNav.mockImplementationOnce(() => navigation);
-    render(<StatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<Statistics api={api} onBack={vi.fn()} />);
 
     await screen.findByText("oy:");
     await user.click(screen.getByRole("button", { name: "Oldingi davr" }));

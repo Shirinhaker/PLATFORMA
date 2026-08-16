@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Advertisement } from "../api/advertisement-types";
 import {
-  BusinessAdvertisementsV1656,
+  BusinessAdvertisements,
   paymentTarget,
   supportsAdvertisementApi,
   type BusinessAdvertisementsApi,
@@ -86,7 +86,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
 
   it("reklamalar /api/v1/advertisements/my dan yuklanadi", async () => {
     const api = makeApi([advertisement()]);
-    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
+    render(<BusinessAdvertisements api={api} openPayment={vi.fn()} />);
 
     await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
     expect(await screen.findByText("Choyxona ochildi")).toBeVisible();
@@ -94,7 +94,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
 
   it("maxsus vaqt yashirin 19:00–21:00 bilan boshlanmaydi", async () => {
     const api = makeApi([]);
-    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
+    render(<BusinessAdvertisements api={api} openPayment={vi.fn()} />);
 
     await waitFor(() => expect(api.getMyAdvertisements).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "+ Reklama joylashtirish" }));
@@ -138,7 +138,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
   it("to'lov kutayotgan reklamada to'lov tugmasi bor", async () => {
     const openPayment = vi.fn();
     render(
-      <BusinessAdvertisementsV1656
+      <BusinessAdvertisements
         api={makeApi([advertisement()])}
         openPayment={openPayment}
       />,
@@ -158,7 +158,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
 
   it("faol reklamada to'lov tugmasi ko'rsatilmaydi", async () => {
     render(
-      <BusinessAdvertisementsV1656
+      <BusinessAdvertisements
         api={makeApi([advertisement({ status: "active" })])}
         openPayment={vi.fn()}
       />,
@@ -194,7 +194,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
       applyBusinessOnlineAction,
     });
 
-    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
+    render(<BusinessAdvertisements api={api} openPayment={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Hozir boshlash" }));
 
@@ -213,7 +213,7 @@ describe("reklama joylash yangi endpointlarga ulangan", () => {
     const api = makeApi([], {
       getMyAdvertisements: vi.fn().mockRejectedValue(new Error("Ulanmadi.")),
     });
-    render(<BusinessAdvertisementsV1656 api={api} openPayment={vi.fn()} />);
+    render(<BusinessAdvertisements api={api} openPayment={vi.fn()} />);
 
     expect(await screen.findByText("Ulanmadi.")).toBeVisible();
   });

@@ -37,7 +37,7 @@ function errorText(reason: unknown) {
   return reason instanceof Error ? reason.message : "Navbatlar yuklanmadi.";
 }
 
-export function MyQueuesV1656({ api, focusQueueId = null, onFocusHandled }: Props) {
+export function MyQueues({ api, focusQueueId = null, onFocusHandled }: Props) {
   const [rows, setRows] = useState<BusinessQueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);

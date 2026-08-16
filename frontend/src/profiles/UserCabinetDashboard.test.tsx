@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { UserProfile } from "../api/types";
 import {
-  isV1656ActiveUserOrder,
-  UserCabinetDashboardV1656,
+  isActiveUserOrder,
+  UserCabinetDashboard,
 } from "./UserCabinetDashboard";
 
 const sections = [
@@ -62,16 +62,16 @@ function profile(): UserProfile {
 
 describe("v1656 user dashboard parity", () => {
   it("uses the exact v1656 active-order predicate", () => {
-    expect(isV1656ActiveUserOrder({ status: "new" })).toBe(true);
-    expect(isV1656ActiveUserOrder({ status: "pickup_waiting_customer" })).toBe(true);
-    expect(isV1656ActiveUserOrder({ status: "new", problem_open: 1 })).toBe(false);
-    expect(isV1656ActiveUserOrder({ status: "done" })).toBe(false);
-    expect(isV1656ActiveUserOrder({ status: "pending" })).toBe(false);
+    expect(isActiveUserOrder({ status: "new" })).toBe(true);
+    expect(isActiveUserOrder({ status: "pickup_waiting_customer" })).toBe(true);
+    expect(isActiveUserOrder({ status: "new", problem_open: 1 })).toBe(false);
+    expect(isActiveUserOrder({ status: "done" })).toBe(false);
+    expect(isActiveUserOrder({ status: "pending" })).toBe(false);
   });
 
   it("does not show stale snapshot or business-actor counts in user cabinet", () => {
     render(
-      <UserCabinetDashboardV1656
+      <UserCabinetDashboard
         busy={false}
         error=""
         messageUnread={0}

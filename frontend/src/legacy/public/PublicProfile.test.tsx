@@ -2,10 +2,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { PublicProfileV1656 } from "./PublicProfile";
+import { PublicProfile } from "./PublicProfile";
 
 
-describe("PublicProfileV1656", () => {
+describe("PublicProfile", () => {
   it("embeds relational reviews in a business public profile", async () => {
     const getReviews = vi.fn().mockResolvedValue({
       reviews: [{
@@ -43,7 +43,7 @@ describe("PublicProfileV1656", () => {
     });
 
     render(
-      <PublicProfileV1656
+      <PublicProfile
         kind="business"
         publicId="b_turon"
         getPublicProfile={getPublicProfile}
@@ -83,7 +83,7 @@ describe("PublicProfileV1656", () => {
       listings: [],
     });
     const rendered = render(
-      <PublicProfileV1656
+      <PublicProfile
         kind="business"
         publicId="b_turon"
         getPublicProfile={getPublicProfile}
@@ -97,7 +97,7 @@ describe("PublicProfileV1656", () => {
     expect(onMessage).not.toHaveBeenCalled();
 
     rendered.rerender(
-      <PublicProfileV1656
+      <PublicProfile
         authenticated
         kind="business"
         publicId="b_turon"
@@ -149,7 +149,7 @@ describe("PublicProfileV1656", () => {
     });
 
     render(
-      <PublicProfileV1656
+      <PublicProfile
         focusItemPublicId="p_non"
         kind="business"
         publicId="b_turon"
@@ -222,7 +222,7 @@ describe("PublicProfileV1656", () => {
       listings: [],
     });
     render(
-      <PublicProfileV1656
+      <PublicProfile
         authenticated
         cart={{
           provider_public_id: "b_shifo",
@@ -310,7 +310,7 @@ describe("PublicProfileV1656", () => {
     });
 
     render(
-      <PublicProfileV1656
+      <PublicProfile
         kind="business"
         publicId="b_shifo"
         getPublicProfile={getPublicProfile}
@@ -384,7 +384,7 @@ describe("PublicProfileV1656", () => {
     });
 
     render(
-      <PublicProfileV1656
+      <PublicProfile
         authenticated
         kind="business"
         publicId="b_english"
@@ -443,7 +443,7 @@ describe("PublicProfileV1656", () => {
     });
 
     render(
-      <PublicProfileV1656
+      <PublicProfile
         kind="business"
         publicId="b_english"
         getPublicProfile={getPublicProfile}

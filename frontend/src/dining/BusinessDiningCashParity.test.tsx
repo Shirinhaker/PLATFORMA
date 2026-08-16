@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DiningOrder } from "../api/types";
 import {
-  BusinessDiningCashV1656,
+  BusinessDiningCash,
   type BusinessDiningCashApi,
   supportsDiningCashApi,
 } from "./BusinessDiningCash";
@@ -82,7 +82,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
   });
 
   it("uchta bo'lim v1656 nomlari bilan", async () => {
-    render(<BusinessDiningCashV1656 api={makeApi([order()])} />);
+    render(<BusinessDiningCash api={makeApi([order()])} />);
 
     expect(await screen.findByRole("tab", { name: "Ochiq" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Muammoli" })).toBeVisible();
@@ -90,7 +90,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
   });
 
   it("ochiq hisob kartasi va amallar ko'rinadi", async () => {
-    render(<BusinessDiningCashV1656 api={makeApi([order()])} />);
+    render(<BusinessDiningCash api={makeApi([order()])} />);
 
     expect(await screen.findByText("🍽️ Ochiq ichki hisoblar (1)")).toBeVisible();
     expect(screen.getByText("▸ 1-stol")).toBeVisible();
@@ -119,7 +119,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("naqd to'lov tasdiqlashdan keyin yuboriladi", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Naqd tasdiqlash" }));
     // v1656 avval tasdiq so'raydi.
@@ -138,7 +138,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("karta to'lovi ham xuddi shunday", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Karta tasdiqlash" }));
     fireEvent.click(screen.getByRole("button", { name: "Tasdiqlash" }));
@@ -152,7 +152,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("qarzga rasmiylashtirishda qarzdor tanlanadi", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "📒 Qarzga rasmiylashtirish" }),
@@ -164,7 +164,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("bekor qilish sababsiz yuborilmaydi", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "✕ Ichki buyurtmani bekor qilish" }),
@@ -189,7 +189,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("muammoli deb belgilashda sabab va izoh yuboriladi", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "⚠️ Muammoli deb belgilash" }),
@@ -212,7 +212,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("hisobni tahrirlashda 0 ga tushirilgan qator yuboriladi", async () => {
     const api = makeApi([order()]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Tarkibni tahrirlash" }));
     expect(screen.getByText("0 ga tushirilgan taom hisobdan o‘chadi.")).toBeVisible();
@@ -236,7 +236,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
         problem_note: "Sovuq",
       }),
     ]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("tab", { name: "Muammoli" }));
 
@@ -256,7 +256,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
     const api = makeApi([
       order({ payment_status: "confirmed", kitchen_status: "done" }),
     ]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("tab", { name: "Yakunlangan" }));
 
@@ -280,7 +280,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
     const api = makeApi([
       order({ payment_status: "confirmed", kitchen_status: "preparing" }),
     ]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("tab", { name: "Yakunlangan" }));
 
@@ -294,7 +294,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
 
   it("to'lovi tasdiqlangan hisob Ochiq bo'limda ko'rinmaydi", async () => {
     const api = makeApi([order({ payment_status: "confirmed" })]);
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     expect(await screen.findByText("Ochiq ichki hisob yo‘q")).toBeVisible();
   });
@@ -305,7 +305,7 @@ describe("kassa — ovqatlanish bo'limlari (v1656 pariteti)", () => {
         .fn()
         .mockRejectedValue(new Error("Muammoli zakaz to‘lovi tasdiqlanmaydi.")),
     });
-    render(<BusinessDiningCashV1656 api={api} />);
+    render(<BusinessDiningCash api={api} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Naqd tasdiqlash" }));
     fireEvent.click(screen.getByRole("button", { name: "Tasdiqlash" }));

@@ -88,7 +88,7 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <div className="queue-booking-v1656__label">{children}</div>;
 }
 
-export function QueueBookingV1656({
+export function QueueBooking({
   api,
   target,
   onClose,

@@ -1,6 +1,6 @@
 import type { ListingRead } from "../api/types";
-import { ListingLocationMapV1656 } from "./ListingLocationMap";
-import { ListingMediaGridV1656 } from "./ListingMediaGrid";
+import { ListingLocationMap } from "./ListingLocationMap";
+import { ListingMediaGrid } from "./ListingMediaGrid";
 
 type Props = {
   listing: ListingRead;
@@ -10,7 +10,7 @@ type Props = {
   compactMedia?: boolean;
 };
 
-export function ListingDetailV1656({
+export function ListingDetail({
   listing,
   onContact,
   onSave,
@@ -22,9 +22,9 @@ export function ListingDetailV1656({
 
   return (
     <div className="el-detail">
-      <ListingMediaGridV1656 compact={compactMedia} media={listing.media} />
+      <ListingMediaGrid compact={compactMedia} media={listing.media} />
       {listing.lat != null && listing.lng != null ? (
-        <ListingLocationMapV1656 latitude={listing.lat} longitude={listing.lng} />
+        <ListingLocationMap latitude={listing.lat} longitude={listing.lng} />
       ) : null}
       <div className="el-detail-info">
         <div className="el-price">{listing.price || "Narx kelishilgan"}</div>

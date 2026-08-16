@@ -77,7 +77,7 @@ function actionFor(ride: TaxiRide): { label: string; status: TaxiRideStatus } | 
   return null;
 }
 
-export function DriverCabinetV1656({ api, onBack }: Props) {
+export function DriverCabinet({ api, onBack }: Props) {
   const [driver, setDriver] = useState<TaxiDriver | null>(null);
   const [orders, setOrders] = useState(EMPTY_ORDERS);
   const [editing, setEditing] = useState(false);

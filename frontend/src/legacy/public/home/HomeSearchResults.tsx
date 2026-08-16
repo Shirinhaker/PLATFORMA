@@ -1,7 +1,7 @@
 import type { PublicSearchItem } from "../../../api/types";
 
 
-interface HomeSearchResultsV1656Props {
+interface HomeSearchResultsProps {
   error: string;
   hasMore: boolean;
   items: PublicSearchItem[];
@@ -51,7 +51,7 @@ function ResultImage({ item, fallback }: {
 }
 
 
-export function HomeSearchResultsV1656({
+export function HomeSearchResults({
   error,
   hasMore,
   items,
@@ -60,7 +60,7 @@ export function HomeSearchResultsV1656({
   query,
   onLoadMore,
   onOpenResult,
-}: HomeSearchResultsV1656Props) {
+}: HomeSearchResultsProps) {
   if (pending) {
     return (
       <div className="empty" style={{ padding: "30px 16px" }}>

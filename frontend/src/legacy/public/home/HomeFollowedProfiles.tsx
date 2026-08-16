@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { PublicFollowedProfile, StoryGroup } from "../../../api/types";
 
 
-interface HomeFollowedProfilesV1656Props {
+interface HomeFollowedProfilesProps {
   items: PublicFollowedProfile[];
   storyGroups?: StoryGroup[];
   onOpenStory?(index: number): void;
@@ -23,12 +23,12 @@ type HomeProfileCard = {
 };
 
 
-export function HomeFollowedProfilesV1656({
+export function HomeFollowedProfiles({
   items,
   storyGroups = [],
   onOpenStory,
   onOpenProfile,
-}: HomeFollowedProfilesV1656Props) {
+}: HomeFollowedProfilesProps) {
   const cards = useMemo(() => {
     const storiesByOwner = new Map<string, {
       group: StoryGroup;

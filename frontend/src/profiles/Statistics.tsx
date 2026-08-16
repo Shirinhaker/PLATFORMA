@@ -185,7 +185,7 @@ function maximumOf(values: number[]) {
   return maximum;
 }
 
-export function StatisticsV1656({
+export function Statistics({
   api,
   onBack,
 }: {

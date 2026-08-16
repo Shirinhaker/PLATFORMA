@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { WarehouseItem } from "../api/types";
-import { WarehouseV1656, type WarehouseApi } from "./Warehouse";
+import { Warehouse, type WarehouseApi } from "./Warehouse";
 
 const ready: WarehouseItem = {
   id: 10,
@@ -62,7 +62,7 @@ function warehouseApi(overrides: Partial<WarehouseApi> = {}): WarehouseApi {
 describe("v1656 Ombor", () => {
   it("Savdoda guruh, qoldiq, FIFO va kam qoldiqni kartalarda ko‘rsatadi", async () => {
     render(
-      <WarehouseV1656
+      <Warehouse
         api={warehouseApi()}
         direction="Savdo"
         canManage
@@ -101,7 +101,7 @@ describe("v1656 Ombor", () => {
       ]),
     });
     render(
-      <WarehouseV1656
+      <Warehouse
         api={api}
         direction="Umumiy ovqatlanish"
         canManage
@@ -134,7 +134,7 @@ describe("v1656 Ombor", () => {
     const user = userEvent.setup();
     const createWarehouseMove = vi.fn();
     render(
-      <WarehouseV1656
+      <Warehouse
         api={warehouseApi({ createWarehouseMove })}
         direction="Savdo"
         canManage

@@ -122,7 +122,7 @@ function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) 
   );
 }
 
-export function DocumentsV1656({
+export function Documents({
   api,
   profile,
   initialView,

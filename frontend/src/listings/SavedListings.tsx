@@ -20,7 +20,7 @@ function legacyBusinessRows(rows: unknown[]) {
   ) as Record<string, unknown>[];
 }
 
-export function SavedListingsV1656({
+export function SavedListings({
   getSavedListings,
   legacyRows,
   onBack,

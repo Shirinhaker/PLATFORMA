@@ -72,7 +72,7 @@ type PublicProps = {
   targetPublicId: string;
 };
 
-export function PublicReviewsV1656({ api, targetKind, targetPublicId }: PublicProps) {
+export function PublicReviews({ api, targetKind, targetPublicId }: PublicProps) {
   const [data, setData] = useState<ReviewListRead | null>(null);
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
@@ -271,7 +271,7 @@ function OwnerReviewCard({
   );
 }
 
-export function ReceivedReviewsV1656({
+export function ReceivedReviews({
   api,
   onBack,
 }: {

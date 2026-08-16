@@ -24,7 +24,7 @@ function initials(name: string) {
     .toLocaleUpperCase("uz");
 }
 
-export function DebtLedgerV1656({
+export function DebtLedger({
   api,
   onBack,
 }: {

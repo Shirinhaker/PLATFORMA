@@ -24,7 +24,7 @@ type Props = {
 
 const TASHKENT: Point = { latitude: 41.311, longitude: 69.28 };
 
-export function OrderCheckoutV1656({
+export function OrderCheckout({
   businessName,
   useItems,
   customer,

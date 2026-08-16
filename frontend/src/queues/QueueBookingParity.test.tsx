@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { QueueBookingV1656 } from "./QueueBooking";
+import { QueueBooking } from "./QueueBooking";
 
 const target = {
   businessPublicId: "b_shifo",
@@ -82,7 +82,7 @@ describe("v1656 ommaviy navbat olish pariteti", () => {
     const onClose = vi.fn();
     const onMessage = vi.fn();
     render(
-      <QueueBookingV1656
+      <QueueBooking
         api={api}
         target={target}
         onBooked={onBooked}
@@ -146,7 +146,7 @@ describe("v1656 ommaviy navbat olish pariteti", () => {
       }),
     });
     render(
-      <QueueBookingV1656
+      <QueueBooking
         api={api}
         target={target}
         onBooked={vi.fn()}
@@ -189,7 +189,7 @@ describe("v1656 ommaviy navbat olish pariteti", () => {
       }),
     });
     render(
-      <QueueBookingV1656
+      <QueueBooking
         api={api}
         target={target}
         onBooked={vi.fn()}

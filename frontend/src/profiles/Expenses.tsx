@@ -49,7 +49,7 @@ function timeLabel(value: string) {
   }).format(new Date(value));
 }
 
-export function ExpensesV1656({
+export function Expenses({
   api,
   onBack,
 }: {

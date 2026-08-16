@@ -10,7 +10,7 @@ import type {
   Debtor,
 } from "../api/types";
 import { money } from "./business-profile-config";
-import { DebtorPickerV1656 } from "./DebtorPicker";
+import { DebtorPicker } from "./DebtorPicker";
 import "./CashRegister.css";
 
 export type CashRegisterApi = Pick<
@@ -151,7 +151,7 @@ function ReceiptCard({
   );
 }
 
-export function CashRegisterV1656({
+export function CashRegisterScreen({
   api,
   onBack,
 }: {
@@ -561,7 +561,7 @@ export function CashRegisterV1656({
           </div>
         </section>
         {debtorPicker ? (
-          <DebtorPickerV1656
+          <DebtorPicker
             api={api}
             title={
               debtorPicker === "payment"
@@ -648,7 +648,7 @@ export function CashRegisterV1656({
         </section>
       ) : null}
       {debtorPicker ? (
-        <DebtorPickerV1656
+        <DebtorPicker
           api={api}
           title="Buyurtmani qarzga yozish"
           onCancel={() => {

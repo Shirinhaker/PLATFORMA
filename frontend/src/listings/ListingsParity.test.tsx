@@ -2,11 +2,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ListingDetailV1656 } from "./ListingDetail";
-import { ListingPageV1656 } from "./ListingPage";
-import { OwnerListingsV1656 } from "./OwnerListings";
-import { PublicListingsV1656 } from "./PublicListings";
-import { SavedListingsV1656 } from "./SavedListings";
+import { ListingDetail } from "./ListingDetail";
+import { ListingPage } from "./ListingPage";
+import { OwnerListings } from "./OwnerListings";
+import { PublicListings } from "./PublicListings";
+import { SavedListings } from "./SavedListings";
 
 const leaflet = vi.hoisted(() => {
   const map = {
@@ -61,7 +61,7 @@ describe("v1656 public E'lonlar", () => {
       toggleListingSave: vi.fn().mockResolvedValue({ saved: true }),
     };
     const onOpenOwner = vi.fn();
-    render(<PublicListingsV1656 api={api} authenticated onOpenOwner={onOpenOwner} />);
+    render(<PublicListings api={api} authenticated onOpenOwner={onOpenOwner} />);
 
     expect(screen.getByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
     expect(
@@ -90,7 +90,7 @@ describe("v1656 public E'lonlar", () => {
   it("keeps the exact v1656 empty-category text", async () => {
     const user = userEvent.setup();
     render(
-      <PublicListingsV1656
+      <PublicListings
         api={{
           getListingCounts: vi.fn().mockResolvedValue({}),
           getPublicListings: vi.fn().mockResolvedValue([]),
@@ -121,7 +121,7 @@ describe("v1656 public E'lonlar", () => {
       ],
     };
     const { container } = render(
-      <PublicListingsV1656
+      <PublicListings
         api={{
           getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
           getPublicListings: vi.fn().mockResolvedValue([mediaListing]),
@@ -163,7 +163,7 @@ describe("v1656 public E'lonlar", () => {
   it("opens listing photos in the v1656 media viewer", async () => {
     const user = userEvent.setup();
     render(
-      <ListingDetailV1656 listing={listing} onContact={vi.fn()} onSave={vi.fn()} />,
+      <ListingDetail listing={listing} onContact={vi.fn()} onSave={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "Rasmni katta ko‘rish" }));
@@ -182,7 +182,7 @@ describe("v1656 public E'lonlar", () => {
 
   it("keeps the standalone v1656 listing detail surface", async () => {
     const { container } = render(
-      <ListingPageV1656
+      <ListingPage
         authenticated
         getPublicListing={vi.fn().mockResolvedValue({ ...listing, media: [] })}
         publicId={listing.public_id}
@@ -203,7 +203,7 @@ describe("v1656 public E'lonlar", () => {
   it("shows the API reason when saving a listing fails", async () => {
     const user = userEvent.setup();
     render(
-      <PublicListingsV1656
+      <PublicListings
         api={{
           getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
           getPublicListings: vi.fn().mockResolvedValue([listing]),
@@ -226,7 +226,7 @@ describe("v1656 owner E'lonlar", () => {
   it("opens a placed listing without requiring it to be public", async () => {
     const user = userEvent.setup();
     render(
-      <OwnerListingsV1656
+      <OwnerListings
         api={{
           getMyListings: vi.fn().mockResolvedValue([listing]),
           createListing: vi.fn(),
@@ -261,7 +261,7 @@ describe("v1656 owner E'lonlar", () => {
       createUploadGrant: vi.fn(),
       uploadGrantedFile: vi.fn(),
     };
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     expect(await screen.findByText("3 xonali kvartira")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reklamalarim" })).toBeInTheDocument();
@@ -291,7 +291,7 @@ describe("v1656 owner E'lonlar", () => {
   it("shows the business-only visibility choices", async () => {
     const user = userEvent.setup();
     render(
-      <OwnerListingsV1656
+      <OwnerListings
         api={{
           getMyListings: vi.fn().mockResolvedValue([]),
           createListing: vi.fn(),
@@ -327,7 +327,7 @@ describe("v1656 owner E'lonlar", () => {
       }),
       uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
     };
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ E'lon joylash" }));
     await user.upload(
@@ -351,7 +351,7 @@ describe("v1656 saved E'lonlar", () => {
     const user = userEvent.setup();
     const onOpenListing = vi.fn();
     render(
-      <SavedListingsV1656
+      <SavedListings
         getSavedListings={vi.fn().mockResolvedValue([{ ...listing, is_saved: true }])}
         legacyRows={[]}
         onBack={vi.fn()}

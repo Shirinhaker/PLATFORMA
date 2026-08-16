@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildAddrText,
-  BusinessLocationPickerV1656View,
+  BusinessLocationPickerView,
   pickReturnScreen,
 } from "./BusinessLocationPickerView";
 import { BusinessProfile } from "./BusinessProfile";
@@ -65,7 +65,7 @@ describe("v1656 pickloc parity", () => {
 
   it("keeps the pin tip at the container center while the map moves", async () => {
     render(
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="be"
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
@@ -102,7 +102,7 @@ describe("v1656 pickloc parity", () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     render(
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="be"
         onCancel={vi.fn()}
         onConfirm={onConfirm}
@@ -166,7 +166,7 @@ describe("v1656 pickloc parity", () => {
 
   it("invalidates after screen animation and viewport resize without shifting center", async () => {
     render(
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="ue"
         onCancel={vi.fn()}
         onConfirm={vi.fn()}
@@ -201,7 +201,7 @@ describe("v1656 pickloc parity", () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
     render(
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix={prefix}
         onCancel={onCancel}
         onConfirm={vi.fn()}
@@ -215,7 +215,7 @@ describe("v1656 pickloc parity", () => {
 
   it("keeps the exact v1656 copy and button classes", () => {
     render(
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="bp"
         onCancel={vi.fn()}
         onConfirm={vi.fn()}

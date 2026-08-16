@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ApiClient } from "../api/client";
 import type { TaxiRide } from "../api/types";
 
-export function MyRidesV1656({
+export function MyRides({
   api,
   onBack,
 }: {

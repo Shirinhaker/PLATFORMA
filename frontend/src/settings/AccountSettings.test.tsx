@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { AccountSettingsV1656 } from "./AccountSettings";
+import { AccountSettings } from "./AccountSettings";
 
 const businessIdentity = {
   account_id: 7,
@@ -13,13 +13,13 @@ const businessIdentity = {
   expires_at: "2026-08-27T08:00:00Z",
 };
 
-describe("AccountSettingsV1656", () => {
+describe("AccountSettings", () => {
   it("keeps the exact v1656 settings rows and routes their actions", async () => {
     const user = userEvent.setup();
     const onNotifications = vi.fn();
     const onLogout = vi.fn();
     render(
-      <AccountSettingsV1656
+      <AccountSettings
         api={{}}
         identity={businessIdentity}
         onBack={vi.fn()}
@@ -43,7 +43,7 @@ describe("AccountSettingsV1656", () => {
       login: "yangi_login",
     });
     render(
-      <AccountSettingsV1656
+      <AccountSettings
         api={{
           getBusinessCredentials: vi.fn().mockResolvedValue({
             ok: true,
@@ -82,7 +82,7 @@ describe("AccountSettingsV1656", () => {
   it("renders the v1656 FAQ as accessible expandable answers", async () => {
     const user = userEvent.setup();
     render(
-      <AccountSettingsV1656
+      <AccountSettings
         api={{}}
         identity={businessIdentity}
         onBack={vi.fn()}
@@ -103,7 +103,7 @@ describe("AccountSettingsV1656", () => {
   it("keeps business credentials owner-only for ordinary users", async () => {
     const user = userEvent.setup();
     render(
-      <AccountSettingsV1656
+      <AccountSettings
         api={{}}
         identity={{ ...businessIdentity, account_type: "user" }}
         onBack={vi.fn()}

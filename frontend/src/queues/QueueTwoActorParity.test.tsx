@@ -10,8 +10,8 @@ import type {
   UserProfile as UserProfileData,
 } from "../api/types";
 import { UserProfile } from "../profiles/UserProfile";
-import { BusinessQueueV1656 } from "./BusinessQueue";
-import { QueueBookingV1656 } from "./QueueBooking";
+import { BusinessQueue } from "./BusinessQueue";
+import { QueueBooking } from "./QueueBooking";
 
 const provider: BusinessQueueProvider = {
   id: 5,
@@ -116,7 +116,7 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
     };
     const onMessage = vi.fn();
     const bookingView = render(
-      <QueueBookingV1656
+      <QueueBooking
         api={customerQueueApi}
         target={{
           businessPublicId: "b_shifo",
@@ -175,7 +175,7 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
       swapBusinessQueues: vi.fn(),
     };
     const businessView = render(
-      <BusinessQueueV1656
+      <BusinessQueue
         api={businessApi}
         direction="Tibbiy xizmatlar"
         view="medical-queue"

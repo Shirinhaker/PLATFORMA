@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { CourseEnrollmentV1656 } from "./CourseEnrollment";
+import { CourseEnrollment } from "./CourseEnrollment";
 
 const target = {
   itemPublicId: "s_english",
@@ -19,7 +19,7 @@ describe("v1656 kursga yozilish pariteti", () => {
     const onMessage = vi.fn();
 
     render(
-      <CourseEnrollmentV1656
+      <CourseEnrollment
         api={api}
         customerPhone="+998901234567"
         target={target}
@@ -49,7 +49,7 @@ describe("v1656 kursga yozilish pariteti", () => {
     const onMessage = vi.fn();
 
     render(
-      <CourseEnrollmentV1656
+      <CourseEnrollment
         api={api}
         customerPhone=""
         target={target}
@@ -74,7 +74,7 @@ describe("v1656 kursga yozilish pariteti", () => {
     const onMessage = vi.fn();
 
     render(
-      <CourseEnrollmentV1656
+      <CourseEnrollment
         api={api}
         customerPhone="+998901234567"
         target={target}

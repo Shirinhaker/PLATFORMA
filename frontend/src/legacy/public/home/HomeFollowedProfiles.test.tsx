@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { HomeFollowedProfilesV1656 } from "./HomeFollowedProfiles";
+import { HomeFollowedProfiles } from "./HomeFollowedProfiles";
 import type { StoryGroup } from "../../../api/types";
 
 
@@ -58,10 +58,10 @@ const ownStory: StoryGroup = {
 };
 
 
-describe("HomeFollowedProfilesV1656", () => {
+describe("HomeFollowedProfiles", () => {
   it("keeps the v1656 hidden mount when there are no followed profiles", () => {
     render(
-      <HomeFollowedProfilesV1656 items={[]} onOpenProfile={vi.fn()} />,
+      <HomeFollowedProfiles items={[]} onOpenProfile={vi.fn()} />,
     );
 
     expect(document.querySelector("#followedProfileStrip"))
@@ -73,7 +73,7 @@ describe("HomeFollowedProfilesV1656", () => {
   it("keeps the exact v1656 label, image, and fallback", async () => {
     const onOpenProfile = vi.fn();
     render(
-      <HomeFollowedProfilesV1656
+      <HomeFollowedProfiles
         items={[followedBusiness]}
         onOpenProfile={onOpenProfile}
       />,
@@ -93,7 +93,7 @@ describe("HomeFollowedProfilesV1656", () => {
     const onOpenProfile = vi.fn();
     const onOpenStory = vi.fn();
     render(
-      <HomeFollowedProfilesV1656
+      <HomeFollowedProfiles
         items={[followedBusiness]}
         storyGroups={[followedStory]}
         onOpenProfile={onOpenProfile}
@@ -115,7 +115,7 @@ describe("HomeFollowedProfilesV1656", () => {
     const onOpenProfile = vi.fn();
     const onOpenStory = vi.fn();
     render(
-      <HomeFollowedProfilesV1656
+      <HomeFollowedProfiles
         items={[]}
         storyGroups={[followedStory, ownStory]}
         onOpenProfile={onOpenProfile}
@@ -139,7 +139,7 @@ describe("HomeFollowedProfilesV1656", () => {
 
   it("keeps the own story before followed profile cards", () => {
     render(
-      <HomeFollowedProfilesV1656
+      <HomeFollowedProfiles
         items={[followedBusiness]}
         storyGroups={[ownStory, followedStory]}
         onOpenProfile={vi.fn()}
@@ -154,7 +154,7 @@ describe("HomeFollowedProfilesV1656", () => {
 
   it("does not add cards for story owners outside the followed list", () => {
     render(
-      <HomeFollowedProfilesV1656
+      <HomeFollowedProfiles
         items={[followedBusiness]}
         storyGroups={[{
           ...followedStory,

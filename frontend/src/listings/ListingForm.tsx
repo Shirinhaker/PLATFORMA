@@ -7,11 +7,11 @@ import type {
   ListingMediaAttachment,
 } from "../api/types";
 import {
-  BusinessLocationPickerV1656View,
+  BusinessLocationPickerView,
   type PicklocPoint,
 } from "../profiles/BusinessLocationPickerView";
 import { readHomeLocation } from "../legacy/public/location-storage";
-import { ListingMediaViewerV1656 } from "./ListingMediaViewer";
+import { ListingMediaViewer } from "./ListingMediaViewer";
 
 type FormApi = Pick<ApiClient, "createUploadGrant" | "uploadGrantedFile">;
 type Props = {
@@ -32,7 +32,7 @@ const CATEGORIES: ReadonlyArray<{ key: ListingCategory; name: string }> = [
 
 type DraftMedia = ListingMediaAttachment & { previewUrl: string };
 
-export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
+export function ListingForm({ actor, api, busy, onSave }: Props) {
   const [cat, setCat] = useState<ListingCategory>("uy");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
@@ -58,7 +58,7 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
 
   if (picker) {
     return (
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         fallback={
           homeLocation
             ? {
@@ -314,7 +314,7 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
       >
         {uploading ? `Media yuklanmoqda… ${uploading}` : "Joylash"}
       </button>
-      <ListingMediaViewerV1656
+      <ListingMediaViewer
         media={
           openedMedia ? { type: openedMedia.type, url: openedMedia.previewUrl } : null
         }

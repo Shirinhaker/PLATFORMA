@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { AIAssistantV1656 } from "./AIAssistant";
+import { AIAssistant } from "./AIAssistant";
 import { SYSTEM_MENUS } from "../profiles/business-profile-config";
 
-describe("AIAssistantV1656", () => {
+describe("AIAssistant", () => {
   it("loads history and sends a v1656 question", async () => {
     const api = {
       getAIChatHistory: vi.fn().mockResolvedValue({
@@ -18,7 +18,7 @@ describe("AIAssistantV1656", () => {
       }),
       sendAIChatMessage: vi.fn().mockResolvedValue({ answer: "Tushum 500 000 so'm" }),
     };
-    render(<AIAssistantV1656 api={api} onBack={vi.fn()} />);
+    render(<AIAssistant api={api} onBack={vi.fn()} />);
     expect(await screen.findByText("Oldingi javob")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Savol yozing"), {
       target: { value: "Bugun qanday?" },
@@ -40,7 +40,7 @@ describe("AIAssistantV1656", () => {
       getAIChatHistory: vi.fn().mockResolvedValue({ history: [] }),
       sendAIChatMessage: vi.fn().mockResolvedValue({ answer: "Ombor yaxshi" }),
     };
-    render(<AIAssistantV1656 api={api} onBack={vi.fn()} />);
+    render(<AIAssistant api={api} onBack={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Ombor holati" }));
     await waitFor(() =>
       expect(api.sendAIChatMessage).toHaveBeenCalledWith("Ombor holati"),
@@ -52,7 +52,7 @@ describe("AIAssistantV1656", () => {
       getAIChatHistory: vi.fn().mockResolvedValue({ history: [] }),
       sendAIChatMessage: vi.fn(),
     };
-    render(<AIAssistantV1656 api={api} onBack={vi.fn()} />);
+    render(<AIAssistant api={api} onBack={vi.fn()} />);
 
     expect(
       await screen.findByText(
@@ -80,7 +80,7 @@ describe("AIAssistantV1656", () => {
       getAIChatHistory: vi.fn().mockResolvedValue({ history: [] }),
       sendAIChatMessage: vi.fn().mockRejectedValue(new Error("Tarmoq ishlamayapti")),
     };
-    render(<AIAssistantV1656 api={api} onBack={vi.fn()} />);
+    render(<AIAssistant api={api} onBack={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Qarzlar qancha" }));
 

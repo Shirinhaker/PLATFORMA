@@ -41,7 +41,7 @@ function videoDuration(file: File): Promise<number> {
   });
 }
 
-export function StoryComposerV1656({
+export function StoryComposer({
   createUploadGrant,
   uploadGrantedFile,
   createStory,

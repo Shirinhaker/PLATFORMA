@@ -99,7 +99,7 @@ function record(row: Advertisement): BusinessOnlineRecord {
   } as unknown as BusinessOnlineRecord;
 }
 
-export function BusinessAdvertisementsV1656({
+export function BusinessAdvertisements({
   api,
   openPayment,
   onOpenListings,

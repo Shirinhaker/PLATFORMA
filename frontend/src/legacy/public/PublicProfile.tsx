@@ -10,15 +10,15 @@ import {
 } from "../../orders/order-store";
 import type { QueueBookingTarget } from "../../queues/QueueBooking";
 import type { CourseEnrollmentTarget } from "../../education/CourseEnrollment";
-import { PublicProfileStoriesV1656 } from "../../stories/PublicProfileStories";
+import { PublicProfileStories } from "../../stories/PublicProfileStories";
 import type { StoryViewerApi } from "../../stories/StoryFeed";
 import {
-  PublicReviewsV1656,
+  PublicReviews,
   type PublicReviewsApi,
 } from "../../reviews/Reviews";
 
 
-interface PublicProfileV1656Props {
+interface PublicProfileProps {
   kind: "user" | "business";
   publicId: string;
   focusItemPublicId?: string;
@@ -84,7 +84,7 @@ function itemGroups(items: PublicProfileItem[]) {
 }
 
 
-export function PublicProfileV1656({
+export function PublicProfile({
   kind,
   publicId,
   focusItemPublicId,
@@ -104,7 +104,7 @@ export function PublicProfileV1656({
   onOpenListing,
   storyApi,
   reviewApi,
-}: PublicProfileV1656Props) {
+}: PublicProfileProps) {
   const [profile, setProfile] = useState<PublicProfileDetail | null>(null);
   const [error, setError] = useState("");
   const focusItemRef = useRef<HTMLElement>(null);
@@ -312,7 +312,7 @@ export function PublicProfileV1656({
       </section>
 
       {storyApi ? (
-        <PublicProfileStoriesV1656
+        <PublicProfileStories
           avatarUrl={profile.image_url}
           deleteStory={storyApi.deleteStory}
           getOwnerStories={storyApi.getOwnerStories}
@@ -510,7 +510,7 @@ export function PublicProfileV1656({
       ) : null}
 
       {reviewApi && (business || profile.specialist) ? (
-        <PublicReviewsV1656
+        <PublicReviews
           api={reviewApi}
           targetKind={business ? "business" : "specialist"}
           targetPublicId={publicId}

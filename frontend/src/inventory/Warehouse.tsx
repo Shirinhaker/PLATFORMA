@@ -65,7 +65,7 @@ function groupItems(items: WarehouseItem[]) {
   return [...groups.entries()].map(([id, value]) => ({ id, ...value }));
 }
 
-export function WarehouseV1656({
+export function Warehouse({
   api,
   direction,
   canManage,

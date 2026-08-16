@@ -5,7 +5,7 @@ import type { UserProfile, UserProfilePatch } from "../api/types";
 import {
   avatarImageStyle,
   normalizedAvatarCrop,
-  UserAvatarCropV1656,
+  UserAvatarCrop,
   type AvatarCrop,
 } from "./UserAvatarCrop";
 import "./UserProfile.css";
@@ -97,7 +97,7 @@ function QrCode({ value }: { value: string }) {
   );
 }
 
-export function UserProfileEditorV1656({
+export function UserProfileEditor({
   api,
   profile,
   onBack,
@@ -330,7 +330,7 @@ export function UserProfileEditorV1656({
       ) : null}
 
       {cropOpen && draft.avatar_url ? (
-        <UserAvatarCropV1656
+        <UserAvatarCrop
           alt="Profil rasmi kesimi"
           busy={busy}
           src={draft.avatar_url}

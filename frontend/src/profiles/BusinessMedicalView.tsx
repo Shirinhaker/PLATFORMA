@@ -226,7 +226,7 @@ function ModalField({
   );
 }
 
-export function BusinessMedicalProvidersV1656View({
+export function BusinessMedicalProvidersView({
   direction,
   doctors,
   staff,
@@ -566,7 +566,7 @@ function TextField({
   );
 }
 
-export function BusinessMedicalQueueV1656View({
+export function BusinessMedicalQueueView({
   direction,
   rows,
   doctors,
@@ -679,7 +679,7 @@ export function BusinessMedicalQueueV1656View({
 
   if (providersOpen) {
     return (
-      <BusinessMedicalProvidersV1656View
+      <BusinessMedicalProvidersView
         direction={direction}
         doctors={doctors}
         staff={staff}

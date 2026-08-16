@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ExpensesV1656 } from "./Expenses";
+import { Expenses } from "./Expenses";
 
 function expenseApi() {
   return {
@@ -41,10 +41,10 @@ function expenseApi() {
   };
 }
 
-describe("ExpensesV1656", () => {
+describe("Expenses", () => {
   it("shows daily totals and keeps stock expenses automatic", async () => {
     const api = expenseApi();
-    render(<ExpensesV1656 api={api} onBack={vi.fn()} />);
+    render(<Expenses api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("275 000 so'm")).toBeInTheDocument();
     expect(screen.getByText("Bugungi xarajat").closest("section")).toHaveTextContent(
@@ -58,7 +58,7 @@ describe("ExpensesV1656", () => {
   it("creates a new category before saving its expense", async () => {
     const user = userEvent.setup();
     const api = expenseApi();
-    render(<ExpensesV1656 api={api} onBack={vi.fn()} />);
+    render(<Expenses api={api} onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Xarajat yozish" }));
     const dialog = await screen.findByRole("dialog", { name: "Xarajat yozish" });

@@ -6,7 +6,7 @@ import type {
   BusinessOnlineResource,
 } from "../api/business-online-types";
 import type { DiningOrder, DiningPlace, DiningPlaceKind } from "../api/types";
-import { BusinessDiningV1656View } from "../profiles/BusinessDiningView";
+import { BusinessDiningView } from "../profiles/BusinessDiningView";
 
 export type BusinessDiningApi = Pick<
   ApiClient,
@@ -156,7 +156,7 @@ function itemInputs(payload: BusinessOnlineRecord | undefined) {
   });
 }
 
-export function BusinessDiningV1656({
+export function BusinessDining({
   api,
   menuItems,
   groups,
@@ -308,7 +308,7 @@ export function BusinessDiningV1656({
           {error}
         </div>
       ) : null}
-      <BusinessDiningV1656View
+      <BusinessDiningView
         places={placeRecords}
         menuItems={menuItems}
         groups={groups}

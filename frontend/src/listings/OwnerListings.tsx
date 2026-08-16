@@ -6,8 +6,8 @@ import {
   PaymentRequestModal,
   type PaymentRequestApi,
 } from "../profiles/PaymentRequestModal";
-import { ListingFormV1656 } from "./ListingForm";
-import { ListingMediaGridV1656 } from "./ListingMediaGrid";
+import { ListingForm } from "./ListingForm";
+import { ListingMediaGrid } from "./ListingMediaGrid";
 import "./Listings.css";
 
 export type OwnerListingsApi = Pick<
@@ -46,7 +46,7 @@ function statusText(status: ListingRead["status"]) {
   return status === "active" ? "Faol" : "O'chiq";
 }
 
-export function OwnerListingsV1656({
+export function OwnerListings({
   actor,
   api,
   onBack,
@@ -178,7 +178,7 @@ export function OwnerListingsV1656({
                 ← E&apos;lonlarimga qaytish
               </button>
             ) : null}
-            <ListingFormV1656 actor={actor} api={api} busy={busy} onSave={create} />
+            <ListingForm actor={actor} api={api} busy={busy} onSave={create} />
           </>
         ) : (
           <>
@@ -264,7 +264,7 @@ export function OwnerListingsV1656({
                   </div>
                   {open ? (
                     <div className="el-detail owner-listing-detail">
-                      <ListingMediaGridV1656 media={row.media} />
+                      <ListingMediaGrid media={row.media} />
                       <div className="el-price">{row.price || "Narx kelishilgan"}</div>
                       {row.address ? (
                         <div className="el-addr">📍 {row.address}</div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 
-export function AppToastV1656({ message }: { message: string }) {
+export function AppToast({ message }: { message: string }) {
   const [visible, setVisible] = useState(Boolean(message));
 
   useEffect(() => {

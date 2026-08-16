@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DiningOrder } from "../api/types";
 import {
-  BusinessKitchenV1656,
+  BusinessKitchen,
   type BusinessKitchenApi,
   supportsDiningKitchenApi,
 } from "./BusinessKitchen";
@@ -69,7 +69,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
 
   it("bo'limlar va zakaz kartasi v1656 matnlari bilan", async () => {
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={makeApi()}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -95,7 +95,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockResolvedValue([order({ place_kind: "room", place_name: "VIP xona" })]),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -108,7 +108,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
   it("'Tayyor bo'ldi' tugmasi oshxona holatini done qiladi", async () => {
     const api = makeApi();
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -130,7 +130,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
 
   it("kitchen vakolati yo'q xodimga tugma ko'rsatilmaydi", async () => {
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={makeApi()}
         permissions={["kassa"]}
         onBackHandlerChange={vi.fn()}
@@ -146,7 +146,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockResolvedValue([order({ kitchen_status: "done" })]),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -164,7 +164,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockResolvedValue([order({ id: 2, problem_open: true })]),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -182,7 +182,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockResolvedValue([]),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -201,7 +201,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         ]),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -217,7 +217,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       getDiningOrders: vi.fn().mockRejectedValue(new Error("Ulanmadi.")),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}
@@ -234,7 +234,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
         .mockRejectedValue(new Error("Muammoli zakazni avval kassada hal qiling.")),
     });
     render(
-      <BusinessKitchenV1656
+      <BusinessKitchen
         api={api}
         permissions={null}
         onBackHandlerChange={vi.fn()}

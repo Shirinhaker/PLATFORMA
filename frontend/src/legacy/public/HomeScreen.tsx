@@ -14,16 +14,16 @@ import type {
   PublicSearchItem,
   StoryGroup,
 } from "../../api/types";
-import { AppToastV1656 } from "./AppToast";
+import { AppToast } from "./AppToast";
 import { HomeAdvertisements } from "./HomeAdvertisements";
-import { HomeDistrictOffersV1656 } from "./home/HomeDistrictOffers";
-import { HomeFollowedProfilesV1656 } from "./home/HomeFollowedProfiles";
-import { HomeMapV1656 } from "./home/HomeMap";
-import { HomeSearchResultsV1656 } from "./home/HomeSearchResults";
+import { HomeDistrictOffers } from "./home/HomeDistrictOffers";
+import { HomeFollowedProfiles } from "./home/HomeFollowedProfiles";
+import { HomeMap } from "./home/HomeMap";
+import { HomeSearchResults } from "./home/HomeSearchResults";
 import { findLocationCenter } from "./location-centers";
 import type { HomeLocation } from "./location-storage";
 import {
-  StoryFeedV1656,
+  StoryFeed,
   type StoryViewerApi,
 } from "../../stories/StoryFeed";
 
@@ -220,7 +220,7 @@ export function HomeScreen({
     groups: StoryGroup[],
     onOpenStory: (index: number) => void,
   ) => (
-    <HomeFollowedProfilesV1656
+    <HomeFollowedProfiles
       items={followedProfiles}
       storyGroups={groups}
       onOpenProfile={openResult}
@@ -337,7 +337,7 @@ export function HomeScreen({
   return (
     <main className="screen active public-home-v1656" data-screen="home">
       {storyApi ? (
-        <StoryFeedV1656
+        <StoryFeed
           deleteStory={storyApi.deleteStory}
           getStoryViewers={storyApi.getStoryViewers}
           load={loadStories}
@@ -347,7 +347,7 @@ export function HomeScreen({
           onOpenOwner={openResult}
         />
       ) : (
-        <HomeFollowedProfilesV1656
+        <HomeFollowedProfiles
           items={followedProfiles}
           onOpenProfile={openResult}
         />
@@ -399,7 +399,7 @@ export function HomeScreen({
           </div>
         </div>
 
-        <HomeMapV1656
+        <HomeMap
           businesses={homeMap.businesses}
           center={locationCenter ?? undefined}
           district={districtLabel}
@@ -418,7 +418,7 @@ export function HomeScreen({
             Natijalar — {results.length} ta
           </div>
           <div id="resList">
-            <HomeSearchResultsV1656
+            <HomeSearchResults
               error={searchError}
               hasMore={searchPage < searchPages}
               items={results}
@@ -446,13 +446,13 @@ export function HomeScreen({
         />
       ) : null}
 
-      <HomeDistrictOffersV1656
+      <HomeDistrictOffers
         items={offers}
         needsDistrict={offersNeedDistrict}
         onOpenLocation={onOpenLocation}
         onOpenOffer={openOffer}
       />
-      <AppToastV1656 message={toastMessage} />
+      <AppToast message={toastMessage} />
     </main>
   );
 }

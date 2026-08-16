@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { DebtLedgerV1656 } from "./DebtLedger";
+import { DebtLedger } from "./DebtLedger";
 
 const debtor = {
   id: 30,
@@ -47,11 +47,11 @@ function debtApi() {
   };
 }
 
-describe("DebtLedgerV1656", () => {
+describe("DebtLedger", () => {
   it("shows live balances and records a payment in the debtor history", async () => {
     const user = userEvent.setup();
     const api = debtApi();
-    render(<DebtLedgerV1656 api={api} onBack={vi.fn()} />);
+    render(<DebtLedger api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Ali Valiyev")).toBeInTheDocument();
     expect(screen.getByText("Umumiy qarz").closest("section")).toHaveTextContent(
@@ -80,7 +80,7 @@ describe("DebtLedgerV1656", () => {
   it("creates a debtor with an opening balance", async () => {
     const user = userEvent.setup();
     const api = debtApi();
-    render(<DebtLedgerV1656 api={api} onBack={vi.fn()} />);
+    render(<DebtLedger api={api} onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Yangi qarzdor" }));
     const dialog = screen.getByRole("dialog", { name: "Yangi qarzdor" });

@@ -2,8 +2,8 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { StoryGroup } from "../api/types";
-import { StoryRailV1656 } from "./StoryRail";
-import { StoryViewerV1656 } from "./StoryViewer";
+import { StoryRail } from "./StoryRail";
+import { StoryViewerScreen } from "./StoryViewer";
 
 export type StoryViewerApi = Pick<
   ApiClient,
@@ -16,7 +16,7 @@ type Props = StoryViewerApi & {
   renderRail?(groups: StoryGroup[], onOpen: (index: number) => void): ReactNode;
 };
 
-export function StoryFeedV1656({
+export function StoryFeed({
   load,
   recordStoryView,
   getStoryViewers,
@@ -47,10 +47,10 @@ export function StoryFeedV1656({
       {renderRail ? (
         renderRail(groups, setOpenIndex)
       ) : (
-        <StoryRailV1656 groups={groups} onOpen={setOpenIndex} />
+        <StoryRail groups={groups} onOpen={setOpenIndex} />
       )}
       {openIndex !== null ? (
-        <StoryViewerV1656
+        <StoryViewerScreen
           deleteStory={deleteStory}
           getViewers={getStoryViewers}
           groups={groups}

@@ -99,7 +99,7 @@ function Chevron() {
   );
 }
 
-export function AccountSettingsV1656({
+export function AccountSettings({
   api,
   identity,
   onBack,

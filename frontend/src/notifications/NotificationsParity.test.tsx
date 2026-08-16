@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { NotificationFilterRead, NotificationRead } from "../api/types";
 import {
-  ActionNotificationsV1656,
-  NotificationsV1656,
+  ActionNotifications,
+  Notifications,
   type NotificationsApi,
 } from "./Notifications";
 
@@ -74,7 +74,7 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
     const client = api();
     const unread = vi.fn();
     render(
-      <NotificationsV1656 api={client} onBack={vi.fn()} onUnreadChange={unread} />,
+      <Notifications api={client} onBack={vi.fn()} onUnreadChange={unread} />,
     );
 
     expect(await screen.findByText("Yangi buyurtma")).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
     const unread = vi.fn();
     const user = userEvent.setup();
     render(
-      <NotificationsV1656
+      <Notifications
         api={client}
         onBack={vi.fn()}
         onOpenNotification={open}
@@ -110,7 +110,7 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
   it("toggles push and saves a linked region/district listing filter", async () => {
     const client = api();
     const user = userEvent.setup();
-    render(<NotificationsV1656 api={client} onBack={vi.fn()} />);
+    render(<Notifications api={client} onBack={vi.fn()} />);
 
     const toggle = await screen.findByRole("checkbox");
     await user.click(toggle);
@@ -141,7 +141,7 @@ describe("v1656 bildirishnomalar migratsiyasi", () => {
     const client = api();
     const open = vi.fn();
     const user = userEvent.setup();
-    render(<ActionNotificationsV1656 api={client} onOpenNotification={open} />);
+    render(<ActionNotifications api={client} onOpenNotification={open} />);
 
     await user.click(await screen.findByRole("button", { name: /Yangi buyurtma/ }));
     expect(client.markNotificationRead).toHaveBeenCalledWith(11);

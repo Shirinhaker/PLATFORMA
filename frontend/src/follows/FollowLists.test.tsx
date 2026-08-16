@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { FollowListsV1656 } from "./FollowLists";
+import { FollowLists } from "./FollowLists";
 
 const rows = [
   {
@@ -18,7 +18,7 @@ const rows = [
   },
 ];
 
-describe("FollowListsV1656", () => {
+describe("FollowLists", () => {
   it("loads the typed followers list and opens the selected profile", async () => {
     const user = userEvent.setup();
     const onOpenProfile = vi.fn();
@@ -28,7 +28,7 @@ describe("FollowListsV1656", () => {
     };
 
     render(
-      <FollowListsV1656
+      <FollowLists
         api={api}
         kind="followers"
         onBack={vi.fn()}
@@ -53,7 +53,7 @@ describe("FollowListsV1656", () => {
     };
 
     render(
-      <FollowListsV1656
+      <FollowLists
         api={api}
         kind="following"
         onBack={vi.fn()}

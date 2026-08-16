@@ -24,7 +24,7 @@ function errorText(reason: unknown) {
     : "Arizani yuborib bo'lmadi. Qayta urinib ko'ring.";
 }
 
-export function CourseEnrollmentV1656({
+export function CourseEnrollment({
   api,
   customerPhone,
   target,

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SpecialistProfile } from "../api/types";
-import { SpecialistV1656, type SpecialistApi } from "./Specialist";
+import { Specialist, type SpecialistApi } from "./Specialist";
 
 const leaflet = vi.hoisted(() => {
   const map = {
@@ -87,7 +87,7 @@ function api(): SpecialistApi {
   };
 }
 
-describe("SpecialistV1656", () => {
+describe("Specialist", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -96,7 +96,7 @@ describe("SpecialistV1656", () => {
     const specialistApi = api();
     const onReviews = vi.fn();
     render(
-      <SpecialistV1656 api={specialistApi} onBack={vi.fn()} onReviews={onReviews} />,
+      <Specialist api={specialistApi} onBack={vi.fn()} onReviews={onReviews} />,
     );
 
     expect(
@@ -127,7 +127,7 @@ describe("SpecialistV1656", () => {
   it("uploads a credential through R2 and attaches its object key", async () => {
     const specialistApi = api();
     const { container } = render(
-      <SpecialistV1656 api={specialistApi} onBack={vi.fn()} />,
+      <Specialist api={specialistApi} onBack={vi.fn()} />,
     );
     await screen.findByText("Hujjat rasmi qo‘shish");
     const input = container.querySelector(
@@ -150,7 +150,7 @@ describe("SpecialistV1656", () => {
 
   it("opens and updates an existing service card", async () => {
     const specialistApi = api();
-    render(<SpecialistV1656 api={specialistApi} onBack={vi.fn()} />);
+    render(<Specialist api={specialistApi} onBack={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ta'mirlash/ }));
     expect(
       screen.getByRole("heading", { name: "Taklifni tahrirlash" }),

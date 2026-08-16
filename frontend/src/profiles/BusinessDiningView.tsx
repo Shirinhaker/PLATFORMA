@@ -52,7 +52,7 @@ type DragState = {
   dy: number;
 } | null;
 
-export function BusinessDiningV1656View({
+export function BusinessDiningView({
   places,
   menuItems,
   groups,

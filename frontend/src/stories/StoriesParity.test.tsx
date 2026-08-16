@@ -2,10 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiClient } from "../api/client";
-import { OwnerStoriesV1656 } from "./OwnerStories";
-import { StoryComposerV1656 } from "./StoryComposer";
-import { StoryRailV1656 } from "./StoryRail";
-import { StoryViewerV1656 } from "./StoryViewer";
+import { OwnerStories } from "./OwnerStories";
+import { StoryComposer } from "./StoryComposer";
+import { StoryRail } from "./StoryRail";
+import { StoryViewerScreen } from "./StoryViewer";
 import type { StoryGroup, StoryRead } from "../api/types";
 
 const story: StoryRead = {
@@ -45,7 +45,7 @@ function jsonResponse(body: unknown, status = 200) {
 describe("v1656 Istoriyalar pariteti", () => {
   it("rail ko‘rilmagan profilni ajratadi va viewer ochadi", () => {
     const open = vi.fn();
-    render(<StoryRailV1656 groups={[group]} onOpen={open} />);
+    render(<StoryRail groups={[group]} onOpen={open} />);
 
     const button = screen.getByRole("button", { name: /Ali istoriyasini ko‘rish/i });
     expect(button).toHaveClass("story-rail-card-v1656--unseen");
@@ -63,7 +63,7 @@ describe("v1656 Istoriyalar pariteti", () => {
       },
     ]);
     render(
-      <StoryViewerV1656
+      <StoryViewerScreen
         groups={[group]}
         initialGroupIndex={0}
         onClose={vi.fn()}
@@ -84,7 +84,7 @@ describe("v1656 Istoriyalar pariteti", () => {
     const onClose = vi.fn();
     const onOpenOwner = vi.fn();
     render(
-      <StoryViewerV1656
+      <StoryViewerScreen
         groups={[group]}
         initialGroupIndex={0}
         onClose={onClose}
@@ -110,7 +110,7 @@ describe("v1656 Istoriyalar pariteti", () => {
 
   it("composer 200 belgi va 60 soniya qoidalarini ko‘rsatadi", () => {
     render(
-      <StoryComposerV1656
+      <StoryComposer
         createUploadGrant={vi.fn()}
         uploadGrantedFile={vi.fn()}
         createStory={vi.fn()}
@@ -158,7 +158,7 @@ describe("v1656 Istoriyalar pariteti", () => {
     await client.getSession();
 
     render(
-      <OwnerStoriesV1656 actor="user" api={client} ownerName="Ali" onBack={vi.fn()} />,
+      <OwnerStories actor="user" api={client} ownerName="Ali" onBack={vi.fn()} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "+ Istoriya" }));

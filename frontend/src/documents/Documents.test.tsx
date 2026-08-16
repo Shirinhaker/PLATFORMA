@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BusinessDocument, BusinessProfile } from "../api/types";
-import { DocumentsV1656, type DocumentsApi } from "./Documents";
+import { Documents, type DocumentsApi } from "./Documents";
 
 const profile: BusinessProfile = {
   account_id: 7,
@@ -126,7 +126,7 @@ beforeEach(() => {
   vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 
-describe("DocumentsV1656", () => {
+describe("Documents", () => {
   it("does not add an AI draft control that v1656 did not render", async () => {
     const user = userEvent.setup();
     const api = {
@@ -134,7 +134,7 @@ describe("DocumentsV1656", () => {
       generateAIDocumentDraft: vi.fn(),
     };
     render(
-      <DocumentsV1656
+      <Documents
         api={api}
         profile={profile}
         initialView="center"
@@ -156,7 +156,7 @@ describe("DocumentsV1656", () => {
     const user = userEvent.setup();
     const api = documentsApi();
     render(
-      <DocumentsV1656
+      <Documents
         api={api}
         profile={profile}
         initialView="profile"
@@ -181,7 +181,7 @@ describe("DocumentsV1656", () => {
     const user = userEvent.setup();
     const api = documentsApi();
     render(
-      <DocumentsV1656
+      <Documents
         api={api}
         profile={profile}
         initialView="center"
@@ -205,7 +205,7 @@ describe("DocumentsV1656", () => {
     const user = userEvent.setup();
     const api = documentsApi();
     render(
-      <DocumentsV1656
+      <Documents
         api={api}
         profile={profile}
         initialView="center"

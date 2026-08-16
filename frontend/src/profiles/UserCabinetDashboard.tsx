@@ -3,7 +3,7 @@ import { avatarImageStyle } from "./UserAvatarCrop";
 import "./UserProfile.css";
 import "./UserCabinetDashboardParity.css";
 
-export type UserCabinetSectionV1656 = {
+export type UserCabinetSection = {
   caption: string;
   icon: string;
   label: string;
@@ -17,7 +17,7 @@ type Props = {
   notificationUnread: number;
   orderUnread: { product: number; service: number };
   profile: UserProfile;
-  sections: readonly UserCabinetSectionV1656[];
+  sections: readonly UserCabinetSection[];
   onNavigate(view: string): void;
   onOpenBusiness(): void;
   onSwitchBusiness(): void;
@@ -35,7 +35,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 /* static/index.html v1656 dagi orderIsActive bilan aynan bir xil statuslar. */
-const V1656_ACTIVE_ORDER_STATUSES = new Set([
+const _ACTIVE_ORDER_STATUSES = new Set([
   "new",
   "accepted",
   "preparing",
@@ -79,10 +79,10 @@ function truthyLegacy(value: unknown) {
   return Boolean(value);
 }
 
-export function isV1656ActiveUserOrder(value: unknown) {
+export function isActiveUserOrder(value: unknown) {
   const row = objectRow(value);
   if (!row || truthyLegacy(row.problem_open)) return false;
-  return V1656_ACTIVE_ORDER_STATUSES.has(String(row.status ?? ""));
+  return _ACTIVE_ORDER_STATUSES.has(String(row.status ?? ""));
 }
 
 function userNotificationVisible(value: unknown) {
@@ -114,7 +114,7 @@ function payloadArray(payload: Record<string, unknown>, key: string): unknown[] 
   return Array.isArray(value) ? value : null;
 }
 
-export function UserCabinetDashboardV1656({
+export function UserCabinetDashboard({
   busy,
   error,
   messageUnread,
@@ -132,7 +132,7 @@ export function UserCabinetDashboardV1656({
   const saved = payloadArray(payload, "saved");
   const notifications = payloadArray(payload, "notifications");
   const activeOrderCount = orders
-    ? orders.filter(isV1656ActiveUserOrder).length
+    ? orders.filter(isActiveUserOrder).length
     : (snapshot.active_orders ?? 0);
   const savedCount = saved ? saved.length : (snapshot.saved ?? 0);
   const scopedNotificationUnread = notifications

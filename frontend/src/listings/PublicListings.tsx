@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { ListingCategory, ListingRead } from "../api/types";
-import { ListingDetailV1656 } from "./ListingDetail";
+import { ListingDetail } from "./ListingDetail";
 import "./Listings.css";
 
 type ListingsApi = Pick<
@@ -73,7 +73,7 @@ function formatListingTime(value: string) {
   }).format(date);
 }
 
-export function PublicListingsV1656({
+export function PublicListings({
   api,
   authenticated,
   onNeedLogin,
@@ -293,7 +293,7 @@ export function PublicListingsV1656({
                         </span>
                       </button>
                       {open ? (
-                        <ListingDetailV1656
+                        <ListingDetail
                           compactMedia
                           listing={row}
                           saving={saving === row.public_id}

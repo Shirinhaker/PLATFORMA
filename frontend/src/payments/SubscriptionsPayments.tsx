@@ -95,7 +95,7 @@ function paymentRecord(row: PaymentRequestRecord): BusinessOnlineRecord {
   };
 }
 
-export function BusinessSubscriptionsV1656({
+export function BusinessSubscriptions({
   api,
   onBack,
   onOpenPayments,
@@ -182,7 +182,7 @@ export function BusinessSubscriptionsV1656({
   );
 }
 
-export function PaymentsV1656({
+export function Payments({
   api,
   onBack,
 }: {

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { ManagedStoryRead, StoryGroup } from "../api/types";
-import { StoryComposerV1656 } from "./StoryComposer";
-import { StoryViewerV1656 } from "./StoryViewer";
+import { StoryComposer } from "./StoryComposer";
+import { StoryViewerScreen } from "./StoryViewer";
 import "./Stories.css";
 
 export type OwnerStoriesApi = Pick<
@@ -27,7 +27,7 @@ type Props = {
   onBack(): void;
 };
 
-export function OwnerStoriesV1656({
+export function OwnerStories({
   actor,
   api,
   ownerPublicId = "",
@@ -132,7 +132,7 @@ export function OwnerStoriesV1656({
         <p className="owner-stories__empty">Bu bo‘limda istoriya yo‘q.</p>
       )}
       {composer ? (
-        <StoryComposerV1656
+        <StoryComposer
           createStory={actions.createStory}
           createUploadGrant={actions.createUploadGrant}
           uploadGrantedFile={actions.uploadGrantedFile}
@@ -141,7 +141,7 @@ export function OwnerStoriesV1656({
         />
       ) : null}
       {viewerIndex !== null && visible.length ? (
-        <StoryViewerV1656
+        <StoryViewerScreen
           deleteStory={actions.deleteStory}
           getViewers={actions.getStoryViewers}
           groups={[group]}

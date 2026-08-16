@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CashRegisterV1656 } from "./CashRegister";
+import { CashRegisterScreen } from "./CashRegister";
 
 const receipt = {
   id: 10,
@@ -88,10 +88,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("CashRegisterV1656", () => {
+describe("CashRegisterScreen", () => {
   it("renders the v1656 daily totals and grouped receipts", async () => {
     const api = cashApi();
-    render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
+    render(<CashRegisterScreen api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("🧾 Chek #7")).toBeInTheDocument();
     expect(screen.getByText(/Haqiqiy tushum/)).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("CashRegisterV1656", () => {
   it("creates a multi-line receipt from the live catalog", async () => {
     const user = userEvent.setup();
     const api = cashApi();
-    render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
+    render(<CashRegisterScreen api={api} onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Savdo yozish" }));
     const appleButton = await screen.findByRole("button", {
@@ -132,7 +132,7 @@ describe("CashRegisterV1656", () => {
   it("writes a debt sale to the selected debtor", async () => {
     const user = userEvent.setup();
     const api = cashApi();
-    render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
+    render(<CashRegisterScreen api={api} onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Savdo yozish" }));
     await user.click(await screen.findByRole("button", { name: /Omborda: 5 dona/ }));
@@ -166,7 +166,7 @@ describe("CashRegisterV1656", () => {
       },
     ]);
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
+    render(<CashRegisterScreen api={api} onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Savdo yozish" }));
     await user.click(await screen.findByRole("button", { name: /Olma/ }));

@@ -1,14 +1,14 @@
 import { useState } from "react";
 
 import type { ListingMedia } from "../api/types";
-import { ListingMediaViewerV1656 } from "./ListingMediaViewer";
+import { ListingMediaViewer } from "./ListingMediaViewer";
 
 type Props = {
   media: ListingMedia[];
   compact?: boolean;
 };
 
-export function ListingMediaGridV1656({ media, compact = false }: Props) {
+export function ListingMediaGrid({ media, compact = false }: Props) {
   const [openedMedia, setOpenedMedia] = useState<ListingMedia | null>(null);
 
   if (!media.length) return null;
@@ -58,7 +58,7 @@ export function ListingMediaGridV1656({ media, compact = false }: Props) {
           </button>
         ))}
       </div>
-      <ListingMediaViewerV1656
+      <ListingMediaViewer
         media={openedMedia}
         onClose={() => setOpenedMedia(null)}
       />

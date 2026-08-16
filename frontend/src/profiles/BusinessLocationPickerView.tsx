@@ -91,7 +91,7 @@ function saveBusinessPoint(point: PicklocPoint) {
   }
 }
 
-export function BusinessLocationPickerV1656View({
+export function BusinessLocationPickerView({
   prefix,
   value = null,
   fallback = null,

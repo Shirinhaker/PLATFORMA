@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TaxiCallV1656 } from "./TaxiCall";
+import { TaxiCall } from "./TaxiCall";
 
 const leaflet = vi.hoisted(() => {
   const state = { center: { lat: 41.3111, lng: 69.2797 }, zoom: 14 };
@@ -90,12 +90,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("TaxiCallV1656", () => {
+describe("TaxiCall", () => {
   it("opens for a guest but asks for login only when ordering", async () => {
     const onNeedLogin = vi.fn();
     const createTaxiRide = vi.fn();
     render(
-      <TaxiCallV1656
+      <TaxiCall
         api={{ createTaxiRide, getTaxiPricing: vi.fn().mockResolvedValue(pricing) }}
         authenticated={false}
         center={{ latitude: 41.3111, longitude: 69.2797 }}
@@ -122,7 +122,7 @@ describe("TaxiCallV1656", () => {
 
   it("keeps the exact Taxi and Dostavka fields", async () => {
     render(
-      <TaxiCallV1656
+      <TaxiCall
         api={{
           createTaxiRide: vi.fn(),
           getTaxiPricing: vi.fn().mockResolvedValue(pricing),
@@ -160,7 +160,7 @@ describe("TaxiCallV1656", () => {
 
   it("lets the explicit GPS button replace a manual place", async () => {
     render(
-      <TaxiCallV1656
+      <TaxiCall
         api={{ getTaxiPricing: vi.fn().mockResolvedValue(pricing) }}
         authenticated={false}
         center={{ latitude: 41.3111, longitude: 69.2797 }}
@@ -190,7 +190,7 @@ describe("TaxiCallV1656", () => {
 
   it("does not let a delayed GPS response replace a manually selected place", async () => {
     render(
-      <TaxiCallV1656
+      <TaxiCall
         api={{ getTaxiPricing: vi.fn().mockResolvedValue(pricing) }}
         authenticated={false}
         center={{ latitude: 41.3111, longitude: 69.2797 }}
@@ -234,7 +234,7 @@ describe("TaxiCallV1656", () => {
       }),
     );
     render(
-      <TaxiCallV1656
+      <TaxiCall
         api={{ getTaxiPricing: vi.fn().mockResolvedValue(pricing) }}
         authenticated={false}
         center={{ latitude: 41.3111, longitude: 69.2797 }}

@@ -12,27 +12,27 @@ import type {
 } from "../api/business-online-types";
 import type { BusinessProfile, NotificationRead, PaymentCatalog } from "../api/types";
 import {
-  OwnerListingsV1656,
+  OwnerListings,
   type OwnerListingsApi,
 } from "../listings/OwnerListings";
-import { BusinessDiningV1656View } from "./BusinessDiningView";
+import { BusinessDiningView } from "./BusinessDiningView";
 import {
-  BusinessAdvertisementsV1656,
+  BusinessAdvertisements,
   supportsAdvertisementApi,
 } from "../advertisements/BusinessAdvertisements";
-import { BusinessDiningV1656, supportsDiningApi } from "../dining/BusinessDining";
+import { BusinessDining, supportsDiningApi } from "../dining/BusinessDining";
 import {
-  BusinessKitchenV1656,
+  BusinessKitchen,
   supportsDiningKitchenApi,
 } from "../dining/BusinessKitchen";
-import { OrdersCabinetV1656, type OrdersApi } from "../orders/OrdersCabinet";
-import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsView";
+import { OrdersCabinet, type OrdersApi } from "../orders/OrdersCabinet";
+import { BusinessEducationEnrollmentsView } from "./BusinessEducationEnrollmentsView";
 import {
-  BusinessMedicalProvidersV1656View,
-  BusinessMedicalQueueV1656View,
+  BusinessMedicalProvidersView,
+  BusinessMedicalQueueView,
 } from "./BusinessMedicalView";
 import {
-  BusinessQueueV1656,
+  BusinessQueue,
   supportsBusinessQueueApi,
 } from "../queues/BusinessQueue";
 import { CrudEditorView, ItemsEditorView } from "./BusinessOnlineEditingViews";
@@ -50,10 +50,10 @@ import {
   type SharedActions,
   SubscriptionsView,
 } from "./BusinessOnlineViews";
-import { OwnerStoriesV1656, type OwnerStoriesApi } from "../stories/OwnerStories";
-import { ReceivedReviewsV1656, type ReceivedReviewsApi } from "../reviews/Reviews";
+import { OwnerStories, type OwnerStoriesApi } from "../stories/OwnerStories";
+import { ReceivedReviews, type ReceivedReviewsApi } from "../reviews/Reviews";
 import {
-  NotificationsV1656,
+  Notifications,
   type NotificationsApi,
 } from "../notifications/Notifications";
 import "./BusinessOnlineScreen.css";
@@ -763,7 +763,7 @@ export function BusinessOnlineScreen({
 
   if (view === "reviews" && supportsReceivedReviews(api)) {
     return (
-      <ReceivedReviewsV1656
+      <ReceivedReviews
         api={api}
         onBack={() => {
           void onBack();
@@ -774,7 +774,7 @@ export function BusinessOnlineScreen({
 
   if (view === "stories" && supportsOwnerStories(api)) {
     return (
-      <OwnerStoriesV1656
+      <OwnerStories
         actor="business"
         api={api}
         ownerAvatar={profile.logo_url}
@@ -786,7 +786,7 @@ export function BusinessOnlineScreen({
 
   if (view === "notifications" && supportsNotifications(api)) {
     return (
-      <NotificationsV1656
+      <Notifications
         api={api}
         onBack={() => {
           void onBack();
@@ -799,7 +799,7 @@ export function BusinessOnlineScreen({
 
   if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
     return (
-      <OrdersCabinetV1656
+      <OrdersCabinet
         key={view}
         api={api}
         side="provider"
@@ -886,7 +886,7 @@ export function BusinessOnlineScreen({
     onViewChange,
     uploadItemImage,
   });
-  const exactV1656 = Boolean(primary);
+  const exact = Boolean(primary);
   const screenTitle = ["advertisements", "listings"].includes(view)
     ? "E'lonlarim va reklamalarim"
     : title;
@@ -905,9 +905,9 @@ export function BusinessOnlineScreen({
         </button>
         <div>
           <h1>{subscreenBack ? subscreenTitle : screenTitle}</h1>
-          {!exactV1656 ? <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p> : null}
+          {!exact ? <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p> : null}
         </div>
-        {primary && api.getBusinessOnlineResource && !exactV1656 && (
+        {primary && api.getBusinessOnlineResource && !exact && (
           <button
             type="button"
             onClick={() => void refresh(...viewResources(view, primary))}
@@ -1082,7 +1082,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "dining-kitchen":
       if (supportsDiningKitchenApi(context.api)) {
         return (
-          <BusinessKitchenV1656
+          <BusinessKitchen
             api={context.api}
             // Bo'limning o'zi `kitchen` vakolati bilan ochiladi
             // (`MENU_PERMISSIONS`), server ham qayta tekshiradi.
@@ -1095,7 +1095,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "dining-places":
       if (supportsDiningApi(context.api)) {
         return (
-          <BusinessDiningV1656
+          <BusinessDining
             api={context.api}
             menuItems={context.resources.items ?? []}
             groups={context.resources.item_groups ?? []}
@@ -1104,7 +1104,7 @@ function renderContent(context: RenderContext): ReactNode {
         );
       }
       return (
-        <BusinessDiningV1656View
+        <BusinessDiningView
           places={context.resources.dining_places ?? []}
           menuItems={context.resources.items ?? []}
           groups={context.resources.item_groups ?? []}
@@ -1120,7 +1120,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "medical-providers":
       if (supportsBusinessQueueApi(context.api)) {
         return (
-          <BusinessQueueV1656
+          <BusinessQueue
             api={context.api}
             direction={profile.direction}
             view="medical-providers"
@@ -1129,7 +1129,7 @@ function renderContent(context: RenderContext): ReactNode {
         );
       }
       return (
-        <BusinessMedicalProvidersV1656View
+        <BusinessMedicalProvidersView
           direction={profile.direction}
           doctors={context.resources.medical_doctors ?? []}
           staff={context.resources.medical_staff ?? []}
@@ -1144,7 +1144,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "medical-queue":
       if (supportsBusinessQueueApi(context.api)) {
         return (
-          <BusinessQueueV1656
+          <BusinessQueue
             api={context.api}
             direction={profile.direction}
             view="medical-queue"
@@ -1153,7 +1153,7 @@ function renderContent(context: RenderContext): ReactNode {
         );
       }
       return (
-        <BusinessMedicalQueueV1656View
+        <BusinessMedicalQueueView
           direction={profile.direction}
           rows={context.resources.medical_queue ?? []}
           doctors={context.resources.medical_doctors ?? []}
@@ -1188,7 +1188,7 @@ function renderContent(context: RenderContext): ReactNode {
       );
     case "education-enrollments":
       return (
-        <BusinessEducationEnrollmentsV1656View
+        <BusinessEducationEnrollmentsView
           rows={context.resources.education_enrollments ?? []}
           groups={context.resources.education_groups ?? []}
           busy={shared.busy}
@@ -1200,7 +1200,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "listings":
       if (supportsOwnerListings(context.api)) {
         return (
-          <OwnerListingsV1656
+          <OwnerListings
             actor="business"
             api={context.api}
             embedded
@@ -1296,7 +1296,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "advertisements":
       if (supportsAdvertisementApi(context.api)) {
         return (
-          <BusinessAdvertisementsV1656
+          <BusinessAdvertisements
             api={context.api}
             openPayment={context.openPaymentTarget}
             onOpenListings={() => context.onViewChange?.("listings")}

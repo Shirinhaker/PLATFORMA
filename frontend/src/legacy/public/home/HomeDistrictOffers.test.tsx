@@ -1,7 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { HomeDistrictOffersV1656 } from "./HomeDistrictOffers";
+import { HomeDistrictOffers } from "./HomeDistrictOffers";
 
 
 const ITEMS = [{
@@ -31,10 +31,10 @@ const ITEMS = [{
 }];
 
 
-describe("HomeDistrictOffersV1656", () => {
+describe("HomeDistrictOffers", () => {
   it("keeps the v1656 hidden mount when the district has no offers", () => {
     render(
-      <HomeDistrictOffersV1656
+      <HomeDistrictOffers
         items={[]}
         needsDistrict={false}
         onOpenLocation={vi.fn()}
@@ -48,7 +48,7 @@ describe("HomeDistrictOffersV1656", () => {
 
   it("pauses and resumes the continuous rail on pointer and touch", () => {
     render(
-      <HomeDistrictOffersV1656
+      <HomeDistrictOffers
         items={ITEMS}
         needsDistrict={false}
         onOpenLocation={vi.fn()}
@@ -70,7 +70,7 @@ describe("HomeDistrictOffersV1656", () => {
 
   it("keeps duplicate cards out of the keyboard and accessibility order", () => {
     render(
-      <HomeDistrictOffersV1656
+      <HomeDistrictOffers
         items={ITEMS}
         needsDistrict={false}
         onOpenLocation={vi.fn()}

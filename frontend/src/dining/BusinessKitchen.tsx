@@ -57,7 +57,7 @@ function paymentText(order: DiningOrder) {
   return order.payment_status === "confirmed" ? "To‘lov tasdiqlandi" : "Hisob ochiq";
 }
 
-export function BusinessKitchenV1656({ api, permissions, onBackHandlerChange }: Props) {
+export function BusinessKitchen({ api, permissions, onBackHandlerChange }: Props) {
   const [orders, setOrders] = useState<DiningOrder[]>([]);
   const [tab, setTab] = useState<Tab | null>(null);
   const [loading, setLoading] = useState(true);

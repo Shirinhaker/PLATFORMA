@@ -8,7 +8,7 @@ import type {
 import { CATALOG_DIRECTIONS } from "../catalog-data";
 
 
-interface HomeMapV1656Props {
+interface HomeMapProps {
   businesses: PublicHomeBusinessPin[];
   center?: { latitude: number; longitude: number };
   district: string;
@@ -182,7 +182,7 @@ function buildSearchMapPoints(
 }
 
 
-export function HomeMapV1656({
+export function HomeMap({
   businesses,
   center,
   district,
@@ -192,7 +192,7 @@ export function HomeMapV1656({
   onCloseResults,
   onOpenResult,
   onTaxiCall,
-}: HomeMapV1656Props) {
+}: HomeMapProps) {
   const mapElement = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

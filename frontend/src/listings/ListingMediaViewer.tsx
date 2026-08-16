@@ -5,7 +5,7 @@ type Props = {
   onClose(): void;
 };
 
-export function ListingMediaViewerV1656({ media, onClose }: Props) {
+export function ListingMediaViewer({ media, onClose }: Props) {
   useEffect(() => {
     if (!media) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {

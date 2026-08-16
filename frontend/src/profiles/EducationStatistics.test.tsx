@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EducationStatisticsReport } from "../api/types";
-import { EducationStatisticsV1656 } from "./EducationStatistics";
+import { EducationStatistics } from "./EducationStatistics";
 
 function report(
   overrides: Partial<EducationStatisticsReport> = {},
@@ -39,7 +39,7 @@ function report(
   };
 }
 
-describe("EducationStatisticsV1656", () => {
+describe("EducationStatistics", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-04T09:00:00Z"));
@@ -52,7 +52,7 @@ describe("EducationStatisticsV1656", () => {
   it("renders the exact v1656 education dashboard blocks", async () => {
     const api = { getEducationStatistics: vi.fn().mockResolvedValue(report()) };
 
-    render(<EducationStatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<EducationStatistics api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Ta'lim boshqaruv paneli")).toBeInTheDocument();
     expect(screen.getByText("Ta'lim jarayoni")).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe("EducationStatisticsV1656", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const api = { getEducationStatistics: vi.fn().mockResolvedValue(report()) };
 
-    render(<EducationStatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<EducationStatistics api={api} onBack={vi.fn()} />);
     await screen.findByText("Ta'lim boshqaruv paneli");
 
     expect(screen.getAllByRole("button", { name: /^(Kun|Oy|Yil)$/ })).toHaveLength(3);
@@ -103,7 +103,7 @@ describe("EducationStatisticsV1656", () => {
         .mockReturnValueOnce(day),
     };
 
-    render(<EducationStatisticsV1656 api={api} onBack={vi.fn()} />);
+    render(<EducationStatistics api={api} onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: "Kun" }));
     resolveDay(
       report({

@@ -6,7 +6,7 @@ type Props = {
   onOpen(index: number): void;
 };
 
-export function StoryRailV1656({ groups, onOpen }: Props) {
+export function StoryRail({ groups, onOpen }: Props) {
   if (groups.length === 0) return null;
   return (
     <section aria-label="Istoriyalar" className="story-rail-v1656">

@@ -243,7 +243,7 @@ function AttendanceEditor({
   );
 }
 
-export function StaffManagementV1656({
+export function StaffManagement({
   api,
   onBack,
 }: {

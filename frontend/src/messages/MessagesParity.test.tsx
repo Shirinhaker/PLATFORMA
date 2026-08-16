@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { MessageRead } from "../api/types";
-import { MessagesV1656, type MessagesApi } from "./Messages";
+import { Messages, type MessagesApi } from "./Messages";
 
 const peer = {
   target_kind: "business" as const,
@@ -70,10 +70,10 @@ function api(overrides: Partial<MessagesApi> = {}): MessagesApi {
   };
 }
 
-describe("MessagesV1656", () => {
+describe("Messages", () => {
   it("shows v1656 conversation list, unread badge and opens the real thread", async () => {
     const client = api();
-    render(<MessagesV1656 api={client} onBack={vi.fn()} />);
+    render(<Messages api={client} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Turon savdo")).toBeInTheDocument();
     expect(screen.getByText("2")).toHaveClass("conv-badge");
@@ -92,7 +92,7 @@ describe("MessagesV1656", () => {
     const client = api();
     const user = userEvent.setup();
     render(
-      <MessagesV1656
+      <Messages
         api={client}
         initialPeer={{
           kind: "business",
@@ -169,7 +169,7 @@ describe("MessagesV1656", () => {
     });
     const user = userEvent.setup();
     render(
-      <MessagesV1656
+      <Messages
         api={client}
         initialPeer={{
           kind: "business",

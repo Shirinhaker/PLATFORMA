@@ -92,7 +92,7 @@ function filterCaption(filter: NotificationFilterRead): string {
   return parts.join(" · ") || "Barcha e’lonlar";
 }
 
-export function NotificationsV1656({
+export function Notifications({
   api,
   onBack,
   onOpenNotification,
@@ -480,7 +480,7 @@ export function NotificationsV1656({
   );
 }
 
-export function ActionNotificationsV1656({
+export function ActionNotifications({
   api,
   onOpenNotification,
 }: {

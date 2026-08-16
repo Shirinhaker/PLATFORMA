@@ -77,7 +77,7 @@ function statusLabel(ride: TaxiRide) {
   return "🚗 Haydovchi yo'lda kelmoqda";
 }
 
-export function TaxiCallV1656({
+export function TaxiCall({
   api,
   authenticated,
   center,

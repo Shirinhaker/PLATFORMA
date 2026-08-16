@@ -41,7 +41,7 @@ export function avatarImageStyle(value: Partial<AvatarCrop>): CSSProperties {
   };
 }
 
-export function UserAvatarCropV1656({
+export function UserAvatarCrop({
   alt,
   busy,
   src,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { DiningOrder, DiningPayType } from "../api/types";
-import { DebtorPickerV1656 } from "../profiles/DebtorPicker";
+import { DebtorPicker } from "../profiles/DebtorPicker";
 import "./BusinessDiningCash.css";
 
 export type BusinessDiningCashApi = Pick<
@@ -72,7 +72,7 @@ function reason(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
-export function BusinessDiningCashV1656({ api, onChanged }: Props) {
+export function BusinessDiningCash({ api, onChanged }: Props) {
   const [orders, setOrders] = useState<DiningOrder[]>([]);
   const [tab, setTab] = useState<Tab>("open");
   const [loading, setLoading] = useState(true);
@@ -259,7 +259,7 @@ export function BusinessDiningCashV1656({ api, onChanged }: Props) {
       ) : null}
 
       {modal?.kind === "debt" ? (
-        <DebtorPickerV1656
+        <DebtorPicker
           api={api}
           title="Ichki hisobni qarzga yozish"
           onCancel={() => setModal(null)}
