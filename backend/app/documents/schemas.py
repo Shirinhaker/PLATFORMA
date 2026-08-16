@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.schemas import CreatedRead, MutationRead  # noqa: F401
+
 DocumentDirection = Literal["ichki", "kiruvchi", "chiquvchi"]
 DocumentResponseAction = Literal["qabul", "rad"]
 
@@ -93,15 +95,6 @@ class DocumentRead(BaseModel):
 class DocumentListRead(BaseModel):
     documents: list[DocumentRead]
     count: int
-
-
-class CreatedRead(BaseModel):
-    ok: bool = True
-    id: int
-
-
-class MutationRead(BaseModel):
-    ok: bool = True
 
 
 class DocumentSend(BaseModel):
