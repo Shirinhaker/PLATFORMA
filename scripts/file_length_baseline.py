@@ -43,7 +43,6 @@ BASELINE: dict[str, int] = {
     "frontend/src/legacy/public/PublicProfile.tsx": 527,
     "frontend/src/messages/Messages.tsx": 683,
     "frontend/src/notifications/Notifications.tsx": 549,
-    "frontend/src/orders/OrdersCabinet.tsx": 1733,
     "frontend/src/profiles/BusinessDiningView.tsx": 1023,
     "frontend/src/profiles/BusinessItemsView.tsx": 535,
     "frontend/src/profiles/BusinessMedicalView.tsx": 932,
