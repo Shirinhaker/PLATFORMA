@@ -10,7 +10,7 @@ import {
 import {
   BusinessLocationPickerV1656View,
   type PicklocPoint,
-} from "./BusinessLocationPickerV1656View";
+} from "./BusinessLocationPickerView";
 import "./BusinessProfileEditor.css";
 
 type EditorApi = Pick<

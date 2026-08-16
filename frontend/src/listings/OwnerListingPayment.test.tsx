@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ListingRead, PaymentCatalog } from "../api/types";
-import { OwnerListingsV1656 } from "./OwnerListingsV1656";
+import { OwnerListingsV1656 } from "./OwnerListings";
 
 // Xarita tanlovi formaning majburiy qadami — u Leafletsiz ishlamaydi.
 const leaflet = vi.hoisted(() => {

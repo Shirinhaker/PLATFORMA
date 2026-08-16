@@ -9,15 +9,15 @@ import { CategoryScreen } from "../legacy/public/CategoryScreen";
 import { findCatalogDirection } from "../legacy/public/catalog-data";
 import { HomeScreen } from "../legacy/public/HomeScreen";
 import { LocationScreen } from "../legacy/public/LocationScreen";
-import { PublicProfileV1656 } from "../legacy/public/PublicProfileV1656";
+import { PublicProfileV1656 } from "../legacy/public/PublicProfile";
 import {
   CourseEnrollmentV1656,
   type CourseEnrollmentApi,
   type CourseEnrollmentTarget,
-} from "../education/CourseEnrollmentV1656";
-import { ListingPageV1656 } from "../listings/ListingPageV1656";
-import { PublicListingsV1656 } from "../listings/PublicListingsV1656";
-import { CartV1656 } from "../orders/CartV1656";
+} from "../education/CourseEnrollment";
+import { ListingPageV1656 } from "../listings/ListingPage";
+import { PublicListingsV1656 } from "../listings/PublicListings";
+import { CartV1656 } from "../orders/Cart";
 import { addCartItem, cartLineCount, type CartState } from "../orders/order-store";
 import { readHomeLocation, type HomeLocation } from "../legacy/public/location-storage";
 import {
@@ -35,15 +35,15 @@ import {
   supportsQueueBookingApi,
   type QueueBookingApi,
   type QueueBookingTarget,
-} from "../queues/QueueBookingV1656";
+} from "../queues/QueueBooking";
 import {
   MessagesV1656,
   type MessagePeer,
   type MessagesApi,
-} from "../messages/MessagesV1656";
-import type { PublicReviewsApi } from "../reviews/ReviewsV1656";
-import { TaxiCallV1656 } from "../taxi/TaxiCallV1656";
-import { DriverCabinetV1656 } from "../taxi/DriverCabinetV1656";
+} from "../messages/Messages";
+import type { PublicReviewsApi } from "../reviews/Reviews";
+import { TaxiCallV1656 } from "../taxi/TaxiCall";
+import { DriverCabinetV1656 } from "../taxi/DriverCabinet";
 
 type SessionApi = Pick<ApiClient, "getSession">;
 type ProfileApi = UserProfileApi & BusinessProfileApi;

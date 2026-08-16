@@ -14,27 +14,27 @@ import type { BusinessProfile, NotificationRead, PaymentCatalog } from "../api/t
 import {
   OwnerListingsV1656,
   type OwnerListingsApi,
-} from "../listings/OwnerListingsV1656";
-import { BusinessDiningV1656View } from "./BusinessDiningV1656View";
+} from "../listings/OwnerListings";
+import { BusinessDiningV1656View } from "./BusinessDiningView";
 import {
   BusinessAdvertisementsV1656,
   supportsAdvertisementApi,
-} from "../advertisements/BusinessAdvertisementsV1656";
-import { BusinessDiningV1656, supportsDiningApi } from "../dining/BusinessDiningV1656";
+} from "../advertisements/BusinessAdvertisements";
+import { BusinessDiningV1656, supportsDiningApi } from "../dining/BusinessDining";
 import {
   BusinessKitchenV1656,
   supportsDiningKitchenApi,
-} from "../dining/BusinessKitchenV1656";
-import { OrdersCabinetV1656, type OrdersApi } from "../orders/OrdersCabinetV1656";
-import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsV1656View";
+} from "../dining/BusinessKitchen";
+import { OrdersCabinetV1656, type OrdersApi } from "../orders/OrdersCabinet";
+import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsView";
 import {
   BusinessMedicalProvidersV1656View,
   BusinessMedicalQueueV1656View,
-} from "./BusinessMedicalV1656View";
+} from "./BusinessMedicalView";
 import {
   BusinessQueueV1656,
   supportsBusinessQueueApi,
-} from "../queues/BusinessQueueV1656";
+} from "../queues/BusinessQueue";
 import { CrudEditorView, ItemsEditorView } from "./BusinessOnlineEditingViews";
 import {
   isServiceOrder,
@@ -50,14 +50,14 @@ import {
   type SharedActions,
   SubscriptionsView,
 } from "./BusinessOnlineViews";
-import { OwnerStoriesV1656, type OwnerStoriesApi } from "../stories/OwnerStoriesV1656";
-import { ReceivedReviewsV1656, type ReceivedReviewsApi } from "../reviews/ReviewsV1656";
+import { OwnerStoriesV1656, type OwnerStoriesApi } from "../stories/OwnerStories";
+import { ReceivedReviewsV1656, type ReceivedReviewsApi } from "../reviews/Reviews";
 import {
   NotificationsV1656,
   type NotificationsApi,
-} from "../notifications/NotificationsV1656";
+} from "../notifications/Notifications";
 import "./BusinessOnlineScreen.css";
-import "./BusinessExistingOnlineV1656.css";
+import "./BusinessExistingOnline.css";
 
 type OnlineApi = Partial<
   Pick<

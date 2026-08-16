@@ -9,7 +9,7 @@ import { readHomeLocation } from "../legacy/public/location-storage";
 import {
   BusinessLocationPickerV1656View,
   normalizeLatLng,
-} from "./BusinessLocationPickerV1656View";
+} from "./BusinessLocationPickerView";
 import {
   recordId,
   recordNumber,

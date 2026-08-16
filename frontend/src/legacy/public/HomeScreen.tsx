@@ -14,18 +14,18 @@ import type {
   PublicSearchItem,
   StoryGroup,
 } from "../../api/types";
-import { AppToastV1656 } from "./AppToastV1656";
+import { AppToastV1656 } from "./AppToast";
 import { HomeAdvertisements } from "./HomeAdvertisements";
-import { HomeDistrictOffersV1656 } from "./home/HomeDistrictOffersV1656";
-import { HomeFollowedProfilesV1656 } from "./home/HomeFollowedProfilesV1656";
-import { HomeMapV1656 } from "./home/HomeMapV1656";
-import { HomeSearchResultsV1656 } from "./home/HomeSearchResultsV1656";
+import { HomeDistrictOffersV1656 } from "./home/HomeDistrictOffers";
+import { HomeFollowedProfilesV1656 } from "./home/HomeFollowedProfiles";
+import { HomeMapV1656 } from "./home/HomeMap";
+import { HomeSearchResultsV1656 } from "./home/HomeSearchResults";
 import { findLocationCenter } from "./location-centers";
 import type { HomeLocation } from "./location-storage";
 import {
   StoryFeedV1656,
   type StoryViewerApi,
-} from "../../stories/StoryFeedV1656";
+} from "../../stories/StoryFeed";
 
 
 interface HomeScreenProps {

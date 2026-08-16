@@ -18,7 +18,7 @@ import { LoginForm, type LoginDraft } from "./LoginForm";
 import { RegistrationForm } from "./RegistrationForm";
 import { StaffLoginForm } from "./StaffLoginForm";
 import { TelegramCodeForm } from "./TelegramCodeForm";
-import "./AuthV1656.css";
+import "./Auth.css";
 
 export type AuthApi = Pick<
   ApiClient,

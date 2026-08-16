@@ -29,42 +29,42 @@ import { CabinetDataView } from "./CabinetDataView";
 import {
   BusinessDiningCashV1656,
   supportsDiningCashApi,
-} from "../dining/BusinessDiningCashV1656";
-import { CashRegisterV1656, type CashRegisterApi } from "./CashRegisterV1656";
-import { DebtLedgerV1656, type DebtLedgerApi } from "./DebtLedgerV1656";
+} from "../dining/BusinessDiningCash";
+import { CashRegisterV1656, type CashRegisterApi } from "./CashRegister";
+import { DebtLedgerV1656, type DebtLedgerApi } from "./DebtLedger";
 import {
   EducationStatisticsV1656,
   type EducationStatisticsApi,
-} from "./EducationStatisticsV1656";
+} from "./EducationStatistics";
 import {
   EducationManagementV1656,
   type EducationManagementApi,
   type EducationManagementView,
-} from "../education/EducationManagementV1656";
-import { ExpensesV1656, type ExpensesApi } from "./ExpensesV1656";
-import { StaffManagementV1656, type StaffManagementApi } from "./StaffManagementV1656";
-import { StatisticsV1656, type StatisticsApi } from "./StatisticsV1656";
-import { WarehouseV1656, type WarehouseApi } from "../inventory/WarehouseV1656";
-import { DocumentsV1656, type DocumentsApi } from "../documents/DocumentsV1656";
+} from "../education/EducationManagement";
+import { ExpensesV1656, type ExpensesApi } from "./Expenses";
+import { StaffManagementV1656, type StaffManagementApi } from "./StaffManagement";
+import { StatisticsV1656, type StatisticsApi } from "./Statistics";
+import { WarehouseV1656, type WarehouseApi } from "../inventory/Warehouse";
+import { DocumentsV1656, type DocumentsApi } from "../documents/Documents";
 import {
   AIAssistantV1656,
   type AIAssistantApi,
-} from "../ai-assistant/AIAssistantV1656";
-import { MessagesV1656, type MessagesApi } from "../messages/MessagesV1656";
+} from "../ai-assistant/AIAssistant";
+import { MessagesV1656, type MessagesApi } from "../messages/Messages";
 import {
   ActionNotificationsV1656,
   type NotificationsApi,
-} from "../notifications/NotificationsV1656";
-import { FollowListsV1656, type FollowListsApi } from "../follows/FollowListsV1656";
+} from "../notifications/Notifications";
+import { FollowListsV1656, type FollowListsApi } from "../follows/FollowLists";
 import {
   BusinessSubscriptionsV1656,
   PaymentsV1656,
   supportsBusinessSubscriptionsApi,
   supportsPaymentsApi,
-} from "../payments/SubscriptionsPaymentsV1656";
-import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
+} from "../payments/SubscriptionsPayments";
+import { AccountSettingsV1656 } from "../settings/AccountSettings";
 import "./Cabinet.css";
-import "./BusinessCabinetDashboardParityV1656.css";
+import "./BusinessCabinetDashboardParity.css";
 import "./BusinessFollowCounts.css";
 
 export type BusinessProfileApi = Pick<
