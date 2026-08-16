@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
-import type { ApiClient } from "../api/client";
 import type { PublicFeatures, SessionIdentity } from "../api/types";
-import { AuthFlow, type AuthApi } from "../auth/AuthFlow";
 import type { AppSession } from "../auth/types";
 import { CatalogScreen } from "../legacy/public/CatalogScreen";
 import { CategoryScreen } from "../legacy/public/CategoryScreen";
@@ -25,128 +23,19 @@ import {
   publicNavigationReducer,
 } from "../legacy/public/public-navigation";
 import type { PublicView } from "../legacy/public/public-contract";
-import { BusinessProfile, type BusinessProfileApi } from "../profiles/BusinessProfile";
-import { UserProfile, type UserProfileApi } from "../profiles/UserProfile";
 import "./App.css";
 import { AppShell } from "./AppShell";
 import { SessionStatus } from "./SessionStatus";
 import {
   QueueBooking,
   supportsQueueBookingApi,
-  type QueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
-import { Messages, type MessagePeer, type MessagesApi } from "../messages/Messages";
-import type { PublicReviewsApi } from "../reviews/Reviews";
+import { Messages, type MessagePeer } from "../messages/Messages";
 import { TaxiCall } from "../taxi/TaxiCall";
 import { DriverCabinet } from "../taxi/DriverCabinet";
-
-type SessionApi = Pick<ApiClient, "getSession">;
-type ProfileApi = UserProfileApi & BusinessProfileApi;
-type PublicSearchApi = Pick<
-  ApiClient,
-  | "searchPublic"
-  | "getCatalogItems"
-  | "getAdvertisements"
-  | "getPublicFeatures"
-  | "getHomeMap"
-  | "getDistrictOffers"
-  | "getFollowedProfiles"
-  | "getPublicProfile"
-  | "recordAdvertisementViews"
-  | "recordAdvertisementClick"
-  | "getListingCounts"
-  | "getPublicListings"
-  | "getPublicListing"
-  | "toggleListingSave"
-  | "getStoryFeed"
-  | "getOwnerStories"
-  | "recordStoryView"
-  | "getStoryViewers"
-  | "deleteStory"
-  | "reportStory"
->;
-type OrderApi = Pick<ApiClient, "createOrder">;
-type TaxiAppApi = Pick<
-  ApiClient,
-  | "getTaxiPricing"
-  | "getTaxiDriver"
-  | "saveTaxiDriver"
-  | "setTaxiDriverAvailable"
-  | "createTaxiRide"
-  | "getMyTaxiRides"
-  | "cancelTaxiRide"
-  | "getPendingTaxiRides"
-  | "acceptTaxiRide"
-  | "setTaxiRideStatus"
-  | "updateTaxiRideProgress"
-  | "reverseGeocode"
->;
-type AppApi = SessionApi &
-  Partial<AuthApi> &
-  Partial<ProfileApi> &
-  Partial<PublicSearchApi> &
-  Partial<OrderApi> &
-  Partial<QueueBookingApi> &
-  Partial<CourseEnrollmentApi> &
-  Partial<MessagesApi> &
-  Partial<PublicReviewsApi> &
-  Partial<TaxiAppApi>;
-
-function supportsAuthFlow(api: AppApi): api is SessionApi & AuthApi {
-  return [
-    "startRegistration",
-    "startLogin",
-    "verifyRegistration",
-    "verifyLogin",
-    "resendChallenge",
-  ].every((method) => typeof api[method as keyof AppApi] === "function");
-}
-
-function supportsProfiles(api: AppApi): api is SessionApi & ProfileApi {
-  return [
-    "getUserProfile",
-    "updateUserProfile",
-    "getBusinessProfile",
-    "updateBusinessProfile",
-    "createUploadGrant",
-    "uploadGrantedFile",
-    "attachUserAvatar",
-    "attachBusinessLogo",
-    "switchCabinet",
-    "logout",
-  ].every((method) => typeof api[method as keyof AppApi] === "function");
-}
-
-function supportsMessages(api: AppApi): api is AppApi & MessagesApi {
-  return [
-    "getMessageConversations",
-    "getMessageThread",
-    "sendMessage",
-    "sendMessageImage",
-    "editMessage",
-    "deleteMessage",
-    "createUploadGrant",
-    "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof AppApi] === "function");
-}
-
-function supportsPublicReviews(api: AppApi): api is AppApi & PublicReviewsApi {
-  return ["getReviews", "saveReview", "deleteReview"].every(
-    (method) => typeof api[method as keyof AppApi] === "function",
-  );
-}
-
-function Cabinet({ kind, name }: { kind: "user" | "business"; name: string }) {
-  const title = kind === "user" ? "Oddiy kabinet" : "Biznes kabinet";
-  return (
-    <main className="session-panel">
-      <p className="session-panel__eyebrow">Koprik</p>
-      <h1>{title}</h1>
-      <p>{name}</p>
-    </main>
-  );
-}
+import { AccountContent } from "./AccountContent";
+import { type AppApi, supportsMessages, supportsPublicReviews } from "./app-api";
 
 export function App({ api }: { api: AppApi }) {
   const initialLocation = useMemo(() => readHomeLocation(), []);
@@ -534,70 +423,33 @@ export function App({ api }: { api: AppApi }) {
   }
 
   function renderAccount() {
-    if (session.status === "guest") {
-      return supportsAuthFlow(api) ? (
-        <AuthFlow
-          api={api}
-          onAuthenticated={completeAuthentication}
-          reason={authReason}
-        />
-      ) : (
-        <main className="session-panel">
-          <h1>Koprik’ga kirish</h1>
-        </main>
-      );
-    }
-    if (session.status === "loading") {
-      return <SessionStatus state="loading" />;
-    }
-
-    if (supportsProfiles(api)) {
-      const logout = () => {
-        setSession({ status: "guest" });
-        openHome();
-      };
-      const switched = (identity: SessionIdentity) => {
-        setSession({ status: identity.account_type, identity });
-        dispatch({ type: "OPEN_CABINET" });
-      };
-      return session.status === "user" ? (
-        <UserProfile
-          api={api}
-          identity={session.identity}
-          onLogout={logout}
-          onOpenDriverCabinet={() => dispatch({ type: "OPEN_TAXI_DRIVER" })}
-          onOpenPublicListing={(publicId) => {
-            setOpenedProfile(null);
-            setOpenedListing({ publicId, title: "E’lon" });
-            dispatch({ type: "GO_HOME" });
-          }}
-          onOpenPublicProfile={(kind, publicId) => {
-            setOpenedListing(null);
-            setOpenedProfile({ kind, publicId, title: "Profil" });
-            dispatch({ type: "GO_HOME" });
-          }}
-          onSwitched={switched}
-        />
-      ) : (
-        <BusinessProfile
-          api={api}
-          identity={session.identity}
-          onLogout={logout}
-          onOpenPublicListing={(publicId) => {
-            setOpenedProfile(null);
-            setOpenedListing({ publicId, title: "E’lon" });
-            dispatch({ type: "GO_HOME" });
-          }}
-          onOpenPublicProfile={(kind, publicId) => {
-            setOpenedListing(null);
-            setOpenedProfile({ kind, publicId, title: "Profil" });
-            dispatch({ type: "GO_HOME" });
-          }}
-          onSwitched={switched}
-        />
-      );
-    }
-    return <Cabinet kind={session.status} name={session.identity.name} />;
+    return (
+      <AccountContent
+        api={api}
+        session={session}
+        authReason={authReason}
+        onAuthenticated={completeAuthentication}
+        onLogout={() => {
+          setSession({ status: "guest" });
+          openHome();
+        }}
+        onSwitched={(identity) => {
+          setSession({ status: identity.account_type, identity });
+          dispatch({ type: "OPEN_CABINET" });
+        }}
+        onOpenDriverCabinet={() => dispatch({ type: "OPEN_TAXI_DRIVER" })}
+        onOpenPublicListing={(publicId) => {
+          setOpenedProfile(null);
+          setOpenedListing({ publicId, title: "E’lon" });
+          dispatch({ type: "GO_HOME" });
+        }}
+        onOpenPublicProfile={(kind, publicId) => {
+          setOpenedListing(null);
+          setOpenedProfile({ kind, publicId, title: "Profil" });
+          dispatch({ type: "GO_HOME" });
+        }}
+      />
+    );
   }
 
   function renderPublicContent() {
