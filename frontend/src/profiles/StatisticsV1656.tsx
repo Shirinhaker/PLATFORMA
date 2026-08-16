@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
-import type {
-  StatisticsPeriod,
-  StatisticsReport,
-  StatisticsTrend,
-} from "../api/types";
+import type { StatisticsPeriod, StatisticsReport, StatisticsTrend } from "../api/types";
 import "./StatisticsV1656.css";
-
 
 export type StatisticsApi = Pick<ApiClient, "getStatistics" | "getStatisticsNav">;
 
@@ -120,7 +115,10 @@ function StatisticsBars({
       ) : null}
       {items.map((item, index) => {
         const value = metricValue(item, metric);
-        const barHeight = Math.max(1, Math.round(Math.abs(value) / maximum * maxBarHeight));
+        const barHeight = Math.max(
+          1,
+          Math.round((Math.abs(value) / maximum) * maxBarHeight),
+        );
         const x = horizontalPadding + index * bandWidth + bandWidth * 0.14;
         const y = value >= 0 ? zeroY - barHeight : zeroY;
         const showLabel = index % labelStep === 0 || index === items.length - 1;
@@ -134,14 +132,18 @@ function StatisticsBars({
               rx="2"
               className={`statistics-v1656__bar statistics-v1656__bar--${metric}${value < 0 ? " statistics-v1656__bar--negative" : ""}`}
             >
-              <title>{item.label}: {money(value)}</title>
+              <title>
+                {item.label}: {money(value)}
+              </title>
             </rect>
             {showLabel ? (
               <text
                 x={horizontalPadding + index * bandWidth + bandWidth / 2}
                 y={height - 3}
                 textAnchor="middle"
-              >{item.label}</text>
+              >
+                {item.label}
+              </text>
             ) : null}
           </g>
         );
@@ -161,11 +163,16 @@ function ProgressRow({
   maximum: number;
   color: string;
 }) {
-  const width = Math.round(value / Math.max(1, maximum) * 100);
+  const width = Math.round((value / Math.max(1, maximum)) * 100);
   return (
     <div className="statistics-v1656__progress-row">
-      <div><span>{label}</span><b>{money(value)}</b></div>
-      <i><span style={{ width: `${width}%`, background: color }} /></i>
+      <div>
+        <span>{label}</span>
+        <b>{money(value)}</b>
+      </div>
+      <i>
+        <span style={{ width: `${width}%`, background: color }} />
+      </i>
     </div>
   );
 }
@@ -199,7 +206,8 @@ export function StatisticsV1656({
     const version = ++requestVersion.current;
     setLoading(true);
     setError("");
-    api.getStatistics(period, anchor)
+    api
+      .getStatistics(period, anchor)
       .then((value) => {
         if (requestVersion.current === version) setData(value);
       })
@@ -229,7 +237,10 @@ export function StatisticsV1656({
   }
 
   const paymentMaximum = maximumOf([
-    data.pay.naqd, data.pay.karta, data.pay.qarz, data.pay.order,
+    data.pay.naqd,
+    data.pay.karta,
+    data.pay.qarz,
+    data.pay.order,
   ]);
   const sourceMaximum = maximumOf([
     data.source_split.internal.total,
@@ -242,8 +253,13 @@ export function StatisticsV1656({
   return (
     <main className="statistics-v1656">
       <header className="statistics-v1656__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-        <div><h1>Statistika</h1><p>Tushum, xarajat, foyda va tovarlar</p></div>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>Statistika</h1>
+          <p>Tushum, xarajat, foyda va tovarlar</p>
+        </div>
       </header>
 
       <nav className="statistics-v1656__periods" aria-label="Statistika davri">
@@ -258,7 +274,9 @@ export function StatisticsV1656({
               setPeriod(option.key);
               setAnchor("");
             }}
-          >{option.label}</button>
+          >
+            {option.label}
+          </button>
         ))}
       </nav>
 
@@ -268,7 +286,9 @@ export function StatisticsV1656({
           aria-label="Oldingi davr"
           disabled={navigating}
           onClick={() => void navigate(-1)}
-        >←</button>
+        >
+          ←
+        </button>
         <b>{data.label || "—"}</b>
         <button
           type="button"
@@ -276,25 +296,57 @@ export function StatisticsV1656({
           disabled={navigating}
           style={{ visibility: data.can_next ? "visible" : "hidden" }}
           onClick={() => void navigate(1)}
-        >→</button>
+        >
+          →
+        </button>
       </nav>
 
-      {error ? <p className="statistics-v1656__error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="statistics-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
       {loading ? <p className="statistics-v1656__empty">Yuklanmoqda…</p> : null}
 
       {!loading ? (
         <>
-          <section className="statistics-v1656__financial" aria-label="Moliyaviy natijalar">
-            <article><small>Haqiqiy pul tushumi</small><strong className="positive">{money(data.cash_in)}</strong></article>
-            <article><small>Jami savdo</small><strong>{money(data.revenue)}</strong></article>
-            <article><small>FIFO sotuv tannarxi</small><strong className="cost">{money(data.cogs)}</strong></article>
-            <article><small>Yalpi foyda</small><strong>{money(data.gross_profit)}</strong></article>
-            <article><small>Operatsion xarajat</small><strong className="negative">{money(data.expenses)}</strong></article>
-            <article><small>Xomashyo xaridi</small><strong className="purchase">{money(data.inventory_purchases)}</strong></article>
+          <section
+            className="statistics-v1656__financial"
+            aria-label="Moliyaviy natijalar"
+          >
+            <article>
+              <small>Haqiqiy pul tushumi</small>
+              <strong className="positive">{money(data.cash_in)}</strong>
+            </article>
+            <article>
+              <small>Jami savdo</small>
+              <strong>{money(data.revenue)}</strong>
+            </article>
+            <article>
+              <small>FIFO sotuv tannarxi</small>
+              <strong className="cost">{money(data.cogs)}</strong>
+            </article>
+            <article>
+              <small>Yalpi foyda</small>
+              <strong>{money(data.gross_profit)}</strong>
+            </article>
+            <article>
+              <small>Operatsion xarajat</small>
+              <strong className="negative">{money(data.expenses)}</strong>
+            </article>
+            <article>
+              <small>Xomashyo xaridi</small>
+              <strong className="purchase">{money(data.inventory_purchases)}</strong>
+            </article>
             <article className="statistics-v1656__profit">
               <small>Sof foyda (savdo − FIFO tannarx − operatsion xarajat)</small>
               <strong className={profitClass}>{money(data.profit)} so'm</strong>
-              {data.qarzpay ? <p>Qarzdan qaytgan pul: {money(data.qarzpay)} — haqiqiy tushumga qo‘shildi</p> : null}
+              {data.qarzpay ? (
+                <p>
+                  Qarzdan qaytgan pul: {money(data.qarzpay)} — haqiqiy tushumga
+                  qo‘shildi
+                </p>
+              ) : null}
             </article>
           </section>
 
@@ -306,25 +358,66 @@ export function StatisticsV1656({
                   key={key}
                   className={metric === key ? "active" : ""}
                   onClick={() => setMetric(key)}
-                >{METRIC_LABELS[key]}</button>
+                >
+                  {METRIC_LABELS[key]}
+                </button>
               ))}
             </nav>
-            {data.trend.length ? <StatisticsBars items={data.trend} metric={metric} /> : <p className="statistics-v1656__empty">Ma’lumot yo‘q</p>}
+            {data.trend.length ? (
+              <StatisticsBars items={data.trend} metric={metric} />
+            ) : (
+              <p className="statistics-v1656__empty">Ma’lumot yo‘q</p>
+            )}
           </section>
 
           <section className="statistics-v1656__panel">
             <h2>To‘lov turlari</h2>
-            <ProgressRow label="Naqd" value={data.pay.naqd} maximum={paymentMaximum} color="#188038" />
-            <ProgressRow label="Karta" value={data.pay.karta} maximum={paymentMaximum} color="#1a73e8" />
-            <ProgressRow label="Qarz (sotildi)" value={data.pay.qarz} maximum={paymentMaximum} color="#e6a100" />
-            <ProgressRow label="Buyurtma" value={data.pay.order} maximum={paymentMaximum} color="#8e44ad" />
+            <ProgressRow
+              label="Naqd"
+              value={data.pay.naqd}
+              maximum={paymentMaximum}
+              color="#188038"
+            />
+            <ProgressRow
+              label="Karta"
+              value={data.pay.karta}
+              maximum={paymentMaximum}
+              color="#1a73e8"
+            />
+            <ProgressRow
+              label="Qarz (sotildi)"
+              value={data.pay.qarz}
+              maximum={paymentMaximum}
+              color="#e6a100"
+            />
+            <ProgressRow
+              label="Buyurtma"
+              value={data.pay.order}
+              maximum={paymentMaximum}
+              color="#8e44ad"
+            />
           </section>
 
           <section className="statistics-v1656__panel">
             <h2>🍽️ Savdo manbalari</h2>
-            <ProgressRow label={`Ichki buyurtma · ${data.source_split.internal.count} ta`} value={data.source_split.internal.total} maximum={sourceMaximum} color="#16a34a" />
-            <ProgressRow label={`Tashqi buyurtma · ${data.source_split.external.count} ta`} value={data.source_split.external.total} maximum={sourceMaximum} color="#2563eb" />
-            <ProgressRow label={`Kassa savdosi · ${data.source_split.manual.count} ta`} value={data.source_split.manual.total} maximum={sourceMaximum} color="#8b5cf6" />
+            <ProgressRow
+              label={`Ichki buyurtma · ${data.source_split.internal.count} ta`}
+              value={data.source_split.internal.total}
+              maximum={sourceMaximum}
+              color="#16a34a"
+            />
+            <ProgressRow
+              label={`Tashqi buyurtma · ${data.source_split.external.count} ta`}
+              value={data.source_split.external.total}
+              maximum={sourceMaximum}
+              color="#2563eb"
+            />
+            <ProgressRow
+              label={`Kassa savdosi · ${data.source_split.manual.count} ta`}
+              value={data.source_split.manual.total}
+              maximum={sourceMaximum}
+              color="#8b5cf6"
+            />
           </section>
 
           {data.top_products.length ? (
@@ -332,9 +425,21 @@ export function StatisticsV1656({
               <h2>🛒 Eng ko‘p sotilganlar</h2>
               {data.top_products.map((product) => (
                 <article key={`${product.name}-${product.unit}`}>
-                  <div><span>{product.name}</span><b>{money(product.total)}</b></div>
-                  <i><span style={{ width: `${Math.round(product.total / productMaximum * 100)}%` }} /></i>
-                  <small>{quantity(product.qty)} {product.unit || "dona"} sotildi{product.margin !== null ? ` · foyda ${money(product.margin)}` : ""}</small>
+                  <div>
+                    <span>{product.name}</span>
+                    <b>{money(product.total)}</b>
+                  </div>
+                  <i>
+                    <span
+                      style={{
+                        width: `${Math.round((product.total / productMaximum) * 100)}%`,
+                      }}
+                    />
+                  </i>
+                  <small>
+                    {quantity(product.qty)} {product.unit || "dona"} sotildi
+                    {product.margin !== null ? ` · foyda ${money(product.margin)}` : ""}
+                  </small>
                 </article>
               ))}
             </section>
@@ -346,7 +451,17 @@ export function StatisticsV1656({
               {data.low_stock.map((item) => (
                 <div key={item.name}>
                   <span>{item.name}</span>
-                  <b className={item.stock_qty < 0 ? "negative" : item.stock_qty <= 5 ? "cost" : ""}>{quantity(item.stock_qty)} {item.unit || "dona"}</b>
+                  <b
+                    className={
+                      item.stock_qty < 0
+                        ? "negative"
+                        : item.stock_qty <= 5
+                          ? "cost"
+                          : ""
+                    }
+                  >
+                    {quantity(item.stock_qty)} {item.unit || "dona"}
+                  </b>
                 </div>
               ))}
             </section>
@@ -355,14 +470,28 @@ export function StatisticsV1656({
           {data.waiters.length ? (
             <section className="statistics-v1656__panel statistics-v1656__employees">
               <h2>🧑‍🍳 Ofitsiantlar</h2>
-              {data.waiters.map((item) => <div key={item.name}><span>{item.name} · {item.orders} ta</span><b>{money(item.total)}</b></div>)}
+              {data.waiters.map((item) => (
+                <div key={item.name}>
+                  <span>
+                    {item.name} · {item.orders} ta
+                  </span>
+                  <b>{money(item.total)}</b>
+                </div>
+              ))}
             </section>
           ) : null}
 
           {data.cashiers.length ? (
             <section className="statistics-v1656__panel statistics-v1656__employees">
               <h2>🧾 Kassirlar</h2>
-              {data.cashiers.map((item) => <div key={item.name}><span>{item.name} · {item.checks} ta chek</span><b>{money(item.total)}</b></div>)}
+              {data.cashiers.map((item) => (
+                <div key={item.name}>
+                  <span>
+                    {item.name} · {item.checks} ta chek
+                  </span>
+                  <b>{money(item.total)}</b>
+                </div>
+              ))}
             </section>
           ) : null}
         </>

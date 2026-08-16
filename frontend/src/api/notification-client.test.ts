@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApiClient } from "./client";
 
-
 function response(body: unknown) {
   return {
     ok: true,
@@ -11,18 +10,20 @@ function response(body: unknown) {
   };
 }
 
-
 describe("typed v1656 notifications API client", () => {
   it("uses normalized endpoints and protects every write with CSRF", async () => {
-    const fetcher = vi.fn()
-      .mockResolvedValueOnce(response({
-        account_id: 5,
-        account_type: "user",
-        name: "Ali",
-        login: "u_ali",
-        csrf_token: "notification-csrf",
-        expires_at: "2026-08-10T08:00:00Z",
-      }))
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({
+          account_id: 5,
+          account_type: "user",
+          name: "Ali",
+          login: "u_ali",
+          csrf_token: "notification-csrf",
+          expires_at: "2026-08-10T08:00:00Z",
+        }),
+      )
       .mockResolvedValue(response({}));
     const client = new ApiClient("https://api.test", fetcher, { kind: "web" });
     await client.getSession();
@@ -72,8 +73,9 @@ describe("typed v1656 notifications API client", () => {
       });
     }
     for (const index of [1, 2, 5, 7, 10]) {
-      expect(fetcher.mock.calls[index]?.[1]?.headers)
-        .not.toHaveProperty("X-CSRF-Token");
+      expect(fetcher.mock.calls[index]?.[1]?.headers).not.toHaveProperty(
+        "X-CSRF-Token",
+      );
     }
   });
 });

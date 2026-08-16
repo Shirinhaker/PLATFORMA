@@ -4,34 +4,39 @@ import { describe, expect, it, vi } from "vitest";
 import type { PaymentCatalog } from "../api/types";
 import { BusinessOnlineScreen } from "./BusinessOnlineScreen";
 
-
 const CATALOG: PaymentCatalog = {
-  prices: [{
-    price_code: "advertisement_district_hour",
-    service_type: "advertisement",
-    amount_uzs: 20000,
-    plan_code: "",
-    duration_months: 0,
-  }],
-  methods: [{
-    id: 1,
-    method_type: "manual_card",
-    name: "Bank kartasi",
-    recipient_name: "Bunyod",
-    instructions: "",
-    details: { card_number: "8600 1111 2222 3333" },
-  }],
+  prices: [
+    {
+      price_code: "advertisement_district_hour",
+      service_type: "advertisement",
+      amount_uzs: 20000,
+      plan_code: "",
+      duration_months: 0,
+    },
+  ],
+  methods: [
+    {
+      id: 1,
+      method_type: "manual_card",
+      name: "Bank kartasi",
+      recipient_name: "Bunyod",
+      instructions: "",
+      details: { card_number: "8600 1111 2222 3333" },
+    },
+  ],
 };
 
 const ADVERTISEMENT = {
   id: 12,
   title: "Choyxona ochildi",
   caption: "",
-  targets: [{
-    level: "district" as const,
-    region: "Toshkent shahri",
-    district: "Chilonzor",
-  }],
+  targets: [
+    {
+      level: "district" as const,
+      region: "Toshkent shahri",
+      district: "Chilonzor",
+    },
+  ],
   placement: "home",
   status: "payment_pending",
   daily_all_day: true,
@@ -58,7 +63,6 @@ const PROFILE = {
   direction: "Umumiy ovqatlanish",
   cabinet_payload: {},
 } as never;
-
 
 type FakeApi = Record<string, ReturnType<typeof vi.fn>>;
 
@@ -89,15 +93,12 @@ function renderScreen(api: FakeApi) {
   );
 }
 
-
 describe("to'lov katalogi obuna ekranidan tashqarida ham yuklanadi", () => {
   it("reklamada to'lov bosilganda oyna ochiladi", async () => {
     const api = makeApi();
     renderScreen(api);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     // Katalog aynan shu payt yuklanadi — ilgari u faqat obuna
     // ekranida yuklangani uchun oyna jimgina ochilmasdi.
@@ -108,9 +109,7 @@ describe("to'lov katalogi obuna ekranidan tashqarida ham yuklanadi", () => {
 
   it("backend hisoblagan reklama summasi ko'rsatiladi", async () => {
     renderScreen(makeApi());
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     // Reklama yozuvida saqlangan yakuniy summa — to'lovning aniq manbasi.
     expect(await screen.findByText("3 360 000 so‘m")).toBeVisible();
@@ -124,18 +123,14 @@ describe("to'lov katalogi obuna ekranidan tashqarida ham yuklanadi", () => {
       }),
     });
     renderScreen(api);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     expect(await screen.findByText("3 360 000 so‘m")).toBeVisible();
   });
 
   it("rekvizitlar oynada ko'rinadi", async () => {
     renderScreen(makeApi());
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     const details = await screen.findByText(/Qabul qiluvchi: Bunyod/);
     expect(details).toHaveTextContent("8600 1111 2222 3333");
@@ -143,15 +138,11 @@ describe("to'lov katalogi obuna ekranidan tashqarida ham yuklanadi", () => {
 
   it("katalog yuklanmasa sabab ko'rsatiladi, jim turmaydi", async () => {
     const api = makeApi({
-      getPaymentCatalog: vi.fn().mockRejectedValue(
-        new Error("Tariflar yuklanmadi."),
-      ),
+      getPaymentCatalog: vi.fn().mockRejectedValue(new Error("Tariflar yuklanmadi.")),
     });
     renderScreen(api);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "To‘lov qilish" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
     expect(await screen.findByText("Tariflar yuklanmadi.")).toBeVisible();
     expect(screen.queryByRole("dialog")).toBeNull();

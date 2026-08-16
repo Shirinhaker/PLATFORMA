@@ -11,23 +11,26 @@ import {
   PaymentsV1656,
 } from "./SubscriptionsPaymentsV1656";
 
-
 const CATALOG: PaymentCatalog = {
-  prices: [{
-    price_code: "subscription_plus_1m",
-    service_type: "subscription",
-    amount_uzs: 99_000,
-    plan_code: "plus",
-    duration_months: 1,
-  }],
-  methods: [{
-    id: 1,
-    method_type: "manual_card",
-    name: "Bank kartasi",
-    recipient_name: "Ko'prik",
-    instructions: "Chekni yuboring",
-    details: {},
-  }],
+  prices: [
+    {
+      price_code: "subscription_plus_1m",
+      service_type: "subscription",
+      amount_uzs: 99_000,
+      plan_code: "plus",
+      duration_months: 1,
+    },
+  ],
+  methods: [
+    {
+      id: 1,
+      method_type: "manual_card",
+      name: "Bank kartasi",
+      recipient_name: "Ko'prik",
+      instructions: "Chekni yuboring",
+      details: {},
+    },
+  ],
 };
 
 const SUMMARY: BusinessSubscriptionSummary = {
@@ -61,7 +64,6 @@ const REJECTED: PaymentRequestRecord = {
   updated_at: 1_785_000_000,
   attempts: [],
 };
-
 
 describe("K23 typed obuna va to'lov ekranlari", () => {
   it("obuna holati va katalogini typed endpointlardan oladi", async () => {
@@ -113,19 +115,23 @@ describe("K23 typed obuna va to'lov ekranlari", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Qayta yuborish" }));
 
-    await waitFor(() => expect(api.createUploadGrant).toHaveBeenCalledWith({
-      purpose: "payment_receipt",
-      filename: "new.png",
-      content_type: "image/png",
-      size_bytes: file.size,
-    }));
-    await waitFor(() => expect(api.resubmitPayment).toHaveBeenCalledWith(
-      41,
-      expect.objectContaining({
-        object_key: "private/user/5/receipt/new.png",
+    await waitFor(() =>
+      expect(api.createUploadGrant).toHaveBeenCalledWith({
+        purpose: "payment_receipt",
         filename: "new.png",
-        mime: "image/png",
+        content_type: "image/png",
+        size_bytes: file.size,
       }),
-    ));
+    );
+    await waitFor(() =>
+      expect(api.resubmitPayment).toHaveBeenCalledWith(
+        41,
+        expect.objectContaining({
+          object_key: "private/user/5/receipt/new.png",
+          filename: "new.png",
+          mime: "image/png",
+        }),
+      ),
+    );
   });
 });

@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CashRegisterV1656 } from "./CashRegisterV1656";
 
-
 const receipt = {
   id: 10,
   receipt_no: 7,
@@ -19,16 +18,18 @@ const receipt = {
   total: 600,
   can_delete: true,
   can_change_payment: false,
-  lines: [{
-    id: 11,
-    catalog_item_id: 20,
-    item_name: "Olma",
-    qty: 2,
-    unit: "dona",
-    price: 300,
-    total: 600,
-    cost_total: 200,
-  }],
+  lines: [
+    {
+      id: 11,
+      catalog_item_id: 20,
+      item_name: "Olma",
+      qty: 2,
+      unit: "dona",
+      price: 300,
+      total: 600,
+      cost_total: 200,
+    },
+  ],
 };
 
 const register = {
@@ -48,16 +49,18 @@ const register = {
 function cashApi() {
   return {
     getCashRegister: vi.fn().mockResolvedValue(register),
-    getCashCatalog: vi.fn().mockResolvedValue([{
-      id: 20,
-      name: "Olma",
-      price: 300,
-      price_text: "300 so‘m",
-      unit: "dona",
-      track_stock: true,
-      stock_qty: 5,
-      low_stock: false,
-    }]),
+    getCashCatalog: vi.fn().mockResolvedValue([
+      {
+        id: 20,
+        name: "Olma",
+        price: 300,
+        price_text: "300 so‘m",
+        unit: "dona",
+        track_stock: true,
+        stock_qty: 5,
+        low_stock: false,
+      },
+    ]),
     createCashReceipt: vi.fn().mockResolvedValue({
       ok: true,
       id: 12,
@@ -67,14 +70,16 @@ function cashApi() {
     }),
     deleteCashReceipt: vi.fn().mockResolvedValue(undefined),
     updateCashOrderPayment: vi.fn().mockResolvedValue(receipt),
-    getDebtors: vi.fn().mockResolvedValue([{
-      id: 30,
-      name: "Ali Valiyev",
-      phone: "+998901234567",
-      note: "",
-      due: "",
-      balance: 500,
-    }]),
+    getDebtors: vi.fn().mockResolvedValue([
+      {
+        id: 30,
+        name: "Ali Valiyev",
+        phone: "+998901234567",
+        note: "",
+        due: "",
+        balance: 500,
+      },
+    ]),
     createDebtor: vi.fn().mockResolvedValue({ id: 31 }),
   };
 }
@@ -107,17 +112,21 @@ describe("CashRegisterV1656", () => {
     await user.click(appleButton);
     await user.click(screen.getByRole("button", { name: "Savdoni saqlash" }));
 
-    await waitFor(() => expect(api.createCashReceipt).toHaveBeenCalledWith(
-      expect.objectContaining({
-        items: [{
-          catalog_item_id: 20,
-          name: "",
-          qty: 2,
-          price: 300,
-        }],
-        pay_type: "naqd",
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.createCashReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          items: [
+            {
+              catalog_item_id: 20,
+              name: "",
+              qty: 2,
+              price: 300,
+            },
+          ],
+          pay_type: "naqd",
+        }),
+      ),
+    );
   });
 
   it("writes a debt sale to the selected debtor", async () => {
@@ -131,27 +140,31 @@ describe("CashRegisterV1656", () => {
     await user.selectOptions(screen.getByLabelText("Qarzdor"), "30");
     await user.click(screen.getByRole("button", { name: "Savdoni saqlash" }));
 
-    await waitFor(() => expect(api.createCashReceipt).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pay_type: "qarz",
-        debtor_id: 30,
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.createCashReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pay_type: "qarz",
+          debtor_id: 30,
+        }),
+      ),
+    );
   });
 
   it("blocks an over-stock sale before the API and restores on confirmed delete", async () => {
     const user = userEvent.setup();
     const api = cashApi();
-    api.getCashCatalog.mockResolvedValueOnce([{
-      id: 20,
-      name: "Olma",
-      price: 300,
-      price_text: "300 so‘m",
-      unit: "dona",
-      track_stock: true,
-      stock_qty: 0,
-      low_stock: true,
-    }]);
+    api.getCashCatalog.mockResolvedValueOnce([
+      {
+        id: 20,
+        name: "Olma",
+        price: 300,
+        price_text: "300 so‘m",
+        unit: "dona",
+        track_stock: true,
+        stock_qty: 0,
+        low_stock: true,
+      },
+    ]);
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<CashRegisterV1656 api={api} onBack={vi.fn()} />);
 

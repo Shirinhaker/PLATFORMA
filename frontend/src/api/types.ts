@@ -668,7 +668,8 @@ export type EducationAttendanceWrite = {
   }>;
 };
 
-export type EducationPaymentControlStatus = "overdue" | "due_today" | "upcoming" | "paid";
+export type EducationPaymentControlStatus =
+  "overdue" | "due_today" | "upcoming" | "paid";
 
 export type EducationPaymentControlStudent = {
   id: number;
@@ -821,18 +822,20 @@ export type UserProfile = {
   cabinet_payload: CabinetPayload;
 };
 
-export type UserProfilePatch = Partial<Pick<
-  UserProfile,
-  | "name"
-  | "phone"
-  | "public_username"
-  | "region"
-  | "district"
-  | "mahalla"
-  | "latitude"
-  | "longitude"
-  | "location_exact"
->>;
+export type UserProfilePatch = Partial<
+  Pick<
+    UserProfile,
+    | "name"
+    | "phone"
+    | "public_username"
+    | "region"
+    | "district"
+    | "mahalla"
+    | "latitude"
+    | "longitude"
+    | "location_exact"
+  >
+>;
 
 export type BusinessProfile = {
   account_id: number;
@@ -867,25 +870,27 @@ export type BusinessProfile = {
   cabinet_payload: CabinetPayload;
 };
 
-export type BusinessProfilePatch = Partial<Pick<
-  BusinessProfile,
-  | "name"
-  | "phone"
-  | "description"
-  | "public_username"
-  | "direction"
-  | "activity_type"
-  | "address"
-  | "latitude"
-  | "longitude"
-  | "work_hours"
-  | "pay_card"
-  | "pay_holder"
-  | "pay_qr_object_key"
-  | "director"
-  | "tax_id"
-  | "map_visible"
->>;
+export type BusinessProfilePatch = Partial<
+  Pick<
+    BusinessProfile,
+    | "name"
+    | "phone"
+    | "description"
+    | "public_username"
+    | "direction"
+    | "activity_type"
+    | "address"
+    | "latitude"
+    | "longitude"
+    | "work_hours"
+    | "pay_card"
+    | "pay_holder"
+    | "pay_qr_object_key"
+    | "director"
+    | "tax_id"
+    | "map_visible"
+  >
+>;
 
 export type ReverseGeocodeResult = {
   address?: string;
@@ -916,14 +921,23 @@ export type BusinessOpeningRead = {
   biz_password: string;
 };
 
-export type MediaPurpose = (
-  "avatar" | "logo" | "payment_qr" | "listing_photo" | "listing_video"
-  | "order_chat_image" | "chat_image" | "payment_receipt"
-  | "advertisement_image" | "story_image" | "story_video"
-  | "specialist_credential" | "specialist_offer_image"
-  | "specialist_portfolio_image" | "specialist_portfolio_video"
-  | "catalog_item_image"
-);
+export type MediaPurpose =
+  | "avatar"
+  | "logo"
+  | "payment_qr"
+  | "listing_photo"
+  | "listing_video"
+  | "order_chat_image"
+  | "chat_image"
+  | "payment_receipt"
+  | "advertisement_image"
+  | "story_image"
+  | "story_video"
+  | "specialist_credential"
+  | "specialist_offer_image"
+  | "specialist_portfolio_image"
+  | "specialist_portfolio_video"
+  | "catalog_item_image";
 
 export type SpecialistCredential = {
   id: number;
@@ -1122,9 +1136,8 @@ export type NotificationPreference = {
   orders_enabled: boolean;
 };
 
-export type NotificationFilterCategory = (
-  "uy" | "ish" | "moshina" | "hayvon" | "texnika" | "boshqa"
-);
+export type NotificationFilterCategory =
+  "uy" | "ish" | "moshina" | "hayvon" | "texnika" | "boshqa";
 
 export type NotificationFilterWrite = {
   cat: NotificationFilterCategory;
@@ -1227,10 +1240,8 @@ export type ProfileImageAttachment = {
 
 export type QueueProviderStatus = "active" | "inactive";
 export type QueueProviderMode = "live" | "slot";
-export type QueueEntryStatus = (
-  "waiting" | "called" | "in_service" | "done" | "no_show"
-  | "cancelled" | "skipped"
-);
+export type QueueEntryStatus =
+  "waiting" | "called" | "in_service" | "done" | "no_show" | "cancelled" | "skipped";
 
 export type BusinessQueueService = {
   public_id: string;
@@ -1335,9 +1346,7 @@ export type QueueCreate = {
   note: string;
 };
 
-export type PublicResultKind = (
-  "user" | "business" | "product" | "service" | "listing"
-);
+export type PublicResultKind = "user" | "business" | "product" | "service" | "listing";
 export type PublicResultType = "all" | PublicResultKind;
 
 export type PublicSearchParams = {
@@ -1567,17 +1576,30 @@ export type OrderCreate = {
 
 export type OrderCreateResponse = { id: number };
 
-export type OrderStatus = (
-  "new" | "accepted" | "preparing" | "tayyor"
-  | "handoff_waiting_seller" | "pickup_waiting_customer"
-  | "delivered_waiting_customer" | "in_delivery" | "done"
-  | "delivered" | "cancelled" | "rejected" | string
-);
+export type OrderStatus =
+  | "new"
+  | "accepted"
+  | "preparing"
+  | "tayyor"
+  | "handoff_waiting_seller"
+  | "pickup_waiting_customer"
+  | "delivered_waiting_customer"
+  | "in_delivery"
+  | "done"
+  | "delivered"
+  | "cancelled"
+  | "rejected"
+  | string;
 
-export type OrderPaymentStatus = (
-  "pending" | "submitted" | "recheck" | "disputed"
-  | "confirmed" | "rejected" | "debt" | string
-);
+export type OrderPaymentStatus =
+  | "pending"
+  | "submitted"
+  | "recheck"
+  | "disputed"
+  | "confirmed"
+  | "rejected"
+  | "debt"
+  | string;
 
 export type OrderItemRead = {
   id: number;
@@ -1670,10 +1692,13 @@ export type OrderRead = {
   items: OrderItemRead[];
 };
 
-export type OrderProblemReason = (
-  "not_received" | "amount_short" | "receipt_mismatch"
-  | "receipt_unreadable" | "wrong_receipt" | "other"
-);
+export type OrderProblemReason =
+  | "not_received"
+  | "amount_short"
+  | "receipt_mismatch"
+  | "receipt_unreadable"
+  | "wrong_receipt"
+  | "other";
 
 export type OrderProblemSolution = "pickup" | "wait" | "new_receipt";
 
@@ -1738,9 +1763,8 @@ export type PublicProfileDetail = {
   listings: PublicProfileListing[];
 };
 
-export type ListingCategory = (
-  "uy" | "ish" | "moshina" | "hayvon" | "texnika" | "boshqa"
-);
+export type ListingCategory =
+  "uy" | "ish" | "moshina" | "hayvon" | "texnika" | "boshqa";
 
 export type ListingMedia = {
   type: "photo" | "video";
@@ -1797,7 +1821,6 @@ export type PublicFeatures = {
   systemization: boolean;
   taxi: boolean;
 };
-
 
 export type PaymentPrice = {
   price_code: string;
@@ -2004,7 +2027,13 @@ export type AIChatMessage = {
 
 export type AIChatHistory = { history: AIChatMessage[] };
 export type AIChatAnswer = { ok: boolean; answer: string; source: "openai" | "local" };
-export type AIStatus = { ok: boolean; build: string; business_id: number; openai_enabled: boolean; local_fallback: boolean };
+export type AIStatus = {
+  ok: boolean;
+  build: string;
+  business_id: number;
+  openai_enabled: boolean;
+  local_fallback: boolean;
+};
 export type AIDocumentDraftRequest = {
   prompt: string;
   direction?: string;
@@ -2032,10 +2061,17 @@ export type AIDocumentDraft = {
 export type TaxiKind = "taxi" | "dostavka";
 export type TaxiDriverService = TaxiKind | "both";
 export type TaxiRideStatus =
-  | "pending" | "accepted" | "arrived" | "ongoing"
-  | "arrived_store" | "pickup_requested" | "in_delivery"
-  | "arrived_customer" | "delivered_waiting_customer"
-  | "completed" | "canceled";
+  | "pending"
+  | "accepted"
+  | "arrived"
+  | "ongoing"
+  | "arrived_store"
+  | "pickup_requested"
+  | "in_delivery"
+  | "arrived_customer"
+  | "delivered_waiting_customer"
+  | "completed"
+  | "canceled";
 
 export type TaxiPricing = {
   pricing: Record<TaxiKind, { base: number; per_km: number; min: number }>;

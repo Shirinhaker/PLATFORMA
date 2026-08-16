@@ -2,16 +2,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { ApiClient } from "./api/client";
-import {
-  ApiConfigurationError,
-  loadApiBaseUrl,
-} from "./api/runtime-base-url";
+import { ApiConfigurationError, loadApiBaseUrl } from "./api/runtime-base-url";
 import { App } from "./app/App";
 import { resolveAdminEntryRedirect } from "./app/entry-routing";
 import { resolveAuthContext } from "./auth/adapter";
 import "./profiles/BusinessOnlineEditingViews.css";
 import "./profiles/BusinessProfileV2.css";
-
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
@@ -19,11 +15,9 @@ if (rootElement === null) {
 }
 const root = rootElement;
 
-
 function renderConfigurationError(error: unknown) {
-  const code = error instanceof ApiConfigurationError
-    ? error.code
-    : "api_bootstrap_failed";
+  const code =
+    error instanceof ApiConfigurationError ? error.code : "api_bootstrap_failed";
   createRoot(root).render(
     <StrictMode>
       <main className="session-panel session-panel--message" role="alert">
@@ -33,7 +27,6 @@ function renderConfigurationError(error: unknown) {
     </StrictMode>,
   );
 }
-
 
 async function bootstrap() {
   try {
@@ -52,7 +45,6 @@ async function bootstrap() {
     renderConfigurationError(error);
   }
 }
-
 
 const adminEntryRedirect = resolveAdminEntryRedirect(window.location);
 if (adminEntryRedirect) {

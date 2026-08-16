@@ -4,7 +4,6 @@ import type { ApiClient } from "../api/client";
 import type { ListingRead } from "../api/types";
 import "./ListingsV1656.css";
 
-
 type Props = {
   getSavedListings: ApiClient["getSavedListings"];
   legacyRows: unknown[];
@@ -13,13 +12,13 @@ type Props = {
 };
 
 function legacyBusinessRows(rows: unknown[]) {
-  return rows.filter((row) => (
-    row
-    && typeof row === "object"
-    && String((row as Record<string, unknown>).target_kind ?? "") === "business"
-  )) as Record<string, unknown>[];
+  return rows.filter(
+    (row) =>
+      row &&
+      typeof row === "object" &&
+      String((row as Record<string, unknown>).target_kind ?? "") === "business",
+  ) as Record<string, unknown>[];
 }
-
 
 export function SavedListingsV1656({
   getSavedListings,
@@ -34,12 +33,21 @@ export function SavedListingsV1656({
   useEffect(() => {
     let active = true;
     getSavedListings()
-      .then((rows) => { if (active) setListings(rows); })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "Saqlanganlar yuklanmadi.");
+      .then((rows) => {
+        if (active) setListings(rows);
       })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((reason: unknown) => {
+        if (active)
+          setError(
+            reason instanceof Error ? reason.message : "Saqlanganlar yuklanmadi.",
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [getSavedListings]);
 
   const businesses = legacyBusinessRows(legacyRows);
@@ -48,7 +56,9 @@ export function SavedListingsV1656({
   return (
     <main className="business-online saved-listings-v1656">
       <header className="business-online-head">
-        <button aria-label="Orqaga" className="back-btn" type="button" onClick={onBack}>‹</button>
+        <button aria-label="Orqaga" className="back-btn" type="button" onClick={onBack}>
+          ‹
+        </button>
         <h1>Saqlanganlar</h1>
       </header>
       {loading ? <div className="list-sub">Yuklanmoqda...</div> : null}
@@ -61,7 +71,9 @@ export function SavedListingsV1656({
       ) : null}
       {!loading && !error && count ? (
         <>
-          <div className="list-sub" style={{ marginTop: 8 }}>{count} ta saqlangan</div>
+          <div className="list-sub" style={{ marginTop: 8 }}>
+            {count} ta saqlangan
+          </div>
           {listings.map((listing) => (
             <button
               className="elon-item"
@@ -70,7 +82,9 @@ export function SavedListingsV1656({
               type="button"
               onClick={() => onOpenListing(listing.public_id)}
             >
-              <div className="li-thumb" style={{ background: "var(--primary-tint)" }}><span>📦</span></div>
+              <div className="li-thumb" style={{ background: "var(--primary-tint)" }}>
+                <span>📦</span>
+              </div>
               <div className="li-main">
                 <div className="li-title">{listing.title}</div>
                 <div className="li-price">{listing.price}</div>
@@ -79,10 +93,19 @@ export function SavedListingsV1656({
             </button>
           ))}
           {businesses.map((business, index) => (
-            <div className="elon-item" key={String(business.id ?? business.target_id ?? index)}>
-              <div className="li-thumb" style={{ background: "var(--primary-tint)" }}><span>🏪</span></div>
+            <div
+              className="elon-item"
+              key={String(business.id ?? business.target_id ?? index)}
+            >
+              <div className="li-thumb" style={{ background: "var(--primary-tint)" }}>
+                <span>🏪</span>
+              </div>
               <div className="li-main">
-                <div className="li-title">{String(business.name ?? `#${business.target_id ?? business.id ?? ""}`)}</div>
+                <div className="li-title">
+                  {String(
+                    business.name ?? `#${business.target_id ?? business.id ?? ""}`,
+                  )}
+                </div>
                 <div className="li-meta">Biznes · {String(business.info ?? "")}</div>
               </div>
             </div>

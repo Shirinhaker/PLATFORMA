@@ -5,12 +5,22 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DriverCabinetV1656 } from "./DriverCabinetV1656";
 
-
 const emptyDriver = {
-  exists: false, id: null, name: "Ali", phone: "", car_model: "",
-  car_color: "", car_plate: "", service: "taxi" as const,
-  available: true, busy: false, rating_sum: 0, rating_count: 0,
-  balance: 0, commission: 1000, status: "active",
+  exists: false,
+  id: null,
+  name: "Ali",
+  phone: "",
+  car_model: "",
+  car_color: "",
+  car_plate: "",
+  service: "taxi" as const,
+  available: true,
+  busy: false,
+  rating_sum: 0,
+  rating_count: 0,
+  balance: 0,
+  commission: 1000,
+  status: "active",
 };
 const pricing = {
   pricing: {
@@ -19,7 +29,6 @@ const pricing = {
   },
   commission: 1000,
 };
-
 
 describe("DriverCabinetV1656", () => {
   it("keeps the form controls self-contained inside the v1656 driver screen", () => {
@@ -44,10 +53,12 @@ describe("DriverCabinetV1656", () => {
     );
 
     await screen.findByText("Akkaunt ismingiz — shu ishlatiladi");
-    expect(screen.queryByRole("heading", { name: "Haydovchi kabineti" }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Kabinetga qaytish" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Haydovchi kabineti" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Kabinetga qaytish" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Telefon")).toHaveClass("input");
     expect(screen.getByRole("button", { name: "🚖 Taxi" })).toHaveClass("on");
   });
@@ -76,12 +87,14 @@ describe("DriverCabinetV1656", () => {
     await userEvent.type(screen.getByLabelText(/Rangi/), "oq");
     await userEvent.click(screen.getByRole("button", { name: "Ro'yxatdan o'tish" }));
 
-    await waitFor(() => expect(saveTaxiDriver).toHaveBeenCalledWith({
-      phone: "+998901234567",
-      service: "taxi",
-      car_model: "Cobalt",
-      car_plate: "01 A 123 BC",
-      car_color: "oq",
-    }));
+    await waitFor(() =>
+      expect(saveTaxiDriver).toHaveBeenCalledWith({
+        phone: "+998901234567",
+        service: "taxi",
+        car_model: "Cobalt",
+        car_plate: "01 A 123 BC",
+        car_color: "oq",
+      }),
+    );
   });
 });

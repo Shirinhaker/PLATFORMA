@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExpensesV1656 } from "./ExpensesV1656";
 
-
 function expenseApi() {
   return {
     getExpenses: vi.fn().mockResolvedValue({
@@ -42,15 +41,15 @@ function expenseApi() {
   };
 }
 
-
 describe("ExpensesV1656", () => {
   it("shows daily totals and keeps stock expenses automatic", async () => {
     const api = expenseApi();
     render(<ExpensesV1656 api={api} onBack={vi.fn()} />);
 
     expect(await screen.findByText("275 000 so'm")).toBeInTheDocument();
-    expect(screen.getByText("Bugungi xarajat").closest("section"))
-      .toHaveTextContent("Tovar xaridi: 200 000");
+    expect(screen.getByText("Bugungi xarajat").closest("section")).toHaveTextContent(
+      "Tovar xaridi: 200 000",
+    );
     expect(screen.getByText("avtomatik")).toBeInTheDocument();
     expect(screen.getByText(/Ombor kirimi/)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "O‘chirish" })).toHaveLength(1);
@@ -69,11 +68,14 @@ describe("ExpensesV1656", () => {
     await user.type(within(dialog).getByLabelText("Izoh (ixtiyoriy)"), "Banner");
     await user.click(within(dialog).getByRole("button", { name: "Saqlash" }));
 
-    await waitFor(() => expect(api.createExpenseCategory).toHaveBeenCalledWith({
-      name: "Reklama",
-    }));
-    expect(api.createExpenseCategory.mock.invocationCallOrder[0] ?? 0)
-      .toBeLessThan(api.createExpense.mock.invocationCallOrder[0] ?? 0);
+    await waitFor(() =>
+      expect(api.createExpenseCategory).toHaveBeenCalledWith({
+        name: "Reklama",
+      }),
+    );
+    expect(api.createExpenseCategory.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+      api.createExpense.mock.invocationCallOrder[0] ?? 0,
+    );
     expect(api.createExpense).toHaveBeenCalledWith({
       category: "Reklama",
       amount: 75_000,

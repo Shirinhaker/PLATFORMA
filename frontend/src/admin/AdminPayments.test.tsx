@@ -1,12 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type {
-  AdminPaymentDetail,
-  AdminPaymentRow,
-} from "./admin-client";
+import type { AdminPaymentDetail, AdminPaymentRow } from "./admin-client";
 import { AdminPayments, type AdminPaymentsApi } from "./AdminPayments";
-
 
 function row(overrides: Partial<AdminPaymentRow> = {}): AdminPaymentRow {
   return {
@@ -31,9 +27,7 @@ function row(overrides: Partial<AdminPaymentRow> = {}): AdminPaymentRow {
   };
 }
 
-function detail(
-  overrides: Partial<AdminPaymentDetail> = {},
-): AdminPaymentDetail {
+function detail(overrides: Partial<AdminPaymentDetail> = {}): AdminPaymentDetail {
   return {
     ...row(),
     target_id: null,
@@ -43,16 +37,18 @@ function detail(
     approved_at: 0,
     rejected_at: 0,
     cancelled_at: 0,
-    attempts: [{
-      attempt_no: 1,
-      review_status: "pending",
-      review_reason: "",
-      submitted_at: 1_785_200_000,
-      reviewed_at: 0,
-      receipt_mime: "image/png",
-      receipt_sha256: "a".repeat(64),
-      has_receipt: true,
-    }],
+    attempts: [
+      {
+        attempt_no: 1,
+        review_status: "pending",
+        review_reason: "",
+        submitted_at: 1_785_200_000,
+        reviewed_at: 0,
+        receipt_mime: "image/png",
+        receipt_sha256: "a".repeat(64),
+        has_receipt: true,
+      },
+    ],
     ...overrides,
   };
 }
@@ -70,7 +66,6 @@ function makeApi(overrides: Partial<AdminPaymentsApi> = {}) {
     ...overrides,
   } as unknown as AdminPaymentsApi;
 }
-
 
 describe("admin to'lov navbati", () => {
   it("kutilayotgan to'lovlar birinchi ko'rsatiladi", async () => {
@@ -124,15 +119,11 @@ describe("admin to'lov navbati", () => {
     expect(api.receipt).not.toHaveBeenCalled();
     expect(screen.queryByAltText("To‘lov kvitansiyasi")).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "🧾 Kvitansiyani ko‘rish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "🧾 Kvitansiyani ko‘rish" }));
 
     await waitFor(() => expect(api.receipt).toHaveBeenCalledWith(1));
     const image = await screen.findByAltText("To‘lov kvitansiyasi");
-    expect(image).toHaveAttribute(
-      "src", "https://r2.example/receipt.png?sig=x",
-    );
+    expect(image).toHaveAttribute("src", "https://r2.example/receipt.png?sig=x");
   });
 
   it("tasdiqlash qarorni yuboradi va ro'yxatni yangilaydi", async () => {
@@ -199,9 +190,7 @@ describe("admin to'lov navbati", () => {
     render(<AdminPayments api={api} />);
     fireEvent.click(await screen.findByRole("button", { name: "Ko‘rish" }));
 
-    expect(
-      await screen.findByText("Qaror qabul qilingan: Tasdiqlangan"),
-    ).toBeVisible();
+    expect(await screen.findByText("Qaror qabul qilingan: Tasdiqlangan")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Tasdiqlash" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Rad etish" })).toBeNull();
   });
@@ -215,9 +204,9 @@ describe("admin to'lov navbati", () => {
 
   it("server xatosi ko'rsatiladi", async () => {
     const api = makeApi({
-      payments: vi.fn().mockRejectedValue(
-        new Error("Admin sessiyasi topilmadi yoki tugagan."),
-      ),
+      payments: vi
+        .fn()
+        .mockRejectedValue(new Error("Admin sessiyasi topilmadi yoki tugagan.")),
     });
     render(<AdminPayments api={api} />);
 

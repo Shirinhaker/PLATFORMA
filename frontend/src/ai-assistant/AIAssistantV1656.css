@@ -159,7 +159,7 @@
 .ai1656__composer .chat-send:disabled,
 .ai1656__chips .seg-b:disabled {
   cursor: default;
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .ai1656__composer .chat-send svg {

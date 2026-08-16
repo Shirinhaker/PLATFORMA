@@ -11,7 +11,6 @@ import {
   type BusinessAdvertisementsApi,
 } from "./BusinessAdvertisementsV1656";
 
-
 export type UserAdvertisementsApi = BusinessAdvertisementsApi & PaymentRequestApi;
 
 type Props = {
@@ -20,12 +19,7 @@ type Props = {
   onOpenListings(): void;
 };
 
-
-export function UserAdvertisementsV1656({
-  api,
-  onBack,
-  onOpenListings,
-}: Props) {
+export function UserAdvertisementsV1656({ api, onBack, onOpenListings }: Props) {
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [catalog, setCatalog] = useState<PaymentCatalog | null>(null);
   const [paymentError, setPaymentError] = useState("");
@@ -36,31 +30,41 @@ export function UserAdvertisementsV1656({
   useEffect(() => {
     if (!paymentTarget || catalog) return;
     let active = true;
-    void api.getPaymentCatalog()
-      .then((value) => { if (active) setCatalog(value); })
+    void api
+      .getPaymentCatalog()
+      .then((value) => {
+        if (active) setCatalog(value);
+      })
       .catch((reason: unknown) => {
         if (!active) return;
         setPaymentTarget(null);
-        setPaymentError(reason instanceof Error
-          ? reason.message
-          : "To‘lov ma’lumotlari yuklanmadi.");
+        setPaymentError(
+          reason instanceof Error ? reason.message : "To‘lov ma’lumotlari yuklanmadi.",
+        );
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, catalog, paymentTarget]);
 
   return (
     <main className="business-online owner-listings-v1656 user-advertisements-v1656">
       <header className="business-online-head">
-        <button
-          aria-label="Orqaga"
-          className="back-btn"
-          type="button"
-          onClick={onBack}
-        >‹</button>
+        <button aria-label="Orqaga" className="back-btn" type="button" onClick={onBack}>
+          ‹
+        </button>
         <h1>Reklamalar</h1>
       </header>
-      {notice ? <div className="story-upload-success on" role="status">{notice}</div> : null}
-      {paymentError ? <div className="payment-load-error" role="status">{paymentError}</div> : null}
+      {notice ? (
+        <div className="story-upload-success on" role="status">
+          {notice}
+        </div>
+      ) : null}
+      {paymentError ? (
+        <div className="payment-load-error" role="status">
+          {paymentError}
+        </div>
+      ) : null}
       <BusinessAdvertisementsV1656
         api={api}
         onOpenListings={onOpenListings}
@@ -75,9 +79,9 @@ export function UserAdvertisementsV1656({
           catalog={catalog}
           target={paymentTarget}
           onClose={() => setPaymentTarget(null)}
-          onSubmitted={() => setNotice(
-            "To‘lov so‘rovi yuborildi. Admin tasdiqlagach reklama ko‘rinadi.",
-          )}
+          onSubmitted={() =>
+            setNotice("To‘lov so‘rovi yuborildi. Admin tasdiqlagach reklama ko‘rinadi.")
+          }
         />
       ) : null}
     </main>

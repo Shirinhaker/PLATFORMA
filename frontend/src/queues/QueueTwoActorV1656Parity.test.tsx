@@ -13,7 +13,6 @@ import { UserProfile } from "../profiles/UserProfile";
 import { BusinessQueueV1656 } from "./BusinessQueueV1656";
 import { QueueBookingV1656 } from "./QueueBookingV1656";
 
-
 const provider: BusinessQueueProvider = {
   id: 5,
   staff_id: 11,
@@ -59,7 +58,6 @@ const baseProfile: UserProfileData = {
   specialist_profile: {},
   cabinet_payload: {},
 };
-
 
 describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
   beforeEach(() => {
@@ -140,11 +138,13 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
 
     const businessApi = {
       getBusinessQueueSetup: vi.fn().mockResolvedValue({
-        services: [{
-          public_id: "s_qabul",
-          name: "Qabul",
-          price_text: "50 000 so'm",
-        }],
+        services: [
+          {
+            public_id: "s_qabul",
+            name: "Qabul",
+            price_text: "50 000 so'm",
+          },
+        ],
         staff: [{ id: 11, name: "Ali Valiyev", profession: "Terapevt" }],
       }),
       getBusinessQueueProviders: vi.fn().mockResolvedValue([provider]),
@@ -152,24 +152,26 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
       updateBusinessQueueProvider: vi.fn().mockResolvedValue(provider),
       getBusinessQueueEntries: vi.fn(async () => [requireQueue()]),
       createBusinessOfflineQueue: vi.fn(),
-      changeBusinessQueueStatus: vi.fn(async (_id: number, status: QueueEntryStatus) => {
-        storedQueue = {
-          ...requireQueue(),
-          status,
-          updated_at: "2026-08-03T07:01:00Z",
-        };
-        if (status === "called") {
-          notification = {
-            id: 8,
-            title: "Navbatingiz keldi",
-            body: "QAB-001 navbat shifokor tomonidan chaqirildi.",
-            action_type: "medical_queue_called",
-            medical_queue_id: storedQueue.id,
-            is_read: 0,
+      changeBusinessQueueStatus: vi.fn(
+        async (_id: number, status: QueueEntryStatus) => {
+          storedQueue = {
+            ...requireQueue(),
+            status,
+            updated_at: "2026-08-03T07:01:00Z",
           };
-        }
-        return storedQueue;
-      }),
+          if (status === "called") {
+            notification = {
+              id: 8,
+              title: "Navbatingiz keldi",
+              body: "QAB-001 navbat shifokor tomonidan chaqirildi.",
+              action_type: "medical_queue_called",
+              medical_queue_id: storedQueue.id,
+              is_read: 0,
+            };
+          }
+          return storedQueue;
+        },
+      ),
       swapBusinessQueues: vi.fn(),
     };
     const businessView = render(
@@ -181,14 +183,17 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
       />,
     );
 
-    const businessCard = (await screen.findByText("QAB-001 · Ali"))
-      .closest(".panel-card");
+    const businessCard = (await screen.findByText("QAB-001 · Ali")).closest(
+      ".panel-card",
+    );
     expect(businessCard).not.toBeNull();
-    await user.click(within(businessCard as HTMLElement)
-      .getByRole("button", { name: "Chaqirish" }));
+    await user.click(
+      within(businessCard as HTMLElement).getByRole("button", { name: "Chaqirish" }),
+    );
     await waitFor(() => expect(requireQueue().status).toBe("called"));
-    expect(within(businessCard as HTMLElement).getByText("Chaqirildi"))
-      .toBeInTheDocument();
+    expect(
+      within(businessCard as HTMLElement).getByText("Chaqirildi"),
+    ).toBeInTheDocument();
     businessView.unmount();
 
     const orderMethods = {
@@ -248,15 +253,16 @@ describe("Q5 v1656 ikki aktyorli navbat pariteti", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: /Bildirishnomalarim/,
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Bildirishnomalarim/,
+      }),
+    );
     await user.click(await screen.findByText("Navbatingiz keldi"));
 
     expect(userProfileApi.markQueueNotificationRead).toHaveBeenCalledWith(8);
     expect(await screen.findByText("NAVBAT QAB-001")).toBeInTheDocument();
     expect(screen.getByText("Chaqirildi")).toBeInTheDocument();
-    expect(screen.getByTestId("medical-queue-41"))
-      .toHaveClass("medical-queue-focus");
+    expect(screen.getByTestId("medical-queue-41")).toHaveClass("medical-queue-focus");
   });
 });

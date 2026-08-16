@@ -12,47 +12,23 @@ import {
   type OwnerListingsApi,
 } from "../listings/OwnerListingsV1656";
 import { SavedListingsV1656 } from "../listings/SavedListingsV1656";
-import {
-  OrdersCabinetV1656,
-  type OrdersApi,
-} from "../orders/OrdersCabinetV1656";
-import {
-  MyQueuesV1656,
-  type MyQueuesApi,
-} from "../queues/MyQueuesV1656";
-import {
-  OwnerStoriesV1656,
-  type OwnerStoriesApi,
-} from "../stories/OwnerStoriesV1656";
-import {
-  MessagesV1656,
-  type MessagesApi,
-} from "../messages/MessagesV1656";
-import {
-  ReceivedReviewsV1656,
-  type ReceivedReviewsApi,
-} from "../reviews/ReviewsV1656";
+import { OrdersCabinetV1656, type OrdersApi } from "../orders/OrdersCabinetV1656";
+import { MyQueuesV1656, type MyQueuesApi } from "../queues/MyQueuesV1656";
+import { OwnerStoriesV1656, type OwnerStoriesApi } from "../stories/OwnerStoriesV1656";
+import { MessagesV1656, type MessagesApi } from "../messages/MessagesV1656";
+import { ReceivedReviewsV1656, type ReceivedReviewsApi } from "../reviews/ReviewsV1656";
 import {
   ActionNotificationsV1656,
   NotificationsV1656,
   type NotificationsApi,
 } from "../notifications/NotificationsV1656";
-import {
-  FollowListsV1656,
-  type FollowListsApi,
-} from "../follows/FollowListsV1656";
+import { FollowListsV1656, type FollowListsApi } from "../follows/FollowListsV1656";
 import {
   PaymentsV1656,
   supportsPaymentsApi,
 } from "../payments/SubscriptionsPaymentsV1656";
-import {
-  SpecialistV1656,
-  type SpecialistApi,
-} from "../specialists/SpecialistV1656";
-import {
-  DriverCabinetV1656,
-  type DriverCabinetApi,
-} from "../taxi/DriverCabinetV1656";
+import { SpecialistV1656, type SpecialistApi } from "../specialists/SpecialistV1656";
+import { DriverCabinetV1656, type DriverCabinetApi } from "../taxi/DriverCabinetV1656";
 import { MyRidesV1656 } from "../taxi/MyRidesV1656";
 import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
 import { BusinessOpeningV1656 } from "../business-opening/BusinessOpeningV1656";
@@ -61,14 +37,11 @@ import {
   type UserCabinetSectionV1656,
 } from "./UserCabinetDashboardV1656";
 import { UserProfileEditorV1656 } from "./UserProfileEditorV1656";
-import {
-  supportsAdvertisementApi,
-} from "../advertisements/BusinessAdvertisementsV1656";
+import { supportsAdvertisementApi } from "../advertisements/BusinessAdvertisementsV1656";
 import {
   UserAdvertisementsV1656,
   type UserAdvertisementsApi,
 } from "../advertisements/UserAdvertisementsV1656";
-
 
 export type UserProfileApi = Pick<
   ApiClient,
@@ -80,97 +53,97 @@ export type UserProfileApi = Pick<
   | "attachUserAvatar"
   | "switchCabinet"
   | "logout"
-> & Partial<Pick<
-  ApiClient,
-  | "getBusinessCredentials"
-  | "updateBusinessCredentials"
-  | "openBusiness"
-  | "getMyListings"
-  | "createListing"
-  | "deleteListing"
-  | "getMyAdvertisements"
-  | "createAdvertisement"
-  | "deleteAdvertisement"
-  | "quoteAdvertisement"
-  | "getSavedListings"
-  | "getPaymentCatalog"
-  | "createPaymentRequest"
-  | "getMyOrders"
-  | "getOrderInbox"
-  | "markOrderSeen"
-  | "changeOrderStatus"
-  | "submitOrderPayment"
-  | "decideOrderPayment"
-  | "openOrderProblem"
-  | "chooseOrderProblemSolution"
-  | "handoffOrder"
-  | "receiveOrder"
-  | "getOrderChat"
-  | "sendOrderChatMessage"
-  | "sendOrderChatImage"
-  | "editOrderChatMessage"
-  | "deleteOrderChatMessage"
-  | "getMyQueues"
-  | "cancelMyQueue"
-  | "markQueueNotificationRead"
-  | "getMyStories"
-  | "createStory"
-  | "recordStoryView"
-  | "getStoryViewers"
-  | "deleteStory"
-  | "reportStory"
-  | "getMessageConversations"
-  | "getMessageThread"
-  | "sendMessage"
-  | "sendMessageImage"
-  | "editMessage"
-  | "deleteMessage"
-  | "getMessageUnreadCount"
-  | "getReceivedReviews"
-  | "replyToReview"
-  | "getNotifications"
-  | "getActionNotifications"
-  | "markNotificationRead"
-  | "markAllNotificationsRead"
-  | "getNotificationPreference"
-  | "saveNotificationPreference"
-  | "getNotificationFilters"
-  | "createNotificationFilter"
-  | "deleteNotificationFilter"
-  | "getPushStatus"
-  | "getFollowers"
-  | "getFollowing"
-  | "getMyPayments"
-  | "resubmitPayment"
-  | "getMySpecialist"
-  | "updateMySpecialist"
-  | "addSpecialistCredential"
-  | "deleteSpecialistCredential"
-  | "createSpecialistOffer"
-  | "updateSpecialistOffer"
-  | "deleteSpecialistOffer"
-  | "addSpecialistPortfolio"
-  | "deleteSpecialistPortfolio"
-  | "getTaxiPricing"
-  | "getTaxiDriver"
-  | "saveTaxiDriver"
-  | "setTaxiDriverAvailable"
-  | "getMyTaxiRides"
-  | "getPendingTaxiRides"
-  | "acceptTaxiRide"
-  | "setTaxiRideStatus"
-  | "updateTaxiRideProgress"
->>;
+> &
+  Partial<
+    Pick<
+      ApiClient,
+      | "getBusinessCredentials"
+      | "updateBusinessCredentials"
+      | "openBusiness"
+      | "getMyListings"
+      | "createListing"
+      | "deleteListing"
+      | "getMyAdvertisements"
+      | "createAdvertisement"
+      | "deleteAdvertisement"
+      | "quoteAdvertisement"
+      | "getSavedListings"
+      | "getPaymentCatalog"
+      | "createPaymentRequest"
+      | "getMyOrders"
+      | "getOrderInbox"
+      | "markOrderSeen"
+      | "changeOrderStatus"
+      | "submitOrderPayment"
+      | "decideOrderPayment"
+      | "openOrderProblem"
+      | "chooseOrderProblemSolution"
+      | "handoffOrder"
+      | "receiveOrder"
+      | "getOrderChat"
+      | "sendOrderChatMessage"
+      | "sendOrderChatImage"
+      | "editOrderChatMessage"
+      | "deleteOrderChatMessage"
+      | "getMyQueues"
+      | "cancelMyQueue"
+      | "markQueueNotificationRead"
+      | "getMyStories"
+      | "createStory"
+      | "recordStoryView"
+      | "getStoryViewers"
+      | "deleteStory"
+      | "reportStory"
+      | "getMessageConversations"
+      | "getMessageThread"
+      | "sendMessage"
+      | "sendMessageImage"
+      | "editMessage"
+      | "deleteMessage"
+      | "getMessageUnreadCount"
+      | "getReceivedReviews"
+      | "replyToReview"
+      | "getNotifications"
+      | "getActionNotifications"
+      | "markNotificationRead"
+      | "markAllNotificationsRead"
+      | "getNotificationPreference"
+      | "saveNotificationPreference"
+      | "getNotificationFilters"
+      | "createNotificationFilter"
+      | "deleteNotificationFilter"
+      | "getPushStatus"
+      | "getFollowers"
+      | "getFollowing"
+      | "getMyPayments"
+      | "resubmitPayment"
+      | "getMySpecialist"
+      | "updateMySpecialist"
+      | "addSpecialistCredential"
+      | "deleteSpecialistCredential"
+      | "createSpecialistOffer"
+      | "updateSpecialistOffer"
+      | "deleteSpecialistOffer"
+      | "addSpecialistPortfolio"
+      | "deleteSpecialistPortfolio"
+      | "getTaxiPricing"
+      | "getTaxiDriver"
+      | "saveTaxiDriver"
+      | "setTaxiDriverAvailable"
+      | "getMyTaxiRides"
+      | "getPendingTaxiRides"
+      | "acceptTaxiRide"
+      | "setTaxiRideStatus"
+      | "updateTaxiRideProgress"
+    >
+  >;
 
 type Props = {
   api: UserProfileApi;
   identity: SessionIdentity;
   onLogout: () => void;
   onOpenPublicListing?: (publicId: string) => void;
-  onOpenPublicProfile?: (
-    kind: "user" | "business",
-    publicId: string,
-  ) => void;
+  onOpenPublicProfile?: (kind: "user" | "business", publicId: string) => void;
   onOpenDriverCabinet?: () => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
@@ -183,11 +156,39 @@ type Section = UserCabinetSectionV1656 & {
 };
 
 const SECTIONS: Section[] = [
-  { icon: "👤", label: "Profilim", caption: "Ism, telefon, yashash tumani", view: "profile" },
-  { icon: "💳", label: "To‘lovlarim", caption: "Reklama to‘lovlari va tekshiruv holati", view: "payments", payload: "payments" },
-  { icon: "📢", label: "Reklamalarim", caption: "Bosh sahifa reklamalarini boshqarish", view: "advertisements" },
-  { icon: "🎞️", label: "Istoriya arxivi", caption: "Faol va arxivdagi shaxsiy istoriyalar", view: "stories", payload: "stories" },
-  { icon: "💬", label: "Suhbatlar", caption: "Xabarlar va chatlar", view: "messages", payload: "messages" },
+  {
+    icon: "👤",
+    label: "Profilim",
+    caption: "Ism, telefon, yashash tumani",
+    view: "profile",
+  },
+  {
+    icon: "💳",
+    label: "To‘lovlarim",
+    caption: "Reklama to‘lovlari va tekshiruv holati",
+    view: "payments",
+    payload: "payments",
+  },
+  {
+    icon: "📢",
+    label: "Reklamalarim",
+    caption: "Bosh sahifa reklamalarini boshqarish",
+    view: "advertisements",
+  },
+  {
+    icon: "🎞️",
+    label: "Istoriya arxivi",
+    caption: "Faol va arxivdagi shaxsiy istoriyalar",
+    view: "stories",
+    payload: "stories",
+  },
+  {
+    icon: "💬",
+    label: "Suhbatlar",
+    caption: "Xabarlar va chatlar",
+    view: "messages",
+    payload: "messages",
+  },
   {
     icon: "🔔",
     label: "Bildirishnomalarim",
@@ -201,7 +202,13 @@ const SECTIONS: Section[] = [
     caption: "Qidiruv va xaritada mutaxassis sifatida chiqish",
     view: "specialist",
   },
-  { icon: "📦", label: "Buyurtmalarim", caption: "Mahsulot buyurtmalarim", view: "orders", payload: "orders" },
+  {
+    icon: "📦",
+    label: "Buyurtmalarim",
+    caption: "Mahsulot buyurtmalarim",
+    view: "orders",
+    payload: "orders",
+  },
   {
     icon: "🧰",
     label: "Xizmat buyurtmalarim",
@@ -209,26 +216,51 @@ const SECTIONS: Section[] = [
     view: "service-orders",
     payload: "orders",
   },
-  { icon: "🔖", label: "Saqlanganlar", caption: "Saqlangan e'lon va bizneslar", view: "saved", payload: "saved" },
-  { icon: "⚙️", label: "Sozlamalar", caption: "Akkaunt, til, chiqish", view: "settings" },
+  {
+    icon: "🔖",
+    label: "Saqlanganlar",
+    caption: "Saqlangan e'lon va bizneslar",
+    view: "saved",
+    payload: "saved",
+  },
+  {
+    icon: "⚙️",
+    label: "Sozlamalar",
+    caption: "Akkaunt, til, chiqish",
+    view: "settings",
+  },
 ];
 
-
-function supportsOwnerStories(api: UserProfileApi): api is UserProfileApi & OwnerStoriesApi {
+function supportsOwnerStories(
+  api: UserProfileApi,
+): api is UserProfileApi & OwnerStoriesApi {
   return [
-    "getMyStories", "createStory", "recordStoryView", "getStoryViewers",
-    "deleteStory", "reportStory", "createUploadGrant", "uploadGrantedFile",
+    "getMyStories",
+    "createStory",
+    "recordStoryView",
+    "getStoryViewers",
+    "deleteStory",
+    "reportStory",
+    "createUploadGrant",
+    "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
-
 function supportsTaxi(
   api: UserProfileApi,
-): api is UserProfileApi & DriverCabinetApi & Required<Pick<UserProfileApi, "getMyTaxiRides">> {
+): api is UserProfileApi &
+  DriverCabinetApi &
+  Required<Pick<UserProfileApi, "getMyTaxiRides">> {
   return [
-    "getTaxiDriver", "getTaxiPricing", "saveTaxiDriver",
-    "setTaxiDriverAvailable", "getMyTaxiRides", "getPendingTaxiRides",
-    "acceptTaxiRide", "setTaxiRideStatus", "updateTaxiRideProgress",
+    "getTaxiDriver",
+    "getTaxiPricing",
+    "saveTaxiDriver",
+    "setTaxiDriverAvailable",
+    "getMyTaxiRides",
+    "getPendingTaxiRides",
+    "acceptTaxiRide",
+    "setTaxiRideStatus",
+    "updateTaxiRideProgress",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
@@ -245,7 +277,6 @@ function isServiceOrder(row: unknown) {
   );
 }
 
-
 function payloadRows(
   payload: Record<string, unknown>,
   source: PayloadSource,
@@ -257,40 +288,65 @@ function payloadRows(
   });
 }
 
-function supportsOwnerListings(api: UserProfileApi): api is UserProfileApi & OwnerListingsApi {
-  return ["getMyListings", "createListing", "deleteListing"]
-    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+function supportsOwnerListings(
+  api: UserProfileApi,
+): api is UserProfileApi & OwnerListingsApi {
+  return ["getMyListings", "createListing", "deleteListing"].every(
+    (method) => typeof api[method as keyof UserProfileApi] === "function",
+  );
 }
 
 function supportsUserAdvertisements(
   api: UserProfileApi,
 ): api is UserProfileApi & UserAdvertisementsApi {
-  return supportsAdvertisementApi(api) && [
-    "getPaymentCatalog", "createPaymentRequest",
-    "createUploadGrant", "uploadGrantedFile",
-  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
+  return (
+    supportsAdvertisementApi(api) &&
+    [
+      "getPaymentCatalog",
+      "createPaymentRequest",
+      "createUploadGrant",
+      "uploadGrantedFile",
+    ].every((method) => typeof api[method as keyof UserProfileApi] === "function")
+  );
 }
 
 function supportsOrders(api: UserProfileApi): api is UserProfileApi & OrdersApi {
   return [
-    "getMyOrders", "getOrderInbox", "markOrderSeen", "changeOrderStatus",
-    "submitOrderPayment", "decideOrderPayment", "openOrderProblem",
-    "chooseOrderProblemSolution", "handoffOrder", "receiveOrder",
-    "getOrderChat", "sendOrderChatMessage", "sendOrderChatImage",
-    "editOrderChatMessage", "deleteOrderChatMessage", "createUploadGrant",
+    "getMyOrders",
+    "getOrderInbox",
+    "markOrderSeen",
+    "changeOrderStatus",
+    "submitOrderPayment",
+    "decideOrderPayment",
+    "openOrderProblem",
+    "chooseOrderProblemSolution",
+    "handoffOrder",
+    "receiveOrder",
+    "getOrderChat",
+    "sendOrderChatMessage",
+    "sendOrderChatImage",
+    "editOrderChatMessage",
+    "deleteOrderChatMessage",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
 function supportsMyQueues(api: UserProfileApi): api is UserProfileApi & MyQueuesApi {
-  return ["getMyQueues", "cancelMyQueue"]
-    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+  return ["getMyQueues", "cancelMyQueue"].every(
+    (method) => typeof api[method as keyof UserProfileApi] === "function",
+  );
 }
 
 function supportsMessages(api: UserProfileApi): api is UserProfileApi & MessagesApi {
   return [
-    "getMessageConversations", "getMessageThread", "sendMessage",
-    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "getMessageConversations",
+    "getMessageThread",
+    "sendMessage",
+    "sendMessageImage",
+    "editMessage",
+    "deleteMessage",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
@@ -298,38 +354,51 @@ function supportsMessages(api: UserProfileApi): api is UserProfileApi & Messages
 function supportsReceivedReviews(
   api: UserProfileApi,
 ): api is UserProfileApi & ReceivedReviewsApi {
-  return ["getReceivedReviews", "replyToReview"]
-    .every((method) => typeof api[method as keyof UserProfileApi] === "function");
+  return ["getReceivedReviews", "replyToReview"].every(
+    (method) => typeof api[method as keyof UserProfileApi] === "function",
+  );
 }
 
 function supportsNotifications(
   api: UserProfileApi,
 ): api is UserProfileApi & NotificationsApi {
   return [
-    "getNotifications", "getActionNotifications", "markNotificationRead",
-    "markAllNotificationsRead", "getNotificationPreference",
-    "saveNotificationPreference", "getNotificationFilters",
-    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
-  ].every((method) => (
-    typeof api[method as keyof UserProfileApi] === "function"
-  ));
+    "getNotifications",
+    "getActionNotifications",
+    "markNotificationRead",
+    "markAllNotificationsRead",
+    "getNotificationPreference",
+    "saveNotificationPreference",
+    "getNotificationFilters",
+    "createNotificationFilter",
+    "deleteNotificationFilter",
+    "getPushStatus",
+  ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
 function supportsFollowLists(
   api: UserProfileApi,
 ): api is UserProfileApi & FollowListsApi {
-  return ["getFollowers", "getFollowing"].every((method) => (
-    typeof api[method as keyof UserProfileApi] === "function"
-  ));
+  return ["getFollowers", "getFollowing"].every(
+    (method) => typeof api[method as keyof UserProfileApi] === "function",
+  );
 }
 
-function supportsSpecialist(api: UserProfileApi): api is UserProfileApi & SpecialistApi {
+function supportsSpecialist(
+  api: UserProfileApi,
+): api is UserProfileApi & SpecialistApi {
   return [
-    "getMySpecialist", "updateMySpecialist", "addSpecialistCredential",
-    "deleteSpecialistCredential", "createSpecialistOffer",
-    "updateSpecialistOffer", "deleteSpecialistOffer",
-    "addSpecialistPortfolio", "deleteSpecialistPortfolio",
-    "createUploadGrant", "uploadGrantedFile",
+    "getMySpecialist",
+    "updateMySpecialist",
+    "addSpecialistCredential",
+    "deleteSpecialistCredential",
+    "createSpecialistOffer",
+    "updateSpecialistOffer",
+    "deleteSpecialistOffer",
+    "addSpecialistPortfolio",
+    "deleteSpecialistPortfolio",
+    "createUploadGrant",
+    "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof UserProfileApi] === "function");
 }
 
@@ -338,7 +407,6 @@ function supportsBusinessOpening(
 ): api is UserProfileApi & Required<Pick<UserProfileApi, "openBusiness">> {
   return typeof api.openBusiness === "function";
 }
-
 
 export function UserProfile({
   api,
@@ -366,7 +434,8 @@ export function UserProfile({
 
   useEffect(() => {
     let active = true;
-    api.getUserProfile()
+    api
+      .getUserProfile()
       .then((value) => {
         if (active) applyLoaded(value);
       })
@@ -381,32 +450,47 @@ export function UserProfile({
   useEffect(() => {
     if (typeof api.getMessageUnreadCount !== "function") return;
     let active = true;
-    api.getMessageUnreadCount().then(({ count }) => {
-      if (active) setMessageUnread(count);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getMessageUnreadCount()
+      .then(({ count }) => {
+        if (active) setMessageUnread(count);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api, view]);
 
   useEffect(() => {
     if (typeof api.getMyOrders !== "function") return;
     let active = true;
-    api.getMyOrders().then((rows) => {
-      if (!active) return;
-      setOrderUnread({
-        product: rows.filter((row) => !isServiceOrder(row) && row.is_unread).length,
-        service: rows.filter((row) => isServiceOrder(row) && row.is_unread).length,
-      });
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getMyOrders()
+      .then((rows) => {
+        if (!active) return;
+        setOrderUnread({
+          product: rows.filter((row) => !isServiceOrder(row) && row.is_unread).length,
+          service: rows.filter((row) => isServiceOrder(row) && row.is_unread).length,
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   useEffect(() => {
     if (!supportsNotifications(api)) return;
     let active = true;
-    api.getNotifications().then((value) => {
-      if (active) setNotificationUnread(value.unread);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getNotifications()
+      .then((value) => {
+        if (active) setNotificationUnread(value.unread);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   const payload = profile?.cabinet_payload ?? {};
@@ -418,11 +502,13 @@ export function UserProfile({
     if (view === "orders") return rows.filter((row) => !isServiceOrder(row));
     return rows;
   }, [payload, selectedSection, view]);
-  const getSavedListings = useMemo(() => (
-    typeof api.getSavedListings === "function"
-      ? api.getSavedListings.bind(api)
-      : undefined
-  ), [api]);
+  const getSavedListings = useMemo(
+    () =>
+      typeof api.getSavedListings === "function"
+        ? api.getSavedListings.bind(api)
+        : undefined,
+    [api],
+  );
 
   async function logout() {
     setBusy(true);
@@ -454,19 +540,20 @@ export function UserProfile({
       const payload = { ...(current.cabinet_payload ?? {}) };
       const notifications = Array.isArray(payload.notifications)
         ? payload.notifications.map((value) => {
-          if (!value || typeof value !== "object") return value;
-          const row = value as Record<string, unknown>;
-          return Number(row.id ?? 0) === notificationId
-            ? { ...row, is_read: 1 }
-            : row;
-        })
+            if (!value || typeof value !== "object") return value;
+            const row = value as Record<string, unknown>;
+            return Number(row.id ?? 0) === notificationId
+              ? { ...row, is_read: 1 }
+              : row;
+          })
         : [];
       payload.notifications = notifications;
-      const unread = notifications.filter((value) => (
-        value
-        && typeof value === "object"
-        && !Boolean(Number((value as Record<string, unknown>).is_read ?? 0))
-      )).length;
+      const unread = notifications.filter(
+        (value) =>
+          value &&
+          typeof value === "object" &&
+          !Boolean(Number((value as Record<string, unknown>).is_read ?? 0)),
+      ).length;
       setNotificationUnread(unread);
       return {
         ...current,
@@ -489,14 +576,11 @@ export function UserProfile({
 
   async function openNotification(notification: NotificationRead) {
     if (
-      notification.profile_kind
-      && notification.profile_public_id
-      && onOpenPublicProfile
+      notification.profile_kind &&
+      notification.profile_public_id &&
+      onOpenPublicProfile
     ) {
-      onOpenPublicProfile(
-        notification.profile_kind,
-        notification.profile_public_id,
-      );
+      onOpenPublicProfile(notification.profile_kind, notification.profile_public_id);
       return;
     }
     if (notification.listing_public_id && onOpenPublicListing) {
@@ -521,12 +605,14 @@ export function UserProfile({
   }
 
   const actionBanner = supportsNotifications(api) ? (
-    <ActionNotificationsV1656
-      api={api}
-      onOpenNotification={openNotification}
-    />
+    <ActionNotificationsV1656 api={api} onOpenNotification={openNotification} />
   ) : null;
-  const withActionBanner = (content: ReactNode) => <>{actionBanner}{content}</>;
+  const withActionBanner = (content: ReactNode) => (
+    <>
+      {actionBanner}
+      {content}
+    </>
+  );
 
   if (view === "listings" && supportsOwnerListings(api)) {
     return withActionBanner(
@@ -575,10 +661,7 @@ export function UserProfile({
 
   if (view === "payments" && supportsPaymentsApi(api)) {
     return withActionBanner(
-      <PaymentsV1656
-        api={api}
-        onBack={() => setView("dashboard")}
-      />,
+      <PaymentsV1656 api={api} onBack={() => setView("dashboard")} />,
     );
   }
 
@@ -595,23 +678,20 @@ export function UserProfile({
 
   if (view === "messages" && supportsMessages(api)) {
     return withActionBanner(
-      <MessagesV1656
-        api={api}
-        onBack={() => setView("dashboard")}
-      />,
+      <MessagesV1656 api={api} onBack={() => setView("dashboard")} />,
     );
   }
 
   if (view === "specialist-reviews" && supportsReceivedReviews(api)) {
     return withActionBanner(
-      <ReceivedReviewsV1656
-        api={api}
-        onBack={() => setView("specialist")}
-      />,
+      <ReceivedReviewsV1656 api={api} onBack={() => setView("specialist")} />,
     );
   }
 
-  if (["notifications", "notify-filters"].includes(view) && supportsNotifications(api)) {
+  if (
+    ["notifications", "notify-filters"].includes(view) &&
+    supportsNotifications(api)
+  ) {
     return withActionBanner(
       <NotificationsV1656
         api={api}
@@ -623,16 +703,17 @@ export function UserProfile({
   }
 
   if (["orders", "service-orders"].includes(view) && supportsOrders(api)) {
-    const queueSection = view === "service-orders" && supportsMyQueues(api) ? (
-      <>
-        <MyQueuesV1656
-          api={api}
-          focusQueueId={queueTarget}
-          onFocusHandled={() => setQueueTarget(null)}
-        />
-        <h2 className="queue-orders-v1656__heading">Boshqa xizmat buyurtmalari</h2>
-      </>
-    ) : null;
+    const queueSection =
+      view === "service-orders" && supportsMyQueues(api) ? (
+        <>
+          <MyQueuesV1656
+            api={api}
+            focusQueueId={queueTarget}
+            onFocusHandled={() => setQueueTarget(null)}
+          />
+          <h2 className="queue-orders-v1656__heading">Boshqa xizmat buyurtmalari</h2>
+        </>
+      ) : null;
     return withActionBanner(
       <OrdersCabinetV1656
         key={view}
@@ -642,10 +723,12 @@ export function UserProfile({
         onBack={() => setView("dashboard")}
         initialOrderId={orderTarget}
         beforeList={queueSection}
-        onUnreadChange={(count) => setOrderUnread((current) => ({
-          ...current,
-          [view === "service-orders" ? "service" : "product"]: count,
-        }))}
+        onUnreadChange={(count) =>
+          setOrderUnread((current) => ({
+            ...current,
+            [view === "service-orders" ? "service" : "product"]: count,
+          }))
+        }
       />,
     );
   }
@@ -669,9 +752,9 @@ export function UserProfile({
         identity={identity}
         canManageBusinessCredentials={Boolean(profile.has_business)}
         onBack={() => setView("dashboard")}
-        onNotifications={supportsNotifications(api)
-          ? () => setView("notifications")
-          : undefined}
+        onNotifications={
+          supportsNotifications(api) ? () => setView("notifications") : undefined
+        }
         onLogout={logout}
       />,
     );
@@ -682,9 +765,11 @@ export function UserProfile({
       <BusinessOpeningV1656
         api={api}
         onBack={() => setView("dashboard")}
-        onOpened={() => setProfile((current) => (
-          current ? { ...current, has_business: true } : current
-        ))}
+        onOpened={() =>
+          setProfile((current) =>
+            current ? { ...current, has_business: true } : current,
+          )
+        }
         onSwitch={switchBusiness}
       />,
     );
@@ -696,33 +781,39 @@ export function UserProfile({
         title={selectedSection.label}
         rows={selectedRows}
         onBack={() => setView("dashboard")}
-        onOpenRow={view === "notifications"
-          ? (row) => {
-            const queueId = Number(row.medical_queue_id ?? 0);
-            if (queueId) {
-              const notificationId = Number(row.id ?? 0);
-              setQueueTarget(queueId);
-              setView("service-orders");
-              if (
-                notificationId
-                && typeof api.markQueueNotificationRead === "function"
-              ) {
-                void api.markQueueNotificationRead(notificationId)
-                  .then(() => markLegacyNotificationRead(notificationId))
-                  .catch((reason) => setError(message(reason)));
+        onOpenRow={
+          view === "notifications"
+            ? (row) => {
+                const queueId = Number(row.medical_queue_id ?? 0);
+                if (queueId) {
+                  const notificationId = Number(row.id ?? 0);
+                  setQueueTarget(queueId);
+                  setView("service-orders");
+                  if (
+                    notificationId &&
+                    typeof api.markQueueNotificationRead === "function"
+                  ) {
+                    void api
+                      .markQueueNotificationRead(notificationId)
+                      .then(() => markLegacyNotificationRead(notificationId))
+                      .catch((reason) => setError(message(reason)));
+                  }
+                  return;
+                }
+                const id = Number(row.order_id ?? 0);
+                if (!id || typeof api.getMyOrders !== "function") return;
+                void api
+                  .getMyOrders()
+                  .then((orders) => {
+                    const target = orders.find((order) => order.id === id);
+                    if (!target) return;
+                    setOrderTarget(id);
+                    setView(isServiceOrder(target) ? "service-orders" : "orders");
+                  })
+                  .catch(() => undefined);
               }
-              return;
-            }
-            const id = Number(row.order_id ?? 0);
-            if (!id || typeof api.getMyOrders !== "function") return;
-            void api.getMyOrders().then((orders) => {
-              const target = orders.find((order) => order.id === id);
-              if (!target) return;
-              setOrderTarget(id);
-              setView(isServiceOrder(target) ? "service-orders" : "orders");
-            }).catch(() => undefined);
-          }
-          : undefined}
+            : undefined
+        }
       />,
     );
   }
@@ -733,9 +824,11 @@ export function UserProfile({
         <SpecialistV1656
           api={api}
           onBack={() => setView("dashboard")}
-          onReviews={supportsReceivedReviews(api)
-            ? () => setView("specialist-reviews")
-            : undefined}
+          onReviews={
+            supportsReceivedReviews(api)
+              ? () => setView("specialist-reviews")
+              : undefined
+          }
         />,
       );
     }

@@ -46,14 +46,12 @@ export function AppShell({
   onCabinet,
   onLogin,
 }: AppShellProps) {
-  const accountAction = (
-    onAccount
-    ?? (authenticated ? onCabinet : onLogin)
-    ?? noop
-  );
+  const accountAction = onAccount ?? (authenticated ? onCabinet : onLogin) ?? noop;
 
   return (
-    <div className={`app-shell${isHome ? " home-active" : ""}${searchResultsActive ? " search-results-active" : ""}`}>
+    <div
+      className={`app-shell${isHome ? " home-active" : ""}${searchResultsActive ? " search-results-active" : ""}`}
+    >
       <PublicHeader
         authenticated={authenticated}
         cartCount={cartCount}

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SpecialistProfile } from "../api/types";
 import { SpecialistV1656, type SpecialistApi } from "./SpecialistV1656";
 
-
 const leaflet = vi.hoisted(() => {
   const map = {
     setView: vi.fn(),
@@ -28,7 +27,6 @@ vi.mock("leaflet", () => ({
   },
 }));
 
-
 const PROFILE: SpecialistProfile = {
   exists: true,
   profession: "Santexnik",
@@ -37,30 +35,35 @@ const PROFILE: SpecialistProfile = {
   latitude: 37.8389,
   longitude: 67.5834,
   review_count: 2,
-  credentials: [{
-    id: 1,
-    image_url: "/diplom.webp",
-    position: 0,
-    created_at: "2026-08-10T09:00:00Z",
-  }],
-  offers: [{
-    id: 2,
-    kind: "service",
-    name: "Ta'mirlash",
-    price_text: "100 000 so'm",
-    note: "Uyga borib",
-    image_url: "/service.webp",
-    image_object_key: "private/user/7/specialist_offer_image/service.webp",
-    created_at: "2026-08-10T09:00:00Z",
-  }],
-  portfolio: [{
-    id: 3,
-    media_type: "video",
-    media_url: "/work.mp4",
-    created_at: "2026-08-10T09:00:00Z",
-  }],
+  credentials: [
+    {
+      id: 1,
+      image_url: "/diplom.webp",
+      position: 0,
+      created_at: "2026-08-10T09:00:00Z",
+    },
+  ],
+  offers: [
+    {
+      id: 2,
+      kind: "service",
+      name: "Ta'mirlash",
+      price_text: "100 000 so'm",
+      note: "Uyga borib",
+      image_url: "/service.webp",
+      image_object_key: "private/user/7/specialist_offer_image/service.webp",
+      created_at: "2026-08-10T09:00:00Z",
+    },
+  ],
+  portfolio: [
+    {
+      id: 3,
+      media_type: "video",
+      media_url: "/work.mp4",
+      created_at: "2026-08-10T09:00:00Z",
+    },
+  ],
 };
-
 
 function api(): SpecialistApi {
   return {
@@ -84,7 +87,6 @@ function api(): SpecialistApi {
   };
 }
 
-
 describe("SpecialistV1656", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,10 +99,12 @@ describe("SpecialistV1656", () => {
       <SpecialistV1656 api={specialistApi} onBack={vi.fn()} onReviews={onReviews} />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Mutaxassisligim" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Mutaxassislikni tasdiqlovchi hujjatlar"))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Mutaxassisligim" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Mutaxassislikni tasdiqlovchi hujjatlar"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Xizmatlarim va mahsulotlarim")).toBeInTheDocument();
     expect(screen.getByText("Bajargan ishlarim")).toBeInTheDocument();
     expect(screen.getByText("Ta'mirlash")).toBeInTheDocument();
@@ -113,9 +117,11 @@ describe("SpecialistV1656", () => {
       target: { value: "Usta" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Saqlash" }));
-    await waitFor(() => expect(specialistApi.updateMySpecialist).toHaveBeenCalledWith(
-      expect.objectContaining({ profession: "Usta", visible: true }),
-    ));
+    await waitFor(() =>
+      expect(specialistApi.updateMySpecialist).toHaveBeenCalledWith(
+        expect.objectContaining({ profession: "Usta", visible: true }),
+      ),
+    );
   });
 
   it("uploads a credential through R2 and attaches its object key", async () => {
@@ -130,27 +136,34 @@ describe("SpecialistV1656", () => {
     const file = new File(["image"], "diplom.webp", { type: "image/webp" });
     fireEvent.change(input, { target: { files: [file] } });
 
-    await waitFor(() => expect(specialistApi.createUploadGrant).toHaveBeenCalledWith(
-      expect.objectContaining({ purpose: "specialist_credential" }),
-    ));
-    await waitFor(() => expect(specialistApi.addSpecialistCredential).toHaveBeenCalledWith(
-      "private/user/7/specialist_credential/new.webp",
-    ));
+    await waitFor(() =>
+      expect(specialistApi.createUploadGrant).toHaveBeenCalledWith(
+        expect.objectContaining({ purpose: "specialist_credential" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(specialistApi.addSpecialistCredential).toHaveBeenCalledWith(
+        "private/user/7/specialist_credential/new.webp",
+      ),
+    );
   });
 
   it("opens and updates an existing service card", async () => {
     const specialistApi = api();
     render(<SpecialistV1656 api={specialistApi} onBack={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: /Ta'mirlash/ }));
-    expect(screen.getByRole("heading", { name: "Taklifni tahrirlash" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Taklifni tahrirlash" }),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/Huquqiy maslahat/), {
       target: { value: "Tezkor ta'mirlash" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Saqlash" }));
-    await waitFor(() => expect(specialistApi.updateSpecialistOffer).toHaveBeenCalledWith(
-      2,
-      expect.objectContaining({ name: "Tezkor ta'mirlash" }),
-    ));
+    await waitFor(() =>
+      expect(specialistApi.updateSpecialistOffer).toHaveBeenCalledWith(
+        2,
+        expect.objectContaining({ name: "Tezkor ta'mirlash" }),
+      ),
+    );
   });
 });

@@ -8,7 +8,6 @@ import { StoryRailV1656 } from "./StoryRailV1656";
 import { StoryViewerV1656 } from "./StoryViewerV1656";
 import type { StoryGroup, StoryRead } from "../api/types";
 
-
 const story: StoryRead = {
   id: 7,
   owner_type: "user",
@@ -36,14 +35,12 @@ const group: StoryGroup = {
   stories: [story],
 };
 
-
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 }
-
 
 describe("v1656 Istoriyalar pariteti", () => {
   it("rail ko‘rilmagan profilni ajratadi va viewer ochadi", () => {
@@ -59,7 +56,11 @@ describe("v1656 Istoriyalar pariteti", () => {
   it("viewer ko‘rilishni yozadi va egasiga ko‘ruvchilarni ochadi", async () => {
     const recordView = vi.fn().mockResolvedValue({ ok: true, counted: false });
     const getViewers = vi.fn().mockResolvedValue([
-      { account_public_id: "u_aaaaaaaaaaaaaaaa", name: "Vali", viewed_at: "2026-08-08T09:00:00Z" },
+      {
+        account_public_id: "u_aaaaaaaaaaaaaaaa",
+        name: "Vali",
+        viewed_at: "2026-08-08T09:00:00Z",
+      },
     ]);
     render(
       <StoryViewerV1656
@@ -98,8 +99,9 @@ describe("v1656 Istoriyalar pariteti", () => {
     const ownerCard = screen.getByRole("button", {
       name: "Ali profilini ochish",
     });
-    expect(ownerCard.querySelector(".story-viewer__owner-avatar"))
-      .toHaveTextContent("A");
+    expect(ownerCard.querySelector(".story-viewer__owner-avatar")).toHaveTextContent(
+      "A",
+    );
     fireEvent.click(ownerCard);
 
     expect(onClose).toHaveBeenCalledOnce();
@@ -156,12 +158,7 @@ describe("v1656 Istoriyalar pariteti", () => {
     await client.getSession();
 
     render(
-      <OwnerStoriesV1656
-        actor="user"
-        api={client}
-        ownerName="Ali"
-        onBack={vi.fn()}
-      />,
+      <OwnerStoriesV1656 actor="user" api={client} ownerName="Ali" onBack={vi.fn()} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "+ Istoriya" }));
@@ -172,16 +169,24 @@ describe("v1656 Istoriyalar pariteti", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Joylash" }));
 
-    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
-      "https://api.example/api/v1/media/upload-grants",
-      expect.objectContaining({ method: "POST" }),
-    ));
-    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
-      "https://r2.example/story-upload",
-      expect.objectContaining({ method: "PUT" }),
-    ));
-    await waitFor(() => expect(screen.queryByRole("dialog", {
-      name: "Istoriya yaratish",
-    })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(fetcher).toHaveBeenCalledWith(
+        "https://api.example/api/v1/media/upload-grants",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(fetcher).toHaveBeenCalledWith(
+        "https://r2.example/story-upload",
+        expect.objectContaining({ method: "PUT" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", {
+          name: "Istoriya yaratish",
+        }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

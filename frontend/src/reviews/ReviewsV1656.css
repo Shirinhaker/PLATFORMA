@@ -46,7 +46,7 @@
   background: var(--card, #fff);
   border: 1px solid var(--border, #dfe7e3);
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(16, 37, 31, .05);
+  box-shadow: 0 8px 24px rgba(16, 37, 31, 0.05);
   margin-bottom: 10px;
   padding: 14px;
 }

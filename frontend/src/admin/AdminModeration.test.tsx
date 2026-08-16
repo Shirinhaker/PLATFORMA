@@ -12,10 +12,7 @@ import { AdminAccounts, type AdminAccountsApi } from "./AdminAccounts";
 import { AdminAudit, type AdminAuditApi } from "./AdminAudit";
 import { AdminReports, type AdminReportsApi } from "./AdminReports";
 
-
-function accountRow(
-  overrides: Partial<AdminAccountRow> = {},
-): AdminAccountRow {
+function accountRow(overrides: Partial<AdminAccountRow> = {}): AdminAccountRow {
   return {
     actor_type: "business",
     account_id: 7,
@@ -71,7 +68,6 @@ function auditRow(overrides: Partial<AuditRow> = {}): AuditRow {
   };
 }
 
-
 describe("admin — profil va bizneslar", () => {
   function makeApi(overrides: Partial<AdminAccountsApi> = {}) {
     return {
@@ -80,7 +76,10 @@ describe("admin — profil va bizneslar", () => {
       restrict: vi.fn().mockResolvedValue({ id: 1, already_active: false }),
       unrestrict: vi.fn().mockResolvedValue({ id: 1, already_active: false }),
       addNote: vi.fn().mockResolvedValue({
-        id: 1, note: "Izoh", admin_tg_id: 1, created_at: 1_785_000_000,
+        id: 1,
+        note: "Izoh",
+        admin_tg_id: 1,
+        created_at: 1_785_000_000,
       }),
       ...overrides,
     } as unknown as AdminAccountsApi;
@@ -110,9 +109,7 @@ describe("admin — profil va bizneslar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Qidirish" }));
 
     await waitFor(() => {
-      expect(api.accounts).toHaveBeenCalledWith(
-        "user", "anvar", "account_blocked",
-      );
+      expect(api.accounts).toHaveBeenCalledWith("user", "anvar", "account_blocked");
     });
   });
 
@@ -123,9 +120,7 @@ describe("admin — profil va bizneslar", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ko‘rish" }));
     await screen.findByText("Cheklov bo‘lmagan.");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Publicdan yashirilgan" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Publicdan yashirilgan" }));
 
     expect(await screen.findByText("Sabab kiritilishi shart.")).toBeVisible();
     expect(api.restrict).not.toHaveBeenCalled();
@@ -153,18 +148,22 @@ describe("admin — profil va bizneslar", () => {
 
   it("faol cheklov olib tashlanadi", async () => {
     const api = makeApi({
-      account: vi.fn().mockResolvedValue(accountDetail({
-        restrictions: [{
-          id: 1,
-          restriction: "content_hidden",
-          status: "active",
-          reason: "Tekshiruv",
-          created_by_tg_id: 1,
-          created_at: 1_785_000_000,
-          revoked_reason: "",
-          revoked_at: 0,
-        }],
-      })),
+      account: vi.fn().mockResolvedValue(
+        accountDetail({
+          restrictions: [
+            {
+              id: 1,
+              restriction: "content_hidden",
+              status: "active",
+              reason: "Tekshiruv",
+              created_by_tg_id: 1,
+              created_at: 1_785_000_000,
+              revoked_reason: "",
+              revoked_at: 0,
+            },
+          ],
+        }),
+      ),
     });
     render(<AdminAccounts api={api} />);
     fireEvent.click(screen.getByRole("button", { name: "Qidirish" }));
@@ -173,9 +172,11 @@ describe("admin — profil va bizneslar", () => {
     fireEvent.change(await screen.findByLabelText("Sabab"), {
       target: { value: "Asossiz edi" },
     });
-    fireEvent.click(screen.getByRole("button", {
-      name: "Publicdan yashirilgan — olib tashlash",
-    }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Publicdan yashirilgan — olib tashlash",
+      }),
+    );
 
     await waitFor(() => {
       expect(api.unrestrict).toHaveBeenCalledWith("business", 7, {
@@ -200,14 +201,13 @@ describe("admin — profil va bizneslar", () => {
   });
 });
 
-
 describe("admin — shikoyatlar", () => {
   function makeApi(overrides: Partial<AdminReportsApi> = {}) {
     return {
       reports: vi.fn().mockResolvedValue([report()]),
-      assignReport: vi.fn().mockResolvedValue(
-        report({ status: "reviewing", assigned_admin_tg_id: 1 }),
-      ),
+      assignReport: vi
+        .fn()
+        .mockResolvedValue(report({ status: "reviewing", assigned_admin_tg_id: 1 })),
       decideReport: vi.fn().mockResolvedValue(report({ status: "resolved" })),
       setContentStatus: vi.fn().mockResolvedValue({}),
       ...overrides,
@@ -228,9 +228,7 @@ describe("admin — shikoyatlar", () => {
     render(<AdminReports api={api} />);
     fireEvent.click(await screen.findByRole("button", { name: "Ko‘rish" }));
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "O‘zimga biriktirish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "O‘zimga biriktirish" }));
 
     await waitFor(() => expect(api.assignReport).toHaveBeenCalledWith(3));
   });
@@ -251,44 +249,42 @@ describe("admin — shikoyatlar", () => {
     render(<AdminReports api={api} />);
     fireEvent.click(await screen.findByRole("button", { name: "Ko‘rish" }));
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Kontentni yashirish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Kontentni yashirish" }));
     expect(await screen.findByText("Sabab kiritilishi shart.")).toBeVisible();
     expect(api.setContentStatus).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText("Qaror sababi"), {
       target: { value: "Noqonuniy mahsulot" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Kontentni yashirish" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Kontentni yashirish" }));
 
     await waitFor(() => {
       expect(api.setContentStatus).toHaveBeenCalledWith(
-        "listing", 42, "hide", "Noqonuniy mahsulot",
+        "listing",
+        42,
+        "hide",
+        "Noqonuniy mahsulot",
       );
     });
   });
 
   it("hal qilingan shikoyatda tugmalar yo'q", async () => {
     const api = makeApi({
-      reports: vi.fn().mockResolvedValue([
-        report({ status: "resolved", resolution: "E'lon olib tashlandi" }),
-      ]),
+      reports: vi
+        .fn()
+        .mockResolvedValue([
+          report({ status: "resolved", resolution: "E'lon olib tashlandi" }),
+        ]),
     });
     render(<AdminReports api={api} />);
     fireEvent.click(await screen.findByRole("button", { name: "Ko‘rish" }));
 
     expect(
-      await screen.findByText(
-        "Qaror: Hal qilingan · E'lon olib tashlandi",
-      ),
+      await screen.findByText("Qaror: Hal qilingan · E'lon olib tashlandi"),
     ).toBeVisible();
     expect(screen.queryByRole("button", { name: "Hal qilindi" })).toBeNull();
   });
 });
-
 
 describe("admin — audit tarixi", () => {
   function makeApi(overrides: Partial<AdminAuditApi> = {}) {
@@ -301,9 +297,9 @@ describe("admin — audit tarixi", () => {
         ip_hash: "a".repeat(64),
         user_agent: "AdminPanel/1.0",
       } as AuditDetail),
-      auditExportUrl: vi.fn().mockReturnValue(
-        "https://api.test/api/v1/admin/audit/export.csv",
-      ),
+      auditExportUrl: vi
+        .fn()
+        .mockReturnValue("https://api.test/api/v1/admin/audit/export.csv"),
       ...overrides,
     } as unknown as AdminAuditApi;
   }
@@ -355,8 +351,8 @@ describe("admin — audit tarixi", () => {
     await waitFor(() => {
       expect(api.auditExportUrl).toHaveBeenCalledWith("report.resolved");
     });
-    expect(
-      screen.getByRole("link", { name: "CSV yuklab olish" }),
-    ).toHaveAttribute("href");
+    expect(screen.getByRole("link", { name: "CSV yuklab olish" })).toHaveAttribute(
+      "href",
+    );
   });
 });

@@ -149,7 +149,7 @@
   color: inherit;
   font-size: 9px;
   font-weight: 850;
-  letter-spacing: .03em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
@@ -211,7 +211,7 @@
 
 .business-cabinet__content {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, .8fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.8fr);
   align-items: start;
   gap: 14px;
 }

@@ -1,6 +1,5 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
 
-
 export type AvatarCrop = {
   x: number;
   y: number;
@@ -22,7 +21,6 @@ type Props = {
   onSave(): void;
 };
 
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -42,7 +40,6 @@ export function avatarImageStyle(value: Partial<AvatarCrop>): CSSProperties {
     transform: `scale(${crop.zoom})`,
   };
 }
-
 
 export function UserAvatarCropV1656({
   alt,
@@ -78,12 +75,14 @@ export function UserAvatarCropV1656({
     if (!started || started.pointerId !== event.pointerId || !node) return;
     const bounds = node.getBoundingClientRect();
     const next = normalizedAvatarCrop({
-      x: started.x
-        - ((event.clientX - started.clientX) / Math.max(1, bounds.width))
-          * 100 / started.zoom,
-      y: started.y
-        - ((event.clientY - started.clientY) / Math.max(1, bounds.height))
-          * 100 / started.zoom,
+      x:
+        started.x -
+        (((event.clientX - started.clientX) / Math.max(1, bounds.width)) * 100) /
+          started.zoom,
+      y:
+        started.y -
+        (((event.clientY - started.clientY) / Math.max(1, bounds.height)) * 100) /
+          started.zoom,
       zoom: started.zoom,
     });
     current.current = next;
@@ -115,10 +114,14 @@ export function UserAvatarCropV1656({
           max="3"
           step="0.05"
           value={normalizedAvatarCrop(value).zoom}
-          onChange={(event) => onChange(normalizedAvatarCrop({
-            ...value,
-            zoom: Number(event.currentTarget.value),
-          }))}
+          onChange={(event) =>
+            onChange(
+              normalizedAvatarCrop({
+                ...value,
+                zoom: Number(event.currentTarget.value),
+              }),
+            )
+          }
         />
       </label>
       <p>Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.</p>

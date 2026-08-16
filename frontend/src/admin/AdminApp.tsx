@@ -10,7 +10,6 @@ import { AdminReports } from "./AdminReports";
 import { AdminTaxiDrivers } from "./AdminTaxiDrivers";
 import "./admin.css";
 
-
 type Page = "payments" | "pricing" | "accounts" | "reports" | "taxi" | "audit";
 
 type Props = { api: AdminApiClient };
@@ -25,7 +24,6 @@ const PAGES: ReadonlyArray<{ key: Page; icon: string; label: string }> = [
   { key: "audit", icon: "≡", label: "Audit tarixi" },
 ];
 
-
 export function AdminApp({ api }: Props) {
   const [adminId, setAdminId] = useState<number | null>(null);
   const [checking, setChecking] = useState(true);
@@ -33,7 +31,8 @@ export function AdminApp({ api }: Props) {
 
   useEffect(() => {
     let active = true;
-    api.me()
+    api
+      .me()
       .then((identity) => {
         if (active) setAdminId(identity.telegram_user_id);
       })
@@ -43,7 +42,9 @@ export function AdminApp({ api }: Props) {
       .finally(() => {
         if (active) setChecking(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   if (checking) {

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BusinessDocument, BusinessProfile } from "../api/types";
 import { DocumentsV1656, type DocumentsApi } from "./DocumentsV1656";
 
-
 const profile: BusinessProfile = {
   account_id: 7,
   name: "Turon Savdo",
@@ -75,33 +74,39 @@ const incoming: BusinessDocument = {
 function documentsApi(): DocumentsApi {
   return {
     getDocumentCounterparties: vi.fn().mockResolvedValue({
-      counterparties: [{
-        id: 9,
-        name: "Olma Savdo",
-        ctype: "Mijoz",
-        director: "",
-        phone: "",
-        address: "",
-        inn: "309333444",
-        account: "",
-        bank: "",
-        mfo: "",
-        note: "",
-        created_at: "2026-08-10T09:00:00Z",
-      }],
+      counterparties: [
+        {
+          id: 9,
+          name: "Olma Savdo",
+          ctype: "Mijoz",
+          director: "",
+          phone: "",
+          address: "",
+          inn: "309333444",
+          account: "",
+          bank: "",
+          mfo: "",
+          note: "",
+          created_at: "2026-08-10T09:00:00Z",
+        },
+      ],
       count: 1,
       types: ["Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa"],
     }),
     createDocumentCounterparty: vi.fn().mockResolvedValue({ ok: true, id: 10 }),
     updateDocumentCounterparty: vi.fn().mockResolvedValue({ ok: true }),
     deleteDocumentCounterparty: vi.fn().mockResolvedValue(undefined),
-    getDocuments: vi.fn().mockImplementation((direction) => Promise.resolve({
-      documents: direction === "kiruvchi" ? [incoming] : [outgoing],
-      count: 1,
-    })),
-    getDocument: vi.fn().mockImplementation((id) => Promise.resolve(
-      id === incoming.id ? incoming : outgoing,
-    )),
+    getDocuments: vi.fn().mockImplementation((direction) =>
+      Promise.resolve({
+        documents: direction === "kiruvchi" ? [incoming] : [outgoing],
+        count: 1,
+      }),
+    ),
+    getDocument: vi
+      .fn()
+      .mockImplementation((id) =>
+        Promise.resolve(id === incoming.id ? incoming : outgoing),
+      ),
     createDocument: vi.fn().mockResolvedValue({ ok: true, id: 40 }),
     updateDocument: vi.fn().mockResolvedValue({ ok: true }),
     deleteDocument: vi.fn().mockResolvedValue(undefined),
@@ -142,7 +147,9 @@ describe("DocumentsV1656", () => {
     await user.click(await screen.findByRole("button", { name: /Chiquvchi/ }));
     await user.click(await screen.findByRole("button", { name: /Shartnoma/ }));
     expect(screen.queryByText("AI uchun topshiriq")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "🤖 AI draft yaratish" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "🤖 AI draft yaratish" }),
+    ).not.toBeInTheDocument();
   });
 
   it("saves the monolith My Documents director and STIR fields", async () => {

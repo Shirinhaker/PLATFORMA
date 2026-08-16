@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BusinessOnlineScreen } from "../profiles/BusinessOnlineScreen";
 
-
 const profile = {
   account_id: 7,
   name: "Muhr klinikasi",
@@ -103,11 +102,16 @@ function api() {
       queue_code: "QAB-002",
       source: "offline",
     }),
-    changeBusinessQueueStatus: vi.fn().mockImplementation(
-      async (_id: number, status: string) => ({ ...queue, status }),
-    ),
+    changeBusinessQueueStatus: vi
+      .fn()
+      .mockImplementation(async (_id: number, status: string) => ({
+        ...queue,
+        status,
+      })),
     swapBusinessQueues: vi.fn().mockResolvedValue(queue),
-    getBusinessOnlineResource: vi.fn().mockResolvedValue({ resource: "items", items: [] }),
+    getBusinessOnlineResource: vi
+      .fn()
+      .mockResolvedValue({ resource: "items", items: [] }),
     createBusinessOnlineRecord: vi.fn(),
     patchBusinessOnlineRecord: vi.fn(),
     deleteBusinessOnlineRecord: vi.fn(),
@@ -174,7 +178,9 @@ describe("Q2 typed biznes navbat oqimi", () => {
     expect(client.getBusinessQueueEntries).toHaveBeenCalledWith("2026-08-02");
     expect(card).toHaveTextContent("Qabul · Ali Valiyev · Onlayn · 🕐 09:00");
 
-    await user.click(within(card as HTMLElement).getByRole("button", { name: "Chaqirish" }));
+    await user.click(
+      within(card as HTMLElement).getByRole("button", { name: "Chaqirish" }),
+    );
     expect(client.changeBusinessQueueStatus).toHaveBeenCalledWith(41, "called");
 
     await user.click(screen.getByRole("button", { name: "+ Oflayn navbat" }));
@@ -192,7 +198,9 @@ describe("Q2 typed biznes navbat oqimi", () => {
       slot_time: "",
     });
 
-    await user.click(screen.getByRole("button", { name: "↔ Navbatlarni almashtirish" }));
+    await user.click(
+      screen.getByRole("button", { name: "↔ Navbatlarni almashtirish" }),
+    );
     await user.type(screen.getByLabelText("Birinchi navbat ID"), "41");
     await user.type(screen.getByLabelText("Ikkinchi navbat ID"), "42");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));

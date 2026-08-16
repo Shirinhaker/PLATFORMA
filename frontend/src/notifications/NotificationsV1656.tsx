@@ -12,7 +12,6 @@ import type {
 import { UZBEKISTAN_REGIONS } from "../legacy/public/location-data";
 import "./NotificationsV1656.css";
 
-
 export type NotificationsApi = Pick<
   ApiClient,
   | "getNotifications"
@@ -36,17 +35,18 @@ type Props = {
 
 type Draft = NotificationFilterWrite;
 
-const CATEGORIES: ReadonlyArray<readonly [NotificationFilterCategory, string, string]> = [
-  ["uy", "🏠", "Uy-joy"],
-  ["ish", "💼", "Ish"],
-  ["moshina", "🚙", "Moshinalar"],
-  ["hayvon", "🐾", "Hayvonlar"],
-  ["texnika", "📱", "Texnika"],
-  ["boshqa", "📦", "Boshqalar"],
-];
-const CATEGORY_MAP = new Map(CATEGORIES.map(([key, icon, label]) => (
-  [key, { icon, label }] as const
-)));
+const CATEGORIES: ReadonlyArray<readonly [NotificationFilterCategory, string, string]> =
+  [
+    ["uy", "🏠", "Uy-joy"],
+    ["ish", "💼", "Ish"],
+    ["moshina", "🚙", "Moshinalar"],
+    ["hayvon", "🐾", "Hayvonlar"],
+    ["texnika", "📱", "Texnika"],
+    ["boshqa", "📦", "Boshqalar"],
+  ];
+const CATEGORY_MAP = new Map(
+  CATEGORIES.map(([key, icon, label]) => [key, { icon, label }] as const),
+);
 const EMPTY_DRAFT: Draft = {
   cat: "uy",
   region: "",
@@ -62,11 +62,9 @@ const EMPTY_PUSH: PushStatusRead = {
   pending: 0,
 };
 
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 function notifyTime(timestamp: number): string {
   if (!timestamp) return "";
@@ -77,13 +75,11 @@ function notifyTime(timestamp: number): string {
   })}`;
 }
 
-
 function pushStatusText(status: PushStatusRead): string {
   if (!status.active_devices) return "Mobil ilova qurilmasi ulanmagan.";
   const state = status.configured ? "Push xizmati faol" : "Firebase kaliti kutilmoqda";
   return `${state} · ${status.active_devices} ta qurilma`;
 }
-
 
 function filterCaption(filter: NotificationFilterRead): string {
   const parts: string[] = [];
@@ -95,7 +91,6 @@ function filterCaption(filter: NotificationFilterRead): string {
   if (filter.keyword) parts.push(`«${filter.keyword}»`);
   return parts.join(" · ") || "Barcha e’lonlar";
 }
-
 
 export function NotificationsV1656({
   api,
@@ -117,19 +112,23 @@ export function NotificationsV1656({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const districts = useMemo(() => (
-    UZBEKISTAN_REGIONS.find((region) => region.name === draft.region)?.districts ?? []
-  ), [draft.region]);
+  const districts = useMemo(
+    () =>
+      UZBEKISTAN_REGIONS.find((region) => region.name === draft.region)?.districts ??
+      [],
+    [draft.region],
+  );
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const [notifications, nextPreference, nextFilters, nextPushStatus] = await Promise.all([
-        api.getNotifications(),
-        api.getNotificationPreference(),
-        api.getNotificationFilters(),
-        api.getPushStatus().catch(() => EMPTY_PUSH),
-      ]);
+      const [notifications, nextPreference, nextFilters, nextPushStatus] =
+        await Promise.all([
+          api.getNotifications(),
+          api.getNotificationPreference(),
+          api.getNotificationFilters(),
+          api.getPushStatus().catch(() => EMPTY_PUSH),
+        ]);
       setItems(notifications.items);
       setPreference(nextPreference);
       setFilters(nextFilters);
@@ -149,10 +148,14 @@ export function NotificationsV1656({
   async function markOne(notification: NotificationRead) {
     if (!notification.is_read) {
       await api.markNotificationRead(notification.id);
-      setItems((current) => current.map((row) => (
-        row.id === notification.id ? { ...row, is_read: true } : row
-      )));
-      const unread = items.filter((row) => !row.is_read && row.id !== notification.id).length;
+      setItems((current) =>
+        current.map((row) =>
+          row.id === notification.id ? { ...row, is_read: true } : row,
+        ),
+      );
+      const unread = items.filter(
+        (row) => !row.is_read && row.id !== notification.id,
+      ).length;
       onUnreadChange?.(unread);
     }
     await onOpenNotification?.(notification);
@@ -180,9 +183,9 @@ export function NotificationsV1656({
     setError("");
     try {
       setPreference(await api.saveNotificationPreference(next));
-      setNotice(enabled
-        ? "Push notification yoqildi ✅"
-        : "Push notification o‘chirildi");
+      setNotice(
+        enabled ? "Push notification yoqildi ✅" : "Push notification o‘chirildi",
+      );
     } catch (reason) {
       setPreference(previous);
       setError(errorMessage(reason));
@@ -223,11 +226,17 @@ export function NotificationsV1656({
     return (
       <main className="notifications-v1656 notifications-v1656--form">
         <header className="notifications-v1656__header">
-          <div><span>Bildirishnomalarim</span><h1>Yangi filtr</h1></div>
-          <button type="button" onClick={() => setFormOpen(false)}>Orqaga</button>
+          <div>
+            <span>Bildirishnomalarim</span>
+            <h1>Yangi filtr</h1>
+          </div>
+          <button type="button" onClick={() => setFormOpen(false)}>
+            Orqaga
+          </button>
         </header>
         <p>Faqat sizga kerakli e’lonlar haqida xabar olasiz.</p>
-        <label>Tur (majburiy)
+        <label>
+          Tur (majburiy)
           <select
             value={draft.cat}
             onChange={(event) => {
@@ -236,11 +245,14 @@ export function NotificationsV1656({
             }}
           >
             {CATEGORIES.map(([key, icon, label]) => (
-              <option value={key} key={key}>{icon} {label}</option>
+              <option value={key} key={key}>
+                {icon} {label}
+              </option>
             ))}
           </select>
         </label>
-        <label>Viloyat — ixtiyoriy
+        <label>
+          Viloyat — ixtiyoriy
           <select
             value={draft.region}
             onChange={(event) => {
@@ -250,11 +262,14 @@ export function NotificationsV1656({
           >
             <option value="">Istalgan viloyat</option>
             {UZBEKISTAN_REGIONS.map((region) => (
-              <option value={region.name} key={region.name}>{region.name}</option>
+              <option value={region.name} key={region.name}>
+                {region.name}
+              </option>
             ))}
           </select>
         </label>
-        <label>Tuman — ixtiyoriy
+        <label>
+          Tuman — ixtiyoriy
           <select
             value={draft.district}
             disabled={!draft.region}
@@ -265,7 +280,9 @@ export function NotificationsV1656({
           >
             <option value="">Istalgan tuman</option>
             {districts.map((district) => (
-              <option value={district} key={district}>{district}</option>
+              <option value={district} key={district}>
+                {district}
+              </option>
             ))}
           </select>
         </label>
@@ -294,7 +311,8 @@ export function NotificationsV1656({
             />
           </div>
         </fieldset>
-        <label>Kalit so‘z — ixtiyoriy
+        <label>
+          Kalit so‘z — ixtiyoriy
           <input
             placeholder="masalan: mushuk, Nexia, dasturchi"
             value={draft.keyword}
@@ -304,11 +322,24 @@ export function NotificationsV1656({
             }}
           />
         </label>
-        {error ? <p role="alert" className="notifications-v1656__error">{error}</p> : null}
-        <button type="button" className="notifications-v1656__primary" disabled={busy} onClick={() => void saveFilter()}>
+        {error ? (
+          <p role="alert" className="notifications-v1656__error">
+            {error}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          className="notifications-v1656__primary"
+          disabled={busy}
+          onClick={() => void saveFilter()}
+        >
           Saqlash
         </button>
-        <button type="button" className="notifications-v1656__secondary" onClick={() => setFormOpen(false)}>
+        <button
+          type="button"
+          className="notifications-v1656__secondary"
+          onClick={() => setFormOpen(false)}
+        >
           Bekor qilish
         </button>
       </main>
@@ -318,8 +349,13 @@ export function NotificationsV1656({
   return (
     <main className="notifications-v1656">
       <header className="notifications-v1656__header">
-        <div><span>Koprik</span><h1>Bildirishnomalarim</h1></div>
-        <button type="button" onClick={onBack}>Kabinetga qaytish</button>
+        <div>
+          <span>Koprik</span>
+          <h1>Bildirishnomalarim</h1>
+        </div>
+        <button type="button" onClick={onBack}>
+          Kabinetga qaytish
+        </button>
       </header>
       <p>Buyurtma jarayonidagi muhim xabarlar shu yerda saqlanadi.</p>
       <div className="notifications-v1656__push-row">
@@ -329,35 +365,52 @@ export function NotificationsV1656({
             type="checkbox"
             checked={preference.enabled && preference.orders_enabled}
             onChange={(event) => void togglePush(event.currentTarget.checked)}
-          /> Yoqilgan
+          />{" "}
+          Yoqilgan
         </label>
       </div>
       <div className="notifications-v1656__hint">{pushStatusText(pushStatus)}</div>
-      {error ? <p role="alert" className="notifications-v1656__error">{error}</p> : null}
-      {notice ? <p role="status" className="notifications-v1656__notice">{notice}</p> : null}
+      {error ? (
+        <p role="alert" className="notifications-v1656__error">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p role="status" className="notifications-v1656__notice">
+          {notice}
+        </p>
+      ) : null}
       <div className="notifications-v1656__section-head">
         <b>Buyurtma bildirishnomalari</b>
-        <button type="button" disabled={busy || !items.length} onClick={() => void markAll()}>
+        <button
+          type="button"
+          disabled={busy || !items.length}
+          onClick={() => void markAll()}
+        >
           Barchasini o‘qish
         </button>
       </div>
       <div className="notifications-v1656__list" aria-busy={loading}>
-        {items.length ? items.map((notification) => (
-          <button
-            type="button"
-            className={`notifications-v1656__card${notification.is_read ? " is-read" : ""}`}
-            key={notification.id}
-            onClick={() => void markOne(notification)}
-          >
-            <span className="notifications-v1656__icon">{notification.is_read ? "🔔" : "🟢"}</span>
-            <span className="notifications-v1656__copy">
-              <strong>{notification.title || "Bildirishnoma"}</strong>
-              <span>{notification.body}</span>
-              <small>{notifyTime(notification.created_at)}</small>
-            </span>
-            <span>›</span>
-          </button>
-        )) : (
+        {items.length ? (
+          items.map((notification) => (
+            <button
+              type="button"
+              className={`notifications-v1656__card${notification.is_read ? " is-read" : ""}`}
+              key={notification.id}
+              onClick={() => void markOne(notification)}
+            >
+              <span className="notifications-v1656__icon">
+                {notification.is_read ? "🔔" : "🟢"}
+              </span>
+              <span className="notifications-v1656__copy">
+                <strong>{notification.title || "Bildirishnoma"}</strong>
+                <span>{notification.body}</span>
+                <small>{notifyTime(notification.created_at)}</small>
+              </span>
+              <span>›</span>
+            </button>
+          ))
+        ) : (
           <div className="notifications-v1656__empty">
             <h2>{loading ? "Yuklanmoqda..." : "Hozircha xabar yo‘q"}</h2>
             {!loading ? <p>Buyurtma yangiliklari shu yerda chiqadi.</p> : null}
@@ -367,23 +420,38 @@ export function NotificationsV1656({
       <div className="notifications-v1656__divider" />
       <h2>E’lon filtrlari</h2>
       <p>Mos e’lon joylanganda Telegramingizga xabar keladi.</p>
-      <button type="button" className="notifications-v1656__primary" onClick={() => setFormOpen(true)}>
+      <button
+        type="button"
+        className="notifications-v1656__primary"
+        onClick={() => setFormOpen(true)}
+      >
         ➕ Yangi filtr qo‘shish
       </button>
       <div className="notifications-v1656__filters">
-        {filters.length ? filters.map((filter) => {
-          const category = CATEGORY_MAP.get(filter.cat) ?? { icon: "📦", label: filter.cat };
-          return (
-            <div className="notifications-v1656__card" key={filter.id}>
-              <span className="notifications-v1656__icon">{category.icon}</span>
-              <span className="notifications-v1656__copy">
-                <strong>{category.label}</strong>
-                <span>{filterCaption(filter)}</span>
-              </span>
-              <button type="button" aria-label="Filtrni o‘chirish" onClick={() => setDeleteFilter(filter.id)}>✕</button>
-            </div>
-          );
-        }) : (
+        {filters.length ? (
+          filters.map((filter) => {
+            const category = CATEGORY_MAP.get(filter.cat) ?? {
+              icon: "📦",
+              label: filter.cat,
+            };
+            return (
+              <div className="notifications-v1656__card" key={filter.id}>
+                <span className="notifications-v1656__icon">{category.icon}</span>
+                <span className="notifications-v1656__copy">
+                  <strong>{category.label}</strong>
+                  <span>{filterCaption(filter)}</span>
+                </span>
+                <button
+                  type="button"
+                  aria-label="Filtrni o‘chirish"
+                  onClick={() => setDeleteFilter(filter.id)}
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })
+        ) : (
           <div className="notifications-v1656__empty">
             <h2>Filtr yo‘q</h2>
             <p>«Yangi filtr» orqali qiziqishlaringizni belgilang.</p>
@@ -394,15 +462,23 @@ export function NotificationsV1656({
         <div className="notifications-v1656__modal" role="dialog" aria-modal="true">
           <div>
             <p>Bu filtrni o‘chirasizmi?</p>
-            <button type="button" onClick={() => setDeleteFilter(null)}>Bekor qilish</button>
-            <button type="button" className="danger" disabled={busy} onClick={() => void removeFilter(deleteFilter)}>O‘chirish</button>
+            <button type="button" onClick={() => setDeleteFilter(null)}>
+              Bekor qilish
+            </button>
+            <button
+              type="button"
+              className="danger"
+              disabled={busy}
+              onClick={() => void removeFilter(deleteFilter)}
+            >
+              O‘chirish
+            </button>
           </div>
         </div>
       ) : null}
     </main>
   );
 }
-
 
 export function ActionNotificationsV1656({
   api,
@@ -420,10 +496,15 @@ export function ActionNotificationsV1656({
       try {
         const result = await api.getActionNotifications();
         if (!active) return;
-        const next = result.items.find((item) => !dismissed.current.has(item.id)) ?? null;
+        const next =
+          result.items.find((item) => !dismissed.current.has(item.id)) ?? null;
         setCurrent(next);
         if (next && next.id !== current?.id) {
-          try { navigator.vibrate?.(120); } catch { /* Qurilma vibratsiyani qo‘llamasligi mumkin. */ }
+          try {
+            navigator.vibrate?.(120);
+          } catch {
+            /* Qurilma vibratsiyani qo‘llamasligi mumkin. */
+          }
         }
       } catch {
         if (active) setCurrent(null);
@@ -460,7 +541,9 @@ export function ActionNotificationsV1656({
           dismissed.current.add(current.id);
           setCurrent(null);
         }}
-      >×</button>
+      >
+        ×
+      </button>
     </div>
   );
 }

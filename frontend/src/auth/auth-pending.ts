@@ -5,7 +5,6 @@ import type {
   RegistrationStart,
 } from "../api/types";
 
-
 export const TELEGRAM_AUTH_PENDING_KEY = "koprik_telegram_auth_pending_v1";
 
 type PendingBase = {
@@ -24,23 +23,19 @@ export type PendingAuth =
       payload: RegistrationStart;
     });
 
-
 function storage() {
   return typeof window === "undefined" ? null : window.sessionStorage;
 }
 
-
 function isAccountType(value: unknown): value is AccountType {
   return value === "user" || value === "business";
 }
-
 
 function isRegistrationStart(value: unknown): value is RegistrationStart {
   if (!value || typeof value !== "object") return false;
   const payload = value as Partial<RegistrationStart>;
   return isAccountType(payload.account_type) && typeof payload.name === "string";
 }
-
 
 export function clearPendingAuth() {
   try {
@@ -50,27 +45,25 @@ export function clearPendingAuth() {
   }
 }
 
-
 export function readPendingAuth(): PendingAuth | null {
   try {
     const raw = storage()?.getItem(TELEGRAM_AUTH_PENDING_KEY);
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<PendingAuth>;
-    const commonIsValid = (
-      (value.kind === "login" || value.kind === "register")
-      && Number.isInteger(value.request_id)
-      && Number(value.request_id) > 0
-      && typeof value.deep_link === "string"
-      && Number(value.expires_at) > Date.now()
-      && Number.isFinite(Number(value.resend_at))
-    );
+    const commonIsValid =
+      (value.kind === "login" || value.kind === "register") &&
+      Number.isInteger(value.request_id) &&
+      Number(value.request_id) > 0 &&
+      typeof value.deep_link === "string" &&
+      Number(value.expires_at) > Date.now() &&
+      Number.isFinite(Number(value.resend_at));
     if (!commonIsValid) {
       clearPendingAuth();
       return null;
     }
     if (
-      value.kind === "register"
-      && (!isAccountType(value.role) || !isRegistrationStart(value.payload))
+      value.kind === "register" &&
+      (!isAccountType(value.role) || !isRegistrationStart(value.payload))
     ) {
       clearPendingAuth();
       return null;
@@ -81,7 +74,6 @@ export function readPendingAuth(): PendingAuth | null {
     return null;
   }
 }
-
 
 export function savePendingAuth(
   kind: "login" | "register",
@@ -95,14 +87,15 @@ export function savePendingAuth(
     resend_at: Date.now() + challenge.resend_after * 1000,
     expires_at: Date.now() + challenge.expires_in * 1000,
   };
-  const pending: PendingAuth = kind === "register" && registration
-    ? {
-        ...common,
-        kind,
-        role: registration.account_type,
-        payload: registration,
-      }
-    : { ...common, kind: "login" };
+  const pending: PendingAuth =
+    kind === "register" && registration
+      ? {
+          ...common,
+          kind,
+          role: registration.account_type,
+          payload: registration,
+        }
+      : { ...common, kind: "login" };
   try {
     storage()?.setItem(TELEGRAM_AUTH_PENDING_KEY, JSON.stringify(pending));
   } catch {
@@ -110,26 +103,26 @@ export function savePendingAuth(
   }
 }
 
-
 export function refreshPendingAuth(result: ChallengeResent) {
   const pending = readPendingAuth();
   if (!pending || pending.request_id !== result.request_id) return;
   try {
-    storage()?.setItem(TELEGRAM_AUTH_PENDING_KEY, JSON.stringify({
-      ...pending,
-      resend_at: Date.now() + result.resend_after * 1000,
-      expires_at: Date.now() + result.expires_in * 1000,
-    }));
+    storage()?.setItem(
+      TELEGRAM_AUTH_PENDING_KEY,
+      JSON.stringify({
+        ...pending,
+        resend_at: Date.now() + result.resend_after * 1000,
+        expires_at: Date.now() + result.expires_in * 1000,
+      }),
+    );
   } catch {
     // Authentication still works when browser storage is unavailable.
   }
 }
 
-
 export function pendingResendSeconds(pending: PendingAuth) {
   return Math.max(0, Math.ceil((pending.resend_at - Date.now()) / 1000));
 }
-
 
 export function openTelegramLink(deepLink: string) {
   if (!deepLink || typeof window === "undefined") return;

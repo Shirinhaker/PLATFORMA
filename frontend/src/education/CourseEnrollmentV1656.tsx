@@ -3,7 +3,6 @@ import { type FormEvent, useState } from "react";
 import type { ApiClient } from "../api/client";
 import "./CourseEnrollmentV1656.css";
 
-
 export type CourseEnrollmentTarget = {
   itemPublicId: string;
   courseName: string;
@@ -19,13 +18,11 @@ type Props = {
   onMessage(message: string): void;
 };
 
-
 function errorText(reason: unknown) {
   return reason instanceof Error
     ? reason.message
     : "Arizani yuborib bo'lmadi. Qayta urinib ko'ring.";
 }
-
 
 export function CourseEnrollmentV1656({
   api,
@@ -89,7 +86,9 @@ export function CourseEnrollmentV1656({
           onChange={(event) => setNote(event.currentTarget.value)}
         />
         <div className="acf-btns">
-          <button type="button" onClick={onClose}>Bekor qilish</button>
+          <button type="button" onClick={onClose}>
+            Bekor qilish
+          </button>
           <button className="acf-ok" disabled={busy} type="submit">
             {busy ? "Yuborilmoqda..." : "Ariza yuborish"}
           </button>

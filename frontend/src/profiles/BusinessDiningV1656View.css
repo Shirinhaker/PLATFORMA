@@ -148,7 +148,10 @@
   border-radius: 9px;
   background: transparent;
   color: var(--koprik-ink);
-  font: 600 14px Inter, system-ui, sans-serif;
+  font:
+    600 14px Inter,
+    system-ui,
+    sans-serif;
   text-align: left;
   cursor: pointer;
 }
@@ -182,7 +185,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(16px);
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
 }
 
 .business-dining-v1656 .app-toast.on {
@@ -217,7 +222,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.96);
-  transition: opacity 0.18s, transform 0.18s;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
 }
 
 .business-dining-v1656 .app-confirm.on {

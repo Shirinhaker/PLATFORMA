@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OrderChatRead, OrderRead } from "../api/types";
 import { OrdersCabinetV1656, type OrdersApi } from "./OrdersCabinetV1656";
 
-
 const leaflet = vi.hoisted(() => {
   const map = {
     invalidateSize: vi.fn(),
@@ -28,7 +27,6 @@ vi.mock("leaflet", () => ({
     marker: vi.fn(() => leaflet.marker),
   },
 }));
-
 
 function order(overrides: Partial<OrderRead> = {}): OrderRead {
   return {
@@ -84,17 +82,19 @@ function order(overrides: Partial<OrderRead> = {}): OrderRead {
     is_unread: true,
     created_at: "2026-08-02T09:00:00Z",
     updated_at: "2026-08-02T09:00:00Z",
-    items: [{
-      id: 1,
-      public_id: "p_non",
-      name: "Non",
-      price: "20 000 so‘m",
-      qty: 2,
-      unit: "dona",
-      line_total: 40_000,
-      note: "",
-      kind: "product",
-    }],
+    items: [
+      {
+        id: 1,
+        public_id: "p_non",
+        name: "Non",
+        price: "20 000 so‘m",
+        qty: 2,
+        unit: "dona",
+        line_total: 40_000,
+        note: "",
+        kind: "product",
+      },
+    ],
     ...overrides,
   };
 }
@@ -107,26 +107,29 @@ function chat(value = order()): OrderChatRead {
     other: {
       side: value.view === "customer" ? "provider" : "customer",
       kind: value.view === "customer" ? "business" : "user",
-      public_id: value.view === "customer" ? value.provider_public_id : value.customer_public_id,
+      public_id:
+        value.view === "customer" ? value.provider_public_id : value.customer_public_id,
       name: value.view === "customer" ? value.provider_name : value.customer_name,
     },
     order: value,
-    messages: [{
-      id: 7,
-      text: "Chek yuborildi",
-      media_type: "text",
-      media_url: "",
-      file_name: "",
-      reply_to_id: null,
-      reply: null,
-      edited_at: null,
-      deleted_at: null,
-      is_deleted: false,
-      mine: true,
-      sender_name: "Ali",
-      sender_kind: "user",
-      created_at: "2026-08-02T09:30:00Z",
-    }],
+    messages: [
+      {
+        id: 7,
+        text: "Chek yuborildi",
+        media_type: "text",
+        media_url: "",
+        file_name: "",
+        reply_to_id: null,
+        reply: null,
+        edited_at: null,
+        deleted_at: null,
+        is_deleted: false,
+        mine: true,
+        sender_name: "Ali",
+        sender_kind: "user",
+        created_at: "2026-08-02T09:30:00Z",
+      },
+    ],
   };
 }
 
@@ -135,51 +138,109 @@ function apiFor(rows: OrderRead[]): OrdersApi {
   return {
     getMyOrders: vi.fn().mockResolvedValue(rows),
     getOrderInbox: vi.fn().mockResolvedValue(rows),
-    markOrderSeen: vi.fn(async (id) => ({ ...rows.find((row) => row.id === id)!, is_unread: false })),
-    changeOrderStatus: vi.fn(async (id, status) => ({ ...rows.find((row) => row.id === id)!, status })),
-    submitOrderPayment: vi.fn(async (id) => ({ ...rows.find((row) => row.id === id)!, payment_status: "submitted" })),
-    decideOrderPayment: vi.fn(async (id, status) => ({ ...rows.find((row) => row.id === id)!, payment_status: status })),
-    openOrderProblem: vi.fn(async (id, body) => ({ ...rows.find((row) => row.id === id)!, problem_open: true, problem_reason: body.reason })),
-    chooseOrderProblemSolution: vi.fn(async (id, solution) => ({ ...rows.find((row) => row.id === id)!, problem_solution: solution })),
-    handoffOrder: vi.fn(async (id) => ({ ...rows.find((row) => row.id === id)!, status: "pickup_waiting_customer" })),
-    receiveOrder: vi.fn(async (id) => ({ ...rows.find((row) => row.id === id)!, status: "done" })),
+    markOrderSeen: vi.fn(async (id) => ({
+      ...rows.find((row) => row.id === id)!,
+      is_unread: false,
+    })),
+    changeOrderStatus: vi.fn(async (id, status) => ({
+      ...rows.find((row) => row.id === id)!,
+      status,
+    })),
+    submitOrderPayment: vi.fn(async (id) => ({
+      ...rows.find((row) => row.id === id)!,
+      payment_status: "submitted",
+    })),
+    decideOrderPayment: vi.fn(async (id, status) => ({
+      ...rows.find((row) => row.id === id)!,
+      payment_status: status,
+    })),
+    openOrderProblem: vi.fn(async (id, body) => ({
+      ...rows.find((row) => row.id === id)!,
+      problem_open: true,
+      problem_reason: body.reason,
+    })),
+    chooseOrderProblemSolution: vi.fn(async (id, solution) => ({
+      ...rows.find((row) => row.id === id)!,
+      problem_solution: solution,
+    })),
+    handoffOrder: vi.fn(async (id) => ({
+      ...rows.find((row) => row.id === id)!,
+      status: "pickup_waiting_customer",
+    })),
+    receiveOrder: vi.fn(async (id) => ({
+      ...rows.find((row) => row.id === id)!,
+      status: "done",
+    })),
     getOrderChat: vi.fn(async (id) => chat(rows.find((row) => row.id === id)!)),
-    sendOrderChatMessage: vi.fn(async (_id, body) => ({ ...baseMessage, id: 8, text: body.text })),
-    sendOrderChatImage: vi.fn(async () => ({ ...baseMessage, id: 9, media_type: "photo" })),
-    editOrderChatMessage: vi.fn(async (_orderId, messageId, text) => ({ ...baseMessage, id: messageId, text })),
-    deleteOrderChatMessage: vi.fn(async (_orderId, messageId) => ({ ...baseMessage, id: messageId, is_deleted: true })),
+    sendOrderChatMessage: vi.fn(async (_id, body) => ({
+      ...baseMessage,
+      id: 8,
+      text: body.text,
+    })),
+    sendOrderChatImage: vi.fn(async () => ({
+      ...baseMessage,
+      id: 9,
+      media_type: "photo",
+    })),
+    editOrderChatMessage: vi.fn(async (_orderId, messageId, text) => ({
+      ...baseMessage,
+      id: messageId,
+      text,
+    })),
+    deleteOrderChatMessage: vi.fn(async (_orderId, messageId) => ({
+      ...baseMessage,
+      id: messageId,
+      is_deleted: true,
+    })),
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn(),
-    getDebtors: vi.fn().mockResolvedValue([{
-      id: 31,
-      name: "Ali Valiyev",
-      phone: "",
-      note: "",
-      due: "",
-      balance: 0,
-    }]),
+    getDebtors: vi.fn().mockResolvedValue([
+      {
+        id: 31,
+        name: "Ali Valiyev",
+        phone: "",
+        note: "",
+        due: "",
+        balance: 0,
+      },
+    ]),
     createDebtor: vi.fn().mockResolvedValue({ id: 31 }),
   };
 }
 
-
 beforeEach(() => vi.clearAllMocks());
-
 
 describe("v1656 jonli buyurtma kabineti", () => {
   it("mijoz mahsulot buyurtmalarini API dan olib, xizmatlarni alohida saqlaydi", async () => {
     const product = order();
-    const service = order({ id: 92, order_type: "delivery", order_category: "service", title: "Stomatolog" });
+    const service = order({
+      id: 92,
+      order_type: "delivery",
+      order_category: "service",
+      title: "Stomatolog",
+    });
     const api = apiFor([product, service]);
 
     const { rerender } = render(
-      <OrdersCabinetV1656 api={api} side="customer" category="product" onBack={vi.fn()} />,
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
     );
     expect(await screen.findByText("Buyurtma: Turon savdo")).toBeInTheDocument();
     expect(screen.queryByText("Stomatolog")).not.toBeInTheDocument();
     expect(api.getMyOrders).toHaveBeenCalledOnce();
 
-    rerender(<OrdersCabinetV1656 api={api} side="customer" category="service" onBack={vi.fn()} />);
+    rerender(
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="service"
+        onBack={vi.fn()}
+      />,
+    );
     expect(await screen.findByText("Stomatolog")).toBeInTheDocument();
   });
 
@@ -188,7 +249,14 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const clipboardWrite = vi.spyOn(navigator.clipboard, "writeText");
     const current = order({ last_event: "msg" });
     const api = apiFor([current]);
-    render(<OrdersCabinetV1656 api={api} side="customer" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
 
     expect(await screen.findByText("BUYURTMA №91")).toBeInTheDocument();
     expect(screen.getByText("💬 Xabar keldi")).toBeInTheDocument();
@@ -196,17 +264,24 @@ describe("v1656 jonli buyurtma kabineti", () => {
     expect(screen.getByText("Non × 2 dona")).toBeInTheDocument();
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await waitFor(() => expect(api.markOrderSeen).toHaveBeenCalledWith(91));
-    expect(screen.getByRole("heading", { name: "Mening buyurtmam №91" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Mening buyurtmam №91" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("🧾 Buyurtma cheki №91")).toBeInTheDocument();
     expect(screen.getByText("Yetkazib berish metkasi")).toBeInTheDocument();
     expect(screen.getByText("💬 Buyurtma chati")).toBeInTheDocument();
-    await waitFor(() => expect(leaflet.map.setView).toHaveBeenCalledWith([37.834, 67.585], 16));
+    await waitFor(() =>
+      expect(leaflet.map.setView).toHaveBeenCalledWith([37.834, 67.585], 16),
+    );
 
     await user.click(screen.getByRole("button", { name: "📋 Summani nusxalash" }));
     expect(clipboardWrite).toHaveBeenCalledWith("40000");
     expect(screen.getByRole("alert")).toHaveTextContent("Nusxa olindi ✅");
 
-    await user.type(screen.getByPlaceholderText("Buyurtma bo‘yicha xabar yozing..."), "Qachon tayyor?");
+    await user.type(
+      screen.getByPlaceholderText("Buyurtma bo‘yicha xabar yozing..."),
+      "Qachon tayyor?",
+    );
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
     expect(api.sendOrderChatMessage).toHaveBeenCalledWith(91, {
       text: "Qachon tayyor?",
@@ -223,31 +298,44 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const api = apiFor([current]);
     vi.mocked(api.getOrderChat).mockResolvedValue({
       ...chat(current),
-      messages: [{
-        ...chat(current).messages[0]!,
-        id: 8,
-        text: "Mana yangi chek",
-        media_type: "photo",
-        media_url: "https://cdn.example/receipt.webp",
-        reply_to_id: 7,
-        reply: {
-          id: 7,
-          text: "Kvitansiyani yuboring",
-          media_type: "text",
-          is_deleted: false,
-          sender_name: "Turon savdo",
+      messages: [
+        {
+          ...chat(current).messages[0]!,
+          id: 8,
+          text: "Mana yangi chek",
+          media_type: "photo",
+          media_url: "https://cdn.example/receipt.webp",
+          reply_to_id: 7,
+          reply: {
+            id: 7,
+            text: "Kvitansiyani yuboring",
+            media_type: "text",
+            is_deleted: false,
+            sender_name: "Turon savdo",
+          },
         },
-      }],
+      ],
     });
 
-    render(<OrdersCabinetV1656 api={api} side="customer" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     expect(await screen.findByText("Kvitansiyani yuboring")).toBeInTheDocument();
     expect(screen.getByText("↩ Turon savdo")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Rasm" }));
-    expect(screen.getByRole("dialog", { name: "Buyurtma chati rasmi" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Buyurtma chati rasmi" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Rasmni yopish" }));
-    expect(screen.queryByRole("dialog", { name: "Buyurtma chati rasmi" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Buyurtma chati rasmi" }),
+    ).not.toBeInTheDocument();
   });
 
   it("rasmli chekni grant bilan yuklaydi va chat reply/edit/delete amallarini saqlaydi", async () => {
@@ -261,33 +349,54 @@ describe("v1656 jonli buyurtma kabineti", () => {
       headers: { "Content-Type": "image/webp" },
       expires_in_seconds: 300,
     });
-    render(<OrdersCabinetV1656 api={api} side="customer" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await screen.findByText("Chek yuborildi");
 
     const image = new File(["receipt"], "receipt.webp", { type: "image/webp" });
     await user.upload(screen.getByLabelText("📎 Rasm qo‘shish"), image);
-    expect(screen.getByText("Rasm tanlandi. Yuborish uchun chatdagi “Yuborish” tugmasini bosing.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Rasm tanlandi. Yuborish uchun chatdagi “Yuborish” tugmasini bosing.",
+      ),
+    ).toBeInTheDocument();
     expect(api.createUploadGrant).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
-    await waitFor(() => expect(api.createUploadGrant).toHaveBeenCalledWith({
-      purpose: "order_chat_image",
-      filename: "receipt.webp",
-      content_type: "image/webp",
-      size_bytes: image.size,
-    }));
+    await waitFor(() =>
+      expect(api.createUploadGrant).toHaveBeenCalledWith({
+        purpose: "order_chat_image",
+        filename: "receipt.webp",
+        content_type: "image/webp",
+        size_bytes: image.size,
+      }),
+    );
     expect(api.uploadGrantedFile).toHaveBeenCalledWith(
-      expect.objectContaining({ object_key: "private/user/5/order_chat_image/receipt.webp" }),
+      expect.objectContaining({
+        object_key: "private/user/5/order_chat_image/receipt.webp",
+      }),
       image,
     );
-    expect(api.sendOrderChatImage).toHaveBeenCalledWith(91, expect.objectContaining({
-      object_key: "private/user/5/order_chat_image/receipt.webp",
-      file_name: "receipt.webp",
-    }));
+    expect(api.sendOrderChatImage).toHaveBeenCalledWith(
+      91,
+      expect.objectContaining({
+        object_key: "private/user/5/order_chat_image/receipt.webp",
+        file_name: "receipt.webp",
+      }),
+    );
 
     await user.click(screen.getAllByRole("button", { name: "Xabar amallari" })[0]!);
     await user.click(screen.getByRole("button", { name: "↩️ Javob berish" }));
-    await user.type(screen.getByPlaceholderText("Buyurtma bo‘yicha xabar yozing..."), "Qabul qilindi");
+    await user.type(
+      screen.getByPlaceholderText("Buyurtma bo‘yicha xabar yozing..."),
+      "Qabul qilindi",
+    );
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
     expect(api.sendOrderChatMessage).toHaveBeenCalledWith(91, {
       text: "Qabul qilindi",
@@ -313,9 +422,18 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const user = userEvent.setup();
     const ready = order({ view: "provider", order_type: "pickup", status: "tayyor" });
     const api = apiFor([ready]);
-    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
-    await user.click(screen.getByRole("button", { name: "🏪 Buyurtmachiga topshirdim" }));
+    await user.click(
+      screen.getByRole("button", { name: "🏪 Buyurtmachiga topshirdim" }),
+    );
     const dialog = screen.getByRole("dialog", { name: "Buyurtmani topshirish" });
     expect(dialog).toHaveTextContent("Buyurtma qarshi tomonga topshirildimi?");
     await user.click(within(dialog).getByRole("button", { name: "Ha, topshirdim" }));
@@ -330,9 +448,18 @@ describe("v1656 jonli buyurtma kabineti", () => {
       status: "handoff_waiting_seller",
     });
     const api = apiFor([waiting]);
-    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
-    await user.click(screen.getByRole("button", { name: "📦 Dostavkachiga topshirdim" }));
+    await user.click(
+      screen.getByRole("button", { name: "📦 Dostavkachiga topshirdim" }),
+    );
     const dialog = screen.getByRole("dialog", { name: "Buyurtmani topshirish" });
     await user.click(within(dialog).getByRole("button", { name: "Ha, topshirdim" }));
     expect(api.handoffOrder).toHaveBeenCalledWith(91);
@@ -342,9 +469,20 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const user = userEvent.setup();
     const submitted = order({ view: "provider", payment_status: "submitted" });
     const api = apiFor([submitted]);
-    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
-    expect(screen.getByText("Mijoz chek (to'lov skrinshoti)ni suhbatga tashlaydi. Tekshirib tasdiqlang.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Mijoz chek (to'lov skrinshoti)ni suhbatga tashlaydi. Tekshirib tasdiqlang.",
+      ),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "✅ To'lovni tasdiqlash" }));
     const dialog = screen.getByRole("dialog", { name: "To'lovni tasdiqlash" });
     expect(dialog).toHaveTextContent("To'lovni tasdiqlashni tasdiqlaysizmi?");
@@ -356,22 +494,47 @@ describe("v1656 jonli buyurtma kabineti", () => {
     const user = userEvent.setup();
     const accepted = order({ view: "provider", status: "accepted" });
     const api = apiFor([accepted]);
-    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
 
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
-    await user.click(screen.getByRole("button", { name: "📒 Qarzga rasmiylashtirish" }));
-    const dialog = await screen.findByRole("dialog", { name: "Tashqi buyurtmani qarzga yozish" });
+    await user.click(
+      screen.getByRole("button", { name: "📒 Qarzga rasmiylashtirish" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Tashqi buyurtmani qarzga yozish",
+    });
     await user.selectOptions(within(dialog).getByLabelText("Qarzdor"), "31");
     await user.click(within(dialog).getByRole("button", { name: "Qarzga yozish" }));
 
-    await waitFor(() => expect(api.decideOrderPayment).toHaveBeenCalledWith(91, "debt", 31));
+    await waitFor(() =>
+      expect(api.decideOrderPayment).toHaveBeenCalledWith(91, "debt", 31),
+    );
   });
 
   it("biznes qabul qilish, muammo ochish va topshirishni jonli endpointlarga yuboradi", async () => {
     const user = userEvent.setup();
-    const fresh = order({ view: "provider", status: "new", pay_card: "", is_unread: true });
+    const fresh = order({
+      view: "provider",
+      status: "new",
+      pay_card: "",
+      is_unread: true,
+    });
     const api = apiFor([fresh]);
-    const first = render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    const first = render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
 
     await user.click(screen.getByRole("button", { name: "Qabul qilish" }));
@@ -380,13 +543,27 @@ describe("v1656 jonli buyurtma kabineti", () => {
 
     const submitted = order({ view: "provider", payment_status: "submitted" });
     const submittedApi = apiFor([submitted]);
-    render(<OrdersCabinetV1656 api={submittedApi} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={submittedApi}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     await user.click(screen.getByRole("button", { name: "⚠️ To'lov bo'yicha muammo" }));
     const dialog = screen.getByRole("dialog", { name: "To'lov bo'yicha muammo" });
-    expect(dialog).toHaveTextContent("Sababni tanlang. Muammo hal bo'lmaguncha tayyorlash, dostavka va yakunlash bloklanadi.");
-    await user.selectOptions(within(dialog).getByLabelText("Muammo sababi"), "amount_short");
-    await user.click(within(dialog).getByRole("button", { name: "Muammoli buyurtmaga o'tkazish" }));
+    expect(dialog).toHaveTextContent(
+      "Sababni tanlang. Muammo hal bo'lmaguncha tayyorlash, dostavka va yakunlash bloklanadi.",
+    );
+    await user.selectOptions(
+      within(dialog).getByLabelText("Muammo sababi"),
+      "amount_short",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Muammoli buyurtmaga o'tkazish" }),
+    );
     expect(submittedApi.openOrderProblem).toHaveBeenCalledWith(91, {
       reason: "amount_short",
       note: "",
@@ -395,9 +572,21 @@ describe("v1656 jonli buyurtma kabineti", () => {
 
   it("biznes yangi buyurtmani kartochkaning o‘zidan qabul qiladi", async () => {
     const user = userEvent.setup();
-    const fresh = order({ view: "provider", status: "new", pay_card: "", is_unread: true });
+    const fresh = order({
+      view: "provider",
+      status: "new",
+      pay_card: "",
+      is_unread: true,
+    });
     const api = apiFor([fresh]);
-    render(<OrdersCabinetV1656 api={api} side="provider" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={api}
+        side="provider"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
 
     await user.click(await screen.findByRole("button", { name: "Qabul qilish" }));
 
@@ -415,14 +604,23 @@ describe("v1656 jonli buyurtma kabineti", () => {
       provider_work_hours: { raw: "08:00–18:00" },
     });
     const api = apiFor([problematic]);
-    const first = render(<OrdersCabinetV1656 api={api} side="customer" category="product" onBack={vi.fn()} />);
+    const first = render(
+      <OrdersCabinetV1656
+        api={api}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
     expect(screen.getByText("Boshqa to'lov muammosi")).toBeInTheDocument();
     expect(screen.getByText(/08:00–18:00/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "🧾 Yangi chek" }));
     expect(api.chooseOrderProblemSolution).toHaveBeenCalledWith(91, "new_receipt");
-    expect(screen.queryByRole("button", { name: "✅ Buyurtmani qabul qildim" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "✅ Buyurtmani qabul qildim" }),
+    ).not.toBeInTheDocument();
     first.unmount();
 
     const delivered = order({
@@ -430,9 +628,18 @@ describe("v1656 jonli buyurtma kabineti", () => {
       problem_open: false,
     });
     const deliveredApi = apiFor([delivered]);
-    render(<OrdersCabinetV1656 api={deliveredApi} side="customer" category="product" onBack={vi.fn()} />);
+    render(
+      <OrdersCabinetV1656
+        api={deliveredApi}
+        side="customer"
+        category="product"
+        onBack={vi.fn()}
+      />,
+    );
     await user.click(await screen.findByText("Buyurtma: Turon savdo"));
-    await user.click(screen.getByRole("button", { name: "✅ Buyurtmani qabul qildim" }));
+    await user.click(
+      screen.getByRole("button", { name: "✅ Buyurtmani qabul qildim" }),
+    );
     const confirm = screen.getByRole("dialog", { name: "Buyurtmani qabul qilish" });
     await user.click(within(confirm).getByRole("button", { name: "Ha, qabul qildim" }));
     expect(deliveredApi.receiveOrder).toHaveBeenCalledWith(91);

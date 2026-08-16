@@ -17,7 +17,14 @@ export type CartReceipt = {
 export type CartState = Record<string, CartReceipt>;
 
 export const FRACTIONAL_UNITS = new Set([
-  "kg", "g", "litr", "ml", "metr", "sm", "m²", "soat",
+  "kg",
+  "g",
+  "litr",
+  "ml",
+  "metr",
+  "sm",
+  "m²",
+  "soat",
 ]);
 
 export function unitAllowsFraction(unit: string): boolean {
@@ -112,7 +119,11 @@ export function changeCartItem(
   if (!item) return carts;
   const step = unitAllowsFraction(item.unit) ? 0.5 : 1;
   return setCartItemQuantity(
-    carts, providerPublicId, itemPublicId, item.qty + step * direction, true,
+    carts,
+    providerPublicId,
+    itemPublicId,
+    item.qty + step * direction,
+    true,
   );
 }
 
@@ -131,9 +142,7 @@ export function setCartItemSum(
   const quantity = unitAllowsFraction(item.unit)
     ? Math.round(rawQuantity * 1000) / 1000
     : Math.max(1, Math.floor(rawQuantity));
-  return setCartItemQuantity(
-    carts, providerPublicId, itemPublicId, quantity,
-  );
+  return setCartItemQuantity(carts, providerPublicId, itemPublicId, quantity);
 }
 
 export function clearCartReceipt(
@@ -153,10 +162,12 @@ export function cartLineCount(carts: CartState): number {
 }
 
 export function cartReceiptTotal(receipt: CartReceipt): number {
-  return Math.round(Object.values(receipt.items).reduce(
-    (total, item) => total + parsePriceAmount(item.price_text) * item.qty,
-    0,
-  ));
+  return Math.round(
+    Object.values(receipt.items).reduce(
+      (total, item) => total + parsePriceAmount(item.price_text) * item.qty,
+      0,
+    ),
+  );
 }
 
 export function cartQuantity(

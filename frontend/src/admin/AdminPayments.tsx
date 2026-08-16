@@ -6,7 +6,6 @@ import type {
   AdminPaymentRow,
 } from "./admin-client";
 
-
 export type AdminPaymentsApi = Pick<
   AdminApiClient,
   "payments" | "payment" | "receipt" | "decide"
@@ -30,7 +29,6 @@ const SERVICE_TEXT: Record<string, string> = {
   listing: "E’lon",
 };
 
-
 function money(value: number) {
   return Number(value || 0).toLocaleString("uz-UZ");
 }
@@ -39,14 +37,15 @@ function stamp(seconds: number) {
   if (!seconds) return "—";
   const at = new Date(seconds * 1000);
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()}`
-    + ` ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return (
+    `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()}` +
+    ` ${pad(at.getHours())}:${pad(at.getMinutes())}`
+  );
 }
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 export function AdminPayments({ api, onChanged }: Props) {
   const [status, setStatus] = useState("pending");
@@ -125,11 +124,13 @@ export function AdminPayments({ api, onChanged }: Props) {
         internal_note: internalNote.trim(),
       });
       setFailed(false);
-      setNote({
-        approve: "To‘lov tasdiqlandi ✅",
-        reject: "To‘lov rad etildi",
-        cancel: "To‘lov bekor qilindi",
-      }[decision]);
+      setNote(
+        {
+          approve: "To‘lov tasdiqlandi ✅",
+          reject: "To‘lov rad etildi",
+          cancel: "To‘lov bekor qilindi",
+        }[decision],
+      );
       setSelected(null);
       setReceiptUrl("");
       await load();
@@ -152,7 +153,9 @@ export function AdminPayments({ api, onChanged }: Props) {
       </div>
 
       <div className="filterbar">
-        <label className="sr-only" htmlFor="paymentStatus">Holat</label>
+        <label className="sr-only" htmlFor="paymentStatus">
+          Holat
+        </label>
         <select
           id="paymentStatus"
           value={status}
@@ -164,7 +167,9 @@ export function AdminPayments({ api, onChanged }: Props) {
           <option value="rejected">Rad etilgan</option>
           <option value="cancelled">Bekor qilingan</option>
         </select>
-        <label className="sr-only" htmlFor="paymentService">Xizmat</label>
+        <label className="sr-only" htmlFor="paymentService">
+          Xizmat
+        </label>
         <select
           id="paymentService"
           value={serviceType}
@@ -200,28 +205,34 @@ export function AdminPayments({ api, onChanged }: Props) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6}>Yuklanmoqda…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={6}>To‘lov yo‘q.</td></tr>
-            ) : rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.request_code}</td>
-                <td>{SERVICE_TEXT[row.service_type] ?? row.service_type}</td>
-                <td>{`${money(row.amount)} so‘m`}</td>
-                <td>{STATUS_TEXT[row.status] ?? row.status}</td>
-                <td>{stamp(row.created_at)}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="secondary compact"
-                    disabled={opening === row.id}
-                    onClick={() => void open(row.id)}
-                  >
-                    Ko‘rish
-                  </button>
-                </td>
+              <tr>
+                <td colSpan={6}>Yuklanmoqda…</td>
               </tr>
-            ))}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={6}>To‘lov yo‘q.</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.request_code}</td>
+                  <td>{SERVICE_TEXT[row.service_type] ?? row.service_type}</td>
+                  <td>{`${money(row.amount)} so‘m`}</td>
+                  <td>{STATUS_TEXT[row.status] ?? row.status}</td>
+                  <td>{stamp(row.created_at)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary compact"
+                      disabled={opening === row.id}
+                      onClick={() => void open(row.id)}
+                    >
+                      Ko‘rish
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -233,14 +244,20 @@ export function AdminPayments({ api, onChanged }: Props) {
             <button
               type="button"
               className="secondary compact"
-              onClick={() => { setSelected(null); setReceiptUrl(""); }}
+              onClick={() => {
+                setSelected(null);
+                setReceiptUrl("");
+              }}
             >
               Yopish
             </button>
           </div>
 
           <dl className="detail-grid">
-            <div><dt>Egasi</dt><dd>{selected.account_login}</dd></div>
+            <div>
+              <dt>Egasi</dt>
+              <dd>{selected.account_login}</dd>
+            </div>
             <div>
               <dt>Xizmat</dt>
               <dd>
@@ -250,20 +267,31 @@ export function AdminPayments({ api, onChanged }: Props) {
                   : ""}
               </dd>
             </div>
-            <div><dt>Summa</dt><dd>{`${money(selected.amount)} so‘m`}</dd></div>
-            <div><dt>Usul</dt><dd>{selected.payment_method_name}</dd></div>
+            <div>
+              <dt>Summa</dt>
+              <dd>{`${money(selected.amount)} so‘m`}</dd>
+            </div>
+            <div>
+              <dt>Usul</dt>
+              <dd>{selected.payment_method_name}</dd>
+            </div>
             <div>
               <dt>Holat</dt>
               <dd>{STATUS_TEXT[selected.status] ?? selected.status}</dd>
             </div>
-            <div><dt>Yuborilgan</dt><dd>{stamp(selected.created_at)}</dd></div>
+            <div>
+              <dt>Yuborilgan</dt>
+              <dd>{stamp(selected.created_at)}</dd>
+            </div>
           </dl>
 
           <div className="attempts">
             {selected.attempts.map((attempt) => (
               <div className="attempt" key={attempt.attempt_no}>
                 <span>{`#${attempt.attempt_no}`}</span>
-                <span>{STATUS_TEXT[attempt.review_status] ?? attempt.review_status}</span>
+                <span>
+                  {STATUS_TEXT[attempt.review_status] ?? attempt.review_status}
+                </span>
                 <span>{stamp(attempt.submitted_at)}</span>
                 {attempt.review_reason ? (
                   <span className="reason">{attempt.review_reason}</span>

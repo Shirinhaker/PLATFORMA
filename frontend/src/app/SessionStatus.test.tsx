@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SessionStatus } from "./SessionStatus";
 
-
 describe("SessionStatus", () => {
   it("announces a loading state", () => {
     render(<SessionStatus state="loading" />);
@@ -18,9 +17,7 @@ describe("SessionStatus", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Server bilan bog‘lanib bo‘lmadi.",
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Qayta urinish" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Qayta urinish" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 });

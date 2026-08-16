@@ -4,7 +4,6 @@ import type { ApiClient } from "../api/client";
 import type { ExpenseCategories, ExpenseDay } from "../api/types";
 import "./ExpensesV1656.css";
 
-
 export type ExpensesApi = Pick<
   ApiClient,
   | "getExpenses"
@@ -76,11 +75,20 @@ export function ExpensesV1656({
     let active = true;
     setLoading(true);
     setError("");
-    api.getExpenses(day)
-      .then((value) => { if (active) setData(value); })
-      .catch((reason) => { if (active) setError(message(reason)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    api
+      .getExpenses(day)
+      .then((value) => {
+        if (active) setData(value);
+      })
+      .catch((reason) => {
+        if (active) setError(message(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [api, day]);
 
   async function reload() {
@@ -158,27 +166,48 @@ export function ExpensesV1656({
   return (
     <main className="expenses-v1656">
       <header className="expenses-v1656__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-        <div><h1>Xarajatlar</h1><p>Kunlik xarajatlar hisobi</p></div>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>Xarajatlar</h1>
+          <p>Kunlik xarajatlar hisobi</p>
+        </div>
       </header>
-      {error ? <p className="expenses-v1656__error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="expenses-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
       <section className="expenses-v1656__summary">
         <small>{day ? `${data.day} xarajati` : "Bugungi xarajat"}</small>
         <strong>{money(data.total)} so'm</strong>
-        <p>{Object.entries(data.by_category).map(([name, value]) => (
-          <span key={name}>{name}: <b>{money(value)}</b></span>
-        ))}</p>
+        <p>
+          {Object.entries(data.by_category).map(([name, value]) => (
+            <span key={name}>
+              {name}: <b>{money(value)}</b>
+            </span>
+          ))}
+        </p>
       </section>
       <button
         type="button"
         className="expenses-v1656__add"
         disabled={busy}
         onClick={() => void openForm()}
-      >+ Xarajat yozish</button>
+      >
+        + Xarajat yozish
+      </button>
       <nav className="expenses-v1656__days" aria-label="Xarajat sanasi">
-        <button type="button" onClick={() => moveDay(-1)}>← Oldingi</button>
-        <button type="button" onClick={() => setDay("")}>Bugun</button>
-        <button type="button" onClick={() => moveDay(1)}>Keyingi →</button>
+        <button type="button" onClick={() => moveDay(-1)}>
+          ← Oldingi
+        </button>
+        <button type="button" onClick={() => setDay("")}>
+          Bugun
+        </button>
+        <button type="button" onClick={() => moveDay(1)}>
+          Keyingi →
+        </button>
       </nav>
       {loading ? <p className="expenses-v1656__empty">Yuklanmoqda…</p> : null}
       {!loading && !data.expenses.length ? (
@@ -190,19 +219,31 @@ export function ExpensesV1656({
           return (
             <article key={expense.id}>
               <div className="expenses-v1656__row">
-                <b>{expense.category}{expense.note ? ` — ${expense.note}` : ""}</b>
+                <b>
+                  {expense.category}
+                  {expense.note ? ` — ${expense.note}` : ""}
+                </b>
                 <strong>−{money(expense.amount)}</strong>
               </div>
               <div className="expenses-v1656__meta">
-                <span>{timeLabel(expense.created_at)}{fromStock
-                  ? " · Ombor kirimi"
-                  : expense.who ? ` · ${expense.who}` : ""}</span>
-                {fromStock ? <em>avtomatik</em> : (
+                <span>
+                  {timeLabel(expense.created_at)}
+                  {fromStock
+                    ? " · Ombor kirimi"
+                    : expense.who
+                      ? ` · ${expense.who}`
+                      : ""}
+                </span>
+                {fromStock ? (
+                  <em>avtomatik</em>
+                ) : (
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void remove(expense.id)}
-                  >O‘chirish</button>
+                  >
+                    O‘chirish
+                  </button>
                 )}
               </div>
             </article>
@@ -218,29 +259,58 @@ export function ExpensesV1656({
             aria-label="Xarajat yozish"
           >
             <h2>Xarajat yozish</h2>
-            {error ? <p className="expenses-v1656__error" role="alert">{error}</p> : null}
-            <label>Kategoriya
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            {error ? (
+              <p className="expenses-v1656__error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <label>
+              Kategoriya
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
                 {categories.categories.map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
                 ))}
                 <option value="__new__">+ Yangi kategoriya...</option>
               </select>
             </label>
             {category === "__new__" ? (
-              <label>Yangi kategoriya nomi
-                <input value={newCategory} maxLength={40} onChange={(event) => setNewCategory(event.target.value)} />
+              <label>
+                Yangi kategoriya nomi
+                <input
+                  value={newCategory}
+                  maxLength={40}
+                  onChange={(event) => setNewCategory(event.target.value)}
+                />
               </label>
             ) : null}
-            <label>Summa (so‘m)
-              <input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} />
+            <label>
+              Summa (so‘m)
+              <input
+                inputMode="numeric"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+              />
             </label>
-            <label>Izoh (ixtiyoriy)
-              <input value={note} maxLength={200} onChange={(event) => setNote(event.target.value)} />
+            <label>
+              Izoh (ixtiyoriy)
+              <input
+                value={note}
+                maxLength={200}
+                onChange={(event) => setNote(event.target.value)}
+              />
             </label>
             <div className="expenses-v1656__modal-actions">
-              <button type="button" disabled={busy} onClick={() => setFormOpen(false)}>Bekor qilish</button>
-              <button type="button" disabled={busy} onClick={() => void save()}>Saqlash</button>
+              <button type="button" disabled={busy} onClick={() => setFormOpen(false)}>
+                Bekor qilish
+              </button>
+              <button type="button" disabled={busy} onClick={() => void save()}>
+                Saqlash
+              </button>
             </div>
           </section>
         </div>

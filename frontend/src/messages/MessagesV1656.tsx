@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type {
@@ -14,7 +8,6 @@ import type {
   MessageRead,
 } from "../api/types";
 import "./MessagesV1656.css";
-
 
 export type MessagesApi = Pick<
   ApiClient,
@@ -44,27 +37,28 @@ type Props = {
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
-
 function errorText(reason: unknown) {
   return reason instanceof Error ? reason.message : "Amal bajarilmadi.";
 }
 
-
 function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   return words.length
-    ? words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join("")
+    ? words
+        .slice(0, 2)
+        .map((word) => word.charAt(0).toUpperCase())
+        .join("")
     : "S";
 }
 
-
-function messagePreview(message: Pick<MessageRead, "is_deleted" | "media_type" | "text">) {
+function messagePreview(
+  message: Pick<MessageRead, "is_deleted" | "media_type" | "text">,
+) {
   if (message.is_deleted) return "Xabar o‘chirildi";
   const text = message.text.trim();
   const value = message.media_type === "photo" ? text || "📷 Rasm" : text || "Xabar";
   return value.length > 80 ? `${value.slice(0, 80)}...` : value;
 }
-
 
 function messageTime(value: string) {
   const date = new Date(value);
@@ -72,13 +66,11 @@ function messageTime(value: string) {
   return date.toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
 }
 
-
 function messageDay(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return "";
   return date.toLocaleDateString("uz-UZ");
 }
-
 
 function peerFromConversation(row: MessageConversationRead): MessagePeer {
   return {
@@ -88,7 +80,6 @@ function peerFromConversation(row: MessageConversationRead): MessagePeer {
     avatarUrl: row.avatar_url,
   };
 }
-
 
 export function MessagesV1656({
   api,
@@ -118,41 +109,54 @@ export function MessagesV1656({
   const peerKind = peer?.kind;
   const peerPublicId = peer?.publicId;
 
-  const loadConversations = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    try {
-      setConversations(await api.getMessageConversations());
-      setError("");
-    } catch (reason) {
-      setError(errorText(reason));
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [api]);
+  const loadConversations = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      try {
+        setConversations(await api.getMessageConversations());
+        setError("");
+      } catch (reason) {
+        setError(errorText(reason));
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [api],
+  );
 
-  const loadThread = useCallback(async (showLoading = true) => {
-    if (!peerKind || !peerPublicId) return;
-    const scroller = rootRef.current?.closest(".app-shell__content") as HTMLElement | null;
-    shouldScrollRef.current = showLoading || !scroller || (
-      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140
-    );
-    if (showLoading) setLoading(true);
-    try {
-      const result = await api.getMessageThread(peerKind, peerPublicId);
-      setOther(result.other);
-      setMessages(result.messages);
-      setPeer((current) => current ? {
-        ...current,
-        name: result.other.name || current.name,
-        avatarUrl: result.other.avatar_url,
-      } : current);
-      setError("");
-    } catch (reason) {
-      setError(errorText(reason));
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [api, peerKind, peerPublicId]);
+  const loadThread = useCallback(
+    async (showLoading = true) => {
+      if (!peerKind || !peerPublicId) return;
+      const scroller = rootRef.current?.closest(
+        ".app-shell__content",
+      ) as HTMLElement | null;
+      shouldScrollRef.current =
+        showLoading ||
+        !scroller ||
+        scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140;
+      if (showLoading) setLoading(true);
+      try {
+        const result = await api.getMessageThread(peerKind, peerPublicId);
+        setOther(result.other);
+        setMessages(result.messages);
+        setPeer((current) =>
+          current
+            ? {
+                ...current,
+                name: result.other.name || current.name,
+                avatarUrl: result.other.avatar_url,
+              }
+            : current,
+        );
+        setError("");
+      } catch (reason) {
+        setError(errorText(reason));
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [api, peerKind, peerPublicId],
+  );
 
   useEffect(() => {
     if (peerKind && peerPublicId) void loadThread();
@@ -161,13 +165,18 @@ export function MessagesV1656({
 
   useEffect(() => {
     if (!peerKind || !peerPublicId) return undefined;
-    const poll = window.setInterval(() => { void loadThread(false); }, 3000);
+    const poll = window.setInterval(() => {
+      void loadThread(false);
+    }, 3000);
     return () => window.clearInterval(poll);
   }, [loadThread, peerKind, peerPublicId]);
 
-  useEffect(() => () => {
-    if (previewUrl) URL.revokeObjectURL?.(previewUrl);
-  }, [previewUrl]);
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL?.(previewUrl);
+    },
+    [previewUrl],
+  );
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -177,7 +186,9 @@ export function MessagesV1656({
 
   useEffect(() => {
     if (!peer || !shouldScrollRef.current) return;
-    const scroller = rootRef.current?.closest(".app-shell__content") as HTMLElement | null;
+    const scroller = rootRef.current?.closest(
+      ".app-shell__content",
+    ) as HTMLElement | null;
     if (scroller && typeof scroller.scrollTo === "function") {
       window.requestAnimationFrame(() => {
         scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
@@ -217,7 +228,9 @@ export function MessagesV1656({
     }
     if (previewUrl) URL.revokeObjectURL?.(previewUrl);
     setPendingImage(file);
-    setPreviewUrl(typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : "");
+    setPreviewUrl(
+      typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : "",
+    );
     setError("");
   }
 
@@ -233,7 +246,9 @@ export function MessagesV1656({
       setError("");
       try {
         const next = await api.editMessage(editing.id, clean);
-        setMessages((current) => current.map((row) => row.id === next.id ? next : row));
+        setMessages((current) =>
+          current.map((row) => (row.id === next.id ? next : row)),
+        );
         setEditing(null);
         setText("");
         void loadConversations(false);
@@ -292,7 +307,7 @@ export function MessagesV1656({
     setError("");
     try {
       const next = await api.deleteMessage(deleteTarget.id);
-      setMessages((current) => current.map((row) => row.id === next.id ? next : row));
+      setMessages((current) => current.map((row) => (row.id === next.id ? next : row)));
       setDeleteTarget(null);
       void loadConversations(false);
     } catch (reason) {
@@ -346,11 +361,19 @@ export function MessagesV1656({
     return (
       <main ref={rootRef} className="messages-v1656">
         <header className="messages-v1656__heading">
-          <button type="button" onClick={onBack}>←</button>
+          <button type="button" onClick={onBack}>
+            ←
+          </button>
           <h1>Suhbatlar</h1>
         </header>
-        {error ? <p className="messages-v1656__error" role="alert">{error}</p> : null}
-        {loading ? <div className="chat-day">Yuklanmoqda...</div> : conversations.length ? (
+        {error ? (
+          <p className="messages-v1656__error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {loading ? (
+          <div className="chat-day">Yuklanmoqda...</div>
+        ) : conversations.length ? (
           <section className="chats-list">
             {conversations.map((conversation) => (
               <button
@@ -361,13 +384,19 @@ export function MessagesV1656({
                 onClick={() => setPeer(peerFromConversation(conversation))}
               >
                 <span className="conv-av">
-                  {conversation.avatar_url ? <img src={conversation.avatar_url} alt="" /> : initials(conversation.name)}
+                  {conversation.avatar_url ? (
+                    <img src={conversation.avatar_url} alt="" />
+                  ) : (
+                    initials(conversation.name)
+                  )}
                 </span>
                 <span className="conv-main">
                   <span className="conv-name">{conversation.name}</span>
                   <span className="conv-last">{conversation.last}</span>
                 </span>
-                {conversation.unread > 0 ? <span className="conv-badge">{conversation.unread}</span> : null}
+                {conversation.unread > 0 ? (
+                  <span className="conv-badge">{conversation.unread}</span>
+                ) : null}
               </button>
             ))}
           </section>
@@ -386,7 +415,9 @@ export function MessagesV1656({
   return (
     <main ref={rootRef} className="messages-v1656 messages-v1656--thread">
       <header className="messages-v1656__thread-heading">
-        <button type="button" className="chat-back" onClick={leaveThread}>← Suhbatlar</button>
+        <button type="button" className="chat-back" onClick={leaveThread}>
+          ← Suhbatlar
+        </button>
         <button
           type="button"
           className="messages-v1656__peer"
@@ -399,25 +430,42 @@ export function MessagesV1656({
           <span>{shownName}</span>
         </button>
       </header>
-      {error ? <p className="messages-v1656__error" role="alert">{error}</p> : null}
-      {notice ? <div className="app-toast on" role="status">{notice}</div> : null}
+      {error ? (
+        <p className="messages-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <div className="app-toast on" role="status">
+          {notice}
+        </div>
+      ) : null}
       <section className="chat-thread" aria-label={shownName}>
-        {loading && !messages.length ? <div className="chat-day">Yuklanmoqda...</div> : null}
+        {loading && !messages.length ? (
+          <div className="chat-day">Yuklanmoqda...</div>
+        ) : null}
         {!loading && !messages.length ? (
-          <div className="chat-day">Hozircha xabar yo&apos;q. Birinchi bo&apos;lib yozing!</div>
+          <div className="chat-day">
+            Hozircha xabar yo&apos;q. Birinchi bo&apos;lib yozing!
+          </div>
         ) : null}
         {grouped.map((group) => (
           <div className="messages-v1656__day-group" key={group.day || "day"}>
             {group.day ? <div className="chat-day">{group.day}</div> : null}
             {group.rows.map((message) => (
-              <article className={`msg ${message.mine ? "me" : "them"}`} key={message.id}>
+              <article
+                className={`msg ${message.mine ? "me" : "them"}`}
+                key={message.id}
+              >
                 {!message.is_deleted ? (
                   <button
                     type="button"
                     className="order-msg-menu-btn"
                     aria-label="Xabar amallari"
                     onClick={() => setMenu(message)}
-                  >⋯</button>
+                  >
+                    ⋯
+                  </button>
                 ) : null}
                 {message.is_deleted ? (
                   <div className="order-chat-deleted">Xabar o‘chirildi</div>
@@ -438,11 +486,14 @@ export function MessagesV1656({
                         onClick={() => setPhotoUrl(message.media_url)}
                       />
                     ) : null}
-                    {message.text ? <div className="order-chat-text">{message.text}</div> : null}
+                    {message.text ? (
+                      <div className="order-chat-text">{message.text}</div>
+                    ) : null}
                   </>
                 )}
                 <span className="msg-time">
-                  {messageTime(message.created_at)}{message.edited_at ? " · Tahrirlangan" : ""}
+                  {messageTime(message.created_at)}
+                  {message.edited_at ? " · Tahrirlangan" : ""}
                 </span>
               </article>
             ))}
@@ -455,24 +506,45 @@ export function MessagesV1656({
           <div className="order-chat-state on">
             Javob berilyapti
             <small>{messagePreview(replyTo)}</small>
-            <button type="button" aria-label="Javobni bekor qilish" onClick={() => setReplyTo(null)}>×</button>
+            <button
+              type="button"
+              aria-label="Javobni bekor qilish"
+              onClick={() => setReplyTo(null)}
+            >
+              ×
+            </button>
           </div>
         ) : null}
         {editing ? (
           <div className="order-chat-state edit on">
             Xabar tahrirlanyapti
             <small>{messagePreview(editing)}</small>
-            <button type="button" aria-label="Tahrirlashni bekor qilish" onClick={() => {
-              setEditing(null);
-              setText("");
-            }}>×</button>
+            <button
+              type="button"
+              aria-label="Tahrirlashni bekor qilish"
+              onClick={() => {
+                setEditing(null);
+                setText("");
+              }}
+            >
+              ×
+            </button>
           </div>
         ) : null}
         {pendingImage ? (
           <div className="order-chat-preview on">
-            <button type="button" className="order-chat-preview-x" aria-label="Rasmni bekor qilish" onClick={clearImage}>×</button>
+            <button
+              type="button"
+              className="order-chat-preview-x"
+              aria-label="Rasmni bekor qilish"
+              onClick={clearImage}
+            >
+              ×
+            </button>
             <img src={previewUrl || undefined} alt="Tanlangan rasm" />
-            <div className="idesc">Rasm tanlandi. Yuborish uchun pastdagi tugmani bosing.</div>
+            <div className="idesc">
+              Rasm tanlandi. Yuborish uchun pastdagi tugmani bosing.
+            </div>
           </div>
         ) : null}
         <div className="chat-attach-row">
@@ -513,7 +585,9 @@ export function MessagesV1656({
             disabled={busy || (!text.trim() && !pendingImage)}
             onClick={() => void send()}
           >
-            {editing ? "✓" : (
+            {editing ? (
+              "✓"
+            ) : (
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
               </svg>
@@ -524,31 +598,54 @@ export function MessagesV1656({
 
       {menu ? (
         <div className="order-chat-action-menu on" role="menu">
-          <button type="button" onClick={() => {
-            setReplyTo(menu);
-            setEditing(null);
-            setMenu(null);
-          }}>↩️ Javob berish</button>
-          <button type="button" onClick={() => {
-            void copyMessage(menu);
-            setMenu(null);
-          }}>📋 Nusxalash</button>
-          {menu.mine && menu.text.trim() ? (
-            <button type="button" onClick={() => {
-              setEditing(menu);
-              setReplyTo(null);
-              clearImage();
-              setText(menu.text);
+          <button
+            type="button"
+            onClick={() => {
+              setReplyTo(menu);
+              setEditing(null);
               setMenu(null);
-            }}>✏️ Tahrirlash</button>
+            }}
+          >
+            ↩️ Javob berish
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void copyMessage(menu);
+              setMenu(null);
+            }}
+          >
+            📋 Nusxalash
+          </button>
+          {menu.mine && menu.text.trim() ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(menu);
+                setReplyTo(null);
+                clearImage();
+                setText(menu.text);
+                setMenu(null);
+              }}
+            >
+              ✏️ Tahrirlash
+            </button>
           ) : null}
           {menu.mine ? (
-            <button type="button" className="danger" onClick={() => {
-              setDeleteTarget(menu);
-              setMenu(null);
-            }}>🗑 O‘chirish</button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => {
+                setDeleteTarget(menu);
+                setMenu(null);
+              }}
+            >
+              🗑 O‘chirish
+            </button>
           ) : null}
-          <button type="button" onClick={() => setMenu(null)}>Yopish</button>
+          <button type="button" onClick={() => setMenu(null)}>
+            Yopish
+          </button>
         </div>
       ) : null}
 
@@ -557,8 +654,17 @@ export function MessagesV1656({
           <div className="messages-v1656__confirm" role="dialog" aria-modal="true">
             <p>Bu xabar o‘chirilsinmi?</p>
             <div>
-              <button type="button" onClick={() => setDeleteTarget(null)}>Bekor qilish</button>
-              <button type="button" className="danger" disabled={busy} onClick={() => void removeMessage()}>O‘chirish</button>
+              <button type="button" onClick={() => setDeleteTarget(null)}>
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                className="danger"
+                disabled={busy}
+                onClick={() => void removeMessage()}
+              >
+                O‘chirish
+              </button>
             </div>
           </div>
         </div>
@@ -566,7 +672,14 @@ export function MessagesV1656({
 
       {photoUrl ? (
         <div className="order-photo-viewer on" role="dialog" aria-modal="true">
-          <button type="button" className="order-photo-viewer-x" aria-label="Yopish" onClick={() => setPhotoUrl("")}>×</button>
+          <button
+            type="button"
+            className="order-photo-viewer-x"
+            aria-label="Yopish"
+            onClick={() => setPhotoUrl("")}
+          >
+            ×
+          </button>
           <img src={photoUrl} alt="Rasm" />
         </div>
       ) : null}

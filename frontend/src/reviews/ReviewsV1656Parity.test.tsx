@@ -9,7 +9,6 @@ import {
   type ReviewsApi,
 } from "./ReviewsV1656";
 
-
 const review = {
   id: 11,
   stars: 5,
@@ -28,7 +27,6 @@ const publicList: ReviewListRead = {
   my_review: null,
 };
 
-
 function api(overrides: Partial<ReviewsApi> = {}): ReviewsApi {
   return {
     getReviews: vi.fn().mockResolvedValue(publicList),
@@ -40,7 +38,6 @@ function api(overrides: Partial<ReviewsApi> = {}): ReviewsApi {
   };
 }
 
-
 describe("v1656 baholar va fikrlar", () => {
   it("shows public average, customer review and owner reply", async () => {
     render(
@@ -51,8 +48,9 @@ describe("v1656 baholar va fikrlar", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Baholar va fikrlar" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Baholar va fikrlar" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("5.0")).toBeInTheDocument();
     expect(screen.getByText("(1 ta fikr)")).toBeInTheDocument();
     expect(screen.getByText("Juda yaxshi xizmat")).toBeInTheDocument();
@@ -75,12 +73,14 @@ describe("v1656 baholar va fikrlar", () => {
     await user.type(screen.getByPlaceholderText("Fikringiz (ixtiyoriy)"), "A’lo");
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
 
-    await waitFor(() => expect(client.saveReview).toHaveBeenCalledWith({
-      target_kind: "specialist",
-      target_public_id: "u_0123456789abcdef",
-      stars: 5,
-      comment: "A’lo",
-    }));
+    await waitFor(() =>
+      expect(client.saveReview).toHaveBeenCalledWith({
+        target_kind: "specialist",
+        target_public_id: "u_0123456789abcdef",
+        stars: 5,
+        comment: "A’lo",
+      }),
+    );
   });
 
   it("lets the owner reply without exposing customer review deletion", async () => {
@@ -89,14 +89,16 @@ describe("v1656 baholar va fikrlar", () => {
     render(<ReceivedReviewsV1656 api={client} onBack={vi.fn()} />);
 
     expect(await screen.findByText("Juda yaxshi xizmat")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /fikrni o‘chirish/i }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /fikrni o‘chirish/i }),
+    ).not.toBeInTheDocument();
     const reply = screen.getByPlaceholderText("Mijozga javob yozing...");
     await user.clear(reply);
     await user.type(reply, "Yana kutib qolamiz");
     await user.click(screen.getByRole("button", { name: "Javobni yangilash" }));
 
-    await waitFor(() => expect(client.replyToReview)
-      .toHaveBeenCalledWith(11, "Yana kutib qolamiz"));
+    await waitFor(() =>
+      expect(client.replyToReview).toHaveBeenCalledWith(11, "Yana kutib qolamiz"),
+    );
   });
 });

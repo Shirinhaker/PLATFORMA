@@ -20,18 +20,12 @@ import {
   BusinessAdvertisementsV1656,
   supportsAdvertisementApi,
 } from "../advertisements/BusinessAdvertisementsV1656";
-import {
-  BusinessDiningV1656,
-  supportsDiningApi,
-} from "../dining/BusinessDiningV1656";
+import { BusinessDiningV1656, supportsDiningApi } from "../dining/BusinessDiningV1656";
 import {
   BusinessKitchenV1656,
   supportsDiningKitchenApi,
 } from "../dining/BusinessKitchenV1656";
-import {
-  OrdersCabinetV1656,
-  type OrdersApi,
-} from "../orders/OrdersCabinetV1656";
+import { OrdersCabinetV1656, type OrdersApi } from "../orders/OrdersCabinetV1656";
 import { BusinessEducationEnrollmentsV1656View } from "./BusinessEducationEnrollmentsV1656View";
 import {
   BusinessMedicalProvidersV1656View,
@@ -41,10 +35,7 @@ import {
   BusinessQueueV1656,
   supportsBusinessQueueApi,
 } from "../queues/BusinessQueueV1656";
-import {
-  CrudEditorView,
-  ItemsEditorView,
-} from "./BusinessOnlineEditingViews";
+import { CrudEditorView, ItemsEditorView } from "./BusinessOnlineEditingViews";
 import {
   isServiceOrder,
   MessagesView,
@@ -59,14 +50,8 @@ import {
   type SharedActions,
   SubscriptionsView,
 } from "./BusinessOnlineViews";
-import {
-  OwnerStoriesV1656,
-  type OwnerStoriesApi,
-} from "../stories/OwnerStoriesV1656";
-import {
-  ReceivedReviewsV1656,
-  type ReceivedReviewsApi,
-} from "../reviews/ReviewsV1656";
+import { OwnerStoriesV1656, type OwnerStoriesApi } from "../stories/OwnerStoriesV1656";
+import { ReceivedReviewsV1656, type ReceivedReviewsApi } from "../reviews/ReviewsV1656";
 import {
   NotificationsV1656,
   type NotificationsApi,
@@ -74,63 +59,64 @@ import {
 import "./BusinessOnlineScreen.css";
 import "./BusinessExistingOnlineV1656.css";
 
-
-type OnlineApi = Partial<Pick<
-  ApiClient,
-  | "getBusinessOnlineResource"
-  | "createBusinessOnlineRecord"
-  | "patchBusinessOnlineRecord"
-  | "deleteBusinessOnlineRecord"
-  | "applyBusinessOnlineAction"
-  | "getMyListings"
-  | "createListing"
-  | "deleteListing"
-  | "createUploadGrant"
-  | "uploadGrantedFile"
-  | "getPaymentCatalog"
-  | "createPaymentRequest"
-  | "getMyOrders"
-  | "getOrderInbox"
-  | "markOrderSeen"
-  | "changeOrderStatus"
-  | "submitOrderPayment"
-  | "decideOrderPayment"
-  | "openOrderProblem"
-  | "chooseOrderProblemSolution"
-  | "handoffOrder"
-  | "receiveOrder"
-  | "getOrderChat"
-  | "sendOrderChatMessage"
-  | "sendOrderChatImage"
-  | "editOrderChatMessage"
-  | "deleteOrderChatMessage"
-  | "getBusinessQueueSetup"
-  | "getBusinessQueueProviders"
-  | "createBusinessQueueProvider"
-  | "updateBusinessQueueProvider"
-  | "getBusinessQueueEntries"
-  | "createBusinessOfflineQueue"
-  | "changeBusinessQueueStatus"
-  | "swapBusinessQueues"
-  | "getMyStories"
-  | "createStory"
-  | "recordStoryView"
-  | "getStoryViewers"
-  | "deleteStory"
-  | "reportStory"
-  | "getReceivedReviews"
-  | "replyToReview"
-  | "getNotifications"
-  | "getActionNotifications"
-  | "markNotificationRead"
-  | "markAllNotificationsRead"
-  | "getNotificationPreference"
-  | "saveNotificationPreference"
-  | "getNotificationFilters"
-  | "createNotificationFilter"
-  | "deleteNotificationFilter"
-  | "getPushStatus"
->>;
+type OnlineApi = Partial<
+  Pick<
+    ApiClient,
+    | "getBusinessOnlineResource"
+    | "createBusinessOnlineRecord"
+    | "patchBusinessOnlineRecord"
+    | "deleteBusinessOnlineRecord"
+    | "applyBusinessOnlineAction"
+    | "getMyListings"
+    | "createListing"
+    | "deleteListing"
+    | "createUploadGrant"
+    | "uploadGrantedFile"
+    | "getPaymentCatalog"
+    | "createPaymentRequest"
+    | "getMyOrders"
+    | "getOrderInbox"
+    | "markOrderSeen"
+    | "changeOrderStatus"
+    | "submitOrderPayment"
+    | "decideOrderPayment"
+    | "openOrderProblem"
+    | "chooseOrderProblemSolution"
+    | "handoffOrder"
+    | "receiveOrder"
+    | "getOrderChat"
+    | "sendOrderChatMessage"
+    | "sendOrderChatImage"
+    | "editOrderChatMessage"
+    | "deleteOrderChatMessage"
+    | "getBusinessQueueSetup"
+    | "getBusinessQueueProviders"
+    | "createBusinessQueueProvider"
+    | "updateBusinessQueueProvider"
+    | "getBusinessQueueEntries"
+    | "createBusinessOfflineQueue"
+    | "changeBusinessQueueStatus"
+    | "swapBusinessQueues"
+    | "getMyStories"
+    | "createStory"
+    | "recordStoryView"
+    | "getStoryViewers"
+    | "deleteStory"
+    | "reportStory"
+    | "getReceivedReviews"
+    | "replyToReview"
+    | "getNotifications"
+    | "getActionNotifications"
+    | "markNotificationRead"
+    | "markAllNotificationsRead"
+    | "getNotificationPreference"
+    | "saveNotificationPreference"
+    | "getNotificationFilters"
+    | "createNotificationFilter"
+    | "deleteNotificationFilter"
+    | "getPushStatus"
+  >
+>;
 
 type Props = {
   api: OnlineApi;
@@ -141,18 +127,13 @@ type Props = {
   onViewChange?: (view: string) => void;
   initialOrderId?: number | null;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
-  onOpenNotification?: (
-    notification: NotificationRead,
-  ) => void | Promise<void>;
+  onOpenNotification?: (notification: NotificationRead) => void | Promise<void>;
   onNotificationUnreadChange?: (count: number) => void;
   initialItemDraft?: BusinessOnlineRecord | null;
   onInitialItemDraftConsumed?: () => void;
 };
 
-type ResourceState = Partial<Record<
-  BusinessOnlineResource,
-  BusinessOnlineRecord[]
->>;
+type ResourceState = Partial<Record<BusinessOnlineResource, BusinessOnlineRecord[]>>;
 
 const VIEW_RESOURCE: Record<string, BusinessOnlineResource> = {
   subscriptions: "business_subscriptions",
@@ -204,17 +185,16 @@ function rowsFromProfile(
 ): BusinessOnlineRecord[] {
   const value = profile.cabinet_payload[resource];
   return Array.isArray(value)
-    ? value.filter((row): row is BusinessOnlineRecord => Boolean(
-      row && typeof row === "object",
-    ))
+    ? value.filter((row): row is BusinessOnlineRecord =>
+        Boolean(row && typeof row === "object"),
+      )
     : [];
 }
 
 function nextLocalId(rows: BusinessOnlineRecord[]): number {
-  return Math.max(
-    0,
-    ...rows.map((row) => Number(row.id ?? 0)).filter(Number.isFinite),
-  ) + 1;
+  return (
+    Math.max(0, ...rows.map((row) => Number(row.id ?? 0)).filter(Number.isFinite)) + 1
+  );
 }
 
 function supportsOwnerListings(api: OnlineApi): api is OnlineApi & OwnerListingsApi {
@@ -229,40 +209,61 @@ function supportsOwnerListings(api: OnlineApi): api is OnlineApi & OwnerListings
 
 function supportsOrders(api: OnlineApi): api is OnlineApi & OrdersApi {
   return [
-    "getMyOrders", "getOrderInbox", "markOrderSeen", "changeOrderStatus",
-    "submitOrderPayment", "decideOrderPayment", "openOrderProblem",
-    "chooseOrderProblemSolution", "handoffOrder", "receiveOrder",
-    "getOrderChat", "sendOrderChatMessage", "sendOrderChatImage",
-    "editOrderChatMessage", "deleteOrderChatMessage", "createUploadGrant",
+    "getMyOrders",
+    "getOrderInbox",
+    "markOrderSeen",
+    "changeOrderStatus",
+    "submitOrderPayment",
+    "decideOrderPayment",
+    "openOrderProblem",
+    "chooseOrderProblemSolution",
+    "handoffOrder",
+    "receiveOrder",
+    "getOrderChat",
+    "sendOrderChatMessage",
+    "sendOrderChatImage",
+    "editOrderChatMessage",
+    "deleteOrderChatMessage",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
 function supportsOwnerStories(api: OnlineApi): api is OnlineApi & OwnerStoriesApi {
   return [
-    "getMyStories", "createStory", "recordStoryView", "getStoryViewers",
-    "deleteStory", "reportStory", "createUploadGrant", "uploadGrantedFile",
+    "getMyStories",
+    "createStory",
+    "recordStoryView",
+    "getStoryViewers",
+    "deleteStory",
+    "reportStory",
+    "createUploadGrant",
+    "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
 
 function supportsReceivedReviews(
   api: OnlineApi,
 ): api is OnlineApi & ReceivedReviewsApi {
-  return ["getReceivedReviews", "replyToReview"]
-    .every((method) => typeof api[method as keyof OnlineApi] === "function");
+  return ["getReceivedReviews", "replyToReview"].every(
+    (method) => typeof api[method as keyof OnlineApi] === "function",
+  );
 }
 
-function supportsNotifications(
-  api: OnlineApi,
-): api is OnlineApi & NotificationsApi {
+function supportsNotifications(api: OnlineApi): api is OnlineApi & NotificationsApi {
   return [
-    "getNotifications", "getActionNotifications", "markNotificationRead",
-    "markAllNotificationsRead", "getNotificationPreference",
-    "saveNotificationPreference", "getNotificationFilters",
-    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
+    "getNotifications",
+    "getActionNotifications",
+    "markNotificationRead",
+    "markAllNotificationsRead",
+    "getNotificationPreference",
+    "saveNotificationPreference",
+    "getNotificationFilters",
+    "createNotificationFilter",
+    "deleteNotificationFilter",
+    "getPushStatus",
   ].every((method) => typeof api[method as keyof OnlineApi] === "function");
 }
-
 
 export function BusinessOnlineScreen({
   api,
@@ -305,19 +306,22 @@ export function BusinessOnlineScreen({
     const load = (api as Partial<PaymentRequestApi>).getPaymentCatalog;
     if (!load) return;
     let active = true;
-    void load.call(api)
-      .then((value) => { if (active) setCatalog(value); })
+    void load
+      .call(api)
+      .then((value) => {
+        if (active) setCatalog(value);
+      })
       .catch((reason: unknown) => {
         if (!active) return;
         setCatalog(null);
         setPaymentTarget(null);
         setPaymentError(
-          reason instanceof Error
-            ? reason.message
-            : "To‘lov ma’lumotlari yuklanmadi.",
+          reason instanceof Error ? reason.message : "To‘lov ma’lumotlari yuklanmadi.",
         );
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, view, catalog, paymentTarget]);
 
   useEffect(() => {
@@ -343,7 +347,7 @@ export function BusinessOnlineScreen({
     onInitialItemDraftConsumed?.();
   }, [initialItemDraft, onInitialItemDraftConsumed, view]);
 
-  const items = primary ? resources[primary] ?? [] : [];
+  const items = primary ? (resources[primary] ?? []) : [];
   const groups = resources.item_groups ?? [];
 
   async function refresh(...names: BusinessOnlineResource[]) {
@@ -370,24 +374,26 @@ export function BusinessOnlineScreen({
 
   useEffect(() => {
     if (
-      !primary
-      || !api.getBusinessOnlineResource
-      || (view === "listings" && supportsOwnerListings(api))
-      || (view === "reviews" && supportsReceivedReviews(api))
-      || (view === "notifications" && supportsNotifications(api))
-      || (["orders", "service-orders"].includes(view) && supportsOrders(api))
-      || (["medical-providers", "medical-queue"].includes(view)
-        && supportsBusinessQueueApi(api))
-    ) return;
-    const names = viewResources(view, primary).filter((name) => !(
-      view === "dining-places"
-      && supportsDiningApi(api)
-      // Stollar va zakazlar endi `/api/v1/dining` dan keladi;
-      // menyu (`items`) hali katalog resursida.
-      && (name === "dining_places" || name === "dining_orders")
-    ) && !(
-      view === "dining-kitchen" && supportsDiningKitchenApi(api)
-    ));
+      !primary ||
+      !api.getBusinessOnlineResource ||
+      (view === "listings" && supportsOwnerListings(api)) ||
+      (view === "reviews" && supportsReceivedReviews(api)) ||
+      (view === "notifications" && supportsNotifications(api)) ||
+      (["orders", "service-orders"].includes(view) && supportsOrders(api)) ||
+      (["medical-providers", "medical-queue"].includes(view) &&
+        supportsBusinessQueueApi(api))
+    )
+      return;
+    const names = viewResources(view, primary).filter(
+      (name) =>
+        !(
+          view === "dining-places" &&
+          supportsDiningApi(api) &&
+          // Stollar va zakazlar endi `/api/v1/dining` dan keladi;
+          // menyu (`items`) hali katalog resursida.
+          (name === "dining_places" || name === "dining_orders")
+        ) && !(view === "dining-kitchen" && supportsDiningKitchenApi(api)),
+    );
     void refresh(...names);
     // API instance App davomida barqaror. View o‘zgarganda serverdan yangilanadi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -400,9 +406,10 @@ export function BusinessOnlineScreen({
         "medical-providers",
         "medical-queue",
         "education-enrollments",
-      ].includes(view)
-      || !error
-    ) return;
+      ].includes(view) ||
+      !error
+    )
+      return;
     const timeout = window.setTimeout(() => setError(""), 2600);
     return () => window.clearTimeout(timeout);
   }, [error, view]);
@@ -412,18 +419,15 @@ export function BusinessOnlineScreen({
     setSubscreenTitle("");
   }, [view]);
 
-  const handleSubscreenBack = useCallback((
-    handler: (() => void) | null,
-    nextTitle = "Zakaz qilish",
-  ) => {
-    setSubscreenBack(handler ? () => handler : null);
-    setSubscreenTitle(handler ? nextTitle : "");
-  }, []);
+  const handleSubscreenBack = useCallback(
+    (handler: (() => void) | null, nextTitle = "Zakaz qilish") => {
+      setSubscreenBack(handler ? () => handler : null);
+      setSubscreenTitle(handler ? nextTitle : "");
+    },
+    [],
+  );
 
-  function setResource(
-    resource: BusinessOnlineResource,
-    rows: BusinessOnlineRecord[],
-  ) {
+  function setResource(resource: BusinessOnlineResource, rows: BusinessOnlineRecord[]) {
     setResources((current) => ({ ...current, [resource]: rows }));
   }
 
@@ -452,9 +456,9 @@ export function BusinessOnlineScreen({
       setForm(null);
       setDraft({});
       if (
-        !resource.startsWith("dining_")
-        && !resource.startsWith("medical_")
-        && !resource.startsWith("education_")
+        !resource.startsWith("dining_") &&
+        !resource.startsWith("medical_") &&
+        !resource.startsWith("education_")
       ) {
         setNotice("Saqlandi");
       }
@@ -479,16 +483,17 @@ export function BusinessOnlineScreen({
         const result = await api.patchBusinessOnlineRecord(resource, id, value);
         setResource(resource, result.items);
       } else {
-        setResource(resource, (resources[resource] ?? []).map((row, index) => (
-          String(recordId(row, index)) === String(id)
-            ? { ...row, ...value }
-            : row
-        )));
+        setResource(
+          resource,
+          (resources[resource] ?? []).map((row, index) =>
+            String(recordId(row, index)) === String(id) ? { ...row, ...value } : row,
+          ),
+        );
       }
       if (
-        !resource.startsWith("dining_")
-        && !resource.startsWith("medical_")
-        && !resource.startsWith("education_")
+        !resource.startsWith("dining_") &&
+        !resource.startsWith("medical_") &&
+        !resource.startsWith("education_")
       ) {
         setNotice("Yangilandi");
       }
@@ -512,14 +517,17 @@ export function BusinessOnlineScreen({
         const result = await api.deleteBusinessOnlineRecord(resource, id);
         setResource(resource, result.items);
       } else {
-        setResource(resource, (resources[resource] ?? []).filter(
-          (row, index) => String(recordId(row, index)) !== String(id),
-        ));
+        setResource(
+          resource,
+          (resources[resource] ?? []).filter(
+            (row, index) => String(recordId(row, index)) !== String(id),
+          ),
+        );
       }
       if (
-        !resource.startsWith("dining_")
-        && !resource.startsWith("medical_")
-        && !resource.startsWith("education_")
+        !resource.startsWith("dining_") &&
+        !resource.startsWith("medical_") &&
+        !resource.startsWith("education_")
       ) {
         setNotice("O‘chirildi");
       }
@@ -552,16 +560,16 @@ export function BusinessOnlineScreen({
         }
         setResource(resource, result.items);
         if (
-          resource === "notifications"
-          && name === "set_push_preferences"
-          && result.item
+          resource === "notifications" &&
+          name === "set_push_preferences" &&
+          result.item
         ) {
           setResource("push_preferences", [result.item]);
         }
         if (
-          !resource.startsWith("dining_")
-          && !resource.startsWith("medical_")
-          && !resource.startsWith("education_")
+          !resource.startsWith("dining_") &&
+          !resource.startsWith("medical_") &&
+          !resource.startsWith("education_")
         ) {
           setNotice(
             resource === "notifications" && name === "set_push_preferences"
@@ -573,11 +581,11 @@ export function BusinessOnlineScreen({
         }
         return result.item;
       } else if (resource === "notifications" && name === "mark_all_read") {
-        setResource(resource, items.map((row) => ({ ...row, is_read: 1 })));
-      } else if (
-        resource === "notifications"
-        && name === "set_push_preferences"
-      ) {
+        setResource(
+          resource,
+          items.map((row) => ({ ...row, is_read: 1 })),
+        );
+      } else if (resource === "notifications" && name === "set_push_preferences") {
         const preference = {
           id: 1,
           enabled: payload.enabled ? 1 : 0,
@@ -585,111 +593,136 @@ export function BusinessOnlineScreen({
         };
         setResource("push_preferences", [preference]);
         if (
-          !resource.startsWith("dining_")
-          && !resource.startsWith("medical_")
-          && !resource.startsWith("education_")
+          !resource.startsWith("dining_") &&
+          !resource.startsWith("medical_") &&
+          !resource.startsWith("education_")
         ) {
-          setNotice(payload.enabled
-            ? "Push notification yoqildi ✅"
-            : "Push notification o'chirildi");
+          setNotice(
+            payload.enabled
+              ? "Push notification yoqildi ✅"
+              : "Push notification o'chirildi",
+          );
         }
         return preference;
       } else if (
-        resource === "subscription_payments"
-        && name === "resubmit"
-        && recordIdValue !== undefined
+        resource === "subscription_payments" &&
+        name === "resubmit" &&
+        recordIdValue !== undefined
       ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? { ...row, status: "pending", reason: "" }
-            : row
-        )));
-      } else if (
-        resource === "orders"
-        && name === "report_problem"
-        && recordIdValue !== undefined
-      ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? {
-              ...row,
-              problem_open: 1,
-              problem_reason: payload.reason,
-              problem_note: payload.note,
-            }
-            : row
-        )));
-      } else if (
-        resource === "messages"
-        && name === "delete"
-        && recordIdValue !== undefined
-      ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? {
-              ...row,
-              is_deleted: 1,
-              deleted_at: Math.floor(Date.now() / 1000),
-            }
-            : row
-        )));
-      } else if (
-        resource === "orders"
-        && name === "handoff"
-        && recordIdValue !== undefined
-      ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? {
-              ...row,
-              status: recordText(row, "order_type") === "pickup"
-                || ["ready", "tayyor"].includes(recordText(row, "status"))
-                ? "pickup_waiting_customer"
-                : "in_delivery",
-            }
-            : row
-        )));
-      } else if (
-        resource === "following"
-        && name === "unfollow"
-        && recordIdValue !== undefined
-      ) {
-        setResource(resource, items.filter(
-          (row, index) => (
-            String(recordId(row, index)) !== String(recordIdValue)
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? { ...row, status: "pending", reason: "" }
+              : row,
           ),
-        ));
+        );
       } else if (
-        resource === "business_reviews"
-        && name === "reply"
-        && recordIdValue !== undefined
+        resource === "orders" &&
+        name === "report_problem" &&
+        recordIdValue !== undefined
       ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? { ...row, business_reply: payload.reply }
-            : row
-        )));
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? {
+                  ...row,
+                  problem_open: 1,
+                  problem_reason: payload.reason,
+                  problem_note: payload.note,
+                }
+              : row,
+          ),
+        );
+      } else if (
+        resource === "messages" &&
+        name === "delete" &&
+        recordIdValue !== undefined
+      ) {
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? {
+                  ...row,
+                  is_deleted: 1,
+                  deleted_at: Math.floor(Date.now() / 1000),
+                }
+              : row,
+          ),
+        );
+      } else if (
+        resource === "orders" &&
+        name === "handoff" &&
+        recordIdValue !== undefined
+      ) {
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? {
+                  ...row,
+                  status:
+                    recordText(row, "order_type") === "pickup" ||
+                    ["ready", "tayyor"].includes(recordText(row, "status"))
+                      ? "pickup_waiting_customer"
+                      : "in_delivery",
+                }
+              : row,
+          ),
+        );
+      } else if (
+        resource === "following" &&
+        name === "unfollow" &&
+        recordIdValue !== undefined
+      ) {
+        setResource(
+          resource,
+          items.filter(
+            (row, index) => String(recordId(row, index)) !== String(recordIdValue),
+          ),
+        );
+      } else if (
+        resource === "business_reviews" &&
+        name === "reply" &&
+        recordIdValue !== undefined
+      ) {
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? { ...row, business_reply: payload.reply }
+              : row,
+          ),
+        );
       } else if (name === "set_status" && recordIdValue !== undefined) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? { ...row, status: payload.status }
-            : row
-        )));
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? { ...row, status: payload.status }
+              : row,
+          ),
+        );
       } else if (
-        resource === "stories"
-        && name === "archive"
-        && recordIdValue !== undefined
+        resource === "stories" &&
+        name === "archive" &&
+        recordIdValue !== undefined
       ) {
-        setResource(resource, items.map((row, index) => (
-          String(recordId(row, index)) === String(recordIdValue)
-            ? { ...row, status: "archived" }
-            : row
-        )));
+        setResource(
+          resource,
+          items.map((row, index) =>
+            String(recordId(row, index)) === String(recordIdValue)
+              ? { ...row, status: "archived" }
+              : row,
+          ),
+        );
       }
       if (
-        !resource.startsWith("dining_")
-        && !resource.startsWith("medical_")
-        && !resource.startsWith("education_")
+        !resource.startsWith("dining_") &&
+        !resource.startsWith("medical_") &&
+        !resource.startsWith("education_")
       ) {
         setNotice(
           resource === "notifications" && name === "set_push_preferences"
@@ -732,7 +765,9 @@ export function BusinessOnlineScreen({
     return (
       <ReceivedReviewsV1656
         api={api}
-        onBack={() => { void onBack(); }}
+        onBack={() => {
+          void onBack();
+        }}
       />
     );
   }
@@ -753,7 +788,9 @@ export function BusinessOnlineScreen({
     return (
       <NotificationsV1656
         api={api}
-        onBack={() => { void onBack(); }}
+        onBack={() => {
+          void onBack();
+        }}
         onOpenNotification={onOpenNotification}
         onUnreadChange={onNotificationUnreadChange}
       />
@@ -767,7 +804,9 @@ export function BusinessOnlineScreen({
         api={api}
         side="provider"
         category={view === "service-orders" ? "service" : "product"}
-        onBack={() => { void onBack(); }}
+        onBack={() => {
+          void onBack();
+        }}
         initialOrderId={initialOrderId}
       />
     );
@@ -775,10 +814,10 @@ export function BusinessOnlineScreen({
 
   const paymentApi = api as Partial<PaymentRequestApi>;
   const canPay = Boolean(
-    paymentApi.getPaymentCatalog
-    && paymentApi.createPaymentRequest
-    && paymentApi.createUploadGrant
-    && paymentApi.uploadGrantedFile,
+    paymentApi.getPaymentCatalog &&
+    paymentApi.createPaymentRequest &&
+    paymentApi.createUploadGrant &&
+    paymentApi.uploadGrantedFile,
   );
 
   function openPayment(plan: "plus" | "pro") {
@@ -797,18 +836,19 @@ export function BusinessOnlineScreen({
     setPaymentTarget(target);
   }
 
-  const uploadItemImage = (
+  const uploadItemImage =
     api.createUploadGrant && api.uploadGrantedFile
-  ) ? async (file: File): Promise<string> => {
-    const grant = await api.createUploadGrant!({
-      purpose: "catalog_item_image",
-      filename: file.name,
-      content_type: file.type,
-      size_bytes: file.size,
-    });
-    await api.uploadGrantedFile!(grant, file);
-    return grant.object_key;
-  } : undefined;
+      ? async (file: File): Promise<string> => {
+          const grant = await api.createUploadGrant!({
+            purpose: "catalog_item_image",
+            filename: file.name,
+            content_type: file.type,
+            size_bytes: file.size,
+          });
+          await api.uploadGrantedFile!(grant, file);
+          return grant.object_key;
+        }
+      : undefined;
 
   const content = renderContent({
     api,
@@ -865,9 +905,7 @@ export function BusinessOnlineScreen({
         </button>
         <div>
           <h1>{subscreenBack ? subscreenTitle : screenTitle}</h1>
-          {!exactV1656 ? (
-            <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p>
-          ) : null}
+          {!exactV1656 ? <p>v1656’dan ko‘chirilgan haqiqiy ma’lumotlar</p> : null}
         </div>
         {primary && api.getBusinessOnlineResource && !exactV1656 && (
           <button
@@ -897,31 +935,44 @@ export function BusinessOnlineScreen({
           </button>
         </div>
       ) : null}
-      {error && ([
-        "dining-places",
-        "medical-providers",
-        "medical-queue",
-        "education-enrollments",
-      ].includes(view) ? (
-        <div className={
-          view === "dining-places"
-            ? "business-dining-v1656"
-            : view === "education-enrollments"
-              ? "business-education-enrollments-v1656"
-              : "business-medical-v1656"
-        }>
-          <div className="app-toast on" role="alert">{error}</div>
-        </div>
-      ) : (
-        <p className="business-online__error" role="alert">{error}</p>
-      ))}
-      {notice && <p className="business-online__notice" role="status">{notice}</p>}
+      {error &&
+        ([
+          "dining-places",
+          "medical-providers",
+          "medical-queue",
+          "education-enrollments",
+        ].includes(view) ? (
+          <div
+            className={
+              view === "dining-places"
+                ? "business-dining-v1656"
+                : view === "education-enrollments"
+                  ? "business-education-enrollments-v1656"
+                  : "business-medical-v1656"
+            }
+          >
+            <div className="app-toast on" role="alert">
+              {error}
+            </div>
+          </div>
+        ) : (
+          <p className="business-online__error" role="alert">
+            {error}
+          </p>
+        ))}
+      {notice && (
+        <p className="business-online__notice" role="status">
+          {notice}
+        </p>
+      )}
       {loading && view !== "education-enrollments" && (
         <div className="business-online__loading">Yuklanmoqda…</div>
       )}
       {content}
       {paymentError ? (
-        <div className="payment-load-error" role="status">{paymentError}</div>
+        <div className="payment-load-error" role="status">
+          {paymentError}
+        </div>
       ) : null}
       {paymentTarget && catalog ? (
         <PaymentRequestModal
@@ -935,7 +986,6 @@ export function BusinessOnlineScreen({
     </main>
   );
 }
-
 
 type RenderContext = {
   api: OnlineApi;
@@ -973,33 +1023,21 @@ type RenderContext = {
     id: number | string,
     value: BusinessOnlineRecord,
   ) => Promise<boolean>;
-  remove: (
-    resource: BusinessOnlineResource,
-    id: number | string,
-  ) => Promise<boolean>;
+  remove: (resource: BusinessOnlineResource, id: number | string) => Promise<boolean>;
   action: (
     resource: BusinessOnlineResource,
     name: string,
     id?: number | string,
     payload?: BusinessOnlineRecord,
   ) => Promise<BusinessOnlineRecord | null>;
-  setSubscreenBack: (
-    handler: (() => void) | null,
-    title?: string,
-  ) => void;
+  setSubscreenBack: (handler: (() => void) | null, title?: string) => void;
   onOpenOrder?: (orderId: number) => void | Promise<void>;
   onViewChange?: (view: string) => void;
   uploadItemImage?: (file: File) => Promise<string>;
 };
 
 function renderContent(context: RenderContext): ReactNode {
-  const {
-    view,
-    items,
-    groups,
-    profile,
-    shared,
-  } = context;
+  const { view, items, groups, profile, shared } = context;
 
   switch (view) {
     case "subscriptions":
@@ -1125,30 +1163,25 @@ function renderContent(context: RenderContext): ReactNode {
           loading={context.loading}
           createDoctor={(record) => context.create("medical_doctors", record)}
           patchDoctor={(id, patch) => context.patch("medical_doctors", id, patch)}
-          createOffline={async (input) => context.action(
-            "medical_queue",
-            "offline_add",
-            undefined,
-            {
+          createOffline={async (input) =>
+            context.action("medical_queue", "offline_add", undefined, {
               patient_name: input.patientName,
               phone: input.phone,
               item_id: Number(input.itemId),
               staff_id: Number(input.providerId),
               queue_date: input.queueDate,
-            },
-          )}
-          changeStatus={async (id, status) => Boolean(await context.action(
-            "medical_queue",
-            "set_status",
-            id,
-            { status },
-          ))}
-          swapQueues={async (first, second) => Boolean(await context.action(
-            "medical_queue",
-            "swap",
-            Number(first),
-            { other_queue_id: Number(second) },
-          ))}
+            })
+          }
+          changeStatus={async (id, status) =>
+            Boolean(await context.action("medical_queue", "set_status", id, { status }))
+          }
+          swapQueues={async (first, second) =>
+            Boolean(
+              await context.action("medical_queue", "swap", Number(first), {
+                other_queue_id: Number(second),
+              }),
+            )
+          }
           loadDate={async () => context.refresh("medical_queue")}
           onBackHandlerChange={context.setSubscreenBack}
         />
@@ -1191,18 +1224,15 @@ function renderContent(context: RenderContext): ReactNode {
     case "service-orders":
       return (
         <OrdersView
-          rows={items.filter((row) => (
-            isServiceOrder(row) === (view === "service-orders")
-          ))}
+          rows={items.filter(
+            (row) => isServiceOrder(row) === (view === "service-orders"),
+          )}
           filter={context.orderFilter}
           setFilter={context.setOrderFilter}
           busy={shared.busy}
-          setStatus={(id, status) => shared.action(
-            "orders",
-            "set_status",
-            id,
-            { status },
-          )}
+          setStatus={(id, status) =>
+            shared.action("orders", "set_status", id, { status })
+          }
           action={(id, name, payload) => shared.action("orders", name, id, payload)}
         />
       );
@@ -1289,14 +1319,17 @@ function renderContent(context: RenderContext): ReactNode {
             "start_at",
             "end_at",
           ]}
-          quoteAdvertisement={context.hasActionApi
-            ? (request) => context.action(
-              "advertisements",
-              "calculate_price",
-              undefined,
-              request,
-            )
-            : undefined}
+          quoteAdvertisement={
+            context.hasActionApi
+              ? (request) =>
+                  context.action(
+                    "advertisements",
+                    "calculate_price",
+                    undefined,
+                    request,
+                  )
+              : undefined
+          }
           onPromotionChange={context.onViewChange}
         />
       );
@@ -1313,11 +1346,9 @@ function renderContent(context: RenderContext): ReactNode {
             <button
               type="button"
               disabled={shared.busy}
-              onClick={() => void shared.action(
-                "stories",
-                "archive",
-                recordId(row, index),
-              )}
+              onClick={() =>
+                void shared.action("stories", "archive", recordId(row, index))
+              }
             >
               Arxivlash
             </button>
@@ -1331,24 +1362,15 @@ function renderContent(context: RenderContext): ReactNode {
           filters={context.resources.notify_filters ?? []}
           pushPreference={(context.resources.push_preferences ?? [])[0]}
           busy={shared.busy}
-          markAll={() => shared.action(
-            "notifications",
-            "mark_all_read",
-          )}
-          markOne={(id) => shared.action(
-            "notifications",
-            "mark_read",
-            id,
-          )}
+          markAll={() => shared.action("notifications", "mark_all_read")}
+          markOne={(id) => shared.action("notifications", "mark_read", id)}
           createFilter={(record) => shared.create("notify_filters", record)}
           removeFilter={(id) => shared.remove("notify_filters", id)}
           savePushPreference={async (enabled) => {
-            await context.action(
-              "notifications",
-              "set_push_preferences",
-              undefined,
-              { enabled, orders_enabled: enabled },
-            );
+            await context.action("notifications", "set_push_preferences", undefined, {
+              enabled,
+              orders_enabled: enabled,
+            });
           }}
           onOpenOrder={context.onOpenOrder}
         />
@@ -1356,13 +1378,7 @@ function renderContent(context: RenderContext): ReactNode {
     case "followers":
       return <PeopleView kind="followers" rows={items} busy={shared.busy} />;
     case "following":
-      return (
-        <PeopleView
-          kind="following"
-          rows={items}
-          busy={shared.busy}
-        />
-      );
+      return <PeopleView kind="following" rows={items} busy={shared.busy} />;
     default:
       return <div className="business-online__empty">Bo‘lim topilmadi.</div>;
   }

@@ -5,7 +5,6 @@ import type { ListingCategory, ListingRead } from "../api/types";
 import { ListingDetailV1656 } from "./ListingDetailV1656";
 import "./ListingsV1656.css";
 
-
 type ListingsApi = Pick<
   ApiClient,
   "getListingCounts" | "getPublicListings" | "toggleListingSave"
@@ -56,9 +55,10 @@ function formatListingTime(value: string) {
   if (Number.isNaN(date.getTime())) return "";
 
   const now = new Date();
-  const sameDay = date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
   const time = new Intl.DateTimeFormat("uz-UZ", {
     hour: "2-digit",
     minute: "2-digit",
@@ -72,7 +72,6 @@ function formatListingTime(value: string) {
     minute: "2-digit",
   }).format(date);
 }
-
 
 export function PublicListingsV1656({
   api,
@@ -91,16 +90,23 @@ export function PublicListingsV1656({
 
   useEffect(() => {
     let active = true;
-    api.getListingCounts()
-      .then((value) => { if (active) setCounts(value); })
+    api
+      .getListingCounts()
+      .then((value) => {
+        if (active) setCounts(value);
+      })
       .catch(() => undefined);
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   const sorted = useMemo(() => {
     const result = [...rows];
-    if (sort === "arzon") return result.sort((a, b) => priceNumber(a.price) - priceNumber(b.price));
-    if (sort === "qimmat") return result.sort((a, b) => priceNumber(b.price) - priceNumber(a.price));
+    if (sort === "arzon")
+      return result.sort((a, b) => priceNumber(a.price) - priceNumber(b.price));
+    if (sort === "qimmat")
+      return result.sort((a, b) => priceNumber(b.price) - priceNumber(a.price));
     if (sort === "yangi") {
       return result.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
     }
@@ -131,9 +137,11 @@ export function PublicListingsV1656({
     setSaving(row.public_id);
     try {
       const value = await api.toggleListingSave(row.public_id);
-      setRows((current) => current.map((item) => (
-        item.public_id === row.public_id ? { ...item, is_saved: value.saved } : item
-      )));
+      setRows((current) =>
+        current.map((item) =>
+          item.public_id === row.public_id ? { ...item, is_saved: value.saved } : item,
+        ),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "E'lon saqlanmadi.");
     } finally {
@@ -145,7 +153,9 @@ export function PublicListingsV1656({
   return (
     <main className="public-listings-v1656">
       <section id="elonSection">
-        <div className="sec-head" id="elonHead"><h2>E’lonlar</h2></div>
+        <div className="sec-head" id="elonHead">
+          <h2>E’lonlar</h2>
+        </div>
         <p className="elon-hint" id="elonHint">
           Toifani tanlang — tegishli e’lonlar shu oynada chiqadi.
         </p>
@@ -170,7 +180,11 @@ export function PublicListingsV1656({
         </div>
         <div id="elonList">
           {loading ? <div className="list-sub">Yuklanmoqda...</div> : null}
-          {error ? <p className="elon-hint" role="alert">{error}</p> : null}
+          {error ? (
+            <p className="elon-hint" role="alert">
+              {error}
+            </p>
+          ) : null}
           {!loading && !error && category && !rows.length ? (
             <div className="empty listing-category-empty">
               <h3>Bu toifada e&apos;lon yo&apos;q</h3>
@@ -196,8 +210,11 @@ export function PublicListingsV1656({
               </div>
               <div className="public-listing-card-grid">
                 {sorted.map((row) => {
-                  const metadata = CATEGORIES.find((item) => item.key === row.cat) ?? FALLBACK_CATEGORY;
-                  const preview = row.media.find((item) => item.type === "photo") ?? row.media[0];
+                  const metadata =
+                    CATEGORIES.find((item) => item.key === row.cat) ??
+                    FALLBACK_CATEGORY;
+                  const preview =
+                    row.media.find((item) => item.type === "photo") ?? row.media[0];
                   const hasVideo = row.media.some((item) => item.type === "video");
                   const open = opened === row.public_id;
                   return (
@@ -213,21 +230,40 @@ export function PublicListingsV1656({
                       >
                         <span
                           className="public-listing-card-media"
-                          style={{ background: `linear-gradient(135deg,${metadata.color}33,${metadata.color}14)` }}
+                          style={{
+                            background: `linear-gradient(135deg,${metadata.color}33,${metadata.color}14)`,
+                          }}
                         >
                           {preview?.type === "photo" ? (
-                            <img alt={`${row.title} — asosiy rasm`} loading="lazy" src={preview.url} />
+                            <img
+                              alt={`${row.title} — asosiy rasm`}
+                              loading="lazy"
+                              src={preview.url}
+                            />
                           ) : null}
                           {preview?.type === "video" ? (
-                            <video muted playsInline preload="metadata" src={preview.url} />
+                            <video
+                              muted
+                              playsInline
+                              preload="metadata"
+                              src={preview.url}
+                            />
                           ) : null}
                           {!preview ? (
-                            <span className="public-listing-card-fallback" aria-hidden="true">
+                            <span
+                              className="public-listing-card-fallback"
+                              aria-hidden="true"
+                            >
                               {metadata.icon}
                             </span>
                           ) : null}
                           {preview?.type === "video" ? (
-                            <span className="public-listing-card-play" aria-hidden="true">▶</span>
+                            <span
+                              className="public-listing-card-play"
+                              aria-hidden="true"
+                            >
+                              ▶
+                            </span>
                           ) : null}
                           {row.media.length ? (
                             <span className="public-listing-card-count">
@@ -237,13 +273,18 @@ export function PublicListingsV1656({
                         </span>
                         <span className="li-main public-listing-card-info">
                           <span className="li-title">{row.title}</span>
-                          <span className="li-price">{row.price || "Narx kelishilgan"}</span>
+                          <span className="li-price">
+                            {row.price || "Narx kelishilgan"}
+                          </span>
                           <span className="li-meta">
-                            {[row.address, formatListingTime(row.created_at)].filter(Boolean).join(" · ")}
+                            {[row.address, formatListingTime(row.created_at)]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </span>
                           {row.media.length ? (
                             <span className="public-listing-card-media-summary">
-                              {row.media.filter((item) => item.type === "photo").length} rasm
+                              {row.media.filter((item) => item.type === "photo").length}{" "}
+                              rasm
                               {hasVideo
                                 ? ` · ${row.media.filter((item) => item.type === "video").length} video`
                                 : ""}
@@ -256,7 +297,9 @@ export function PublicListingsV1656({
                           compactMedia
                           listing={row}
                           saving={saving === row.public_id}
-                          onContact={() => onOpenOwner(row.owner_kind, row.owner_public_id)}
+                          onContact={() =>
+                            onOpenOwner(row.owner_kind, row.owner_public_id)
+                          }
                           onSave={() => void save(row)}
                         />
                       ) : null}

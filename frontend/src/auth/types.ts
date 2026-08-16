@@ -1,6 +1,5 @@
 import type { SessionIdentity } from "../api/types";
 
-
 export type AppSession =
   | { status: "loading" }
   | { status: "guest" }

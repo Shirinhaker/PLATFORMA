@@ -3,11 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import businessProfileSource from "./BusinessProfileV3.tsx?raw";
-import {
-  BusinessProfileV3,
-  type BusinessProfileApiV3,
-} from "./BusinessProfileV3";
-
+import { BusinessProfileV3, type BusinessProfileApiV3 } from "./BusinessProfileV3";
 
 const identity = {
   account_id: 7,
@@ -89,11 +85,11 @@ function menuTexts(section: HTMLElement) {
     .map((button) => button.querySelector("b")?.textContent?.trim() ?? "");
 }
 
-
 describe("v1656 business cabinet dashboard parity", () => {
   it("keeps the dedicated v1656 dashboard stylesheet wired to the component", () => {
-    expect(businessProfileSource)
-      .toContain('import "./BusinessCabinetDashboardParityV1656.css";');
+    expect(businessProfileSource).toContain(
+      'import "./BusinessCabinetDashboardParityV1656.css";',
+    );
   });
 
   it("shows the owner dashboard with the exact v1656 group hierarchy", async () => {
@@ -107,20 +103,26 @@ describe("v1656 business cabinet dashboard parity", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Muhr" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Boshqaruv bo‘limlari" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Profilni ko‘rish" }))
-      .toBeInTheDocument();
-    expect(container.querySelectorAll(".business-cabinet__menu-grid").length)
-      .toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByRole("heading", { name: "Boshqaruv bo‘limlari" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Profilni ko‘rish" }),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelectorAll(".business-cabinet__menu-grid").length,
+    ).toBeGreaterThanOrEqual(2);
 
     const onlineHeading = screen.getByRole("heading", { name: "Onlaynlashtirish" });
     const systemHeading = screen.getByRole("heading", { name: "Tizimlashtirish" });
     expect(onlineHeading).toBeInTheDocument();
     expect(systemHeading).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Ma’muriyat" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Yo‘nalishga xos bo‘limlar" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Ma’muriyat" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Yo‘nalishga xos bo‘limlar" }),
+    ).not.toBeInTheDocument();
 
     const onlineSection = onlineHeading.closest("section");
     const systemSection = systemHeading.closest("section");
@@ -140,10 +142,16 @@ describe("v1656 business cabinet dashboard parity", () => {
       "Istoriya arxivi",
       "Bildirishnomalarim",
     ]);
-    expect(within(onlineSection as HTMLElement).queryByRole("button", { name: /E’lonlarim/ }))
-      .not.toBeInTheDocument();
-    expect(within(onlineSection as HTMLElement).queryByRole("button", { name: /Oshpaz buyurtmalari/ }))
-      .not.toBeInTheDocument();
+    expect(
+      within(onlineSection as HTMLElement).queryByRole("button", {
+        name: /E’lonlarim/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(onlineSection as HTMLElement).queryByRole("button", {
+        name: /Oshpaz buyurtmalari/,
+      }),
+    ).not.toBeInTheDocument();
 
     expect(menuTexts(systemSection as HTMLElement)).toEqual([
       "Kassa",
@@ -171,8 +179,9 @@ describe("v1656 business cabinet dashboard parity", () => {
 
     await user.click(await screen.findByRole("button", { name: /Ma'muriyat/ }));
     expect(screen.getByRole("heading", { name: "Ma’muriyat" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Mening hujjatlarim/ }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Mening hujjatlarim/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Xodimlar/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Hujjatlar/ })).toBeInTheDocument();
 
@@ -182,17 +191,30 @@ describe("v1656 business cabinet dashboard parity", () => {
       name: "E'lonlarim va reklamalarim",
     });
     expect(promotionHeading).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("ad-tab", "on");
+    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
     await user.click(screen.getByRole("button", { name: "E'lonlarim" }));
-    expect(await screen.findByRole("heading", {
-      name: "E'lonlarim va reklamalarim",
-    })).toBe(promotionHeading);
-    expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass("ad-tab", "on");
+    expect(
+      await screen.findByRole("heading", {
+        name: "E'lonlarim va reklamalarim",
+      }),
+    ).toBe(promotionHeading);
+    expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
     await user.click(screen.getByRole("button", { name: "Reklamalarim" }));
-    expect(await screen.findByRole("heading", {
-      name: "E'lonlarim va reklamalarim",
-    })).toBe(promotionHeading);
-    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("ad-tab", "on");
+    expect(
+      await screen.findByRole("heading", {
+        name: "E'lonlarim va reklamalarim",
+      }),
+    ).toBe(promotionHeading);
+    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
   });
 
   it("keeps the dining kitchen reachable without a separate main-grid card", async () => {
@@ -218,17 +240,21 @@ describe("v1656 business cabinet dashboard parity", () => {
     const dashboard = await screen.findByRole("heading", { name: "Muhr" });
     const main = dashboard.closest("main");
     expect(main).not.toBeNull();
-    expect(within(main as HTMLElement).queryByRole(
-      "button",
-      { name: /Oshpaz buyurtmalari/ },
-    )).not.toBeInTheDocument();
+    expect(
+      within(main as HTMLElement).queryByRole("button", {
+        name: /Oshpaz buyurtmalari/,
+      }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Stollar va xonalar/ }));
     await user.click(screen.getByRole("button", { name: "Oshpaz buyurtmalari" }));
-    expect(screen.getByRole("button", { name: "Oshpaz buyurtmalari" }))
-      .toHaveClass("ad-tab", "on");
-    expect(await screen.findByRole("heading", { name: "Buyurtma yo‘q" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Oshpaz buyurtmalari" })).toHaveClass(
+      "ad-tab",
+      "on",
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Buyurtma yo‘q" }),
+    ).toBeInTheDocument();
   });
 
   it("has one v1656 Ordinary cabinet action and keeps logout out of the dashboard", async () => {
@@ -247,8 +273,9 @@ describe("v1656 business cabinet dashboard parity", () => {
     const switchButton = await screen.findByRole("button", { name: "Oddiy kabinet" });
     expect(screen.getAllByRole("button", { name: "Oddiy kabinet" })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Chiqish" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }),
+    ).not.toBeInTheDocument();
 
     await user.click(switchButton);
     expect(client.switchCabinet).toHaveBeenCalledWith("user");

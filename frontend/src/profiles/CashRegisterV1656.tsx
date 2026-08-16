@@ -13,7 +13,6 @@ import { money } from "./business-profile-config";
 import { DebtorPickerV1656 } from "./DebtorPickerV1656";
 import "./CashRegisterV1656.css";
 
-
 export type CashRegisterApi = Pick<
   ApiClient,
   | "getCashRegister"
@@ -69,8 +68,10 @@ function quantity(value: number) {
 
 function receiptTitle(receipt: CashReceipt) {
   if (receipt.source === "order") return `Buyurtma #${receipt.order_id ?? receipt.id}`;
-  if (receipt.source === "dining") return `🍽️ Ichki buyurtma #${receipt.order_id ?? receipt.id}`;
-  if (receipt.source === "debt_payment") return `💵 ${receipt.lines[0]?.item_name ?? "Qarz to‘lovi"}`;
+  if (receipt.source === "dining")
+    return `🍽️ Ichki buyurtma #${receipt.order_id ?? receipt.id}`;
+  if (receipt.source === "debt_payment")
+    return `💵 ${receipt.lines[0]?.item_name ?? "Qarz to‘lovi"}`;
   if (receipt.receipt_no) return `🧾 Chek #${receipt.receipt_no}`;
   return "Savdo";
 }
@@ -121,17 +122,23 @@ function ReceiptCard({
               type="button"
               disabled={busy || receipt.pay_type === "naqd"}
               onClick={() => onPayment(receipt, "naqd")}
-            >Naqd</button>
+            >
+              Naqd
+            </button>
             <button
               type="button"
               disabled={busy || receipt.pay_type === "karta"}
               onClick={() => onPayment(receipt, "karta")}
-            >Karta</button>
+            >
+              Karta
+            </button>
             <button
               type="button"
               disabled={busy || receipt.pay_type === "qarz"}
               onClick={() => onPayment(receipt, "qarz")}
-            >Qarz</button>
+            >
+              Qarz
+            </button>
           </span>
         ) : null}
         {receipt.can_delete ? (
@@ -172,27 +179,39 @@ export function CashRegisterV1656({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (selectedDay: string) => {
-    setLoading(true);
-    setError("");
-    try {
-      setRegister(await api.getCashRegister(selectedDay));
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setLoading(false);
-    }
-  }, [api]);
+  const load = useCallback(
+    async (selectedDay: string) => {
+      setLoading(true);
+      setError("");
+      try {
+        setRegister(await api.getCashRegister(selectedDay));
+      } catch (reason) {
+        setError(errorMessage(reason));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [api],
+  );
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError("");
-    api.getCashRegister(day)
-      .then((value) => { if (active) setRegister(value); })
-      .catch((reason) => { if (active) setError(errorMessage(reason)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    api
+      .getCashRegister(day)
+      .then((value) => {
+        if (active) setRegister(value);
+      })
+      .catch((reason) => {
+        if (active) setError(errorMessage(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [api, day]);
 
   const visibleCatalog = useMemo(() => {
@@ -230,34 +249,40 @@ export function CashRegisterV1656({
     setDraft((current) => {
       const found = current.find((line) => line.catalog_item_id === item.id);
       if (found) {
-        return current.map((line) => line.key === found.key
-          ? { ...line, qty: line.qty + 1 }
-          : line);
+        return current.map((line) =>
+          line.key === found.key ? { ...line, qty: line.qty + 1 } : line,
+        );
       }
-      return [...current, {
-        key: `catalog-${item.id}`,
-        catalog_item_id: item.id,
-        name: item.name,
-        qty: 1,
-        price: item.price,
-      }];
+      return [
+        ...current,
+        {
+          key: `catalog-${item.id}`,
+          catalog_item_id: item.id,
+          name: item.name,
+          qty: 1,
+          price: item.price,
+        },
+      ];
     });
   }
 
   function addCustomItem() {
-    setDraft((current) => [...current, {
-      key: `custom-${Date.now()}-${current.length}`,
-      catalog_item_id: null,
-      name: "",
-      qty: 1,
-      price: 0,
-    }]);
+    setDraft((current) => [
+      ...current,
+      {
+        key: `custom-${Date.now()}-${current.length}`,
+        catalog_item_id: null,
+        name: "",
+        qty: 1,
+        price: 0,
+      },
+    ]);
   }
 
   function updateLine(key: string, patch: Partial<DraftLine>) {
-    setDraft((current) => current.map((line) => (
-      line.key === key ? { ...line, ...patch } : line
-    )));
+    setDraft((current) =>
+      current.map((line) => (line.key === key ? { ...line, ...patch } : line)),
+    );
   }
 
   async function save() {
@@ -265,11 +290,15 @@ export function CashRegisterV1656({
       setError("Chek bo‘sh — mahsulot tanlang.");
       return;
     }
-    const invalid = draft.find((line) => !line.name.trim() || line.qty <= 0 || line.price <= 0);
+    const invalid = draft.find(
+      (line) => !line.name.trim() || line.qty <= 0 || line.price <= 0,
+    );
     if (invalid) {
-      setError(!invalid.name.trim()
-        ? "Mahsulot nomi kiritilmadi."
-        : `Narx yoki miqdor noto‘g‘ri: ${invalid.name}`);
+      setError(
+        !invalid.name.trim()
+          ? "Mahsulot nomi kiritilmadi."
+          : `Narx yoki miqdor noto‘g‘ri: ${invalid.name}`,
+      );
       return;
     }
     const byId = new Map(catalog.map((item) => [item.id, item]));
@@ -314,7 +343,12 @@ export function CashRegisterV1656({
 
   async function deleteReceipt(receipt: CashReceipt) {
     const label = receipt.receipt_no ? `Chek #${receipt.receipt_no}` : "Bu savdo";
-    if (!window.confirm(`${label} butun o‘chirilsinmi? Ombor va qarz daftari qaytariladi.`)) return;
+    if (
+      !window.confirm(
+        `${label} butun o‘chirilsinmi? Ombor va qarz daftari qaytariladi.`,
+      )
+    )
+      return;
     setBusy(true);
     setError("");
     try {
@@ -357,11 +391,7 @@ export function CashRegisterV1656({
       setBusy(true);
       setError("");
       try {
-        await api.updateCashOrderPayment(
-          paymentReceipt.id,
-          "qarz",
-          selectedDebtorId,
-        );
+        await api.updateCashOrderPayment(paymentReceipt.id, "qarz", selectedDebtorId);
         setDebtorPicker(null);
         setPaymentReceipt(null);
         await load(day);
@@ -378,20 +408,35 @@ export function CashRegisterV1656({
     return (
       <main className="cash-v1656">
         <header className="cash-v1656__heading">
-          <button type="button" onClick={() => setScreen("list")}>← Kassa</button>
-          <div><h1>Savdo yozish</h1><p>Bitta chekda bir nechta mahsulot</p></div>
+          <button type="button" onClick={() => setScreen("list")}>
+            ← Kassa
+          </button>
+          <div>
+            <h1>Savdo yozish</h1>
+            <p>Bitta chekda bir nechta mahsulot</p>
+          </div>
         </header>
-        {error ? <p className="cash-v1656__error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="cash-v1656__error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <section className="cash-v1656__form-card">
-          <label>Mahsulot qidirish
+          <label>
+            Mahsulot qidirish
             <input value={search} onChange={(event) => setSearch(event.target.value)} />
           </label>
           <div className="cash-v1656__catalog">
             {visibleCatalog.map((item) => (
               <button type="button" key={item.id} onClick={() => addCatalogItem(item)}>
-                <span><b>{item.name}</b><small>{item.track_stock
-                  ? `Omborda: ${quantity(item.stock_qty)} ${item.unit}`
-                  : item.unit}</small></span>
+                <span>
+                  <b>{item.name}</b>
+                  <small>
+                    {item.track_stock
+                      ? `Omborda: ${quantity(item.stock_qty)} ${item.unit}`
+                      : item.unit}
+                  </small>
+                </span>
                 <strong>{money(item.price)}</strong>
                 <em>+</em>
               </button>
@@ -403,7 +448,9 @@ export function CashRegisterV1656({
         </section>
         <section className="cash-v1656__form-card">
           <h2>Chek ({draft.length})</h2>
-          {!draft.length ? <p>Chek bo‘sh — mahsulot tanlang.</p> : (
+          {!draft.length ? (
+            <p>Chek bo‘sh — mahsulot tanlang.</p>
+          ) : (
             <div className="cash-v1656__draft-lines">
               {draft.map((line) => (
                 <article key={line.key}>
@@ -411,59 +458,123 @@ export function CashRegisterV1656({
                     aria-label="Mahsulot nomi"
                     value={line.name}
                     disabled={line.catalog_item_id !== null}
-                    onChange={(event) => updateLine(line.key, { name: event.target.value })}
+                    onChange={(event) =>
+                      updateLine(line.key, { name: event.target.value })
+                    }
                   />
-                  <label>Miqdor<input
-                    type="number" min="0.001" step="0.001" value={line.qty}
-                    onChange={(event) => updateLine(line.key, { qty: Number(event.target.value) })}
-                  /></label>
-                  <label>Narx<input
-                    type="number" min="1" step="1" value={line.price}
-                    onChange={(event) => updateLine(line.key, { price: Number(event.target.value) })}
-                  /></label>
+                  <label>
+                    Miqdor
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={line.qty}
+                      onChange={(event) =>
+                        updateLine(line.key, { qty: Number(event.target.value) })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Narx
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={line.price}
+                      onChange={(event) =>
+                        updateLine(line.key, { price: Number(event.target.value) })
+                      }
+                    />
+                  </label>
                   <b>{money(line.qty * line.price)}</b>
-                  <button type="button" aria-label={`${line.name || "Mahsulot"}ni o‘chirish`}
-                    onClick={() => setDraft((current) => current.filter((row) => row.key !== line.key))}>×</button>
+                  <button
+                    type="button"
+                    aria-label={`${line.name || "Mahsulot"}ni o‘chirish`}
+                    onClick={() =>
+                      setDraft((current) =>
+                        current.filter((row) => row.key !== line.key),
+                      )
+                    }
+                  >
+                    ×
+                  </button>
                 </article>
               ))}
             </div>
           )}
           <div className="cash-v1656__fields">
-            <label>To‘lov turi<select value={payType}
-              onChange={(event) => setPayType(event.target.value as CashPayType)}>
-              <option value="naqd">Naqd</option>
-              <option value="karta">Karta</option>
-              <option value="qarz">Qarz (daftariga yoziladi)</option>
-            </select></label>
+            <label>
+              To‘lov turi
+              <select
+                value={payType}
+                onChange={(event) => setPayType(event.target.value as CashPayType)}
+              >
+                <option value="naqd">Naqd</option>
+                <option value="karta">Karta</option>
+                <option value="qarz">Qarz (daftariga yoziladi)</option>
+              </select>
+            </label>
             {payType === "qarz" ? (
-              <label>Qarzdor<div className="cash-v1656__debtor-field">
-                <select value={debtorId} onChange={(event) => setDebtorId(Number(event.target.value))}>
-                  <option value={0}>Qarzdorni tanlang</option>
-                  {debtors.map((debtor) => (
-                    <option key={debtor.id} value={debtor.id}>
-                      {debtor.name} · {money(debtor.balance)}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => setDebtorPicker("sale")}>+ Yangi</button>
-              </div></label>
+              <label>
+                Qarzdor
+                <div className="cash-v1656__debtor-field">
+                  <select
+                    value={debtorId}
+                    onChange={(event) => setDebtorId(Number(event.target.value))}
+                  >
+                    <option value={0}>Qarzdorni tanlang</option>
+                    {debtors.map((debtor) => (
+                      <option key={debtor.id} value={debtor.id}>
+                        {debtor.name} · {money(debtor.balance)}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => setDebtorPicker("sale")}>
+                    + Yangi
+                  </button>
+                </div>
+              </label>
             ) : null}
-            <label>Sana<input type="date" max={today()} value={saleDate}
-              onChange={(event) => setSaleDate(event.target.value)} /></label>
-            <label className="cash-v1656__wide">Izoh<textarea maxLength={200} value={note}
-              onChange={(event) => setNote(event.target.value)} /></label>
+            <label>
+              Sana
+              <input
+                type="date"
+                max={today()}
+                value={saleDate}
+                onChange={(event) => setSaleDate(event.target.value)}
+              />
+            </label>
+            <label className="cash-v1656__wide">
+              Izoh
+              <textarea
+                maxLength={200}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </label>
           </div>
           <div className="cash-v1656__save">
             <strong>Jami: {money(grand)}</strong>
-            <button type="button" disabled={busy} onClick={save}>Savdoni saqlash</button>
+            <button type="button" disabled={busy} onClick={save}>
+              Savdoni saqlash
+            </button>
           </div>
         </section>
         {debtorPicker ? (
           <DebtorPickerV1656
             api={api}
-            title={debtorPicker === "payment" ? "Buyurtmani qarzga yozish" : "Qarzdorni tanlash"}
-            onCancel={() => { setDebtorPicker(null); setPaymentReceipt(null); }}
-            onSelect={(value) => { void selectDebtor(value); }}
+            title={
+              debtorPicker === "payment"
+                ? "Buyurtmani qarzga yozish"
+                : "Qarzdorni tanlash"
+            }
+            onCancel={() => {
+              setDebtorPicker(null);
+              setPaymentReceipt(null);
+            }}
+            onSelect={(value) => {
+              void selectDebtor(value);
+            }}
           />
         ) : null}
       </main>
@@ -474,25 +585,48 @@ export function CashRegisterV1656({
   return (
     <main className="cash-v1656">
       <header className="cash-v1656__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-        <div><h1>Kassa</h1><p>Savdo daftari va kunlik tushum</p></div>
-        <button type="button" className="cash-v1656__add" disabled={busy} onClick={openCreate}>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>Kassa</h1>
+          <p>Savdo daftari va kunlik tushum</p>
+        </div>
+        <button
+          type="button"
+          className="cash-v1656__add"
+          disabled={busy}
+          onClick={openCreate}
+        >
           + Savdo yozish
         </button>
       </header>
-      {error ? <p className="cash-v1656__error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="cash-v1656__error" role="alert">
+          {error}
+        </p>
+      ) : null}
       <section className="cash-v1656__summary">
         <div className="cash-v1656__days">
-          <button type="button" onClick={() => setDay(shiftDay(selectedDay, -1))}>‹</button>
+          <button type="button" onClick={() => setDay(shiftDay(selectedDay, -1))}>
+            ‹
+          </button>
           <b>{day ? `${selectedDay} tushumi` : "Bugungi tushum"}</b>
-          <button type="button" onClick={() => setDay(shiftDay(selectedDay, 1))}>›</button>
-          <button type="button" onClick={() => setDay("")}>Bugun</button>
+          <button type="button" onClick={() => setDay(shiftDay(selectedDay, 1))}>
+            ›
+          </button>
+          <button type="button" onClick={() => setDay("")}>
+            Bugun
+          </button>
         </div>
         <strong>{money(register.totals.cash_in)}</strong>
         <p>
-          Haqiqiy tushum · Naqd: <b>{money(register.totals.naqd)}</b> · Karta: <b>{money(register.totals.karta)}</b>
+          Haqiqiy tushum · Naqd: <b>{money(register.totals.naqd)}</b> · Karta:{" "}
+          <b>{money(register.totals.karta)}</b>
           {` · Qarz to‘lovi: ${money(register.totals.qarzpay)}`}
-          <br />Jami savdo: <b>{money(register.totals.all)}</b> · Qarzga: <b>{money(register.totals.qarz)}</b>
+          <br />
+          Jami savdo: <b>{money(register.totals.all)}</b> · Qarzga:{" "}
+          <b>{money(register.totals.qarz)}</b>
           {` · To‘lov turi belgilanmagan: ${money(register.totals.order)}`}
         </p>
       </section>
@@ -517,8 +651,13 @@ export function CashRegisterV1656({
         <DebtorPickerV1656
           api={api}
           title="Buyurtmani qarzga yozish"
-          onCancel={() => { setDebtorPicker(null); setPaymentReceipt(null); }}
-          onSelect={(value) => { void selectDebtor(value); }}
+          onCancel={() => {
+            setDebtorPicker(null);
+            setPaymentReceipt(null);
+          }}
+          onSelect={(value) => {
+            void selectDebtor(value);
+          }}
         />
       ) : null}
     </main>

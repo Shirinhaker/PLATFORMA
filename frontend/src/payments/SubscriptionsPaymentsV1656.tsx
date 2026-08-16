@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { BusinessOnlineRecord } from "../api/business-online-types";
@@ -17,14 +12,10 @@ import {
   PaymentRequestModal,
   type PaymentTarget,
 } from "../profiles/PaymentRequestModal";
-import {
-  PaymentsView,
-  SubscriptionsView,
-} from "../profiles/BusinessOnlineViews";
+import { PaymentsView, SubscriptionsView } from "../profiles/BusinessOnlineViews";
 import { uploadPaymentReceipt } from "./payment-receipt";
 import "../profiles/BusinessOnlineScreen.css";
 import "../profiles/BusinessExistingOnlineV1656.css";
-
 
 export type BusinessSubscriptionsApi = Pick<
   ApiClient,
@@ -37,54 +28,51 @@ export type BusinessSubscriptionsApi = Pick<
 
 export type PaymentsApi = Pick<
   ApiClient,
-  | "getMyPayments"
-  | "resubmitPayment"
-  | "createUploadGrant"
-  | "uploadGrantedFile"
+  "getMyPayments" | "resubmitPayment" | "createUploadGrant" | "uploadGrantedFile"
 >;
-
 
 export function supportsBusinessSubscriptionsApi(
   api: object,
 ): api is BusinessSubscriptionsApi {
   const value = api as Record<string, unknown>;
   return [
-    "getBusinessSubscription", "getPaymentCatalog", "createPaymentRequest",
-    "createUploadGrant", "uploadGrantedFile",
-  ].every((method) => typeof value[method] === "function");
-}
-
-
-export function supportsPaymentsApi(api: object): api is PaymentsApi {
-  const value = api as Record<string, unknown>;
-  return [
-    "getMyPayments", "resubmitPayment", "createUploadGrant",
+    "getBusinessSubscription",
+    "getPaymentCatalog",
+    "createPaymentRequest",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof value[method] === "function");
 }
 
+export function supportsPaymentsApi(api: object): api is PaymentsApi {
+  const value = api as Record<string, unknown>;
+  return [
+    "getMyPayments",
+    "resubmitPayment",
+    "createUploadGrant",
+    "uploadGrantedFile",
+  ].every((method) => typeof value[method] === "function");
+}
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
 
-
-function shell(
-  title: string,
-  onBack: () => void,
-  content: ReactNode,
-) {
+function shell(title: string, onBack: () => void, content: ReactNode) {
   return (
     <main className="business-online">
       <header className="business-online__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-        <div><h1>{title}</h1></div>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>{title}</h1>
+        </div>
       </header>
       {content}
     </main>
   );
 }
-
 
 function subscriptionRecord(row: BusinessSubscriptionRecord): BusinessOnlineRecord {
   return {
@@ -100,14 +88,12 @@ function subscriptionRecord(row: BusinessSubscriptionRecord): BusinessOnlineReco
   };
 }
 
-
 function paymentRecord(row: PaymentRequestRecord): BusinessOnlineRecord {
   return {
     ...row,
     reason: row.public_reason,
   };
 }
-
 
 export function BusinessSubscriptionsV1656({
   api,
@@ -161,15 +147,18 @@ export function BusinessSubscriptionsV1656({
   }
 
   const rows = summary
-    ? [
-      ...summary.history.map(subscriptionRecord),
-      subscriptionRecord(summary.current),
-    ]
+    ? [...summary.history.map(subscriptionRecord), subscriptionRecord(summary.current)]
     : [];
 
-  return shell("Obunalarim", onBack, (
+  return shell(
+    "Obunalarim",
+    onBack,
     <>
-      {error ? <p className="business-online__error" role="alert">{error}</p> : null}
+      {error ? (
+        <p className="business-online__error" role="alert">
+          {error}
+        </p>
+      ) : null}
       {loading ? <div className="business-online__loading">Yuklanmoqda…</div> : null}
       {summary ? (
         <SubscriptionsView
@@ -189,10 +178,9 @@ export function BusinessSubscriptionsV1656({
           onSubmitted={onOpenPayments}
         />
       ) : null}
-    </>
-  ));
+    </>,
+  );
 }
-
 
 export function PaymentsV1656({
   api,
@@ -231,9 +219,9 @@ export function PaymentsV1656({
     try {
       const receipt = await uploadPaymentReceipt(api, file);
       const updated = await api.resubmitPayment(paymentId, receipt);
-      setRows((current) => current.map((row) => (
-        row.id === updated.id ? updated : row
-      )));
+      setRows((current) =>
+        current.map((row) => (row.id === updated.id ? updated : row)),
+      );
     } catch (reason) {
       setError(message(reason));
       throw reason;
@@ -242,18 +230,24 @@ export function PaymentsV1656({
     }
   }
 
-  return shell("To‘lovlarim", onBack, (
+  return shell(
+    "To‘lovlarim",
+    onBack,
     <>
-      {error ? <p className="business-online__error" role="alert">{error}</p> : null}
-      {loading && !rows.length
-        ? <div className="business-online__loading">Yuklanmoqda…</div>
-        : null}
+      {error ? (
+        <p className="business-online__error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {loading && !rows.length ? (
+        <div className="business-online__loading">Yuklanmoqda…</div>
+      ) : null}
       <PaymentsView
         rows={rows.map(paymentRecord)}
         loading={loading}
         refresh={() => void load()}
         resubmit={resubmit}
       />
-    </>
-  ));
+    </>,
+  );
 }

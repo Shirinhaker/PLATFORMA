@@ -8,7 +8,6 @@ import {
   supportsDiningKitchenApi,
 } from "./BusinessKitchenV1656";
 
-
 function order(overrides: Partial<DiningOrder> = {}): DiningOrder {
   return {
     id: 1,
@@ -38,7 +37,15 @@ function order(overrides: Partial<DiningOrder> = {}): DiningOrder {
     created_at: 1_785_000_000,
     updated_at: 1_785_000_000,
     items: [
-      { id: 11, item_id: 5, name: "Osh", qty: 2, unit: "dona", price: 12000, total: 24000 },
+      {
+        id: 11,
+        item_id: 5,
+        name: "Osh",
+        qty: 2,
+        unit: "dona",
+        price: 12000,
+        total: 24000,
+      },
     ],
     ...overrides,
   };
@@ -47,13 +54,12 @@ function order(overrides: Partial<DiningOrder> = {}): DiningOrder {
 function makeApi(overrides: Partial<BusinessKitchenApi> = {}) {
   return {
     getDiningOrders: vi.fn().mockResolvedValue([order()]),
-    setDiningKitchenStatus: vi.fn().mockImplementation(
-      async (id: number) => order({ id, kitchen_status: "done" }),
-    ),
+    setDiningKitchenStatus: vi
+      .fn()
+      .mockImplementation(async (id: number) => order({ id, kitchen_status: "done" })),
     ...overrides,
   } as unknown as BusinessKitchenApi;
 }
-
 
 describe("oshpaz ekrani (v1656 pariteti)", () => {
   it("API to'liq bo'lsa qo'llab-quvvatlanadi", () => {
@@ -70,9 +76,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       />,
     );
 
-    expect(
-      await screen.findByRole("tab", { name: "Buyurtmalar (1)" }),
-    ).toBeVisible();
+    expect(await screen.findByRole("tab", { name: "Buyurtmalar (1)" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Muammoli (0)" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Yakunlangan (0)" })).toBeVisible();
 
@@ -86,9 +90,9 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
 
   it("xona uchun boshqa belgi ko'rsatiladi", async () => {
     const api = makeApi({
-      getDiningOrders: vi.fn().mockResolvedValue([
-        order({ place_kind: "room", place_name: "VIP xona" }),
-      ]),
+      getDiningOrders: vi
+        .fn()
+        .mockResolvedValue([order({ place_kind: "room", place_name: "VIP xona" })]),
     });
     render(
       <BusinessKitchenV1656
@@ -111,21 +115,15 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       />,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }));
 
     await waitFor(() => {
       expect(api.setDiningKitchenStatus).toHaveBeenCalledWith(1, "done");
     });
-    expect(
-      await screen.findByText("Taom tayyor deb belgilandi ✅"),
-    ).toBeVisible();
+    expect(await screen.findByText("Taom tayyor deb belgilandi ✅")).toBeVisible();
     // Tayyor bo'lgach tugma yo'qoladi.
     await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" }),
-      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" })).toBeNull();
     });
     expect(screen.getByText("👨‍🍳 Tayyor")).toBeVisible();
   });
@@ -140,16 +138,12 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
     );
 
     expect(await screen.findByText("🪑 1-stol")).toBeVisible();
-    expect(
-      screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" })).toBeNull();
   });
 
   it("tayyor bo'lgan zakazda tugma bo'lmaydi", async () => {
     const api = makeApi({
-      getDiningOrders: vi.fn().mockResolvedValue([
-        order({ kitchen_status: "done" }),
-      ]),
+      getDiningOrders: vi.fn().mockResolvedValue([order({ kitchen_status: "done" })]),
     });
     render(
       <BusinessKitchenV1656
@@ -160,16 +154,14 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
     );
 
     expect(await screen.findByText("👨‍🍳 Tayyor")).toBeVisible();
-    expect(
-      screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "✅ Tayyor bo‘ldi" })).toBeNull();
   });
 
   it("muammoli zakaz alohida bo'limda", async () => {
     const api = makeApi({
-      getDiningOrders: vi.fn().mockResolvedValue([
-        order({ id: 2, problem_open: true }),
-      ]),
+      getDiningOrders: vi
+        .fn()
+        .mockResolvedValue([order({ id: 2, problem_open: true })]),
     });
     render(
       <BusinessKitchenV1656
@@ -179,9 +171,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       />,
     );
 
-    expect(
-      await screen.findByRole("tab", { name: "Muammoli (1)" }),
-    ).toBeVisible();
+    expect(await screen.findByRole("tab", { name: "Muammoli (1)" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Buyurtmalar (0)" })).toBeVisible();
     // Bo'sh bo'lmagan bo'limga avtomatik o'tadi.
     expect(screen.getByText("🪑 1-stol")).toBeVisible();
@@ -204,9 +194,11 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
 
   it("stol bandligi (booking) oshpazga ko'rsatilmaydi", async () => {
     const api = makeApi({
-      getDiningOrders: vi.fn().mockResolvedValue([
-        order({ id: 3, kind: "booking", place_name: "Band stol" }),
-      ]),
+      getDiningOrders: vi
+        .fn()
+        .mockResolvedValue([
+          order({ id: 3, kind: "booking", place_name: "Band stol" }),
+        ]),
     });
     render(
       <BusinessKitchenV1656
@@ -237,9 +229,9 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
 
   it("tayyorlash so'rovi yiqilsa xabar chiqadi", async () => {
     const api = makeApi({
-      setDiningKitchenStatus: vi.fn().mockRejectedValue(
-        new Error("Muammoli zakazni avval kassada hal qiling."),
-      ),
+      setDiningKitchenStatus: vi
+        .fn()
+        .mockRejectedValue(new Error("Muammoli zakazni avval kassada hal qiling.")),
     });
     render(
       <BusinessKitchenV1656
@@ -249,9 +241,7 @@ describe("oshpaz ekrani (v1656 pariteti)", () => {
       />,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "✅ Tayyor bo‘ldi" }));
 
     expect(
       await screen.findByText("Muammoli zakazni avval kassada hal qiling."),

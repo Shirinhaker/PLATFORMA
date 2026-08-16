@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { UserProfile as UserProfileData } from "../api/types";
 import { UserProfile } from "./UserProfile";
 
-
 const identity = {
   account_id: 5,
   account_type: "user" as const,
@@ -41,14 +40,16 @@ const profile = {
     saved: 4,
     unread: 5,
   },
-  recent_activity: [{
-    id: 46,
-    kind: "order",
-    title: "Muhr",
-    status: "new",
-    amount: 350000,
-    created_at: 1722211200,
-  }],
+  recent_activity: [
+    {
+      id: 46,
+      kind: "order",
+      title: "Muhr",
+      status: "new",
+      amount: 350000,
+      created_at: 1722211200,
+    },
+  ],
   specialist_profile: {},
   cabinet_payload: {},
 } satisfies UserProfileData;
@@ -57,11 +58,13 @@ const advertisement = {
   id: 12,
   title: "Oddiy profil reklamasi",
   caption: "Yangi taklif",
-  targets: [{
-    level: "district" as const,
-    region: "Surxondaryo viloyati",
-    district: "Qumqo‘rg‘on tumani",
-  }],
+  targets: [
+    {
+      level: "district" as const,
+      region: "Surxondaryo viloyati",
+      district: "Qumqo‘rg‘on tumani",
+    },
+  ],
   placement: "home",
   status: "payment_pending",
   daily_all_day: true,
@@ -102,7 +105,6 @@ const listing = {
   is_saved: false,
 };
 
-
 function profileApi() {
   return {
     getSession: vi.fn().mockResolvedValue(identity),
@@ -132,7 +134,6 @@ function profileApi() {
   };
 }
 
-
 describe("v1656 user cabinet and profile parity", () => {
   it("switches ordinary profile advertisements and listings tabs both ways", async () => {
     const user = userEvent.setup();
@@ -146,23 +147,27 @@ describe("v1656 user cabinet and profile parity", () => {
       createListing: vi.fn(),
       deleteListing: vi.fn(),
       getPaymentCatalog: vi.fn().mockResolvedValue({
-        prices: [{
-          price_code: "advertisement_district_hour",
-          service_type: "advertisement" as const,
-          amount_uzs: 20_000,
-          currency: "UZS",
-          plan_code: "",
-          duration_months: 0,
-          config: {},
-        }],
-        methods: [{
-          id: 1,
-          method_type: "manual_card",
-          name: "Bank kartasi",
-          recipient_name: "Koprik",
-          instructions: "",
-          details: { card: "8600" },
-        }],
+        prices: [
+          {
+            price_code: "advertisement_district_hour",
+            service_type: "advertisement" as const,
+            amount_uzs: 20_000,
+            currency: "UZS",
+            plan_code: "",
+            duration_months: 0,
+            config: {},
+          },
+        ],
+        methods: [
+          {
+            id: 1,
+            method_type: "manual_card",
+            name: "Bank kartasi",
+            recipient_name: "Koprik",
+            instructions: "",
+            details: { card: "8600" },
+          },
+        ],
       }),
       createPaymentRequest: vi.fn(),
     };
@@ -175,32 +180,31 @@ describe("v1656 user cabinet and profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: /Reklamalarim Bosh sahifa reklamalarini boshqarish/,
-    }));
-    expect(await screen.findByText("Oddiy profil reklamasi"))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Reklamalarim" }))
-      .toHaveClass("on");
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Reklamalarim Bosh sahifa reklamalarini boshqarish/,
+      }),
+    );
+    expect(await screen.findByText("Oddiy profil reklamasi")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reklamalarim" })).toHaveClass("on");
     expect(api.getPaymentCatalog).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "To‘lov qilish" }));
-    expect(await screen.findByRole("dialog", {
-      name: "To‘lov so‘rovini yuborish",
-    })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("dialog", {
+        name: "To‘lov so‘rovini yuborish",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText("480 000 so‘m")).toBeInTheDocument();
     expect(api.getPaymentCatalog).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", { name: "Yopish" }));
 
     await user.click(screen.getByRole("button", { name: "E'lonlarim" }));
-    expect(await screen.findByText("Oddiy profil e'loni"))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "E'lonlarim" }))
-      .toHaveClass("on");
+    expect(await screen.findByText("Oddiy profil e'loni")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass("on");
 
     await user.click(screen.getByRole("button", { name: "Reklamalarim" }));
-    expect(await screen.findByText("Oddiy profil reklamasi"))
-      .toBeInTheDocument();
+    expect(await screen.findByText("Oddiy profil reklamasi")).toBeInTheDocument();
   });
 
   it("renders the exact v1656 dashboard labels and descriptions", async () => {
@@ -213,17 +217,26 @@ describe("v1656 user cabinet and profile parity", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Ali Valiyev" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Ali Valiyev" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Profil va faoliyatlar")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Profilim Ism, telefon, yashash tumani/ }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Reklamalarim Bosh sahifa reklamalarini boshqarish/ }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Istoriya arxivi Faol va arxivdagi shaxsiy istoriyalar/ }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "So‘nggi faollik" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Profilim Ism, telefon, yashash tumani/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Reklamalarim Bosh sahifa reklamalarini boshqarish/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Istoriya arxivi Faol va arxivdagi shaxsiy istoriyalar/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "So‘nggi faollik" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
   });
 
@@ -238,25 +251,27 @@ describe("v1656 user cabinet and profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: /Profilim Ism, telefon, yashash tumani/,
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Profilim Ism, telefon, yashash tumani/,
+      }),
+    );
 
-    expect(screen.getByRole("img", { name: "Ali Valiyev profil rasmi" }))
-      .toHaveAttribute("src", profile.avatar_url);
-    expect(screen.getByText("Qumqo‘rg‘on tumani, Surxondaryo viloyati"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Ali Valiyev profil rasmi" }),
+    ).toHaveAttribute("src", profile.avatar_url);
+    expect(
+      screen.getByText("Qumqo‘rg‘on tumani, Surxondaryo viloyati"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Ism familiya")).toHaveValue("Ali Valiyev");
     expect(screen.getByLabelText("Telefon")).toHaveValue("+998 90 123 45 67");
     expect(screen.getByLabelText("Username (sahifa manzili)")).toHaveValue("ali");
     expect(screen.getByText("🔗 Sahifa havolasi")).toBeInTheDocument();
-    expect((screen.getByLabelText(
-      "Foydalanuvchi sahifasi havolasi",
-    ) as HTMLInputElement).value).toContain(
-      "?user=u_1234567890abcdef",
-    );
-    expect(screen.getByLabelText("Foydalanuvchi sahifasi QR kodi"))
-      .toBeInTheDocument();
+    expect(
+      (screen.getByLabelText("Foydalanuvchi sahifasi havolasi") as HTMLInputElement)
+        .value,
+    ).toContain("?user=u_1234567890abcdef");
+    expect(screen.getByLabelText("Foydalanuvchi sahifasi QR kodi")).toBeInTheDocument();
     expect(screen.queryByLabelText("Viloyat")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
     expect(screen.queryByText("Avatar kesimi")).not.toBeInTheDocument();
@@ -274,9 +289,11 @@ describe("v1656 user cabinet and profile parity", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: /Profilim Ism, telefon, yashash tumani/,
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Profilim Ism, telefon, yashash tumani/,
+      }),
+    );
     const username = screen.getByLabelText("Username (sahifa manzili)");
     await user.clear(username);
     await user.type(username, "@Ali-Test_2");
@@ -300,9 +317,11 @@ describe("v1656 user cabinet and profile parity", () => {
         onSwitched={vi.fn()}
       />,
     );
-    await user.click(await screen.findByRole("button", {
-      name: /Profilim Ism, telefon, yashash tumani/,
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Profilim Ism, telefon, yashash tumani/,
+      }),
+    );
     const fileInput = rendered.container.querySelector(
       'input[type="file"][accept*="image/jpeg"]',
     );
@@ -313,14 +332,18 @@ describe("v1656 user cabinet and profile parity", () => {
     );
 
     expect(api.uploadGrantedFile).toHaveBeenCalledOnce();
-    expect(api.attachUserAvatar).toHaveBeenCalledWith(expect.objectContaining({
-      object_key: "private/user/5/avatar/abcdefabcdefabcdefabcdefabcdefab.png",
-    }));
+    expect(api.attachUserAvatar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        object_key: "private/user/5/avatar/abcdefabcdefabcdefabcdefabcdefab.png",
+      }),
+    );
     const zoom = await screen.findByLabelText("Kattalashtirish");
     fireEvent.change(zoom, { target: { value: "1.8" } });
     await user.click(screen.getByRole("button", { name: "Rasm joylashuvini saqlash" }));
-    expect(api.attachUserAvatar).toHaveBeenLastCalledWith(expect.objectContaining({
-      zoom: 1.8,
-    }));
+    expect(api.attachUserAvatar).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        zoom: 1.8,
+      }),
+    );
   });
 });

@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { BusinessProfile } from "./BusinessProfile";
 import { UserProfile } from "./UserProfile";
 
-
 const userIdentity = {
   account_id: 5,
   account_type: "user" as const,
@@ -48,14 +47,16 @@ const userProfile = {
     saved: 1,
     unread: 4,
   },
-  recent_activity: [{
-    id: 46,
-    kind: "order",
-    title: "Muhr",
-    status: "new",
-    amount: 350000,
-    created_at: 1722211200,
-  }],
+  recent_activity: [
+    {
+      id: 46,
+      kind: "order",
+      title: "Muhr",
+      status: "new",
+      amount: 350000,
+      created_at: 1722211200,
+    },
+  ],
   specialist_profile: {},
   cabinet_payload: {
     orders: [{ id: 46, title: "Muhr", status: "new" }],
@@ -107,14 +108,16 @@ const businessProfile = {
     low_stock: 1,
     active_orders: 3,
   },
-  recent_activity: [{
-    id: 44,
-    kind: "order",
-    title: "Muhr",
-    status: "accepted",
-    amount: 15000,
-    created_at: 1722211200,
-  }],
+  recent_activity: [
+    {
+      id: 44,
+      kind: "order",
+      title: "Muhr",
+      status: "accepted",
+      amount: 15000,
+      created_at: 1722211200,
+    },
+  ],
   cabinet_payload: {
     orders: [{ id: 44, title: "Muhr", status: "accepted" }],
     item_groups: [{ id: 1, name: "Tayyor mahsulotlar", kind: "product" }],
@@ -157,7 +160,6 @@ const listing = {
   owner_name: "Ali",
   is_saved: false,
 };
-
 
 function profileApi() {
   return {
@@ -205,32 +207,36 @@ function profileApi() {
     attachUserAvatar: vi.fn().mockResolvedValue(userProfile),
     attachBusinessLogo: vi.fn().mockResolvedValue(businessProfile),
     attachBusinessPaymentQr: vi.fn().mockResolvedValue(businessProfile),
-    getMyPayments: vi.fn().mockResolvedValue([{
-      id: 81,
-      request_code: "PAY-TYPED",
-      service_type: "listing",
-      status: "approved",
-      plan_code: "",
-      duration_months: 0,
-      quantity: 1,
-      amount: 25_000,
-      currency: "UZS",
-      price_code: "listing_publish",
-      public_reason: "",
-      created_at: 1_785_000_000,
-      updated_at: 1_785_000_000,
-      attempts: [],
-    }]),
+    getMyPayments: vi.fn().mockResolvedValue([
+      {
+        id: 81,
+        request_code: "PAY-TYPED",
+        service_type: "listing",
+        status: "approved",
+        plan_code: "",
+        duration_months: 0,
+        quantity: 1,
+        amount: 25_000,
+        currency: "UZS",
+        price_code: "listing_publish",
+        public_reason: "",
+        created_at: 1_785_000_000,
+        updated_at: 1_785_000_000,
+        attempts: [],
+      },
+    ]),
     resubmitPayment: vi.fn(),
-    getMessageConversations: vi.fn().mockResolvedValue([{
-      target_kind: "user" as const,
-      target_public_id: "u_1234567890abcdef",
-      name: "Vali",
-      avatar_url: "",
-      last: "Salom",
-      created_at: "2026-08-09T12:00:00Z",
-      unread: 2,
-    }]),
+    getMessageConversations: vi.fn().mockResolvedValue([
+      {
+        target_kind: "user" as const,
+        target_public_id: "u_1234567890abcdef",
+        name: "Vali",
+        avatar_url: "",
+        last: "Salom",
+        created_at: "2026-08-09T12:00:00Z",
+        unread: 2,
+      },
+    ]),
     getMessageThread: vi.fn(),
     sendMessage: vi.fn(),
     sendMessageImage: vi.fn(),
@@ -238,15 +244,17 @@ function profileApi() {
     deleteMessage: vi.fn(),
     getMessageUnreadCount: vi.fn().mockResolvedValue({ count: 2 }),
     getReceivedReviews: vi.fn().mockResolvedValue({
-      reviews: [{
-        id: 22,
-        stars: 5,
-        comment: "A’lo xizmat",
-        user_name: "Vali",
-        created_at: "2026-08-10T08:00:00Z",
-        owner_reply: "",
-        owner_replied_at: null,
-      }],
+      reviews: [
+        {
+          id: 22,
+          stars: 5,
+          comment: "A’lo xizmat",
+          user_name: "Vali",
+          created_at: "2026-08-10T08:00:00Z",
+          owner_reply: "",
+          owner_replied_at: null,
+        },
+      ],
       avg: 5,
       count: 1,
       can_review: false,
@@ -272,23 +280,25 @@ function profileApi() {
     getPaymentCatalog: vi.fn().mockResolvedValue({ prices: [], methods: [] }),
     createPaymentRequest: vi.fn(),
     getStaffSetup: vi.fn().mockResolvedValue({
-      active: [{
-        id: 11,
-        name: "Haqiqiy xodim",
-        profession: "Kassir",
-        phone: "",
-        salary: 0,
-        hire_date: null,
-        status: "active",
-        note: "",
-        login: "",
-        can_login: false,
-        has_password: false,
-        permissions: [],
-        schedule: {},
-        created_at: "2026-08-01T08:00:00Z",
-        fired_at: null,
-      }],
+      active: [
+        {
+          id: 11,
+          name: "Haqiqiy xodim",
+          profession: "Kassir",
+          phone: "",
+          salary: 0,
+          hire_date: null,
+          status: "active",
+          note: "",
+          login: "",
+          can_login: false,
+          has_password: false,
+          permissions: [],
+          schedule: {},
+          created_at: "2026-08-01T08:00:00Z",
+          fired_at: null,
+        },
+      ],
       fired: [],
       active_count: 1,
       fired_count: 0,
@@ -320,44 +330,50 @@ function profileApi() {
         qarzpay: 0,
         order: 0,
       },
-      receipts: [{
-        id: 19,
-        receipt_no: 12,
-        source: "manual",
-        order_id: null,
-        pay_type: "naqd",
-        pay_text: "Naqd",
-        debtor_name: "",
-        note: "",
-        who: "Rahbar",
-        created_at: "2026-08-04T09:00:00Z",
-        total: 500000,
-        can_delete: true,
-        can_change_payment: false,
-        lines: [{
-          id: 20,
-          catalog_item_id: 2,
-          item_name: "Muhr",
-          qty: 1,
-          unit: "dona",
-          price: 500000,
+      receipts: [
+        {
+          id: 19,
+          receipt_no: 12,
+          source: "manual",
+          order_id: null,
+          pay_type: "naqd",
+          pay_text: "Naqd",
+          debtor_name: "",
+          note: "",
+          who: "Rahbar",
+          created_at: "2026-08-04T09:00:00Z",
           total: 500000,
-          cost_total: 0,
-        }],
-      }],
+          can_delete: true,
+          can_change_payment: false,
+          lines: [
+            {
+              id: 20,
+              catalog_item_id: 2,
+              item_name: "Muhr",
+              qty: 1,
+              unit: "dona",
+              price: 500000,
+              total: 500000,
+              cost_total: 0,
+            },
+          ],
+        },
+      ],
     }),
     getCashCatalog: vi.fn().mockResolvedValue([]),
     createCashReceipt: vi.fn(),
     deleteCashReceipt: vi.fn(),
     updateCashOrderPayment: vi.fn(),
-    getDebtors: vi.fn().mockResolvedValue([{
-      id: 3,
-      name: "Vali",
-      phone: "+998901234567",
-      note: "",
-      due: "",
-      balance: 100000,
-    }]),
+    getDebtors: vi.fn().mockResolvedValue([
+      {
+        id: 3,
+        name: "Vali",
+        phone: "+998901234567",
+        note: "",
+        due: "",
+        balance: 100000,
+      },
+    ]),
     createDebtor: vi.fn().mockResolvedValue({ id: 4 }),
     getDebtor: vi.fn().mockResolvedValue({
       id: 3,
@@ -366,16 +382,18 @@ function profileApi() {
       note: "",
       due: "",
       balance: 100000,
-      tx: [{
-        id: 4,
-        type: "debt",
-        amount: 100000,
-        date: "2026-08-04",
-        note: "Mahsulot",
-        order_id: null,
-        cash_receipt_id: 19,
-        created_at: "2026-08-04T09:00:00Z",
-      }],
+      tx: [
+        {
+          id: 4,
+          type: "debt",
+          amount: 100000,
+          date: "2026-08-04",
+          note: "Mahsulot",
+          order_id: null,
+          cash_receipt_id: 19,
+          created_at: "2026-08-04T09:00:00Z",
+        },
+      ],
     }),
     addDebtTransaction: vi.fn().mockResolvedValue({
       ok: true,
@@ -383,20 +401,22 @@ function profileApi() {
       balance: 50000,
     }),
     getDocumentCounterparties: vi.fn().mockResolvedValue({
-      counterparties: [{
-        id: 16,
-        name: "Ta’minotchi",
-        ctype: "Yetkazib beruvchi",
-        director: "",
-        phone: "",
-        address: "",
-        inn: "309333444",
-        account: "",
-        bank: "",
-        mfo: "",
-        note: "",
-        created_at: "2026-08-10T09:00:00Z",
-      }],
+      counterparties: [
+        {
+          id: 16,
+          name: "Ta’minotchi",
+          ctype: "Yetkazib beruvchi",
+          director: "",
+          phone: "",
+          address: "",
+          inn: "309333444",
+          account: "",
+          bank: "",
+          mfo: "",
+          note: "",
+          created_at: "2026-08-10T09:00:00Z",
+        },
+      ],
       count: 1,
       types: ["Yetkazib beruvchi", "Mijoz", "Hamkor", "Boshqa"],
     }),
@@ -404,21 +424,23 @@ function profileApi() {
     updateDocumentCounterparty: vi.fn(),
     deleteDocumentCounterparty: vi.fn(),
     getDocuments: vi.fn().mockResolvedValue({
-      documents: [{
-        id: 12,
-        direction: "chiquvchi" as const,
-        doc_type: "Shartnoma",
-        title: "",
-        number: "1",
-        doc_date: "2026-08-10",
-        contractor_id: 16,
-        contractor_name: "Ta’minotchi",
-        body: "Shartnoma matni",
-        sender_name: "",
-        receiver_inn: "",
-        status: "",
-        created_at: "2026-08-10T09:00:00Z",
-      }],
+      documents: [
+        {
+          id: 12,
+          direction: "chiquvchi" as const,
+          doc_type: "Shartnoma",
+          title: "",
+          number: "1",
+          doc_date: "2026-08-10",
+          contractor_id: 16,
+          contractor_name: "Ta’minotchi",
+          body: "Shartnoma matni",
+          sender_name: "",
+          receiver_inn: "",
+          status: "",
+          created_at: "2026-08-10T09:00:00Z",
+        },
+      ],
       count: 1,
     }),
     getDocument: vi.fn(),
@@ -428,23 +450,25 @@ function profileApi() {
     sendDocument: vi.fn(),
     respondDocument: vi.fn(),
     getWarehouseItems: vi.fn().mockResolvedValue({
-      items: [{
-        id: 17,
-        catalog_item_id: 2,
-        name: "Qog‘oz",
-        price: "15000",
-        unit: "dona",
-        stock_qty: 20,
-        cost_price: 9000,
-        fifo_next_cost: 8500,
-        fifo_value: 180000,
-        min_qty: 5,
-        image_url: "",
-        group_id: null,
-        group_name: "",
-        stock_type: "ready_food" as const,
-        low_stock: false,
-      }],
+      items: [
+        {
+          id: 17,
+          catalog_item_id: 2,
+          name: "Qog‘oz",
+          price: "15000",
+          unit: "dona",
+          stock_qty: 20,
+          cost_price: 9000,
+          fifo_next_cost: 8500,
+          fifo_value: 180000,
+          min_qty: 5,
+          image_url: "",
+          group_id: null,
+          group_name: "",
+          stock_type: "ready_food" as const,
+          low_stock: false,
+        },
+      ],
     }),
     createWarehouseMove: vi.fn(),
     deleteWarehouseMove: vi.fn(),
@@ -468,13 +492,11 @@ async function openUserProfileForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function openBusinessProfileForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole(
-    "button",
-    { name: /Profil \/ Mening sahifam/ },
-  ));
+  await user.click(
+    await screen.findByRole("button", { name: /Profil \/ Mening sahifam/ }),
+  );
   return screen.findByLabelText("Biznes nomi");
 }
-
 
 describe("profile cabinets", () => {
   it("opens typed To‘lovlarim instead of legacy cabinet payload", async () => {
@@ -508,10 +530,9 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /Mutaxassisligim va xizmatlarim/ },
-    ));
+    await user.click(
+      await screen.findByRole("button", { name: /Mutaxassisligim va xizmatlarim/ }),
+    );
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
     expect(await screen.findByText("A’lo xizmat")).toBeInTheDocument();
     expect(userApi.getReceivedReviews).toHaveBeenCalledOnce();
@@ -545,8 +566,9 @@ describe("profile cabinets", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: /Suhbatlar/ }));
-    expect(await screen.findByRole("button", { name: /Vali: Salom/ }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Vali: Salom/ }),
+    ).toBeInTheDocument();
     expect(userApi.getMessageConversations).toHaveBeenCalledOnce();
 
     userCabinet.unmount();
@@ -561,8 +583,9 @@ describe("profile cabinets", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: /Suhbatlar/ }));
-    expect(await screen.findByRole("button", { name: /Vali: Salom/ }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Vali: Salom/ }),
+    ).toBeInTheDocument();
     expect(businessApi.getMessageConversations).toHaveBeenCalledOnce();
   });
 
@@ -577,15 +600,13 @@ describe("profile cabinets", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Ali" }))
-      .toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ali" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "3 obunachi" })).toBeInTheDocument();
     expect(screen.getByText("Buyurtma #46 — Muhr")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Reklamalarim/ }));
     await user.click(await screen.findByRole("button", { name: "E'lonlarim" }));
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" })).toBeInTheDocument();
   });
 
   it("opens typed follow lists and routes their cards to public profiles", async () => {
@@ -595,17 +616,19 @@ describe("profile cabinets", () => {
       ...profileApi(),
       getFollowers: vi.fn().mockResolvedValue({
         count: 1,
-        items: [{
-          kind: "user" as const,
-          public_id: "u_1234567890abcdef",
-          name: "Vali",
-          info: "@vali",
-          image_url: "",
-          crop_x: 50,
-          crop_y: 50,
-          crop_zoom: 1,
-          followed_at: 1_785_200_000,
-        }],
+        items: [
+          {
+            kind: "user" as const,
+            public_id: "u_1234567890abcdef",
+            name: "Vali",
+            info: "@vali",
+            image_url: "",
+            crop_x: 50,
+            crop_y: 50,
+            crop_zoom: 1,
+            followed_at: 1_785_200_000,
+          },
+        ],
       }),
       getFollowing: vi.fn().mockResolvedValue({ items: [], count: 0 }),
     };
@@ -622,10 +645,7 @@ describe("profile cabinets", () => {
     await user.click(await screen.findByRole("button", { name: "3 obunachi" }));
     await user.click(await screen.findByRole("button", { name: /Vali profilini/ }));
     expect(userApi.getFollowers).toHaveBeenCalledOnce();
-    expect(onOpenUserProfile).toHaveBeenCalledWith(
-      "user",
-      "u_1234567890abcdef",
-    );
+    expect(onOpenUserProfile).toHaveBeenCalledWith("user", "u_1234567890abcdef");
 
     userCabinet.unmount();
     const onOpenBusinessProfile = vi.fn();
@@ -634,17 +654,19 @@ describe("profile cabinets", () => {
       getFollowers: vi.fn().mockResolvedValue({ items: [], count: 0 }),
       getFollowing: vi.fn().mockResolvedValue({
         count: 1,
-        items: [{
-          kind: "business" as const,
-          public_id: "b_1234567890abcdef",
-          name: "Hamkor biznes",
-          info: "Xizmat ko'rsatish",
-          image_url: "",
-          crop_x: 50,
-          crop_y: 50,
-          crop_zoom: 1,
-          followed_at: 1_785_200_000,
-        }],
+        items: [
+          {
+            kind: "business" as const,
+            public_id: "b_1234567890abcdef",
+            name: "Hamkor biznes",
+            info: "Xizmat ko'rsatish",
+            image_url: "",
+            crop_x: 50,
+            crop_y: 50,
+            crop_zoom: 1,
+            followed_at: 1_785_200_000,
+          },
+        ],
       }),
     };
     render(
@@ -658,10 +680,9 @@ describe("profile cabinets", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: "Biznes obunalari" }));
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /Hamkor biznes profilini/ },
-    ));
+    await user.click(
+      await screen.findByRole("button", { name: /Hamkor biznes profilini/ }),
+    );
     expect(businessApi.getFollowing).toHaveBeenCalledOnce();
     expect(onOpenBusinessProfile).toHaveBeenCalledWith(
       "business",
@@ -680,10 +701,7 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /Bildirishnomalarim/ },
-    ));
+    await user.click(await screen.findByRole("button", { name: /Bildirishnomalarim/ }));
     expect(await screen.findByText("Yangi xabar")).toBeInTheDocument();
   });
 
@@ -731,9 +749,11 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: /Saqlanganlar Saqlangan e'lon va bizneslar/,
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Saqlanganlar Saqlangan e'lon va bizneslar/,
+      }),
+    );
 
     expect(await screen.findByText("Uy sotiladi")).toBeInTheDocument();
     expect(screen.getByText("2 ta saqlangan")).toBeInTheDocument();
@@ -777,10 +797,9 @@ describe("profile cabinets", () => {
         onSwitched={onSwitched}
       />,
     );
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /Biznes kabinetga o‘tish/ },
-    ));
+    await user.click(
+      await screen.findByRole("button", { name: /Biznes kabinetga o‘tish/ }),
+    );
     expect(api.switchCabinet).toHaveBeenCalledWith("business");
     expect(api.logout).not.toHaveBeenCalled();
     expect(onSwitched).toHaveBeenCalledWith(businessIdentity);
@@ -799,9 +818,11 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: "🏪 Biznes ochish",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "🏪 Biznes ochish",
+      }),
+    );
     expect(screen.getByRole("heading", { name: "Biznes ochish" })).toBeInTheDocument();
     expect(screen.getByLabelText("Biznes nomi *")).toBeInTheDocument();
   });
@@ -816,17 +837,13 @@ describe("profile cabinets", () => {
         onSwitched={vi.fn()}
       />,
     );
-    expect(await screen.findByRole("heading", { name: "Turon" }))
-      .toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Turon" })).toBeInTheDocument();
     expect(screen.getByText("500 000 so‘m")).toBeInTheDocument();
     expect(screen.getByText("Onlaynlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Tizimlashtirish")).toBeInTheDocument();
     expect(screen.getByText("Ma'muriyat")).toBeInTheDocument();
     expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
-    await user.click(screen.getByRole(
-      "button",
-      { name: /Mahsulotlar/ },
-    ));
+    await user.click(screen.getByRole("button", { name: /Mahsulotlar/ }));
     expect(await screen.findByText("Muhr")).toBeInTheDocument();
     expect(screen.getByText("Tayyor mahsulotlar")).toBeInTheDocument();
   });
@@ -856,8 +873,7 @@ describe("profile cabinets", () => {
 
     expect(await screen.findByText("Biznes e'loni")).toBeInTheDocument();
     expect(api.getMyListings).toHaveBeenCalledOnce();
-    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" })).toBeInTheDocument();
   });
 
   it("opens live staff management, migrated documents and typed warehouse data", async () => {
@@ -875,25 +891,21 @@ describe("profile cabinets", () => {
     await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
     expect(await screen.findByText("Haqiqiy xodim")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
-    expect(await screen.findByRole("heading", { name: "Ma’muriyat" }))
-      .toBeInTheDocument();
-    await user.click(screen.getByRole(
-      "button",
-      { name: /Mening hujjatlarim/ },
-    ));
+    expect(
+      await screen.findByRole("heading", { name: "Ma’muriyat" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Mening hujjatlarim/ }));
     expect(await screen.findByLabelText("Rahbar F.I.Sh.")).toBeInTheDocument();
     expect(screen.getByLabelText("STIR (INN)")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Orqaga/ }));
-    await user.click(screen.getByRole(
-      "button",
-      { name: /Hujjatlar Kiruvchi/ },
-    ));
+    await user.click(screen.getByRole("button", { name: /Hujjatlar Kiruvchi/ }));
     await user.click(await screen.findByRole("button", { name: /Chiquvchi/ }));
     expect(await screen.findByText("Shartnoma")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Orqaga/ }));
     await user.click(screen.getByRole("button", { name: /Orqaga/ }));
-    expect(await screen.findByRole("heading", { name: "Ma’muriyat" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Ma’muriyat" }),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
     const warehouseButtons = screen.getAllByRole("button", { name: /Ombor/ });
     await user.click(warehouseButtons.at(-1)!);
@@ -930,13 +942,11 @@ describe("profile cabinets", () => {
       />,
     );
 
-    await user.click(await screen.findByRole(
-      "button",
-      { name: /^📒\s*Qarz daftari/ },
-    ));
+    await user.click(await screen.findByRole("button", { name: /^📒\s*Qarz daftari/ }));
     expect(await screen.findByText("Vali")).toBeInTheDocument();
-    expect(screen.getByText("Umumiy qarz").closest("section"))
-      .toHaveTextContent("100 000 so‘m");
+    expect(screen.getByText("Umumiy qarz").closest("section")).toHaveTextContent(
+      "100 000 so‘m",
+    );
     expect(api.getDebtors).toHaveBeenCalledOnce();
   });
 

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -58,21 +57,25 @@ function api() {
     createUploadGrant: vi.fn(),
     uploadGrantedFile: vi.fn(),
     getPaymentCatalog: vi.fn().mockResolvedValue({
-      prices: [{
-        price_code: "subscription_plus_1m",
-        service_type: "subscription",
-        amount_uzs: 99000,
-        plan_code: "plus",
-        duration_months: 1,
-      }],
-      methods: [{
-        id: 1,
-        method_type: "manual_card",
-        name: "Bank kartasi",
-        recipient_name: "",
-        instructions: "",
-        details: {},
-      }],
+      prices: [
+        {
+          price_code: "subscription_plus_1m",
+          service_type: "subscription",
+          amount_uzs: 99000,
+          plan_code: "plus",
+          duration_months: 1,
+        },
+      ],
+      methods: [
+        {
+          id: 1,
+          method_type: "manual_card",
+          name: "Bank kartasi",
+          recipient_name: "",
+          instructions: "",
+          details: {},
+        },
+      ],
     }),
     getMyPayments: vi.fn().mockResolvedValue([]),
     getBusinessSubscription: vi.fn().mockResolvedValue({
@@ -184,13 +187,11 @@ function api() {
 }
 
 async function openEditor(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole(
-    "button",
-    { name: /Profil \/ Mening sahifam/ },
-  ));
+  await user.click(
+    await screen.findByRole("button", { name: /Profil \/ Mening sahifam/ }),
+  );
   return screen.findByRole("heading", { name: "Profil / Mening sahifam" });
 }
-
 
 describe("v1656 business profile parity", () => {
   it("renders the customer-facing profile editor instead of technical fields", async () => {
@@ -206,30 +207,42 @@ describe("v1656 business profile parity", () => {
 
     await openEditor(user);
 
-    expect(screen.getByText("Muhr").closest("section"))
-      .toHaveClass("user-profile-card", "koprik-profile-surface");
-    expect(screen.getByRole("button", { name: "Biznes rasmini yuklash" }))
-      .toHaveClass("user-avatar-camera");
+    expect(screen.getByText("Muhr").closest("section")).toHaveClass(
+      "user-profile-card",
+      "koprik-profile-surface",
+    );
+    expect(screen.getByRole("button", { name: "Biznes rasmini yuklash" })).toHaveClass(
+      "user-avatar-camera",
+    );
     expect(screen.getByText("Do'kon havolasi")).toBeInTheDocument();
-    expect(screen.getByText(
-      "Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.",
-    )).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nusxa" })).toHaveClass("mini-btn");
     expect(screen.getByText(/3–20 belgi/)).toBeInTheDocument();
     expect(screen.getByLabelText("Faoliyat yo'nalishi")).toHaveValue("Savdo");
-    expect(screen.getByLabelText("Faoliyat turi"))
-      .toHaveValue("Oziq-ovqat do'koni");
-    expect(screen.getByRole("button", { name: /Xaritada joy belgilash/ }))
-      .toHaveClass("btn", "btn-outline", "btn-block");
+    expect(screen.getByLabelText("Faoliyat turi")).toHaveValue("Oziq-ovqat do'koni");
+    expect(screen.getByRole("button", { name: /Xaritada joy belgilash/ })).toHaveClass(
+      "btn",
+      "btn-outline",
+      "btn-block",
+    );
     expect(screen.getByText("✅ Joy belgilangan")).toBeInTheDocument();
     expect(screen.getByText("To'lov ma'lumotlari")).toBeInTheDocument();
-    expect(screen.getByText(
-      "Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.",
-    )).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi. Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Ish boshlanish vaqti")).toHaveValue("09:00");
     expect(screen.getByLabelText("Ish tugash vaqti")).toHaveValue("20:00");
-    expect(screen.getByRole("button", { name: "Saqlash" }))
-      .toHaveClass("btn", "btn-primary", "btn-block");
+    expect(screen.getByRole("button", { name: "Saqlash" })).toHaveClass(
+      "btn",
+      "btn-primary",
+      "btn-block",
+    );
 
     expect(screen.queryByLabelText("Manzil")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Kenglik")).not.toBeInTheDocument();
@@ -289,8 +302,7 @@ describe("v1656 business profile parity", () => {
     );
 
     expect(screen.getByRole("option", { name: "Klinika" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Stomatologiya" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Stomatologiya" })).toBeInTheDocument();
   });
 
   it("shows the exact v1656 validation message for an empty business name", async () => {
@@ -308,8 +320,9 @@ describe("v1656 business profile parity", () => {
     await user.clear(screen.getByLabelText("Biznes nomi"));
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
 
-    expect(await screen.findByRole("alert"))
-      .toHaveTextContent("Biznes nomini kiriting.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Biznes nomini kiriting.",
+    );
   });
 
   it("opens followers and following screens from the profile counters", async () => {
@@ -326,8 +339,9 @@ describe("v1656 business profile parity", () => {
     await openEditor(user);
     await user.click(screen.getByRole("button", { name: "0 obunachi" }));
 
-    expect(await screen.findByRole("heading", { name: "Obunachilar" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Obunachilar" }),
+    ).toBeInTheDocument();
   });
 
   it("opens live staff management instead of the legacy read-only payload", async () => {
@@ -343,10 +357,12 @@ describe("v1656 business profile parity", () => {
 
     await user.click(await screen.findByRole("button", { name: /Ma'muriyat/ }));
     await user.click(await screen.findByRole("button", { name: /Xodimlar/ }));
-    expect(await screen.findByRole("heading", { name: "Xodimlar" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ Xodim qo‘shish" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Xodimlar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "+ Xodim qo‘shish" }),
+    ).toBeInTheDocument();
   });
 
   it("opens the payment window when a plan is chosen", async () => {
@@ -384,10 +400,12 @@ describe("v1656 business profile parity", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: /Xarajatlar/ }));
-    expect(await screen.findByRole("heading", { name: "Xarajatlar" }))
-      .toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "+ Xarajat yozish" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Xarajatlar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "+ Xarajat yozish" }),
+    ).toBeInTheDocument();
   });
 
   it("opens live v1656 statistics instead of dashboard snapshot rows", async () => {
@@ -403,10 +421,12 @@ describe("v1656 business profile parity", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: /Statistika/ }));
-    expect(await screen.findByRole("heading", { name: "Statistika" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Haqiqiy pul tushumi").closest("article"))
-      .toHaveTextContent("500 000");
+    expect(
+      await screen.findByRole("heading", { name: "Statistika" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Haqiqiy pul tushumi").closest("article"),
+    ).toHaveTextContent("500 000");
     expect(client.getStatistics).toHaveBeenCalledWith("oy", "");
   });
 
@@ -426,15 +446,18 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Muhr" }))
-      .toBeInTheDocument();
-    expect(screen.queryByText("Statistika", { selector: "button b" }))
-      .not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Muhr" })).toBeInTheDocument();
+    expect(
+      screen.queryByText("Statistika", { selector: "button b" }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Ta'lim statistikasi/ }));
-    expect(await screen.findByRole("heading", { name: "Ta'lim statistikasi" }))
-      .toBeInTheDocument();
-    expect(client.getEducationStatistics)
-      .toHaveBeenCalledWith("month", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(
+      await screen.findByRole("heading", { name: "Ta'lim statistikasi" }),
+    ).toBeInTheDocument();
+    expect(client.getEducationStatistics).toHaveBeenCalledWith(
+      "month",
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
   });
 
   it("shows staff only the sections granted by the server session", async () => {
@@ -455,16 +478,19 @@ describe("v1656 business profile parity", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Ali Valiyev" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Ali Valiyev" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Kassa/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Xarajatlar/ }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Xodimlar/ }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Profil \/ Mening sahifam/ }))
-      .not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Xarajatlar/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Xodimlar/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Profil \/ Mening sahifam/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Oddiy kabinetga qaytish/ }),
+    ).not.toBeInTheDocument();
   });
 });

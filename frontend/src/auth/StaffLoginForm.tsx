@@ -3,9 +3,7 @@ import { type FormEvent, useState } from "react";
 import type { ApiClient } from "../api/client";
 import type { SessionIdentity } from "../api/types";
 
-
 export type StaffLoginApi = Pick<ApiClient, "loginStaff">;
-
 
 export function StaffLoginForm({
   api,
@@ -27,16 +25,16 @@ export function StaffLoginForm({
     setBusy(true);
     setError("");
     try {
-      onAuthenticated(await api.loginStaff({
-        firm_login: firmLogin.trim().toLowerCase(),
-        login: login.trim().toLowerCase(),
-        password,
-      }));
+      onAuthenticated(
+        await api.loginStaff({
+          firm_login: firmLogin.trim().toLowerCase(),
+          login: login.trim().toLowerCase(),
+          password,
+        }),
+      );
     } catch (requestError) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Kirish amalga oshmadi.",
+        requestError instanceof Error ? requestError.message : "Kirish amalga oshmadi.",
       );
     } finally {
       setBusy(false);
@@ -50,7 +48,9 @@ export function StaffLoginForm({
         onSubmit={(event) => void submit(event)}
       >
         <div className="koprik-staff-shell__heading">
-          <div className="koprik-staff-shell__icon" aria-hidden="true">🏪</div>
+          <div className="koprik-staff-shell__icon" aria-hidden="true">
+            🏪
+          </div>
           <h1 className="lead">Xodim kirishi</h1>
           <p className="idesc">Do'kon rahbari bergan login va parol bilan kiring.</p>
         </div>
@@ -88,7 +88,11 @@ export function StaffLoginForm({
             required
           />
         </label>
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy}>
           {busy ? "Kirilmoqda..." : "Kirish"}
         </button>

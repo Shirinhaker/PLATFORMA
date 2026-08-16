@@ -8,7 +8,6 @@ import { OwnerListingsV1656 } from "./OwnerListingsV1656";
 import { PublicListingsV1656 } from "./PublicListingsV1656";
 import { SavedListingsV1656 } from "./SavedListingsV1656";
 
-
 const leaflet = vi.hoisted(() => {
   const map = {
     invalidateSize: vi.fn(),
@@ -34,7 +33,6 @@ vi.mock("leaflet", () => ({
   },
 }));
 
-
 const listing = {
   public_id: "l_1234567890abcdef",
   cat: "uy" as const,
@@ -54,7 +52,6 @@ const listing = {
   is_saved: false,
 };
 
-
 describe("v1656 public E'lonlar", () => {
   it("renders six categories, loads the selected category and opens its accordion", async () => {
     const user = userEvent.setup();
@@ -64,17 +61,12 @@ describe("v1656 public E'lonlar", () => {
       toggleListingSave: vi.fn().mockResolvedValue({ saved: true }),
     };
     const onOpenOwner = vi.fn();
-    render(
-      <PublicListingsV1656
-        api={api}
-        authenticated
-        onOpenOwner={onOpenOwner}
-      />,
-    );
+    render(<PublicListingsV1656 api={api} authenticated onOpenOwner={onOpenOwner} />);
 
     expect(screen.getByRole("heading", { name: "E’lonlar" })).toBeInTheDocument();
-    expect(screen.getByText("Toifani tanlang — tegishli e’lonlar shu oynada chiqadi."))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("Toifani tanlang — tegishli e’lonlar shu oynada chiqadi."),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/ta e'lon$/)).toHaveLength(6);
 
     await user.click(screen.getByRole("button", { name: /Uy-joy/ }));
@@ -90,8 +82,9 @@ describe("v1656 public E'lonlar", () => {
     await user.click(screen.getByRole("button", { name: "Bog'lanish" }));
     expect(onOpenOwner).toHaveBeenCalledWith("business", "b_1234567890abcdef");
     await user.click(screen.getByRole("button", { name: "🔖 Saqlash" }));
-    expect(await screen.findByRole("button", { name: "✓ Saqlangan" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "✓ Saqlangan" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the exact v1656 empty-category text", async () => {
@@ -109,10 +102,12 @@ describe("v1656 public E'lonlar", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Texnika/ }));
-    expect(await screen.findByRole("heading", { name: "Bu toifada e'lon yo'q" }))
-      .toBeInTheDocument();
-    expect(screen.getByText("Texnika bo'yicha hozircha e'lonlar joylanmagan."))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Bu toifada e'lon yo'q" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Texnika bo'yicha hozircha e'lonlar joylanmagan."),
+    ).toBeInTheDocument();
   });
 
   it("shows the first photo on the compact card and keeps all media in the opened detail", async () => {
@@ -145,31 +140,30 @@ describe("v1656 public E'lonlar", () => {
     expect(screen.getByText("2 rasm · 1 video")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
-    expect(container.querySelector(".listing-media-grid.is-compact"))
-      .toHaveClass("is-horizontal");
-    expect(container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"))
-      .toHaveLength(3);
+    expect(container.querySelector(".listing-media-grid.is-compact")).toHaveClass(
+      "is-horizontal",
+    );
+    expect(
+      container.querySelectorAll(".listing-media-grid.is-compact .listing-media-card"),
+    ).toHaveLength(3);
     const map = screen.getByLabelText("E'lon xaritasi");
     await waitFor(() => expect(leaflet.mapFactory).toHaveBeenCalled());
     expect(leaflet.map.setView).toHaveBeenCalledWith([37.82, 67.58], 16);
     const detailPrice = container.querySelector(".el-price");
     expect(detailPrice).toBeInTheDocument();
-    expect(map.compareDocumentPosition(detailPrice!))
-      .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByLabelText("Xarita manzili"))
-      .toHaveTextContent("Qumqo‘rg‘on");
-    expect(screen.getByLabelText("Xarita manzili"))
-      .toHaveTextContent("37.82000, 67.58000");
+    expect(map.compareDocumentPosition(detailPrice!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByLabelText("Xarita manzili")).toHaveTextContent("Qumqo‘rg‘on");
+    expect(screen.getByLabelText("Xarita manzili")).toHaveTextContent(
+      "37.82000, 67.58000",
+    );
   });
 
   it("opens listing photos in the v1656 media viewer", async () => {
     const user = userEvent.setup();
     render(
-      <ListingDetailV1656
-        listing={listing}
-        onContact={vi.fn()}
-        onSave={vi.fn()}
-      />,
+      <ListingDetailV1656 listing={listing} onContact={vi.fn()} onSave={vi.fn()} />,
     );
 
     await user.click(screen.getByRole("button", { name: "Rasmni katta ko‘rish" }));
@@ -181,8 +175,9 @@ describe("v1656 public E'lonlar", () => {
       "/home.webp",
     );
     await user.click(screen.getByRole("button", { name: "Yopish" }));
-    expect(screen.queryByRole("dialog", { name: "E'lon mediasi" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "E'lon mediasi" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the standalone v1656 listing detail surface", async () => {
@@ -197,8 +192,9 @@ describe("v1656 public E'lonlar", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: listing.title }))
-      .toHaveClass("biz-title");
+    expect(await screen.findByRole("heading", { name: listing.title })).toHaveClass(
+      "biz-title",
+    );
     expect(container.querySelector(".biz-hero .emoji")).toHaveTextContent("📦");
     expect(container.querySelector(".biz-sub")).toHaveTextContent("Kelishilgan");
     expect(container.querySelector(".actionbar")).toBeInTheDocument();
@@ -226,7 +222,6 @@ describe("v1656 public E'lonlar", () => {
   });
 });
 
-
 describe("v1656 owner E'lonlar", () => {
   it("opens a placed listing without requiring it to be public", async () => {
     const user = userEvent.setup();
@@ -244,15 +239,17 @@ describe("v1656 owner E'lonlar", () => {
       />,
     );
 
-    await user.click(await screen.findByRole("button", {
-      name: "3 xonali kvartira e'lonini ko'rish",
-    }));
+    await user.click(
+      await screen.findByRole("button", {
+        name: "3 xonali kvartira e'lonini ko'rish",
+      }),
+    );
 
-    expect(screen.getByText("Markazda, barcha qulayliklar bor"))
-      .toBeInTheDocument();
+    expect(screen.getByText("Markazda, barcha qulayliklar bor")).toBeInTheDocument();
     expect(screen.getByText("📍 Qumqo‘rg‘on")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rasmni katta ko‘rish" }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rasmni katta ko‘rish" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps user form texts, required-title message and delete confirmation", async () => {
@@ -271,22 +268,24 @@ describe("v1656 owner E'lonlar", () => {
     expect(screen.getByRole("button", { name: "E'lonlarim" })).toHaveClass("on");
 
     await user.click(screen.getByRole("button", { name: "+ E'lon joylash" }));
-    expect(screen.getByPlaceholderText("Masalan: Nexia 3 sotiladi"))
-      .toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Narx yoki «kelishilgan»"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Masalan: Nexia 3 sotiladi"),
+    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Narx yoki «kelishilgan»")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Joylash" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Sarlavha kiritilishi shart.");
 
-    expect(screen.queryByRole("button", { name: "Bekor qilish" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Bekor qilish" }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Orqaga" }));
-    expect(screen.getByRole("button", { name: "+ E'lon joylash" }))
-      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ E'lon joylash" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "E'lonni o'chirish" }));
     expect(screen.getByText("Bu e'lon o'chirilsinmi?")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "O'chirish" }));
-    await waitFor(() => expect(api.deleteListing).toHaveBeenCalledWith(listing.public_id));
+    await waitFor(() =>
+      expect(api.deleteListing).toHaveBeenCalledWith(listing.public_id),
+    );
   });
 
   it("shows the business-only visibility choices", async () => {
@@ -306,8 +305,9 @@ describe("v1656 owner E'lonlar", () => {
     );
 
     await user.click(await screen.findByRole("button", { name: "+ E'lon joylash" }));
-    expect(screen.getByPlaceholderText("Masalan: 3 xonali kvartira"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Masalan: 3 xonali kvartira"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Butun platformaga")).toBeInTheDocument();
     expect(screen.getByText("Faqat sahifam mehmonlariga")).toBeInTheDocument();
   });
@@ -335,15 +335,16 @@ describe("v1656 owner E'lonlar", () => {
       new File(["image"], "photo.png", { type: "image/png" }),
     );
 
-    expect(await screen.findByRole("button", { name: "Rasmni katta ko‘rish" }))
-      .toHaveClass("listing-upload-open");
+    expect(
+      await screen.findByRole("button", { name: "Rasmni katta ko‘rish" }),
+    ).toHaveClass("listing-upload-open");
     expect(screen.getByText("RASM")).toHaveClass("listing-upload-status");
     await user.click(screen.getByRole("button", { name: "Mediani olib tashlash" }));
-    expect(screen.queryByRole("button", { name: "Rasmni katta ko‘rish" }))
-      .not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Rasmni katta ko‘rish" }),
+    ).not.toBeInTheDocument();
   });
 });
-
 
 describe("v1656 saved E'lonlar", () => {
   it("opens a saved listing from its card", async () => {

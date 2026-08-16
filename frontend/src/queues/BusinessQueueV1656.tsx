@@ -16,7 +16,6 @@ import {
   BusinessMedicalQueueV1656View,
 } from "../profiles/BusinessMedicalV1656View";
 
-
 export type BusinessQueueApi = Pick<
   ApiClient,
   | "getBusinessQueueSetup"
@@ -33,10 +32,7 @@ type Props = {
   api: BusinessQueueApi;
   direction: string;
   view: "medical-providers" | "medical-queue";
-  onBackHandlerChange: (
-    handler: (() => void) | null,
-    title?: string,
-  ) => void;
+  onBackHandlerChange: (handler: (() => void) | null, title?: string) => void;
 };
 
 const QUEUE_METHODS: ReadonlyArray<keyof BusinessQueueApi> = [
@@ -50,12 +46,10 @@ const QUEUE_METHODS: ReadonlyArray<keyof BusinessQueueApi> = [
   "swapBusinessQueues",
 ];
 
-export function supportsBusinessQueueApi(
-  api: object,
-): api is BusinessQueueApi {
-  return QUEUE_METHODS.every((method) => (
-    typeof (api as Partial<BusinessQueueApi>)[method] === "function"
-  ));
+export function supportsBusinessQueueApi(api: object): api is BusinessQueueApi {
+  return QUEUE_METHODS.every(
+    (method) => typeof (api as Partial<BusinessQueueApi>)[method] === "function",
+  );
 }
 
 function localIsoDate() {
@@ -138,21 +132,24 @@ export function BusinessQueueV1656({
   const [error, setError] = useState("");
   const entriesRequest = useRef(0);
 
-  const loadDate = useCallback(async (date: string) => {
-    const requestId = ++entriesRequest.current;
-    setEntriesLoading(true);
-    setError("");
-    try {
-      const nextEntries = await api.getBusinessQueueEntries(date);
-      if (requestId === entriesRequest.current) setEntries(nextEntries);
-    } catch (reason) {
-      if (requestId === entriesRequest.current) {
-        setError(reason instanceof Error ? reason.message : "Navbat yuklanmadi.");
+  const loadDate = useCallback(
+    async (date: string) => {
+      const requestId = ++entriesRequest.current;
+      setEntriesLoading(true);
+      setError("");
+      try {
+        const nextEntries = await api.getBusinessQueueEntries(date);
+        if (requestId === entriesRequest.current) setEntries(nextEntries);
+      } catch (reason) {
+        if (requestId === entriesRequest.current) {
+          setError(reason instanceof Error ? reason.message : "Navbat yuklanmadi.");
+        }
+      } finally {
+        if (requestId === entriesRequest.current) setEntriesLoading(false);
       }
-    } finally {
-      if (requestId === entriesRequest.current) setEntriesLoading(false);
-    }
-  }, [api]);
+    },
+    [api],
+  );
 
   useEffect(() => {
     if (!error) return;
@@ -162,9 +159,8 @@ export function BusinessQueueV1656({
 
   useEffect(() => {
     let active = true;
-    const entriesRequestId = view === "medical-queue"
-      ? ++entriesRequest.current
-      : entriesRequest.current;
+    const entriesRequestId =
+      view === "medical-queue" ? ++entriesRequest.current : entriesRequest.current;
     async function load() {
       setInitialLoading(true);
       setError("");
@@ -184,14 +180,18 @@ export function BusinessQueueV1656({
         }
       } catch (reason) {
         if (active) {
-          setError(reason instanceof Error ? reason.message : "Navbat bo‘limi yuklanmadi.");
+          setError(
+            reason instanceof Error ? reason.message : "Navbat bo‘limi yuklanmadi.",
+          );
         }
       } finally {
         if (active) setInitialLoading(false);
       }
     }
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, view]);
 
   const records = setupRecords(setup);
@@ -212,10 +212,7 @@ export function BusinessQueueV1656({
     }
   }
 
-  async function patchDoctor(
-    id: number | string,
-    record: BusinessOnlineRecord,
-  ) {
+  async function patchDoctor(id: number | string, record: BusinessOnlineRecord) {
     setBusy(true);
     setError("");
     try {
@@ -223,9 +220,9 @@ export function BusinessQueueV1656({
         Number(id),
         providerWrite(record),
       );
-      setProviders((current) => current.map((provider) => (
-        provider.id === saved.id ? saved : provider
-      )));
+      setProviders((current) =>
+        current.map((provider) => (provider.id === saved.id ? saved : provider)),
+      );
       return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Yozuv yangilanmadi.");
@@ -235,91 +232,96 @@ export function BusinessQueueV1656({
     }
   }
 
-  const content = view === "medical-providers" ? (
-    <BusinessMedicalProvidersV1656View
-      direction={direction}
-      doctors={doctorRecords}
-      staff={records.staff}
-      items={records.items}
-      busy={busy}
-      loading={initialLoading}
-      createDoctor={createDoctor}
-      patchDoctor={patchDoctor}
-      onBackHandlerChange={onBackHandlerChange}
-    />
-  ) : (
-    <BusinessMedicalQueueV1656View
-      direction={direction}
-      rows={entries.map(entryRecord)}
-      doctors={doctorRecords}
-      staff={records.staff}
-      items={records.items}
-      busy={busy}
-      loading={initialLoading || entriesLoading}
-      createDoctor={createDoctor}
-      patchDoctor={patchDoctor}
-      createOffline={async (input) => {
-        setBusy(true);
-        setError("");
-        try {
-          return entryRecord(await api.createBusinessOfflineQueue({
-            item_public_id: input.itemId,
-            provider_id: Number(input.providerId),
-            queue_date: input.queueDate,
-            patient_name: input.patientName,
-            phone: input.phone,
-            note: "",
-            slot_time: "",
-          }));
-        } catch (reason) {
-          setError(reason instanceof Error ? reason.message : "Navbat saqlanmadi.");
-          return null;
-        } finally {
-          setBusy(false);
-        }
-      }}
-      changeStatus={async (id, status) => {
-        setBusy(true);
-        setError("");
-        try {
-          const saved = await api.changeBusinessQueueStatus(
-            Number(id),
-            status as QueueEntryStatus,
-          );
-          setEntries((current) => current.map((entry) => (
-            entry.id === saved.id ? saved : entry
-          )));
-          return true;
-        } catch (reason) {
-          setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
-          return false;
-        } finally {
-          setBusy(false);
-        }
-      }}
-      swapQueues={async (first, second) => {
-        setBusy(true);
-        setError("");
-        try {
-          await api.swapBusinessQueues(Number(first), Number(second));
-          return true;
-        } catch (reason) {
-          setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
-          return false;
-        } finally {
-          setBusy(false);
-        }
-      }}
-      loadDate={loadDate}
-      onBackHandlerChange={onBackHandlerChange}
-    />
-  );
+  const content =
+    view === "medical-providers" ? (
+      <BusinessMedicalProvidersV1656View
+        direction={direction}
+        doctors={doctorRecords}
+        staff={records.staff}
+        items={records.items}
+        busy={busy}
+        loading={initialLoading}
+        createDoctor={createDoctor}
+        patchDoctor={patchDoctor}
+        onBackHandlerChange={onBackHandlerChange}
+      />
+    ) : (
+      <BusinessMedicalQueueV1656View
+        direction={direction}
+        rows={entries.map(entryRecord)}
+        doctors={doctorRecords}
+        staff={records.staff}
+        items={records.items}
+        busy={busy}
+        loading={initialLoading || entriesLoading}
+        createDoctor={createDoctor}
+        patchDoctor={patchDoctor}
+        createOffline={async (input) => {
+          setBusy(true);
+          setError("");
+          try {
+            return entryRecord(
+              await api.createBusinessOfflineQueue({
+                item_public_id: input.itemId,
+                provider_id: Number(input.providerId),
+                queue_date: input.queueDate,
+                patient_name: input.patientName,
+                phone: input.phone,
+                note: "",
+                slot_time: "",
+              }),
+            );
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Navbat saqlanmadi.");
+            return null;
+          } finally {
+            setBusy(false);
+          }
+        }}
+        changeStatus={async (id, status) => {
+          setBusy(true);
+          setError("");
+          try {
+            const saved = await api.changeBusinessQueueStatus(
+              Number(id),
+              status as QueueEntryStatus,
+            );
+            setEntries((current) =>
+              current.map((entry) => (entry.id === saved.id ? saved : entry)),
+            );
+            return true;
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
+            return false;
+          } finally {
+            setBusy(false);
+          }
+        }}
+        swapQueues={async (first, second) => {
+          setBusy(true);
+          setError("");
+          try {
+            await api.swapBusinessQueues(Number(first), Number(second));
+            return true;
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Amal bajarilmadi.");
+            return false;
+          } finally {
+            setBusy(false);
+          }
+        }}
+        loadDate={loadDate}
+        onBackHandlerChange={onBackHandlerChange}
+      />
+    );
 
   return (
     <>
       {error ? (
         <div className="business-medical-v1656">
-          <div className="app-toast on" role="alert">{error}</div>
+          <div className="app-toast on" role="alert">
+            {error}
+          </div>
         </div>
       ) : null}
       {content}

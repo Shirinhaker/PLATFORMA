@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { AdminApiClient, AuditDetail, AuditRow } from "./admin-client";
 
-
 export type AdminAuditApi = Pick<
   AdminApiClient,
   "audit" | "auditDetail" | "auditExportUrl"
@@ -18,10 +17,11 @@ function stamp(seconds: number) {
   if (!seconds) return "—";
   const at = new Date(seconds * 1000);
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()}`
-    + ` ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+  return (
+    `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()}` +
+    ` ${pad(at.getHours())}:${pad(at.getMinutes())}`
+  );
 }
-
 
 export function AdminAudit({ api }: Props) {
   const [action, setAction] = useState("");
@@ -69,7 +69,9 @@ export function AdminAudit({ api }: Props) {
       </div>
 
       <div className="filterbar">
-        <label className="sr-only" htmlFor="auditAction">Amal</label>
+        <label className="sr-only" htmlFor="auditAction">
+          Amal
+        </label>
         <input
           id="auditAction"
           placeholder="Amal — masalan payment.approve"
@@ -79,17 +81,12 @@ export function AdminAudit({ api }: Props) {
         <button type="button" disabled={loading} onClick={() => void load()}>
           Ko‘rsatish
         </button>
-        <a
-          className="secondary compact export-link"
-          href={api.auditExportUrl(action)}
-        >
+        <a className="secondary compact export-link" href={api.auditExportUrl(action)}>
           CSV yuklab olish
         </a>
       </div>
 
-      <div className="muted">
-        Bu jurnal o‘zgartirilmaydi va o‘chirilmaydi.
-      </div>
+      <div className="muted">Bu jurnal o‘zgartirilmaydi va o‘chirilmaydi.</div>
 
       {text ? (
         <div className={`message${failed ? " error" : ""}`} role="status">
@@ -111,27 +108,33 @@ export function AdminAudit({ api }: Props) {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6}>Yuklanmoqda…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={6}>Yozuv yo‘q.</td></tr>
-            ) : rows.map((row) => (
-              <tr key={row.id}>
-                <td>{stamp(row.created_at)}</td>
-                <td>{row.admin_tg_id}</td>
-                <td>{row.action}</td>
-                <td>{`${row.target_kind} ${row.target_id}`}</td>
-                <td>{row.reason || "—"}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="secondary compact"
-                    onClick={() => void open(row.id)}
-                  >
-                    Batafsil
-                  </button>
-                </td>
+              <tr>
+                <td colSpan={6}>Yuklanmoqda…</td>
               </tr>
-            ))}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={6}>Yozuv yo‘q.</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{stamp(row.created_at)}</td>
+                  <td>{row.admin_tg_id}</td>
+                  <td>{row.action}</td>
+                  <td>{`${row.target_kind} ${row.target_id}`}</td>
+                  <td>{row.reason || "—"}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary compact"
+                      onClick={() => void open(row.id)}
+                    >
+                      Batafsil
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -149,22 +152,27 @@ export function AdminAudit({ api }: Props) {
             </button>
           </div>
           <dl className="detail-grid">
-            <div><dt>Admin</dt><dd>{selected.admin_tg_id}</dd></div>
-            <div><dt>Sana</dt><dd>{stamp(selected.created_at)}</dd></div>
+            <div>
+              <dt>Admin</dt>
+              <dd>{selected.admin_tg_id}</dd>
+            </div>
+            <div>
+              <dt>Sana</dt>
+              <dd>{stamp(selected.created_at)}</dd>
+            </div>
             <div>
               <dt>Obyekt</dt>
               <dd>{`${selected.target_kind} ${selected.target_id}`}</dd>
             </div>
-            <div><dt>Brauzer</dt><dd>{selected.user_agent || "—"}</dd></div>
+            <div>
+              <dt>Brauzer</dt>
+              <dd>{selected.user_agent || "—"}</dd>
+            </div>
           </dl>
           <div className="muted">Oldingi holat</div>
-          <pre className="audit-json">
-            {JSON.stringify(selected.before, null, 2)}
-          </pre>
+          <pre className="audit-json">{JSON.stringify(selected.before, null, 2)}</pre>
           <div className="muted">Yangi holat</div>
-          <pre className="audit-json">
-            {JSON.stringify(selected.after, null, 2)}
-          </pre>
+          <pre className="audit-json">{JSON.stringify(selected.after, null, 2)}</pre>
         </div>
       ) : null}
     </section>

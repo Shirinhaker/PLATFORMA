@@ -13,12 +13,11 @@ export function SessionStatus({
     );
   }
   return (
-    <main
-      className="session-panel session-panel--message"
-      role="alert"
-    >
+    <main className="session-panel session-panel--message" role="alert">
       <p>Server bilan bog‘lanib bo‘lmadi.</p>
-      <button type="button" onClick={onRetry}>Qayta urinish</button>
+      <button type="button" onClick={onRetry}>
+        Qayta urinish
+      </button>
     </main>
   );
 }

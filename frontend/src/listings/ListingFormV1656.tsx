@@ -13,7 +13,6 @@ import {
 import { readHomeLocation } from "../legacy/public/location-storage";
 import { ListingMediaViewerV1656 } from "./ListingMediaViewerV1656";
 
-
 type FormApi = Pick<ApiClient, "createUploadGrant" | "uploadGrantedFile">;
 type Props = {
   actor: "user" | "business";
@@ -33,7 +32,6 @@ const CATEGORIES: ReadonlyArray<{ key: ListingCategory; name: string }> = [
 
 type DraftMedia = ListingMediaAttachment & { previewUrl: string };
 
-
 export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
   const [cat, setCat] = useState<ListingCategory>("uy");
   const [title, setTitle] = useState("");
@@ -50,18 +48,25 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
   const homeLocation = readHomeLocation();
   const previewUrls = useRef(new Set<string>());
 
-  useEffect(() => () => {
-    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
-    previewUrls.current.clear();
-  }, []);
+  useEffect(
+    () => () => {
+      previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      previewUrls.current.clear();
+    },
+    [],
+  );
 
   if (picker) {
     return (
       <BusinessLocationPickerV1656View
-        fallback={homeLocation ? {
-          latitude: homeLocation.latitude ?? 41.311,
-          longitude: homeLocation.longitude ?? 69.28,
-        } : null}
+        fallback={
+          homeLocation
+            ? {
+                latitude: homeLocation.latitude ?? 41.311,
+                longitude: homeLocation.longitude ?? 69.28,
+              }
+            : null
+        }
         prefix={actor === "business" ? "be" : "ue"}
         value={point}
         onCancel={() => setPicker(false)}
@@ -94,9 +99,8 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
           size_bytes: file.size,
         });
         await api.uploadGrantedFile(grant, file);
-        const previewUrl = typeof URL.createObjectURL === "function"
-          ? URL.createObjectURL(file)
-          : "";
+        const previewUrl =
+          typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : "";
         if (previewUrl) previewUrls.current.add(previewUrl);
         setMedia((current) => [
           ...current,
@@ -162,15 +166,21 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
           ))}
         </div>
       </div>
-      <label className="field">Sarlavha
+      <label className="field">
+        Sarlavha
         <input
           className="input"
-          placeholder={actor === "business" ? "Masalan: 3 xonali kvartira" : "Masalan: Nexia 3 sotiladi"}
+          placeholder={
+            actor === "business"
+              ? "Masalan: 3 xonali kvartira"
+              : "Masalan: Nexia 3 sotiladi"
+          }
           value={title}
           onChange={(event) => setTitle(event.currentTarget.value)}
         />
       </label>
-      <label className="field">Narx
+      <label className="field">
+        Narx
         <input
           className="input"
           placeholder="Narx yoki «kelishilgan»"
@@ -178,7 +188,8 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
           onChange={(event) => setPrice(event.currentTarget.value)}
         />
       </label>
-      <label className="field">Tavsif
+      <label className="field">
+        Tavsif
         <textarea
           className="textarea"
           placeholder="E'lon haqida batafsil"
@@ -204,17 +215,33 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
             {media.map((item, index) => (
               <div className="listing-upload-item" key={`${item.object_key}:${index}`}>
                 <button
-                  aria-label={item.type === "video" ? "Videoni katta ko‘rish" : "Rasmni katta ko‘rish"}
+                  aria-label={
+                    item.type === "video"
+                      ? "Videoni katta ko‘rish"
+                      : "Rasmni katta ko‘rish"
+                  }
                   className="listing-upload-open"
                   type="button"
                   onClick={() => setOpenedMedia(item)}
                 >
                   {item.type === "video" ? (
-                    <video className="listing-upload-visual" muted playsInline preload="metadata" src={item.previewUrl || undefined} />
+                    <video
+                      className="listing-upload-visual"
+                      muted
+                      playsInline
+                      preload="metadata"
+                      src={item.previewUrl || undefined}
+                    />
                   ) : (
-                    <img alt="E'lon rasmi" className="listing-upload-visual" src={item.previewUrl || undefined} />
+                    <img
+                      alt="E'lon rasmi"
+                      className="listing-upload-visual"
+                      src={item.previewUrl || undefined}
+                    />
                   )}
-                  {item.type === "video" ? <span className="listing-media-play">▶</span> : null}
+                  {item.type === "video" ? (
+                    <span className="listing-media-play">▶</span>
+                  ) : null}
                   <span className="listing-upload-status">
                     {item.type === "video" ? "VIDEO" : "RASM"}
                   </span>
@@ -237,7 +264,9 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
         <button className="upload" type="button" onClick={() => setPicker(true)}>
           📍 Xaritada joy belgilash
         </button>
-        <div className="idesc">{point ? "✅ Joy belgilandi" : "Joy hali belgilanmagan"}</div>
+        <div className="idesc">
+          {point ? "✅ Joy belgilandi" : "Joy hali belgilanmagan"}
+        </div>
         <input
           className="input"
           placeholder="Manzil nomi (ixtiyoriy)"
@@ -254,7 +283,10 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
             onClick={() => setVisibility("all")}
           >
             <span className="v-ic">🌍</span>
-            <div><h5>Butun platformaga</h5><p>Bosh sahifa, xarita va qidiruvda hammaga ko&apos;rinadi.</p></div>
+            <div>
+              <h5>Butun platformaga</h5>
+              <p>Bosh sahifa, xarita va qidiruvda hammaga ko&apos;rinadi.</p>
+            </div>
           </button>
           <button
             className={`vis-card${visibility === "own" ? " on" : ""}`}
@@ -262,11 +294,18 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
             onClick={() => setVisibility("own")}
           >
             <span className="v-ic">🏪</span>
-            <div><h5>Faqat sahifam mehmonlariga</h5><p>Faqat sahifangizga kirganlar ko&apos;radi.</p></div>
+            <div>
+              <h5>Faqat sahifam mehmonlariga</h5>
+              <p>Faqat sahifangizga kirganlar ko&apos;radi.</p>
+            </div>
           </button>
         </div>
       ) : null}
-      {error ? <div className="story-upload-error on" role="alert">{error}</div> : null}
+      {error ? (
+        <div className="story-upload-error on" role="alert">
+          {error}
+        </div>
+      ) : null}
       <button
         className="btn btn-primary btn-block"
         disabled={busy || uploading > 0}
@@ -276,7 +315,9 @@ export function ListingFormV1656({ actor, api, busy, onSave }: Props) {
         {uploading ? `Media yuklanmoqda… ${uploading}` : "Joylash"}
       </button>
       <ListingMediaViewerV1656
-        media={openedMedia ? { type: openedMedia.type, url: openedMedia.previewUrl } : null}
+        media={
+          openedMedia ? { type: openedMedia.type, url: openedMedia.previewUrl } : null
+        }
         onClose={() => setOpenedMedia(null)}
       />
     </div>

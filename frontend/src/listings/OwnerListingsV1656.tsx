@@ -10,7 +10,6 @@ import { ListingFormV1656 } from "./ListingFormV1656";
 import { ListingMediaGridV1656 } from "./ListingMediaGridV1656";
 import "./ListingsV1656.css";
 
-
 export type OwnerListingsApi = Pick<
   ApiClient,
   | "getMyListings"
@@ -18,7 +17,8 @@ export type OwnerListingsApi = Pick<
   | "deleteListing"
   | "createUploadGrant"
   | "uploadGrantedFile"
-> & Partial<Pick<ApiClient, "getPaymentCatalog" | "createPaymentRequest">>;
+> &
+  Partial<Pick<ApiClient, "getPaymentCatalog" | "createPaymentRequest">>;
 
 type Props = {
   actor: "user" | "business";
@@ -30,7 +30,12 @@ type Props = {
 };
 
 const ICONS: Record<string, string> = {
-  uy: "🏠", ish: "💼", moshina: "🚙", hayvon: "🐾", texnika: "📱", boshqa: "📦",
+  uy: "🏠",
+  ish: "💼",
+  moshina: "🚙",
+  hayvon: "🐾",
+  texnika: "📱",
+  boshqa: "📦",
 };
 
 /** v1656 `payments.py:57` dagi tarif kodi. */
@@ -40,7 +45,6 @@ function statusText(status: ListingRead["status"]) {
   if (status === "payment_pending") return "To‘lov kutilmoqda";
   return status === "active" ? "Faol" : "O'chiq";
 }
-
 
 export function OwnerListingsV1656({
   actor,
@@ -66,27 +70,40 @@ export function OwnerListingsV1656({
   useEffect(() => {
     if (!payFor || catalog || !api.getPaymentCatalog) return;
     let active = true;
-    void api.getPaymentCatalog()
-      .then((value) => { if (active) setCatalog(value); })
+    void api
+      .getPaymentCatalog()
+      .then((value) => {
+        if (active) setCatalog(value);
+      })
       .catch((reason: unknown) => {
         if (!active) return;
         setPayFor(null);
-        setError(reason instanceof Error
-          ? reason.message
-          : "To‘lov ma’lumotlari yuklanmadi.");
+        setError(
+          reason instanceof Error ? reason.message : "To‘lov ma’lumotlari yuklanmadi.",
+        );
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [api, payFor, catalog]);
 
   useEffect(() => {
     let active = true;
-    api.getMyListings()
-      .then((value) => { if (active) setRows(value); })
-      .catch((reason) => {
-        if (active) setError(reason instanceof Error ? reason.message : "E'lonlar yuklanmadi.");
+    api
+      .getMyListings()
+      .then((value) => {
+        if (active) setRows(value);
       })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((reason) => {
+        if (active)
+          setError(reason instanceof Error ? reason.message : "E'lonlar yuklanmadi.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   async function create(body: ListingCreate) {
@@ -117,7 +134,7 @@ export function OwnerListingsV1656({
     try {
       await api.deleteListing(publicId);
       setRows((current) => current.filter((row) => row.public_id !== publicId));
-      setOpened((current) => current === publicId ? null : current);
+      setOpened((current) => (current === publicId ? null : current));
       setConfirmId(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "E'lon o'chirilmadi.");
@@ -130,48 +147,56 @@ export function OwnerListingsV1656({
     <>
       <section className="promotion-v1656">
         <div className="ad-tabs">
-          <button
-            className="ad-tab"
-            type="button"
-            onClick={onOpenAdvertisements}
-          >
+          <button className="ad-tab" type="button" onClick={onOpenAdvertisements}>
             Reklamalarim
           </button>
-          <button className="ad-tab on" type="button">E&apos;lonlarim</button>
+          <button className="ad-tab on" type="button">
+            E&apos;lonlarim
+          </button>
         </div>
-        {notice ? <div className="story-upload-success on" role="status">{notice}</div> : null}
-        {error ? <div className="story-upload-error on" role="alert">{error}</div> : null}
+        {notice ? (
+          <div className="story-upload-success on" role="status">
+            {notice}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="story-upload-error on" role="alert">
+            {error}
+          </div>
+        ) : null}
         {form ? (
           <>
             {embedded ? (
               <button
                 className="btn btn-soft btn-block"
                 type="button"
-                onClick={() => { setForm(false); setError(""); }}
+                onClick={() => {
+                  setForm(false);
+                  setError("");
+                }}
               >
                 ← E&apos;lonlarimga qaytish
               </button>
             ) : null}
-            <ListingFormV1656
-              actor={actor}
-              api={api}
-              busy={busy}
-              onSave={create}
-            />
+            <ListingFormV1656 actor={actor} api={api} busy={busy} onSave={create} />
           </>
         ) : (
           <>
             <button
               className="btn btn-primary btn-block"
               type="button"
-              onClick={() => { setForm(true); setNotice(""); }}
+              onClick={() => {
+                setForm(true);
+                setNotice("");
+              }}
             >
               + E&apos;lon joylash
             </button>
             {loading ? <div className="list-sub">Yuklanmoqda...</div> : null}
             {!loading && !rows.length ? (
               <div className="empty listing-empty">
-                <h3>Hozircha e&apos;lon yo&apos;q</h3><p>Yuqoridagi tugma orqali joylang.</p>
+                <h3>Hozircha e&apos;lon yo&apos;q</h3>
+                <p>Yuqoridagi tugma orqali joylang.</p>
               </div>
             ) : null}
             {rows.map((row) => {
@@ -186,24 +211,33 @@ export function OwnerListingsV1656({
                       type="button"
                       onClick={() => setOpened(open ? null : row.public_id)}
                     >
-                      <span className="li-thumb"><span>{ICONS[row.cat] ?? "📦"}</span></span>
+                      <span className="li-thumb">
+                        <span>{ICONS[row.cat] ?? "📦"}</span>
+                      </span>
                       <span className="li-main">
                         <span className="li-title">{row.title}</span>
                         <span className="li-price">{row.price}</span>
                         <span className="li-meta">
-                          {row.visibility === "own" ? "🏪 Faqat mehmonlar" : "🌍 Butun platforma"}
+                          {row.visibility === "own"
+                            ? "🏪 Faqat mehmonlar"
+                            : "🌍 Butun platforma"}
                           {` · ${statusText(row.status)}`}
                           {row.media.length ? ` · 📎 ${row.media.length}` : ""}
                         </span>
                       </span>
-                      <span className={`chev${open ? " down" : ""}`} aria-hidden="true">›</span>
+                      <span className={`chev${open ? " down" : ""}`} aria-hidden="true">
+                        ›
+                      </span>
                     </button>
                     <div className="owner-listing-actions">
                       {row.status === "payment_pending" && canPay ? (
                         <button
                           className="btn btn-primary listing-pay-btn"
                           type="button"
-                          onClick={() => { setError(""); setPayFor(row); }}
+                          onClick={() => {
+                            setError("");
+                            setPayFor(row);
+                          }}
                         >
                           To‘lov qilish
                         </button>
@@ -232,7 +266,9 @@ export function OwnerListingsV1656({
                     <div className="el-detail owner-listing-detail">
                       <ListingMediaGridV1656 media={row.media} />
                       <div className="el-price">{row.price || "Narx kelishilgan"}</div>
-                      {row.address ? <div className="el-addr">📍 {row.address}</div> : null}
+                      {row.address ? (
+                        <div className="el-addr">📍 {row.address}</div>
+                      ) : null}
                       {row.descr ? <div className="el-desc">{row.descr}</div> : null}
                     </div>
                   ) : null}
@@ -253,9 +289,9 @@ export function OwnerListingsV1656({
             targetPublicId: payFor.public_id,
           }}
           onClose={() => setPayFor(null)}
-          onSubmitted={() => setNotice(
-            "To'lov so'rovi yuborildi. Admin tasdiqlagach e'lon ko'rinadi.",
-          )}
+          onSubmitted={() =>
+            setNotice("To'lov so'rovi yuborildi. Admin tasdiqlagach e'lon ko'rinadi.")
+          }
         />
       ) : null}
       {confirmId ? (
@@ -269,7 +305,11 @@ export function OwnerListingsV1656({
           <div className="app-confirm on" role="dialog" aria-modal="true">
             <p className="acf-text">Bu e&apos;lon o&apos;chirilsinmi?</p>
             <div className="acf-btns">
-              <button className="acf-cancel" type="button" onClick={() => setConfirmId(null)}>
+              <button
+                className="acf-cancel"
+                type="button"
+                onClick={() => setConfirmId(null)}
+              >
                 Bekor qilish
               </button>
               <button
@@ -306,7 +346,9 @@ export function OwnerListingsV1656({
             }
             onBack();
           }}
-        >‹</button>
+        >
+          ‹
+        </button>
         <h1>E&apos;lonlar</h1>
       </header>
       {content}

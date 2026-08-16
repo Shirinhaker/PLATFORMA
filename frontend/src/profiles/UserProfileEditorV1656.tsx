@@ -10,13 +10,9 @@ import {
 } from "./UserAvatarCropV1656";
 import "./UserProfileV1656.css";
 
-
 type EditorApi = Pick<
   ApiClient,
-  | "updateUserProfile"
-  | "createUploadGrant"
-  | "uploadGrantedFile"
-  | "attachUserAvatar"
+  "updateUserProfile" | "createUploadGrant" | "uploadGrantedFile" | "attachUserAvatar"
 >;
 
 type Props = {
@@ -39,23 +35,19 @@ type QrCtor = new (
   },
 ) => unknown;
 
-const IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const PATCH_FIELDS = ["name", "phone", "public_username"] as const;
-
 
 function errorText(reason: unknown) {
   return reason instanceof Error ? reason.message : "So‘rov bajarilmadi.";
 }
 
 function locationText(profile: UserProfile) {
-  return [profile.district, profile.region].filter(Boolean).join(", ")
-    || "Joylashuv kiritilmagan";
+  return (
+    [profile.district, profile.region].filter(Boolean).join(", ") ||
+    "Joylashuv kiritilmagan"
+  );
 }
 
 function pageLink(profile: UserProfile) {
@@ -70,7 +62,10 @@ function pageLink(profile: UserProfile) {
 function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   return words.length
-    ? words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("")
+    ? words
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase())
+        .join("")
     : "🙂";
 }
 
@@ -101,7 +96,6 @@ function QrCode({ value }: { value: string }) {
     />
   );
 }
-
 
 export function UserProfileEditorV1656({
   api,
@@ -142,10 +136,7 @@ export function UserProfileEditorV1656({
     onProfile(value);
   }
 
-  function field<K extends keyof UserProfile>(
-    name: K,
-    value: UserProfile[K],
-  ) {
+  function field<K extends keyof UserProfile>(name: K, value: UserProfile[K]) {
     setSaved(false);
     setDraft((current) => ({ ...current, [name]: value }));
   }
@@ -185,12 +176,14 @@ export function UserProfileEditorV1656({
         size_bytes: file.size,
       });
       await api.uploadGrantedFile(grant, file);
-      apply(await api.attachUserAvatar({
-        object_key: grant.object_key,
-        x: 50,
-        y: 50,
-        zoom: 1,
-      }));
+      apply(
+        await api.attachUserAvatar({
+          object_key: grant.object_key,
+          x: 50,
+          y: 50,
+          zoom: 1,
+        }),
+      );
       setCropOpen(true);
     } catch (reason) {
       setError(errorText(reason));
@@ -205,12 +198,14 @@ export function UserProfileEditorV1656({
     setError("");
     setSaved(false);
     try {
-      apply(await api.attachUserAvatar({
-        object_key: draft.avatar_object_key,
-        x: crop.x,
-        y: crop.y,
-        zoom: crop.zoom,
-      }));
+      apply(
+        await api.attachUserAvatar({
+          object_key: draft.avatar_object_key,
+          x: crop.x,
+          y: crop.y,
+          zoom: crop.zoom,
+        }),
+      );
       setCropOpen(false);
       setSaved(true);
     } catch (reason) {
@@ -256,7 +251,9 @@ export function UserProfileEditorV1656({
   return (
     <main className="user-profile-editor-v1656">
       <header className="user-profile-editor-v1656__head">
-        <button type="button" aria-label="Kabinetga qaytish" onClick={onBack}>‹</button>
+        <button type="button" aria-label="Kabinetga qaytish" onClick={onBack}>
+          ‹
+        </button>
         <h1>Profilim</h1>
       </header>
 
@@ -274,7 +271,9 @@ export function UserProfileEditorV1656({
               alt={`${draft.name || "Foydalanuvchi"} profil rasmi`}
               style={avatarImageStyle(crop)}
             />
-          ) : initials(draft.name)}
+          ) : (
+            initials(draft.name)
+          )}
         </button>
         <div className="user-profile-card-v1656__main">
           <strong>{draft.name || "Foydalanuvchi"}</strong>
@@ -296,7 +295,13 @@ export function UserProfileEditorV1656({
           disabled={busy}
           onClick={() => fileInput.current?.click()}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
             <path d="M14.5 4l1.5 2H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l1.5-2z" />
             <circle cx="12" cy="13" r="3.5" />
           </svg>
@@ -367,17 +372,20 @@ export function UserProfileEditorV1656({
               autoComplete="off"
               placeholder="ismingiz"
               value={draft.public_username}
-              onChange={(event) => field(
-                "public_username",
-                event.currentTarget.value
-                  .toLowerCase()
-                  .replace(/^@+/, "")
-                  .replace(/[^a-z0-9_]/g, ""),
-              )}
+              onChange={(event) =>
+                field(
+                  "public_username",
+                  event.currentTarget.value
+                    .toLowerCase()
+                    .replace(/^@+/, "")
+                    .replace(/[^a-z0-9_]/g, ""),
+                )
+              }
             />
           </span>
           <small>
-            Kichik lotin harflari, raqam va _ (3–20 belgi). Do‘stlaringiz sizni shu nom orqali topadi. Ixtiyoriy.
+            Kichik lotin harflari, raqam va _ (3–20 belgi). Do‘stlaringiz sizni shu nom
+            orqali topadi. Ixtiyoriy.
           </small>
         </label>
 
@@ -385,14 +393,29 @@ export function UserProfileEditorV1656({
           <strong>🔗 Sahifa havolasi</strong>
           <p>Shu havola yoki QR orqali do‘stlaringiz sahifangizga o‘tadi.</p>
           <div>
-            <input aria-label="Foydalanuvchi sahifasi havolasi" className="input" readOnly value={link} />
-            <button type="button" className="mini-btn" onClick={() => void copyLink()}>{copyLabel}</button>
+            <input
+              aria-label="Foydalanuvchi sahifasi havolasi"
+              className="input"
+              readOnly
+              value={link}
+            />
+            <button type="button" className="mini-btn" onClick={() => void copyLink()}>
+              {copyLabel}
+            </button>
           </div>
           <QrCode value={link} />
         </section>
 
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        {saved ? <p className="form-success" role="status">Saqlandi ✅</p> : null}
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {saved ? (
+          <p className="form-success" role="status">
+            Saqlandi ✅
+          </p>
+        ) : null}
         <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
           {busy ? "Saqlanmoqda…" : "Saqlash"}
         </button>
@@ -405,7 +428,13 @@ export function UserProfileEditorV1656({
           aria-label="Kattalashtirilgan profil rasmini yopish"
           onClick={() => setLightbox(false)}
         >
-          <span><img src={draft.avatar_url} alt={draft.name} style={avatarImageStyle(crop)} /></span>
+          <span>
+            <img
+              src={draft.avatar_url}
+              alt={draft.name}
+              style={avatarImageStyle(crop)}
+            />
+          </span>
         </button>
       ) : null}
     </main>

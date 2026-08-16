@@ -30,14 +30,8 @@ import {
   BusinessDiningCashV1656,
   supportsDiningCashApi,
 } from "../dining/BusinessDiningCashV1656";
-import {
-  CashRegisterV1656,
-  type CashRegisterApi,
-} from "./CashRegisterV1656";
-import {
-  DebtLedgerV1656,
-  type DebtLedgerApi,
-} from "./DebtLedgerV1656";
+import { CashRegisterV1656, type CashRegisterApi } from "./CashRegisterV1656";
+import { DebtLedgerV1656, type DebtLedgerApi } from "./DebtLedgerV1656";
 import {
   EducationStatisticsV1656,
   type EducationStatisticsApi,
@@ -47,42 +41,21 @@ import {
   type EducationManagementApi,
   type EducationManagementView,
 } from "../education/EducationManagementV1656";
-import {
-  ExpensesV1656,
-  type ExpensesApi,
-} from "./ExpensesV1656";
-import {
-  StaffManagementV1656,
-  type StaffManagementApi,
-} from "./StaffManagementV1656";
-import {
-  StatisticsV1656,
-  type StatisticsApi,
-} from "./StatisticsV1656";
-import {
-  WarehouseV1656,
-  type WarehouseApi,
-} from "../inventory/WarehouseV1656";
-import {
-  DocumentsV1656,
-  type DocumentsApi,
-} from "../documents/DocumentsV1656";
+import { ExpensesV1656, type ExpensesApi } from "./ExpensesV1656";
+import { StaffManagementV1656, type StaffManagementApi } from "./StaffManagementV1656";
+import { StatisticsV1656, type StatisticsApi } from "./StatisticsV1656";
+import { WarehouseV1656, type WarehouseApi } from "../inventory/WarehouseV1656";
+import { DocumentsV1656, type DocumentsApi } from "../documents/DocumentsV1656";
 import {
   AIAssistantV1656,
   type AIAssistantApi,
 } from "../ai-assistant/AIAssistantV1656";
-import {
-  MessagesV1656,
-  type MessagesApi,
-} from "../messages/MessagesV1656";
+import { MessagesV1656, type MessagesApi } from "../messages/MessagesV1656";
 import {
   ActionNotificationsV1656,
   type NotificationsApi,
 } from "../notifications/NotificationsV1656";
-import {
-  FollowListsV1656,
-  type FollowListsApi,
-} from "../follows/FollowListsV1656";
+import { FollowListsV1656, type FollowListsApi } from "../follows/FollowListsV1656";
 import {
   BusinessSubscriptionsV1656,
   PaymentsV1656,
@@ -94,7 +67,6 @@ import "./Cabinet.css";
 import "./BusinessCabinetDashboardParityV1656.css";
 import "./BusinessFollowCounts.css";
 
-
 export type BusinessProfileApiV3 = Pick<
   ApiClient,
   | "getSession"
@@ -105,158 +77,158 @@ export type BusinessProfileApiV3 = Pick<
   | "attachBusinessLogo"
   | "switchCabinet"
   | "logout"
-> & Partial<Pick<
-  ApiClient,
-  | "getBusinessCredentials"
-  | "updateBusinessCredentials"
-  | "attachBusinessPaymentQr"
-  | "reverseGeocode"
-  | "getBusinessOnlineResource"
-  | "createBusinessOnlineRecord"
-  | "patchBusinessOnlineRecord"
-  | "deleteBusinessOnlineRecord"
-  | "applyBusinessOnlineAction"
-  | "getMyListings"
-  | "createListing"
-  | "deleteListing"
-  | "getMyOrders"
-  | "getOrderInbox"
-  | "markOrderSeen"
-  | "changeOrderStatus"
-  | "submitOrderPayment"
-  | "decideOrderPayment"
-  | "openOrderProblem"
-  | "chooseOrderProblemSolution"
-  | "handoffOrder"
-  | "receiveOrder"
-  | "getOrderChat"
-  | "sendOrderChatMessage"
-  | "sendOrderChatImage"
-  | "editOrderChatMessage"
-  | "deleteOrderChatMessage"
-  | "getBusinessQueueSetup"
-  | "getBusinessQueueProviders"
-  | "createBusinessQueueProvider"
-  | "updateBusinessQueueProvider"
-  | "getBusinessQueueEntries"
-  | "createBusinessOfflineQueue"
-  | "changeBusinessQueueStatus"
-  | "swapBusinessQueues"
-  | "getStaffSetup"
-  | "createStaffMember"
-  | "updateStaffMember"
-  | "fireStaffMember"
-  | "rehireStaffMember"
-  | "deleteStaffMember"
-  | "updateStaffAccess"
-  | "updateStaffSchedule"
-  | "createStaffProfession"
-  | "getStaffAttendance"
-  | "updateStaffAttendance"
-  | "getCashRegister"
-  | "getCashCatalog"
-  | "createCashReceipt"
-  | "deleteCashReceipt"
-  | "updateCashOrderPayment"
-  | "getDebtors"
-  | "createDebtor"
-  | "getDebtor"
-  | "addDebtTransaction"
-  | "getExpenses"
-  | "getExpenseCategories"
-  | "createExpenseCategory"
-  | "createExpense"
-  | "deleteExpense"
-  | "getWarehouseItems"
-  | "configureWarehouseItem"
-  | "createWarehouseMove"
-  | "deleteWarehouseMove"
-  | "getWarehouseMoves"
-  | "getWarehouseRecipe"
-  | "getWarehouseProduction"
-  | "getDocumentCounterparties"
-  | "createDocumentCounterparty"
-  | "updateDocumentCounterparty"
-  | "deleteDocumentCounterparty"
-  | "getDocuments"
-  | "getDocument"
-  | "createDocument"
-  | "updateDocument"
-  | "deleteDocument"
-  | "sendDocument"
-  | "respondDocument"
-  | "getAIChatHistory"
-  | "sendAIChatMessage"
-  | "getAIStatus"
-  | "getStatistics"
-  | "getStatisticsNav"
-  | "getEducationStatistics"
-  | "getEducationGroups"
-  | "createEducationGroup"
-  | "updateEducationGroup"
-  | "deleteEducationGroup"
-  | "getEducationStudents"
-  | "createEducationStudent"
-  | "updateEducationStudent"
-  | "deleteEducationStudent"
-  | "getEducationStudentCard"
-  | "transferEducationStudent"
-  | "getEducationAttendance"
-  | "saveEducationAttendance"
-  | "getEducationPaymentControl"
-  | "getEducationPayments"
-  | "createEducationPayment"
-  | "voidEducationPayment"
-  | "getEducationTeachers"
-  | "createEducationTeacher"
-  | "updateEducationTeacher"
-  | "deleteEducationTeacher"
-  | "getEducationPayroll"
-  | "createEducationPayroll"
-  | "deleteEducationPayroll"
-  | "getMyStories"
-  | "createStory"
-  | "recordStoryView"
-  | "getStoryViewers"
-  | "deleteStory"
-  | "reportStory"
-  | "getMessageConversations"
-  | "getMessageThread"
-  | "sendMessage"
-  | "sendMessageImage"
-  | "editMessage"
-  | "deleteMessage"
-  | "getMessageUnreadCount"
-  | "getReceivedReviews"
-  | "replyToReview"
-  | "getNotifications"
-  | "getActionNotifications"
-  | "markNotificationRead"
-  | "markAllNotificationsRead"
-  | "getNotificationPreference"
-  | "saveNotificationPreference"
-  | "getNotificationFilters"
-  | "createNotificationFilter"
-  | "deleteNotificationFilter"
-  | "getPushStatus"
-  | "getFollowers"
-  | "getFollowing"
-  | "getBusinessSubscription"
-  | "getPaymentCatalog"
-  | "createPaymentRequest"
-  | "getMyPayments"
-  | "resubmitPayment"
->>;
+> &
+  Partial<
+    Pick<
+      ApiClient,
+      | "getBusinessCredentials"
+      | "updateBusinessCredentials"
+      | "attachBusinessPaymentQr"
+      | "reverseGeocode"
+      | "getBusinessOnlineResource"
+      | "createBusinessOnlineRecord"
+      | "patchBusinessOnlineRecord"
+      | "deleteBusinessOnlineRecord"
+      | "applyBusinessOnlineAction"
+      | "getMyListings"
+      | "createListing"
+      | "deleteListing"
+      | "getMyOrders"
+      | "getOrderInbox"
+      | "markOrderSeen"
+      | "changeOrderStatus"
+      | "submitOrderPayment"
+      | "decideOrderPayment"
+      | "openOrderProblem"
+      | "chooseOrderProblemSolution"
+      | "handoffOrder"
+      | "receiveOrder"
+      | "getOrderChat"
+      | "sendOrderChatMessage"
+      | "sendOrderChatImage"
+      | "editOrderChatMessage"
+      | "deleteOrderChatMessage"
+      | "getBusinessQueueSetup"
+      | "getBusinessQueueProviders"
+      | "createBusinessQueueProvider"
+      | "updateBusinessQueueProvider"
+      | "getBusinessQueueEntries"
+      | "createBusinessOfflineQueue"
+      | "changeBusinessQueueStatus"
+      | "swapBusinessQueues"
+      | "getStaffSetup"
+      | "createStaffMember"
+      | "updateStaffMember"
+      | "fireStaffMember"
+      | "rehireStaffMember"
+      | "deleteStaffMember"
+      | "updateStaffAccess"
+      | "updateStaffSchedule"
+      | "createStaffProfession"
+      | "getStaffAttendance"
+      | "updateStaffAttendance"
+      | "getCashRegister"
+      | "getCashCatalog"
+      | "createCashReceipt"
+      | "deleteCashReceipt"
+      | "updateCashOrderPayment"
+      | "getDebtors"
+      | "createDebtor"
+      | "getDebtor"
+      | "addDebtTransaction"
+      | "getExpenses"
+      | "getExpenseCategories"
+      | "createExpenseCategory"
+      | "createExpense"
+      | "deleteExpense"
+      | "getWarehouseItems"
+      | "configureWarehouseItem"
+      | "createWarehouseMove"
+      | "deleteWarehouseMove"
+      | "getWarehouseMoves"
+      | "getWarehouseRecipe"
+      | "getWarehouseProduction"
+      | "getDocumentCounterparties"
+      | "createDocumentCounterparty"
+      | "updateDocumentCounterparty"
+      | "deleteDocumentCounterparty"
+      | "getDocuments"
+      | "getDocument"
+      | "createDocument"
+      | "updateDocument"
+      | "deleteDocument"
+      | "sendDocument"
+      | "respondDocument"
+      | "getAIChatHistory"
+      | "sendAIChatMessage"
+      | "getAIStatus"
+      | "getStatistics"
+      | "getStatisticsNav"
+      | "getEducationStatistics"
+      | "getEducationGroups"
+      | "createEducationGroup"
+      | "updateEducationGroup"
+      | "deleteEducationGroup"
+      | "getEducationStudents"
+      | "createEducationStudent"
+      | "updateEducationStudent"
+      | "deleteEducationStudent"
+      | "getEducationStudentCard"
+      | "transferEducationStudent"
+      | "getEducationAttendance"
+      | "saveEducationAttendance"
+      | "getEducationPaymentControl"
+      | "getEducationPayments"
+      | "createEducationPayment"
+      | "voidEducationPayment"
+      | "getEducationTeachers"
+      | "createEducationTeacher"
+      | "updateEducationTeacher"
+      | "deleteEducationTeacher"
+      | "getEducationPayroll"
+      | "createEducationPayroll"
+      | "deleteEducationPayroll"
+      | "getMyStories"
+      | "createStory"
+      | "recordStoryView"
+      | "getStoryViewers"
+      | "deleteStory"
+      | "reportStory"
+      | "getMessageConversations"
+      | "getMessageThread"
+      | "sendMessage"
+      | "sendMessageImage"
+      | "editMessage"
+      | "deleteMessage"
+      | "getMessageUnreadCount"
+      | "getReceivedReviews"
+      | "replyToReview"
+      | "getNotifications"
+      | "getActionNotifications"
+      | "markNotificationRead"
+      | "markAllNotificationsRead"
+      | "getNotificationPreference"
+      | "saveNotificationPreference"
+      | "getNotificationFilters"
+      | "createNotificationFilter"
+      | "deleteNotificationFilter"
+      | "getPushStatus"
+      | "getFollowers"
+      | "getFollowing"
+      | "getBusinessSubscription"
+      | "getPaymentCatalog"
+      | "createPaymentRequest"
+      | "getMyPayments"
+      | "resubmitPayment"
+    >
+  >;
 
 type Props = {
   api: BusinessProfileApiV3;
   identity: SessionIdentity;
   onLogout: () => void;
   onOpenPublicListing?: (publicId: string) => void;
-  onOpenPublicProfile?: (
-    kind: "user" | "business",
-    publicId: string,
-  ) => void;
+  onOpenPublicProfile?: (kind: "user" | "business", publicId: string) => void;
   onSwitched: (identity: SessionIdentity) => void;
 };
 
@@ -309,10 +281,17 @@ function BusinessCabinetMenuHub({ menus, onBack, onOpen }: MenuHubProps) {
   return (
     <main className="business-online business-cabinet-menu-hub">
       <header className="business-online__heading">
-        <button type="button" onClick={onBack}>← Kabinetga qaytish</button>
-        <div><h1>Ma’muriyat</h1></div>
+        <button type="button" onClick={onBack}>
+          ← Kabinetga qaytish
+        </button>
+        <div>
+          <h1>Ma’muriyat</h1>
+        </div>
       </header>
-      <section className="business-cabinet__menu-grid" aria-label="Ma’muriyat bo‘limlari">
+      <section
+        className="business-cabinet__menu-grid"
+        aria-label="Ma’muriyat bo‘limlari"
+      >
         {menus.map((menu) => (
           <button type="button" key={menu.view} onClick={() => onOpen(menu)}>
             <span>{menu.icon}</span>
@@ -334,30 +313,32 @@ function message(error: unknown) {
 function supportsFollowLists(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & FollowListsApi {
-  return ["getFollowers", "getFollowing"].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+  return ["getFollowers", "getFollowing"].every(
+    (method) => typeof api[method as keyof BusinessProfileApiV3] === "function",
+  );
 }
 
 function supportsAIAssistant(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & AIAssistantApi {
-  return ["getAIChatHistory", "sendAIChatMessage"].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+  return ["getAIChatHistory", "sendAIChatMessage"].every(
+    (method) => typeof api[method as keyof BusinessProfileApiV3] === "function",
+  );
 }
 
 function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object"
-    ? value as Record<string, unknown>
-    : {};
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
 function activeCount(payload: Record<string, unknown>) {
   return payloadRows(payload, "orders").filter((row) => {
     const status = String(record(row).status ?? "");
     return ![
-      "done", "delivered", "cancelled", "canceled", "rejected",
+      "done",
+      "delivered",
+      "cancelled",
+      "canceled",
+      "rejected",
       "pickup_waiting_customer",
     ].includes(status);
   }).length;
@@ -413,27 +394,40 @@ const MENU_PERMISSIONS: Record<string, readonly string[]> = {
 };
 
 const OWNER_ONLY_VIEWS = new Set([
-  "profile", "subscriptions", "payments", "followers", "following", "staff",
-  "my-documents", "settings",
+  "profile",
+  "subscriptions",
+  "payments",
+  "followers",
+  "following",
+  "staff",
+  "my-documents",
+  "settings",
 ]);
 
 function canUseView(identity: SessionIdentity, view: string) {
   if (identity.actor_type !== "staff") return true;
   if (OWNER_ONLY_VIEWS.has(view)) return false;
   const required = MENU_PERMISSIONS[view];
-  return Boolean(required?.some((permission) => (
-    identity.permissions ?? []
-  ).includes(permission)));
+  return Boolean(
+    required?.some((permission) => (identity.permissions ?? []).includes(permission)),
+  );
 }
 
 function supportsStaffManagement(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & StaffManagementApi {
   return [
-    "getStaffSetup", "createStaffMember", "updateStaffMember",
-    "fireStaffMember", "rehireStaffMember", "deleteStaffMember",
-    "updateStaffAccess", "updateStaffSchedule", "createStaffProfession",
-    "getStaffAttendance", "updateStaffAttendance",
+    "getStaffSetup",
+    "createStaffMember",
+    "updateStaffMember",
+    "fireStaffMember",
+    "rehireStaffMember",
+    "deleteStaffMember",
+    "updateStaffAccess",
+    "updateStaffSchedule",
+    "createStaffProfession",
+    "getStaffAttendance",
+    "updateStaffAttendance",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
@@ -441,61 +435,74 @@ function supportsCashRegister(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & CashRegisterApi {
   return [
-    "getCashRegister", "getCashCatalog", "createCashReceipt",
-    "deleteCashReceipt", "updateCashOrderPayment", "getDebtors", "createDebtor",
+    "getCashRegister",
+    "getCashCatalog",
+    "createCashReceipt",
+    "deleteCashReceipt",
+    "updateCashOrderPayment",
+    "getDebtors",
+    "createDebtor",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function supportsDebtLedger(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & DebtLedgerApi {
-  return [
-    "getDebtors", "createDebtor", "getDebtor", "addDebtTransaction",
-  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
+  return ["getDebtors", "createDebtor", "getDebtor", "addDebtTransaction"].every(
+    (method) => typeof api[method as keyof BusinessProfileApiV3] === "function",
+  );
 }
 
 function supportsExpenses(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & ExpensesApi {
   return [
-    "getExpenses", "getExpenseCategories", "createExpenseCategory",
-    "createExpense", "deleteExpense",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+    "getExpenses",
+    "getExpenseCategories",
+    "createExpenseCategory",
+    "createExpense",
+    "deleteExpense",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function supportsStatistics(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & StatisticsApi {
-  return ["getStatistics", "getStatisticsNav"].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+  return ["getStatistics", "getStatisticsNav"].every(
+    (method) => typeof api[method as keyof BusinessProfileApiV3] === "function",
+  );
 }
 
 function supportsWarehouse(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & WarehouseApi {
   return [
-    "getWarehouseItems", "createWarehouseMove", "deleteWarehouseMove",
-    "getWarehouseMoves", "getWarehouseRecipe", "getWarehouseProduction",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+    "getWarehouseItems",
+    "createWarehouseMove",
+    "deleteWarehouseMove",
+    "getWarehouseMoves",
+    "getWarehouseRecipe",
+    "getWarehouseProduction",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function supportsDocuments(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & DocumentsApi {
   return [
-    "getDocumentCounterparties", "createDocumentCounterparty",
-    "updateDocumentCounterparty", "deleteDocumentCounterparty",
-    "getDocuments", "getDocument", "createDocument", "updateDocument",
-    "deleteDocument", "sendDocument", "respondDocument",
+    "getDocumentCounterparties",
+    "createDocumentCounterparty",
+    "updateDocumentCounterparty",
+    "deleteDocumentCounterparty",
+    "getDocuments",
+    "getDocument",
+    "createDocument",
+    "updateDocument",
+    "deleteDocument",
+    "sendDocument",
+    "respondDocument",
     "updateBusinessProfile",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function supportsEducationStatistics(
@@ -508,27 +515,44 @@ function supportsEducationManagement(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & EducationManagementApi {
   return [
-    "getBusinessOnlineResource", "getEducationGroups", "createEducationGroup",
-    "updateEducationGroup", "deleteEducationGroup", "getEducationStudents",
-    "createEducationStudent", "updateEducationStudent",
-    "deleteEducationStudent", "getEducationStudentCard",
-    "transferEducationStudent", "getEducationAttendance", "saveEducationAttendance",
-    "getEducationPaymentControl", "getEducationPayments",
-    "createEducationPayment", "voidEducationPayment", "getEducationTeachers",
-    "createEducationTeacher", "updateEducationTeacher",
-    "deleteEducationTeacher", "getEducationPayroll",
-    "createEducationPayroll", "deleteEducationPayroll",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+    "getBusinessOnlineResource",
+    "getEducationGroups",
+    "createEducationGroup",
+    "updateEducationGroup",
+    "deleteEducationGroup",
+    "getEducationStudents",
+    "createEducationStudent",
+    "updateEducationStudent",
+    "deleteEducationStudent",
+    "getEducationStudentCard",
+    "transferEducationStudent",
+    "getEducationAttendance",
+    "saveEducationAttendance",
+    "getEducationPaymentControl",
+    "getEducationPayments",
+    "createEducationPayment",
+    "voidEducationPayment",
+    "getEducationTeachers",
+    "createEducationTeacher",
+    "updateEducationTeacher",
+    "deleteEducationTeacher",
+    "getEducationPayroll",
+    "createEducationPayroll",
+    "deleteEducationPayroll",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function supportsMessages(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & MessagesApi {
   return [
-    "getMessageConversations", "getMessageThread", "sendMessage",
-    "sendMessageImage", "editMessage", "deleteMessage", "createUploadGrant",
+    "getMessageConversations",
+    "getMessageThread",
+    "sendMessage",
+    "sendMessageImage",
+    "editMessage",
+    "deleteMessage",
+    "createUploadGrant",
     "uploadGrantedFile",
   ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
@@ -537,13 +561,17 @@ function supportsNotifications(
   api: BusinessProfileApiV3,
 ): api is BusinessProfileApiV3 & NotificationsApi {
   return [
-    "getNotifications", "getActionNotifications", "markNotificationRead",
-    "markAllNotificationsRead", "getNotificationPreference",
-    "saveNotificationPreference", "getNotificationFilters",
-    "createNotificationFilter", "deleteNotificationFilter", "getPushStatus",
-  ].every((method) => (
-    typeof api[method as keyof BusinessProfileApiV3] === "function"
-  ));
+    "getNotifications",
+    "getActionNotifications",
+    "markNotificationRead",
+    "markAllNotificationsRead",
+    "getNotificationPreference",
+    "saveNotificationPreference",
+    "getNotificationFilters",
+    "createNotificationFilter",
+    "deleteNotificationFilter",
+    "getPushStatus",
+  ].every((method) => typeof api[method as keyof BusinessProfileApiV3] === "function");
 }
 
 function visibleMenus(
@@ -553,13 +581,14 @@ function visibleMenus(
 ) {
   if (!profile) return [];
   return menus
-    .filter((menu) => (
-      canUseView(identity, menu.view)
-      && !menu.excludedDirections?.includes(profile.direction)
-      && (isOnlineMenu(menu)
-        ? isOnlineMenuVisibleForDirection(menu, profile.direction)
-        : !menu.directions || menu.directions.includes(profile.direction))
-    ))
+    .filter(
+      (menu) =>
+        canUseView(identity, menu.view) &&
+        !menu.excludedDirections?.includes(profile.direction) &&
+        (isOnlineMenu(menu)
+          ? isOnlineMenuVisibleForDirection(menu, profile.direction)
+          : !menu.directions || menu.directions.includes(profile.direction)),
+    )
     .map((menu) => adaptMenuForDirection(menu, profile.direction));
 }
 
@@ -586,17 +615,22 @@ export function BusinessProfileV3({
   const [messageUnread, setMessageUnread] = useState(0);
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [orderTarget, setOrderTarget] = useState<number | null>(null);
-  const [educationView, setEducationView] = useState<EducationManagementView>(
-    "education-schedule",
-  );
-  const [initialItemDraft, setInitialItemDraft] = useState<Record<string, unknown> | null>(null);
-  const [documentsInitialView, setDocumentsInitialView] = useState<"profile" | "center">("center");
+  const [educationView, setEducationView] =
+    useState<EducationManagementView>("education-schedule");
+  const [initialItemDraft, setInitialItemDraft] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [documentsInitialView, setDocumentsInitialView] = useState<
+    "profile" | "center"
+  >("center");
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     setError("");
-    api.getBusinessProfile()
+    api
+      .getBusinessProfile()
       .then((value) => {
         if (mounted) setProfile(value);
       })
@@ -613,69 +647,92 @@ export function BusinessProfileV3({
 
   useEffect(() => {
     if (
-      typeof api.getOrderInbox !== "function"
-      || (!canUseView(identity, "orders") && !canUseView(identity, "service-orders"))
-    ) return;
+      typeof api.getOrderInbox !== "function" ||
+      (!canUseView(identity, "orders") && !canUseView(identity, "service-orders"))
+    )
+      return;
     let active = true;
-    api.getOrderInbox().then((rows) => {
-      if (!active) return;
-      setOrderUnread({
-        product: rows.filter((row) => !isService(row) && row.is_unread).length,
-        service: rows.filter((row) => isService(row) && row.is_unread).length,
-      });
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getOrderInbox()
+      .then((rows) => {
+        if (!active) return;
+        setOrderUnread({
+          product: rows.filter((row) => !isService(row) && row.is_unread).length,
+          service: rows.filter((row) => isService(row) && row.is_unread).length,
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api, identity]);
 
   useEffect(() => {
     if (
-      typeof api.getMessageUnreadCount !== "function"
-      || !canUseView(identity, "messages")
-    ) return;
+      typeof api.getMessageUnreadCount !== "function" ||
+      !canUseView(identity, "messages")
+    )
+      return;
     let active = true;
-    api.getMessageUnreadCount().then(({ count }) => {
-      if (active) setMessageUnread(count);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getMessageUnreadCount()
+      .then(({ count }) => {
+        if (active) setMessageUnread(count);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api, identity, screen]);
 
   useEffect(() => {
     if (!supportsNotifications(api) || !canUseView(identity, "notifications")) return;
     let active = true;
-    api.getNotifications().then((value) => {
-      if (active) setNotificationUnread(value.unread);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getNotifications()
+      .then((value) => {
+        if (active) setNotificationUnread(value.unread);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api, identity]);
 
   const metrics = useMemo(
-    () => (profile ? (METRICS[profile.direction] ?? DEFAULT_METRICS) : DEFAULT_METRICS)
-      .filter((metric) => canUseView(identity, metric.view)),
+    () =>
+      (profile
+        ? (METRICS[profile.direction] ?? DEFAULT_METRICS)
+        : DEFAULT_METRICS
+      ).filter((metric) => canUseView(identity, metric.view)),
     [identity, profile],
   );
 
   if (loading) {
-    return <main className="session-panel session-panel--message">Kabinet yuklanmoqda…</main>;
+    return (
+      <main className="session-panel session-panel--message">Kabinet yuklanmoqda…</main>
+    );
   }
   if (!profile) {
     return (
       <main className="session-panel">
-        <p className="form-error" role="alert">{error || "Biznes profil topilmadi."}</p>
-        <button type="button" onClick={() => window.location.reload()}>Qayta urinish</button>
+        <p className="form-error" role="alert">
+          {error || "Biznes profil topilmadi."}
+        </p>
+        <button type="button" onClick={() => window.location.reload()}>
+          Qayta urinish
+        </button>
       </main>
     );
   }
 
   async function openNotification(notification: NotificationRead) {
     if (
-      notification.profile_kind
-      && notification.profile_public_id
-      && onOpenPublicProfile
+      notification.profile_kind &&
+      notification.profile_public_id &&
+      onOpenPublicProfile
     ) {
-      onOpenPublicProfile(
-        notification.profile_kind,
-        notification.profile_public_id,
-      );
+      onOpenPublicProfile(notification.profile_kind, notification.profile_public_id);
       return;
     }
     if (notification.listing_public_id && onOpenPublicListing) {
@@ -700,8 +757,11 @@ export function BusinessProfileV3({
     }
     const targetView = notification.medical_queue_id
       ? "medical-queue"
-      : notification.dining_order_id ? "orders"
-        : notification.ride_id ? "orders" : "notifications";
+      : notification.dining_order_id
+        ? "orders"
+        : notification.ride_id
+          ? "orders"
+          : "notifications";
     const menu = visibleMenus(profile, ONLINE_MENUS, identity).find(
       (candidate) => candidate.view === targetView,
     );
@@ -711,14 +771,16 @@ export function BusinessProfileV3({
     }
   }
 
-  const actionBanner = supportsNotifications(api)
-    && canUseView(identity, "notifications") ? (
-      <ActionNotificationsV1656
-        api={api}
-        onOpenNotification={openNotification}
-      />
+  const actionBanner =
+    supportsNotifications(api) && canUseView(identity, "notifications") ? (
+      <ActionNotificationsV1656 api={api} onOpenNotification={openNotification} />
     ) : null;
-  const withActionBanner = (content: ReactNode) => <>{actionBanner}{content}</>;
+  const withActionBanner = (content: ReactNode) => (
+    <>
+      {actionBanner}
+      {content}
+    </>
+  );
 
   if (screen === "profile") {
     return withActionBanner(
@@ -740,10 +802,7 @@ export function BusinessProfileV3({
   }
 
   if (screen === "online" && onlineMenu) {
-    if (
-      onlineMenu.view === "subscriptions"
-      && supportsBusinessSubscriptionsApi(api)
-    ) {
+    if (onlineMenu.view === "subscriptions" && supportsBusinessSubscriptionsApi(api)) {
       return withActionBanner(
         <BusinessSubscriptionsV1656
           api={api}
@@ -752,8 +811,9 @@ export function BusinessProfileV3({
             setScreen("cabinet");
           }}
           onOpenPayments={() => {
-            const payments = visibleMenus(profile, ONLINE_MENUS, identity)
-              .find((menu) => menu.view === "payments");
+            const payments = visibleMenus(profile, ONLINE_MENUS, identity).find(
+              (menu) => menu.view === "payments",
+            );
             if (payments) setOnlineMenu(payments);
           }}
         />,
@@ -770,10 +830,7 @@ export function BusinessProfileV3({
         />,
       );
     }
-    if (
-      HEADER_ONLINE_VIEWS.has(onlineMenu.view)
-      && supportsFollowLists(api)
-    ) {
+    if (HEADER_ONLINE_VIEWS.has(onlineMenu.view) && supportsFollowLists(api)) {
       return withActionBanner(
         <FollowListsV1656
           api={api}
@@ -857,10 +914,7 @@ export function BusinessProfileV3({
     );
   }
 
-  if (
-    screen === "staff"
-    && supportsStaffManagement(api)
-  ) {
+  if (screen === "staff" && supportsStaffManagement(api)) {
     return withActionBanner(
       <StaffManagementV1656 api={api} onBack={() => setScreen("administration")} />,
     );
@@ -869,8 +923,8 @@ export function BusinessProfileV3({
   if (screen === "cash" && supportsCashRegister(api)) {
     // v1656da ovqatlanish yo'nalishida kassa tepasida ichki hisoblar
     // turadi (`diningCashTabs`); boshqa yo'nalishlarda ko'rinmaydi.
-    const dining = profile?.direction === "Umumiy ovqatlanish"
-      && supportsDiningCashApi(api);
+    const dining =
+      profile?.direction === "Umumiy ovqatlanish" && supportsDiningCashApi(api);
     return withActionBanner(
       <>
         {dining ? <BusinessDiningCashV1656 api={api} /> : null}
@@ -896,9 +950,11 @@ export function BusinessProfileV3({
     const owner = identity.actor_type !== "staff";
     const canManage = owner || permissions.includes("ombor");
     const canProduce = canManage || permissions.includes("production");
-    const canViewCosts = owner || permissions.some((permission) => (
-      permission === "expenses" || permission === "statistics"
-    ));
+    const canViewCosts =
+      owner ||
+      permissions.some(
+        (permission) => permission === "expenses" || permission === "statistics",
+      );
     return withActionBanner(
       <WarehouseV1656
         api={api}
@@ -906,21 +962,26 @@ export function BusinessProfileV3({
         canManage={canManage}
         canProduce={canProduce}
         canViewCosts={canViewCosts}
-        onAddProduct={canUseView(identity, "items") ? (nextStockType) => {
-          const itemsMenu = visibleMenus(profile, ONLINE_MENUS, identity)
-            .find((menu) => menu.view === "items");
-          if (!itemsMenu) return;
-          setInitialItemDraft({
-            kind: "product",
-            unit: "dona",
-            track_stock: 1,
-            stock_type: nextStockType,
-            stock_qty: "",
-            min_qty: 0,
-          });
-          setOnlineMenu(itemsMenu);
-          setScreen("online");
-        } : undefined}
+        onAddProduct={
+          canUseView(identity, "items")
+            ? (nextStockType) => {
+                const itemsMenu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+                  (menu) => menu.view === "items",
+                );
+                if (!itemsMenu) return;
+                setInitialItemDraft({
+                  kind: "product",
+                  unit: "dona",
+                  track_stock: 1,
+                  stock_type: nextStockType,
+                  stock_qty: "",
+                  min_qty: 0,
+                });
+                setOnlineMenu(itemsMenu);
+                setScreen("online");
+              }
+            : undefined
+        }
         onBack={() => setScreen("cabinet")}
       />,
     );
@@ -962,21 +1023,16 @@ export function BusinessProfileV3({
     );
   }
 
-  if (
-    screen === "education-statistics"
-    && supportsEducationStatistics(api)
-  ) {
+  if (screen === "education-statistics" && supportsEducationStatistics(api)) {
     return withActionBanner(
-      <EducationStatisticsV1656
-        api={api}
-        onBack={() => setScreen("cabinet")}
-      />,
+      <EducationStatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
     );
   }
 
   if (screen === "settings") {
-    const notificationsMenu = visibleMenus(profile, ONLINE_MENUS, identity)
-      .find((menu) => menu.view === "notifications");
+    const notificationsMenu = visibleMenus(profile, ONLINE_MENUS, identity).find(
+      (menu) => menu.view === "notifications",
+    );
     return withActionBanner(
       <AccountSettingsV1656
         api={api}
@@ -985,9 +1041,9 @@ export function BusinessProfileV3({
         onNotifications={
           notificationsMenu && supportsNotifications(api)
             ? () => {
-              setOnlineMenu(notificationsMenu);
-              setScreen("online");
-            }
+                setOnlineMenu(notificationsMenu);
+                setScreen("online");
+              }
             : undefined
         }
         onLogout={logout}
@@ -1007,10 +1063,12 @@ export function BusinessProfileV3({
             return;
           }
           if (
-            (menu.view === "documents" || menu.view === "my-documents")
-            && supportsDocuments(api)
+            (menu.view === "documents" || menu.view === "my-documents") &&
+            supportsDocuments(api)
           ) {
-            setDocumentsInitialView(menu.view === "my-documents" ? "profile" : "center");
+            setDocumentsInitialView(
+              menu.view === "my-documents" ? "profile" : "center",
+            );
             setScreen("documents");
           }
         }}
@@ -1022,7 +1080,8 @@ export function BusinessProfileV3({
   const payload = loadedProfile.cabinet_payload ?? {};
   const summary: Record<string, number> = {
     ...loadedProfile.dashboard_snapshot,
-    active_orders: loadedProfile.dashboard_snapshot.active_orders ?? activeCount(payload),
+    active_orders:
+      loadedProfile.dashboard_snapshot.active_orders ?? activeCount(payload),
     followers: loadedProfile.followers_count,
   };
   const onlineMenus = visibleMenus(loadedProfile, ONLINE_MENUS, identity);
@@ -1032,9 +1091,9 @@ export function BusinessProfileV3({
   const followersMenu = onlineMenus.find((menu) => menu.view === "followers");
   const followingMenu = onlineMenus.find((menu) => menu.view === "following");
 
-  const onlineMenuCards = MAIN_ONLINE_ORDER
-    .map((view) => onlineMenus.find((menu) => menu.view === view))
-    .filter((menu): menu is Menu => Boolean(menu));
+  const onlineMenuCards = MAIN_ONLINE_ORDER.map((view) =>
+    onlineMenus.find((menu) => menu.view === view),
+  ).filter((menu): menu is Menu => Boolean(menu));
 
   const systemCard = (menus: Menu[], view: string, label: string): Menu | null => {
     const menu = menus.find((candidate) => candidate.view === view);
@@ -1049,7 +1108,9 @@ export function BusinessProfileV3({
     systemCard(systemMenus, "reports", "Hisobotlar"),
   ];
   const representedSystemViews = new Set(
-    baseSystemCards.filter((menu): menu is Menu => Boolean(menu)).map((menu) => menu.view),
+    baseSystemCards
+      .filter((menu): menu is Menu => Boolean(menu))
+      .map((menu) => menu.view),
   );
   const inlineDirectionMenus = directionMenus.filter(
     (menu) => !representedSystemViews.has(menu.view),
@@ -1059,12 +1120,14 @@ export function BusinessProfileV3({
     ...inlineDirectionMenus,
     ...[
       systemCard(systemMenus, "ai-assistant", "AI yordamchi"),
-      identity.actor_type !== "staff" && adminMenus.length ? {
-        icon: "🛡️",
-        label: "Ma'muriyat",
-        caption: "Xodimlar va hujjatlar",
-        view: "administration",
-      } : null,
+      identity.actor_type !== "staff" && adminMenus.length
+        ? {
+            icon: "🛡️",
+            label: "Ma'muriyat",
+            caption: "Xodimlar va hujjatlar",
+            view: "administration",
+          }
+        : null,
       identity.actor_type !== "staff"
         ? systemCard(systemMenus, "settings", "Sozlamalar")
         : null,
@@ -1105,8 +1168,8 @@ export function BusinessProfileV3({
       return;
     }
     if (
-      (menu.view === "documents" || menu.view === "my-documents")
-      && supportsDocuments(api)
+      (menu.view === "documents" || menu.view === "my-documents") &&
+      supportsDocuments(api)
     ) {
       setDocumentsInitialView(menu.view === "my-documents" ? "profile" : "center");
       setScreen("documents");
@@ -1129,17 +1192,14 @@ export function BusinessProfileV3({
         "education-payments",
         "education-teachers",
         "education-payroll",
-      ].includes(menu.view)
-      && supportsEducationManagement(api)
+      ].includes(menu.view) &&
+      supportsEducationManagement(api)
     ) {
       setEducationView(menu.view as EducationManagementView);
       setScreen("education-management");
       return;
     }
-    if (
-      menu.view === "education-statistics"
-      && supportsEducationStatistics(api)
-    ) {
+    if (menu.view === "education-statistics" && supportsEducationStatistics(api)) {
       setScreen("education-statistics");
       return;
     }
@@ -1217,12 +1277,18 @@ export function BusinessProfileV3({
         </div>
         <div className="business-cabinet__menu-grid">
           {menus.map((menu) => {
-            const liveUnread = menu.view === "orders"
-              ? orderUnread.product
-              : menu.view === "service-orders" ? orderUnread.service
-                : menu.view === "messages" ? messageUnread
-                  : menu.view === "notifications" ? notificationUnread : 0;
-            const count = liveUnread || (menu.payload ? menuRows(loadedProfile, menu).length : 0);
+            const liveUnread =
+              menu.view === "orders"
+                ? orderUnread.product
+                : menu.view === "service-orders"
+                  ? orderUnread.service
+                  : menu.view === "messages"
+                    ? messageUnread
+                    : menu.view === "notifications"
+                      ? notificationUnread
+                      : 0;
+            const count =
+              liveUnread || (menu.payload ? menuRows(loadedProfile, menu).length : 0);
             return (
               <button
                 type="button"
@@ -1232,21 +1298,29 @@ export function BusinessProfileV3({
                 }
                 onClick={() => openMenu(menu)}
               >
-                <span className={
-                  menu.view === "education-enrollments" ? "menu-ic" : undefined
-                }>{menu.icon}</span>
-                <span className={
-                  menu.view === "education-enrollments" ? "menu-main" : undefined
-                }>
+                <span
+                  className={
+                    menu.view === "education-enrollments" ? "menu-ic" : undefined
+                  }
+                >
+                  {menu.icon}
+                </span>
+                <span
+                  className={
+                    menu.view === "education-enrollments" ? "menu-main" : undefined
+                  }
+                >
                   <b>{menu.label}</b>
                   <small>{menu.caption}</small>
                 </span>
                 {count > 0 && (
-                  <em className={
-                    menu.view === "education-enrollments"
-                      ? "order-badge"
-                      : undefined
-                  }>{count}</em>
+                  <em
+                    className={
+                      menu.view === "education-enrollments" ? "order-badge" : undefined
+                    }
+                  >
+                    {count}
+                  </em>
                 )}
               </button>
             );
@@ -1270,35 +1344,45 @@ export function BusinessProfileV3({
                   transform: `scale(${loadedProfile.logo_zoom})`,
                 }}
               />
-            ) : initials(loadedProfile.name)}
+            ) : (
+              initials(loadedProfile.name)
+            )}
           </div>
           <div className="business-cabinet__identity-copy">
-            <h1>{identity.actor_type === "staff" ? identity.name : loadedProfile.name}</h1>
+            <h1>
+              {identity.actor_type === "staff" ? identity.name : loadedProfile.name}
+            </h1>
             <p>{loadedProfile.direction || "Yo‘nalish tanlanmagan"}</p>
-            <span>{identity.actor_type === "staff"
-              ? `${loadedProfile.name} xodimi`
-              : loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}</span>
-            {identity.actor_type !== "staff" && <div className="business-cabinet__identity-chips">
-              <button
-                type="button"
-                aria-label="Obunachilar"
-                disabled={!followersMenu}
-                onClick={() => followersMenu && openMenu(followersMenu)}
-              >
-                {loadedProfile.followers_count} obunachi
-              </button>
-              <button
-                type="button"
-                aria-label="Biznes obunalari"
-                disabled={!followingMenu}
-                onClick={() => followingMenu && openMenu(followingMenu)}
-              >
-                {loadedProfile.following_count} obuna
-              </button>
-            </div>}
+            <span>
+              {identity.actor_type === "staff"
+                ? `${loadedProfile.name} xodimi`
+                : loadedProfile.activity_type || "Faoliyat turi tanlanmagan"}
+            </span>
+            {identity.actor_type !== "staff" && (
+              <div className="business-cabinet__identity-chips">
+                <button
+                  type="button"
+                  aria-label="Obunachilar"
+                  disabled={!followersMenu}
+                  onClick={() => followersMenu && openMenu(followersMenu)}
+                >
+                  {loadedProfile.followers_count} obunachi
+                </button>
+                <button
+                  type="button"
+                  aria-label="Biznes obunalari"
+                  disabled={!followingMenu}
+                  onClick={() => followingMenu && openMenu(followingMenu)}
+                >
+                  {loadedProfile.following_count} obuna
+                </button>
+              </div>
+            )}
           </div>
           {identity.actor_type === "staff" ? (
-            <button type="button" disabled={busy} onClick={() => void logout()}>Chiqish</button>
+            <button type="button" disabled={busy} onClick={() => void logout()}>
+              Chiqish
+            </button>
           ) : (
             <button
               type="button"
@@ -1315,26 +1399,38 @@ export function BusinessProfileV3({
           {metrics.map((metric, index) => (
             <button
               type="button"
-              className={index === 0
-                ? "business-cabinet__stat business-cabinet__stat--active"
-                : "business-cabinet__stat"}
+              className={
+                index === 0
+                  ? "business-cabinet__stat business-cabinet__stat--active"
+                  : "business-cabinet__stat"
+              }
               key={metric.key}
               onClick={() => {
-                const menu = [...onlineMenus, ...systemMenus, ...adminMenus, ...directionMenus]
-                  .find((candidate) => candidate.view === metric.view);
+                const menu = [
+                  ...onlineMenus,
+                  ...systemMenus,
+                  ...adminMenus,
+                  ...directionMenus,
+                ].find((candidate) => candidate.view === metric.view);
                 if (menu) openMenu(menu);
               }}
             >
               <span>{metric.label}</span>
-              <strong>{metric.money
-                ? money(summary[metric.key] ?? 0)
-                : String(summary[metric.key] ?? 0)}</strong>
+              <strong>
+                {metric.money
+                  ? money(summary[metric.key] ?? 0)
+                  : String(summary[metric.key] ?? 0)}
+              </strong>
               <small>{metric.sub}</small>
             </button>
           ))}
         </div>
 
-        {error && <p className="business-cabinet__error" role="alert">{error}</p>}
+        {error && (
+          <p className="business-cabinet__error" role="alert">
+            {error}
+          </p>
+        )}
 
         <div className="business-cabinet__content">
           <div className="business-cabinet__menu-panel">
@@ -1347,7 +1443,11 @@ export function BusinessProfileV3({
                 Profilni ko‘rish
               </button>
             </div>
-            {group("Onlaynlashtirish", "Mijozlar, buyurtmalar va onlayn savdo", onlineMenuCards)}
+            {group(
+              "Onlaynlashtirish",
+              "Mijozlar, buyurtmalar va onlayn savdo",
+              onlineMenuCards,
+            )}
             {group("Tizimlashtirish", "Biznes ish jarayonlari", systemMenuCards)}
           </div>
 
@@ -1359,32 +1459,38 @@ export function BusinessProfileV3({
             {!loadedProfile.recent_activity.length ? (
               <div className="business-cabinet__empty">
                 <b>Hozircha faollik yo‘q</b>
-                <span>Yangi buyurtma yoki xizmat paydo bo‘lsa shu yerda ko‘rinadi.</span>
+                <span>
+                  Yangi buyurtma yoki xizmat paydo bo‘lsa shu yerda ko‘rinadi.
+                </span>
               </div>
-            ) : loadedProfile.recent_activity.slice(0, 5).map((activity) => (
-              <button
-                type="button"
-                className="business-cabinet__activity-row"
-                key={`${activity.kind}-${activity.id}`}
-                onClick={() => {
-                  const target = isService(activity) ? "service-orders" : "orders";
-                  const menu = onlineMenus.find((candidate) => candidate.view === target);
-                  if (menu) openMenu(menu);
-                }}
-              >
-                <span className="business-cabinet__activity-icon">
-                  {activity.kind === "order" ? "B" : "X"}
-                </span>
-                <span className="business-cabinet__activity-copy">
-                  <b>{activityLabel(activity)}</b>
-                  <small>{activityDate(activity.created_at)}</small>
-                </span>
-                <span className="business-cabinet__activity-meta">
-                  <b>{activity.amount ? money(activity.amount) : activity.status}</b>
-                  <small>{activity.status}</small>
-                </span>
-              </button>
-            ))}
+            ) : (
+              loadedProfile.recent_activity.slice(0, 5).map((activity) => (
+                <button
+                  type="button"
+                  className="business-cabinet__activity-row"
+                  key={`${activity.kind}-${activity.id}`}
+                  onClick={() => {
+                    const target = isService(activity) ? "service-orders" : "orders";
+                    const menu = onlineMenus.find(
+                      (candidate) => candidate.view === target,
+                    );
+                    if (menu) openMenu(menu);
+                  }}
+                >
+                  <span className="business-cabinet__activity-icon">
+                    {activity.kind === "order" ? "B" : "X"}
+                  </span>
+                  <span className="business-cabinet__activity-copy">
+                    <b>{activityLabel(activity)}</b>
+                    <small>{activityDate(activity.created_at)}</small>
+                  </span>
+                  <span className="business-cabinet__activity-meta">
+                    <b>{activity.amount ? money(activity.amount) : activity.status}</b>
+                    <small>{activity.status}</small>
+                  </span>
+                </button>
+              ))
+            )}
           </aside>
         </div>
       </section>

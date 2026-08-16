@@ -174,7 +174,7 @@
 
 .documents-v1656 button:disabled {
   cursor: wait;
-  opacity: .6;
+  opacity: 0.6;
 }
 
 .documents-v1656__danger {
@@ -218,7 +218,7 @@
 }
 
 .documents-v1656__preview {
-  opacity: .72;
+  opacity: 0.72;
 }
 
 .documents-v1656__status {

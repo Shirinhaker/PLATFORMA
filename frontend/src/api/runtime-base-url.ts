@@ -3,16 +3,13 @@ const LEGACY_STORAGE_KEYS = [
   "koprik_api_base_url_source",
 ] as const;
 
-
 type RuntimeLocation = Pick<Location, "origin" | "search">;
 type LegacyStorage = Pick<Storage, "removeItem">;
-
 
 type RuntimeConfig = {
   apiBaseUrl?: unknown;
   sameOriginApiProxy?: unknown;
 };
-
 
 export class ApiConfigurationError extends Error {
   constructor(readonly code: string) {
@@ -21,11 +18,11 @@ export class ApiConfigurationError extends Error {
   }
 }
 
-
 function clean(value: unknown): string {
-  return String(value ?? "").trim().replace(/\/+$/, "");
+  return String(value ?? "")
+    .trim()
+    .replace(/\/+$/, "");
 }
-
 
 function safeHttpsOrigin(value: unknown): string {
   const text = clean(value);
@@ -40,7 +37,6 @@ function safeHttpsOrigin(value: unknown): string {
   }
 }
 
-
 function removeLegacyStorage(storage: LegacyStorage): void {
   for (const key of LEGACY_STORAGE_KEYS) {
     try {
@@ -50,7 +46,6 @@ function removeLegacyStorage(storage: LegacyStorage): void {
     }
   }
 }
-
 
 async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
   const text = await response.text();
@@ -64,7 +59,6 @@ async function readJsonObject(response: Response): Promise<Record<string, unknow
   }
   throw new ApiConfigurationError("runtime_config_not_json");
 }
-
 
 async function sameOriginProxyAvailable(
   fetcher: typeof fetch,
@@ -80,14 +74,12 @@ async function sameOriginProxyAvailable(
     if (!response.ok) return false;
     const payload = await readJsonObject(response);
     return (
-      typeof payload.api_version === "string"
-      && typeof payload.foundation === "string"
+      typeof payload.api_version === "string" && typeof payload.foundation === "string"
     );
   } catch {
     return false;
   }
 }
-
 
 export async function loadApiBaseUrl(
   fetcher: typeof fetch = window.fetch.bind(window),
@@ -120,15 +112,13 @@ export async function loadApiBaseUrl(
       headers: { Accept: "application/json" },
     });
     if (response.ok) {
-      const payload = await readJsonObject(response) as RuntimeConfig;
+      const payload = (await readJsonObject(response)) as RuntimeConfig;
       const runtimeOrigin = safeHttpsOrigin(payload.apiBaseUrl);
       if (runtimeOrigin && payload.sameOriginApiProxy === true) {
         if (await sameOriginProxyAvailable(fetcher, origin)) {
           return origin;
         }
-        throw new ApiConfigurationError(
-          "same_origin_api_proxy_unavailable",
-        );
+        throw new ApiConfigurationError("same_origin_api_proxy_unavailable");
       }
       if (runtimeOrigin) return runtimeOrigin;
       runtimeConfigFailure = "runtime_config_api_origin_invalid";

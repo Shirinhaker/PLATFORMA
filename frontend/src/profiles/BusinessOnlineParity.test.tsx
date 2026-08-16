@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -55,23 +54,26 @@ const profile = {
     item_groups: [{ id: 10, name: "Tayyor mahsulotlar", kind: "product" }],
     items: [{ id: 11, group_id: 10, name: "Muhr", kind: "product", price: 15000 }],
     listings: [{ id: 12, title: "Biznes e’loni", status: "active" }],
-    orders: [{
-      id: 44,
-      title: "Muhr",
-      status: "new",
-      order_type: "product",
-      total_amount: 15000,
-      items: [{ id: 1, name: "Muhr", qty: 1 }],
-      messages: [{ id: 1, text: "Assalomu alaykum" }],
-    }, {
-      id: 45,
-      title: "Xizmat",
-      status: "new",
-      order_type: "service",
-      total_amount: 40000,
-      items: [],
-      messages: [],
-    }],
+    orders: [
+      {
+        id: 44,
+        title: "Muhr",
+        status: "new",
+        order_type: "product",
+        total_amount: 15000,
+        items: [{ id: 1, name: "Muhr", qty: 1 }],
+        messages: [{ id: 1, text: "Assalomu alaykum" }],
+      },
+      {
+        id: 45,
+        title: "Xizmat",
+        status: "new",
+        order_type: "service",
+        total_amount: 40000,
+        items: [],
+        messages: [],
+      },
+    ],
     messages: [{ id: 3, text: "Salom", sender_kind: "user" }],
     business_reviews: [{ id: 4, rating: 5, text: "Yaxshi", reviewer_name: "Ali" }],
     advertisements: [{ id: 5, title: "Banner", status: "active" }],
@@ -115,7 +117,6 @@ async function back(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("heading", { name: "Muhr" });
 }
 
-
 describe("v1656 online cabinet parity", () => {
   it("opens the exact v1656 item screen from the cabinet", async () => {
     const user = await renderCabinet();
@@ -123,7 +124,9 @@ describe("v1656 online cabinet parity", () => {
     expect(screen.getByText("Tovar, narx va rasm qo'shish")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Mahsulotlar/ }));
     expect(await screen.findByPlaceholderText("Tovar qidirish...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /\+ Guruh qo'shish/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /\+ Guruh qo'shish/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tovar qo'shish" })).toBeInTheDocument();
     expect(screen.getByText("Muhr")).toBeInTheDocument();
   });
@@ -132,24 +135,35 @@ describe("v1656 online cabinet parity", () => {
     const user = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /^📦 Buyurtmalar/ }));
-    expect(await screen.findByRole("heading", { name: "Buyurtmalar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Buyurtmalar (1)" }))
-      .toHaveClass("seg-b", "on");
-    expect(screen.getByRole("button", { name: "Muammoli (0)" }))
-      .toHaveClass("seg-b");
-    expect(screen.getByRole("button", { name: "Yakunlangan (0)" }))
-      .toHaveClass("seg-b");
+    expect(
+      await screen.findByRole("heading", { name: "Buyurtmalar" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Buyurtmalar (1)" })).toHaveClass(
+      "seg-b",
+      "on",
+    );
+    expect(screen.getByRole("button", { name: "Muammoli (0)" })).toHaveClass("seg-b");
+    expect(screen.getByRole("button", { name: "Yakunlangan (0)" })).toHaveClass(
+      "seg-b",
+    );
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Xizmat buyurtmalari/ }));
-    expect(await screen.findByRole("heading", { name: "Xizmat buyurtmalari" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Xizmat buyurtmalari" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("BUYURTMA №45")).toHaveClass("order-no-pill");
-    expect(screen.getByText("Xizmat").closest("article"))
-      .toHaveClass("item", "order-card", "order-new");
+    expect(screen.getByText("Xizmat").closest("article")).toHaveClass(
+      "item",
+      "order-card",
+      "order-new",
+    );
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Suhbatlar/ }));
-    expect(await screen.findByRole("heading", { name: "Suhbatlar" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Suhbatlar" }),
+    ).toBeInTheDocument();
     const conversation = screen.getByRole("button", { name: /Suhbat Salom/ });
     expect(conversation).toHaveClass("conv");
     await user.click(conversation);
@@ -157,7 +171,9 @@ describe("v1656 online cabinet parity", () => {
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Mijoz fikrlari/ }));
-    expect(await screen.findByRole("heading", { name: "Mijoz fikrlari" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Mijoz fikrlari" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("O'rtacha baho")).toHaveClass("idesc");
     expect(screen.getByRole("button", { name: "Javob berish" })).toBeInTheDocument();
   });
@@ -166,14 +182,18 @@ describe("v1656 online cabinet parity", () => {
     const user = await renderCabinet();
 
     await user.click(screen.getByRole("button", { name: /Reklamalarim/ }));
-    expect(await screen.findByRole("heading", {
-      name: "E'lonlarim va reklamalarim",
-    })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "E'lonlarim va reklamalarim",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /\+ Reklama/ })).toBeInTheDocument();
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Istoriya arxivi/ }));
-    expect(await screen.findByRole("heading", { name: "Istoriya arxivi" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Istoriya arxivi" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Faol" })).toHaveClass("ad-tab", "on");
     expect(screen.getByRole("button", { name: "Arxiv" })).toHaveClass("ad-tab");
     expect(screen.getByRole("button", { name: "Ko‘rish" })).toBeInTheDocument();
@@ -181,21 +201,31 @@ describe("v1656 online cabinet parity", () => {
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Bildirishnomalarim/ }));
-    expect(await screen.findByRole("heading", { name: "Bildirishnomalarim" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Barchasini o'qish" }))
-      .toHaveClass("mini-btn");
+    expect(
+      await screen.findByRole("heading", { name: "Bildirishnomalarim" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Barchasini o'qish" })).toHaveClass(
+      "mini-btn",
+    );
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Obunachilar/ }));
-    expect(await screen.findByRole("heading", { name: "Obunachilar" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Obunachilar" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Vali")).toBeInTheDocument();
 
     await back(user);
     await user.click(screen.getByRole("button", { name: /Biznes obunalari/ }));
-    expect(await screen.findByRole("heading", { name: "Biznes obunalari" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Biznes obunalari" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 ta kuzatilmoqda")).toHaveClass("list-sub");
-    expect(screen.getByText("Hamkor biznes").closest("article")).toHaveClass("elon-item");
-    expect(screen.queryByRole("button", { name: "Obunani bekor qilish" }))
-      .not.toBeInTheDocument();
+    expect(screen.getByText("Hamkor biznes").closest("article")).toHaveClass(
+      "elon-item",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Obunani bekor qilish" }),
+    ).not.toBeInTheDocument();
   });
 });

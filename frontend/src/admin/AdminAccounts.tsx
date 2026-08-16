@@ -6,7 +6,6 @@ import type {
   AdminApiClient,
 } from "./admin-client";
 
-
 export type AdminAccountsApi = Pick<
   AdminApiClient,
   "accounts" | "account" | "restrict" | "unrestrict" | "addNote"
@@ -29,7 +28,6 @@ function stamp(seconds: number) {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${pad(at.getDate())}.${pad(at.getMonth() + 1)}.${at.getFullYear()}`;
 }
-
 
 export function AdminAccounts({ api }: Props) {
   const [actorType, setActorType] = useState<"user" | "business">("business");
@@ -140,7 +138,9 @@ export function AdminAccounts({ api }: Props) {
       </div>
 
       <div className="filterbar">
-        <label className="sr-only" htmlFor="accountType">Akkaunt turi</label>
+        <label className="sr-only" htmlFor="accountType">
+          Akkaunt turi
+        </label>
         <select
           id="accountType"
           value={actorType}
@@ -152,14 +152,18 @@ export function AdminAccounts({ api }: Props) {
           <option value="business">Bizneslar</option>
           <option value="user">Foydalanuvchilar</option>
         </select>
-        <label className="sr-only" htmlFor="accountSearch">Qidiruv</label>
+        <label className="sr-only" htmlFor="accountSearch">
+          Qidiruv
+        </label>
         <input
           id="accountSearch"
           placeholder="Ism, login yoki Telegram ID"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <label className="sr-only" htmlFor="accountStatus">Holat</label>
+        <label className="sr-only" htmlFor="accountStatus">
+          Holat
+        </label>
         <select
           id="accountStatus"
           value={restriction}
@@ -193,33 +197,39 @@ export function AdminAccounts({ api }: Props) {
           </thead>
           <tbody>
             {!searched ? (
-              <tr><td colSpan={5}>Qidiruvni boshlang.</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={5}>Hech narsa topilmadi.</td></tr>
-            ) : rows.map((row) => (
-              <tr key={`${row.actor_type}-${row.account_id}`}>
-                <td>{row.login}</td>
-                <td>{row.name || "—"}</td>
-                <td>{row.phone || "—"}</td>
-                <td>
-                  {row.restrictions.length
-                    ? row.restrictions
-                      .map((kind) => RESTRICTION_TEXT[kind] ?? kind)
-                      .join(", ")
-                    : "—"}
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="secondary compact"
-                    disabled={opening === row.account_id}
-                    onClick={() => void open(row)}
-                  >
-                    Ko‘rish
-                  </button>
-                </td>
+              <tr>
+                <td colSpan={5}>Qidiruvni boshlang.</td>
               </tr>
-            ))}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={5}>Hech narsa topilmadi.</td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={`${row.actor_type}-${row.account_id}`}>
+                  <td>{row.login}</td>
+                  <td>{row.name || "—"}</td>
+                  <td>{row.phone || "—"}</td>
+                  <td>
+                    {row.restrictions.length
+                      ? row.restrictions
+                          .map((kind) => RESTRICTION_TEXT[kind] ?? kind)
+                          .join(", ")
+                      : "—"}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary compact"
+                      disabled={opening === row.account_id}
+                      onClick={() => void open(row)}
+                    >
+                      Ko‘rish
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -238,8 +248,14 @@ export function AdminAccounts({ api }: Props) {
           </div>
 
           <dl className="detail-grid">
-            <div><dt>Nomi</dt><dd>{selected.name || "—"}</dd></div>
-            <div><dt>Telefon</dt><dd>{selected.phone || "—"}</dd></div>
+            <div>
+              <dt>Nomi</dt>
+              <dd>{selected.name || "—"}</dd>
+            </div>
+            <div>
+              <dt>Telefon</dt>
+              <dd>{selected.phone || "—"}</dd>
+            </div>
             <div>
               <dt>Telegram</dt>
               <dd>{selected.telegram_user_id ?? "—"}</dd>

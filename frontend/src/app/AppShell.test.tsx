@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "./AppShell";
 
-
 describe("AppShell", () => {
   it("connects public shell actions for guests", async () => {
     const onHome = vi.fn();
@@ -24,9 +23,7 @@ describe("AppShell", () => {
     );
 
     expect(screen.getByRole("banner")).toHaveTextContent("Koprik");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Koprik bosh sahifasi" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Koprik bosh sahifasi" }));
     await userEvent.click(screen.getByRole("button", { name: "Manzilim" }));
     await userEvent.click(screen.getByRole("button", { name: "Kabinet" }));
 
@@ -56,8 +53,7 @@ describe("AppShell", () => {
 
     expect(onBack).toHaveBeenCalledOnce();
     expect(document.querySelector(".tb-title")).toHaveTextContent("Katalog");
-    expect(screen.queryByRole("button", { name: "Kabinet" }))
-      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kabinet" })).not.toBeInTheDocument();
     expect(onAccount).not.toHaveBeenCalled();
   });
 

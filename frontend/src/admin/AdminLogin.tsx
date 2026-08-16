@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import type { AdminApiClient } from "./admin-client";
 
-
 type Props = {
   api: Pick<AdminApiClient, "startLogin" | "verifyLogin">;
   onSignedIn(telegramUserId: number): void;
@@ -11,7 +10,6 @@ type Props = {
 function message(error: unknown) {
   return error instanceof Error ? error.message : "So‘rov bajarilmadi.";
 }
-
 
 export function AdminLogin({ api, onSignedIn }: Props) {
   const [challengeId, setChallengeId] = useState<number | null>(null);
@@ -60,9 +58,7 @@ export function AdminLogin({ api, onSignedIn }: Props) {
       <div className="login-card">
         <div className="eyebrow">XAVFSIZ KIRISH</div>
         <h1>Admin paneli</h1>
-        <p>
-          Bir martalik kod faqat ruxsat berilgan Telegram ID’ga yuboriladi.
-        </p>
+        <p>Bir martalik kod faqat ruxsat berilgan Telegram ID’ga yuboriladi.</p>
 
         {challengeId === null ? (
           <form onSubmit={(event) => void sendCode(event)}>
@@ -98,7 +94,9 @@ export function AdminLogin({ api, onSignedIn }: Props) {
         )}
 
         {note ? (
-          <div className="message" role="status">{note}</div>
+          <div className="message" role="status">
+            {note}
+          </div>
         ) : null}
       </div>
     </section>

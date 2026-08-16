@@ -4,12 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CourseEnrollmentV1656 } from "./CourseEnrollmentV1656";
 
-
 const target = {
   itemPublicId: "s_english",
   courseName: "Ingliz tili",
 };
-
 
 describe("v1656 kursga yozilish pariteti", () => {
   it("telefon va ixtiyoriy izohni yuborib, monolitdagi xabarni beradi", async () => {
@@ -31,14 +29,9 @@ describe("v1656 kursga yozilish pariteti", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Ingliz tili kursiga yozilish"))
-      .toHaveClass("acf-title");
-    expect(screen.getByLabelText("Telefon raqamingiz"))
-      .toHaveValue("+998901234567");
-    await user.type(
-      screen.getByLabelText("Izoh"),
-      "Kechki guruh qulay",
-    );
+    expect(screen.getByText("Ingliz tili kursiga yozilish")).toHaveClass("acf-title");
+    expect(screen.getByLabelText("Telefon raqamingiz")).toHaveValue("+998901234567");
+    await user.type(screen.getByLabelText("Izoh"), "Kechki guruh qulay");
     await user.click(screen.getByRole("button", { name: "Ariza yuborish" }));
 
     expect(api.createCourseEnrollment).toHaveBeenCalledWith({
@@ -73,9 +66,9 @@ describe("v1656 kursga yozilish pariteti", () => {
   it("server xabarini ko'rsatib, formadagi ma'lumotni saqlab qoladi", async () => {
     const user = userEvent.setup();
     const api = {
-      createCourseEnrollment: vi.fn().mockRejectedValue(
-        new Error("Siz bu kursga avval yozilgansiz."),
-      ),
+      createCourseEnrollment: vi
+        .fn()
+        .mockRejectedValue(new Error("Siz bu kursga avval yozilgansiz.")),
     };
     const onClose = vi.fn();
     const onMessage = vi.fn();
@@ -92,9 +85,7 @@ describe("v1656 kursga yozilish pariteti", () => {
     await user.type(screen.getByLabelText("Izoh"), "Ertalab");
     await user.click(screen.getByRole("button", { name: "Ariza yuborish" }));
 
-    expect(onMessage).toHaveBeenCalledWith(
-      "Siz bu kursga avval yozilgansiz.",
-    );
+    expect(onMessage).toHaveBeenCalledWith("Siz bu kursga avval yozilgansiz.");
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Izoh")).toHaveValue("Ertalab");
   });

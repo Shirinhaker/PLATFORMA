@@ -3,7 +3,6 @@ import { avatarImageStyle } from "./UserAvatarCropV1656";
 import "./UserProfileV1656.css";
 import "./UserCabinetDashboardParityV1656.css";
 
-
 export type UserCabinetSectionV1656 = {
   caption: string;
   icon: string;
@@ -50,11 +49,13 @@ const V1656_ACTIVE_ORDER_STATUSES = new Set([
   "pickup_waiting_customer",
 ]);
 
-
 function initials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
   return words.length
-    ? words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("")
+    ? words
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase())
+        .join("")
     : "🙂";
 }
 
@@ -68,9 +69,7 @@ function activityDate(value: number) {
 }
 
 function objectRow(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object"
-    ? value as Record<string, unknown>
-    : null;
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
 function truthyLegacy(value: unknown) {
@@ -89,7 +88,9 @@ export function isV1656ActiveUserOrder(value: unknown) {
 function userNotificationVisible(value: unknown) {
   const row = objectRow(value);
   if (!row) return false;
-  const actorKind = String(row.actor_kind ?? "").trim().toLowerCase();
+  const actorKind = String(row.actor_kind ?? "")
+    .trim()
+    .toLowerCase();
   /*
    * v1656 /api/notifications?actor_type=user actor_kind=user ni ajratadi.
    * Yangi native notificationlarda actor_kind bo'lmasligi mumkin — ular
@@ -101,21 +102,17 @@ function userNotificationVisible(value: unknown) {
 function notificationIsUnread(value: unknown) {
   const row = objectRow(value);
   return Boolean(
-    row
-    && userNotificationVisible(row)
-    && !truthyLegacy(row.is_read)
-    && !truthyLegacy(row.resolved_at),
+    row &&
+    userNotificationVisible(row) &&
+    !truthyLegacy(row.is_read) &&
+    !truthyLegacy(row.resolved_at),
   );
 }
 
-function payloadArray(
-  payload: Record<string, unknown>,
-  key: string,
-): unknown[] | null {
+function payloadArray(payload: Record<string, unknown>, key: string): unknown[] | null {
   const value = payload[key];
   return Array.isArray(value) ? value : null;
 }
-
 
 export function UserCabinetDashboardV1656({
   busy,
@@ -136,8 +133,8 @@ export function UserCabinetDashboardV1656({
   const notifications = payloadArray(payload, "notifications");
   const activeOrderCount = orders
     ? orders.filter(isV1656ActiveUserOrder).length
-    : snapshot.active_orders ?? 0;
-  const savedCount = saved ? saved.length : snapshot.saved ?? 0;
+    : (snapshot.active_orders ?? 0);
+  const savedCount = saved ? saved.length : (snapshot.saved ?? 0);
   const scopedNotificationUnread = notifications
     ? notifications.filter(notificationIsUnread).length
     : notificationUnread;
@@ -145,9 +142,19 @@ export function UserCabinetDashboardV1656({
   const location = [profile.district, profile.region].filter(Boolean).join(", ");
   const metrics = [
     ["Faol buyurtmalar", activeOrderCount, "Joriy buyurtmalar", "orders"],
-    ["Obunalar", snapshot.following ?? profile.following_count, "Kuzatilayotgan profillar", "follows"],
+    [
+      "Obunalar",
+      snapshot.following ?? profile.following_count,
+      "Kuzatilayotgan profillar",
+      "follows",
+    ],
     ["Saqlanganlar", savedCount, "E’lon va bizneslar", "saved"],
-    ["Bildirishnomalar", scopedNotificationUnread, "O‘qilmagan xabarlar", "notifications"],
+    [
+      "Bildirishnomalar",
+      scopedNotificationUnread,
+      "O‘qilmagan xabarlar",
+      "notifications",
+    ],
   ] as const;
 
   function badge(view: string) {
@@ -178,7 +185,9 @@ export function UserCabinetDashboardV1656({
                   zoom: profile.avatar_zoom,
                 })}
               />
-            ) : initials(profile.name)}
+            ) : (
+              initials(profile.name)
+            )}
           </button>
           <div>
             <h1>{profile.name || "Foydalanuvchi"}</h1>
@@ -240,11 +249,13 @@ export function UserCabinetDashboardV1656({
               disabled={busy}
               onClick={profile.has_business ? onSwitchBusiness : onOpenBusiness}
             >
-              {profile.has_business
-                ? "🏪 Biznes kabinetga o‘tish"
-                : "🏪 Biznes ochish"}
+              {profile.has_business ? "🏪 Biznes kabinetga o‘tish" : "🏪 Biznes ochish"}
             </button>
-            {error ? <p className="user-cabinet-v1656__error" role="alert">{error}</p> : null}
+            {error ? (
+              <p className="user-cabinet-v1656__error" role="alert">
+                {error}
+              </p>
+            ) : null}
           </section>
 
           <aside className="user-cabinet-v1656__activity">
@@ -263,17 +274,24 @@ export function UserCabinetDashboardV1656({
                   <button
                     type="button"
                     key={`${activity.kind}-${activity.id}`}
-                    onClick={() => onNavigate(
-                      activity.kind === "service" ? "service-orders" : "orders",
-                    )}
+                    onClick={() =>
+                      onNavigate(
+                        activity.kind === "service" ? "service-orders" : "orders",
+                      )
+                    }
                   >
                     <span>{activity.kind === "service" ? "X" : "B"}</span>
                     <span>
-                      <b>Buyurtma #{activity.id} — {activity.title}</b>
+                      <b>
+                        Buyurtma #{activity.id} — {activity.title}
+                      </b>
                       <small>{activityDate(activity.created_at)}</small>
                     </span>
                     <span>
-                      <b>{money(activity.amount) || (STATUS_LABELS[activity.status] ?? activity.status)}</b>
+                      <b>
+                        {money(activity.amount) ||
+                          (STATUS_LABELS[activity.status] ?? activity.status)}
+                      </b>
                       <small>{STATUS_LABELS[activity.status] ?? activity.status}</small>
                     </span>
                   </button>

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { BusinessProfile } from "./BusinessProfile";
 
-
 const identity = {
   account_id: 7,
   account_type: "business" as const,
@@ -64,7 +63,6 @@ function api() {
   };
 }
 
-
 describe("v1656 business header follow counts", () => {
   it("shows follower counts in the identity card and hides duplicate menu cards", async () => {
     const user = userEvent.setup();
@@ -88,17 +86,23 @@ describe("v1656 business header follow counts", () => {
       .getByRole("heading", { name: "Onlaynlashtirish" })
       .closest("section");
     expect(onlineSection).not.toBeNull();
-    expect(within(onlineSection!).queryByRole("button", { name: /Obunachilar/ }))
-      .not.toBeInTheDocument();
-    expect(within(onlineSection!).queryByRole("button", { name: /Biznes obunalari/ }))
-      .not.toBeInTheDocument();
+    expect(
+      within(onlineSection!).queryByRole("button", { name: /Obunachilar/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(onlineSection!).queryByRole("button", { name: /Biznes obunalari/ }),
+    ).not.toBeInTheDocument();
 
     await user.click(followers!);
-    expect(await screen.findByRole("heading", { name: "Obunachilar" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Obunachilar" }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Kabinetga qaytish/ }));
     await screen.findByRole("heading", { name: "Muhr" });
     await user.click(screen.getByText("1 obuna").closest("button")!);
-    expect(await screen.findByRole("heading", { name: "Biznes obunalari" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Biznes obunalari" }),
+    ).toBeInTheDocument();
   });
 });

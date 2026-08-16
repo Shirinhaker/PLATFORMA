@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { MessageRead } from "../api/types";
 import { MessagesV1656, type MessagesApi } from "./MessagesV1656";
 
-
 const peer = {
   target_kind: "business" as const,
   target_public_id: "b_0123456789abcdef",
@@ -32,7 +31,6 @@ const incoming: MessageRead = {
   sender_kind: "business",
   created_at: "2026-08-09T12:00:00Z",
 };
-
 
 function api(overrides: Partial<MessagesApi> = {}): MessagesApi {
   return {
@@ -71,7 +69,6 @@ function api(overrides: Partial<MessagesApi> = {}): MessagesApi {
     ...overrides,
   };
 }
-
 
 describe("MessagesV1656", () => {
   it("shows v1656 conversation list, unread badge and opens the real thread", async () => {
@@ -112,12 +109,14 @@ describe("MessagesV1656", () => {
     await user.type(screen.getByPlaceholderText("Xabar yozing..."), "Javob");
     await user.click(screen.getByRole("button", { name: "Yuborish" }));
 
-    await waitFor(() => expect(client.sendMessage).toHaveBeenCalledWith({
-      target_kind: "business",
-      target_public_id: peer.target_public_id,
-      text: "Javob",
-      reply_to_id: 11,
-    }));
+    await waitFor(() =>
+      expect(client.sendMessage).toHaveBeenCalledWith({
+        target_kind: "business",
+        target_public_id: peer.target_public_id,
+        text: "Javob",
+        reply_to_id: 11,
+      }),
+    );
 
     const file = new File(["image"], "test.webp", { type: "image/webp" });
     await user.upload(screen.getByLabelText("📎 Rasm qo‘shish"), file);
@@ -132,13 +131,15 @@ describe("MessagesV1656", () => {
         size_bytes: file.size,
       });
       expect(client.uploadGrantedFile).toHaveBeenCalled();
-      expect(client.sendMessageImage).toHaveBeenCalledWith(expect.objectContaining({
-        target_kind: "business",
-        target_public_id: peer.target_public_id,
-        object_key: "private/user/7/chat_image/test.webp",
-        file_name: "test.webp",
-        text: "",
-      }));
+      expect(client.sendMessageImage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target_kind: "business",
+          target_public_id: peer.target_public_id,
+          object_key: "private/user/7/chat_image/test.webp",
+          file_name: "test.webp",
+          text: "",
+        }),
+      );
     });
   });
 
@@ -186,7 +187,9 @@ describe("MessagesV1656", () => {
     await user.clear(input);
     await user.type(input, "Yangilandi");
     await user.click(screen.getByRole("button", { name: "Saqlash" }));
-    await waitFor(() => expect(client.editMessage).toHaveBeenCalledWith(22, "Yangilandi"));
+    await waitFor(() =>
+      expect(client.editMessage).toHaveBeenCalledWith(22, "Yangilandi"),
+    );
 
     await user.click(screen.getByRole("button", { name: "Xabar amallari" }));
     await user.click(screen.getByRole("button", { name: "🗑 O‘chirish" }));

@@ -5,7 +5,6 @@ import { loadApiBaseUrl } from "../api/runtime-base-url";
 import { AdminApiClient } from "./admin-client";
 import { AdminApp } from "./AdminApp";
 
-
 const container = document.getElementById("admin-root");
 
 async function start() {
@@ -19,9 +18,8 @@ async function start() {
       </StrictMode>,
     );
   } catch (error) {
-    container.textContent = error instanceof Error
-      ? error.message
-      : "API manzili sozlanmagan.";
+    container.textContent =
+      error instanceof Error ? error.message : "API manzili sozlanmagan.";
   }
 }
 
