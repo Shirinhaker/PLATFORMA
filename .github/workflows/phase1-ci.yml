@@ -25,6 +25,11 @@ jobs:
         working-directory: backend
         run: ruff check .
 
+      # Qarz faqat kamayadi: yangi katta fayl qo'shib bo'lmaydi va
+      # ro'yxatdagi fayl o'sa olmaydi. Batafsil: scripts/check_file_length.py
+      - name: File length ratchet
+        run: python scripts/check_file_length.py
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
