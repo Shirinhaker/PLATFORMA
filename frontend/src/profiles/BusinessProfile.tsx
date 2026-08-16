@@ -27,44 +27,41 @@ import {
 } from "./business-profile-config";
 import { CabinetDataView } from "./CabinetDataView";
 import {
-  BusinessDiningCashV1656,
+  BusinessDiningCash,
   supportsDiningCashApi,
-} from "../dining/BusinessDiningCashV1656";
-import { CashRegisterV1656, type CashRegisterApi } from "./CashRegisterV1656";
-import { DebtLedgerV1656, type DebtLedgerApi } from "./DebtLedgerV1656";
+} from "../dining/BusinessDiningCash";
+import { CashRegisterScreen, type CashRegisterApi } from "./CashRegister";
+import { DebtLedger, type DebtLedgerApi } from "./DebtLedger";
 import {
-  EducationStatisticsV1656,
+  EducationStatistics,
   type EducationStatisticsApi,
-} from "./EducationStatisticsV1656";
+} from "./EducationStatistics";
 import {
-  EducationManagementV1656,
+  EducationManagement,
   type EducationManagementApi,
   type EducationManagementView,
-} from "../education/EducationManagementV1656";
-import { ExpensesV1656, type ExpensesApi } from "./ExpensesV1656";
-import { StaffManagementV1656, type StaffManagementApi } from "./StaffManagementV1656";
-import { StatisticsV1656, type StatisticsApi } from "./StatisticsV1656";
-import { WarehouseV1656, type WarehouseApi } from "../inventory/WarehouseV1656";
-import { DocumentsV1656, type DocumentsApi } from "../documents/DocumentsV1656";
+} from "../education/EducationManagement";
+import { Expenses, type ExpensesApi } from "./Expenses";
+import { StaffManagement, type StaffManagementApi } from "./StaffManagement";
+import { Statistics, type StatisticsApi } from "./Statistics";
+import { Warehouse, type WarehouseApi } from "../inventory/Warehouse";
+import { Documents, type DocumentsApi } from "../documents/Documents";
+import { AIAssistant, type AIAssistantApi } from "../ai-assistant/AIAssistant";
+import { Messages, type MessagesApi } from "../messages/Messages";
 import {
-  AIAssistantV1656,
-  type AIAssistantApi,
-} from "../ai-assistant/AIAssistantV1656";
-import { MessagesV1656, type MessagesApi } from "../messages/MessagesV1656";
-import {
-  ActionNotificationsV1656,
+  ActionNotifications,
   type NotificationsApi,
-} from "../notifications/NotificationsV1656";
-import { FollowListsV1656, type FollowListsApi } from "../follows/FollowListsV1656";
+} from "../notifications/Notifications";
+import { FollowLists, type FollowListsApi } from "../follows/FollowLists";
 import {
-  BusinessSubscriptionsV1656,
-  PaymentsV1656,
+  BusinessSubscriptions,
+  Payments,
   supportsBusinessSubscriptionsApi,
   supportsPaymentsApi,
-} from "../payments/SubscriptionsPaymentsV1656";
-import { AccountSettingsV1656 } from "../settings/AccountSettingsV1656";
+} from "../payments/SubscriptionsPayments";
+import { AccountSettings } from "../settings/AccountSettings";
 import "./Cabinet.css";
-import "./BusinessCabinetDashboardParityV1656.css";
+import "./BusinessCabinetDashboardParity.css";
 import "./BusinessFollowCounts.css";
 
 export type BusinessProfileApi = Pick<
@@ -773,7 +770,7 @@ export function BusinessProfile({
 
   const actionBanner =
     supportsNotifications(api) && canUseView(identity, "notifications") ? (
-      <ActionNotificationsV1656 api={api} onOpenNotification={openNotification} />
+      <ActionNotifications api={api} onOpenNotification={openNotification} />
     ) : null;
   const withActionBanner = (content: ReactNode) => (
     <>
@@ -804,7 +801,7 @@ export function BusinessProfile({
   if (screen === "online" && onlineMenu) {
     if (onlineMenu.view === "subscriptions" && supportsBusinessSubscriptionsApi(api)) {
       return withActionBanner(
-        <BusinessSubscriptionsV1656
+        <BusinessSubscriptions
           api={api}
           onBack={() => {
             setOnlineMenu(null);
@@ -821,7 +818,7 @@ export function BusinessProfile({
     }
     if (onlineMenu.view === "payments" && supportsPaymentsApi(api)) {
       return withActionBanner(
-        <PaymentsV1656
+        <Payments
           api={api}
           onBack={() => {
             setOnlineMenu(null);
@@ -832,7 +829,7 @@ export function BusinessProfile({
     }
     if (HEADER_ONLINE_VIEWS.has(onlineMenu.view) && supportsFollowLists(api)) {
       return withActionBanner(
-        <FollowListsV1656
+        <FollowLists
           api={api}
           kind={onlineMenu.view as "followers" | "following"}
           onOpenProfile={(kind, publicId) => {
@@ -852,7 +849,7 @@ export function BusinessProfile({
     }
     if (onlineMenu.view === "messages" && supportsMessages(api)) {
       return withActionBanner(
-        <MessagesV1656
+        <Messages
           api={api}
           onBack={() => {
             setOnlineMenu(null);
@@ -916,7 +913,7 @@ export function BusinessProfile({
 
   if (screen === "staff" && supportsStaffManagement(api)) {
     return withActionBanner(
-      <StaffManagementV1656 api={api} onBack={() => setScreen("administration")} />,
+      <StaffManagement api={api} onBack={() => setScreen("administration")} />,
     );
   }
 
@@ -927,22 +924,20 @@ export function BusinessProfile({
       profile?.direction === "Umumiy ovqatlanish" && supportsDiningCashApi(api);
     return withActionBanner(
       <>
-        {dining ? <BusinessDiningCashV1656 api={api} /> : null}
-        <CashRegisterV1656 api={api} onBack={() => setScreen("cabinet")} />
+        {dining ? <BusinessDiningCash api={api} /> : null}
+        <CashRegisterScreen api={api} onBack={() => setScreen("cabinet")} />
       </>,
     );
   }
 
   if (screen === "debt" && supportsDebtLedger(api)) {
     return withActionBanner(
-      <DebtLedgerV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <DebtLedger api={api} onBack={() => setScreen("cabinet")} />,
     );
   }
 
   if (screen === "expenses" && supportsExpenses(api)) {
-    return withActionBanner(
-      <ExpensesV1656 api={api} onBack={() => setScreen("cabinet")} />,
-    );
+    return withActionBanner(<Expenses api={api} onBack={() => setScreen("cabinet")} />);
   }
 
   if (screen === "warehouse" && supportsWarehouse(api)) {
@@ -956,7 +951,7 @@ export function BusinessProfile({
         (permission) => permission === "expenses" || permission === "statistics",
       );
     return withActionBanner(
-      <WarehouseV1656
+      <Warehouse
         api={api}
         direction={profile.direction}
         canManage={canManage}
@@ -989,7 +984,7 @@ export function BusinessProfile({
 
   if (screen === "documents" && supportsDocuments(api)) {
     return withActionBanner(
-      <DocumentsV1656
+      <Documents
         api={api}
         profile={profile}
         initialView={documentsInitialView}
@@ -1002,19 +997,19 @@ export function BusinessProfile({
 
   if (screen === "ai-assistant" && supportsAIAssistant(api)) {
     return withActionBanner(
-      <AIAssistantV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <AIAssistant api={api} onBack={() => setScreen("cabinet")} />,
     );
   }
 
   if (screen === "statistics" && supportsStatistics(api)) {
     return withActionBanner(
-      <StatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <Statistics api={api} onBack={() => setScreen("cabinet")} />,
     );
   }
 
   if (screen === "education-management" && supportsEducationManagement(api)) {
     return withActionBanner(
-      <EducationManagementV1656
+      <EducationManagement
         api={api}
         view={educationView}
         canVoidPayments={identity.actor_type !== "staff"}
@@ -1025,7 +1020,7 @@ export function BusinessProfile({
 
   if (screen === "education-statistics" && supportsEducationStatistics(api)) {
     return withActionBanner(
-      <EducationStatisticsV1656 api={api} onBack={() => setScreen("cabinet")} />,
+      <EducationStatistics api={api} onBack={() => setScreen("cabinet")} />,
     );
   }
 
@@ -1034,7 +1029,7 @@ export function BusinessProfile({
       (menu) => menu.view === "notifications",
     );
     return withActionBanner(
-      <AccountSettingsV1656
+      <AccountSettings
         api={api}
         identity={identity}
         onBack={() => setScreen("cabinet")}

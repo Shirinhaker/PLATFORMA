@@ -1,0 +1,407 @@
+import { useEffect, useRef } from "react";
+
+import type {
+  PublicHomeBusinessPin,
+  PublicHomeSpecialistPin,
+  PublicSearchItem,
+} from "../../../api/types";
+import { CATALOG_DIRECTIONS } from "../catalog-data";
+
+
+interface HomeMapProps {
+  businesses: PublicHomeBusinessPin[];
+  center?: { latitude: number; longitude: number };
+  district: string;
+  resultItems: PublicSearchItem[] | null;
+  specialists: PublicHomeSpecialistPin[];
+  taxiEnabled?: boolean;
+  onCloseResults(): void;
+  onOpenResult(
+    kind: "user" | "business" | "product" | "service" | "listing",
+    publicId: string,
+  ): void;
+  onTaxiCall?: () => void;
+}
+
+type MapPoint = {
+  kind: "user" | "business" | "product" | "service" | "listing";
+  publicId: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  color: string;
+  fallback: string;
+  photo: string;
+  photoX: number;
+  photoY: number;
+  photoZoom: number;
+  small: boolean;
+};
+
+type SearchMapGroup = {
+  point: MapPoint;
+  prices: string[];
+};
+
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    "\"": "&quot;",
+  })[character] ?? character);
+}
+
+
+function normalizeDirection(value: string) {
+  return value.replace(/[‘’ʻʼ`]/g, "'").trim().toLocaleLowerCase("uz");
+}
+
+
+function directionMeta(direction: string) {
+  const normalized = normalizeDirection(direction);
+  return CATALOG_DIRECTIONS.find(
+    (item) => normalizeDirection(item.name) === normalized,
+  ) ?? { color: "#0E8C84", icon: "🏪" };
+}
+
+
+function avatarImageStyle(x: number, y: number, zoom: number) {
+  const size = Number((zoom * 100).toFixed(4));
+  const left = Number((50 - x * zoom).toFixed(4));
+  const top = Number((50 - y * zoom).toFixed(4));
+  return [
+    "position:absolute",
+    `width:${size}%`,
+    `height:${size}%`,
+    "max-width:none",
+    "max-height:none",
+    "object-fit:cover",
+    `left:${left}%`,
+    `top:${top}%`,
+    "transform:none",
+  ].join(";");
+}
+
+
+function buildSearchMapPoints(
+  items: PublicSearchItem[],
+  businesses: PublicHomeBusinessPin[],
+): MapPoint[] {
+  const groups = new Map<string, SearchMapGroup>();
+  const businessesByPublicId = new Map(
+    businesses.map((business) => [business.public_id, business]),
+  );
+
+  items.forEach((item) => {
+    const ownerPublicId = (
+      item.kind === "product" || item.kind === "service"
+    ) ? item.owner_public_id : item.kind === "business" ? item.public_id : "";
+    const visibleBusiness = ownerPublicId
+      ? businessesByPublicId.get(ownerPublicId)
+      : undefined;
+    const mapPoint = item.map_point ?? (visibleBusiness ? {
+      business_public_id: visibleBusiness.public_id,
+      business_name: visibleBusiness.name,
+      latitude: visibleBusiness.lat,
+      longitude: visibleBusiness.lng,
+    } : undefined);
+    if (
+      !mapPoint
+      || !Number.isFinite(mapPoint.latitude)
+      || !Number.isFinite(mapPoint.longitude)
+    ) return;
+
+    if (item.kind === "listing") {
+      groups.set(`listing:${item.public_id}`, {
+        point: {
+          kind: "listing",
+          publicId: item.public_id,
+          label: [item.name, item.price_text].filter(Boolean).join("\n"),
+          latitude: mapPoint.latitude,
+          longitude: mapPoint.longitude,
+          color: "#0E8C84",
+          fallback: "📣",
+          photo: item.image_url,
+          photoX: 50,
+          photoY: 50,
+          photoZoom: 1,
+          small: false,
+        },
+        prices: [],
+      });
+      return;
+    }
+
+    const catalogItem = item.kind === "product" || item.kind === "service";
+    const businessPin = businessesByPublicId.get(mapPoint.business_public_id);
+    const key = mapPoint.business_public_id;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        point: {
+          kind: "business",
+          publicId: mapPoint.business_public_id,
+          label: businessPin?.name || mapPoint.business_name,
+          latitude: mapPoint.latitude,
+          longitude: mapPoint.longitude,
+          color: catalogItem ? "#0E8C84" : "#2563EB",
+          fallback: catalogItem ? "🛒" : "🏪",
+          photo: businessPin?.logo_file || item.image_url,
+          photoX: businessPin?.logo_x ?? 50,
+          photoY: businessPin?.logo_y ?? 50,
+          photoZoom: businessPin?.logo_zoom ?? 1,
+          small: false,
+        },
+        prices: [],
+      };
+      groups.set(key, group);
+    }
+
+    if (catalogItem) {
+      group.point.color = "#0E8C84";
+      group.point.fallback = "🛒";
+      if (item.price_text && !group.prices.includes(item.price_text)) {
+        group.prices.push(item.price_text);
+      }
+    }
+    if (!group.point.photo && item.image_url) {
+      group.point.photo = item.image_url;
+      group.point.photoX = 50;
+      group.point.photoY = 50;
+      group.point.photoZoom = 1;
+    }
+  });
+
+  return Array.from(groups.values(), ({ point, prices }) => ({
+    ...point,
+    label: [point.label, ...prices].join("\n"),
+  }));
+}
+
+
+export function HomeMap({
+  businesses,
+  center,
+  district,
+  resultItems,
+  specialists,
+  taxiEnabled = false,
+  onCloseResults,
+  onOpenResult,
+  onTaxiCall,
+}: HomeMapProps) {
+  const mapElement = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = mapElement.current;
+    if (!host || typeof window === "undefined") return undefined;
+    let disposed = false;
+    let cleanup = () => undefined;
+    const normalPoints: MapPoint[] = [
+      ...businesses.map((item) => {
+        const metadata = directionMeta(item.yon);
+        return {
+          kind: "business" as const,
+          publicId: item.public_id,
+          label: item.name,
+          latitude: item.lat,
+          longitude: item.lng,
+          color: metadata.color,
+          fallback: metadata.icon,
+          photo: item.logo_file,
+          photoX: item.logo_x,
+          photoY: item.logo_y,
+          photoZoom: item.logo_zoom,
+          small: false,
+        };
+      }),
+      ...specialists.map((item) => ({
+        kind: "user" as const,
+        publicId: item.public_id,
+        label: item.name,
+        latitude: item.lat,
+        longitude: item.lng,
+        color: item.is_gov ? "#2563EB" : "#16A34A",
+        fallback: item.name.trim().charAt(0) || "?",
+        photo: item.avatar_file,
+        photoX: item.avatar_x,
+        photoY: item.avatar_y,
+        photoZoom: item.avatar_zoom,
+        small: true,
+      })),
+    ];
+    const searchPoints = resultItems
+      ? buildSearchMapPoints(resultItems, businesses)
+      : [];
+    const points = resultItems ? searchPoints : normalPoints;
+
+    void import("leaflet").then((leafletModule) => {
+      if (disposed || !mapElement.current) return;
+      const L = leafletModule.default;
+      const start = (
+        center
+        && Number.isFinite(center.latitude)
+        && Number.isFinite(center.longitude)
+      )
+        ? [center.latitude, center.longitude] as [number, number]
+        : [41.3111, 69.2797] as [number, number];
+      const map = L.map(host, {
+        attributionControl: true,
+        zoomControl: false,
+      }).setView(start, 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>",
+        maxZoom: 19,
+      }).addTo(map);
+      points.forEach((point) => {
+        const fallback = `<span class="pin-fallback">${escapeHtml(point.fallback)}</span>`;
+        const photo = point.photo
+          ? `${fallback}<img src="${escapeHtml(point.photo)}" alt="" style="${avatarImageStyle(point.photoX, point.photoY, point.photoZoom)}" onerror="this.remove()">`
+          : fallback;
+        const smallStyle = point.small
+          ? "font-size:12px;font-weight:800;color:#fff;"
+          : "";
+        const icon = L.divIcon({
+          className: "leaflet-pin",
+          html: `<div class="pin"><div class="plabel">${point.label.split("\n").map(escapeHtml).join("<br>")}</div><div class="dot${point.photo ? " has-photo" : ""}" style="background:${point.color};${smallStyle}">${photo}</div><div class="tail"></div></div>`,
+          iconAnchor: [23, 52],
+          iconSize: [46, 54],
+        });
+        L.marker([point.latitude, point.longitude], { icon })
+          .addTo(map)
+          .on("click", () => onOpenResult(point.kind, point.publicId));
+      });
+      let resizeTimer: number | undefined;
+      let resizeFallback: number | undefined;
+      let resizeObserver: ResizeObserver | undefined;
+      const focusSearchPoints = () => {
+        if (!resultItems) return;
+        const onlyPoint = points[0];
+        if (onlyPoint && points.length === 1) {
+          map.setView(
+            [onlyPoint.latitude, onlyPoint.longitude],
+            14,
+            { animate: false },
+          );
+        } else if (points.length > 1) {
+          map.fitBounds(
+            points.map((point) => [
+              point.latitude,
+              point.longitude,
+            ] as [number, number]),
+            { animate: false, maxZoom: 15, padding: [40, 40] },
+          );
+        }
+      };
+      const syncMapViewport = () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          if (disposed) return;
+          map.invalidateSize({ pan: false });
+          focusSearchPoints();
+        }, 40);
+      };
+
+      window.addEventListener("resize", syncMapViewport);
+      window.addEventListener("orientationchange", syncMapViewport);
+      window.visualViewport?.addEventListener("resize", syncMapViewport);
+      if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(syncMapViewport);
+        resizeObserver.observe(host);
+      }
+      syncMapViewport();
+      resizeFallback = window.setTimeout(syncMapViewport, 240);
+      cleanup = () => {
+        window.clearTimeout(resizeTimer);
+        window.clearTimeout(resizeFallback);
+        resizeObserver?.disconnect();
+        window.removeEventListener("resize", syncMapViewport);
+        window.removeEventListener("orientationchange", syncMapViewport);
+        window.visualViewport?.removeEventListener("resize", syncMapViewport);
+        map.remove();
+      };
+    }).catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      cleanup();
+    };
+  }, [
+    businesses,
+    center?.latitude,
+    center?.longitude,
+    onOpenResult,
+    resultItems,
+    specialists,
+  ]);
+
+  return (
+    <div className="home-map-pane" id="homeMapPane">
+      <div className="pin-eyebrow" id="pinEyebrow">
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z" />
+          <circle cx="12" cy="10" r="2.4" />
+        </svg>
+        Yaqin atrofdagilar
+      </div>
+      <div className="map-wrap">
+        <div id="leafletMap" ref={mapElement} />
+        {resultItems ? (
+          <button
+            className="map-chip"
+            id="mapChip"
+            type="button"
+            onClick={onCloseResults}
+          >
+            🔎 Qidiruv natijalari <span className="x">✕</span>
+          </button>
+        ) : (
+          <div className="map-chip" id="mapChip">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z" />
+              <circle cx="12" cy="10" r="2.4" />
+            </svg>{" "}
+            {district || "Hudud tanlanmagan"}
+          </div>
+        )}
+        <button
+          hidden={!taxiEnabled}
+          aria-label="Chaqiruv"
+          className="icon-btn"
+          data-feature="taxi"
+          id="taxiBtn"
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 500,
+            fontSize: 19,
+          }}
+          type="button"
+          onClick={onTaxiCall}
+        >
+          🚖
+        </button>
+        <div
+          hidden
+          id="centerPin"
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            zIndex: 500,
+            fontSize: 36,
+            filter: "drop-shadow(0 3px 4px rgba(0,0,0,.3))",
+            pointerEvents: "none",
+            transform: "translate(-50%,-100%)",
+          }}
+        >
+          📍
+        </div>
+      </div>
+    </div>
+  );
+}

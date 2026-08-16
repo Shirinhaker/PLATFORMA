@@ -15,7 +15,7 @@ import { searchCatalogDirections } from "./catalog-data";
 import { CatalogItemCard } from "./CatalogItemCard";
 import type { HomeLocation } from "./location-storage";
 import { PublicSearchResults } from "./PublicSearchResults";
-import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
+import type { QueueBookingTarget } from "../../queues/QueueBooking";
 
 interface CatalogScreenProps {
   initialQuery: string;

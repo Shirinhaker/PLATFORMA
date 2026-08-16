@@ -7,9 +7,9 @@ import type {
 import { UZBEKISTAN_REGIONS } from "../legacy/public/location-data";
 import { readHomeLocation } from "../legacy/public/location-storage";
 import {
-  BusinessLocationPickerV1656View,
+  BusinessLocationPickerView,
   normalizeLatLng,
-} from "./BusinessLocationPickerV1656View";
+} from "./BusinessLocationPickerView";
 import {
   recordId,
   recordNumber,
@@ -852,7 +852,7 @@ function ListingForm({
     const latitude = recordText(draft, "lat");
     const longitude = recordText(draft, "lng");
     return (
-      <BusinessLocationPickerV1656View
+      <BusinessLocationPickerView
         prefix="be"
         value={latitude && longitude ? normalizeLatLng(latitude, longitude) : null}
         fallback={normalizeLatLng(homeLocation?.latitude, homeLocation?.longitude)}
