@@ -33,11 +33,13 @@ async def test_backfill_all_profiles_is_lossless_and_idempotent(db_session):
     await db_session.flush()
 
     user_payload = {
-        "orders": [{
-            "id": 1,
-            "status": "new",
-            "items": [{"id": 10, "name": "Non", "qty": 2}],
-        }],
+        "orders": [
+            {
+                "id": 1,
+                "status": "new",
+                "items": [{"id": 10, "name": "Non", "qty": 2}],
+            }
+        ],
         "notifications": [{"id": 2, "is_read": 0}],
         "specialist": {"bio": "Usta", "offers": []},
         "saved": [],
@@ -46,12 +48,14 @@ async def test_backfill_all_profiles_is_lossless_and_idempotent(db_session):
     }
     business_payload = {
         "items": [{"id": 4, "name": "Mahsulot", "price": 15000}],
-        "stories": [{
-            "id": 5,
-            "caption": "Bugungi ish",
-            "views": [{"id": 6, "viewer_id": 1}],
-            "reports": [],
-        }],
+        "stories": [
+            {
+                "id": 5,
+                "caption": "Bugungi ish",
+                "views": [{"id": 6, "viewer_id": 1}],
+                "reports": [],
+            }
+        ],
         "messages": [],
         "settings": {"show_map": True},
     }

@@ -134,201 +134,203 @@ def order_store():
         ),
     )
     session = Session(engine, expire_on_commit=False)
-    session.add_all((
-        Account(
-            id=5,
-            account_type=AccountType.USER,
-            login="user_5",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Account(
-            id=7,
-            account_type=AccountType.BUSINESS,
-            login="business_7",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Account(
-            id=8,
-            account_type=AccountType.BUSINESS,
-            login="business_8",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        UserProfile(
-            account_id=5,
-            name="Ali",
-            phone="+998901234567",
-            public_username="ali",
-            region="Surxondaryo viloyati",
-            district="Qumqo‘rg‘on tumani",
-            mahalla="",
-            latitude=37.82,
-            longitude=67.58,
-            location_exact=True,
-            avatar_object_key="",
-            avatar_x=50,
-            avatar_y=50,
-            avatar_zoom=1,
-            followers_count=0,
-            following_count=0,
-            has_business=False,
-            dashboard_snapshot={},
-            recent_activity=[],
-            specialist_profile={},
-            cabinet_payload={},
-        ),
-        BusinessProfile(
-            account_id=7,
-            name="Muhr",
-            phone="+998907654321",
-            description="",
-            public_username="muhr",
-            direction="Savdo",
-            activity_type="Do‘kon",
-            address="Qumqo‘rg‘on",
-            latitude=37.81,
-            longitude=67.57,
-            work_hours={"monday": "09:00-18:00"},
-            pay_card="8600123412341234",
-            pay_holder="MUHR MCHJ",
-            pay_qr_object_key="private/business/7/payment_qr/qr.webp",
-            director="",
-            tax_id="",
-            logo_object_key="",
-            logo_x=50,
-            logo_y=50,
-            logo_zoom=1,
-            followers_count=0,
-            following_count=0,
-            rating_sum=0,
-            rating_count=0,
-            map_visible=True,
-            dashboard_snapshot={},
-            recent_activity=[],
-            cabinet_payload={},
-        ),
-        BusinessProfile(
-            account_id=8,
-            name="Begona biznes",
-            phone="",
-            description="",
-            public_username="begona",
-            direction="Savdo",
-            activity_type="Do‘kon",
-            address="",
-            work_hours={},
-            pay_card="",
-            pay_holder="",
-            pay_qr_object_key="",
-            director="",
-            tax_id="",
-            logo_object_key="",
-            logo_x=50,
-            logo_y=50,
-            logo_zoom=1,
-            followers_count=0,
-            following_count=0,
-            rating_sum=0,
-            rating_count=0,
-            map_visible=False,
-            dashboard_snapshot={},
-            recent_activity=[],
-            cabinet_payload={},
-        ),
-        CatalogItem(
-            id=11,
-            business_account_id=7,
-            source_record_key="101",
-            catalog_group_id=None,
-            owner_name_snapshot="Muhr",
-            name="Ingliz tili",
-            price_text="35 000 so'm",
-            unit="kg",
-            note="Izoh",
-            kind="service",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Debtor(
-            id=701,
-            business_account_id=7,
-            legacy_source_id=301,
-            name="Vali Karimov",
-            phone="+998901112233",
-            note="",
-            due="",
-            created_by_staff_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Debtor(
-            id=801,
-            business_account_id=8,
-            legacy_source_id=302,
-            name="Begona qarzdor",
-            phone="",
-            note="",
-            due="",
-            created_by_staff_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Listing(
-            id=21,
-            owner_user_account_id=None,
-            owner_business_account_id=7,
-            source_record_key="201",
-            category="uy",
-            title="Hovli sotiladi",
-            price_text="200 000 000 so'm",
-            description="",
-            address="Qumqo‘rg‘on",
-            latitude=37.81,
-            longitude=67.57,
-            visibility="all",
-            status="active",
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        CatalogItem(
-            id=12,
-            business_account_id=8,
-            source_record_key="102",
-            catalog_group_id=None,
-            owner_name_snapshot="Begona biznes",
-            name="Begona tovar",
-            price_text="10 000 so'm",
-            note="",
-            kind="product",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-    ))
+    session.add_all(
+        (
+            Account(
+                id=5,
+                account_type=AccountType.USER,
+                login="user_5",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Account(
+                id=7,
+                account_type=AccountType.BUSINESS,
+                login="business_7",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Account(
+                id=8,
+                account_type=AccountType.BUSINESS,
+                login="business_8",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            UserProfile(
+                account_id=5,
+                name="Ali",
+                phone="+998901234567",
+                public_username="ali",
+                region="Surxondaryo viloyati",
+                district="Qumqo‘rg‘on tumani",
+                mahalla="",
+                latitude=37.82,
+                longitude=67.58,
+                location_exact=True,
+                avatar_object_key="",
+                avatar_x=50,
+                avatar_y=50,
+                avatar_zoom=1,
+                followers_count=0,
+                following_count=0,
+                has_business=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                specialist_profile={},
+                cabinet_payload={},
+            ),
+            BusinessProfile(
+                account_id=7,
+                name="Muhr",
+                phone="+998907654321",
+                description="",
+                public_username="muhr",
+                direction="Savdo",
+                activity_type="Do‘kon",
+                address="Qumqo‘rg‘on",
+                latitude=37.81,
+                longitude=67.57,
+                work_hours={"monday": "09:00-18:00"},
+                pay_card="8600123412341234",
+                pay_holder="MUHR MCHJ",
+                pay_qr_object_key="private/business/7/payment_qr/qr.webp",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=True,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ),
+            BusinessProfile(
+                account_id=8,
+                name="Begona biznes",
+                phone="",
+                description="",
+                public_username="begona",
+                direction="Savdo",
+                activity_type="Do‘kon",
+                address="",
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ),
+            CatalogItem(
+                id=11,
+                business_account_id=7,
+                source_record_key="101",
+                catalog_group_id=None,
+                owner_name_snapshot="Muhr",
+                name="Ingliz tili",
+                price_text="35 000 so'm",
+                unit="kg",
+                note="Izoh",
+                kind="service",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Debtor(
+                id=701,
+                business_account_id=7,
+                legacy_source_id=301,
+                name="Vali Karimov",
+                phone="+998901112233",
+                note="",
+                due="",
+                created_by_staff_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Debtor(
+                id=801,
+                business_account_id=8,
+                legacy_source_id=302,
+                name="Begona qarzdor",
+                phone="",
+                note="",
+                due="",
+                created_by_staff_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Listing(
+                id=21,
+                owner_user_account_id=None,
+                owner_business_account_id=7,
+                source_record_key="201",
+                category="uy",
+                title="Hovli sotiladi",
+                price_text="200 000 000 so'm",
+                description="",
+                address="Qumqo‘rg‘on",
+                latitude=37.81,
+                longitude=67.57,
+                visibility="all",
+                status="active",
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            CatalogItem(
+                id=12,
+                business_account_id=8,
+                source_record_key="102",
+                catalog_group_id=None,
+                owner_name_snapshot="Begona biznes",
+                name="Begona tovar",
+                price_text="10 000 so'm",
+                note="",
+                kind="product",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+        )
+    )
     session.commit()
     try:
         yield AsyncStore(session)
@@ -385,13 +387,15 @@ def create_body(*, item_id: int = 11, order_type: str = "pickup") -> OrderCreate
     return OrderCreate(
         provider_kind="business",
         provider_public_id=build_public_id(PublicResultKind.BUSINESS, 7),
-        items=[OrderCreateItem(
-            public_id=build_content_public_id(
-                "service" if item_id == 11 else "product",
-                item_id,
-            ),
-            qty=2,
-        )],
+        items=[
+            OrderCreateItem(
+                public_id=build_content_public_id(
+                    "service" if item_id == 11 else "product",
+                    item_id,
+                ),
+                qty=2,
+            )
+        ],
         phone="+998 90 123 45 67",
         order_type=order_type,
         address="Qumqo‘rg‘on",
@@ -429,11 +433,13 @@ async def test_create_order_snapshots_items_and_is_visible_to_both_sides(order_s
     assert created.order_category == "service"
     assert created.status == "new"
     assert created.payment_status == ""
-    notification = order_store.sync.scalar(select(Notification).where(
-        Notification.account_id == 7,
-        Notification.account_type == "business",
-        Notification.event_key == f"order:{created.id}:created",
-    ))
+    notification = order_store.sync.scalar(
+        select(Notification).where(
+            Notification.account_id == 7,
+            Notification.account_type == "business",
+            Notification.event_key == f"order:{created.id}:created",
+        )
+    )
     assert notification is not None
     assert notification.title == "Yangi buyurtma keldi"
     assert notification.body == "Buyurtmani ko'rib, qabul qiling."
@@ -460,12 +466,16 @@ async def test_create_order_snapshots_items_and_is_visible_to_both_sides(order_s
     assert customer_rows[0].view == "customer"
     assert provider_rows[0].view == "provider"
 
-    events = list(order_store.sync.scalars(select(OutboxEvent).order_by(OutboxEvent.id)))
+    events = list(
+        order_store.sync.scalars(select(OutboxEvent).order_by(OutboxEvent.id))
+    )
     assert [event.topic for event in events] == ["order.created"]
 
 
 @pytest.mark.asyncio
-async def test_create_order_blocks_self_order_foreign_items_and_missing_delivery_point(order_store):
+async def test_create_order_blocks_self_order_foreign_items_and_missing_delivery_point(
+    order_store,
+):
     service = service_for(order_store)
 
     with pytest.raises(ApiError, match="O'zingizga buyurtma bera olmaysiz"):
@@ -492,9 +502,7 @@ async def test_create_order_blocks_self_order_foreign_items_and_missing_delivery
             body=body,
         )
 
-    no_phone = create_body(order_type="delivery").model_copy(
-        update={"phone": ""}
-    )
+    no_phone = create_body(order_type="delivery").model_copy(update={"phone": ""})
     with pytest.raises(ApiError, match="Telefon raqam kiritish kerak"):
         await service.create(
             account_id=5,
@@ -520,11 +528,13 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert accepted.status == "accepted"
     assert accepted.payment_status == "pending"
-    accepted_notification = order_store.sync.scalar(select(Notification).where(
-        Notification.account_id == 5,
-        Notification.account_type == "user",
-        Notification.event_key == f"order:{created.id}:accepted",
-    ))
+    accepted_notification = order_store.sync.scalar(
+        select(Notification).where(
+            Notification.account_id == 5,
+            Notification.account_type == "user",
+            Notification.event_key == f"order:{created.id}:accepted",
+        )
+    )
     assert accepted_notification is not None
     assert accepted_notification.title == "Buyurtma qabul qilindi"
     assert accepted_notification.action_type == "make_payment"
@@ -535,11 +545,13 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     order_store.sync.refresh(accepted_notification)
     assert accepted_notification.is_read is True
-    unread = order_store.sync.scalar(select(func.count(Notification.id)).where(
-        Notification.account_id == 5,
-        Notification.account_type == "user",
-        Notification.is_read.is_(False),
-    ))
+    unread = order_store.sync.scalar(
+        select(func.count(Notification.id)).where(
+            Notification.account_id == 5,
+            Notification.account_type == "user",
+            Notification.is_read.is_(False),
+        )
+    )
     assert unread == 0
 
     with pytest.raises(ApiError, match="Avval to'lov cheki rasmini"):
@@ -651,17 +663,19 @@ async def test_payment_problem_chat_handoff_and_received_follow_v1656(order_stor
     )
     assert done.status == "done"
 
-    listed = (await service.list_my(
-        account_id=5,
-        account_type=AccountType.USER,
-    ))[0]
+    listed = (
+        await service.list_my(
+            account_id=5,
+            account_type=AccountType.USER,
+        )
+    )[0]
     assert listed.chat_count == 3
     assert listed.last_chat == "✅ To'lov tasdiqlandi. Rahmat!"
     assert listed.last_chat_at is not None
 
-    topics = list(order_store.sync.scalars(
-        select(OutboxEvent.topic).order_by(OutboxEvent.id)
-    ))
+    topics = list(
+        order_store.sync.scalars(select(OutboxEvent.topic).order_by(OutboxEvent.id))
+    )
     assert topics == [
         "order.created",
         "order.status_changed",
@@ -722,9 +736,7 @@ async def test_accepted_order_debt_is_idempotent_and_links_cash_on_handoff(order
         body=OrderPaymentDecision(status="debt", debtor_id=701),
     )
     assert repeated.pay_type == "qarz"
-    assert order_store.sync.scalar(
-        select(func.count(DebtTransaction.id))
-    ) == 1
+    assert order_store.sync.scalar(select(func.count(DebtTransaction.id))) == 1
 
     await service.change_status(
         order_id=created.id,
@@ -855,9 +867,11 @@ async def test_handoff_posts_cash_receipt_in_the_order_transaction(order_store):
     assert receipt.source == "order"
     assert receipt.pay_type == "karta"
     assert receipt.created_by_staff_id == 44
-    lines = list(order_store.sync.scalars(
-        select(CashReceiptLine).where(CashReceiptLine.receipt_id == receipt.id)
-    ))
+    lines = list(
+        order_store.sync.scalars(
+            select(CashReceiptLine).where(CashReceiptLine.receipt_id == receipt.id)
+        )
+    )
     assert len(lines) == 1
     assert lines[0].total == 70000
 
@@ -874,20 +888,22 @@ async def test_handoff_fifo_failure_rolls_back_order_and_cash(order_store):
     order.status = "tayyor"
     order.payment_status = "confirmed"
     order.pay_type = "karta"
-    order_store.sync.add(InventoryItem(
-        id=301,
-        business_account_id=7,
-        catalog_item_id=11,
-        legacy_source_id=101,
-        track_stock=True,
-        stock_type="ready_food",
-        stock_qty=0,
-        cost_price=0,
-        min_qty=0,
-        fifo_initialized=True,
-        created_at=NOW,
-        updated_at=NOW,
-    ))
+    order_store.sync.add(
+        InventoryItem(
+            id=301,
+            business_account_id=7,
+            catalog_item_id=11,
+            legacy_source_id=101,
+            track_stock=True,
+            stock_type="ready_food",
+            stock_qty=0,
+            cost_price=0,
+            min_qty=0,
+            fifo_initialized=True,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
     order_store.sync.commit()
 
     with pytest.raises(ApiError) as error:
@@ -911,10 +927,13 @@ async def test_stranger_cannot_read_or_mutate_order(order_store):
         body=create_body(),
     )
 
-    assert await service.list_inbox(
-        account_id=8,
-        account_type=AccountType.BUSINESS,
-    ) == []
+    assert (
+        await service.list_inbox(
+            account_id=8,
+            account_type=AccountType.BUSINESS,
+        )
+        == []
+    )
     with pytest.raises(ApiError, match="Buyurtma topilmadi"):
         await service.change_status(
             order_id=created.id,
@@ -931,12 +950,16 @@ async def test_stranger_cannot_read_or_mutate_order(order_store):
 
 
 @pytest.mark.asyncio
-async def test_generic_business_order_and_provider_cancellation_match_v1656(order_store):
+async def test_generic_business_order_and_provider_cancellation_match_v1656(
+    order_store,
+):
     service = service_for(order_store)
-    body = create_body().model_copy(update={
-        "items": [],
-        "title": "Buyurtma: Muhr",
-    })
+    body = create_body().model_copy(
+        update={
+            "items": [],
+            "title": "Buyurtma: Muhr",
+        }
+    )
 
     created = await service.create(
         account_id=5,
@@ -966,16 +989,20 @@ async def test_generic_business_order_and_provider_cancellation_match_v1656(orde
 async def test_generic_order_does_not_query_the_catalog(order_store):
     class CatalogQueryGuard(OrderRepository):
         async def catalog_items_by_public_ids(self, session, *, public_ids):
-            raise AssertionError("Bo'sh buyurtmada katalog so'rovi bajarilmasligi kerak.")
+            raise AssertionError(
+                "Bo'sh buyurtmada katalog so'rovi bajarilmasligi kerak."
+            )
 
         async def all_catalog_items(self, session):
             raise AssertionError("Butun katalogni yuklash taqiqlangan.")
 
     service = service_with_repository(order_store, CatalogQueryGuard())
-    body = create_body().model_copy(update={
-        "items": [],
-        "title": "Buyurtma: Muhr",
-    })
+    body = create_body().model_copy(
+        update={
+            "items": [],
+            "title": "Buyurtma: Muhr",
+        }
+    )
 
     created = await service.create(
         account_id=5,
@@ -1017,11 +1044,13 @@ async def test_catalog_order_queries_only_requested_public_ids(order_store):
 @pytest.mark.asyncio
 async def test_listing_order_uses_listing_title_and_validates_owner(order_store):
     service = service_for(order_store)
-    body = create_body().model_copy(update={
-        "items": [],
-        "title": "",
-        "listing_public_id": build_listing_public_id(21),
-    })
+    body = create_body().model_copy(
+        update={
+            "items": [],
+            "title": "",
+            "listing_public_id": build_listing_public_id(21),
+        }
+    )
 
     created = await service.create(
         account_id=5,
@@ -1132,12 +1161,14 @@ async def test_chat_response_contains_order_side_and_other_profile(order_store):
 async def test_fractional_units_are_deduplicated_and_keep_half_quantity(order_store):
     service = service_for(order_store)
     item_public_id = build_content_public_id("service", 11)
-    body = create_body().model_copy(update={
-        "items": [
-            OrderCreateItem(public_id=item_public_id, qty=0.25),
-            OrderCreateItem(public_id=item_public_id, qty=0.25),
-        ],
-    })
+    body = create_body().model_copy(
+        update={
+            "items": [
+                OrderCreateItem(public_id=item_public_id, qty=0.25),
+                OrderCreateItem(public_id=item_public_id, qty=0.25),
+            ],
+        }
+    )
 
     created = await service.create(
         account_id=5,
@@ -1160,7 +1191,9 @@ async def test_illegal_status_transitions_return_v1656_conflicts(order_store):
         body=create_body(),
     )
 
-    with pytest.raises(ApiError, match="faqat qabul qiluvchi kabinet") as customer_accept:
+    with pytest.raises(
+        ApiError, match="faqat qabul qiluvchi kabinet"
+    ) as customer_accept:
         await service.change_status(
             order_id=created.id,
             account_id=5,

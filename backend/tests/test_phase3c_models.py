@@ -30,11 +30,7 @@ def check_names(model) -> set[str | None]:
 
 
 def index_names(model) -> set[str | None]:
-    return {
-        index.name
-        for index in model.__table__.indexes
-        if isinstance(index, Index)
-    }
+    return {index.name for index in model.__table__.indexes if isinstance(index, Index)}
 
 
 def test_catalog_item_keeps_text_price_and_owner_state():
@@ -96,7 +92,9 @@ def test_migrated_advertisements_always_carry_their_run():
     """
     source = (
         Path(__file__).resolve().parents[1]
-        / "app" / "legacy_migration" / "advertisement_stage.py"
+        / "app"
+        / "legacy_migration"
+        / "advertisement_stage.py"
     ).read_text(encoding="utf-8")
     assert '"migration_run_id": run.id' in source
     assert "target.migration_run_id = run.id" in source

@@ -56,15 +56,17 @@ def settings_context():
         tables=(Account.__table__, ProfileLink.__table__),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            account(1, AccountType.BUSINESS, "turondokon"),
-            account(2, AccountType.USER, "bandlogin"),
-            ProfileLink(
-                user_account_id=2,
-                business_account_id=1,
-                created_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                account(1, AccountType.BUSINESS, "turondokon"),
+                account(2, AccountType.USER, "bandlogin"),
+                ProfileLink(
+                    user_account_id=2,
+                    business_account_id=1,
+                    created_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -153,11 +155,13 @@ async def test_unlinked_user_and_staff_cannot_manage_business_credentials(
     assert unlinked.value.code == "linked_business_required"
 
     with pytest.raises(ApiError) as staff:
-        require_business_credentials_owner(CurrentAccount(
-            account_id=1,
-            account_type=AccountType.BUSINESS,
-            session_token="staff-session",
-            actor_type="staff",
-            staff_id=9,
-        ))
+        require_business_credentials_owner(
+            CurrentAccount(
+                account_id=1,
+                account_type=AccountType.BUSINESS,
+                session_token="staff-session",
+                actor_type="staff",
+                staff_id=9,
+            )
+        )
     assert staff.value.code == "business_owner_required"

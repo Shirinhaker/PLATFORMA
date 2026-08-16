@@ -62,15 +62,11 @@ class DiningPlace(Base):
     legacy_source_id: Mapped[int | None] = mapped_column(BigInteger)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    seats: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    seats: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     # Zal rejasidagi koordinatalar — v1656da ham suzuvchi son.
     x: Mapped[float] = mapped_column(Float, nullable=False, server_default="4")
     y: Mapped[float] = mapped_column(Float, nullable=False, server_default="4")
-    locked: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="1"
-    )
+    locked: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -130,24 +126,16 @@ class DiningOrder(Base):
     customer_name: Mapped[str] = mapped_column(
         String(80), nullable=False, server_default=""
     )
-    phone: Mapped[str] = mapped_column(
-        String(30), nullable=False, server_default=""
-    )
+    phone: Mapped[str] = mapped_column(String(30), nullable=False, server_default="")
     booking_date: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=""
     )
     booking_time: Mapped[str] = mapped_column(
         String(5), nullable=False, server_default=""
     )
-    guests: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
-    note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    total: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
+    guests: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
 
     waiter_staff_id: Mapped[int | None] = mapped_column(
         BigInteger,
@@ -163,12 +151,8 @@ class DiningOrder(Base):
     problem_reason: Mapped[str] = mapped_column(
         String(80), nullable=False, server_default=""
     )
-    problem_note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    problem_opened_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    problem_note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    problem_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     kitchen_status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="new"
@@ -176,9 +160,7 @@ class DiningOrder(Base):
     payment_status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="open"
     )
-    pay_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=""
-    )
+    pay_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="")
     debtor_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("debtors.id", ondelete="SET NULL"),
@@ -225,15 +207,9 @@ class DiningOrderItem(Base):
     )
     name: Mapped[str] = mapped_column(String(220), nullable=False)
     qty: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
-    unit: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default="dona"
-    )
-    price: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
-    total: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
+    unit: Mapped[str] = mapped_column(String(40), nullable=False, server_default="dona")
+    price: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
+    total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

@@ -71,9 +71,7 @@ def create_snapshot(
         quick = target.execute("PRAGMA quick_check").fetchone()[0]
         integrity = target.execute("PRAGMA integrity_check").fetchone()[0]
         if quick != "ok" or integrity != "ok":
-            raise SnapshotIntegrityError(
-                "legacy_snapshot_integrity_failed"
-            )
+            raise SnapshotIntegrityError("legacy_snapshot_integrity_failed")
         target.commit()
     finally:
         target.close()
@@ -142,25 +140,20 @@ def inventory_source(
     }
     missing = sorted(set(REQUIRED_TABLES) - tables)
     if missing:
-        raise LegacySchemaMismatch(
-            "legacy_schema_missing_tables:" + ",".join(missing)
-        )
+        raise LegacySchemaMismatch("legacy_schema_missing_tables:" + ",".join(missing))
 
     inventory: dict[str, dict[str, int]] = {}
     for table in REQUIRED_TABLES:
         counts: Counter[str] = Counter()
         counts["total"] = int(
-            connection.execute(
-                f'SELECT COUNT(*) FROM "{table}"'
-            ).fetchone()[0]
+            connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
         )
         columns = _table_columns(connection, table)
         for dimension in _inventory_dimensions(table):
             if dimension not in columns:
                 continue
             rows = connection.execute(
-                f'SELECT "{dimension}", COUNT(*) '
-                f'FROM "{table}" GROUP BY "{dimension}"'
+                f'SELECT "{dimension}", COUNT(*) FROM "{table}" GROUP BY "{dimension}"'
             )
             for value, count in rows:
                 label = str(value).strip() if value is not None else ""
@@ -173,10 +166,7 @@ def _table_columns(
     connection: sqlite3.Connection,
     table: str,
 ) -> set[str]:
-    return {
-        str(row[1])
-        for row in connection.execute(f'PRAGMA table_info("{table}")')
-    }
+    return {str(row[1]) for row in connection.execute(f'PRAGMA table_info("{table}")')}
 
 
 def _inventory_dimensions(table: str) -> tuple[str, ...]:

@@ -95,28 +95,30 @@ def advertisement_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            Account(
-                id=SHOP,
-                account_type=AccountType.BUSINESS,
-                login="choyxona",
-                password_hash="hash",
-                telegram_user_id=None,
-                status="active",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            PlatformPrice(
-                id=1,
-                price_code="advertisement_district_hour",
-                amount_uzs=RATE,
-                service_type="advertisement",
-                config={},
-                active=1,
-                created_at=int(NOW.timestamp()),
-                updated_at=int(NOW.timestamp()),
-            ),
-        ))
+        seed.add_all(
+            (
+                Account(
+                    id=SHOP,
+                    account_type=AccountType.BUSINESS,
+                    login="choyxona",
+                    password_hash="hash",
+                    telegram_user_id=None,
+                    status="active",
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                PlatformPrice(
+                    id=1,
+                    price_code="advertisement_district_hour",
+                    amount_uzs=RATE,
+                    service_type="advertisement",
+                    config={},
+                    active=1,
+                    created_at=int(NOW.timestamp()),
+                    updated_at=int(NOW.timestamp()),
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -139,9 +141,13 @@ def _body(**overrides) -> AdvertisementCreate:
     payload = {
         "title": "Choyxona ochildi",
         "caption": "Yangi taomlar",
-        "targets": [AdvertisementTarget(
-            level="district", region="Toshkent shahri", district="Chilonzor",
-        )],
+        "targets": [
+            AdvertisementTarget(
+                level="district",
+                region="Toshkent shahri",
+                district="Chilonzor",
+            )
+        ],
         "duration_days": 7,
         "daily_all_day": True,
         "daily_start": "00:00",
@@ -175,11 +181,13 @@ def test_tashkent_city_and_region_are_separate():
 
 def test_city_district_can_be_targeted():
     quote = calculate_ad_price(
-        targets=[{
-            "level": "district",
-            "region": "Toshkent shahri",
-            "district": "Chilonzor",
-        }],
+        targets=[
+            {
+                "level": "district",
+                "region": "Toshkent shahri",
+                "district": "Chilonzor",
+            }
+        ],
         duration_days=1,
         daily_all_day=True,
         daily_start="00:00",
@@ -212,15 +220,21 @@ async def test_quote_matches_v1656_formula(advertisement_context):
     """Narx = tumanlar × kunlik soatlar × kunlar × tarif."""
     service, _sessions, _engine = advertisement_context
 
-    quote = await service.quote(AdvertisementQuoteRequest(
-        targets=[AdvertisementTarget(
-            level="district", region="Toshkent shahri", district="Chilonzor",
-        )],
-        duration_days=7,
-        daily_all_day=False,
-        daily_start="09:00",
-        daily_end="18:00",
-    ))
+    quote = await service.quote(
+        AdvertisementQuoteRequest(
+            targets=[
+                AdvertisementTarget(
+                    level="district",
+                    region="Toshkent shahri",
+                    district="Chilonzor",
+                )
+            ],
+            duration_days=7,
+            daily_all_day=False,
+            daily_start="09:00",
+            daily_end="18:00",
+        )
+    )
     assert quote.district_count == 1
     assert quote.hours_per_day == 9
     assert quote.billable_district_hours == 1 * 9 * 7
@@ -242,25 +256,29 @@ async def test_rate_comes_from_the_admin_panel(advertisement_context):
 async def test_invalid_duration_is_refused(advertisement_context):
     service, _sessions, _engine = advertisement_context
     with pytest.raises(ApiError) as failure:
-        await service.quote(AdvertisementQuoteRequest(
-            targets=[AdvertisementTarget(level="republic")],
-            duration_days=5,
-            daily_all_day=True,
-        ))
+        await service.quote(
+            AdvertisementQuoteRequest(
+                targets=[AdvertisementTarget(level="republic")],
+                duration_days=5,
+                daily_all_day=True,
+            )
+        )
     assert failure.value.code == "advertisement_price_invalid"
 
 
 async def test_republic_cannot_be_mixed(advertisement_context):
     service, _sessions, _engine = advertisement_context
     with pytest.raises(ApiError):
-        await service.quote(AdvertisementQuoteRequest(
-            targets=[
-                AdvertisementTarget(level="republic"),
-                AdvertisementTarget(level="region", region="Toshkent shahri"),
-            ],
-            duration_days=1,
-            daily_all_day=True,
-        ))
+        await service.quote(
+            AdvertisementQuoteRequest(
+                targets=[
+                    AdvertisementTarget(level="republic"),
+                    AdvertisementTarget(level="region", region="Toshkent shahri"),
+                ],
+                duration_days=1,
+                daily_all_day=True,
+            )
+        )
 
 
 # -------------------------------------------------------------- yaratish
@@ -272,7 +290,9 @@ async def test_new_advertisement_is_not_visible_until_paid(
     service, _sessions, engine = advertisement_context
 
     created = await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
     assert created.status == "payment_pending"
     assert created.price == 168 * RATE
@@ -288,15 +308,19 @@ async def test_new_advertisement_is_not_visible_until_paid(
 async def test_owner_sees_own_advertisements_only(advertisement_context):
     service, _sessions, _engine = advertisement_context
     await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
 
     mine = await service.list_mine(
-        account_id=SHOP, account_type=AccountType.BUSINESS,
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
     )
     assert len(mine) == 1
     stranger = await service.list_mine(
-        account_id=SHOP + 5, account_type=AccountType.BUSINESS,
+        account_id=SHOP + 5,
+        account_type=AccountType.BUSINESS,
     )
     assert stranger == []
 
@@ -304,7 +328,9 @@ async def test_owner_sees_own_advertisements_only(advertisement_context):
 async def test_stranger_cannot_delete(advertisement_context):
     service, _sessions, _engine = advertisement_context
     created = await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
 
     with pytest.raises(ApiError) as failure:
@@ -325,7 +351,9 @@ async def test_payment_activates_and_shifts_the_schedule(
     """Tasdiqlash sanadan keyin bo'lsa, jadval oldinga suriladi."""
     service, sessions, engine = advertisement_context
     created = await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
     # Boshlanish 10-avgust edi; tasdiq 12-avgustda keladi.
     approved = int(datetime(2026, 8, 12, 6, 0, tzinfo=UTC).timestamp())
@@ -461,22 +489,28 @@ async def test_owner_can_start_future_custom_ad_now_without_changing_price(
 async def test_activation_is_refused_twice(advertisement_context):
     service, sessions, _engine = advertisement_context
     created = await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
     approved = int(NOW.timestamp())
 
     async with sessions() as session:
         await service.activate_paid(
-            session, advertisement_id=created.id,
-            account_id=SHOP, now=approved,
+            session,
+            advertisement_id=created.id,
+            account_id=SHOP,
+            now=approved,
         )
         await session.commit()
 
     async with sessions() as session:
         with pytest.raises(ApiError) as failure:
             await service.activate_paid(
-                session, advertisement_id=created.id,
-                account_id=SHOP, now=approved,
+                session,
+                advertisement_id=created.id,
+                account_id=SHOP,
+                now=approved,
             )
         assert failure.value.code == "advertisement_not_pending"
 
@@ -485,7 +519,9 @@ async def test_activation_checks_the_owner(advertisement_context):
     """Boshqa akkauntning to'lovi reklamani yoqmaydi."""
     service, sessions, _engine = advertisement_context
     created = await service.create(
-        account_id=SHOP, account_type=AccountType.BUSINESS, body=_body(),
+        account_id=SHOP,
+        account_type=AccountType.BUSINESS,
+        body=_body(),
     )
 
     async with sessions() as session:

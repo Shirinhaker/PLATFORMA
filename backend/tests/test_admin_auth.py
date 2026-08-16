@@ -130,9 +130,7 @@ async def test_only_listed_telegram_id_gets_a_code(admin_context):
 
     # Ro'yxatda yo'q ID uchun kod umuman yaratilmaydi.
     with Session(engine) as check:
-        assert check.scalar(
-            select(func.count()).select_from(AdminAuthChallenge)
-        ) == 0
+        assert check.scalar(select(func.count()).select_from(AdminAuthChallenge)) == 0
         assert check.scalar(select(func.count()).select_from(OutboxEvent)) == 0
 
 
@@ -193,9 +191,7 @@ async def test_wrong_code_counts_attempts_and_then_locks(admin_context):
 
     for _ in range(5):
         with pytest.raises(ApiError) as failure:
-            await service.verify(
-                challenge_id=started["challenge_id"], code="000000"
-            )
+            await service.verify(challenge_id=started["challenge_id"], code="000000")
         assert failure.value.status_code == 400
 
     with pytest.raises(ApiError) as locked:
@@ -269,9 +265,9 @@ async def test_session_expires_after_ttl_even_when_active(admin_context):
     # Har 20 daqiqada ishlatiladi — bo'sh turish qoidasi ishga tushmaydi.
     minutes = 20
     while minutes < 8 * 60:
-        assert await build(now=NOW + timedelta(minutes=minutes)).resolve(
-            token
-        ) == ADMIN_TG
+        assert (
+            await build(now=NOW + timedelta(minutes=minutes)).resolve(token) == ADMIN_TG
+        )
         minutes += 20
 
     expired = build(now=NOW + timedelta(hours=8, minutes=1))

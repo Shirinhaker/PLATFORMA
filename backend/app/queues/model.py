@@ -62,9 +62,7 @@ class QueueProvider(Base):
     )
     specialty: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     experience_years: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    qualification: Mapped[str] = mapped_column(
-        String(100), nullable=False, default=""
-    )
+    qualification: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     work_days: Mapped[str] = mapped_column(
         String(30), nullable=False, default="1,2,3,4,5,6"
     )
@@ -104,9 +102,7 @@ class QueueProviderService(Base):
         nullable=False,
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    duration_minutes: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=20
-    )
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

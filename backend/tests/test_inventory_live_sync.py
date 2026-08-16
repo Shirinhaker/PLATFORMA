@@ -60,16 +60,18 @@ def store():
         ),
     )
     session = Session(engine, expire_on_commit=False)
-    session.add(Account(
-        id=7,
-        account_type=AccountType.BUSINESS,
-        login="ombor_test",
-        password_hash="hash",
-        telegram_user_id=None,
-        status="active",
-        created_at=NOW,
-        updated_at=NOW,
-    ))
+    session.add(
+        Account(
+            id=7,
+            account_type=AccountType.BUSINESS,
+            login="ombor_test",
+            password_hash="hash",
+            telegram_user_id=None,
+            status="active",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
     session.commit()
     try:
         yield AsyncStore(session)
@@ -82,16 +84,18 @@ def store():
 async def test_new_tracked_product_gets_initial_fifo_stock_once(store):
     payload = {
         "item_groups": [],
-        "items": [{
-            "id": 11,
-            "name": "Un",
-            "kind": "product",
-            "unit": "kg",
-            "track_stock": 1,
-            "stock_type": "raw_material",
-            "stock_qty": 25.5,
-            "min_qty": 4,
-        }],
+        "items": [
+            {
+                "id": 11,
+                "name": "Un",
+                "kind": "product",
+                "unit": "kg",
+                "track_stock": 1,
+                "stock_type": "raw_material",
+                "stock_qty": 25.5,
+                "min_qty": 4,
+            }
+        ],
     }
     await sync_business_catalog(
         store,

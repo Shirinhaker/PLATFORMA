@@ -114,8 +114,14 @@ class EducationGroupWrite(BaseModel):
     package_price: int = Field(default=0, ge=0, le=10**12)
 
     @field_validator(
-        "name", "teacher_name", "room_name", "lesson_from", "lesson_to",
-        "start_date", "end_date", mode="before",
+        "name",
+        "teacher_name",
+        "room_name",
+        "lesson_from",
+        "lesson_to",
+        "start_date",
+        "end_date",
+        mode="before",
     )
     @classmethod
     def normalize_group_text(cls, value):
@@ -147,8 +153,15 @@ class EducationStudentWrite(BaseModel):
     note: str = Field(default="", max_length=2000)
 
     @field_validator(
-        "full_name", "phone", "parent_name", "parent_phone", "birth_date",
-        "joined_date", "payment_start_date", "note", mode="before",
+        "full_name",
+        "phone",
+        "parent_name",
+        "parent_phone",
+        "birth_date",
+        "joined_date",
+        "payment_start_date",
+        "note",
+        mode="before",
     )
     @classmethod
     def normalize_student_text(cls, value):

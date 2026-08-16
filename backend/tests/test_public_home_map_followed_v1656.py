@@ -117,17 +117,19 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
             (12, 22, False),
             (13, 23, False),
         ):
-            session.add_all((
-                account(owner_id, AccountType.USER),
-                account(business_id, AccountType.BUSINESS),
-                owner_profile(owner_id),
-                business_profile(business_id, map_visible=map_visible),
-                ProfileLink(
-                    user_account_id=owner_id,
-                    business_account_id=business_id,
-                    created_at=NOW,
-                ),
-            ))
+            session.add_all(
+                (
+                    account(owner_id, AccountType.USER),
+                    account(business_id, AccountType.BUSINESS),
+                    owner_profile(owner_id),
+                    business_profile(business_id, map_visible=map_visible),
+                    ProfileLink(
+                        user_account_id=owner_id,
+                        business_account_id=business_id,
+                        created_at=NOW,
+                    ),
+                )
+            )
         session.commit()
 
         async def followed(*args, **kwargs):
@@ -153,6 +155,7 @@ async def test_followed_businesses_ignore_map_visible_like_v1656(monkeypatch):
             "app.public_discovery.repository.load_followed_profiles",
             followed,
         )
+
         async def no_native_pro(*args, **kwargs):
             return set()
 
@@ -194,31 +197,33 @@ async def test_native_demo_pro_keeps_real_business_visible_on_home_map():
     )
     session = Session(engine, expire_on_commit=False)
     try:
-        session.add_all((
-            account(11, AccountType.USER),
-            account(21, AccountType.BUSINESS),
-            owner_profile(11),
-            business_profile(21, map_visible=True),
-            ProfileLink(
-                user_account_id=11,
-                business_account_id=21,
-                created_at=NOW,
-            ),
-            BusinessSubscription(
-                id=301,
-                business_account_id=21,
-                legacy_source_id=None,
-                plan_code="pro",
-                duration_months=12,
-                starts_at=int(NOW.timestamp()),
-                expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
-                status="active",
-                # v1656 demo-activation haqiqiy biznes profilini demo qilmaydi.
-                is_demo=True,
-                payment_request_id=None,
-                created_at=int(NOW.timestamp()),
-            ),
-        ))
+        session.add_all(
+            (
+                account(11, AccountType.USER),
+                account(21, AccountType.BUSINESS),
+                owner_profile(11),
+                business_profile(21, map_visible=True),
+                ProfileLink(
+                    user_account_id=11,
+                    business_account_id=21,
+                    created_at=NOW,
+                ),
+                BusinessSubscription(
+                    id=301,
+                    business_account_id=21,
+                    legacy_source_id=None,
+                    plan_code="pro",
+                    duration_months=12,
+                    starts_at=int(NOW.timestamp()),
+                    expires_at=int(datetime(2030, 1, 1, tzinfo=UTC).timestamp()),
+                    status="active",
+                    # v1656 demo-activation haqiqiy biznes profilini demo qilmaydi.
+                    is_demo=True,
+                    payment_request_id=None,
+                    created_at=int(NOW.timestamp()),
+                ),
+            )
+        )
         session.commit()
 
         payload = await load_public_home_map(

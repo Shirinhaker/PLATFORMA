@@ -84,23 +84,16 @@ class AdminPaymentService:
         limit: int = 100,
     ) -> list[AdminPaymentRow]:
         if status and status not in STATUSES:
-            raise ApiError(
-                400, "payment_status_invalid", "To‘lov holati noto‘g‘ri."
-            )
+            raise ApiError(400, "payment_status_invalid", "To‘lov holati noto‘g‘ri.")
         if service_type and service_type not in SERVICE_TYPES:
-            raise ApiError(
-                400, "payment_service_invalid", "Xizmat turi noto‘g‘ri."
-            )
-        statement = (
-            select(PaymentRequest, Account.login)
-            .join(Account, Account.id == PaymentRequest.account_id)
+            raise ApiError(400, "payment_service_invalid", "Xizmat turi noto‘g‘ri.")
+        statement = select(PaymentRequest, Account.login).join(
+            Account, Account.id == PaymentRequest.account_id
         )
         if status:
             statement = statement.where(PaymentRequest.status == status)
         if service_type:
-            statement = statement.where(
-                PaymentRequest.service_type == service_type
-            )
+            statement = statement.where(PaymentRequest.service_type == service_type)
         # Kutilayotganlar birinchi, keyin eng yangisi.
         statement = statement.order_by(
             PaymentRequest.created_at.desc(), PaymentRequest.id.desc()
@@ -108,22 +101,23 @@ class AdminPaymentService:
         async with self._session_factory() as session:
             rows = (await session.execute(statement)).all()
             result = [
-                AdminPaymentRow(**_row(request, login))
-                for request, login in rows
+                AdminPaymentRow(**_row(request, login)) for request, login in rows
             ]
             await session.rollback()
         return result
 
     async def detail(self, payment_id: int) -> AdminPaymentDetail:
         async with self._session_factory() as session:
-            request, login, method_name = await self._require(
-                session, payment_id
+            request, login, method_name = await self._require(session, payment_id)
+            attempts = list(
+                (
+                    await session.scalars(
+                        select(PaymentAttempt)
+                        .where(PaymentAttempt.payment_request_id == request.id)
+                        .order_by(PaymentAttempt.attempt_no)
+                    )
+                ).all()
             )
-            attempts = list((await session.scalars(
-                select(PaymentAttempt)
-                .where(PaymentAttempt.payment_request_id == request.id)
-                .order_by(PaymentAttempt.attempt_no)
-            )).all())
             result = AdminPaymentDetail(
                 **_row(request, login),
                 target_id=request.target_id,
@@ -167,16 +161,12 @@ class AdminPaymentService:
                 .limit(1)
             )
             if attempt is None or not attempt.receipt_object_key:
-                raise ApiError(
-                    404, "receipt_not_found", "Kvitansiya topilmadi."
-                )
+                raise ApiError(404, "receipt_not_found", "Kvitansiya topilmadi.")
             object_key = attempt.receipt_object_key
             mime = attempt.receipt_mime
             await session.rollback()
         return AdminReceiptLink(
-            url=self._download_url(
-                object_key, expires_in=RECEIPT_URL_TTL_SECONDS
-            ),
+            url=self._download_url(object_key, expires_in=RECEIPT_URL_TTL_SECONDS),
             mime=mime,
             expires_in=RECEIPT_URL_TTL_SECONDS,
         )
@@ -185,11 +175,15 @@ class AdminPaymentService:
 
     async def prices(self) -> list[AdminPriceRow]:
         async with self._session_factory() as session:
-            rows = list((await session.scalars(
-                select(PlatformPrice).order_by(
-                    PlatformPrice.service_type, PlatformPrice.price_code
-                )
-            )).all())
+            rows = list(
+                (
+                    await session.scalars(
+                        select(PlatformPrice).order_by(
+                            PlatformPrice.service_type, PlatformPrice.price_code
+                        )
+                    )
+                ).all()
+            )
             result = [
                 AdminPriceRow(
                     id=price.id,
@@ -235,11 +229,15 @@ class AdminPaymentService:
 
     async def methods(self) -> list[AdminMethodRow]:
         async with self._session_factory() as session:
-            rows = list((await session.scalars(
-                select(PaymentMethod).order_by(
-                    PaymentMethod.sort_order, PaymentMethod.id
-                )
-            )).all())
+            rows = list(
+                (
+                    await session.scalars(
+                        select(PaymentMethod).order_by(
+                            PaymentMethod.sort_order, PaymentMethod.id
+                        )
+                    )
+                ).all()
+            )
             result = [self._method_row(method) for method in rows]
             await session.rollback()
         return result
@@ -308,16 +306,18 @@ class AdminPaymentService:
     async def _require(
         session: AsyncSession, payment_id: int
     ) -> tuple[PaymentRequest, str, str]:
-        row = (await session.execute(
-            select(PaymentRequest, Account.login, PaymentMethod.name)
-            .join(Account, Account.id == PaymentRequest.account_id)
-            .join(
-                PaymentMethod,
-                PaymentMethod.id == PaymentRequest.payment_method_id,
-                isouter=True,
+        row = (
+            await session.execute(
+                select(PaymentRequest, Account.login, PaymentMethod.name)
+                .join(Account, Account.id == PaymentRequest.account_id)
+                .join(
+                    PaymentMethod,
+                    PaymentMethod.id == PaymentRequest.payment_method_id,
+                    isouter=True,
+                )
+                .where(PaymentRequest.id == payment_id)
             )
-            .where(PaymentRequest.id == payment_id)
-        )).first()
+        ).first()
         if row is None:
             raise ApiError(404, "payment_not_found", "To‘lov topilmadi.")
         request, login, method_name = row

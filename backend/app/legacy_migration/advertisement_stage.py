@@ -37,9 +37,8 @@ async def import_advertisements(
             issue_codes.append("advertisement.targets_invalid")
         daily_start = _parse_time(row.get("daily_start"))
         daily_end = _parse_time(row.get("daily_end"))
-        if (
-            not bool(row.get("daily_all_day") or False)
-            and (daily_start is None or daily_end is None)
+        if not bool(row.get("daily_all_day") or False) and (
+            daily_start is None or daily_end is None
         ):
             issue_codes.append("advertisement.daily_time_invalid")
 
@@ -98,9 +97,7 @@ async def import_advertisements(
             "views": _int_or(row.get("views"), 0),
             "clicks": _int_or(row.get("clicks"), 0),
             "review_state": (
-                ReviewState.REVIEW_REQUIRED
-                if issue_codes
-                else ReviewState.READY
+                ReviewState.REVIEW_REQUIRED if issue_codes else ReviewState.READY
             ),
             "migration_run_id": run.id,
             "created_at": created_at,

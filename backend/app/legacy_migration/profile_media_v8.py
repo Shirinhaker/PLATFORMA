@@ -113,9 +113,7 @@ async def migrate_profile_images(
             )
         profile = await session.get(model, mapping.target_id)
         if profile is None:
-            raise RuntimeError(
-                f"profile_media_target_missing:{owner_kind}:{legacy_id}"
-            )
+            raise RuntimeError(f"profile_media_target_missing:{owner_kind}:{legacy_id}")
 
         content_type = _normalized_content_type(row[2])
         if content_type not in PROFILE_IMAGE_TYPES:
@@ -124,9 +122,7 @@ async def migrate_profile_images(
             )
         raw = bytes(row[3] or b"")
         if not raw or len(raw) > MAX_PROFILE_IMAGE_BYTES:
-            raise RuntimeError(
-                f"profile_media_size_invalid:{owner_kind}:{legacy_id}"
-            )
+            raise RuntimeError(f"profile_media_size_invalid:{owner_kind}:{legacy_id}")
         sniffed = sniff_media_type(raw[:16])
         if sniffed != content_type:
             raise RuntimeError(
@@ -136,8 +132,7 @@ async def migrate_profile_images(
         digest = hashlib.sha256(raw).hexdigest()
         suffix = PROFILE_IMAGE_TYPES[content_type]
         expected_key = (
-            f"migration/{run.id}/{entity_type}/{legacy_id}/{slot}/"
-            f"{digest}{suffix}"
+            f"migration/{run.id}/{entity_type}/{legacy_id}/{slot}/{digest}{suffix}"
         )
         current_key = str(getattr(profile, field, "") or "")
         if current_key == expected_key:

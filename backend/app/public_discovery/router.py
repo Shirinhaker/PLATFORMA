@@ -23,9 +23,7 @@ router = APIRouter(prefix="/api/v1/public", tags=["public"])
 async def optional_current_account(
     request: Request,
 ) -> CurrentAccount | None:
-    session_token = request.cookies.get(
-        request.app.state.settings.auth_cookie_name
-    )
+    session_token = request.cookies.get(request.app.state.settings.auth_cookie_name)
     if not session_token:
         return None
     identity = await request.app.state.auth_service.resolve_session(
@@ -41,7 +39,9 @@ async def optional_current_account(
     )
 
 
-@router.get("/search", response_model=PublicSearchResponse, response_model_exclude_none=True)
+@router.get(
+    "/search", response_model=PublicSearchResponse, response_model_exclude_none=True
+)
 async def search_public_profiles(
     request: Request,
     params: Annotated[PublicSearchParams, Query()],

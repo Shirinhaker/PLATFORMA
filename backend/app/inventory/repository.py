@@ -99,9 +99,11 @@ class InventoryRepository:
             .scalar_subquery()
         )
         fifo_value = (
-            select(func.coalesce(func.sum(
-                StockBatch.qty_remaining * StockBatch.unit_cost
-            ), 0))
+            select(
+                func.coalesce(
+                    func.sum(StockBatch.qty_remaining * StockBatch.unit_cost), 0
+                )
+            )
             .where(
                 StockBatch.inventory_item_id == InventoryItem.id,
                 StockBatch.qty_remaining > 0,
@@ -284,9 +286,13 @@ class InventoryRepository:
                 ready_catalog.c.unit.label("ready_unit"),
                 StaffMember.name.label("staff_name"),
             )
-            .join(ready_item, ready_item.c.id == ProductionBatch.ready_inventory_item_id)
+            .join(
+                ready_item, ready_item.c.id == ProductionBatch.ready_inventory_item_id
+            )
             .join(ready_catalog, ready_catalog.c.id == ready_item.c.catalog_item_id)
-            .outerjoin(StaffMember, StaffMember.id == ProductionBatch.performed_by_staff_id)
+            .outerjoin(
+                StaffMember, StaffMember.id == ProductionBatch.performed_by_staff_id
+            )
             .where(ProductionBatch.business_account_id == business_account_id)
             .order_by(ProductionBatch.created_at.desc(), ProductionBatch.id.desc())
             .limit(limit)

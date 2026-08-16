@@ -148,9 +148,7 @@ def source_with_story(**overrides) -> sqlite3.Connection:
         f"INSERT INTO stories ({columns}) VALUES ({placeholders})",
         row,
     )
-    source.execute(
-        "INSERT INTO story_views VALUES (11, 8, 1722211300)"
-    )
+    source.execute("INSERT INTO story_views VALUES (11, 8, 1722211300)")
     source.execute(
         "INSERT INTO story_reports VALUES (3, 11, 8, ?, 'new', 1722211400)",
         ("Nomaqbul kontent sababi",),
@@ -169,26 +167,30 @@ def seed_account_mapping(
     account_type: AccountType,
 ) -> None:
     if db.sync.get(Account, target_id) is None:
-        db.sync.add(Account(
-            id=target_id,
-            account_type=account_type,
-            login=f"{account_type.value}_{target_id}",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ))
-    db.sync.add(LegacyIdMap(
-        id=legacy_id,
-        entity_type=entity_type,
-        legacy_id=legacy_id,
-        target_id=target_id,
-        source_row_hash="c" * 64,
-        mapping_status="mapped",
-        review_reason="",
-        last_run_id=run.id,
-    ))
+        db.sync.add(
+            Account(
+                id=target_id,
+                account_type=account_type,
+                login=f"{account_type.value}_{target_id}",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+    db.sync.add(
+        LegacyIdMap(
+            id=legacy_id,
+            entity_type=entity_type,
+            legacy_id=legacy_id,
+            target_id=target_id,
+            source_row_hash="c" * 64,
+            mapping_status="mapped",
+            review_reason="",
+            last_run_id=run.id,
+        )
+    )
     db.sync.commit()
 
 
@@ -196,13 +198,19 @@ def seed_account_mapping(
 async def test_story_views_reports_and_media_are_imported_idempotently(store):
     db, run = store
     seed_account_mapping(
-        db, run,
-        entity_type="user_account", legacy_id=7, target_id=70,
+        db,
+        run,
+        entity_type="user_account",
+        legacy_id=7,
+        target_id=70,
         account_type=AccountType.USER,
     )
     seed_account_mapping(
-        db, run,
-        entity_type="user_account", legacy_id=8, target_id=80,
+        db,
+        run,
+        entity_type="user_account",
+        legacy_id=8,
+        target_id=80,
         account_type=AccountType.USER,
     )
     source = source_with_story()
@@ -220,9 +228,12 @@ async def test_story_views_reports_and_media_are_imported_idempotently(store):
     assert [item.slot for item in media] == ["primary", "thumbnail"]
     assert await db.scalar(select(func.count()).select_from(StoryView)) == 1
     assert await db.scalar(select(func.count()).select_from(StoryReport)) == 1
-    assert await db.scalar(
-        select(func.count(LegacyIdMap.id)).where(LegacyIdMap.entity_type == "story")
-    ) == 1
+    assert (
+        await db.scalar(
+            select(func.count(LegacyIdMap.id)).where(LegacyIdMap.entity_type == "story")
+        )
+        == 1
+    )
 
 
 @pytest.mark.asyncio

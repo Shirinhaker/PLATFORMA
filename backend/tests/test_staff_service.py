@@ -193,22 +193,31 @@ async def staff_context(db_session):
     return service, db_session, owner.id, other.id, now
 
 
-async def test_staff_login_hashes_password_and_firing_revokes_live_session(staff_context):
+async def test_staff_login_hashes_password_and_firing_revokes_live_session(
+    staff_context,
+):
     service, session, owner_id, _other_id, now = staff_context
-    member = await service.create_member(owner_id, StaffMemberCreate(
-        name="Ali Valiyev",
-        profession="Kassir",
-        phone="+998901234567",
-        salary=2_500_000,
-        hire_date=date(2026, 8, 1),
-        note="",
-    ))
-    updated = await service.set_access(owner_id, member.id, StaffAccessWrite(
-        can_login=True,
-        login="ali01",
-        password="safe-pass-42",
-        permissions=["kassa", "debts", "unknown"],
-    ))
+    member = await service.create_member(
+        owner_id,
+        StaffMemberCreate(
+            name="Ali Valiyev",
+            profession="Kassir",
+            phone="+998901234567",
+            salary=2_500_000,
+            hire_date=date(2026, 8, 1),
+            note="",
+        ),
+    )
+    updated = await service.set_access(
+        owner_id,
+        member.id,
+        StaffAccessWrite(
+            can_login=True,
+            login="ali01",
+            password="safe-pass-42",
+            permissions=["kassa", "debts", "unknown"],
+        ),
+    )
 
     stored = await StaffRepository().member(session, staff_id=member.id)
     assert stored is not None
@@ -231,10 +240,13 @@ async def test_staff_login_hashes_password_and_firing_revokes_live_session(staff
 
 async def test_staff_is_owner_scoped_and_attendance_uses_uzbekistan_date(staff_context):
     service, _session, owner_id, other_id, _now = staff_context
-    member = await service.create_member(owner_id, StaffMemberCreate(
-        name="Vali Karimov",
-        profession="Sotuvchi",
-    ))
+    member = await service.create_member(
+        owner_id,
+        StaffMemberCreate(
+            name="Vali Karimov",
+            profession="Sotuvchi",
+        ),
+    )
 
     with pytest.raises(ApiError) as cross_owner:
         await service.set_status(other_id, member.id, "fired")

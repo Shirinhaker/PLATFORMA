@@ -100,13 +100,8 @@ def app(monkeypatch):
 async def test_startup_builds_every_service(app):
     """Har bir servis quriladi — nom to'qnashuvi darhol ko'rinadi."""
     async with _started(app):
-        missing = [
-            name for name in EXPECTED_SERVICES
-            if not hasattr(app.state, name)
-        ]
-        assert missing == [], (
-            "Bu servislar startda qurilmadi: " + ", ".join(missing)
-        )
+        missing = [name for name in EXPECTED_SERVICES if not hasattr(app.state, name)]
+        assert missing == [], "Bu servislar startda qurilmadi: " + ", ".join(missing)
 
 
 async def test_public_and_authoring_advertisement_services_differ(app):

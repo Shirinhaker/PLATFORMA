@@ -1,10 +1,7 @@
 from pathlib import Path
 
 MIGRATION = (
-    Path(__file__).parents[1]
-    / "migrations"
-    / "versions"
-    / "0038_documents_domain.py"
+    Path(__file__).parents[1] / "migrations" / "versions" / "0038_documents_domain.py"
 )
 
 

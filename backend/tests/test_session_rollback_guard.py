@@ -62,11 +62,7 @@ def _statement_blocks(node: ast.AST):
     for inner in ast.walk(node):
         for field in ("body", "orelse", "finalbody"):
             block = getattr(inner, field, None)
-            if (
-                isinstance(block, list)
-                and block
-                and isinstance(block[0], ast.stmt)
-            ):
+            if isinstance(block, list) and block and isinstance(block[0], ast.stmt):
                 yield block
 
 
@@ -94,7 +90,7 @@ def _violations(service_class: type) -> list[str]:
             for index, statement in enumerate(block):
                 if not _is_rollback(statement):
                     continue
-                for later in block[index + 1:]:
+                for later in block[index + 1 :]:
                     for inner in ast.walk(later):
                         if not isinstance(inner, ast.Attribute):
                             continue
@@ -117,8 +113,7 @@ def test_service_never_reads_orm_state_after_rollback(module_name, class_name):
     assert violations == [], (
         "Rollbackdan keyin ma'lumot o'qilmoqda — productionda "
         "MissingGreenlet xatosi beradi. Javobni rollbackdan oldin "
-        "`response` o'zgaruvchisiga yig'ing:\n  "
-        + "\n  ".join(violations)
+        "`response` o'zgaruvchisiga yig'ing:\n  " + "\n  ".join(violations)
     )
 
 
@@ -137,8 +132,7 @@ def test_every_service_using_rollback_is_covered():
             missing.append(module)
     assert missing == [], (
         "Bu modullar `session.rollback()` ishlatadi, lekin qo'riqchi "
-        "ro'yxatida yo'q — ROLLBACK_SERVICES ga qo'shing: "
-        + ", ".join(missing)
+        "ro'yxatida yo'q — ROLLBACK_SERVICES ga qo'shing: " + ", ".join(missing)
     )
 
 

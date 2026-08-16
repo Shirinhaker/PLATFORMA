@@ -49,9 +49,7 @@ def copy_real_source(
         table = str(record["name"] if isinstance(record, sqlite3.Row) else record[0])
         if _skip_table(table):
             continue
-        columns = source.execute(
-            f"PRAGMA table_info({_identifier(table)})"
-        ).fetchall()
+        columns = source.execute(f"PRAGMA table_info({_identifier(table)})").fetchall()
         if not columns:
             continue
 
@@ -65,24 +63,14 @@ def copy_real_source(
             declared = str(
                 column["type"] if isinstance(column, sqlite3.Row) else column[2]
             ).strip()
-            definitions.append(
-                f"{_identifier(name)} {declared or 'BLOB'}"
-            )
-        target.execute(
-            f"CREATE TABLE {_identifier(table)} ({', '.join(definitions)})"
-        )
+            definitions.append(f"{_identifier(name)} {declared or 'BLOB'}")
+        target.execute(f"CREATE TABLE {_identifier(table)} ({', '.join(definitions)})")
 
-        rows = source.execute(
-            f"SELECT * FROM {_identifier(table)}"
-        ).fetchall()
+        rows = source.execute(f"SELECT * FROM {_identifier(table)}").fetchall()
         real_rows = (
             rows
             if table in preserve_demo_flag_tables
-            else [
-                row
-                for row in rows
-                if not _is_explicit_demo(row, column_names)
-            ]
+            else [row for row in rows if not _is_explicit_demo(row, column_names)]
         )
         if not real_rows:
             continue

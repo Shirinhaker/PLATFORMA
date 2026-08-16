@@ -21,7 +21,19 @@ class CounterpartyWrite(BaseModel):
     mfo: str = Field(default="", max_length=20)
     note: str = Field(default="", max_length=300)
 
-    @field_validator("name", "ctype", "director", "phone", "address", "inn", "account", "bank", "mfo", "note", mode="before")
+    @field_validator(
+        "name",
+        "ctype",
+        "director",
+        "phone",
+        "address",
+        "inn",
+        "account",
+        "bank",
+        "mfo",
+        "note",
+        mode="before",
+    )
     @classmethod
     def clean_text(cls, value):
         return value.strip() if isinstance(value, str) else value

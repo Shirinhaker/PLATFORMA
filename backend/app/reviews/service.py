@@ -79,12 +79,15 @@ class ReviewService:
                     reviewer_account_id=reviewer_account_id,
                 )
                 if not blocked:
-                    can_review = await self._repository.eligible_order_id(
-                        session,
-                        reviewer_account_id=reviewer_account_id,
-                        kind=target_kind,
-                        target_account_id=target_id,
-                    ) is not None
+                    can_review = (
+                        await self._repository.eligible_order_id(
+                            session,
+                            reviewer_account_id=reviewer_account_id,
+                            kind=target_kind,
+                            target_account_id=target_id,
+                        )
+                        is not None
+                    )
             return ReviewListRead(
                 reviews=[self._read(review, name) for review, name in rows],
                 avg=review_average(total, len(rows)),
@@ -141,18 +144,20 @@ class ReviewService:
                 lock=True,
             )
             if review is None:
-                session.add(Review(
-                    target_kind=body.target_kind.value,
-                    target_account_id=target_id,
-                    reviewer_account_id=reviewer_account_id,
-                    order_id=order_id,
-                    stars=body.stars,
-                    comment=body.comment,
-                    owner_reply="",
-                    owner_replied_at=None,
-                    created_at=now,
-                    updated_at=now,
-                ))
+                session.add(
+                    Review(
+                        target_kind=body.target_kind.value,
+                        target_account_id=target_id,
+                        reviewer_account_id=reviewer_account_id,
+                        order_id=order_id,
+                        stars=body.stars,
+                        comment=body.comment,
+                        owner_reply="",
+                        owner_replied_at=None,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
             else:
                 review.stars = body.stars
                 review.comment = body.comment
@@ -262,9 +267,7 @@ class ReviewService:
         kind: ReviewTargetKind,
         public_id: str,
     ) -> BusinessProfile | UserProfile:
-        target = await self._repository.target(
-            session, kind=kind, public_id=public_id
-        )
+        target = await self._repository.target(session, kind=kind, public_id=public_id)
         if target is None:
             raise ApiError(404, "review_target_not_found", "Obyekt topilmadi.")
         if (

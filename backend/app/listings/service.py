@@ -51,9 +51,7 @@ class ListingService:
     async def counts(self) -> dict[str, int]:
         async with self._session_factory() as session:
             value = await self._repository.counts(session)
-            response = {
-                category: value.get(category, 0) for category in CATEGORIES
-            }
+            response = {category: value.get(category, 0) for category in CATEGORIES}
             await session.rollback()
             return response
 
@@ -172,11 +170,13 @@ class ListingService:
             await session.flush()
             await session.commit()
             await self._bump()
-            return (await self._project(
-                session,
-                [listing],
-                current_account_id=account_id,
-            ))[0]
+            return (
+                await self._project(
+                    session,
+                    [listing],
+                    current_account_id=account_id,
+                )
+            )[0]
 
     async def patch(
         self,
@@ -190,8 +190,11 @@ class ListingService:
             listing = await self._owned(session, public_id, account_id, account_type)
             changes = body.model_dump(exclude_unset=True)
             field_map = {
-                "cat": "category", "price": "price_text", "descr": "description",
-                "lat": "latitude", "lng": "longitude",
+                "cat": "category",
+                "price": "price_text",
+                "descr": "description",
+                "lat": "latitude",
+                "lng": "longitude",
             }
             media = changes.pop("media", None)
             for name, value in changes.items():
@@ -200,7 +203,9 @@ class ListingService:
                 setattr(listing, field_map.get(name, name), value)
             listing.updated_at = datetime.now(UTC)
             if media is not None:
-                attachments = [ListingMediaAttachment.model_validate(item) for item in media]
+                attachments = [
+                    ListingMediaAttachment.model_validate(item) for item in media
+                ]
                 await self._repository.replace_media(
                     session,
                     listing_id=listing.id,
@@ -209,11 +214,13 @@ class ListingService:
             await session.flush()
             await session.commit()
             await self._bump()
-            return (await self._project(
-                session,
-                [listing],
-                current_account_id=account_id,
-            ))[0]
+            return (
+                await self._project(
+                    session,
+                    [listing],
+                    current_account_id=account_id,
+                )
+            )[0]
 
     async def delete(
         self,
@@ -344,11 +351,13 @@ class ListingService:
         media = await self._repository.media(session, listing_ids)
         user_ids = {
             int(row.owner_user_account_id)
-            for row in rows if row.owner_user_account_id is not None
+            for row in rows
+            if row.owner_user_account_id is not None
         }
         business_ids = {
             int(row.owner_business_account_id)
-            for row in rows if row.owner_business_account_id is not None
+            for row in rows
+            if row.owner_business_account_id is not None
         }
         users = await self._repository.user_names(session, user_ids)
         businesses = await self._repository.business_names(session, business_ids)
@@ -369,30 +378,32 @@ class ListingService:
                 owner_id = int(row.owner_user_account_id or 0)
                 owner_name = users.get(owner_id, "")
                 public_kind = PublicResultKind.USER
-            result.append(ListingRead(
-                public_id=build_listing_public_id(int(row.id)),
-                cat=(row.category if row.category in CATEGORIES else "boshqa"),
-                title=row.title,
-                price=row.price_text,
-                descr=row.description,
-                address=row.address,
-                lat=row.latitude,
-                lng=row.longitude,
-                visibility=("own" if row.visibility == "own" else "all"),
-                status=_listing_status(row.status),
-                created_at=row.created_at,
-                media=[
-                    ListingMediaRead(
-                        type=("video" if item.media_type == "video" else "photo"),
-                        url=self._image_url_provider(item.object_key),
-                    )
-                    for item in media.get(int(row.id), [])
-                ],
-                owner_kind=owner_kind,
-                owner_public_id=build_public_id(public_kind, owner_id),
-                owner_name=owner_name,
-                is_saved=int(row.id) in saved_ids,
-            ))
+            result.append(
+                ListingRead(
+                    public_id=build_listing_public_id(int(row.id)),
+                    cat=(row.category if row.category in CATEGORIES else "boshqa"),
+                    title=row.title,
+                    price=row.price_text,
+                    descr=row.description,
+                    address=row.address,
+                    lat=row.latitude,
+                    lng=row.longitude,
+                    visibility=("own" if row.visibility == "own" else "all"),
+                    status=_listing_status(row.status),
+                    created_at=row.created_at,
+                    media=[
+                        ListingMediaRead(
+                            type=("video" if item.media_type == "video" else "photo"),
+                            url=self._image_url_provider(item.object_key),
+                        )
+                        for item in media.get(int(row.id), [])
+                    ],
+                    owner_kind=owner_kind,
+                    owner_public_id=build_public_id(public_kind, owner_id),
+                    owner_name=owner_name,
+                    is_saved=int(row.id) in saved_ids,
+                )
+            )
         return result
 
     async def _bump(self) -> None:

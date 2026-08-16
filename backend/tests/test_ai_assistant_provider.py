@@ -32,15 +32,19 @@ async def test_openai_provider_reuses_injected_http_client_and_parses_responses(
 
     assert first == second == "Tayyor javob"
     assert len(requests) == 2
-    assert all(request.headers["authorization"] == "Bearer secret" for request in requests)
+    assert all(
+        request.headers["authorization"] == "Bearer secret" for request in requests
+    )
 
 
 @pytest.mark.asyncio
 async def test_openai_provider_keeps_v1656_robust_response_extraction():
-    responses = iter((
-        {"output": [{"content": [{"content": "Muqobil javob"}]}]},
-        [],
-    ))
+    responses = iter(
+        (
+            {"output": [{"content": [{"content": "Muqobil javob"}]}]},
+            [],
+        )
+    )
 
     async def handler(_request: httpx.Request):
         return httpx.Response(200, json=next(responses))

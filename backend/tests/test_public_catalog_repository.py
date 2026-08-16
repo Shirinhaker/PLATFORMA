@@ -50,4 +50,3 @@ def test_catalog_query_excludes_inactive_and_review_required_rows():
         "director",
     ):
         assert private not in sql
-

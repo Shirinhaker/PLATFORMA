@@ -88,7 +88,10 @@ class StoryRepository:
             )
             .order_by(Story.created_at, Story.id)
         )
-        return [(story, bool(seen)) for story, seen in (await session.execute(statement)).all()]
+        return [
+            (story, bool(seen))
+            for story, seen in (await session.execute(statement)).all()
+        ]
 
     async def owner_rows(
         self,
@@ -113,7 +116,10 @@ class StoryRepository:
             )
             .order_by(Story.created_at, Story.id)
         )
-        return [(story, bool(seen)) for story, seen in (await session.execute(statement)).all()]
+        return [
+            (story, bool(seen))
+            for story, seen in (await session.execute(statement)).all()
+        ]
 
     async def managed_rows(
         self,
@@ -251,11 +257,15 @@ class StoryRepository:
         session: AsyncSession,
         story_id: int,
     ) -> list[StoryView]:
-        return list((await session.scalars(
-            select(StoryView)
-            .where(StoryView.story_id == story_id)
-            .order_by(StoryView.viewed_at.desc())
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(StoryView)
+                    .where(StoryView.story_id == story_id)
+                    .order_by(StoryView.viewed_at.desc())
+                )
+            ).all()
+        )
 
     async def upsert_report(
         self,

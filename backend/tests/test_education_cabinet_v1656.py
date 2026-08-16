@@ -64,9 +64,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -107,11 +105,13 @@ def _business() -> BusinessProfile:
         dashboard_snapshot={},
         recent_activity=[],
         cabinet_payload={
-            "items": [{
-                "id": LEGACY_COURSE_ID,
-                "name": "Ingliz tili",
-                "kind": "service",
-            }],
+            "items": [
+                {
+                    "id": LEGACY_COURSE_ID,
+                    "name": "Ingliz tili",
+                    "kind": "service",
+                }
+            ],
         },
     )
 
@@ -133,16 +133,18 @@ def cabinet():
         ),
     )
     with Session(engine) as seed:
-        seed.add(Account(
-            id=BUSINESS_ID,
-            account_type=AccountType.BUSINESS,
-            login="edu_business",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ))
+        seed.add(
+            Account(
+                id=BUSINESS_ID,
+                account_type=AccountType.BUSINESS,
+                login="edu_business",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
         seed.flush()
         seed.add(_business())
         seed.commit()
@@ -388,9 +390,9 @@ async def test_student_delete_is_soft_and_closes_history(cabinet):
 
     with Session(engine) as check:
         assert check.get(EducationStudent, student_id).status == "deleted"
-        assert check.scalars(
-            select(EducationStudentGroupHistory)
-        ).one().ended_date != ""
+        assert (
+            check.scalars(select(EducationStudentGroupHistory)).one().ended_date != ""
+        )
 
 
 async def test_student_requires_name_and_existing_group(cabinet):

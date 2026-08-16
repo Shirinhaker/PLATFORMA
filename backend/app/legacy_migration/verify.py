@@ -99,11 +99,7 @@ class VerificationInput:
 
 
 def evaluate_gates(values: VerificationInput) -> VerificationReport:
-    terminal_media = (
-        values.media_copied
-        + values.media_missing
-        + values.media_invalid
-    )
+    terminal_media = values.media_copied + values.media_missing + values.media_invalid
     gates = [
         _equal("mapping_coverage", values.mapped_rows, values.source_rows),
         _equal(
@@ -184,18 +180,21 @@ async def verify_migration(
     source_stories = _safe_source_count(source, "stories")
     source_story_views = _safe_source_count(source, "story_views")
     source_story_reports = _safe_source_count(source, "story_reports")
-    source_rows = sum(
-        inventory[table]["total"]
-        for table in (
-            "users",
-            "businesses",
-            "item_groups",
-            "items",
-            "listings",
-            "listing_media",
-            "advertisements",
+    source_rows = (
+        sum(
+            inventory[table]["total"]
+            for table in (
+                "users",
+                "businesses",
+                "item_groups",
+                "items",
+                "listings",
+                "listing_media",
+                "advertisements",
+            )
         )
-    ) + source_stories
+        + source_stories
+    )
     mapped_rows = int(
         await session.scalar(
             select(func.count(LegacyIdMap.id)).where(
@@ -215,14 +214,14 @@ async def verify_migration(
         str(kind): int(count)
         for kind, count in (
             await session.execute(
-                select(CatalogItem.kind, func.count(CatalogItem.id))
-                .group_by(CatalogItem.kind)
+                select(CatalogItem.kind, func.count(CatalogItem.id)).group_by(
+                    CatalogItem.kind
+                )
             )
         ).all()
     }
     source_catalog = {
-        kind: int(inventory["items"].get(kind, 0))
-        for kind in ("product", "service")
+        kind: int(inventory["items"].get(kind, 0)) for kind in ("product", "service")
     }
     identity_conflicts = int(
         await session.scalar(
@@ -262,16 +261,15 @@ async def verify_migration(
         )
         or 0
     )
-    cabinet_demo_rows, cabinet_sensitive_fields = (
-        await _cabinet_payload_violations(session, run.id)
+    cabinet_demo_rows, cabinet_sensitive_fields = await _cabinet_payload_violations(
+        session, run.id
     )
     values = VerificationInput(
         source_rows=source_rows,
         mapped_rows=mapped_rows,
         source_catalog_kinds=source_catalog,
         target_catalog_kinds={
-            kind: target_catalog.get(kind, 0)
-            for kind in ("product", "service")
+            kind: target_catalog.get(kind, 0) for kind in ("product", "service")
         },
         source_listings=inventory["listings"]["total"],
         target_listings=await _count_for_run(session, Listing, run.id),
@@ -293,17 +291,13 @@ async def verify_migration(
         media_invalid=media_counts.get(MediaMigrationState.INVALID, 0),
         media_failed=media_counts.get(MediaMigrationState.FAILED, 0),
         copied_media_unverified=copied_unverified,
-        idempotency_created=int(
-            run.counters_json.get("idempotency_created", 0)
-        ),
+        idempotency_created=int(run.counters_json.get("idempotency_created", 0)),
         forbidden_public_fields=forbidden_public_fields,
         cabinet_demo_rows=cabinet_demo_rows,
         cabinet_sensitive_fields=cabinet_sensitive_fields,
         source_stories=source_stories,
         target_stories=(
-            await _count_for_run(session, Story, run.id)
-            if source_stories
-            else 0
+            await _count_for_run(session, Story, run.id) if source_stories else 0
         ),
         source_story_views=source_story_views,
         target_story_views=(
@@ -328,9 +322,7 @@ async def _cabinet_payload_violations(
     mappings = (
         await session.scalars(
             select(LegacyIdMap).where(
-                LegacyIdMap.entity_type.in_(
-                    ("user_account", "business_account")
-                ),
+                LegacyIdMap.entity_type.in_(("user_account", "business_account")),
                 LegacyIdMap.last_run_id == run_id,
                 LegacyIdMap.target_id.is_not(None),
             )
@@ -339,14 +331,12 @@ async def _cabinet_payload_violations(
     user_ids = {
         int(mapping.target_id)
         for mapping in mappings
-        if mapping.entity_type == "user_account"
-        and mapping.target_id is not None
+        if mapping.entity_type == "user_account" and mapping.target_id is not None
     }
     business_ids = {
         int(mapping.target_id)
         for mapping in mappings
-        if mapping.entity_type == "business_account"
-        and mapping.target_id is not None
+        if mapping.entity_type == "business_account" and mapping.target_id is not None
     }
 
     payloads: list[object] = []
@@ -355,9 +345,7 @@ async def _cabinet_payload_violations(
             profile.cabinet_payload
             for profile in (
                 await session.scalars(
-                    select(UserProfile).where(
-                        UserProfile.account_id.in_(user_ids)
-                    )
+                    select(UserProfile).where(UserProfile.account_id.in_(user_ids))
                 )
             ).all()
         )
@@ -392,9 +380,7 @@ def _inspect_cabinet_value(
             _is_explicit_demo(
                 value,
                 ignored_flags=(
-                    frozenset({"is_demo"})
-                    if subscription_activation
-                    else frozenset()
+                    frozenset({"is_demo"}) if subscription_activation else frozenset()
                 ),
             )
         )
@@ -405,9 +391,7 @@ def _inspect_cabinet_value(
                 continue
             child_demo, child_sensitive = _inspect_cabinet_value(
                 item,
-                subscription_activation=(
-                    str(key) == "business_subscriptions"
-                ),
+                subscription_activation=(str(key) == "business_subscriptions"),
             )
             demo_rows += child_demo
             sensitive_fields += child_sensitive
@@ -454,21 +438,15 @@ def _truthy(value: object) -> bool:
 
 def _is_sensitive_key(key: str) -> bool:
     normalized = key.casefold()
-    return (
-        normalized in SENSITIVE_CABINET_KEYS
-        or any(
-            normalized.endswith(suffix)
-            for suffix in SENSITIVE_CABINET_SUFFIXES
-        )
+    return normalized in SENSITIVE_CABINET_KEYS or any(
+        normalized.endswith(suffix) for suffix in SENSITIVE_CABINET_SUFFIXES
     )
 
 
 async def _count_for_run(session, model, run_id: int) -> int:
     return int(
         await session.scalar(
-            select(func.count(model.id)).where(
-                model.migration_run_id == run_id
-            )
+            select(func.count(model.id)).where(model.migration_run_id == run_id)
         )
         or 0
     )
@@ -518,16 +496,13 @@ async def _broken_mappings(
 def _source_media_references(source) -> int:
     total = 0
     queries = (
-        "SELECT COUNT(*) FROM items "
-        "WHERE TRIM(COALESCE(photo_file, '')) != ''",
-        "SELECT COUNT(*) FROM listing_media "
-        "WHERE TRIM(COALESCE(tg_file_id, '')) != ''",
+        "SELECT COUNT(*) FROM items WHERE TRIM(COALESCE(photo_file, '')) != ''",
+        "SELECT COUNT(*) FROM listing_media WHERE TRIM(COALESCE(tg_file_id, '')) != ''",
         "SELECT COUNT(*) FROM advertisements "
         "WHERE TRIM(COALESCE(image_file, '')) != ''",
         "SELECT COUNT(*) FROM advertisements "
         "WHERE TRIM(COALESCE(mobile_image_file, '')) != ''",
-        "SELECT COUNT(*) FROM stories "
-        "WHERE TRIM(COALESCE(media_filename, '')) != ''",
+        "SELECT COUNT(*) FROM stories WHERE TRIM(COALESCE(media_filename, '')) != ''",
         "SELECT COUNT(*) FROM stories "
         "WHERE TRIM(COALESCE(thumbnail_filename, '')) != ''",
         "SELECT COUNT(*) FROM messages "

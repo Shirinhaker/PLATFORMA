@@ -34,7 +34,11 @@ def service(request: Request) -> OrderService:
 
 
 ORDER_PERMISSIONS = (
-    "buyurtma", "service_orders", "dining_internal", "dining_external", "kitchen",
+    "buyurtma",
+    "service_orders",
+    "dining_internal",
+    "dining_external",
+    "kitchen",
 )
 
 
@@ -49,9 +53,14 @@ def staff_order_categories(current: CurrentAccount) -> frozenset[str] | None:
     categories: set[str] = set()
     if "service_orders" in current.permissions:
         categories.add("service")
-    if set(current.permissions).intersection({
-        "buyurtma", "dining_internal", "dining_external", "kitchen",
-    }):
+    if set(current.permissions).intersection(
+        {
+            "buyurtma",
+            "dining_internal",
+            "dining_external",
+            "kitchen",
+        }
+    ):
         categories.add("product")
     return frozenset(categories)
 
@@ -100,9 +109,7 @@ async def order_inbox(request: Request, current: CurrentRead):
 
 
 @router.put("/{order_id}/seen", response_model=OrderRead)
-async def mark_order_seen(
-    order_id: OrderId, request: Request, current: CurrentWrite
-):
+async def mark_order_seen(order_id: OrderId, request: Request, current: CurrentWrite):
     await require_staff_order_access(request, current, order_id)
     return await service(request).mark_seen(
         order_id=order_id,
@@ -153,9 +160,7 @@ async def decide_order_payment(
         account_type=current.account_type,
         body=body,
         actor_staff_id=current.staff_id,
-        permissions=(
-            current.permissions if current.actor_type == "staff" else None
-        ),
+        permissions=(current.permissions if current.actor_type == "staff" else None),
     )
 
 

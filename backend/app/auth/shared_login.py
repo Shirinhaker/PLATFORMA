@@ -76,9 +76,7 @@ class SharedLoginAuthService(AuthService):
                     now=now,
                     start_expires_at=(
                         now
-                        + timedelta(
-                            seconds=self._settings.telegram_link_ttl_seconds
-                        )
+                        + timedelta(seconds=self._settings.telegram_link_ttl_seconds)
                     ),
                     max_attempts=self._settings.telegram_max_attempts,
                 )

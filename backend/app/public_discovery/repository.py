@@ -112,14 +112,15 @@ def _location_contains(column, value: str):
     key = _location_key(value)
     variants = {key}
     variants.update(
-        key.replace("'", apostrophe)
-        for apostrophe in _LOCATION_APOSTROPHES
+        key.replace("'", apostrophe) for apostrophe in _LOCATION_APOSTROPHES
     )
-    return or_(*(
-        func.lower(column).contains(variant)
-        for variant in sorted(variants)
-        if variant
-    ))
+    return or_(
+        *(
+            func.lower(column).contains(variant)
+            for variant in sorted(variants)
+            if variant
+        )
+    )
 
 
 def _location_constraints(
@@ -193,24 +194,23 @@ def _user_query(params: PublicSearchParams):
                 _contains(SpecialistProfile.description, params.q),
             )
         )
-    statement = statement.where(*_location_constraints(
-        UserProfile.region,
-        UserProfile.district,
-        UserProfile.mahalla,
-        params,
-    ))
+    statement = statement.where(
+        *_location_constraints(
+            UserProfile.region,
+            UserProfile.district,
+            UserProfile.mahalla,
+            params,
+        )
+    )
     return statement
 
 
 def _business_query(params: PublicSearchParams):
     owner_profile = aliased(UserProfile, name="business_owner_profile")
-    location_filtered = bool(
-        params.region or params.district or params.mahalla
-    )
-    map_available = (
-        BusinessProfile.latitude.is_not(None)
-        & BusinessProfile.longitude.is_not(None)
-    )
+    location_filtered = bool(params.region or params.district or params.mahalla)
+    map_available = BusinessProfile.latitude.is_not(
+        None
+    ) & BusinessProfile.longitude.is_not(None)
     statement = select(
         literal(PublicResultKind.BUSINESS.value).label("kind"),
         Account.id.label("account_id"),
@@ -286,12 +286,14 @@ def _business_query(params: PublicSearchParams):
         if value:
             statement = statement.where(_contains(column, value))
 
-    statement = statement.where(*_location_constraints(
-        owner_profile.region,
-        owner_profile.district,
-        owner_profile.mahalla,
-        params,
-    ))
+    statement = statement.where(
+        *_location_constraints(
+            owner_profile.region,
+            owner_profile.district,
+            owner_profile.mahalla,
+            params,
+        )
+    )
     return statement
 
 
@@ -305,9 +307,8 @@ def _content_query(params: PublicSearchParams, kind: str):
         or params.mahalla
     )
     linked = (
-        (CatalogItem.owner_state == "linked")
-        & CatalogItem.business_account_id.is_not(None)
-    )
+        CatalogItem.owner_state == "linked"
+    ) & CatalogItem.business_account_id.is_not(None)
     map_available = (
         linked
         & BusinessProfile.latitude.is_not(None)
@@ -321,11 +322,7 @@ def _content_query(params: PublicSearchParams, kind: str):
         CatalogItem.note.label("description"),
         BusinessProfile.direction.label("direction"),
         BusinessProfile.activity_type.label("activity_type"),
-        (
-            owner_profile.region.label("region")
-            if owner_filtered
-            else _empty("region")
-        ),
+        (owner_profile.region.label("region") if owner_filtered else _empty("region")),
         (
             owner_profile.district.label("district")
             if owner_filtered
@@ -397,12 +394,14 @@ def _content_query(params: PublicSearchParams, kind: str):
     ):
         if value:
             statement = statement.where(_contains(column, value))
-    statement = statement.where(*_location_constraints(
-        owner_profile.region,
-        owner_profile.district,
-        owner_profile.mahalla,
-        params,
-    ))
+    statement = statement.where(
+        *_location_constraints(
+            owner_profile.region,
+            owner_profile.district,
+            owner_profile.mahalla,
+            params,
+        )
+    )
     return statement
 
 
@@ -414,10 +413,7 @@ def _listing_query(params: PublicSearchParams):
         Listing.owner_user_account_id,
         profile_link.user_account_id,
     )
-    map_visible = (
-        Listing.latitude.is_not(None)
-        & Listing.longitude.is_not(None)
-    )
+    map_visible = Listing.latitude.is_not(None) & Listing.longitude.is_not(None)
     first_photo_key = (
         select(ListingMedia.object_key)
         .where(
@@ -444,7 +440,9 @@ def _listing_query(params: PublicSearchParams):
             func.coalesce(first_photo_key, "").label("image_object_key"),
             Listing.price_text.label("price_text"),
             literal("linked").cast(String).label("owner_state"),
-            func.coalesce(business_profile.name, owner_profile.name, "").label("owner_label"),
+            func.coalesce(business_profile.name, owner_profile.name, "").label(
+                "owner_label"
+            ),
             literal(None).cast(BigInteger).label("owner_business_account_id"),
             literal(False).cast(Boolean).label("can_order"),
             literal(False).cast(Boolean).label("can_chat"),
@@ -491,24 +489,28 @@ def _listing_query(params: PublicSearchParams):
         )
     )
     if params.q:
-        statement = statement.where(or_(
-            _contains(Listing.title, params.q),
-            _contains(Listing.description, params.q),
-            _contains(Listing.address, params.q),
-            _contains(Listing.price_text, params.q),
-        ))
+        statement = statement.where(
+            or_(
+                _contains(Listing.title, params.q),
+                _contains(Listing.description, params.q),
+                _contains(Listing.address, params.q),
+                _contains(Listing.price_text, params.q),
+            )
+        )
     for column, value in (
         (business_profile.direction, params.direction),
         (business_profile.activity_type, params.activity_type),
     ):
         if value:
             statement = statement.where(_contains(column, value))
-    statement = statement.where(*_location_constraints(
-        owner_profile.region,
-        owner_profile.district,
-        owner_profile.mahalla,
-        params,
-    ))
+    statement = statement.where(
+        *_location_constraints(
+            owner_profile.region,
+            owner_profile.district,
+            owner_profile.mahalla,
+            params,
+        )
+    )
     return statement
 
 
@@ -650,9 +652,7 @@ def _has_legacy_active_subscription(
     eligible_plan_codes: frozenset[str],
 ) -> bool:
     payload = (
-        profile.cabinet_payload
-        if isinstance(profile.cabinet_payload, dict)
-        else {}
+        profile.cabinet_payload if isinstance(profile.cabinet_payload, dict) else {}
     )
     rows = payload.get("business_subscriptions", [])
     if not isinstance(rows, list):
@@ -724,9 +724,8 @@ def _has_active_subscription(
     active_business_ids: set[int],
     eligible_plan_codes: frozenset[str],
 ) -> bool:
-    return (
-        profile.account_id in active_business_ids
-        or _has_legacy_active_subscription(profile, eligible_plan_codes)
+    return profile.account_id in active_business_ids or _has_legacy_active_subscription(
+        profile, eligible_plan_codes
     )
 
 
@@ -761,9 +760,7 @@ async def load_public_home_map(
         )
         .order_by(func.lower(BusinessProfile.name), BusinessProfile.account_id)
     )
-    business_profiles = list(
-        (await session.scalars(business_statement)).all()
-    )
+    business_profiles = list((await session.scalars(business_statement)).all())
     active_pro_business_ids = await _active_pro_business_ids(
         session,
         {profile.account_id for profile in business_profiles},
@@ -782,43 +779,45 @@ async def load_public_home_map(
     followed_businesses = {
         item.public_id for item in followed if item.kind == "business"
     }
-    followed_users = {
-        item.public_id for item in followed if item.kind == "user"
-    }
+    followed_users = {item.public_id for item in followed if item.kind == "user"}
 
     specialist_profiles = []
     user_profiles_by_id: dict[int, UserProfile] = {}
     if followed_users:
-        specialist_profiles = list((await session.scalars(
-            select(SpecialistProfile)
-            .join(
-                UserProfile,
-                UserProfile.account_id == SpecialistProfile.user_account_id,
-            )
-            .join(Account, Account.id == UserProfile.account_id)
-            .where(
-                Account.status == "active",
-                SpecialistProfile.visible.is_(True),
-                SpecialistProfile.latitude.is_not(None),
-                SpecialistProfile.longitude.is_not(None),
-                _location_contains(UserProfile.district, district),
-            )
-            .order_by(
-                func.lower(UserProfile.name),
-                SpecialistProfile.user_account_id,
-            )
-        )).all())
-        specialist_user_ids = {
-            row.user_account_id for row in specialist_profiles
-        }
+        specialist_profiles = list(
+            (
+                await session.scalars(
+                    select(SpecialistProfile)
+                    .join(
+                        UserProfile,
+                        UserProfile.account_id == SpecialistProfile.user_account_id,
+                    )
+                    .join(Account, Account.id == UserProfile.account_id)
+                    .where(
+                        Account.status == "active",
+                        SpecialistProfile.visible.is_(True),
+                        SpecialistProfile.latitude.is_not(None),
+                        SpecialistProfile.longitude.is_not(None),
+                        _location_contains(UserProfile.district, district),
+                    )
+                    .order_by(
+                        func.lower(UserProfile.name),
+                        SpecialistProfile.user_account_id,
+                    )
+                )
+            ).all()
+        )
+        specialist_user_ids = {row.user_account_id for row in specialist_profiles}
         if specialist_user_ids:
             user_profiles_by_id = {
                 row.account_id: row
-                for row in (await session.scalars(
-                    select(UserProfile).where(
-                        UserProfile.account_id.in_(specialist_user_ids),
+                for row in (
+                    await session.scalars(
+                        select(UserProfile).where(
+                            UserProfile.account_id.in_(specialist_user_ids),
+                        )
                     )
-                )).all()
+                ).all()
             }
 
     businesses = [
@@ -844,7 +843,8 @@ async def load_public_home_map(
         if build_public_id(
             PublicResultKind.BUSINESS,
             profile.account_id,
-        ) in followed_businesses
+        )
+        in followed_businesses
         or (
             profile.map_visible
             and _has_active_subscription(
@@ -894,11 +894,7 @@ async def _resolve_public_profile_account_id(
     public_id: str,
 ) -> int | None:
     model = BusinessProfile if kind == "business" else UserProfile
-    account_type = (
-        AccountType.BUSINESS
-        if kind == "business"
-        else AccountType.USER
-    )
+    account_type = AccountType.BUSINESS if kind == "business" else AccountType.USER
     account_id = (
         await session.scalars(
             select(model.account_id)
@@ -997,21 +993,37 @@ async def load_public_profile(
         specialist = None
         specialist_profile = await session.get(SpecialistProfile, account_id)
         if specialist_profile is not None and specialist_profile.visible:
-            credentials = list((await session.scalars(
-                select(SpecialistCredential)
-                .where(SpecialistCredential.user_account_id == account_id)
-                .order_by(SpecialistCredential.position, SpecialistCredential.id)
-            )).all())
-            offers = list((await session.scalars(
-                select(SpecialistOffer)
-                .where(SpecialistOffer.user_account_id == account_id)
-                .order_by(SpecialistOffer.created_at, SpecialistOffer.id)
-            )).all())
-            portfolio = list((await session.scalars(
-                select(SpecialistPortfolio)
-                .where(SpecialistPortfolio.user_account_id == account_id)
-                .order_by(SpecialistPortfolio.created_at, SpecialistPortfolio.id)
-            )).all())
+            credentials = list(
+                (
+                    await session.scalars(
+                        select(SpecialistCredential)
+                        .where(SpecialistCredential.user_account_id == account_id)
+                        .order_by(
+                            SpecialistCredential.position, SpecialistCredential.id
+                        )
+                    )
+                ).all()
+            )
+            offers = list(
+                (
+                    await session.scalars(
+                        select(SpecialistOffer)
+                        .where(SpecialistOffer.user_account_id == account_id)
+                        .order_by(SpecialistOffer.created_at, SpecialistOffer.id)
+                    )
+                ).all()
+            )
+            portfolio = list(
+                (
+                    await session.scalars(
+                        select(SpecialistPortfolio)
+                        .where(SpecialistPortfolio.user_account_id == account_id)
+                        .order_by(
+                            SpecialistPortfolio.created_at, SpecialistPortfolio.id
+                        )
+                    )
+                ).all()
+            )
             specialist = PublicSpecialistSummary(
                 profession=specialist_profile.profession,
                 description=specialist_profile.description,
@@ -1020,9 +1032,11 @@ async def load_public_profile(
                         id=row.id,
                         image_url=(
                             image_url_provider(row.object_key)
-                            if row.object_key else row.legacy_media_url
+                            if row.object_key
+                            else row.legacy_media_url
                         ),
-                    ) for row in credentials
+                    )
+                    for row in credentials
                 ],
                 offers=[
                     PublicSpecialistOffer(
@@ -1033,9 +1047,11 @@ async def load_public_profile(
                         note=row.note,
                         image_url=(
                             image_url_provider(row.image_object_key)
-                            if row.image_object_key else row.legacy_image_url
+                            if row.image_object_key
+                            else row.legacy_image_url
                         ),
-                    ) for row in offers
+                    )
+                    for row in offers
                 ],
                 portfolio=[
                     PublicSpecialistPortfolio(
@@ -1043,9 +1059,11 @@ async def load_public_profile(
                         media_type=row.media_type,
                         media_url=(
                             image_url_provider(row.object_key)
-                            if row.object_key else row.legacy_media_url
+                            if row.object_key
+                            else row.legacy_media_url
                         ),
-                    ) for row in portfolio
+                    )
+                    for row in portfolio
                 ],
             )
         return PublicProfileDetail(
@@ -1141,28 +1159,31 @@ async def load_public_profile(
         enrollment_status = str(course_row.get("enrollment_status") or "open")
         if enrollment_status not in {"open", "closed"}:
             enrollment_status = "open"
-        items.append(PublicProfileItem(
-            kind=item.kind,
-            public_id=build_content_public_id(item.kind, item.id),
-            name=item.name,
-            price_text=item.price_text,
-            unit=item.unit or "dona",
-            note=item.note,
-            image_url=image_url_provider(item.image_object_key),
-            group_name=group_name or "",
-            queue_enabled=bool(item.queue_enabled),
-            queue_provider_count=max(0, int(queue_provider_count or 0)),
-            today_queue_count=max(0, int(today_queue_count or 0)),
-            course_mode=course_mode,
-            course_duration=str(course_row.get("course_duration") or "")[:80],
-            lesson_duration=_bounded_integer(
-                course_row.get("lesson_duration"), 1440,
-            ),
-            age_from=_bounded_integer(course_row.get("age_from"), 120),
-            age_to=_bounded_integer(course_row.get("age_to"), 120),
-            course_level=course_level,
-            enrollment_status=enrollment_status,
-        ))
+        items.append(
+            PublicProfileItem(
+                kind=item.kind,
+                public_id=build_content_public_id(item.kind, item.id),
+                name=item.name,
+                price_text=item.price_text,
+                unit=item.unit or "dona",
+                note=item.note,
+                image_url=image_url_provider(item.image_object_key),
+                group_name=group_name or "",
+                queue_enabled=bool(item.queue_enabled),
+                queue_provider_count=max(0, int(queue_provider_count or 0)),
+                today_queue_count=max(0, int(today_queue_count or 0)),
+                course_mode=course_mode,
+                course_duration=str(course_row.get("course_duration") or "")[:80],
+                lesson_duration=_bounded_integer(
+                    course_row.get("lesson_duration"),
+                    1440,
+                ),
+                age_from=_bounded_integer(course_row.get("age_from"), 120),
+                age_to=_bounded_integer(course_row.get("age_to"), 120),
+                course_level=course_level,
+                enrollment_status=enrollment_status,
+            )
+        )
     queue_total = (
         sum(item.today_queue_count for item in items)
         if str(profile.direction or "").strip() in QUEUE_DIRECTIONS
@@ -1243,14 +1264,12 @@ async def load_public_district_offers(
             select(Listing, BusinessProfile)
             .join(
                 BusinessProfile,
-                BusinessProfile.account_id
-                == Listing.owner_business_account_id,
+                BusinessProfile.account_id == Listing.owner_business_account_id,
             )
             .join(Account, Account.id == BusinessProfile.account_id)
             .join(
                 ProfileLink,
-                ProfileLink.business_account_id
-                == BusinessProfile.account_id,
+                ProfileLink.business_account_id == BusinessProfile.account_id,
             )
             .join(
                 business_owner,
@@ -1270,10 +1289,7 @@ async def load_public_district_offers(
 
     active_home_offer_business_ids = await _active_home_offer_business_ids(
         session,
-        {
-            business.account_id
-            for _, business in [*catalog_rows, *listing_rows]
-        },
+        {business.account_id for _, business in [*catalog_rows, *listing_rows]},
     )
     for catalog_item, business in catalog_rows:
         if not _has_active_subscription(
@@ -1304,16 +1320,12 @@ async def load_public_district_offers(
         offset = (int.from_bytes(seed[:8], "big") + slot) % len(business_ids)
         business_ids = (business_ids[offset:] + business_ids[:offset])[:20]
 
-    selected: list[
-        tuple[str, CatalogItem | Listing, BusinessProfile]
-    ] = []
+    selected: list[tuple[str, CatalogItem | Listing, BusinessProfile]] = []
     for business_id in business_ids:
         business, content_items = grouped[business_id]
         kinds = sorted({kind for kind, _ in content_items})
         selected_kind = kinds[(slot + business_id) % len(kinds)]
-        candidates = [
-            item for kind, item in content_items if kind == selected_kind
-        ]
+        candidates = [item for kind, item in content_items if kind == selected_kind]
         selected.append(
             (
                 selected_kind,
@@ -1383,12 +1395,16 @@ async def load_followed_profiles(
     `legacy_id_map` orqali xaritalanardi. Obunalar endi o'z jadvalida,
     shuning uchun xaritalash kerak emas.
     """
-    rows = list((await session.scalars(
-        select(ProfileFollow)
-        .where(ProfileFollow.follower_account_id == account_id)
-        .order_by(ProfileFollow.created_at.desc(), ProfileFollow.id.desc())
-        .limit(500)
-    )).all())
+    rows = list(
+        (
+            await session.scalars(
+                select(ProfileFollow)
+                .where(ProfileFollow.follower_account_id == account_id)
+                .order_by(ProfileFollow.created_at.desc(), ProfileFollow.id.desc())
+                .limit(500)
+            )
+        ).all()
+    )
     result: list[PublicFollowedProfile] = []
     for row in rows:
         if row.target_kind == "business":

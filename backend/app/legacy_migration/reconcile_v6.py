@@ -193,31 +193,28 @@ async def _enrich_all_user_profiles(
             continue
 
         owned_businesses = businesses_by_owner.get(legacy_id, [])
-        orders = [
-            row for row in all_orders
-            if _order_belongs_to_user(row, legacy_id)
-        ]
+        orders = [row for row in all_orders if _order_belongs_to_user(row, legacy_id)]
         saved = [row for row in all_saved if _as_int(row.get("user_id")) == legacy_id]
         notifications = [
-            row for row in all_notifications
-            if _as_int(row.get("user_id")) == legacy_id
+            row for row in all_notifications if _as_int(row.get("user_id")) == legacy_id
         ]
         following = [
-            row for row in all_follows
-            if _as_int(row.get("follower_id")) == legacy_id
+            row for row in all_follows if _as_int(row.get("follower_id")) == legacy_id
         ]
         followers = [
-            row for row in all_follows
+            row
+            for row in all_follows
             if str(row.get("target_kind") or "") == "user"
             and _as_int(row.get("target_id")) == legacy_id
         ]
         listings = [
-            row for row in all_listings
-            if _as_int(row.get("user_id")) == legacy_id
+            row for row in all_listings if _as_int(row.get("user_id")) == legacy_id
         ]
         messages = [
-            row for row in all_messages
-            if legacy_id in {
+            row
+            for row in all_messages
+            if legacy_id
+            in {
                 _as_int(row.get("sender_id")),
                 _as_int(row.get("receiver_id")),
                 _as_int(row.get("sender_actor_id"))
@@ -229,12 +226,12 @@ async def _enrich_all_user_profiles(
             }
         ]
         filters = [
-            row for row in all_filters
-            if _as_int(row.get("user_id")) == legacy_id
+            row for row in all_filters if _as_int(row.get("user_id")) == legacy_id
         ]
         specialist = next(
             (
-                row for row in all_specialists
+                row
+                for row in all_specialists
                 if _as_int(row.get("user_id")) == legacy_id
             ),
             {},
@@ -248,7 +245,9 @@ async def _enrich_all_user_profiles(
             "active_orders": sum(_order_is_active(row) for row in orders),
             "following": len(following),
             "saved": len(saved),
-            "unread": sum(not bool(_as_int(row.get("is_read"))) for row in notifications),
+            "unread": sum(
+                not bool(_as_int(row.get("is_read"))) for row in notifications
+            ),
             "followers": len(followers),
         }
         profile.recent_activity = _recent_order_activity(orders)
@@ -317,36 +316,50 @@ async def _enrich_all_business_profiles(
             continue
 
         orders = [
-            row for row in all_orders
+            row
+            for row in all_orders
             if _order_belongs_to_business(row, legacy_id, owner_legacy_id)
         ]
-        items = [row for row in all_items if _as_int(row.get("business_id")) == legacy_id]
-        groups = [row for row in all_groups if _as_int(row.get("business_id")) == legacy_id]
-        listings = [row for row in all_listings if _as_int(row.get("business_id")) == legacy_id]
+        items = [
+            row for row in all_items if _as_int(row.get("business_id")) == legacy_id
+        ]
+        groups = [
+            row for row in all_groups if _as_int(row.get("business_id")) == legacy_id
+        ]
+        listings = [
+            row for row in all_listings if _as_int(row.get("business_id")) == legacy_id
+        ]
         followers = [
-            row for row in all_follows
+            row
+            for row in all_follows
             if str(row.get("target_kind") or "") == "business"
             and _as_int(row.get("target_id")) == legacy_id
         ]
         following = [
-            row for row in all_business_follows
+            row
+            for row in all_business_follows
             if _as_int(row.get("business_id")) == legacy_id
         ]
-        debtors = [row for row in all_debtors if _as_int(row.get("business_id")) == legacy_id]
+        debtors = [
+            row for row in all_debtors if _as_int(row.get("business_id")) == legacy_id
+        ]
         debtor_ids = {_as_int(row.get("id")) for row in debtors}
         qarz = [row for row in all_qarz if _as_int(row.get("debtor_id")) in debtor_ids]
         messages = [
-            row for row in all_messages
+            row
+            for row in all_messages
             if (
                 str(row.get("sender_kind") or "") == "business"
                 and _as_int(row.get("sender_actor_id")) == legacy_id
-            ) or (
+            )
+            or (
                 str(row.get("receiver_kind") or "") == "business"
                 and _as_int(row.get("receiver_actor_id")) == legacy_id
             )
         ]
         notifications = [
-            row for row in all_notifications
+            row
+            for row in all_notifications
             if _as_int(row.get("user_id")) == owner_legacy_id
             and str(row.get("actor_kind") or "") == "business"
             and _as_int(row.get("actor_id")) == legacy_id
@@ -379,10 +392,13 @@ async def _enrich_all_business_profiles(
             "messages": _json_safe(messages),
             "notifications": _json_safe(notifications),
             **{
-                key: _json_safe([
-                    row for row in rows
-                    if _row_matches_business(row, legacy_id, owner_legacy_id)
-                ])
+                key: _json_safe(
+                    [
+                        row
+                        for row in rows
+                        if _row_matches_business(row, legacy_id, owner_legacy_id)
+                    ]
+                )
                 for key, rows in optional_tables.items()
             },
         }
@@ -421,7 +437,9 @@ def _business_dashboard_snapshot(
     optional_tables,
     business_id,
 ):
-    today_start = int(datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+    today_start = int(
+        datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    )
     active = [row for row in orders if _order_is_active(row)]
     service = [row for row in orders if _order_is_service(row)]
     completed_today = sum(
@@ -448,7 +466,8 @@ def _business_dashboard_snapshot(
         and _as_int(row.get("created_at")) >= today_start
     )
     sales = [
-        row for row in optional_tables.get("sales", [])
+        row
+        for row in optional_tables.get("sales", [])
         if _row_matches_business(row, business_id, 0)
         and _as_int(row.get("created_at")) >= today_start
     ]
@@ -461,22 +480,52 @@ def _business_dashboard_snapshot(
         "expenses": expenses,
         "sales_count": len(sales),
         "new_orders": sum(str(row.get("status") or "") == "new" for row in orders),
-        "today_orders": sum(_as_int(row.get("created_at")) >= today_start for row in orders),
+        "today_orders": sum(
+            _as_int(row.get("created_at")) >= today_start for row in orders
+        ),
         "active_orders": len(active),
-        "pending_orders": sum(str(row.get("status") or "") in {"new", "accepted", "preparing"} for row in orders),
-        "accepted_orders": sum(str(row.get("status") or "") == "accepted" for row in orders),
-        "in_delivery": sum(str(row.get("status") or "") in {"courier_assigned", "courier_arrived_store", "handoff_waiting_seller", "in_delivery", "courier_arrived_customer", "delivered_waiting_customer"} for row in orders),
+        "pending_orders": sum(
+            str(row.get("status") or "") in {"new", "accepted", "preparing"}
+            for row in orders
+        ),
+        "accepted_orders": sum(
+            str(row.get("status") or "") == "accepted" for row in orders
+        ),
+        "in_delivery": sum(
+            str(row.get("status") or "")
+            in {
+                "courier_assigned",
+                "courier_arrived_store",
+                "handoff_waiting_seller",
+                "in_delivery",
+                "courier_arrived_customer",
+                "delivered_waiting_customer",
+            }
+            for row in orders
+        ),
         "completed_today": completed_today,
-        "service_today": sum(_as_int(row.get("created_at")) >= today_start for row in service),
+        "service_today": sum(
+            _as_int(row.get("created_at")) >= today_start for row in service
+        ),
         "service_active": sum(_order_is_active(row) for row in service),
         "debt_total": max(0, debt_total),
         "low_stock": low_stock,
         "items_count": len(items),
         "problem_orders": sum(bool(_as_int(row.get("problem_open"))) for row in orders),
         "followers": len(followers),
-        "occupied_places": sum(bool(_as_int(row.get("occupied"))) for row in optional_tables.get("dining_places", []) if _row_matches_business(row, business_id, 0)),
-        "groups": sum(_row_matches_business(row, business_id, 0) for row in optional_tables.get("education_groups", [])),
-        "students": sum(_row_matches_business(row, business_id, 0) for row in optional_tables.get("education_students", [])),
+        "occupied_places": sum(
+            bool(_as_int(row.get("occupied")))
+            for row in optional_tables.get("dining_places", [])
+            if _row_matches_business(row, business_id, 0)
+        ),
+        "groups": sum(
+            _row_matches_business(row, business_id, 0)
+            for row in optional_tables.get("education_groups", [])
+        ),
+        "students": sum(
+            _row_matches_business(row, business_id, 0)
+            for row in optional_tables.get("education_students", [])
+        ),
         "today_lessons": 0,
         "deadlines": 0,
     }
@@ -531,8 +580,12 @@ async def _account_by_login_and_type(
     ).one_or_none()
 
 
-def _row_by_id(source: sqlite3.Connection, table: str, legacy_id: int) -> dict[str, object]:
-    return next(row for row in _source_rows(source, table) if int(row["id"]) == legacy_id)
+def _row_by_id(
+    source: sqlite3.Connection, table: str, legacy_id: int
+) -> dict[str, object]:
+    return next(
+        row for row in _source_rows(source, table) if int(row["id"]) == legacy_id
+    )
 
 
 def _filtered_source(source, excluded_users, excluded_businesses):
@@ -540,10 +593,16 @@ def _filtered_source(source, excluded_users, excluded_businesses):
     source.backup(target)
     if excluded_users:
         placeholders = ",".join("?" for _ in excluded_users)
-        target.execute(f"DELETE FROM users WHERE id IN ({placeholders})", tuple(sorted(excluded_users)))
+        target.execute(
+            f"DELETE FROM users WHERE id IN ({placeholders})",
+            tuple(sorted(excluded_users)),
+        )
     if excluded_businesses:
         placeholders = ",".join("?" for _ in excluded_businesses)
-        target.execute(f"DELETE FROM businesses WHERE id IN ({placeholders})", tuple(sorted(excluded_businesses)))
+        target.execute(
+            f"DELETE FROM businesses WHERE id IN ({placeholders})",
+            tuple(sorted(excluded_businesses)),
+        )
     target.commit()
     target.row_factory = sqlite3.Row
     return target
@@ -557,25 +616,39 @@ def _optional_rows(source: sqlite3.Connection, table: str) -> list[dict[str, obj
     if not exists:
         return []
     try:
-        return [dict(row) for row in source.execute(f'SELECT * FROM "{table}"').fetchall()]
+        return [
+            dict(row) for row in source.execute(f'SELECT * FROM "{table}"').fetchall()
+        ]
     except sqlite3.DatabaseError:
         return []
 
 
 def _order_belongs_to_user(row, user_id):
     if "customer_user_id" in row:
-        return _as_int(row.get("customer_user_id")) == user_id and str(row.get("customer_kind") or "user") == "user"
+        return (
+            _as_int(row.get("customer_user_id")) == user_id
+            and str(row.get("customer_kind") or "user") == "user"
+        )
     return _as_int(row.get("user_id") or row.get("customer_id")) == user_id
 
 
 def _order_belongs_to_business(row, business_id, owner_user_id):
     if "provider_actor_id" in row:
-        return str(row.get("provider_kind") or "business") == "business" and _as_int(row.get("provider_actor_id")) == business_id
-    return _as_int(row.get("business_id")) == business_id or _as_int(row.get("provider_user_id")) == owner_user_id
+        return (
+            str(row.get("provider_kind") or "business") == "business"
+            and _as_int(row.get("provider_actor_id")) == business_id
+        )
+    return (
+        _as_int(row.get("business_id")) == business_id
+        or _as_int(row.get("provider_user_id")) == owner_user_id
+    )
 
 
 def _order_is_service(row):
-    return str(row.get("order_type") or "") in SERVICE_ORDER_TYPES or str(row.get("kind") or "") == "service"
+    return (
+        str(row.get("order_type") or "") in SERVICE_ORDER_TYPES
+        or str(row.get("kind") or "") == "service"
+    )
 
 
 def _order_is_active(row):
@@ -583,14 +656,18 @@ def _order_is_active(row):
 
 
 def _recent_order_activity(orders):
-    rows = sorted(orders, key=lambda row: _as_int(row.get("created_at")), reverse=True)[:5]
+    rows = sorted(orders, key=lambda row: _as_int(row.get("created_at")), reverse=True)[
+        :5
+    ]
     return [
         {
             "id": _as_int(row.get("id")),
             "kind": "service" if _order_is_service(row) else "order",
             "title": str(row.get("title") or row.get("item_name") or "Buyurtma"),
             "status": str(row.get("status") or "new"),
-            "amount": _as_int(row.get("total_amount") or row.get("line_total") or row.get("amount")),
+            "amount": _as_int(
+                row.get("total_amount") or row.get("line_total") or row.get("amount")
+            ),
             "created_at": _as_int(row.get("created_at")),
         }
         for row in rows

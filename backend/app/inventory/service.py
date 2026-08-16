@@ -69,9 +69,7 @@ def _money_total(unit_cost: int, qty: Decimal) -> int:
 def _money_per_unit(total: int, qty: Decimal) -> int:
     if not qty:
         return 0
-    return int(
-        (Decimal(total) / qty).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN)
-    )
+    return int((Decimal(total) / qty).quantize(Decimal("1"), rounding=ROUND_HALF_EVEN))
 
 
 class InventoryService:
@@ -140,19 +138,21 @@ class InventoryService:
         )
         item.stock_qty = _quantity(item.stock_qty - quantity)
         item.updated_at = now
-        session.add(StockMove(
-            business_account_id=business_account_id,
-            inventory_item_id=item.id,
-            legacy_source_id=None,
-            delta=-quantity,
-            reason="sotuv",
-            note=note[:200],
-            cost=_money_per_unit(total_cost, quantity),
-            legacy_order_source_id=None,
-            cash_sale_line_id=cash_sale_line_id,
-            performed_by_staff_id=actor_staff_id,
-            created_at=now,
-        ))
+        session.add(
+            StockMove(
+                business_account_id=business_account_id,
+                inventory_item_id=item.id,
+                legacy_source_id=None,
+                delta=-quantity,
+                reason="sotuv",
+                note=note[:200],
+                cost=_money_per_unit(total_cost, quantity),
+                legacy_order_source_id=None,
+                cash_sale_line_id=cash_sale_line_id,
+                performed_by_staff_id=actor_staff_id,
+                created_at=now,
+            )
+        )
         return item.id, total_cost
 
     async def restore_cash_line(
@@ -195,19 +195,21 @@ class InventoryService:
             )
         item.stock_qty = _quantity(item.stock_qty + quantity)
         item.updated_at = now
-        session.add(StockMove(
-            business_account_id=business_account_id,
-            inventory_item_id=item.id,
-            legacy_source_id=None,
-            delta=quantity,
-            reason="tuzatish",
-            note=note[:200],
-            cost=0,
-            legacy_order_source_id=None,
-            cash_sale_line_id=None,
-            performed_by_staff_id=actor_staff_id,
-            created_at=now,
-        ))
+        session.add(
+            StockMove(
+                business_account_id=business_account_id,
+                inventory_item_id=item.id,
+                legacy_source_id=None,
+                delta=quantity,
+                reason="tuzatish",
+                note=note[:200],
+                cost=0,
+                legacy_order_source_id=None,
+                cash_sale_line_id=None,
+                performed_by_staff_id=actor_staff_id,
+                created_at=now,
+            )
+        )
 
     async def list_items(
         self,
@@ -219,10 +221,9 @@ class InventoryService:
         show_costs = self._can_view_costs(permissions)
         async with self._session_factory() as session:
             rows = await self._repository.list_items(session, business_account_id)
-            result = InventoryListRead(items=[
-                self._item_read(row, show_costs=show_costs)
-                for row in rows
-            ])
+            result = InventoryListRead(
+                items=[self._item_read(row, show_costs=show_costs) for row in rows]
+            )
             await session.rollback()
             return result
 
@@ -409,26 +410,32 @@ class InventoryService:
                         production_total += total
                         ingredient.stock_qty = _quantity(ingredient.stock_qty - qty)
                         ingredient.updated_at = now
-                        session.add(ProductionInput(
-                            production_batch_id=production.id,
-                            inventory_item_id=ingredient.id,
-                            legacy_source_id=None,
-                            qty=qty,
-                            unit_cost=unit_cost,
-                            total_cost=total,
-                        ))
-                        session.add(StockMove(
-                            business_account_id=business_account_id,
-                            inventory_item_id=ingredient.id,
-                            legacy_source_id=None,
-                            delta=-qty,
-                            reason="chiqim",
-                            note=f"Ishlab chiqarish #{production.id}: {catalog.name}"[:200],
-                            cost=0,
-                            legacy_order_source_id=None,
-                            performed_by_staff_id=actor_staff_id,
-                            created_at=now,
-                        ))
+                        session.add(
+                            ProductionInput(
+                                production_batch_id=production.id,
+                                inventory_item_id=ingredient.id,
+                                legacy_source_id=None,
+                                qty=qty,
+                                unit_cost=unit_cost,
+                                total_cost=total,
+                            )
+                        )
+                        session.add(
+                            StockMove(
+                                business_account_id=business_account_id,
+                                inventory_item_id=ingredient.id,
+                                legacy_source_id=None,
+                                delta=-qty,
+                                reason="chiqim",
+                                note=f"Ishlab chiqarish #{production.id}: {catalog.name}"[
+                                    :200
+                                ],
+                                cost=0,
+                                legacy_order_source_id=None,
+                                performed_by_staff_id=actor_staff_id,
+                                created_at=now,
+                            )
+                        )
                     cost = _money_per_unit(production_total, delta)
                     production.total_cost = production_total
                     production.unit_cost = cost
@@ -502,10 +509,7 @@ class InventoryService:
                         business_account_id=business_account_id,
                         inventory_stock_move_id=move.id,
                         amount=_money_total(cost, delta),
-                        note=(
-                            catalog.name
-                            + (f" — {body.note}" if body.note else "")
-                        ),
+                        note=(catalog.name + (f" — {body.note}" if body.note else "")),
                         actor_staff_id=actor_staff_id,
                         actor_name=actor_name,
                         created_at=now,
@@ -517,10 +521,10 @@ class InventoryService:
                     stock_qty=_number(item.stock_qty),
                     unit_cost=cost if self._can_view_costs(permissions) else 0,
                     total_cost=(
-                        production_total
-                        if inputs
-                        else _money_total(cost, delta)
-                    ) if self._can_view_costs(permissions) else 0,
+                        production_total if inputs else _money_total(cost, delta)
+                    )
+                    if self._can_view_costs(permissions)
+                    else 0,
                 )
                 await session.commit()
                 return result
@@ -546,7 +550,9 @@ class InventoryService:
                     move_id=move_id,
                 )
                 if initial is None:
-                    raise ApiError(404, "inventory_move_not_found", "Harakat topilmadi.")
+                    raise ApiError(
+                        404, "inventory_move_not_found", "Harakat topilmadi."
+                    )
                 owned = await self._repository.owned_item(
                     session,
                     business_account_id=business_account_id,
@@ -554,7 +560,9 @@ class InventoryService:
                     lock=True,
                 )
                 if owned is None:
-                    raise ApiError(404, "inventory_item_not_found", "Mahsulot topilmadi.")
+                    raise ApiError(
+                        404, "inventory_item_not_found", "Mahsulot topilmadi."
+                    )
                 item, _catalog = owned
                 move = await self._repository.move(
                     session,
@@ -563,7 +571,9 @@ class InventoryService:
                     lock=True,
                 )
                 if move is None:
-                    raise ApiError(404, "inventory_move_not_found", "Harakat topilmadi.")
+                    raise ApiError(
+                        404, "inventory_move_not_found", "Harakat topilmadi."
+                    )
                 if not self._move_deletable(move):
                     raise ApiError(
                         409,
@@ -664,7 +674,9 @@ class InventoryService:
                 inventory_item_id=ready_inventory_item_id,
             )
             if owned is None or owned[0].stock_type != "ready_food":
-                raise ApiError(404, "inventory_ready_item_not_found", "Tayyor taom topilmadi.")
+                raise ApiError(
+                    404, "inventory_ready_item_not_found", "Tayyor taom topilmadi."
+                )
             rows = await self._repository.recipe_rows(
                 session,
                 business_account_id=business_account_id,
@@ -679,7 +691,8 @@ class InventoryService:
                     cost_price=ingredient.cost_price if show_costs else 0,
                     cost_per_ready_unit=(
                         _money_total(ingredient.cost_price, recipe.qty_per_unit)
-                        if show_costs else 0
+                        if show_costs
+                        else 0
                     ),
                 )
                 for recipe, ingredient, catalog in rows
@@ -787,7 +800,11 @@ class InventoryService:
                 inventory_item_id=item_id,
                 lock=True,
             )
-            if owned is None or not owned[0].track_stock or owned[0].stock_type != "raw_material":
+            if (
+                owned is None
+                or not owned[0].track_stock
+                or owned[0].stock_type != "raw_material"
+            ):
                 raise ApiError(
                     422,
                     "inventory_ingredient_invalid",
@@ -847,17 +864,19 @@ class InventoryService:
             line_total = _money_total(batch.unit_cost, take)
             total += line_total
             batch.qty_remaining = _quantity(batch.qty_remaining - take)
-            session.add(StockBatchConsumption(
-                batch_id=batch.id,
-                inventory_item_id=item.id,
-                legacy_source_id=None,
-                qty=take,
-                unit_cost=batch.unit_cost,
-                total_cost=line_total,
-                source_type=source_type,
-                source_id=source_id,
-                created_at=now,
-            ))
+            session.add(
+                StockBatchConsumption(
+                    batch_id=batch.id,
+                    inventory_item_id=item.id,
+                    legacy_source_id=None,
+                    qty=take,
+                    unit_cost=batch.unit_cost,
+                    total_cost=line_total,
+                    source_type=source_type,
+                    source_id=source_id,
+                    created_at=now,
+                )
+            )
             left = _quantity(left - take)
         return total
 
@@ -907,16 +926,18 @@ class InventoryService:
         source_move_id: int,
         now: datetime,
     ) -> None:
-        session.add(StockBatch(
-            business_account_id=business_account_id,
-            inventory_item_id=item.id,
-            legacy_source_id=None,
-            qty_in=qty,
-            qty_remaining=qty,
-            unit_cost=max(0, unit_cost),
-            source_move_id=source_move_id,
-            created_at=now,
-        ))
+        session.add(
+            StockBatch(
+                business_account_id=business_account_id,
+                inventory_item_id=item.id,
+                legacy_source_id=None,
+                qty_in=qty,
+                qty_remaining=qty,
+                unit_cost=max(0, unit_cost),
+                source_move_id=source_move_id,
+                created_at=now,
+            )
+        )
         item.fifo_initialized = True
 
     @staticmethod
@@ -924,7 +945,9 @@ class InventoryService:
         quantity = _quantity(value)
         if (unit or "dona") not in FRACTIONAL_UNITS:
             sign = Decimal("1") if quantity > 0 else Decimal("-1")
-            quantity = sign * abs(quantity).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            quantity = sign * abs(quantity).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP
+            )
             quantity = quantity.quantize(QUANTITY_STEP)
         return quantity
 

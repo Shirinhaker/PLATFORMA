@@ -15,11 +15,15 @@ class ExpenseRepository:
         *,
         business_account_id: int,
     ) -> list[str]:
-        return list((await session.scalars(
-            select(ExpenseCategory.name)
-            .where(ExpenseCategory.business_account_id == business_account_id)
-            .order_by(ExpenseCategory.name, ExpenseCategory.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(ExpenseCategory.name)
+                    .where(ExpenseCategory.business_account_id == business_account_id)
+                    .order_by(ExpenseCategory.name, ExpenseCategory.id)
+                )
+            ).all()
+        )
 
     async def category(
         self,
@@ -44,16 +48,20 @@ class ExpenseRepository:
         end: datetime,
         limit: int = 200,
     ):
-        return list((await session.scalars(
-            select(Expense)
-            .where(
-                Expense.business_account_id == business_account_id,
-                Expense.created_at >= start,
-                Expense.created_at < end,
-            )
-            .order_by(Expense.created_at.desc(), Expense.id.desc())
-            .limit(limit)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(Expense)
+                    .where(
+                        Expense.business_account_id == business_account_id,
+                        Expense.created_at >= start,
+                        Expense.created_at < end,
+                    )
+                    .order_by(Expense.created_at.desc(), Expense.id.desc())
+                    .limit(limit)
+                )
+            ).all()
+        )
 
     async def expense(
         self,

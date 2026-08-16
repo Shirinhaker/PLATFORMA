@@ -29,12 +29,16 @@ async def sync_business_catalog(
     group_rows = _rows(payload, "item_groups")
     item_rows = _rows(payload, "items")
 
-    groups = list((await session.scalars(
-        select(CatalogGroup).where(
-            CatalogGroup.business_account_id == account_id,
-            CatalogGroup.source_record_key.is_not(None),
-        )
-    )).all())
+    groups = list(
+        (
+            await session.scalars(
+                select(CatalogGroup).where(
+                    CatalogGroup.business_account_id == account_id,
+                    CatalogGroup.source_record_key.is_not(None),
+                )
+            )
+        ).all()
+    )
     groups_by_source = {
         str(group.source_record_key): group
         for group in groups
@@ -66,12 +70,16 @@ async def sync_business_catalog(
 
     await session.flush()
 
-    items = list((await session.scalars(
-        select(CatalogItem).where(
-            CatalogItem.business_account_id == account_id,
-            CatalogItem.source_record_key.is_not(None),
-        )
-    )).all())
+    items = list(
+        (
+            await session.scalars(
+                select(CatalogItem).where(
+                    CatalogItem.business_account_id == account_id,
+                    CatalogItem.source_record_key.is_not(None),
+                )
+            )
+        ).all()
+    )
     items_by_source = {
         str(item.source_record_key): item
         for item in items
@@ -138,9 +146,7 @@ def _apply_group(
     group.kind = kind
     group.status = _text(row.get("status") or "active", 20) or "active"
     group.review_state = (
-        ReviewState.READY
-        if name and kind_valid
-        else ReviewState.REVIEW_REQUIRED
+        ReviewState.READY if name and kind_valid else ReviewState.REVIEW_REQUIRED
     )
     group.updated_at = _record_time(row.get("updated_at"))
 
@@ -174,9 +180,7 @@ def _apply_item(
     item.status = _text(row.get("status") or "active", 20) or "active"
     item.owner_state = OwnerState.LINKED
     item.review_state = (
-        ReviewState.READY
-        if name and kind_valid
-        else ReviewState.REVIEW_REQUIRED
+        ReviewState.READY if name and kind_valid else ReviewState.REVIEW_REQUIRED
     )
     item.updated_at = _record_time(row.get("updated_at"))
 

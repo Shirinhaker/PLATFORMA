@@ -51,9 +51,7 @@ async def list_public_listings(
     return await service(request).list_public(
         category=cat.strip(),
         query=q.strip(),
-        current_account_id=(
-            current.account_id if current is not None else None
-        ),
+        current_account_id=(current.account_id if current is not None else None),
         current_account_type=current.account_type if current is not None else None,
     )
 
@@ -67,9 +65,7 @@ async def get_public_listing(
     require_enabled(request)
     listing = await service(request).get_public(
         public_id,
-        current_account_id=(
-            current.account_id if current is not None else None
-        ),
+        current_account_id=(current.account_id if current is not None else None),
         current_account_type=current.account_type if current is not None else None,
     )
     if listing is None:
@@ -139,11 +135,13 @@ async def toggle_listing_save(
 ):
     require_enabled(request)
     require_staff_permission(current, "__business_owner__")
-    return ListingSaveRead(saved=await service(request).toggle_save(
-        public_id=public_id,
-        account_id=current.account_id,
-        account_type=current.account_type,
-    ))
+    return ListingSaveRead(
+        saved=await service(request).toggle_save(
+            public_id=public_id,
+            account_id=current.account_id,
+            account_type=current.account_type,
+        )
+    )
 
 
 @router.get("/listings/saved", response_model=list[ListingRead])

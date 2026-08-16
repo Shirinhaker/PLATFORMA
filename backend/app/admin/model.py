@@ -34,15 +34,11 @@ class AdminAuthChallenge(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    attempts: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    consumed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -53,9 +49,7 @@ class AdminSession(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    token_hash: Mapped[str] = mapped_column(
-        String(64), unique=True, nullable=False
-    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -65,9 +59,7 @@ class AdminSession(Base):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 Index(

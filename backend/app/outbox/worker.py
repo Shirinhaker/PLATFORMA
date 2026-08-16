@@ -76,9 +76,7 @@ async def send_admin_code(
 ) -> None:
     """Admin kodi bazada ham, navbatda ham saqlanmaydi — qayta hisoblanadi."""
     async with database.session() as session:
-        challenge = await session.get(
-            AdminAuthChallenge, int(payload["challenge_id"])
-        )
+        challenge = await session.get(AdminAuthChallenge, int(payload["challenge_id"]))
         if (
             challenge is None
             or challenge.consumed_at is not None
@@ -172,9 +170,7 @@ async def process_batch(
     limit: int = 50,
 ) -> int:
     active_handlers = (
-        handlers
-        if handlers is not None
-        else {"foundation.echo": foundation_echo}
+        handlers if handlers is not None else {"foundation.echo": foundation_echo}
     )
     async with database.session() as session, session.begin():
         events = await claim_events(session, worker_id, limit=limit)
@@ -271,10 +267,7 @@ async def run_worker(settings: Settings, *, once: bool = False) -> None:
             handlers = build_handlers(settings, database, telegram)
             while not stop.is_set():
                 now = datetime.now(UTC)
-                if (
-                    last_cleanup is None
-                    or now - last_cleanup >= timedelta(hours=1)
-                ):
+                if last_cleanup is None or now - last_cleanup >= timedelta(hours=1):
                     await cleanup_expired_auth(database, now)
                     last_cleanup = now
                 count = await process_batch(

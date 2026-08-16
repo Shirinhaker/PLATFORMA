@@ -18,25 +18,27 @@ from app.notifications.model import (
 )
 from app.profiles.model import ProfileLink
 
-ROW_COLUMNS = frozenset({
-    "id",
-    "event_key",
-    "title",
-    "body",
-    "order_id",
-    "listing_id",
-    "dining_order_id",
-    "medical_queue_id",
-    "ride_id",
-    "target_staff_id",
-    "target_permission",
-    "action_type",
-    "requires_action",
-    "is_read",
-    "created_at",
-    "read_at",
-    "resolved_at",
-})
+ROW_COLUMNS = frozenset(
+    {
+        "id",
+        "event_key",
+        "title",
+        "body",
+        "order_id",
+        "listing_id",
+        "dining_order_id",
+        "medical_queue_id",
+        "ride_id",
+        "target_staff_id",
+        "target_permission",
+        "action_type",
+        "requires_action",
+        "is_read",
+        "created_at",
+        "read_at",
+        "resolved_at",
+    }
+)
 PAYLOAD_COMPAT_COLUMNS = (
     "order_id",
     "listing_id",
@@ -63,23 +65,25 @@ def _boolean(value: object) -> bool:
 
 def _row(notification: Notification) -> dict[str, Any]:
     result = dict(notification.payload or {})
-    result.update({
-        "id": notification.id,
-        "event_key": notification.event_key,
-        "title": notification.title,
-        "body": notification.body,
-        "order_id": notification.order_id,
-        "listing_id": notification.listing_id,
-        "dining_order_id": notification.dining_order_id,
-        "medical_queue_id": notification.medical_queue_id,
-        "ride_id": notification.ride_id,
-        "target_staff_id": notification.target_staff_id,
-        "target_permission": notification.target_permission,
-        "action_type": notification.action_type,
-        "requires_action": 1 if notification.requires_action else 0,
-        "is_read": 1 if notification.is_read else 0,
-        "created_at": notification.created_at,
-    })
+    result.update(
+        {
+            "id": notification.id,
+            "event_key": notification.event_key,
+            "title": notification.title,
+            "body": notification.body,
+            "order_id": notification.order_id,
+            "listing_id": notification.listing_id,
+            "dining_order_id": notification.dining_order_id,
+            "medical_queue_id": notification.medical_queue_id,
+            "ride_id": notification.ride_id,
+            "target_staff_id": notification.target_staff_id,
+            "target_permission": notification.target_permission,
+            "action_type": notification.action_type,
+            "requires_action": 1 if notification.requires_action else 0,
+            "is_read": 1 if notification.is_read else 0,
+            "created_at": notification.created_at,
+        }
+    )
     if notification.read_at is not None:
         result["read_at"] = notification.read_at
     else:
@@ -94,10 +98,7 @@ def _row(notification: Notification) -> dict[str, Any]:
 class NotificationRepository:
     @staticmethod
     def supported(session: AsyncSession) -> bool:
-        return all(
-            hasattr(session, name)
-            for name in ("execute", "scalars", "scalar")
-        )
+        return all(hasattr(session, name) for name in ("execute", "scalars", "scalar"))
 
     async def append(
         self,
@@ -191,15 +192,19 @@ class NotificationRepository:
     ) -> list[dict[str, Any]] | None:
         if not self.supported(session):
             return None
-        notifications = list((await session.scalars(
-            select(Notification)
-            .where(
-                Notification.account_id == account_id,
-                Notification.account_type == account_type,
-            )
-            .order_by(Notification.created_at, Notification.id)
-            .limit(200)
-        )).all())
+        notifications = list(
+            (
+                await session.scalars(
+                    select(Notification)
+                    .where(
+                        Notification.account_id == account_id,
+                        Notification.account_type == account_type,
+                    )
+                    .order_by(Notification.created_at, Notification.id)
+                    .limit(200)
+                )
+            ).all()
+        )
         return [_row(notification) for notification in notifications]
 
     async def get_row(
@@ -245,18 +250,22 @@ class NotificationRepository:
         account_type: str,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        notifications = list((await session.scalars(
-            select(Notification)
-            .where(
-                Notification.account_id == account_id,
-                Notification.account_type == account_type,
-                Notification.requires_action.is_(True),
-                Notification.is_read.is_(False),
-                Notification.resolved_at.is_(None),
-            )
-            .order_by(Notification.created_at, Notification.id)
-            .limit(limit)
-        )).all())
+        notifications = list(
+            (
+                await session.scalars(
+                    select(Notification)
+                    .where(
+                        Notification.account_id == account_id,
+                        Notification.account_type == account_type,
+                        Notification.requires_action.is_(True),
+                        Notification.is_read.is_(False),
+                        Notification.resolved_at.is_(None),
+                    )
+                    .order_by(Notification.created_at, Notification.id)
+                    .limit(limit)
+                )
+            ).all()
+        )
         return [_row(notification) for notification in notifications]
 
     async def mark_order_read(
@@ -418,14 +427,18 @@ class NotificationRepository:
         account_id: int,
         account_type: str,
     ) -> list[NotificationFilter]:
-        return list((await session.scalars(
-            select(NotificationFilter)
-            .where(
-                NotificationFilter.account_id == account_id,
-                NotificationFilter.account_type == account_type,
-            )
-            .order_by(NotificationFilter.id.desc())
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(NotificationFilter)
+                    .where(
+                        NotificationFilter.account_id == account_id,
+                        NotificationFilter.account_type == account_type,
+                    )
+                    .order_by(NotificationFilter.id.desc())
+                )
+            ).all()
+        )
 
     async def filters_for_category(
         self,
@@ -433,11 +446,15 @@ class NotificationRepository:
         *,
         category: str,
     ) -> list[NotificationFilter]:
-        return list((await session.scalars(
-            select(NotificationFilter)
-            .where(NotificationFilter.category == category)
-            .order_by(NotificationFilter.id)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(NotificationFilter)
+                    .where(NotificationFilter.category == category)
+                    .order_by(NotificationFilter.id)
+                )
+            ).all()
+        )
 
     async def add_filter(
         self,
@@ -601,12 +618,16 @@ class NotificationRepository:
             )
             if linked is not None:
                 device_account_id = int(linked)
-        device_ids = list((await session.scalars(
-            select(PushDevice.id).where(
-                PushDevice.account_id == device_account_id,
-                PushDevice.enabled.is_(True),
-            )
-        )).all())
+        device_ids = list(
+            (
+                await session.scalars(
+                    select(PushDevice.id).where(
+                        PushDevice.account_id == device_account_id,
+                        PushDevice.enabled.is_(True),
+                    )
+                )
+            ).all()
+        )
         for device_id in device_ids:
             dialect_name = session.get_bind().dialect.name
             if dialect_name == "postgresql":

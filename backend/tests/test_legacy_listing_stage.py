@@ -38,9 +38,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -225,9 +223,7 @@ async def test_listing_and_media_metadata_are_distinct_from_ads(store):
 
     result = await import_listings(db, source, run)
     listing = (await db.scalars(select(Listing))).one()
-    media = list(
-        await db.scalars(select(ListingMedia).order_by(ListingMedia.position))
-    )
+    media = list(await db.scalars(select(ListingMedia).order_by(ListingMedia.position)))
 
     assert result.created == 2
     assert listing.price_text == "Kelishiladi"
@@ -236,9 +232,7 @@ async def test_listing_and_media_metadata_are_distinct_from_ads(store):
     assert [item.position for item in media] == [0]
     assert media[0].object_key == ""
     assert media[0].migration_state == "pending"
-    assert (
-        await db.scalar(select(func.count()).select_from(Advertisement))
-    ) == 0
+    assert (await db.scalar(select(func.count()).select_from(Advertisement))) == 0
 
 
 @pytest.mark.asyncio

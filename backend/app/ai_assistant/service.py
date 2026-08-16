@@ -33,7 +33,13 @@ def _money(value: int) -> str:
 
 
 class AIAssistantService:
-    def __init__(self, session_factory: SessionFactory, provider: OpenAIResponsesProvider, *, repository: AIAssistantRepository | None = None) -> None:
+    def __init__(
+        self,
+        session_factory: SessionFactory,
+        provider: OpenAIResponsesProvider,
+        *,
+        repository: AIAssistantRepository | None = None,
+    ) -> None:
         self._session_factory = session_factory
         self._provider = provider
         self._repository = repository or AIAssistantRepository()
@@ -47,8 +53,17 @@ class AIAssistantService:
 
     async def history(self, business_id: int, limit: int) -> AIChatHistoryRead:
         async with self._session_factory() as session:
-            rows = await self._repository.history(session, business_id, max(1, min(limit, 100)))
-            result = AIChatHistoryRead(history=[AIChatMessageRead(role=row.role, text=row.text, created_at=row.created_at) for row in rows])
+            rows = await self._repository.history(
+                session, business_id, max(1, min(limit, 100))
+            )
+            result = AIChatHistoryRead(
+                history=[
+                    AIChatMessageRead(
+                        role=row.role, text=row.text, created_at=row.created_at
+                    )
+                    for row in rows
+                ]
+            )
             await session.rollback()
             return result
 
@@ -81,21 +96,40 @@ class AIAssistantService:
             "Sen Platforma biznes kabinetidagi AI yordamchisan. O'zbek "
             "tilida, sodda va aniq javob ber. Faqat berilgan biznes "
             "kontekstiga asoslan.",
-            "Biznes konteksti:\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n\nSavol:\n" + message,
+            "Biznes konteksti:\n"
+            + json.dumps(context, ensure_ascii=False, indent=2)
+            + "\n\nSavol:\n"
+            + message,
             max_output_tokens=1200,
         )
         source = "openai" if answer else "local"
         if not answer:
             answer = self._local_answer(message, context)
         async with self._session_factory() as session:
-            session.add_all([
-                AIChatMessage(business_account_id=business_id, role="user", text=message, source="user", created_at=now),
-                AIChatMessage(business_account_id=business_id, role="assistant", text=answer, source=source, created_at=now),
-            ])
+            session.add_all(
+                [
+                    AIChatMessage(
+                        business_account_id=business_id,
+                        role="user",
+                        text=message,
+                        source="user",
+                        created_at=now,
+                    ),
+                    AIChatMessage(
+                        business_account_id=business_id,
+                        role="assistant",
+                        text=answer,
+                        source=source,
+                        created_at=now,
+                    ),
+                ]
+            )
             await session.commit()
             return AIChatAnswerRead(answer=answer, source=source)
 
-    async def document_draft(self, business_id: int, body: AIDocumentDraftRequest) -> AIDocumentDraftRead:
+    async def document_draft(
+        self, business_id: int, body: AIDocumentDraftRequest
+    ) -> AIDocumentDraftRead:
         user_prompt = body.prompt.strip()
         if not user_prompt:
             raise ApiError(
@@ -199,7 +233,12 @@ class AIAssistantService:
             return "📒 Umumiy qarz qoldig'i: " + _money(context["debt_total"]) + "."
         if any(word in lowered for word in ("buyurtma", "zakaz")):
             rows = context["orders_by_status"]
-            return "📥 Hozir buyurtmalar statistikasi topilmadi." if not rows else "📥 Buyurtmalar holati:\n" + "\n".join(f"• {key}: {value}" for key, value in rows.items())
+            return (
+                "📥 Hozir buyurtmalar statistikasi topilmadi."
+                if not rows
+                else "📥 Buyurtmalar holati:\n"
+                + "\n".join(f"• {key}: {value}" for key, value in rows.items())
+            )
         if any(
             word in lowered
             for word in ("eng ko'p", "eng ko‘p", "ko'p sot", "ko‘p sot", "top")
@@ -217,7 +256,8 @@ class AIAssistantService:
             "• Xarajat: " + _money(summary["expenses"]) + "\n"
             "• Sof foyda: " + _money(summary["profit"]) + "\n"
             "• Qarz qoldig'i: " + _money(context["debt_total"]) + "\n"
-            "• Kam qolgan tovarlar: " + str(len(context.get("low_stock") or []))
+            "• Kam qolgan tovarlar: "
+            + str(len(context.get("low_stock") or []))
             + " ta\n\nOmbor, qarz, buyurtma yoki savdo bo'yicha aniqroq "
             "so'rasangiz, batafsil aytaman."
         )

@@ -80,9 +80,7 @@ class CashReceipt(Base):
     )
     legacy_order_source_id: Mapped[int | None] = mapped_column(BigInteger)
     legacy_group_key: Mapped[str | None] = mapped_column(String(160))
-    pay_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default=""
-    )
+    pay_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="")
     debtor_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("debtors.id", ondelete="SET NULL"),
@@ -91,9 +89,7 @@ class CashReceipt(Base):
         String(160), nullable=False, server_default=""
     )
     legacy_debtor_source_id: Mapped[int | None] = mapped_column(BigInteger)
-    note: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     created_by_staff_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("staff_members.id", ondelete="SET NULL"),
@@ -144,15 +140,11 @@ class CashReceiptLine(Base):
     legacy_source_key: Mapped[str | None] = mapped_column(String(160))
     item_name: Mapped[str] = mapped_column(String(220), nullable=False)
     qty: Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
-    unit: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default="dona"
-    )
+    unit: Mapped[str] = mapped_column(String(40), nullable=False, server_default="dona")
     unit_price: Mapped[int] = mapped_column(
         BigInteger, nullable=False, server_default="0"
     )
-    total: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
+    total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     cost_total: Mapped[int] = mapped_column(
         BigInteger, nullable=False, server_default="0"
     )

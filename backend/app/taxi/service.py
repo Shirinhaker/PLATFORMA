@@ -89,7 +89,9 @@ class TaxiService:
         car_plate = body.car_plate.strip()
         if not phone:
             raise ApiError(400, "driver_phone_required", "Telefon raqamini kiriting.")
-        if body.service in {"taxi", "both"} and not all((car_model, car_color, car_plate)):
+        if body.service in {"taxi", "both"} and not all(
+            (car_model, car_color, car_plate)
+        ):
             raise ApiError(
                 400,
                 "driver_car_required",
@@ -126,7 +128,9 @@ class TaxiService:
             await session.flush()
             profile = await session.get(UserProfile, user_account_id)
             await session.commit()
-            return self._driver_read(driver, profile, await self._driver_busy(session, driver.id))
+            return self._driver_read(
+                driver, profile, await self._driver_busy(session, driver.id)
+            )
 
     async def set_availability(
         self, *, user_account_id: int, available: bool
@@ -158,13 +162,17 @@ class TaxiService:
             )
         async with self._session_factory() as session:
             existing = await session.scalar(
-                select(TaxiRide.id).where(
+                select(TaxiRide.id)
+                .where(
                     TaxiRide.customer_account_id == customer_account_id,
                     TaxiRide.status.in_(ACTIVE_RIDE_STATUSES),
-                ).limit(1)
+                )
+                .limit(1)
             )
             if existing is not None:
-                raise ApiError(400, "active_ride_exists", "Sizda hali tugamagan zakaz bor.")
+                raise ApiError(
+                    400, "active_ride_exists", "Sizda hali tugamagan zakaz bor."
+                )
             now = self._now()
             ride = TaxiRide(
                 legacy_source_id=None,
@@ -196,18 +204,26 @@ class TaxiService:
                 await session.commit()
             except IntegrityError as exc:
                 await session.rollback()
-                raise ApiError(400, "active_ride_exists", "Sizda hali tugamagan zakaz bor.") from exc
+                raise ApiError(
+                    400, "active_ride_exists", "Sizda hali tugamagan zakaz bor."
+                ) from exc
             return await self._ride_read(session, ride)
 
     async def my_rides(self, *, customer_account_id: int) -> MyRidesRead:
         async with self._session_factory() as session:
-            rows = list((await session.scalars(
-                select(TaxiRide)
-                .where(TaxiRide.customer_account_id == customer_account_id)
-                .order_by(TaxiRide.created_at.desc(), TaxiRide.id.desc())
-                .limit(100)
-            )).all())
-            active = next((row for row in rows if row.status in ACTIVE_RIDE_STATUSES), None)
+            rows = list(
+                (
+                    await session.scalars(
+                        select(TaxiRide)
+                        .where(TaxiRide.customer_account_id == customer_account_id)
+                        .order_by(TaxiRide.created_at.desc(), TaxiRide.id.desc())
+                        .limit(100)
+                    )
+                ).all()
+            )
+            active = next(
+                (row for row in rows if row.status in ACTIVE_RIDE_STATUSES), None
+            )
             result = MyRidesRead(
                 ride=await self._ride_read(session, active) if active else None,
                 rides=[await self._ride_read(session, row) for row in rows],
@@ -215,14 +231,22 @@ class TaxiService:
             await session.rollback()
             return result
 
-    async def cancel_ride(self, *, customer_account_id: int, ride_id: int) -> RideMutationRead:
+    async def cancel_ride(
+        self, *, customer_account_id: int, ride_id: int
+    ) -> RideMutationRead:
         async with self._session_factory() as session:
             ride = await self._ride(session, ride_id, lock=True)
             if ride is None or ride.customer_account_id != customer_account_id:
                 raise ApiError(404, "ride_not_found", "Zakaz topilmadi.")
-            allowed = {"pending", "accepted"} if ride.kind == "dostavka" else {"pending", "accepted", "arrived"}
+            allowed = (
+                {"pending", "accepted"}
+                if ride.kind == "dostavka"
+                else {"pending", "accepted", "arrived"}
+            )
             if ride.status not in allowed:
-                raise ApiError(400, "ride_cancel_invalid", "Zakaz bu bosqichda bekor qilinmaydi.")
+                raise ApiError(
+                    400, "ride_cancel_invalid", "Zakaz bu bosqichda bekor qilinmaydi."
+                )
             ride.status = "canceled"
             ride.updated_at = self._now()
             available = True
@@ -259,13 +283,22 @@ class TaxiService:
                 statement = select(TaxiRide).where(TaxiRide.status == "pending")
                 if driver.service != "both":
                     statement = statement.where(TaxiRide.kind == driver.service)
-                pending = list((await session.scalars(
-                    statement.order_by(TaxiRide.created_at, TaxiRide.id)
-                )).all())
+                pending = list(
+                    (
+                        await session.scalars(
+                            statement.order_by(TaxiRide.created_at, TaxiRide.id)
+                        )
+                    ).all()
+                )
             result = DriverRidesRead(
                 available=driver.available and current is None,
-                current=await self._ride_read(session, current, include_customer=True) if current else None,
-                pending=[await self._ride_read(session, row, include_customer=True) for row in pending],
+                current=await self._ride_read(session, current, include_customer=True)
+                if current
+                else None,
+                pending=[
+                    await self._ride_read(session, row, include_customer=True)
+                    for row in pending
+                ],
             )
             await session.rollback()
             return result
@@ -276,13 +309,29 @@ class TaxiService:
             ride = await self._ride(session, ride_id, lock=True)
             driver = await self._require_driver(session, user_account_id, lock=True)
             if ride is None or ride.status != "pending":
-                raise ApiError(409, "ride_already_taken", "Bu zakazni boshqa haydovchi oldi.")
-            if not driver.available or await self._driver_busy(session, driver.id, lock=True):
-                raise ApiError(400, "driver_busy", "Siz bandsiz. Joriy zakazni yakunlagach yangi zakaz olasiz.")
+                raise ApiError(
+                    409, "ride_already_taken", "Bu zakazni boshqa haydovchi oldi."
+                )
+            if not driver.available or await self._driver_busy(
+                session, driver.id, lock=True
+            ):
+                raise ApiError(
+                    400,
+                    "driver_busy",
+                    "Siz bandsiz. Joriy zakazni yakunlagach yangi zakaz olasiz.",
+                )
             if driver.service not in {"both", ride.kind}:
-                raise ApiError(403, "driver_service_mismatch", "Bu zakaz siz tanlagan xizmat turiga mos emas.")
+                raise ApiError(
+                    403,
+                    "driver_service_mismatch",
+                    "Bu zakaz siz tanlagan xizmat turiga mos emas.",
+                )
             if driver.balance < COMMISSION_PER_ORDER:
-                raise ApiError(400, "driver_balance_low", "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.")
+                raise ApiError(
+                    400,
+                    "driver_balance_low",
+                    "Balansingiz yetarli emas. Zakaz olish uchun balansni to'ldiring.",
+                )
             now = self._now()
             ride.status = "accepted"
             ride.driver_id = driver.id
@@ -297,7 +346,9 @@ class TaxiService:
                 await session.commit()
             except IntegrityError as exc:
                 await session.rollback()
-                raise ApiError(409, "ride_already_taken", "Bu zakazni boshqa haydovchi oldi.") from exc
+                raise ApiError(
+                    409, "ride_already_taken", "Bu zakazni boshqa haydovchi oldi."
+                ) from exc
             return RideAccepted(
                 ride=await self._ride_read(session, ride, include_customer=True),
                 commission=COMMISSION_PER_ORDER,
@@ -321,10 +372,16 @@ class TaxiService:
                     "arrived_customer": "delivered_waiting_customer",
                 }
                 if ride.kind == "dostavka"
-                else {"accepted": "arrived", "arrived": "ongoing", "ongoing": "completed"}
+                else {
+                    "accepted": "arrived",
+                    "arrived": "ongoing",
+                    "ongoing": "completed",
+                }
             )
             if transitions.get(ride.status) != new_status:
-                raise ApiError(400, "ride_status_invalid", "Bu bosqichga o'tib bo'lmaydi.")
+                raise ApiError(
+                    400, "ride_status_invalid", "Bu bosqichga o'tib bo'lmaydi."
+                )
             ride.status = new_status
             ride.updated_at = self._now()
             driver.available = new_status == "completed"
@@ -342,7 +399,11 @@ class TaxiService:
             if ride is None or ride.driver_id != driver.id:
                 raise ApiError(404, "ride_not_found", "Zakaz topilmadi.")
             if ride.status != "ongoing":
-                raise ApiError(400, "ride_progress_invalid", "Hisoblagich faqat safar davomida ishlaydi.")
+                raise ApiError(
+                    400,
+                    "ride_progress_invalid",
+                    "Hisoblagich faqat safar davomida ishlaydi.",
+                )
             ride.meter_km = km
             ride.updated_at = self._now()
             await session.commit()
@@ -350,19 +411,29 @@ class TaxiService:
 
     async def list_admin_drivers(self) -> list[AdminDriverRead]:
         async with self._session_factory() as session:
-            rows = list((await session.execute(
-                select(TaxiDriver, UserProfile)
-                .join(UserProfile, UserProfile.account_id == TaxiDriver.user_account_id)
-                .order_by(UserProfile.name, TaxiDriver.id)
-            )).all())
-            result = [AdminDriverRead(
-                id=driver.id,
-                name=profile.name,
-                phone=driver.phone,
-                balance=driver.balance,
-                service=driver.service,
-                available=driver.available,
-            ) for driver, profile in rows]
+            rows = list(
+                (
+                    await session.execute(
+                        select(TaxiDriver, UserProfile)
+                        .join(
+                            UserProfile,
+                            UserProfile.account_id == TaxiDriver.user_account_id,
+                        )
+                        .order_by(UserProfile.name, TaxiDriver.id)
+                    )
+                ).all()
+            )
+            result = [
+                AdminDriverRead(
+                    id=driver.id,
+                    name=profile.name,
+                    phone=driver.phone,
+                    balance=driver.balance,
+                    service=driver.service,
+                    available=driver.available,
+                )
+                for driver, profile in rows
+            ]
             await session.rollback()
             return result
 
@@ -402,10 +473,12 @@ class TaxiService:
 
     async def after_order_handoff(self, session: AsyncSession, order_id: int) -> None:
         ride = await session.scalar(
-            select(TaxiRide).where(
+            select(TaxiRide)
+            .where(
                 TaxiRide.source_order_id == order_id,
                 TaxiRide.kind == "dostavka",
-            ).with_for_update()
+            )
+            .with_for_update()
         )
         if ride is None or ride.status != "pickup_requested":
             raise ApiError(
@@ -444,38 +517,43 @@ class TaxiService:
         if business.address:
             from_addr += f", {business.address}"
         now = self._now()
-        session.add(TaxiRide(
-            legacy_source_id=None,
-            customer_account_id=order.provider_account_id,
-            driver_id=None,
-            source_order_id=order.id,
-            kind="dostavka",
-            from_addr=from_addr,
-            to_addr=order.address or "Mijoz manzili (xaritada)",
-            from_lat=business.latitude,
-            from_lng=business.longitude,
-            to_lat=order.delivery_lat,
-            to_lng=order.delivery_lng,
-            dist_km=distance,
-            dur_min=0,
-            meter_km=None,
-            ozim=False,
-            cargo="",
-            car_type="",
-            note=f"Do'kon buyurtmasi #{order.id}" + (f" — {order.title}" if order.title else ""),
-            status="pending",
-            created_at=now,
-            accepted_at=None,
-            updated_at=now,
-        ))
+        session.add(
+            TaxiRide(
+                legacy_source_id=None,
+                customer_account_id=order.provider_account_id,
+                driver_id=None,
+                source_order_id=order.id,
+                kind="dostavka",
+                from_addr=from_addr,
+                to_addr=order.address or "Mijoz manzili (xaritada)",
+                from_lat=business.latitude,
+                from_lng=business.longitude,
+                to_lat=order.delivery_lat,
+                to_lng=order.delivery_lng,
+                dist_km=distance,
+                dur_min=0,
+                meter_km=None,
+                ozim=False,
+                cargo="",
+                car_type="",
+                note=f"Do'kon buyurtmasi #{order.id}"
+                + (f" — {order.title}" if order.title else ""),
+                status="pending",
+                created_at=now,
+                accepted_at=None,
+                updated_at=now,
+            )
+        )
         await session.flush()
 
     async def after_order_received(self, session: AsyncSession, order_id: int) -> None:
         ride = await session.scalar(
-            select(TaxiRide).where(
+            select(TaxiRide)
+            .where(
                 TaxiRide.source_order_id == order_id,
                 TaxiRide.kind == "dostavka",
-            ).with_for_update()
+            )
+            .with_for_update()
         )
         if ride is None or ride.status != "delivered_waiting_customer":
             raise ApiError(
@@ -523,38 +601,63 @@ class TaxiService:
         order.provider_seen_at = None
         order.last_event = "delivery"
         if ride_status == "accepted":
-            driver = await session.get(TaxiDriver, ride.driver_id) if ride.driver_id else None
-            profile = await session.get(UserProfile, driver.user_account_id) if driver else None
+            driver = (
+                await session.get(TaxiDriver, ride.driver_id)
+                if ride.driver_id
+                else None
+            )
+            profile = (
+                await session.get(UserProfile, driver.user_account_id)
+                if driver
+                else None
+            )
             name = profile.name if profile else "Dostavkachi"
             await append_order_notification(
-                session, self._notifications, order,
-                side="customer", event="courier_assigned",
-                title="Dostavkachi buyurtmani qabul qildi", body=name,
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="courier_assigned",
+                title="Dostavkachi buyurtmani qabul qildi",
+                body=name,
             )
             await append_order_notification(
-                session, self._notifications, order,
-                side="provider", event="courier_assigned",
-                title="Dostavkachi biriktirildi", body=name,
+                session,
+                self._notifications,
+                order,
+                side="provider",
+                event="courier_assigned",
+                title="Dostavkachi biriktirildi",
+                body=name,
             )
         elif ride_status == "pickup_requested":
             await append_order_notification(
-                session, self._notifications, order,
-                side="provider", event="courier_pickup_requested",
+                session,
+                self._notifications,
+                order,
+                side="provider",
+                event="courier_pickup_requested",
                 title="Dostavkachi buyurtmani olishga tayyor",
                 body="Buyurtmani dostavkachiga topshiring.",
                 action_type="confirm_handoff",
             )
         elif ride_status == "arrived_customer":
             await append_order_notification(
-                session, self._notifications, order,
-                side="customer", event="courier_arrived",
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="courier_arrived",
                 title="Dostavkachi yetib keldi",
                 body="Buyurtmani qabul qilishga tayyorlaning.",
             )
         elif ride_status == "delivered_waiting_customer":
             await append_order_notification(
-                session, self._notifications, order,
-                side="customer", event="delivery_handed",
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="delivery_handed",
                 title="Buyurtma topshirildi",
                 body="Buyurtmani olganingizni tasdiqlang.",
                 action_type="confirm_received",
@@ -566,7 +669,11 @@ class TaxiService:
         driver_payload = None
         if ride.driver_id is not None:
             driver = await session.get(TaxiDriver, ride.driver_id)
-            profile = await session.get(UserProfile, driver.user_account_id) if driver else None
+            profile = (
+                await session.get(UserProfile, driver.user_account_id)
+                if driver
+                else None
+            )
             if driver is not None:
                 driver_payload = RideDriver(
                     name=profile.name if profile else "",
@@ -618,13 +725,16 @@ class TaxiService:
         delta_lng = (lng2 - lng1) * radians
         value = (
             math.sin(delta_lat / 2) ** 2
-            + math.cos(lat1 * radians) * math.cos(lat2 * radians)
+            + math.cos(lat1 * radians)
+            * math.cos(lat2 * radians)
             * math.sin(delta_lng / 2) ** 2
         )
         return round(6371 * 2 * math.atan2(math.sqrt(value), math.sqrt(1 - value)), 1)
 
     @staticmethod
-    def _driver_read(driver: TaxiDriver, profile: UserProfile | None, busy: bool) -> DriverRead:
+    def _driver_read(
+        driver: TaxiDriver, profile: UserProfile | None, busy: bool
+    ) -> DriverRead:
         return DriverRead(
             exists=True,
             id=driver.id,
@@ -644,7 +754,9 @@ class TaxiService:
         )
 
     async def _driver_for_user(self, session, user_account_id: int, lock: bool = False):
-        statement = select(TaxiDriver).where(TaxiDriver.user_account_id == user_account_id)
+        statement = select(TaxiDriver).where(
+            TaxiDriver.user_account_id == user_account_id
+        )
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement)
@@ -652,7 +764,9 @@ class TaxiService:
     async def _require_driver(self, session, user_account_id: int, lock: bool = False):
         driver = await self._driver_for_user(session, user_account_id, lock)
         if driver is None:
-            raise ApiError(403, "driver_required", "Avval haydovchi sifatida ro'yxatdan o'ting.")
+            raise ApiError(
+                403, "driver_required", "Avval haydovchi sifatida ro'yxatdan o'ting."
+            )
         if driver.status != "active":
             raise ApiError(403, "driver_blocked", "Haydovchi profilingiz faol emas.")
         return driver
@@ -666,10 +780,14 @@ class TaxiService:
 
     @staticmethod
     async def _driver_busy(session, driver_id: int, lock: bool = False) -> bool:
-        statement = select(TaxiRide.id).where(
-            TaxiRide.driver_id == driver_id,
-            TaxiRide.status.in_(DRIVER_ACTIVE_STATUSES),
-        ).limit(1)
+        statement = (
+            select(TaxiRide.id)
+            .where(
+                TaxiRide.driver_id == driver_id,
+                TaxiRide.status.in_(DRIVER_ACTIVE_STATUSES),
+            )
+            .limit(1)
+        )
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement) is not None

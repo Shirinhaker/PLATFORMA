@@ -230,11 +230,13 @@ def test_business_opening_route_is_typed_versioned_and_owner_only():
     assert ("/api/v1/business-opening", "POST") in routes
 
     with pytest.raises(ApiError) as staff:
-        require_business_opening_owner(CurrentAccount(
-            account_id=1,
-            account_type=AccountType.USER,
-            session_token="staff-token",
-            actor_type="staff",
-            staff_id=3,
-        ))
+        require_business_opening_owner(
+            CurrentAccount(
+                account_id=1,
+                account_type=AccountType.USER,
+                session_token="staff-token",
+                actor_type="staff",
+                staff_id=3,
+            )
+        )
     assert staff.value.code == "business_opening_owner_required"

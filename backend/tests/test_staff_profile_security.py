@@ -21,9 +21,15 @@ async def test_staff_business_profile_drops_private_owner_fields_and_ungranted_r
         "assembled_cabinet_payload",
         AsyncMock(return_value=payload),
     )
-    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(
-        r2=SimpleNamespace(create_download_url=lambda key: f"https://media/{key}"),
-    )))
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(
+                r2=SimpleNamespace(
+                    create_download_url=lambda key: f"https://media/{key}"
+                ),
+            )
+        )
+    )
     profile = BusinessProfileRead(
         account_id=7,
         name="Turon",
@@ -46,14 +52,16 @@ async def test_staff_business_profile_drops_private_owner_fields_and_ungranted_r
         logo_y=50,
         logo_zoom=1,
         dashboard_snapshot={"revenue": 50_000},
-        recent_activity=[{
-            "id": 3,
-            "kind": "order",
-            "title": "Maxfiy buyurtma",
-            "status": "new",
-            "amount": 50_000,
-            "created_at": 1,
-        }],
+        recent_activity=[
+            {
+                "id": 3,
+                "kind": "order",
+                "title": "Maxfiy buyurtma",
+                "status": "new",
+                "amount": 50_000,
+                "created_at": 1,
+            }
+        ],
         cabinet_payload=payload,
     )
     current = CurrentAccount(

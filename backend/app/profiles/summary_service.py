@@ -44,9 +44,7 @@ class ProfileSummaryService:
 
         task = self._resolution_tasks.get(cache_key)
         if task is None:
-            task = asyncio.create_task(
-                self._load_and_cache(account_type, account_id)
-            )
+            task = asyncio.create_task(self._load_and_cache(account_type, account_id))
             self._resolution_tasks[cache_key] = task
 
             def clear_completed(completed: asyncio.Task[MeRead]) -> None:
@@ -83,9 +81,7 @@ class ProfileSummaryService:
         async with self._session_factory() as session:
             if account_type is AccountType.USER:
                 profile = await get_user_profile(session, account_id)
-                profile_complete = bool(
-                    profile.name.strip() and profile.phone.strip()
-                )
+                profile_complete = bool(profile.name.strip() and profile.phone.strip())
             else:
                 profile = await get_business_profile(session, account_id)
                 profile_complete = all(
@@ -168,7 +164,4 @@ class ProfileSummaryService:
 
     @staticmethod
     def cache_key(account_type: AccountType, account_id: int) -> str:
-        return (
-            f"{_PROFILE_SUMMARY_CACHE_PREFIX}"
-            f"{account_type.value}:{account_id}"
-        )
+        return f"{_PROFILE_SUMMARY_CACHE_PREFIX}{account_type.value}:{account_id}"

@@ -17,9 +17,7 @@ from app.cache.rate_limit import consume_rate_limit
 from app.core.errors import ApiError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-RATE_LIMIT_MESSAGE = (
-    "Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring."
-)
+RATE_LIMIT_MESSAGE = "Juda ko‘p urinish. Birozdan keyin qayta urinib ko‘ring."
 
 
 class LoginStartRequest(BaseModel):

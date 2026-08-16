@@ -95,10 +95,7 @@ DEPLOYED_ENVIRONMENTS = {"staging", "production"}
 
 
 def _validate_cors_configuration(settings: Settings) -> None:
-    if (
-        settings.environment in DEPLOYED_ENVIRONMENTS
-        and not settings.cors_origin_list
-    ):
+    if settings.environment in DEPLOYED_ENVIRONMENTS and not settings.cors_origin_list:
         raise RuntimeError("cors_origins_required_for_deployed_environment")
 
 
@@ -253,20 +250,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             advertisement_service=app.state.advertisement_authoring_service,
             listing_service=app.state.listing_activation_service,
         )
-        app.state.admin_auth_service = AdminAuthService(
-            database.session, resolved
-        )
+        app.state.admin_auth_service = AdminAuthService(database.session, resolved)
         app.state.admin_payment_service = AdminPaymentService(
             database.session,
             now=lambda: int(time.time()),
             download_url_provider=app.state.r2.create_download_url,
         )
-        app.state.admin_moderation_service = AdminModerationService(
-            database.session
-        )
-        app.state.admin_reports_service = AdminReportsService(
-            database.session
-        )
+        app.state.admin_moderation_service = AdminModerationService(database.session)
+        app.state.admin_reports_service = AdminReportsService(database.session)
         app.state.queue_service = QueueService(database.session)
         app.state.education_enrollment_service = EducationEnrollmentService(
             database.session,

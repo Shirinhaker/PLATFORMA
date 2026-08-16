@@ -47,4 +47,3 @@ async def get_catalog_item(
             "Mahsulot yoki xizmat topilmadi.",
         )
     return item
-

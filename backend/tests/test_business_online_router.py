@@ -51,16 +51,20 @@ async def online_clients():
     }
     service = SimpleNamespace(
         read_resource=AsyncMock(return_value=[{"id": 1, "name": "Muhr"}]),
-        create_record=AsyncMock(return_value=(
-            {"id": 2, "name": "Yangi"},
-            [{"id": 2, "name": "Yangi"}],
-        )),
+        create_record=AsyncMock(
+            return_value=(
+                {"id": 2, "name": "Yangi"},
+                [{"id": 2, "name": "Yangi"}],
+            )
+        ),
         patch_record=AsyncMock(),
         delete_record=AsyncMock(),
-        apply_action=AsyncMock(return_value=(
-            None,
-            [{"id": 7, "is_read": 1}],
-        )),
+        apply_action=AsyncMock(
+            return_value=(
+                None,
+                [{"id": 7, "is_read": 1}],
+            )
+        ),
     )
     profile_summary = SimpleNamespace(invalidate=AsyncMock())
     app = create_app(settings)
@@ -129,12 +133,14 @@ async def test_business_item_image_must_belong_to_current_business(online_client
     response = await online_clients.business.post(
         "/api/v1/business-online/items",
         headers={"X-CSRF-Token": online_clients.business_csrf},
-        json={"record": {
-            "name": "Yangi",
-            "image_object_key": (
-                "private/business/99/catalog_item_image/stolen.webp"
-            ),
-        }},
+        json={
+            "record": {
+                "name": "Yangi",
+                "image_object_key": (
+                    "private/business/99/catalog_item_image/stolen.webp"
+                ),
+            }
+        },
     )
 
     assert response.status_code == 403
@@ -151,16 +157,16 @@ async def test_business_item_response_contains_signed_image_url(online_clients):
     response = await online_clients.business.post(
         "/api/v1/business-online/items",
         headers={"X-CSRF-Token": online_clients.business_csrf},
-        json={"record": {
-            "name": "Yangi",
-            "image_object_key": object_key,
-        }},
+        json={
+            "record": {
+                "name": "Yangi",
+                "image_object_key": object_key,
+            }
+        },
     )
 
     assert response.status_code == 201, response.text
-    assert response.json()["item"]["image_url"] == (
-        f"https://cdn.test/{object_key}"
-    )
+    assert response.json()["item"]["image_url"] == (f"https://cdn.test/{object_key}")
 
 
 async def test_business_action_uses_current_account_and_invalidates_summary(

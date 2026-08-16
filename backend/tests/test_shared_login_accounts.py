@@ -26,9 +26,7 @@ async def _service(db_session):
             telegram_bot_username="koprik_test_bot",
             otp_secret="test-otp-secret",
             csrf_secret="test-csrf-secret",
-            outbox_encryption_key=(
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-            ),
+            outbox_encryption_key=("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="),
         ),
     )
     return service, redis

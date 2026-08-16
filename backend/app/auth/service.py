@@ -108,9 +108,7 @@ class AuthService:
         now: datetime,
     ) -> RegistrationStarted:
         self._validate_registration(data)
-        expires_at = now + timedelta(
-            seconds=self._settings.telegram_link_ttl_seconds
-        )
+        expires_at = now + timedelta(seconds=self._settings.telegram_link_ttl_seconds)
         async with self._session_factory() as session:
             try:
                 pending = await create_pending_registration(
@@ -245,9 +243,7 @@ class AuthService:
                     account_id=account.id,
                     now=now,
                     start_expires_at=now
-                    + timedelta(
-                        seconds=self._settings.telegram_link_ttl_seconds
-                    ),
+                    + timedelta(seconds=self._settings.telegram_link_ttl_seconds),
                     max_attempts=self._settings.telegram_max_attempts,
                 )
                 code_sent = account.telegram_user_id is not None
@@ -653,9 +649,7 @@ class AuthService:
 
         try:
             cached = json.loads(payload)
-            last_used_at = datetime.fromisoformat(
-                cached.pop("last_used_at")
-            )
+            last_used_at = datetime.fromisoformat(cached.pop("last_used_at"))
             cached["csrf_token"] = derive_csrf(
                 raw_token,
                 self._settings.csrf_secret,
@@ -694,9 +688,7 @@ class AuthService:
         if redis is None:
             return
 
-        remaining_seconds = math.ceil(
-            (identity.expires_at - now).total_seconds()
-        )
+        remaining_seconds = math.ceil((identity.expires_at - now).total_seconds())
         if remaining_seconds <= 0:
             return
         ttl_seconds = min(
@@ -857,13 +849,10 @@ class AuthService:
             or challenge.attempts >= challenge.max_attempts
         ):
             raise cls._challenge_locked()
-        if (
-            not allow_expired
-            and (
-                challenge.code_hash is None
-                or challenge.code_expires_at is None
-                or challenge.code_expires_at <= now
-            )
+        if not allow_expired and (
+            challenge.code_hash is None
+            or challenge.code_expires_at is None
+            or challenge.code_expires_at <= now
         ):
             raise INVALID_CODE
 

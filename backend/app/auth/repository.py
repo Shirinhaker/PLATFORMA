@@ -70,9 +70,7 @@ async def lock_challenge(
     request_id: int,
 ) -> AuthChallenge | None:
     result = await session.execute(
-        select(AuthChallenge)
-        .where(AuthChallenge.id == request_id)
-        .with_for_update()
+        select(AuthChallenge).where(AuthChallenge.id == request_id).with_for_update()
     )
     return result.scalar_one_or_none()
 

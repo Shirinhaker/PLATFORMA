@@ -79,9 +79,7 @@ async def admin_auth_verify(
     response: Response,
     service: AdminServiceDep,
 ) -> AdminIdentity:
-    token = await service.verify(
-        challenge_id=body.challenge_id, code=body.code
-    )
+    token = await service.verify(challenge_id=body.challenge_id, code=body.code)
     settings = request.app.state.settings
     response.set_cookie(
         settings.admin_cookie_name,
@@ -124,9 +122,7 @@ async def admin_payments(
     service_type: Annotated[str, Query(max_length=20)] = "",
 ) -> list[AdminPaymentRow]:
     del admin
-    return await service.list_payments(
-        status=status, service_type=service_type
-    )
+    return await service.list_payments(status=status, service_type=service_type)
 
 
 @router.get("/payments/{payment_id}", response_model=AdminPaymentDetail)
@@ -272,9 +268,7 @@ ReportId = Annotated[int, Path(gt=0)]
 
 def _meta(request: Request) -> dict[str, str]:
     settings = request.app.state.settings
-    return request_meta(
-        request, settings.admin_audit_ip_secret or settings.csrf_secret
-    )
+    return request_meta(request, settings.admin_audit_ip_secret or settings.csrf_secret)
 
 
 @router.get("/accounts/{actor_type}", response_model=list[AdminAccountRow])
@@ -292,9 +286,7 @@ async def admin_accounts(
     return [AdminAccountRow(**row) for row in rows]
 
 
-@router.get(
-    "/accounts/{actor_type}/{account_id}", response_model=AdminAccountDetail
-)
+@router.get("/accounts/{actor_type}/{account_id}", response_model=AdminAccountDetail)
 async def admin_account_detail(
     actor_type: ActorType,
     account_id: AccountId,
@@ -302,9 +294,9 @@ async def admin_account_detail(
     service: ModerationDep,
 ) -> AdminAccountDetail:
     del admin
-    return AdminAccountDetail(**await service.account_detail(
-        actor_type=actor_type, account_id=account_id
-    ))
+    return AdminAccountDetail(
+        **await service.account_detail(actor_type=actor_type, account_id=account_id)
+    )
 
 
 @router.post(
@@ -319,14 +311,16 @@ async def admin_restrict_account(
     admin: CurrentAdmin,
     service: ModerationDep,
 ) -> AdminRestrictionResult:
-    return AdminRestrictionResult(**await service.restrict(
-        actor_type=actor_type,
-        account_id=account_id,
-        restriction=body.restriction,
-        reason=body.reason,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return AdminRestrictionResult(
+        **await service.restrict(
+            actor_type=actor_type,
+            account_id=account_id,
+            restriction=body.restriction,
+            reason=body.reason,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 @router.post(
@@ -341,14 +335,16 @@ async def admin_unrestrict_account(
     admin: CurrentAdmin,
     service: ModerationDep,
 ) -> AdminRestrictionResult:
-    return AdminRestrictionResult(**await service.unrestrict(
-        actor_type=actor_type,
-        account_id=account_id,
-        restriction=body.restriction,
-        reason=body.reason,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return AdminRestrictionResult(
+        **await service.unrestrict(
+            actor_type=actor_type,
+            account_id=account_id,
+            restriction=body.restriction,
+            reason=body.reason,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 @router.post(
@@ -364,21 +360,21 @@ async def admin_add_note(
     admin: CurrentAdmin,
     service: ModerationDep,
 ) -> AdminNoteRow:
-    return AdminNoteRow(**await service.add_note(
-        actor_type=actor_type,
-        account_id=account_id,
-        note=body.note,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return AdminNoteRow(
+        **await service.add_note(
+            actor_type=actor_type,
+            account_id=account_id,
+            note=body.note,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 # ----------------------------------------------------------------- kontent
 
 
-@router.get(
-    "/content/{content_kind}/{content_id}", response_model=AdminContentStatus
-)
+@router.get("/content/{content_kind}/{content_id}", response_model=AdminContentStatus)
 async def admin_content_status(
     content_kind: ContentKind,
     content_id: AccountId,
@@ -386,9 +382,9 @@ async def admin_content_status(
     service: ModerationDep,
 ) -> AdminContentStatus:
     del admin
-    return AdminContentStatus(**await service.content_status(
-        content_kind=content_kind, content_id=content_id
-    ))
+    return AdminContentStatus(
+        **await service.content_status(content_kind=content_kind, content_id=content_id)
+    )
 
 
 # v1656: yashirish, tiklash va o'chirish uchta alohida yo'l edi.
@@ -408,14 +404,16 @@ async def admin_set_content_status(
     admin: CurrentAdmin,
     service: ModerationDep,
 ) -> AdminContentResult:
-    return AdminContentResult(**await service.set_content_status(
-        content_kind=content_kind,
-        content_id=content_id,
-        status=CONTENT_ACTIONS[action],
-        reason=body.reason,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return AdminContentResult(
+        **await service.set_content_status(
+            content_kind=content_kind,
+            content_id=content_id,
+            status=CONTENT_ACTIONS[action],
+            reason=body.reason,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 # -------------------------------------------------------------- shikoyatlar
@@ -449,9 +447,11 @@ async def admin_assign_report(
     admin: CurrentAdmin,
     service: ReportsDep,
 ) -> ReportRow:
-    return ReportRow(**await service.assign(
-        report_id=report_id, admin_tg_id=admin, meta=_meta(request)
-    ))
+    return ReportRow(
+        **await service.assign(
+            report_id=report_id, admin_tg_id=admin, meta=_meta(request)
+        )
+    )
 
 
 @router.post("/reports/{report_id}/resolve", response_model=ReportRow)
@@ -462,13 +462,15 @@ async def admin_resolve_report(
     admin: CurrentAdmin,
     service: ReportsDep,
 ) -> ReportRow:
-    return ReportRow(**await service.decide(
-        report_id=report_id,
-        decision="resolved",
-        resolution=body.resolution,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return ReportRow(
+        **await service.decide(
+            report_id=report_id,
+            decision="resolved",
+            resolution=body.resolution,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 @router.post("/reports/{report_id}/dismiss", response_model=ReportRow)
@@ -479,13 +481,15 @@ async def admin_dismiss_report(
     admin: CurrentAdmin,
     service: ReportsDep,
 ) -> ReportRow:
-    return ReportRow(**await service.decide(
-        report_id=report_id,
-        decision="dismissed",
-        resolution=body.resolution,
-        admin_tg_id=admin,
-        meta=_meta(request),
-    ))
+    return ReportRow(
+        **await service.decide(
+            report_id=report_id,
+            decision="dismissed",
+            resolution=body.resolution,
+            admin_tg_id=admin,
+            meta=_meta(request),
+        )
+    )
 
 
 # ------------------------------------------------------------------- audit

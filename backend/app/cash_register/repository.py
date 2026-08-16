@@ -92,17 +92,21 @@ class CashRegisterRepository:
         start: datetime,
         end: datetime,
     ):
-        return (await session.execute(
-            select(CashReceipt, StaffMember.name)
-            .outerjoin(StaffMember, StaffMember.id == CashReceipt.created_by_staff_id)
-            .where(
-                CashReceipt.business_account_id == business_account_id,
-                CashReceipt.created_at >= start,
-                CashReceipt.created_at < end,
+        return (
+            await session.execute(
+                select(CashReceipt, StaffMember.name)
+                .outerjoin(
+                    StaffMember, StaffMember.id == CashReceipt.created_by_staff_id
+                )
+                .where(
+                    CashReceipt.business_account_id == business_account_id,
+                    CashReceipt.created_at >= start,
+                    CashReceipt.created_at < end,
+                )
+                .order_by(CashReceipt.created_at.desc(), CashReceipt.id.desc())
+                .limit(200)
             )
-            .order_by(CashReceipt.created_at.desc(), CashReceipt.id.desc())
-            .limit(200)
-        )).all()
+        ).all()
 
     async def lines_for_receipts(
         self,
@@ -111,11 +115,15 @@ class CashRegisterRepository:
     ) -> dict[int, list[CashReceiptLine]]:
         if not receipt_ids:
             return {}
-        rows = list((await session.scalars(
-            select(CashReceiptLine)
-            .where(CashReceiptLine.receipt_id.in_(receipt_ids))
-            .order_by(CashReceiptLine.receipt_id, CashReceiptLine.id)
-        )).all())
+        rows = list(
+            (
+                await session.scalars(
+                    select(CashReceiptLine)
+                    .where(CashReceiptLine.receipt_id.in_(receipt_ids))
+                    .order_by(CashReceiptLine.receipt_id, CashReceiptLine.id)
+                )
+            ).all()
+        )
         result: dict[int, list[CashReceiptLine]] = {
             receipt_id: [] for receipt_id in receipt_ids
         }

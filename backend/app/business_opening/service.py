@@ -86,19 +86,23 @@ class BusinessOpeningService:
                     telegram_user_id=owner.telegram_user_id,
                     now=now,
                 )
-                session.add(BusinessProfile(
-                    account_id=business.id,
-                    name=body.name,
-                    direction=body.direction,
-                    activity_type=body.activity_type,
-                    phone=body.phone,
-                    address=body.address,
-                ))
-                session.add(ProfileLink(
-                    user_account_id=account_id,
-                    business_account_id=business.id,
-                    created_at=now,
-                ))
+                session.add(
+                    BusinessProfile(
+                        account_id=business.id,
+                        name=body.name,
+                        direction=body.direction,
+                        activity_type=body.activity_type,
+                        phone=body.phone,
+                        address=body.address,
+                    )
+                )
+                session.add(
+                    ProfileLink(
+                        user_account_id=account_id,
+                        business_account_id=business.id,
+                        created_at=now,
+                    )
+                )
                 profile.has_business = True
 
                 encrypted_credentials = encrypt_outbox_secret(

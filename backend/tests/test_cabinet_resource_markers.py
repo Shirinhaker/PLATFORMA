@@ -30,18 +30,24 @@ async def test_empty_normalized_resource_remains_authoritative(db_session):
         rows=[],
     )
 
-    assert await repository.has_resource(
-        db_session,
-        account_id=account.id,
-        account_type="business",
-        resource="items",
-    ) is True
-    assert await repository.read_resource(
-        db_session,
-        account_id=account.id,
-        account_type="business",
-        resource="items",
-    ) == []
+    assert (
+        await repository.has_resource(
+            db_session,
+            account_id=account.id,
+            account_type="business",
+            resource="items",
+        )
+        is True
+    )
+    assert (
+        await repository.read_resource(
+            db_session,
+            account_id=account.id,
+            account_type="business",
+            resource="items",
+        )
+        == []
+    )
     assert await repository.read_payload(
         db_session,
         account_id=account.id,

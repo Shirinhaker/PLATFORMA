@@ -138,7 +138,11 @@ def test_api_docker_cutover_requires_explicit_opt_in() -> None:
     assert '= \\"1\\" ]; then' in dockerfile
     assert "fi && exec uvicorn app.main:app" in dockerfile
     assert "python -m app.auth.telegram_cutover_once && exec uvicorn" not in dockerfile
-    assert dockerfile.index(guard) < dockerfile.index(cutover_command) < dockerfile.index(uvicorn_command)
+    assert (
+        dockerfile.index(guard)
+        < dockerfile.index(cutover_command)
+        < dockerfile.index(uvicorn_command)
+    )
 
 
 def test_cutover_source_never_logs_secret_values() -> None:

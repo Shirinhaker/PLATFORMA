@@ -132,7 +132,9 @@ def _record_value_kind(value: object) -> str:
 
 
 def _source_key(row: dict[str, Any], ordinal: int, used_keys: set[str]) -> str:
-    candidate = str(row.get("id") if row.get("id") is not None else f"ordinal:{ordinal}")
+    candidate = str(
+        row.get("id") if row.get("id") is not None else f"ordinal:{ordinal}"
+    )
     suffix = 1
     key = _bounded_key(candidate)
     while key in used_keys:
@@ -309,4 +311,7 @@ def _encode_path(parts: tuple[str, ...]) -> str:
 def _decode_path(path: str) -> tuple[str, ...]:
     if not path:
         return ()
-    return tuple(part.replace("~1", "/").replace("~0", "~") for part in path.lstrip("/").split("/"))
+    return tuple(
+        part.replace("~1", "/").replace("~0", "~")
+        for part in path.lstrip("/").split("/")
+    )

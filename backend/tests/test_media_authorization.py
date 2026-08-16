@@ -179,9 +179,7 @@ async def test_user_receives_only_avatar_prefix(media_clients):
         json=upload_request("avatar"),
     )
     assert response.status_code == 200
-    assert response.json()["object_key"].startswith(
-        "private/user/42/avatar/"
-    )
+    assert response.json()["object_key"].startswith("private/user/42/avatar/")
 
 
 async def test_user_cannot_request_business_logo(media_clients):
@@ -220,9 +218,7 @@ async def test_business_receives_only_logo_prefix(media_clients):
         json=upload_request("logo"),
     )
     assert response.status_code == 200
-    assert response.json()["object_key"].startswith(
-        "private/business/84/logo/"
-    )
+    assert response.json()["object_key"].startswith("private/business/84/logo/")
 
 
 async def test_business_receives_catalog_item_image_prefix(media_clients):
@@ -254,9 +250,7 @@ async def test_both_order_sides_receive_only_their_chat_image_prefix(
         json=upload_request("order_chat_image"),
     )
     assert response.status_code == 200
-    assert response.json()["object_key"].startswith(
-        f"{owner_prefix}/order_chat_image/"
-    )
+    assert response.json()["object_key"].startswith(f"{owner_prefix}/order_chat_image/")
 
 
 async def test_user_attaches_only_own_generated_avatar(media_clients):
@@ -285,8 +279,7 @@ async def test_user_attaches_only_own_generated_avatar(media_clients):
         headers={"X-CSRF-Token": media_clients.user.csrf},
         json={
             "object_key": (
-                "private/user/99/avatar/"
-                "0123456789abcdef0123456789abcdef.png"
+                "private/user/99/avatar/0123456789abcdef0123456789abcdef.png"
             ),
             "x": 50,
             "y": 50,

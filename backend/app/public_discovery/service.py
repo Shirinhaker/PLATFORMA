@@ -56,14 +56,11 @@ class PublicDiscoveryService:
             lambda object_key: f"/media/{object_key}" if object_key else ""
         )
         if search_loader is None:
+
             async def configured_loader(session, params):
-                if (
-                    not settings.phase3c_public_enabled
-                    and params.result_type
-                    in (
-                        PublicResultType.PRODUCT,
-                        PublicResultType.SERVICE,
-                    )
+                if not settings.phase3c_public_enabled and params.result_type in (
+                    PublicResultType.PRODUCT,
+                    PublicResultType.SERVICE,
                 ):
                     return PublicSearchResponse(
                         items=[],
@@ -82,9 +79,7 @@ class PublicDiscoveryService:
             self._search_loader = configured_loader
         else:
             self._search_loader = search_loader
-        self._catalog_cache_epoch = (
-            catalog_cache_epoch or CatalogCacheEpoch(redis)
-        )
+        self._catalog_cache_epoch = catalog_cache_epoch or CatalogCacheEpoch(redis)
         self._search_tasks: dict[str, asyncio.Task[PublicSearchResponse]] = {}
 
     async def search(
@@ -94,8 +89,7 @@ class PublicDiscoveryService:
         catalog_epoch = (
             await self._catalog_cache_epoch.current()
             if (
-                self._settings.phase3c_public_enabled
-                or self._settings.listings_enabled
+                self._settings.phase3c_public_enabled or self._settings.listings_enabled
             )
             else 0
         )

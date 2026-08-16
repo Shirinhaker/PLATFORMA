@@ -50,8 +50,7 @@ class ListingActivationService:
             select(Listing).where(Listing.public_id == public_id)
         )
         owner = listing and (
-            listing.owner_user_account_id
-            or listing.owner_business_account_id
+            listing.owner_user_account_id or listing.owner_business_account_id
         )
         if listing is None or owner != account_id:
             raise ApiError(404, "listing_not_found", "E’lon topilmadi.")
@@ -67,9 +66,7 @@ class ListingActivationService:
     ) -> None:
         """Chaqiruvchining tranzaksiyasida ishlaydi — to'lov bilan birga."""
         listing = await session.scalar(
-            select(Listing)
-            .where(Listing.id == listing_id)
-            .with_for_update()
+            select(Listing).where(Listing.id == listing_id).with_for_update()
         )
         if listing is None or listing.status != "payment_pending":
             raise ApiError(
@@ -77,10 +74,7 @@ class ListingActivationService:
                 "listing_not_pending",
                 "Kutilayotgan e’lon topilmadi.",
             )
-        owner = (
-            listing.owner_user_account_id
-            or listing.owner_business_account_id
-        )
+        owner = listing.owner_user_account_id or listing.owner_business_account_id
         if owner != account_id:
             raise ApiError(
                 409,

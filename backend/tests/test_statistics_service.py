@@ -176,115 +176,138 @@ def statistics_context():
         ),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            account(1),
-            account(2),
-            staff(11, 1, "Kassir Ali"),
-            staff(12, 1, "Ofitsiant Lola"),
-            catalog(101, 1, "Olma"),
-            catalog(102, 1, "Paket"),
-            catalog(201, 2, "Begona tovar"),
-            InventoryItem(
-                id=1001,
-                business_account_id=1,
-                catalog_item_id=101,
-                legacy_source_id=None,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("3"),
-                cost_price=100,
-                min_qty=Decimal("5"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            InventoryItem(
-                id=1002,
-                business_account_id=1,
-                catalog_item_id=102,
-                legacy_source_id=None,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("8"),
-                cost_price=0,
-                min_qty=Decimal("1"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            InventoryItem(
-                id=2001,
-                business_account_id=2,
-                catalog_item_id=201,
-                legacy_source_id=None,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("-9"),
-                cost_price=1,
-                min_qty=Decimal("5"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            receipt(1, 1, source="manual", pay_type="naqd", staff_id=11, actor=""),
-            receipt(2, 1, source="order", pay_type="karta", staff_id=None, actor="Rahbar"),
-            receipt(
-                3,
-                1,
-                source="dining",
-                pay_type="qarz",
-                staff_id=11,
-                actor="",
-                waiter_id=12,
-            ),
-            receipt(4, 1, source="debt_payment", pay_type="naqd", staff_id=None, actor="Rahbar"),
-            receipt(5, 2, source="manual", pay_type="naqd", staff_id=None, actor="Begona"),
-            line(1, 1, 1, "Olma", 600, 200, qty="2"),
-            line(2, 1, 1, "Paket", 50, 0),
-            line(3, 2, 1, "Olma", 400, 100),
-            line(4, 3, 1, "Osh", 300, 120),
-            line(5, 4, 1, "Qarz to‘lovi", 200, 0),
-            line(6, 5, 2, "Begona tovar", 999_999, 1),
-            Expense(
-                id=1,
-                business_account_id=1,
-                legacy_source_id=None,
-                category="Ijara",
-                amount=75,
-                note="",
-                source="manual",
-                inventory_stock_move_id=None,
-                performed_by_staff_id=None,
-                actor_name_snapshot="",
-                created_at=NOW,
-            ),
-            Expense(
-                id=2,
-                business_account_id=1,
-                legacy_source_id=None,
-                category="Tovar xaridi",
-                amount=200,
-                note="",
-                source="stock",
-                inventory_stock_move_id=None,
-                performed_by_staff_id=None,
-                actor_name_snapshot="",
-                created_at=NOW,
-            ),
-            Expense(
-                id=3,
-                business_account_id=2,
-                legacy_source_id=None,
-                category="Ijara",
-                amount=700_000,
-                note="",
-                source="manual",
-                inventory_stock_move_id=None,
-                performed_by_staff_id=None,
-                actor_name_snapshot="",
-                created_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                account(1),
+                account(2),
+                staff(11, 1, "Kassir Ali"),
+                staff(12, 1, "Ofitsiant Lola"),
+                catalog(101, 1, "Olma"),
+                catalog(102, 1, "Paket"),
+                catalog(201, 2, "Begona tovar"),
+                InventoryItem(
+                    id=1001,
+                    business_account_id=1,
+                    catalog_item_id=101,
+                    legacy_source_id=None,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("3"),
+                    cost_price=100,
+                    min_qty=Decimal("5"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                InventoryItem(
+                    id=1002,
+                    business_account_id=1,
+                    catalog_item_id=102,
+                    legacy_source_id=None,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("8"),
+                    cost_price=0,
+                    min_qty=Decimal("1"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                InventoryItem(
+                    id=2001,
+                    business_account_id=2,
+                    catalog_item_id=201,
+                    legacy_source_id=None,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("-9"),
+                    cost_price=1,
+                    min_qty=Decimal("5"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                receipt(1, 1, source="manual", pay_type="naqd", staff_id=11, actor=""),
+                receipt(
+                    2,
+                    1,
+                    source="order",
+                    pay_type="karta",
+                    staff_id=None,
+                    actor="Rahbar",
+                ),
+                receipt(
+                    3,
+                    1,
+                    source="dining",
+                    pay_type="qarz",
+                    staff_id=11,
+                    actor="",
+                    waiter_id=12,
+                ),
+                receipt(
+                    4,
+                    1,
+                    source="debt_payment",
+                    pay_type="naqd",
+                    staff_id=None,
+                    actor="Rahbar",
+                ),
+                receipt(
+                    5,
+                    2,
+                    source="manual",
+                    pay_type="naqd",
+                    staff_id=None,
+                    actor="Begona",
+                ),
+                line(1, 1, 1, "Olma", 600, 200, qty="2"),
+                line(2, 1, 1, "Paket", 50, 0),
+                line(3, 2, 1, "Olma", 400, 100),
+                line(4, 3, 1, "Osh", 300, 120),
+                line(5, 4, 1, "Qarz to‘lovi", 200, 0),
+                line(6, 5, 2, "Begona tovar", 999_999, 1),
+                Expense(
+                    id=1,
+                    business_account_id=1,
+                    legacy_source_id=None,
+                    category="Ijara",
+                    amount=75,
+                    note="",
+                    source="manual",
+                    inventory_stock_move_id=None,
+                    performed_by_staff_id=None,
+                    actor_name_snapshot="",
+                    created_at=NOW,
+                ),
+                Expense(
+                    id=2,
+                    business_account_id=1,
+                    legacy_source_id=None,
+                    category="Tovar xaridi",
+                    amount=200,
+                    note="",
+                    source="stock",
+                    inventory_stock_move_id=None,
+                    performed_by_staff_id=None,
+                    actor_name_snapshot="",
+                    created_at=NOW,
+                ),
+                Expense(
+                    id=3,
+                    business_account_id=2,
+                    legacy_source_id=None,
+                    category="Ijara",
+                    amount=700_000,
+                    note="",
+                    source="manual",
+                    inventory_stock_move_id=None,
+                    performed_by_staff_id=None,
+                    actor_name_snapshot="",
+                    created_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -333,12 +356,19 @@ async def test_report_matches_v1656_financial_and_activity_formulas(statistics_c
 
     hour = next(point for point in report.trend if point.label == "14")
     assert hour.model_dump() == {
-        "label": "14", "rev": 1_350, "exp": 75,
-        "cogs": 420, "profit": 855,
+        "label": "14",
+        "rev": 1_350,
+        "exp": 75,
+        "cogs": 420,
+        "profit": 855,
     }
     assert report.top_products[0].model_dump() == {
-        "name": "Olma", "qty": 3.0, "unit": "dona",
-        "total": 1_000, "cost_total": 300, "margin": 700,
+        "name": "Olma",
+        "qty": 3.0,
+        "unit": "dona",
+        "total": 1_000,
+        "cost_total": 300,
+        "margin": 700,
     }
     assert [row.name for row in report.low_stock] == ["Olma", "Paket"]
     assert [(row.name, row.checks, row.total) for row in report.cashiers] == [
@@ -383,28 +413,30 @@ async def test_related_staff_and_inventory_fallbacks_are_tenant_scoped(
         seed.add(staff(21, 2, "Begona xodim"))
         foreign_cost_line = line(7, 6, 1, "Noma’lum", 10, 0)
         foreign_cost_line.inventory_item_id = 2001
-        seed.add_all((
-            receipt(
-                6,
-                1,
-                source="manual",
-                pay_type="naqd",
-                staff_id=21,
-                actor="Mahalliy kassir",
-            ),
-            foreign_cost_line,
-            receipt(
-                7,
-                1,
-                source="dining",
-                pay_type="naqd",
-                staff_id=11,
-                actor="",
-                waiter_id=21,
-                waiter_name="Mahalliy ofitsiant",
-            ),
-            line(8, 7, 1, "Choy", 20, 0),
-        ))
+        seed.add_all(
+            (
+                receipt(
+                    6,
+                    1,
+                    source="manual",
+                    pay_type="naqd",
+                    staff_id=21,
+                    actor="Mahalliy kassir",
+                ),
+                foreign_cost_line,
+                receipt(
+                    7,
+                    1,
+                    source="dining",
+                    pay_type="naqd",
+                    staff_id=11,
+                    actor="",
+                    waiter_id=21,
+                    waiter_name="Mahalliy ofitsiant",
+                ),
+                line(8, 7, 1, "Choy", 20, 0),
+            )
+        )
         seed.commit()
 
     report = await service.report(
@@ -434,19 +466,31 @@ async def test_period_labels_defaulting_and_navigation_match_v1656(statistics_co
     assert month.label == "Avg 2026"
     assert len(month.trend) == 31
 
-    assert service.shift(period="kun", anchor="2026-08-04", direction=-1) == "2026-08-03"
-    assert service.shift(period="hafta", anchor="2026-08-04", direction=1) == "2026-08-10"
-    assert service.shift(period="chorak", anchor="2026-08-04", direction=-1) == "2026-04-01"
-    assert service.shift(period="yarim", anchor="2026-08-04", direction=-1) == "2026-01-01"
+    assert (
+        service.shift(period="kun", anchor="2026-08-04", direction=-1) == "2026-08-03"
+    )
+    assert (
+        service.shift(period="hafta", anchor="2026-08-04", direction=1) == "2026-08-10"
+    )
+    assert (
+        service.shift(period="chorak", anchor="2026-08-04", direction=-1)
+        == "2026-04-01"
+    )
+    assert (
+        service.shift(period="yarim", anchor="2026-08-04", direction=-1) == "2026-01-01"
+    )
     assert service.shift(period="yil", anchor="2026-08-04", direction=1) == "2027-01-01"
 
-    assert await service.navigation(
-        business_account_id=1,
-        permissions=("statistics",),
-        period="oy",
-        anchor="2026-08-04",
-        direction=-1,
-    ) == "2026-07-01"
+    assert (
+        await service.navigation(
+            business_account_id=1,
+            permissions=("statistics",),
+            period="oy",
+            anchor="2026-08-04",
+            direction=-1,
+        )
+        == "2026-07-01"
+    )
 
 
 def test_fixture_has_no_accidental_duplicate_rows(statistics_context):

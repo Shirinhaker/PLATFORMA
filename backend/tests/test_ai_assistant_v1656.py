@@ -28,11 +28,24 @@ class FakeSession:
 
 class FakeRepository:
     async def business(self, _session, business_id):
-        return SimpleNamespace(account_id=business_id, name="Turon savdo", phone="+998901234567", direction="Savdo", activity_type="Do'kon", director="Bekzod", tax_id="123", address="Qumqo'rg'on")
+        return SimpleNamespace(
+            account_id=business_id,
+            name="Turon savdo",
+            phone="+998901234567",
+            direction="Savdo",
+            activity_type="Do'kon",
+            director="Bekzod",
+            tax_id="123",
+            address="Qumqo'rg'on",
+        )
 
     async def context(self, _session, _business_id, _start, _end):
         return {
-            "today_summary": {"revenue": 500_000, "expenses": 120_000, "profit": 380_000},
+            "today_summary": {
+                "revenue": 500_000,
+                "expenses": 120_000,
+                "profit": 380_000,
+            },
             "debt_total": 75_000,
             "low_stock": [{"name": "Un", "qty": 2.0, "unit": "kg"}],
             "orders_by_status": {"new": 3},
@@ -58,7 +71,9 @@ class FakeRepository:
         )
 
     async def history(self, _session, _business_id, _limit):
-        return [SimpleNamespace(role="user", text="Salom", created_at=datetime.now(UTC))]
+        return [
+            SimpleNamespace(role="user", text="Salom", created_at=datetime.now(UTC))
+        ]
 
 
 class FakeProvider:
@@ -75,7 +90,9 @@ def service_and_session():
     async def factory():
         yield session
 
-    return AIAssistantService(factory, FakeProvider(), repository=FakeRepository()), session
+    return AIAssistantService(
+        factory, FakeProvider(), repository=FakeRepository()
+    ), session
 
 
 @pytest.mark.asyncio
@@ -204,11 +221,13 @@ class ContextSession:
     def __init__(self):
         self.scalar_statements = []
         self._scalar_values = iter((500_000, 120_000, 75_000))
-        self._row_values = iter((
-            [("Un", 2, "kg")],
-            [("new", 3)],
-            [("Non", 12, "dona", 48_000)],
-        ))
+        self._row_values = iter(
+            (
+                [("Un", 2, "kg")],
+                [("new", 3)],
+                [("Non", 12, "dona", 48_000)],
+            )
+        )
 
     async def scalar(self, statement):
         self.scalar_statements.append(statement)

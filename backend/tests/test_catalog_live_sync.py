@@ -70,48 +70,50 @@ def store():
 
 
 def seed_business(store: AsyncStore, account_id: int, name: str) -> None:
-    store.sync.add_all((
-        Account(
-            id=account_id,
-            account_type=AccountType.BUSINESS,
-            login=f"business_{account_id}",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        BusinessProfile(
-            account_id=account_id,
-            name=name,
-            phone="",
-            description="",
-            public_username=f"business{account_id}",
-            direction="Ta'lim faoliyati",
-            activity_type="O'quv markazi",
-            address="Qumqo'rg'on",
-            latitude=None,
-            longitude=None,
-            work_hours={},
-            pay_card="",
-            pay_holder="",
-            pay_qr_object_key="",
-            director="",
-            tax_id="",
-            logo_object_key="",
-            logo_x=50,
-            logo_y=50,
-            logo_zoom=1,
-            followers_count=0,
-            following_count=0,
-            rating_sum=0,
-            rating_count=0,
-            map_visible=True,
-            dashboard_snapshot={},
-            recent_activity=[],
-            cabinet_payload={},
-        ),
-    ))
+    store.sync.add_all(
+        (
+            Account(
+                id=account_id,
+                account_type=AccountType.BUSINESS,
+                login=f"business_{account_id}",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            BusinessProfile(
+                account_id=account_id,
+                name=name,
+                phone="",
+                description="",
+                public_username=f"business{account_id}",
+                direction="Ta'lim faoliyati",
+                activity_type="O'quv markazi",
+                address="Qumqo'rg'on",
+                latitude=None,
+                longitude=None,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=True,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ),
+        )
+    )
     store.sync.commit()
 
 
@@ -172,9 +174,7 @@ async def test_live_items_are_immediately_searchable_with_monolith_fields(store)
     assert english.items[0].map_point.business_name == "Muhr"
     assert english.items[0].map_point.latitude == 37.8234
     assert english.items[0].map_point.longitude == 67.5789
-    assert [(item.name, item.kind.value) for item in fsf.items] == [
-        ("fsf", "product")
-    ]
+    assert [(item.name, item.kind.value) for item in fsf.items] == [("fsf", "product")]
     business_result = await search_public_profiles(
         store,
         PublicSearchParams(q="Muhr", result_type="business"),

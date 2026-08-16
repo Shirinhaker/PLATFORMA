@@ -2,9 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-NotificationCategory = Literal[
-    "uy", "ish", "moshina", "hayvon", "texnika", "boshqa"
-]
+NotificationCategory = Literal["uy", "ish", "moshina", "hayvon", "texnika", "boshqa"]
 PushPlatform = Literal["android", "ios", "web"]
 
 

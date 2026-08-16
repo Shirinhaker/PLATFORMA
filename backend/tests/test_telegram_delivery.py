@@ -80,9 +80,7 @@ async def test_telegram_client_raises_only_generic_delivery_error():
     async def reject(request):
         return httpx.Response(400, text="secret Telegram response")
 
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(reject)
-    ) as http:
+    async with httpx.AsyncClient(transport=httpx.MockTransport(reject)) as http:
         client = TelegramClient("bot-secret", http)
         with pytest.raises(RuntimeError) as captured:
             await client.send_message(42, "123456")
@@ -100,9 +98,7 @@ async def test_telegram_client_sanitizes_transport_error():
             request=request,
         )
 
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(disconnect)
-    ) as http:
+    async with httpx.AsyncClient(transport=httpx.MockTransport(disconnect)) as http:
         client = TelegramClient("bot-secret", http)
         with pytest.raises(RuntimeError) as captured:
             await client.send_message(42, "123456")
@@ -151,9 +147,7 @@ async def test_worker_sends_derived_code_without_plaintext_outbox_payload():
     await handlers["telegram.auth_code.send"](payload)
 
     expected = derive_otp(41, 1, "test-otp-secret")
-    assert telegram.messages == [
-        (42, f"Koprik tasdiqlash kodi: {expected}")
-    ]
+    assert telegram.messages == [(42, f"Koprik tasdiqlash kodi: {expected}")]
     assert "code" not in payload
 
 
@@ -255,23 +249,27 @@ async def test_worker_sends_exact_v1656_business_credentials_message():
         FakeDatabase(),
         telegram,
     )
-    await handlers["telegram.business_credentials.send"]({
-        "account_id": 17,
-        "chat_id": 42,
-        "encrypted_credentials": encrypt_outbox_secret(
-            {"login": "b_turon", "password": "one-time-secret"},
-            key,
-        ),
-    })
+    await handlers["telegram.business_credentials.send"](
+        {
+            "account_id": 17,
+            "chat_id": 42,
+            "encrypted_credentials": encrypt_outbox_secret(
+                {"login": "b_turon", "password": "one-time-secret"},
+                key,
+            ),
+        }
+    )
 
-    assert telegram.messages == [(
-        42,
-        "🏪 Biznes kabinetingiz ochildi!\n\n"
-        "Biznes login: b_turon\n"
-        "Biznes parol: one-time-secret\n\n"
-        "Bu login/parol bilan biznes kabinetingizga alohida kirishingiz "
-        "mumkin. Saqlab qo'ying.",
-    )]
+    assert telegram.messages == [
+        (
+            42,
+            "🏪 Biznes kabinetingiz ochildi!\n\n"
+            "Biznes login: b_turon\n"
+            "Biznes parol: one-time-secret\n\n"
+            "Bu login/parol bilan biznes kabinetingizga alohida kirishingiz "
+            "mumkin. Saqlab qo'ying.",
+        )
+    ]
 
 
 async def test_processed_credentials_are_scrubbed_from_outbox_payload():
@@ -354,9 +352,7 @@ async def test_cleanup_deletes_only_expired_auth_records():
 
     await cleanup_expired_auth(FakeDatabase(), datetime.now(UTC))
 
-    assert {
-        statement.table.name for statement in session.statements
-    } == {
+    assert {statement.table.name for statement in session.statements} == {
         "pending_registrations",
         "auth_challenges",
         "auth_sessions",

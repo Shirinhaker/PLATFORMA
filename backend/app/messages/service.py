@@ -61,9 +61,7 @@ class MessageService:
         account_id: int,
     ) -> list[MessageConversationRead]:
         async with self._session_factory() as session:
-            rows = await self._repository.conversations(
-                session, account_id=account_id
-            )
+            rows = await self._repository.conversations(session, account_id=account_id)
             ids = [int(row.id) for row in rows]
             latest = await self._repository.latest_messages(session, ids)
             unread = await self._repository.unread_counts(
@@ -71,9 +69,7 @@ class MessageService:
                 account_id=account_id,
                 conversation_ids=ids,
             )
-            other_ids = {
-                self._other_account_id(row, account_id) for row in rows
-            }
+            other_ids = {self._other_account_id(row, account_id) for row in rows}
             profiles = await self._repository.profiles(session, other_ids)
             result: list[MessageConversationRead] = []
             for row in rows:
@@ -82,19 +78,21 @@ class MessageService:
                 last = latest.get(int(row.id))
                 if profile is None or last is None:
                     continue
-                result.append(MessageConversationRead(
-                    target_kind=profile["kind"],
-                    target_public_id=self._public_id(profile, other_id),
-                    name=str(profile["name"]),
-                    avatar_url=self._image_url(profile),
-                    last=message_preview_text(
-                        text=last.text,
-                        media_type=last.media_type,
-                        is_deleted=last.is_deleted,
-                    ),
-                    created_at=last.created_at,
-                    unread=unread.get(int(row.id), 0),
-                ))
+                result.append(
+                    MessageConversationRead(
+                        target_kind=profile["kind"],
+                        target_public_id=self._public_id(profile, other_id),
+                        name=str(profile["name"]),
+                        avatar_url=self._image_url(profile),
+                        last=message_preview_text(
+                            text=last.text,
+                            media_type=last.media_type,
+                            is_deleted=last.is_deleted,
+                        ),
+                        created_at=last.created_at,
+                        unread=unread.get(int(row.id), 0),
+                    )
+                )
             return result
 
     async def thread(
@@ -227,9 +225,9 @@ class MessageService:
             if conversation is not None:
                 conversation.updated_at = message.edited_at
             await session.commit()
-            return (await self._project_messages(
-                session, [message], account_id=account_id
-            ))[0]
+            return (
+                await self._project_messages(session, [message], account_id=account_id)
+            )[0]
 
     async def delete(
         self,
@@ -261,15 +259,17 @@ class MessageService:
                 if conversation is not None:
                     conversation.updated_at = now
                 await session.commit()
-            return (await self._project_messages(
-                session, [message], account_id=account_id
-            ))[0]
+            return (
+                await self._project_messages(session, [message], account_id=account_id)
+            )[0]
 
     async def unread_count(self, *, account_id: int) -> MessageUnreadRead:
         async with self._session_factory() as session:
-            return MessageUnreadRead(count=await self._repository.unread_count(
-                session, account_id=account_id
-            ))
+            return MessageUnreadRead(
+                count=await self._repository.unread_count(
+                    session, account_id=account_id
+                )
+            )
 
     async def _send(
         self,
@@ -333,9 +333,9 @@ class MessageService:
             await session.flush()
             conversation.updated_at = now
             await session.commit()
-            return (await self._project_messages(
-                session, [message], account_id=account_id
-            ))[0]
+            return (
+                await self._project_messages(session, [message], account_id=account_id)
+            )[0]
 
     async def _target(
         self,
@@ -371,9 +371,7 @@ class MessageService:
             int(row.reply_to_id) for row in messages if row.reply_to_id is not None
         }
         replies = await self._repository.messages_by_ids(session, reply_ids)
-        account_ids = {
-            int(row.sender_account_id) for row in messages
-        } | {
+        account_ids = {int(row.sender_account_id) for row in messages} | {
             int(row.sender_account_id) for row in replies.values()
         }
         profiles = await self._repository.profiles(session, account_ids)
@@ -394,26 +392,28 @@ class MessageService:
             kind = sender.get("kind")
             if not isinstance(kind, AccountType):
                 kind = AccountType.USER
-            result.append(MessageRead(
-                id=int(row.id),
-                text=row.text,
-                media_type=row.media_type,
-                media_url=(
-                    self._image_url_provider(row.media_object_key)
-                    if row.media_object_key
-                    else row.legacy_media_url
-                ),
-                file_name=row.file_name,
-                reply_to_id=row.reply_to_id,
-                reply=reply_read,
-                edited_at=row.edited_at,
-                deleted_at=row.deleted_at,
-                is_deleted=row.is_deleted,
-                mine=int(row.sender_account_id) == account_id,
-                sender_name=str(sender.get("name") or ""),
-                sender_kind=kind,
-                created_at=row.created_at,
-            ))
+            result.append(
+                MessageRead(
+                    id=int(row.id),
+                    text=row.text,
+                    media_type=row.media_type,
+                    media_url=(
+                        self._image_url_provider(row.media_object_key)
+                        if row.media_object_key
+                        else row.legacy_media_url
+                    ),
+                    file_name=row.file_name,
+                    reply_to_id=row.reply_to_id,
+                    reply=reply_read,
+                    edited_at=row.edited_at,
+                    deleted_at=row.deleted_at,
+                    is_deleted=row.is_deleted,
+                    mine=int(row.sender_account_id) == account_id,
+                    sender_name=str(sender.get("name") or ""),
+                    sender_kind=kind,
+                    created_at=row.created_at,
+                )
+            )
         return result
 
     @staticmethod
@@ -434,7 +434,8 @@ class MessageService:
                 profile.logo_object_key
                 if kind is AccountType.BUSINESS
                 else profile.avatar_object_key
-            ) or "",
+            )
+            or "",
         }
 
     def _profile_read(self, profile: dict[str, object], account_id: int):

@@ -24,9 +24,12 @@ class AdPricingError(ValueError):
 
 
 def normalize_ad_geo(value):
-    text = unicodedata.normalize(
-        "NFKC", str(value or "")
-    ).casefold().replace("ʻ", "'").replace("’", "'")
+    text = (
+        unicodedata.normalize("NFKC", str(value or ""))
+        .casefold()
+        .replace("ʻ", "'")
+        .replace("’", "'")
+    )
     text = re.sub(
         r"\b(viloyati|viloyat|shahri|shahar|tumani|tuman)\b",
         "",
@@ -48,9 +51,12 @@ def normalize_ad_region(value):
     Reklamani ko'rsatish tomoni (`target_specificity`) to'liq nomni
     solishtiradi, ya'ni u yerda bu muammo yo'q edi.
     """
-    text = unicodedata.normalize(
-        "NFKC", str(value or "")
-    ).casefold().replace("ʻ", "'").replace("’", "'")
+    text = (
+        unicodedata.normalize("NFKC", str(value or ""))
+        .casefold()
+        .replace("ʻ", "'")
+        .replace("’", "'")
+    )
     return re.sub(r"[^a-z0-9'Ѐ-ӿ]+", "", text)
 
 
@@ -59,15 +65,9 @@ def _catalog_indexes():
     all_keys = set()
     for region, names in REGION_DISTRICTS.items():
         region_key = normalize_ad_region(region)
-        region_keys = {
-            normalize_ad_geo(name)
-            for name in names
-        }
+        region_keys = {normalize_ad_geo(name) for name in names}
         regions[region_key] = region_keys
-        all_keys.update(
-            (region_key, district_key)
-            for district_key in region_keys
-        )
+        all_keys.update((region_key, district_key) for district_key in region_keys)
     return regions, all_keys
 
 
@@ -95,17 +95,17 @@ def clean_ad_targets(raw):
         key = (level, normalize_ad_region(region), normalize_ad_geo(district))
         if key not in seen:
             seen.add(key)
-            result.append({
-                "level": level,
-                "region": region,
-                "district": district,
-            })
+            result.append(
+                {
+                    "level": level,
+                    "region": region,
+                    "district": district,
+                }
+            )
     if not result:
         raise AdPricingError("Kamida bitta hudud tanlang.")
     if any(item["level"] == "republic" for item in result) and len(result) > 1:
-        raise AdPricingError(
-            "Respublika tanlansa boshqa hudud qo'shilmaydi."
-        )
+        raise AdPricingError("Respublika tanlansa boshqa hudud qo'shilmaydi.")
     return result
 
 
@@ -121,8 +121,7 @@ def expand_targets_to_district_keys(targets):
             raise AdPricingError("Tanlangan viloyat backend katalogida yo'q.")
         if level == "region":
             expanded.update(
-                (region_key, district_key)
-                for district_key in REGION_KEYS[region_key]
+                (region_key, district_key) for district_key in REGION_KEYS[region_key]
             )
             continue
         district_key = normalize_ad_geo(target.get("district"))
@@ -132,8 +131,7 @@ def expand_targets_to_district_keys(targets):
     if not expanded:
         raise AdPricingError("Hudud katalogga yoyilmadi.")
     return tuple(
-        region_key + ":" + district_key
-        for region_key, district_key in sorted(expanded)
+        region_key + ":" + district_key for region_key, district_key in sorted(expanded)
     )
 
 
@@ -149,14 +147,17 @@ def hours_per_day(all_day, start, end):
         return 24
     start_hour, end_hour = full_hour(start), full_hour(end)
     if start_hour == end_hour:
-        raise AdPricingError(
-            "Boshlanish va tugash soati bir xil bo'lmasin."
-        )
+        raise AdPricingError("Boshlanish va tugash soati bir xil bo'lmasin.")
     return (end_hour - start_hour) % 24
 
 
 def calculate_ad_price(
-    *, targets, duration_days, daily_all_day, daily_start, daily_end,
+    *,
+    targets,
+    duration_days,
+    daily_all_day,
+    daily_start,
+    daily_end,
     district_hour_rate,
 ):
     try:
@@ -170,9 +171,7 @@ def calculate_ad_price(
         raise AdPricingError("Bir tuman/soat narxi noto'g'ri.")
     cleaned = clean_ad_targets(targets)
     districts = expand_targets_to_district_keys(cleaned)
-    daily_hours = hours_per_day(
-        daily_all_day, daily_start, daily_end
-    )
+    daily_hours = hours_per_day(daily_all_day, daily_start, daily_end)
     quantity = len(districts) * daily_hours * days
     return {
         "targets": cleaned,
@@ -244,9 +243,7 @@ def shift_schedule_start(
     return int(candidate.timestamp())
 
 
-def schedule_end_at(
-    *, actual_start_at, duration_days, hours_each_day, daily_all_day
-):
+def schedule_end_at(*, actual_start_at, duration_days, hours_each_day, daily_all_day):
     try:
         start = int(actual_start_at)
         days = int(duration_days)

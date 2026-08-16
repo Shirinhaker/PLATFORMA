@@ -18,11 +18,13 @@ class ReviewRepository:
         *,
         user_account_id: int,
     ) -> bool:
-        return bool(await session.scalar(
-            select(SpecialistProfile.user_account_id).where(
-                SpecialistProfile.user_account_id == user_account_id,
+        return bool(
+            await session.scalar(
+                select(SpecialistProfile.user_account_id).where(
+                    SpecialistProfile.user_account_id == user_account_id,
+                )
             )
-        ))
+        )
 
     async def target(
         self,
@@ -31,11 +33,7 @@ class ReviewRepository:
         kind: ReviewTargetKind,
         public_id: str,
     ) -> BusinessProfile | UserProfile | None:
-        model = (
-            BusinessProfile
-            if kind is ReviewTargetKind.BUSINESS
-            else UserProfile
-        )
+        model = BusinessProfile if kind is ReviewTargetKind.BUSINESS else UserProfile
         account_type = (
             AccountType.BUSINESS
             if kind is ReviewTargetKind.BUSINESS
@@ -60,19 +58,23 @@ class ReviewRepository:
         target_account_id: int,
         limit: int,
     ) -> list[tuple[Review, str]]:
-        return list((await session.execute(
-            select(Review, UserProfile.name)
-            .outerjoin(
-                UserProfile,
-                UserProfile.account_id == Review.reviewer_account_id,
-            )
-            .where(
-                Review.target_kind == kind.value,
-                Review.target_account_id == target_account_id,
-            )
-            .order_by(Review.id.desc())
-            .limit(limit)
-        )).all())
+        return list(
+            (
+                await session.execute(
+                    select(Review, UserProfile.name)
+                    .outerjoin(
+                        UserProfile,
+                        UserProfile.account_id == Review.reviewer_account_id,
+                    )
+                    .where(
+                        Review.target_kind == kind.value,
+                        Review.target_account_id == target_account_id,
+                    )
+                    .order_by(Review.id.desc())
+                    .limit(limit)
+                )
+            ).all()
+        )
 
     async def one_for_reviewer(
         self,
@@ -127,12 +129,14 @@ class ReviewRepository:
         user_account_id: int,
         business_account_id: int,
     ) -> bool:
-        return bool(await session.scalar(
-            select(ProfileLink.user_account_id).where(
-                ProfileLink.user_account_id == user_account_id,
-                ProfileLink.business_account_id == business_account_id,
+        return bool(
+            await session.scalar(
+                select(ProfileLink.user_account_id).where(
+                    ProfileLink.user_account_id == user_account_id,
+                    ProfileLink.business_account_id == business_account_id,
+                )
             )
-        ))
+        )
 
     async def aggregate(
         self,
@@ -141,13 +145,16 @@ class ReviewRepository:
         kind: ReviewTargetKind,
         target_account_id: int,
     ) -> tuple[int, int]:
-        total, count = (await session.execute(
-            select(func.coalesce(func.sum(Review.stars), 0), func.count(Review.id))
-            .where(
-                Review.target_kind == kind.value,
-                Review.target_account_id == target_account_id,
+        total, count = (
+            await session.execute(
+                select(
+                    func.coalesce(func.sum(Review.stars), 0), func.count(Review.id)
+                ).where(
+                    Review.target_kind == kind.value,
+                    Review.target_account_id == target_account_id,
+                )
             )
-        )).one()
+        ).one()
         return int(total or 0), int(count or 0)
 
     async def persist_rating(
@@ -160,15 +167,19 @@ class ReviewRepository:
         rating_count: int,
     ) -> None:
         if kind is ReviewTargetKind.BUSINESS:
-            statement = update(BusinessProfile).where(
-                BusinessProfile.account_id == target_account_id
-            ).values(rating_sum=rating_sum, rating_count=rating_count)
+            statement = (
+                update(BusinessProfile)
+                .where(BusinessProfile.account_id == target_account_id)
+                .values(rating_sum=rating_sum, rating_count=rating_count)
+            )
         else:
-            statement = update(UserProfile).where(
-                UserProfile.account_id == target_account_id
-            ).values(
-                specialist_rating_sum=rating_sum,
-                specialist_rating_count=rating_count,
+            statement = (
+                update(UserProfile)
+                .where(UserProfile.account_id == target_account_id)
+                .values(
+                    specialist_rating_sum=rating_sum,
+                    specialist_rating_count=rating_count,
+                )
             )
         await session.execute(statement)
 

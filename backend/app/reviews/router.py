@@ -40,9 +40,7 @@ async def optional_current_account(request: Request) -> CurrentAccount | None:
     if identity is None:
         staff_service = getattr(request.app.state, "staff_service", None)
         if staff_service is not None:
-            identity = await staff_service.resolve_session(
-                token, datetime.now(UTC)
-            )
+            identity = await staff_service.resolve_session(token, datetime.now(UTC))
     if identity is None:
         return None
     return CurrentAccount(

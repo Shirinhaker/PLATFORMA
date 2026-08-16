@@ -103,9 +103,7 @@ def _validate_safe(value: object) -> None:
         for key, child in value.items():
             normalized = str(key).lower()
             if normalized in FORBIDDEN_REPORT_KEYS:
-                raise UnsafeReportData(
-                    f"unsafe_report_key:{normalized}"
-                )
+                raise UnsafeReportData(f"unsafe_report_key:{normalized}")
             _validate_safe(child)
     elif isinstance(value, (list, tuple)):
         for child in value:
@@ -122,4 +120,3 @@ def _json_default(value: object) -> str:
 
 def _plain(value: object) -> object:
     return value.value if isinstance(value, Enum) else value
-

@@ -75,9 +75,7 @@ async def test_start_registration_stores_pending_form_and_hashes_start_token(
     pending = next(
         item for item in session.items if isinstance(item, PendingRegistration)
     )
-    challenge = next(
-        item for item in session.items if isinstance(item, AuthChallenge)
-    )
+    challenge = next(item for item in session.items if isinstance(item, AuthChallenge))
     raw_token = started.deep_link.rsplit("start=", 1)[1]
     assert pending.payload_json["name"] == "Test akkaunt"
     assert challenge.pending_registration_id == pending.id
@@ -373,9 +371,7 @@ async def test_code_locks_after_five_wrong_attempts(
     )
     correct = derive_otp(started.request_id, 1, "test-otp-secret")
     wrong_codes = [
-        value
-        for value in (f"{number:06d}" for number in range(10))
-        if value != correct
+        value for value in (f"{number:06d}" for number in range(10)) if value != correct
     ][:5]
 
     for index, wrong_code in enumerate(wrong_codes, start=1):
@@ -451,9 +447,7 @@ async def test_credentials_outbox_contains_only_encrypted_secret(
     )
     event = (
         await db_session.execute(
-            select(OutboxEvent).where(
-                OutboxEvent.topic == "telegram.credentials.send"
-            )
+            select(OutboxEvent).where(OutboxEvent.topic == "telegram.credentials.send")
         )
     ).scalar_one()
 

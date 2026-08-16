@@ -152,19 +152,21 @@ async def test_manual_expense_categories_daily_totals_and_delete(expense_context
 async def test_stock_expense_is_immutable_and_business_scoped(expense_context):
     service, engine = expense_context
     with Session(engine) as seed:
-        seed.add(Expense(
-            id=10,
-            business_account_id=1,
-            legacy_source_id=10,
-            category="Tovar xaridi",
-            amount=250_000,
-            note="Un",
-            source="stock",
-            inventory_stock_move_id=None,
-            performed_by_staff_id=None,
-            actor_name_snapshot="",
-            created_at=NOW,
-        ))
+        seed.add(
+            Expense(
+                id=10,
+                business_account_id=1,
+                legacy_source_id=10,
+                category="Tovar xaridi",
+                amount=250_000,
+                note="Un",
+                source="stock",
+                inventory_stock_move_id=None,
+                performed_by_staff_id=None,
+                actor_name_snapshot="",
+                created_at=NOW,
+            )
+        )
         seed.commit()
 
     with pytest.raises(ApiError) as locked:

@@ -26,26 +26,34 @@ async def sync_business_inventory(
         return
 
     value = payload.get("items")
-    rows = [row for row in value if isinstance(row, dict)] if isinstance(value, list) else []
+    rows = (
+        [row for row in value if isinstance(row, dict)]
+        if isinstance(value, list)
+        else []
+    )
     rows_by_source = {
-        str(row.get("id")): row
-        for row in rows
-        if row.get("id") not in (None, "")
+        str(row.get("id")): row for row in rows if row.get("id") not in (None, "")
     }
-    catalog_items = list((await session.scalars(
-        select(CatalogItem).where(
-            CatalogItem.business_account_id == account_id,
-            CatalogItem.source_record_key.is_not(None),
-        )
-    )).all())
-    inventory_items = list((await session.scalars(
-        select(InventoryItem).where(
-            InventoryItem.business_account_id == account_id,
-        )
-    )).all())
-    inventory_by_catalog = {
-        item.catalog_item_id: item for item in inventory_items
-    }
+    catalog_items = list(
+        (
+            await session.scalars(
+                select(CatalogItem).where(
+                    CatalogItem.business_account_id == account_id,
+                    CatalogItem.source_record_key.is_not(None),
+                )
+            )
+        ).all()
+    )
+    inventory_items = list(
+        (
+            await session.scalars(
+                select(InventoryItem).where(
+                    InventoryItem.business_account_id == account_id,
+                )
+            )
+        ).all()
+    )
+    inventory_by_catalog = {item.catalog_item_id: item for item in inventory_items}
     now = datetime.now(UTC)
 
     for catalog in catalog_items:
@@ -102,16 +110,18 @@ async def sync_business_inventory(
                 )
                 session.add(move)
                 await session.flush()
-                session.add(StockBatch(
-                    business_account_id=account_id,
-                    inventory_item_id=item.id,
-                    legacy_source_id=None,
-                    qty_in=initial_qty,
-                    qty_remaining=initial_qty,
-                    unit_cost=0,
-                    source_move_id=move.id,
-                    created_at=now,
-                ))
+                session.add(
+                    StockBatch(
+                        business_account_id=account_id,
+                        inventory_item_id=item.id,
+                        legacy_source_id=None,
+                        qty_in=initial_qty,
+                        qty_remaining=initial_qty,
+                        unit_cost=0,
+                        source_move_id=move.id,
+                        created_at=now,
+                    )
+                )
         else:
             # Tahrirlash qoldiqni qayta yozmaydi; faqat Ombor harakati o‘zgartiradi.
             item.track_stock = tracked
@@ -124,7 +134,10 @@ async def sync_business_inventory(
 
 def _boolean(value: object) -> bool:
     return value is True or str(value or "").strip().casefold() in {
-        "1", "true", "on", "yes",
+        "1",
+        "true",
+        "on",
+        "yes",
     }
 
 

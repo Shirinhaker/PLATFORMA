@@ -49,9 +49,13 @@ FRACTIONAL_UNITS = frozenset({"kg", "g", "litr", "ml", "metr", "sm", "m²", "soa
 class TaxiOrderLink(Protocol):
     async def after_order_ready(self, session: AsyncSession, order: Order) -> None: ...
 
-    async def after_order_handoff(self, session: AsyncSession, order_id: int) -> None: ...
+    async def after_order_handoff(
+        self, session: AsyncSession, order_id: int
+    ) -> None: ...
 
-    async def after_order_received(self, session: AsyncSession, order_id: int) -> None: ...
+    async def after_order_received(
+        self, session: AsyncSession, order_id: int
+    ) -> None: ...
 
 
 class OrderService:
@@ -90,7 +94,9 @@ class OrderService:
                     "Buyurtma qabul qiluvchi topilmadi.",
                 )
             if provider_id == account_id and body.provider_kind == account_type.value:
-                raise ApiError(400, "order_self_forbidden", "O'zingizga buyurtma bera olmaysiz.")
+                raise ApiError(
+                    400, "order_self_forbidden", "O'zingizga buyurtma bera olmaysiz."
+                )
             if not body.phone.strip():
                 raise ApiError(
                     400,
@@ -101,7 +107,8 @@ class OrderService:
                 body.delivery_lat is None or body.delivery_lng is None
             ):
                 raise ApiError(
-                    400, "order_delivery_point_required",
+                    400,
+                    "order_delivery_point_required",
                     "Yetkazib berish joyini xaritada belgilang.",
                 )
             customer = await self._profile(session, account_id, account_type.value)
@@ -151,35 +158,61 @@ class OrderService:
                 provider_phone=provider.phone,
                 item_id=snapshots[0]["item"].id if len(snapshots) == 1 else None,
                 listing_id=listing.id if listing is not None else None,
-                title=title[:180], note=body.note, phone=body.phone,
-                order_type=body.order_type, order_category=category,
-                address=body.address, desired_time=body.desired_time,
-                delivery_lat=body.delivery_lat, delivery_lng=body.delivery_lng,
+                title=title[:180],
+                note=body.note,
+                phone=body.phone,
+                order_type=body.order_type,
+                order_category=category,
+                address=body.address,
+                desired_time=body.desired_time,
+                delivery_lat=body.delivery_lat,
+                delivery_lng=body.delivery_lng,
                 qty=(
                     sum(Decimal(str(row["qty"])) for row in snapshots)
                     if snapshots
                     else Decimal("1")
                 ),
-                total_amount=total, status="new", payment_status="", pay_type="",
+                total_amount=total,
+                status="new",
+                payment_status="",
+                pay_type="",
                 debtor_id=None,
-                receipt_message_id=None, problem_open=False, problem_reason="",
-                problem_note="", problem_solution="", problem_opened_at=None,
-                problem_resolved_at=None, last_event="created",
-                customer_seen_at=now, provider_seen_at=None,
-                accepted_at=None, ready_at=None, handed_off_at=None,
-                seller_completed_at=None, customer_received_at=None,
-                created_at=now, updated_at=now,
+                receipt_message_id=None,
+                problem_open=False,
+                problem_reason="",
+                problem_note="",
+                problem_solution="",
+                problem_opened_at=None,
+                problem_resolved_at=None,
+                last_event="created",
+                customer_seen_at=now,
+                provider_seen_at=None,
+                accepted_at=None,
+                ready_at=None,
+                handed_off_at=None,
+                seller_completed_at=None,
+                customer_received_at=None,
+                created_at=now,
+                updated_at=now,
             )
             session.add(order)
             await session.flush()
             for row in snapshots:
-                session.add(OrderItem(
-                    order_id=order.id, legacy_source_id=None,
-                    catalog_item_id=row["item"].id, item_name=row["name"],
-                    price_text=row["price"], qty=Decimal(str(row["qty"])),
-                    unit=row["unit"], line_total=row["line_total"],
-                    note=row["note"], kind=row["kind"], created_at=now,
-                ))
+                session.add(
+                    OrderItem(
+                        order_id=order.id,
+                        legacy_source_id=None,
+                        catalog_item_id=row["item"].id,
+                        item_name=row["name"],
+                        price_text=row["price"],
+                        qty=Decimal(str(row["qty"])),
+                        unit=row["unit"],
+                        line_total=row["line_total"],
+                        note=row["note"],
+                        kind=row["kind"],
+                        created_at=now,
+                    )
+                )
             await session.flush()
             await self._event(session, "order.created", order, account_id)
             await append_order_notification(
@@ -195,7 +228,9 @@ class OrderService:
             await session.commit()
             return await self._project(session, order, "customer")
 
-    async def list_my(self, *, account_id: int, account_type: AccountType) -> list[OrderRead]:
+    async def list_my(
+        self, *, account_id: int, account_type: AccountType
+    ) -> list[OrderRead]:
         return await self._list(account_id, "customer")
 
     async def list_inbox(
@@ -281,14 +316,22 @@ class OrderService:
                 for row in rows
                 if row.provider_kind == "business"
             }
-            businesses = {
-                row.account_id: row
-                for row in list((await session.scalars(
-                    select(BusinessProfile).where(
-                        BusinessProfile.account_id.in_(business_ids)
+            businesses = (
+                {
+                    row.account_id: row
+                    for row in list(
+                        (
+                            await session.scalars(
+                                select(BusinessProfile).where(
+                                    BusinessProfile.account_id.in_(business_ids)
+                                )
+                            )
+                        ).all()
                     )
-                )).all())
-            } if business_ids else {}
+                }
+                if business_ids
+                else {}
+            )
             result = [
                 await self._project(
                     session,
@@ -305,12 +348,18 @@ class OrderService:
             return result
 
     async def change_status(
-        self, *, order_id: int, account_id: int, account_type: AccountType,
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
         body: OrderStatusChange,
     ) -> OrderRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
-            validate_status_change(current=order.status, requested=body.status, side=side)
+            validate_status_change(
+                current=order.status, requested=body.status, side=side
+            )
             if body.status == "tayyor":
                 if order.problem_open:
                     raise ApiError(
@@ -338,8 +387,11 @@ class OrderService:
             await self._event(session, "order.status_changed", order, account_id)
             if side == "provider" and body.status == "accepted":
                 await append_order_notification(
-                    session, self._notification_repository, order,
-                    side="customer", event="accepted",
+                    session,
+                    self._notification_repository,
+                    order,
+                    side="customer",
+                    event="accepted",
                     title="Buyurtma qabul qilindi",
                     body="To'lovni amalga oshirib, chekni yuboring.",
                     action_type="make_payment",
@@ -348,8 +400,11 @@ class OrderService:
                 if self._taxi_service is not None:
                     await self._taxi_service.after_order_ready(session, order)
                 await append_order_notification(
-                    session, self._notification_repository, order,
-                    side="customer", event="ready",
+                    session,
+                    self._notification_repository,
+                    order,
+                    side="customer",
+                    event="ready",
                     title="Buyurtma tayyor bo'ldi",
                     body=(
                         "Do'kondan olib ketishingiz mumkin."
@@ -360,15 +415,23 @@ class OrderService:
                 )
             elif side == "provider" and body.status in {"rejected", "cancelled"}:
                 await append_order_notification(
-                    session, self._notification_repository, order,
-                    side="customer", event=body.status,
-                    title="Buyurtma bekor qilindi", body=order.title,
+                    session,
+                    self._notification_repository,
+                    order,
+                    side="customer",
+                    event=body.status,
+                    title="Buyurtma bekor qilindi",
+                    body=order.title,
                 )
             elif side == "customer" and body.status == "cancelled":
                 await append_order_notification(
-                    session, self._notification_repository, order,
-                    side="provider", event="cancelled_by_customer",
-                    title="Mijoz buyurtmani bekor qildi", body=order.title,
+                    session,
+                    self._notification_repository,
+                    order,
+                    side="provider",
+                    event="cancelled_by_customer",
+                    title="Mijoz buyurtmani bekor qildi",
+                    body=order.title,
                 )
             await session.commit()
             return await self._project(session, order, side)
@@ -379,7 +442,11 @@ class OrderService:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
             if side != "customer":
-                raise ApiError(403, "order_customer_required", "Bu amal faqat buyurtmachiga tegishli.")
+                raise ApiError(
+                    403,
+                    "order_customer_required",
+                    "Bu amal faqat buyurtmachiga tegishli.",
+                )
             if order.status != "accepted":
                 raise ApiError(
                     409,
@@ -404,8 +471,11 @@ class OrderService:
             self._changed(order, side, "payment_submitted", now)
             await self._event(session, "order.payment_submitted", order, account_id)
             await append_order_notification(
-                session, self._notification_repository, order,
-                side="provider", event="payment_submitted",
+                session,
+                self._notification_repository,
+                order,
+                side="provider",
+                event="payment_submitted",
                 title="To'lov qilindi",
                 body="To'lov cheki yuborildi. To'lovni tekshirib tasdiqlang.",
                 action_type="confirm_payment",
@@ -414,14 +484,23 @@ class OrderService:
             return await self._project(session, order, side)
 
     async def set_payment(
-        self, *, order_id: int, account_id: int, account_type: AccountType,
-        body: OrderPaymentDecision, actor_staff_id: int | None = None,
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
+        body: OrderPaymentDecision,
+        actor_staff_id: int | None = None,
         permissions: tuple[str, ...] | None = None,
     ) -> OrderRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
             if side != "provider":
-                raise ApiError(403, "order_provider_required", "Bu amal faqat xizmat ko'rsatuvchiga tegishli.")
+                raise ApiError(
+                    403,
+                    "order_provider_required",
+                    "Bu amal faqat xizmat ko'rsatuvchiga tegishli.",
+                )
             if order.status in {"done", "cancelled", "rejected"}:
                 raise ApiError(
                     409,
@@ -431,9 +510,7 @@ class OrderService:
             debt_link = None
             if body.status == "debt":
                 self._require_debt_payment_permission(permissions)
-                already_debt = (
-                    order.pay_type == "qarz" and order.debtor_id is not None
-                )
+                already_debt = order.pay_type == "qarz" and order.debtor_id is not None
                 if not already_debt and order.status != "accepted":
                     raise ApiError(
                         409,
@@ -463,8 +540,7 @@ class OrderService:
                     return await self._project(session, order, side)
             elif order.payment_status not in {"submitted", "recheck", "disputed"}:
                 message = (
-                    "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini "
-                    "yubormagan."
+                    "Buyurtmachi to'lov cheki va 'To'lov qildim' tasdig'ini yubormagan."
                     if body.status == "confirmed"
                     else "To'lovni hozir tekshirib bo'lmaydi."
                 )
@@ -506,27 +582,31 @@ class OrderService:
                 ),
                 "pending": "⏳ To'lov kutilmoqda.",
             }[body.status]
-            session.add(OrderMessage(
-                legacy_source_id=None,
-                order_id=order.id,
-                sender_account_id=account_id,
-                sender_kind=account_type.value,
-                text=system_text,
-                media_type="text",
-                media_object_key="",
-                legacy_media_url="",
-                file_name="",
-                reply_to_id=None,
-                edited_at=None,
-                deleted_at=None,
-                is_deleted=False,
-                created_at=now,
-            ))
+            session.add(
+                OrderMessage(
+                    legacy_source_id=None,
+                    order_id=order.id,
+                    sender_account_id=account_id,
+                    sender_kind=account_type.value,
+                    text=system_text,
+                    media_type="text",
+                    media_object_key="",
+                    legacy_media_url="",
+                    file_name="",
+                    reply_to_id=None,
+                    edited_at=None,
+                    deleted_at=None,
+                    is_deleted=False,
+                    created_at=now,
+                )
+            )
             await session.flush()
             await self._event(session, topic, order, account_id)
             if body.status in {"confirmed", "debt"}:
                 await append_order_notification(
-                    session, self._notification_repository, order,
+                    session,
+                    self._notification_repository,
+                    order,
                     side="customer",
                     event=(
                         "debt_confirmed"
@@ -548,7 +628,9 @@ class OrderService:
         permissions: tuple[str, ...] | None,
     ) -> None:
         if permissions is not None and not {
-            "payment_confirm", "payment_review", "kassa",
+            "payment_confirm",
+            "payment_review",
+            "kassa",
         }.intersection(permissions):
             raise ApiError(
                 403,
@@ -557,13 +639,21 @@ class OrderService:
             )
 
     async def open_problem(
-        self, *, order_id: int, account_id: int, account_type: AccountType,
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
         body: OrderProblemCreate,
     ) -> OrderRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
             if side != "provider":
-                raise ApiError(403, "order_provider_required", "Bu amal faqat xizmat ko'rsatuvchiga tegishli.")
+                raise ApiError(
+                    403,
+                    "order_provider_required",
+                    "Bu amal faqat xizmat ko'rsatuvchiga tegishli.",
+                )
             if order.status in {"done", "cancelled", "rejected"}:
                 raise ApiError(
                     409,
@@ -591,7 +681,11 @@ class OrderService:
             return await self._project(session, order, side)
 
     async def choose_problem_solution(
-        self, *, order_id: int, account_id: int, account_type: AccountType,
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
         body: OrderProblemSolution,
     ) -> OrderRead:
         async with self._session_factory() as session:
@@ -610,7 +704,9 @@ class OrderService:
                 order.order_type = "pickup"
             order.updated_at = now
             self._changed(order, side, "problem_solution", now)
-            await self._event(session, "order.problem_solution_selected", order, account_id)
+            await self._event(
+                session, "order.problem_solution_selected", order, account_id
+            )
             await session.commit()
             return await self._project(session, order, side)
 
@@ -654,15 +750,20 @@ class OrderService:
             self._changed(order, side, "handoff", now)
             await self._event(session, "order.handed_off", order, account_id)
             await append_order_notification(
-                session, self._notification_repository, order,
-                side="customer", event="seller_handoff",
+                session,
+                self._notification_repository,
+                order,
+                side="customer",
+                event="seller_handoff",
                 title="Buyurtma topshirildi",
                 body=(
                     "Buyurtma sizga yo'l oldi."
                     if order.order_type == "delivery"
                     else "Buyurtmani qabul qilganingizni tasdiqlang."
                 ),
-                action_type="" if order.order_type == "delivery" else "confirm_received",
+                action_type=""
+                if order.order_type == "delivery"
+                else "confirm_received",
             )
             if self._cash_register_service is not None:
                 try:
@@ -685,7 +786,8 @@ class OrderService:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
             if side != "customer" or order.status not in {
-                "pickup_waiting_customer", "delivered_waiting_customer"
+                "pickup_waiting_customer",
+                "delivered_waiting_customer",
             }:
                 raise ApiError(
                     409,
@@ -699,8 +801,11 @@ class OrderService:
             self._changed(order, side, "completed", now)
             await self._event(session, "order.completed", order, account_id)
             await append_order_notification(
-                session, self._notification_repository, order,
-                side="provider", event="customer_received",
+                session,
+                self._notification_repository,
+                order,
+                side="provider",
+                event="customer_received",
                 title="Buyurtma qabul qilindi",
                 body="Buyurtmachi buyurtmani olganini tasdiqladi.",
             )
@@ -721,7 +826,9 @@ class OrderService:
             else:
                 order.provider_seen_at = now
             await session.commit()
-            return [await self._project_message(session, row, account_id) for row in rows]
+            return [
+                await self._project_message(session, row, account_id) for row in rows
+            ]
 
     async def chat(
         self, *, order_id: int, account_id: int, account_type: AccountType
@@ -764,7 +871,11 @@ class OrderService:
             )
 
     async def send_message(
-        self, *, order_id: int, account_id: int, account_type: AccountType,
+        self,
+        *,
+        order_id: int,
+        account_id: int,
+        account_type: AccountType,
         body: OrderMessageCreate,
     ) -> OrderMessageRead:
         async with self._session_factory() as session:
@@ -773,36 +884,62 @@ class OrderService:
             if body.media_type == "photo":
                 text_value = text_value[:1000]
             if body.media_type == "text" and not text_value:
-                raise ApiError(400, "order_message_required", "Xabar matni kiritilishi shart.")
+                raise ApiError(
+                    400, "order_message_required", "Xabar matni kiritilishi shart."
+                )
             if body.media_type == "photo":
                 prefix = f"private/{account_type.value}/{account_id}/order_chat_image/"
                 if not body.object_key.startswith(prefix):
-                    raise ApiError(400, "order_media_key_invalid", "Rasm kaliti akkauntga tegishli emas.")
-            if body.reply_to_id is not None and await self._repository.message(
-                session, order_id=order_id, message_id=body.reply_to_id
-            ) is None:
-                raise ApiError(400, "order_reply_invalid", "Javob berilayotgan xabar topilmadi.")
+                    raise ApiError(
+                        400,
+                        "order_media_key_invalid",
+                        "Rasm kaliti akkauntga tegishli emas.",
+                    )
+            if (
+                body.reply_to_id is not None
+                and await self._repository.message(
+                    session, order_id=order_id, message_id=body.reply_to_id
+                )
+                is None
+            ):
+                raise ApiError(
+                    400, "order_reply_invalid", "Javob berilayotgan xabar topilmadi."
+                )
             now = datetime.now(UTC)
             message = OrderMessage(
-                legacy_source_id=None, order_id=order_id,
-                sender_account_id=account_id, sender_kind=account_type.value,
-                text=text_value, media_type=body.media_type,
+                legacy_source_id=None,
+                order_id=order_id,
+                sender_account_id=account_id,
+                sender_kind=account_type.value,
+                text=text_value,
+                media_type=body.media_type,
                 media_object_key=body.object_key if body.media_type == "photo" else "",
-                legacy_media_url="", file_name=body.file_name,
-                reply_to_id=body.reply_to_id, edited_at=None, deleted_at=None,
-                is_deleted=False, created_at=now,
+                legacy_media_url="",
+                file_name=body.file_name,
+                reply_to_id=body.reply_to_id,
+                edited_at=None,
+                deleted_at=None,
+                is_deleted=False,
+                created_at=now,
             )
             session.add(message)
             await session.flush()
             order.updated_at = now
             self._changed(order, side, "message", now)
-            await self._event(session, "order.message_created", order, account_id, message.id)
+            await self._event(
+                session, "order.message_created", order, account_id, message.id
+            )
             await session.commit()
             return await self._project_message(session, message, account_id)
 
     async def edit_message(
-        self, *, order_id: int, message_id: int, account_id: int,
-        account_type: AccountType, text: str,
+        self,
+        *,
+        order_id: int,
+        message_id: int,
+        account_id: int,
+        account_type: AccountType,
+        text: str,
     ) -> OrderMessageRead:
         async with self._session_factory() as session:
             order, side = await self._owned(session, order_id, account_id, lock=True)
@@ -811,26 +948,51 @@ class OrderService:
             )
             if message is None:
                 raise ApiError(404, "order_message_not_found", "Xabar topilmadi.")
-            if message.sender_account_id != account_id or message.sender_kind != account_type.value:
-                raise ApiError(403, "order_message_owner_required", "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.")
+            if (
+                message.sender_account_id != account_id
+                or message.sender_kind != account_type.value
+            ):
+                raise ApiError(
+                    403,
+                    "order_message_owner_required",
+                    "Faqat o'zingiz yuborgan xabarni tahrirlashingiz mumkin.",
+                )
             if message.is_deleted:
-                raise ApiError(400, "order_message_deleted", "O'chirilgan xabarni tahrirlab bo'lmaydi.")
+                raise ApiError(
+                    400,
+                    "order_message_deleted",
+                    "O'chirilgan xabarni tahrirlab bo'lmaydi.",
+                )
             if not message.text.strip():
-                raise ApiError(400, "order_message_text_missing", "Bu xabarda tahrirlanadigan matn yo'q.")
+                raise ApiError(
+                    400,
+                    "order_message_text_missing",
+                    "Bu xabarda tahrirlanadigan matn yo'q.",
+                )
             value = text.strip()[:2000]
             if not value:
-                raise ApiError(400, "order_message_edit_required", "Tahrirlash uchun matn kiriting.")
+                raise ApiError(
+                    400,
+                    "order_message_edit_required",
+                    "Tahrirlash uchun matn kiriting.",
+                )
             now = datetime.now(UTC)
             message.text = value
             message.edited_at = now
             order.updated_at = now
             self._changed(order, side, "message_edited", now)
-            await self._event(session, "order.message_edited", order, account_id, message.id)
+            await self._event(
+                session, "order.message_edited", order, account_id, message.id
+            )
             await session.commit()
             return await self._project_message(session, message, account_id)
 
     async def delete_message(
-        self, *, order_id: int, message_id: int, account_id: int,
+        self,
+        *,
+        order_id: int,
+        message_id: int,
+        account_id: int,
         account_type: AccountType,
     ) -> OrderMessageRead:
         async with self._session_factory() as session:
@@ -840,8 +1002,15 @@ class OrderService:
             )
             if message is None:
                 raise ApiError(404, "order_message_not_found", "Xabar topilmadi.")
-            if message.sender_account_id != account_id or message.sender_kind != account_type.value:
-                raise ApiError(403, "order_message_owner_required", "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.")
+            if (
+                message.sender_account_id != account_id
+                or message.sender_kind != account_type.value
+            ):
+                raise ApiError(
+                    403,
+                    "order_message_owner_required",
+                    "Faqat o'zingiz yuborgan xabarni o'chirishingiz mumkin.",
+                )
             if not message.is_deleted:
                 now = datetime.now(UTC)
                 message.is_deleted = True
@@ -849,7 +1018,9 @@ class OrderService:
                 message.text = ""
                 order.updated_at = now
                 self._changed(order, side, "message_deleted", now)
-                await self._event(session, "order.message_deleted", order, account_id, message.id)
+                await self._event(
+                    session, "order.message_deleted", order, account_id, message.id
+                )
                 await session.commit()
             return await self._project_message(session, message, account_id)
 
@@ -862,7 +1033,9 @@ class OrderService:
         side = "customer" if order.customer_account_id == account_id else "provider"
         return order, side
 
-    async def _resolve_profile_public_id(self, session, kind: str, public_id: str) -> int | None:
+    async def _resolve_profile_public_id(
+        self, session, kind: str, public_id: str
+    ) -> int | None:
         profile = await self._repository.profile_by_public_id(
             session,
             kind=kind,
@@ -906,9 +1079,15 @@ class OrderService:
             )
         return listing
 
-    async def _catalog_snapshots(self, session, requested, provider_id: int, provider_kind: str):
+    async def _catalog_snapshots(
+        self, session, requested, provider_id: int, provider_kind: str
+    ):
         if requested and provider_kind != "business":
-            raise ApiError(400, "order_items_business_only", "Mahsulot/xizmatli buyurtma faqat biznesga yuboriladi.")
+            raise ApiError(
+                400,
+                "order_items_business_only",
+                "Mahsulot/xizmatli buyurtma faqat biznesga yuboriladi.",
+            )
         limited = requested[:50]
         if not limited:
             return []
@@ -926,28 +1105,48 @@ class OrderService:
         for entry in limited:
             item = by_public.get(entry.public_id)
             if item is None:
-                raise ApiError(404, "order_item_not_found", "Mahsulot/xizmat topilmadi.")
+                raise ApiError(
+                    404, "order_item_not_found", "Mahsulot/xizmat topilmadi."
+                )
             if item.business_account_id != provider_id:
-                raise ApiError(400, "order_item_owner_mismatch", "Mahsulot/xizmat bu biznesga tegishli emas.")
-            qty = Decimal(str(entry.qty)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-            quantities[item.id] = min(Decimal("999"), quantities.get(item.id, Decimal("0")) + qty)
+                raise ApiError(
+                    400,
+                    "order_item_owner_mismatch",
+                    "Mahsulot/xizmat bu biznesga tegishli emas.",
+                )
+            qty = Decimal(str(entry.qty)).quantize(
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
+            quantities[item.id] = min(
+                Decimal("999"), quantities.get(item.id, Decimal("0")) + qty
+            )
             rows[item.id] = item
         result = []
         for item_id, qty in quantities.items():
             item = rows[item_id]
             unit = (item.unit or "dona").strip() or "dona"
             if unit not in FRACTIONAL_UNITS:
-                qty = max(Decimal("1"), qty.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                qty = max(
+                    Decimal("1"), qty.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+                )
             price = self._price_to_int(item.price_text)
-            result.append({
-                "item": item, "name": item.name or "Mahsulot/xizmat",
-                "price": item.price_text or "", "qty": qty, "unit": unit,
-                "line_total": int((Decimal(price) * qty).quantize(
-                    Decimal("1"),
-                    rounding=ROUND_HALF_EVEN,
-                )),
-                "note": item.note or "", "kind": item.kind,
-            })
+            result.append(
+                {
+                    "item": item,
+                    "name": item.name or "Mahsulot/xizmat",
+                    "price": item.price_text or "",
+                    "qty": qty,
+                    "unit": unit,
+                    "line_total": int(
+                        (Decimal(price) * qty).quantize(
+                            Decimal("1"),
+                            rounding=ROUND_HALF_EVEN,
+                        )
+                    ),
+                    "note": item.note or "",
+                    "kind": item.kind,
+                }
+            )
         return result
 
     @staticmethod
@@ -964,8 +1163,19 @@ class OrderService:
             order.provider_seen_at = now
             order.customer_seen_at = None
 
-    async def _event(self, session, topic: str, order: Order, actor_id: int, message_id: int | None = None):
-        payload = {"order_id": order.id, "actor_account_id": actor_id, "status": order.status}
+    async def _event(
+        self,
+        session,
+        topic: str,
+        order: Order,
+        actor_id: int,
+        message_id: int | None = None,
+    ):
+        payload = {
+            "order_id": order.id,
+            "actor_account_id": actor_id,
+            "status": order.status,
+        }
         if message_id is not None:
             payload["message_id"] = message_id
         await enqueue_event(session, topic, payload)
@@ -990,9 +1200,9 @@ class OrderService:
         if not business_prefetched and order.provider_kind == "business":
             business = await session.get(BusinessProfile, order.provider_account_id)
         if message_summary is None:
-            message_summary = (await self._repository.message_summaries(
-                session, [order.id]
-            )).get(order.id, {})
+            message_summary = (
+                await self._repository.message_summaries(session, [order.id])
+            ).get(order.id, {})
         customer_kind = (
             PublicResultKind.BUSINESS
             if order.customer_kind == "business"
@@ -1009,32 +1219,48 @@ class OrderService:
             else ""
         )
         return OrderRead(
-            id=order.id, view=side, title=order.title,
+            id=order.id,
+            view=side,
+            title=order.title,
             customer_name=order.customer_name,
-            customer_public_id=build_public_id(customer_kind, order.customer_account_id),
+            customer_public_id=build_public_id(
+                customer_kind, order.customer_account_id
+            ),
             provider_name=order.provider_name,
-            provider_kind=order.provider_kind, order_type=order.order_type,
-            provider_public_id=build_public_id(provider_kind, order.provider_account_id),
+            provider_kind=order.provider_kind,
+            order_type=order.order_type,
+            provider_public_id=build_public_id(
+                provider_kind, order.provider_account_id
+            ),
             item_public_id=item_public_id,
             listing_public_id=(
                 build_listing_public_id(order.listing_id)
                 if order.listing_id is not None
                 else ""
             ),
-            order_category=order.order_category, address=order.address,
-            desired_time=order.desired_time, delivery_lat=order.delivery_lat,
-            delivery_lng=order.delivery_lng, note=order.note, phone=order.phone,
-            qty=float(order.qty), total_amount=order.total_amount,
+            order_category=order.order_category,
+            address=order.address,
+            desired_time=order.desired_time,
+            delivery_lat=order.delivery_lat,
+            delivery_lng=order.delivery_lng,
+            note=order.note,
+            phone=order.phone,
+            qty=float(order.qty),
+            total_amount=order.total_amount,
             total_text=(
                 f"{order.total_amount:,}".replace(",", " ") + " so'm"
                 if order.total_amount > 0
                 else ""
             ),
-            status=order.status, payment_status=order.payment_status,
-            pay_type=order.pay_type, debtor_id=order.debtor_id,
+            status=order.status,
+            payment_status=order.payment_status,
+            pay_type=order.pay_type,
+            debtor_id=order.debtor_id,
             receipt_message_id=order.receipt_message_id,
-            problem_open=order.problem_open, problem_reason=order.problem_reason,
-            problem_note=order.problem_note, problem_solution=order.problem_solution,
+            problem_open=order.problem_open,
+            problem_reason=order.problem_reason,
+            problem_note=order.problem_note,
+            problem_solution=order.problem_solution,
             problem_opened_at=order.problem_opened_at,
             problem_resolved_at=order.problem_resolved_at,
             seller_completed_at=order.seller_completed_at,
@@ -1045,7 +1271,9 @@ class OrderService:
             last_chat_at=message_summary.get("last_chat_at"),
             pay_card=business.pay_card if business else "",
             pay_holder=business.pay_holder if business else "",
-            pay_qr_url=self._image_url_provider(business.pay_qr_object_key) if business else "",
+            pay_qr_url=self._image_url_provider(business.pay_qr_object_key)
+            if business
+            else "",
             provider_address=business.address if business else "",
             provider_phone=business.phone if business else order.provider_phone,
             provider_work_hours=business.work_hours if business else {},
@@ -1053,24 +1281,42 @@ class OrderService:
             provider_lng=business.longitude if business else None,
             customer_seen_at=order.customer_seen_at,
             provider_seen_at=order.provider_seen_at,
-            seen_at=order.provider_seen_at if side == "provider" else order.customer_seen_at,
+            seen_at=order.provider_seen_at
+            if side == "provider"
+            else order.customer_seen_at,
             is_unread=(
                 order.provider_seen_at is None
                 if side == "provider"
                 else order.customer_seen_at is None
             ),
-            created_at=order.created_at, updated_at=order.updated_at,
-            items=[{
-                "id": item.id,
-                "public_id": build_content_public_id(item.kind, item.catalog_item_id) if item.catalog_item_id else "",
-                "name": item.item_name, "price": item.price_text,
-                "qty": float(item.qty), "unit": item.unit,
-                "line_total": item.line_total, "note": item.note, "kind": item.kind,
-            } for item in items],
+            created_at=order.created_at,
+            updated_at=order.updated_at,
+            items=[
+                {
+                    "id": item.id,
+                    "public_id": build_content_public_id(
+                        item.kind, item.catalog_item_id
+                    )
+                    if item.catalog_item_id
+                    else "",
+                    "name": item.item_name,
+                    "price": item.price_text,
+                    "qty": float(item.qty),
+                    "unit": item.unit,
+                    "line_total": item.line_total,
+                    "note": item.note,
+                    "kind": item.kind,
+                }
+                for item in items
+            ],
         )
 
-    async def _project_message(self, session, message: OrderMessage, account_id: int) -> OrderMessageRead:
-        sender = await self._profile(session, message.sender_account_id, message.sender_kind)
+    async def _project_message(
+        self, session, message: OrderMessage, account_id: int
+    ) -> OrderMessageRead:
+        sender = await self._profile(
+            session, message.sender_account_id, message.sender_kind
+        )
         reply = None
         if message.reply_to_id is not None:
             reply_message = await self._repository.message(
@@ -1092,12 +1338,22 @@ class OrderService:
                     "sender_name": reply_sender.name if reply_sender else "",
                 }
         return OrderMessageRead(
-            id=message.id, text=message.text, media_type=message.media_type,
-            media_url=(self._image_url_provider(message.media_object_key) if message.media_object_key else message.legacy_media_url),
-            file_name=message.file_name, reply_to_id=message.reply_to_id,
+            id=message.id,
+            text=message.text,
+            media_type=message.media_type,
+            media_url=(
+                self._image_url_provider(message.media_object_key)
+                if message.media_object_key
+                else message.legacy_media_url
+            ),
+            file_name=message.file_name,
+            reply_to_id=message.reply_to_id,
             reply=reply,
-            edited_at=message.edited_at, deleted_at=message.deleted_at,
-            is_deleted=message.is_deleted, mine=message.sender_account_id == account_id,
-            sender_name=sender.name if sender else "", sender_kind=message.sender_kind,
+            edited_at=message.edited_at,
+            deleted_at=message.deleted_at,
+            is_deleted=message.is_deleted,
+            mine=message.sender_account_id == account_id,
+            sender_name=sender.name if sender else "",
+            sender_kind=message.sender_kind,
             created_at=message.created_at,
         )

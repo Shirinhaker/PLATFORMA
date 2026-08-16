@@ -167,9 +167,7 @@ def _story_values(
         "migration_run_id": run_id,
         "created_at": _unix_datetime(row.get("created_at")),
         "expires_at": _unix_datetime(row.get("expires_at")),
-        "deleted_at": (
-            _unix_datetime(deleted_value) if deleted_value > 0 else None
-        ),
+        "deleted_at": (_unix_datetime(deleted_value) if deleted_value > 0 else None),
     }
 
 
@@ -205,11 +203,13 @@ async def _import_views(session, source, run, counters) -> None:
             )
         )
         if existing is None:
-            session.add(StoryView(
-                story_id=story_id,
-                viewer_account_id=viewer_id,
-                viewed_at=_unix_datetime(row.get("viewed_at")),
-            ))
+            session.add(
+                StoryView(
+                    story_id=story_id,
+                    viewer_account_id=viewer_id,
+                    viewed_at=_unix_datetime(row.get("viewed_at")),
+                )
+            )
             counters["created"] += 1
         else:
             counters["reused"] += 1
@@ -249,14 +249,16 @@ async def _import_reports(session, source, run, counters) -> None:
             status if status in {"new", "reviewed", "dismissed"} else "new"
         )
         if existing is None:
-            session.add(StoryReport(
-                story_id=story_id,
-                reporter_account_id=reporter_id,
-                reason=reason,
-                status=normalized_status,
-                created_at=now,
-                updated_at=now,
-            ))
+            session.add(
+                StoryReport(
+                    story_id=story_id,
+                    reporter_account_id=reporter_id,
+                    reason=reason,
+                    status=normalized_status,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
             counters["created"] += 1
         else:
             existing.reason = reason
@@ -281,10 +283,12 @@ async def _mapped_target(
 
 
 def _table_exists(source: sqlite3.Connection, table: str) -> bool:
-    return bool(source.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    ).fetchone())
+    return bool(
+        source.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+    )
 
 
 def _optional_int(value: object) -> int | None:

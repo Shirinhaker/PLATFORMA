@@ -196,11 +196,13 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
         ),
     )
     sync = Session(engine, expire_on_commit=False)
-    sync.add_all([
-        account(70, AccountType.USER),
-        account(7, AccountType.BUSINESS),
-        ProfileLink(user_account_id=70, business_account_id=7, created_at=NOW),
-    ])
+    sync.add_all(
+        [
+            account(70, AccountType.USER),
+            account(7, AccountType.BUSINESS),
+            ProfileLink(user_account_id=70, business_account_id=7, created_at=NOW),
+        ]
+    )
     sync.commit()
     store = AsyncStore(sync)
 
@@ -252,10 +254,12 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
     assert listed.items[0].title == "Yangi buyurtma"
     assert listed.items[0].profile_kind == "user"
     assert listed.items[0].profile_public_id == "u_1234567890abcdef"
-    assert (await service.actions(
-        account_id=7,
-        account_type=AccountType.BUSINESS,
-    )).count == 1
+    assert (
+        await service.actions(
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+        )
+    ).count == 1
     assert sync.scalar(select(func.count(PushOutbox.id))) == 1
 
     await service.mark_read(
@@ -263,10 +267,12 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
         account_id=7,
         account_type=AccountType.BUSINESS,
     )
-    assert (await service.list(
-        account_id=7,
-        account_type=AccountType.BUSINESS,
-    )).unread == 0
+    assert (
+        await service.list(
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+        )
+    ).unread == 0
 
     preference = await service.save_preference(
         account_id=7,
@@ -297,10 +303,13 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
         account_id=70,
         account_type=AccountType.USER,
     )
-    assert await service.filters(
-        account_id=70,
-        account_type=AccountType.USER,
-    ) == []
+    assert (
+        await service.filters(
+            account_id=70,
+            account_type=AccountType.USER,
+        )
+        == []
+    )
 
     status = await service.push_status(
         account_id=7,
@@ -323,10 +332,13 @@ async def test_notification_service_lists_marks_filters_and_queues_linked_push()
             return "firebase-message-1"
 
     sender = FakeSender()
-    assert await process_push_batch(
-        FakeDatabase(),  # type: ignore[arg-type]
-        sender,
-        now=int(NOW.timestamp()),
-    ) == 1
+    assert (
+        await process_push_batch(
+            FakeDatabase(),  # type: ignore[arg-type]
+            sender,
+            now=int(NOW.timestamp()),
+        )
+        == 1
+    )
     assert sender.pushes[0].data["notification_id"] == str(listed.items[0].id)
     assert sync.scalar(select(PushOutbox.status)) == "sent"

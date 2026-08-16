@@ -176,164 +176,166 @@ def queue_store():
         ),
     )
     session = Session(engine, expire_on_commit=False)
-    session.add_all((
-        account(5, AccountType.USER),
-        account(6, AccountType.USER),
-        account(7, AccountType.BUSINESS),
-        account(8, AccountType.BUSINESS),
-        UserProfile(
-            account_id=5,
-            name="Ali",
-            phone="+998901234567",
-            public_username="ali",
-            region="Surxondaryo viloyati",
-            district="Qumqo'rg'on tumani",
-            mahalla="",
-            latitude=None,
-            longitude=None,
-            location_exact=False,
-            avatar_object_key="",
-            avatar_x=50,
-            avatar_y=50,
-            avatar_zoom=1,
-            followers_count=0,
-            following_count=0,
-            has_business=False,
-            dashboard_snapshot={},
-            recent_activity=[],
-            specialist_profile={},
-            cabinet_payload={},
-        ),
-        UserProfile(
-            account_id=6,
-            name="Vali",
-            phone="+998909999999",
-            public_username="vali",
-            region="Surxondaryo viloyati",
-            district="Qumqo'rg'on tumani",
-            mahalla="",
-            latitude=None,
-            longitude=None,
-            location_exact=False,
-            avatar_object_key="",
-            avatar_x=50,
-            avatar_y=50,
-            avatar_zoom=1,
-            followers_count=0,
-            following_count=0,
-            has_business=False,
-            dashboard_snapshot={},
-            recent_activity=[],
-            specialist_profile={},
-            cabinet_payload={},
-        ),
-        business(7, direction="Tibbiy xizmatlar"),
-        business(8, direction="Savdo"),
-        CatalogItem(
-            id=11,
-            business_account_id=7,
-            source_record_key="31",
-            catalog_group_id=None,
-            owner_name_snapshot="Shifo markazi",
-            name="Qabul",
-            price_text="50 000 so'm",
-            unit="dona",
-            note="",
-            kind="service",
-            queue_enabled=True,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        CatalogItem(
-            id=12,
-            business_account_id=8,
-            source_record_key="32",
-            catalog_group_id=None,
-            owner_name_snapshot="Savdo do'koni",
-            name="Tovar",
-            price_text="10 000 so'm",
-            unit="dona",
-            note="",
-            kind="product",
-            queue_enabled=False,
-            image_object_key="",
-            status="active",
-            owner_state=OwnerState.LINKED,
-            review_state=ReviewState.READY,
-            migration_run_id=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        CabinetResource(
-            id=101,
-            account_id=7,
-            account_type="business",
-            resource="staff",
-            value_kind="list",
-            record_count=1,
-            digest="",
-        ),
-        CabinetRecord(
-            id=102,
-            resource_id=101,
-            source_key="11",
-            ordinal=0,
-            value_kind="object",
-        ),
-        CabinetRecordField(
-            id=103,
-            record_id=102,
-            path="/id",
-            value_type="integer",
-            value_integer=11,
-        ),
-        CabinetRecordField(
-            id=104,
-            record_id=102,
-            path="/name",
-            value_type="text",
-            value_text="Ali Valiyev",
-        ),
-        CabinetRecordField(
-            id=105,
-            record_id=102,
-            path="/profession",
-            value_type="text",
-            value_text="Terapevt",
-        ),
-        CabinetRecordField(
-            id=106,
-            record_id=102,
-            path="/status",
-            value_type="text",
-            value_text="active",
-        ),
-        StaffMember(
-            id=11,
-            business_account_id=7,
-            legacy_source_id=11,
-            name="Ali Valiyev",
-            profession="Terapevt",
-            phone="",
-            salary=0,
-            hire_date=None,
-            status="active",
-            note="",
-            login=None,
-            password_hash=None,
-            can_login=False,
-            permissions=[],
-            schedule={},
-            created_at=NOW,
-            updated_at=NOW,
-            fired_at=None,
-        ),
-    ))
+    session.add_all(
+        (
+            account(5, AccountType.USER),
+            account(6, AccountType.USER),
+            account(7, AccountType.BUSINESS),
+            account(8, AccountType.BUSINESS),
+            UserProfile(
+                account_id=5,
+                name="Ali",
+                phone="+998901234567",
+                public_username="ali",
+                region="Surxondaryo viloyati",
+                district="Qumqo'rg'on tumani",
+                mahalla="",
+                latitude=None,
+                longitude=None,
+                location_exact=False,
+                avatar_object_key="",
+                avatar_x=50,
+                avatar_y=50,
+                avatar_zoom=1,
+                followers_count=0,
+                following_count=0,
+                has_business=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                specialist_profile={},
+                cabinet_payload={},
+            ),
+            UserProfile(
+                account_id=6,
+                name="Vali",
+                phone="+998909999999",
+                public_username="vali",
+                region="Surxondaryo viloyati",
+                district="Qumqo'rg'on tumani",
+                mahalla="",
+                latitude=None,
+                longitude=None,
+                location_exact=False,
+                avatar_object_key="",
+                avatar_x=50,
+                avatar_y=50,
+                avatar_zoom=1,
+                followers_count=0,
+                following_count=0,
+                has_business=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                specialist_profile={},
+                cabinet_payload={},
+            ),
+            business(7, direction="Tibbiy xizmatlar"),
+            business(8, direction="Savdo"),
+            CatalogItem(
+                id=11,
+                business_account_id=7,
+                source_record_key="31",
+                catalog_group_id=None,
+                owner_name_snapshot="Shifo markazi",
+                name="Qabul",
+                price_text="50 000 so'm",
+                unit="dona",
+                note="",
+                kind="service",
+                queue_enabled=True,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            CatalogItem(
+                id=12,
+                business_account_id=8,
+                source_record_key="32",
+                catalog_group_id=None,
+                owner_name_snapshot="Savdo do'koni",
+                name="Tovar",
+                price_text="10 000 so'm",
+                unit="dona",
+                note="",
+                kind="product",
+                queue_enabled=False,
+                image_object_key="",
+                status="active",
+                owner_state=OwnerState.LINKED,
+                review_state=ReviewState.READY,
+                migration_run_id=None,
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            CabinetResource(
+                id=101,
+                account_id=7,
+                account_type="business",
+                resource="staff",
+                value_kind="list",
+                record_count=1,
+                digest="",
+            ),
+            CabinetRecord(
+                id=102,
+                resource_id=101,
+                source_key="11",
+                ordinal=0,
+                value_kind="object",
+            ),
+            CabinetRecordField(
+                id=103,
+                record_id=102,
+                path="/id",
+                value_type="integer",
+                value_integer=11,
+            ),
+            CabinetRecordField(
+                id=104,
+                record_id=102,
+                path="/name",
+                value_type="text",
+                value_text="Ali Valiyev",
+            ),
+            CabinetRecordField(
+                id=105,
+                record_id=102,
+                path="/profession",
+                value_type="text",
+                value_text="Terapevt",
+            ),
+            CabinetRecordField(
+                id=106,
+                record_id=102,
+                path="/status",
+                value_type="text",
+                value_text="active",
+            ),
+            StaffMember(
+                id=11,
+                business_account_id=7,
+                legacy_source_id=11,
+                name="Ali Valiyev",
+                profession="Terapevt",
+                phone="",
+                salary=0,
+                hire_date=None,
+                status="active",
+                note="",
+                login=None,
+                password_hash=None,
+                can_login=False,
+                permissions=[],
+                schedule={},
+                created_at=NOW,
+                updated_at=NOW,
+                fired_at=None,
+            ),
+        )
+    )
     session.commit()
     try:
         yield AsyncStore(session)
@@ -392,7 +394,9 @@ def public_body(
 
 
 @pytest.mark.asyncio
-async def test_provider_setup_reads_relational_staff_without_writing_legacy_payload(queue_store):
+async def test_provider_setup_reads_relational_staff_without_writing_legacy_payload(
+    queue_store,
+):
     service = service_for(queue_store)
 
     setup = await service.business_setup(business_account_id=7)
@@ -409,36 +413,40 @@ async def test_provider_setup_reads_relational_staff_without_writing_legacy_payl
 
 
 @pytest.mark.asyncio
-async def test_public_profile_exposes_provider_and_active_today_queue_counts(queue_store):
+async def test_public_profile_exposes_provider_and_active_today_queue_counts(
+    queue_store,
+):
     service = service_for(queue_store)
     provider = await create_provider(service)
-    queue_store.sync.add_all([
-        QueueEntry(
-            id=700 + queue_no,
-            business_account_id=7,
-            legacy_source_id=None,
-            catalog_item_id=11,
-            provider_id=provider.id,
-            customer_account_id=None,
-            patient_name=f"Mijoz {queue_no}",
-            phone="+998900000000",
-            service_name_snapshot="Qabul",
-            provider_name_snapshot=provider.name,
-            queue_date=date(2026, 8, 3),
-            queue_no=queue_no,
-            queue_code=f"QAB-{queue_no:03d}",
-            source="offline",
-            status=status,
-            note="",
-            slot_time=None,
-            created_at=NOW,
-            updated_at=NOW,
-        )
-        for queue_no, status in enumerate(
-            ("waiting", "called", "in_service", "done", "cancelled"),
-            start=1,
-        )
-    ])
+    queue_store.sync.add_all(
+        [
+            QueueEntry(
+                id=700 + queue_no,
+                business_account_id=7,
+                legacy_source_id=None,
+                catalog_item_id=11,
+                provider_id=provider.id,
+                customer_account_id=None,
+                patient_name=f"Mijoz {queue_no}",
+                phone="+998900000000",
+                service_name_snapshot="Qabul",
+                provider_name_snapshot=provider.name,
+                queue_date=date(2026, 8, 3),
+                queue_no=queue_no,
+                queue_code=f"QAB-{queue_no:03d}",
+                source="offline",
+                status=status,
+                note="",
+                slot_time=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            for queue_no, status in enumerate(
+                ("waiting", "called", "in_service", "done", "cancelled"),
+                start=1,
+            )
+        ]
+    )
     queue_store.sync.commit()
     business_public_id = build_profile_public_id("business", 7)
 
@@ -481,7 +489,9 @@ async def test_unsupported_direction_and_disabled_service_are_rejected(queue_sto
 
 
 @pytest.mark.asyncio
-async def test_live_queue_uses_atomic_counter_prevents_duplicate_and_projects_wait(queue_store):
+async def test_live_queue_uses_atomic_counter_prevents_duplicate_and_projects_wait(
+    queue_store,
+):
     service = service_for(queue_store)
     provider = await create_provider(service)
 
@@ -514,10 +524,12 @@ async def test_live_queue_uses_atomic_counter_prevents_duplicate_and_projects_wa
     )
     assert queue_store.sync.scalar(select(QueueCounter.last_number)) == 2
 
-    notification = queue_store.sync.scalar(select(Notification).where(
-        Notification.account_id == 5,
-        Notification.event_key == f"medical_queue:{first.id}:booked",
-    ))
+    notification = queue_store.sync.scalar(
+        select(Notification).where(
+            Notification.account_id == 5,
+            Notification.event_key == f"medical_queue:{first.id}:booked",
+        )
+    )
     assert notification is not None
     assert notification.title == "Navbat olindi"
     assert notification.payload["medical_queue_id"] == first.id
@@ -607,7 +619,9 @@ async def test_slot_queue_returns_free_times_and_saves_exact_slot(queue_store):
 
 
 @pytest.mark.asyncio
-async def test_business_status_swap_customer_cancel_and_idempotent_notifications(queue_store):
+async def test_business_status_swap_customer_cancel_and_idempotent_notifications(
+    queue_store,
+):
     service = service_for(queue_store)
     provider = await create_provider(service)
     first = await service.create_online(
@@ -627,12 +641,22 @@ async def test_business_status_swap_customer_cancel_and_idempotent_notifications
         body=QueueStatusChange(status="called"),
     )
     assert called.status == "called"
-    assert queue_store.sync.scalar(select(func.count(Notification.id)).where(
-        Notification.event_key == f"medical_queue:{first.id}:called"
-    )) == 1
-    assert queue_store.sync.scalar(select(func.count(Notification.id)).where(
-        Notification.event_key == f"medical_queue:{second.id}:soon:1"
-    )) == 1
+    assert (
+        queue_store.sync.scalar(
+            select(func.count(Notification.id)).where(
+                Notification.event_key == f"medical_queue:{first.id}:called"
+            )
+        )
+        == 1
+    )
+    assert (
+        queue_store.sync.scalar(
+            select(func.count(Notification.id)).where(
+                Notification.event_key == f"medical_queue:{second.id}:soon:1"
+            )
+        )
+        == 1
+    )
 
     swapped = await service.swap(
         business_account_id=7,
@@ -664,7 +688,9 @@ async def test_business_status_swap_customer_cancel_and_idempotent_notifications
 
 
 @pytest.mark.asyncio
-async def test_two_actor_queue_chain_reaches_business_notification_and_customer(queue_store):
+async def test_two_actor_queue_chain_reaches_business_notification_and_customer(
+    queue_store,
+):
     service = service_for(queue_store)
     provider = await create_provider(service)
     queue_day = date(2026, 8, 3)
@@ -713,9 +739,7 @@ async def test_two_actor_queue_chain_reaches_business_notification_and_customer(
     )
     assert called_notification is not None
     assert called_notification.title == "Navbatingiz keldi"
-    assert called_notification.body == (
-        "QAB-001 navbat shifokor tomonidan chaqirildi."
-    )
+    assert called_notification.body == ("QAB-001 navbat shifokor tomonidan chaqirildi.")
     assert called_notification.action_type == "medical_queue_called"
     assert called_notification.payload["medical_queue_id"] == created.id
 
@@ -791,10 +815,7 @@ def test_queue_router_exposes_typed_public_customer_and_business_endpoints():
 def test_queue_repository_uses_atomic_upsert_not_max_scan_for_live_numbers():
     source = Path(QueueRepository.__module__.replace(".", "/") + ".py")
     repository_source = (
-        Path(__file__).resolve().parents[1]
-        / "app"
-        / "queues"
-        / source.name
+        Path(__file__).resolve().parents[1] / "app" / "queues" / source.name
     ).read_text(encoding="utf-8")
     lowered = repository_source.casefold()
 
@@ -843,43 +864,47 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
             await session.flush()
             business_id = business_account.id
 
-            session.add(BusinessProfile(
-                account_id=business_id,
-                name="Rollback stomatolog",
-                phone="+998901234567",
-                description="",
-                public_username=f"queue_options_{token[:12]}",
-                direction="Tibbiy xizmatlar",
-                activity_type="Stomatologiya",
-                address="Qumqo'rg'on",
-                latitude=None,
-                longitude=None,
-                work_hours={},
-                pay_card="",
-                pay_holder="",
-                pay_qr_object_key="",
-                director="",
-                tax_id="",
-                logo_object_key="",
-                logo_x=50,
-                logo_y=50,
-                logo_zoom=1,
-                followers_count=0,
-                following_count=0,
-                rating_sum=0,
-                rating_count=0,
-                map_visible=False,
-                dashboard_snapshot={},
-                recent_activity=[],
-                cabinet_payload={
-                    "staff": [{
-                        "id": 77,
-                        "name": "Real shifokor",
-                        "profession": "Stomatolog",
-                        "status": "active",
-                    }]
-                },
-            ))
+            session.add(
+                BusinessProfile(
+                    account_id=business_id,
+                    name="Rollback stomatolog",
+                    phone="+998901234567",
+                    description="",
+                    public_username=f"queue_options_{token[:12]}",
+                    direction="Tibbiy xizmatlar",
+                    activity_type="Stomatologiya",
+                    address="Qumqo'rg'on",
+                    latitude=None,
+                    longitude=None,
+                    work_hours={},
+                    pay_card="",
+                    pay_holder="",
+                    pay_qr_object_key="",
+                    director="",
+                    tax_id="",
+                    logo_object_key="",
+                    logo_x=50,
+                    logo_y=50,
+                    logo_zoom=1,
+                    followers_count=0,
+                    following_count=0,
+                    rating_sum=0,
+                    rating_count=0,
+                    map_visible=False,
+                    dashboard_snapshot={},
+                    recent_activity=[],
+                    cabinet_payload={
+                        "staff": [
+                            {
+                                "id": 77,
+                                "name": "Real shifokor",
+                                "profession": "Stomatolog",
+                                "status": "active",
+                            }
+                        ]
+                    },
+                )
+            )
 
             item = CatalogItem(
                 business_account_id=business_id,
@@ -927,25 +952,23 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
             session.add(provider)
             await session.flush()
             provider_id = provider.id
-            session.add(QueueProviderService(
-                provider_id=provider_id,
-                catalog_item_id=catalog_item_id,
-                active=True,
-                duration_minutes=15,
-                created_at=NOW,
-                updated_at=NOW,
-            ))
+            session.add(
+                QueueProviderService(
+                    provider_id=provider_id,
+                    catalog_item_id=catalog_item_id,
+                    active=True,
+                    duration_minutes=15,
+                    created_at=NOW,
+                    updated_at=NOW,
+                )
+            )
 
         options = await QueueService(
             sessions,
             now_provider=lambda: NOW,
         ).options(
-            business_public_id=build_profile_public_id(
-                "business", business_id
-            ),
-            item_public_id=build_content_public_id(
-                "service", catalog_item_id
-            ),
+            business_public_id=build_profile_public_id("business", business_id),
+            item_public_id=build_content_public_id("service", catalog_item_id),
             queue_date=date(2026, 8, 3),
         )
 
@@ -955,12 +978,14 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
         assert [
             (row.id, row.name, row.item_public_ids, row.queue_count)
             for row in options.providers
-        ] == [(
-            provider_id,
-            "Real shifokor",
-            [build_content_public_id("service", catalog_item_id)],
-            0,
-        )]
+        ] == [
+            (
+                provider_id,
+                "Real shifokor",
+                [build_content_public_id("service", catalog_item_id)],
+                0,
+            )
+        ]
     finally:
         if business_id is not None:
             async with sessions.begin() as session:
@@ -971,9 +996,7 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
                         )
                     )
                     await session.execute(
-                        delete(QueueEntry).where(
-                            QueueEntry.provider_id == provider_id
-                        )
+                        delete(QueueEntry).where(QueueEntry.provider_id == provider_id)
                     )
                     await session.execute(
                         delete(QueueCounter).where(
@@ -981,24 +1004,18 @@ async def test_queue_options_serializes_before_rollback_on_postgresql():
                         )
                     )
                     await session.execute(
-                        delete(QueueProvider).where(
-                            QueueProvider.id == provider_id
-                        )
+                        delete(QueueProvider).where(QueueProvider.id == provider_id)
                     )
                 if catalog_item_id is not None:
                     await session.execute(
-                        delete(CatalogItem).where(
-                            CatalogItem.id == catalog_item_id
-                        )
+                        delete(CatalogItem).where(CatalogItem.id == catalog_item_id)
                     )
                 await session.execute(
                     delete(BusinessProfile).where(
                         BusinessProfile.account_id == business_id
                     )
                 )
-                await session.execute(
-                    delete(Account).where(Account.id == business_id)
-                )
+                await session.execute(delete(Account).where(Account.id == business_id))
         await engine.dispose()
 
 
@@ -1048,36 +1065,38 @@ async def test_queue_lists_serialize_before_rollback_on_postgresql():
             business_id = business_account.id
             customer_id = customer_account.id
 
-            session.add(BusinessProfile(
-                account_id=business_id,
-                name="Ro'yxat stomatolog",
-                phone="+998901234567",
-                description="",
-                public_username=f"queue_list_{token[:12]}",
-                direction="Tibbiy xizmatlar",
-                activity_type="Stomatologiya",
-                address="Qumqo'rg'on",
-                latitude=None,
-                longitude=None,
-                work_hours={},
-                pay_card="",
-                pay_holder="",
-                pay_qr_object_key="",
-                director="",
-                tax_id="",
-                logo_object_key="",
-                logo_x=50,
-                logo_y=50,
-                logo_zoom=1,
-                followers_count=0,
-                following_count=0,
-                rating_sum=0,
-                rating_count=0,
-                map_visible=False,
-                dashboard_snapshot={},
-                recent_activity=[],
-                cabinet_payload={},
-            ))
+            session.add(
+                BusinessProfile(
+                    account_id=business_id,
+                    name="Ro'yxat stomatolog",
+                    phone="+998901234567",
+                    description="",
+                    public_username=f"queue_list_{token[:12]}",
+                    direction="Tibbiy xizmatlar",
+                    activity_type="Stomatologiya",
+                    address="Qumqo'rg'on",
+                    latitude=None,
+                    longitude=None,
+                    work_hours={},
+                    pay_card="",
+                    pay_holder="",
+                    pay_qr_object_key="",
+                    director="",
+                    tax_id="",
+                    logo_object_key="",
+                    logo_x=50,
+                    logo_y=50,
+                    logo_zoom=1,
+                    followers_count=0,
+                    following_count=0,
+                    rating_sum=0,
+                    rating_count=0,
+                    map_visible=False,
+                    dashboard_snapshot={},
+                    recent_activity=[],
+                    cabinet_payload={},
+                )
+            )
 
             item = CatalogItem(
                 business_account_id=business_id,
@@ -1160,13 +1179,15 @@ async def test_queue_lists_serialize_before_rollback_on_postgresql():
             queue_date=queue_day,
         )
 
-        expected = [(
-            entry_id,
-            "STO-001",
-            "Ro'yxat stomatolog",
-            "Tibbiy xizmatlar",
-            "Bunyod",
-        )]
+        expected = [
+            (
+                entry_id,
+                "STO-001",
+                "Ro'yxat stomatolog",
+                "Tibbiy xizmatlar",
+                "Bunyod",
+            )
+        ]
         assert [
             (
                 row.id,
@@ -1197,15 +1218,11 @@ async def test_queue_lists_serialize_before_rollback_on_postgresql():
                 )
                 if provider_id is not None:
                     await session.execute(
-                        delete(QueueProvider).where(
-                            QueueProvider.id == provider_id
-                        )
+                        delete(QueueProvider).where(QueueProvider.id == provider_id)
                     )
                 if catalog_item_id is not None:
                     await session.execute(
-                        delete(CatalogItem).where(
-                            CatalogItem.id == catalog_item_id
-                        )
+                        delete(CatalogItem).where(CatalogItem.id == catalog_item_id)
                     )
                 await session.execute(
                     delete(BusinessProfile).where(
@@ -1346,20 +1363,22 @@ async def test_parallel_live_bookings_receive_distinct_numbers_on_postgresql():
 
         assert sorted(numbers) == [1, 2]
         async with sessions() as session:
-            stored_numbers = list((await session.scalars(
-                select(QueueEntry.queue_no)
-                .where(QueueEntry.provider_id == provider_id)
-                .order_by(QueueEntry.queue_no)
-            )).all())
+            stored_numbers = list(
+                (
+                    await session.scalars(
+                        select(QueueEntry.queue_no)
+                        .where(QueueEntry.provider_id == provider_id)
+                        .order_by(QueueEntry.queue_no)
+                    )
+                ).all()
+            )
         assert stored_numbers == [1, 2]
     finally:
         if business_id is not None:
             async with sessions.begin() as session:
                 if provider_id is not None:
                     await session.execute(
-                        delete(QueueEntry).where(
-                            QueueEntry.provider_id == provider_id
-                        )
+                        delete(QueueEntry).where(QueueEntry.provider_id == provider_id)
                     )
                     await session.execute(
                         delete(QueueCounter).where(
@@ -1367,15 +1386,11 @@ async def test_parallel_live_bookings_receive_distinct_numbers_on_postgresql():
                         )
                     )
                     await session.execute(
-                        delete(QueueProvider).where(
-                            QueueProvider.id == provider_id
-                        )
+                        delete(QueueProvider).where(QueueProvider.id == provider_id)
                     )
                 if catalog_item_id is not None:
                     await session.execute(
                         delete(CatalogItem).where(CatalogItem.id == catalog_item_id)
                     )
-                await session.execute(
-                    delete(Account).where(Account.id == business_id)
-                )
+                await session.execute(delete(Account).where(Account.id == business_id))
         await engine.dispose()

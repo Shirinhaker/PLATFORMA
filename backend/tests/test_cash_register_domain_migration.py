@@ -56,4 +56,6 @@ def test_migration_relinks_fifo_and_initializes_receipt_counter():
     assert "line.legacy_source_key = 'sales:'" in migration.CONSUMPTION_RELINK_SQL
     assert "SET cash_sale_line_id = line.id" in migration.MOVE_RELINK_SQL
     assert "greatest(" in migration.COUNTER_BACKFILL_SQL
-    assert "ON CONFLICT (business_account_id) DO UPDATE" in migration.COUNTER_BACKFILL_SQL
+    assert (
+        "ON CONFLICT (business_account_id) DO UPDATE" in migration.COUNTER_BACKFILL_SQL
+    )

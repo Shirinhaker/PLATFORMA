@@ -36,7 +36,9 @@ def require_user_owner(current: CurrentAccount) -> None:
         or current.actor_type != "owner"
         or current.staff_id is not None
     ):
-        raise ApiError(403, "user_owner_required", "Bu amal faqat oddiy profil egasi uchun.")
+        raise ApiError(
+            403, "user_owner_required", "Bu amal faqat oddiy profil egasi uchun."
+        )
 
 
 def require_enabled(request: Request) -> None:

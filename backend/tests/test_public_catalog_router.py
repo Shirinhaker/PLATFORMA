@@ -53,9 +53,7 @@ def test_catalog_is_hidden_when_phase3c_public_flag_is_disabled():
 
 
 def test_catalog_route_is_public_and_filters_product():
-    app = create_app(
-        Settings(environment="test", phase3c_public_enabled=True)
-    )
+    app = create_app(Settings(environment="test", phase3c_public_enabled=True))
     service = FakeCatalogService()
     app.state.catalog_service = service
 
@@ -67,23 +65,16 @@ def test_catalog_route_is_public_and_filters_product():
     assert response.status_code == 200
     assert service.params.kind == "product"
     assert service.params.district == "Qumqo‘rg‘on"
-    assert all(
-        item["kind"] == "product"
-        for item in response.json()["items"]
-    )
+    assert all(item["kind"] == "product" for item in response.json()["items"])
     assert "business_account_id" not in response.text
     assert "image_object_key" not in response.text
 
 
 def test_catalog_detail_returns_public_projection():
-    app = create_app(
-        Settings(environment="test", phase3c_public_enabled=True)
-    )
+    app = create_app(Settings(environment="test", phase3c_public_enabled=True))
     app.state.catalog_service = FakeCatalogService()
 
-    response = TestClient(app).get(
-        "/api/v1/public/catalog/items/p_public"
-    )
+    response = TestClient(app).get("/api/v1/public/catalog/items/p_public")
 
     assert response.status_code == 200
     assert response.json()["public_id"] == "p_public"

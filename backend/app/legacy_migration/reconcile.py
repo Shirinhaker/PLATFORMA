@@ -103,8 +103,7 @@ async def reconcile_accounts(
         )
         mapped = (
             await session.get(Account, existing_mapping.target_id)
-            if existing_mapping is not None
-            and existing_mapping.target_id is not None
+            if existing_mapping is not None and existing_mapping.target_id is not None
             else None
         )
         if mapped is not None and mapped.account_type is not account_type:
@@ -190,9 +189,7 @@ async def reconcile_accounts(
                 account_type=account_type,
                 login=str(record["login"]),
                 password_hash=str(record["password_hash"]),
-                telegram_user_id=_optional_int(
-                    record.get("telegram_user_id")
-                ),
+                telegram_user_id=_optional_int(record.get("telegram_user_id")),
                 status=str(record["status"]),
                 created_at=created_at,
                 updated_at=created_at,
@@ -240,10 +237,7 @@ async def reconcile_businesses(
     source: sqlite3.Connection,
     run: MigrationRun,
 ) -> StageResult:
-    users = {
-        int(row["id"]): row
-        for row in _source_rows(source, "users")
-    }
+    users = {int(row["id"]): row for row in _source_rows(source, "users")}
     business_records = [
         (
             row,
@@ -254,9 +248,7 @@ async def reconcile_businesses(
         )
         for row in _source_rows(source, "businesses")
     ]
-    conflicts = _identity_conflicts(
-        [record for _, record in business_records]
-    )
+    conflicts = _identity_conflicts([record for _, record in business_records])
     counters = {
         "created": 0,
         "reused": 0,
@@ -276,8 +268,7 @@ async def reconcile_businesses(
         )
         user_account = (
             await session.get(Account, owner_mapping.target_id)
-            if owner_mapping is not None
-            and owner_mapping.target_id is not None
+            if owner_mapping is not None and owner_mapping.target_id is not None
             else None
         )
         if (
@@ -337,18 +328,14 @@ async def reconcile_businesses(
         )
         mapped = (
             await session.get(Account, existing_mapping.target_id)
-            if existing_mapping is not None
-            and existing_mapping.target_id is not None
+            if existing_mapping is not None and existing_mapping.target_id is not None
             else None
         )
         if mapped is not None and mapped.account_type is not AccountType.BUSINESS:
             mapped = None
 
         by_login = await _account_by_login(session, str(record["login"]))
-        if (
-            by_login is not None
-            and by_login.account_type is not AccountType.BUSINESS
-        ):
+        if by_login is not None and by_login.account_type is not AccountType.BUSINESS:
             counters["quarantined"] += 1
             counters["issues"] += await _ensure_issue(
                 session,
@@ -410,9 +397,7 @@ async def reconcile_businesses(
                 account_type=AccountType.BUSINESS,
                 login=str(record["login"]),
                 password_hash=str(record["password_hash"]),
-                telegram_user_id=_optional_int(
-                    record.get("telegram_user_id")
-                ),
+                telegram_user_id=_optional_int(record.get("telegram_user_id")),
                 status=str(record["status"]),
                 created_at=created_at,
                 updated_at=created_at,
@@ -562,9 +547,7 @@ def _identity_conflicts(
             ].append(legacy_id)
         phone = str(record.get("normalized_phone") or "")
         if phone:
-            indexes["identity.phone_duplicate"][
-                (account_type, phone)
-            ].append(legacy_id)
+            indexes["identity.phone_duplicate"][(account_type, phone)].append(legacy_id)
 
     conflicts: dict[int, list[str]] = defaultdict(list)
     for code, values in indexes.items():
@@ -581,9 +564,7 @@ async def _account_by_login(
     login: str,
 ) -> Account | None:
     return (
-        await session.scalars(
-            select(Account).where(func.lower(Account.login) == login)
-        )
+        await session.scalars(select(Account).where(func.lower(Account.login) == login))
     ).one_or_none()
 
 
@@ -609,10 +590,7 @@ async def _legacy_business_rehome_record(
         user_record,
     )
     business_login = str(business_record["login"])
-    if (
-        not business_login
-        or business_login == str(user_record["login"])
-    ):
+    if not business_login or business_login == str(user_record["login"]):
         return None
 
     login_owner = await _account_by_login(session, business_login)

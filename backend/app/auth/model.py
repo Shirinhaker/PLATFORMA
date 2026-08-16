@@ -20,9 +20,7 @@ from app.db.base import Base
 
 class PendingRegistration(Base):
     __tablename__ = "pending_registrations"
-    __table_args__ = (
-        Index("ix_pending_registrations_expires_at", "expires_at"),
-    )
+    __table_args__ = (Index("ix_pending_registrations_expires_at", "expires_at"),)
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     account_type: Mapped[AccountType] = mapped_column(

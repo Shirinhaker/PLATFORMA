@@ -60,11 +60,7 @@ def sniff_media_type(header: bytes) -> str | None:
         return "image/png"
     if header.startswith((b"GIF87a", b"GIF89a")):
         return "image/gif"
-    if (
-        len(header) >= 12
-        and header.startswith(b"RIFF")
-        and header[8:12] == b"WEBP"
-    ):
+    if len(header) >= 12 and header.startswith(b"RIFF") and header[8:12] == b"WEBP":
         return "image/webp"
     if len(header) >= 12 and header[4:8] == b"ftyp":
         return "video/mp4"
@@ -266,9 +262,7 @@ async def migrate_media(
         reference = _source_reference(source, record)
         if not reference:
             _mark_failure(record, MediaMigrationState.MISSING, "media.missing")
-            await _mark_story_media_failure(
-                session, run, record, "story.media_missing"
-            )
+            await _mark_story_media_failure(session, run, record, "story.media_missing")
             continue
         resolver = _resolver_for_reference(
             record,
@@ -287,9 +281,7 @@ async def migrate_media(
                 else MediaMigrationState.FAILED
             )
             _mark_failure(record, state, resolution.code)
-            await _mark_story_media_failure(
-                session, run, record, "story.media_missing"
-            )
+            await _mark_story_media_failure(session, run, record, "story.media_missing")
             continue
         await _copy_media(session, storage, run, record, resolution.media)
         if record.state is MediaMigrationState.COPIED:
@@ -360,9 +352,7 @@ async def _set_target_object_key(
     if record.entity_type == "message":
         target = (
             await session.scalars(
-                select(Message).where(
-                    Message.legacy_source_id == record.legacy_id
-                )
+                select(Message).where(Message.legacy_source_id == record.legacy_id)
             )
         ).one_or_none()
         if target is not None:

@@ -35,22 +35,24 @@ from app.staff.repository import StaffRepository
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))
-QUEUE_DIRECTIONS = frozenset({
-    "Transport va logistika",
-    "Xizmat ko'rsatish",
-    "Maishiy xizmatlar",
-    "Qurilish",
-    "Tibbiy xizmatlar",
-    "Ko'chmas mulk",
-    "Axborot texnologiyalari",
-    "Konsalting va professional",
-    "Madaniyat, sport, ko'ngilochar",
-    "Turizm va mehmonxona",
-    "Reklama va marketing",
-    "Poligrafiya va nashriyot",
-    "Moliyaviy faoliyat",
-    "Import-eksport",
-})
+QUEUE_DIRECTIONS = frozenset(
+    {
+        "Transport va logistika",
+        "Xizmat ko'rsatish",
+        "Maishiy xizmatlar",
+        "Qurilish",
+        "Tibbiy xizmatlar",
+        "Ko'chmas mulk",
+        "Axborot texnologiyalari",
+        "Konsalting va professional",
+        "Madaniyat, sport, ko'ngilochar",
+        "Turizm va mehmonxona",
+        "Reklama va marketing",
+        "Poligrafiya va nashriyot",
+        "Moliyaviy faoliyat",
+        "Import-eksport",
+    }
+)
 TERMINAL_STATUSES = frozenset({"done", "cancelled", "no_show"})
 
 
@@ -63,7 +65,9 @@ def _clock_text(value: time | None) -> str:
 
 
 def _medical_code(name: str) -> str:
-    letters = "".join(character for character in str(name or "").upper() if character.isalnum())[:3]
+    letters = "".join(
+        character for character in str(name or "").upper() if character.isalnum()
+    )[:3]
     return letters or "NAV"
 
 
@@ -101,7 +105,9 @@ class QueueService:
         self._notifications = notification_repository or NotificationRepository()
         self._now_provider = now_provider or (lambda: datetime.now(UTC))
 
-    async def business_setup(self, *, business_account_id: int) -> QueueBusinessSetupRead:
+    async def business_setup(
+        self, *, business_account_id: int
+    ) -> QueueBusinessSetupRead:
         async with self._session_factory() as session:
             business = await self._business(session, business_account_id)
             services = await self._repository.enabled_items(
@@ -159,11 +165,14 @@ class QueueService:
     ) -> QueueProviderRead:
         async with self._session_factory() as session:
             business = await self._business(session, business_account_id)
-            if await self._repository.provider_by_staff(
-                session,
-                business_account_id=business_account_id,
-                staff_id=body.staff_id,
-            ) is not None:
+            if (
+                await self._repository.provider_by_staff(
+                    session,
+                    business_account_id=business_account_id,
+                    staff_id=body.staff_id,
+                )
+                is not None
+            ):
                 raise ApiError(
                     409,
                     "queue_provider_exists",
@@ -280,9 +289,7 @@ class QueueService:
             if await self._staff_source_exists(session, business):
                 active_staff_ids = {int(row["id"]) for row in active_staff}
                 rows = [
-                    row
-                    for row in rows
-                    if row[0].legacy_staff_id in active_staff_ids
+                    row for row in rows if row[0].legacy_staff_id in active_staff_ids
                 ]
             response = QueueOptionsRead(
                 business_public_id=business_public_id,
@@ -342,8 +349,7 @@ class QueueService:
                 if value not in taken
                 and not (
                     resolved_date == local_now.date()
-                    and _slot_minutes(value)
-                    <= local_now.hour * 60 + local_now.minute
+                    and _slot_minutes(value) <= local_now.hour * 60 + local_now.minute
                 )
             ]
             response = QueueSlotsRead(
@@ -385,7 +391,11 @@ class QueueService:
             )
             booked = (
                 f"{entry.queue_code} navbat {entry.queue_date.isoformat()} sanasiga"
-                + (f" soat {_clock_text(entry.slot_time)} ga" if entry.slot_time else "")
+                + (
+                    f" soat {_clock_text(entry.slot_time)} ga"
+                    if entry.slot_time
+                    else ""
+                )
                 + " saqlandi."
             )
             await self._notify(
@@ -646,14 +656,20 @@ class QueueService:
             by_id = {entry.id: entry for entry in rows}
             first = by_id.get(queue_id)
             second = by_id.get(body.other_queue_id)
-            same_queue = first is not None and second is not None and first.id != second.id and (
-                first.queue_date,
-                first.provider_id,
-                first.catalog_item_id,
-            ) == (
-                second.queue_date,
-                second.provider_id,
-                second.catalog_item_id,
+            same_queue = (
+                first is not None
+                and second is not None
+                and first.id != second.id
+                and (
+                    first.queue_date,
+                    first.provider_id,
+                    first.catalog_item_id,
+                )
+                == (
+                    second.queue_date,
+                    second.provider_id,
+                    second.catalog_item_id,
+                )
             )
             if not same_queue or first is None or second is None:
                 provider_label = (
@@ -723,9 +739,7 @@ class QueueService:
         enforce_schedule: bool,
     ) -> QueueEntry:
         self._validate_date(queue_date)
-        provider = await self._provider_context(
-            session, business, item, provider_id
-        )
+        provider = await self._provider_context(session, business, item, provider_id)
         if enforce_schedule and not self._works_on(provider, queue_date):
             raise ApiError(
                 400,
@@ -747,22 +761,29 @@ class QueueService:
                     "Bu vaqt qabul jadvalida yo'q.",
                 )
             local_now = self._local_now()
-            if enforce_schedule and queue_date == local_now.date() and (
-                _slot_minutes(slot_value) <= local_now.hour * 60 + local_now.minute
+            if (
+                enforce_schedule
+                and queue_date == local_now.date()
+                and (
+                    _slot_minutes(slot_value) <= local_now.hour * 60 + local_now.minute
+                )
             ):
                 raise ApiError(
                     400,
                     "queue_slot_in_past",
                     "Bu vaqt allaqachon o'tib ketgan.",
                 )
-            if customer_account_id is not None and await self._repository.active_customer_duplicate(
-                session,
-                business_account_id=business.account_id,
-                catalog_item_id=item.id,
-                provider_id=provider.id,
-                queue_date=queue_date,
-                customer_account_id=customer_account_id,
-                slot_time=slot_value,
+            if (
+                customer_account_id is not None
+                and await self._repository.active_customer_duplicate(
+                    session,
+                    business_account_id=business.account_id,
+                    catalog_item_id=item.id,
+                    provider_id=provider.id,
+                    queue_date=queue_date,
+                    customer_account_id=customer_account_id,
+                    slot_time=slot_value,
+                )
             ):
                 raise ApiError(
                     400,
@@ -785,14 +806,17 @@ class QueueService:
             queue_no = _slot_minutes(slot_value)
             queue_code = f"{_medical_code(item.name)}-{slot_value.strftime('%H%M')}"
         else:
-            if customer_account_id is not None and await self._repository.active_customer_duplicate(
-                session,
-                business_account_id=business.account_id,
-                catalog_item_id=item.id,
-                provider_id=provider.id,
-                queue_date=queue_date,
-                customer_account_id=customer_account_id,
-                slot_time=None,
+            if (
+                customer_account_id is not None
+                and await self._repository.active_customer_duplicate(
+                    session,
+                    business_account_id=business.account_id,
+                    catalog_item_id=item.id,
+                    provider_id=provider.id,
+                    queue_date=queue_date,
+                    customer_account_id=customer_account_id,
+                    slot_time=None,
+                )
             ):
                 raise ApiError(
                     400,
@@ -911,10 +935,13 @@ class QueueService:
             provider_id=provider_id,
             business_account_id=business.account_id,
         )
-        linked = provider is not None and await self._repository.provider_linked_to_item(
-            session,
-            provider_id=provider.id,
-            catalog_item_id=item.id,
+        linked = (
+            provider is not None
+            and await self._repository.provider_linked_to_item(
+                session,
+                provider_id=provider.id,
+                catalog_item_id=item.id,
+            )
         )
         if provider is None or provider.status != "active" or not linked:
             raise ApiError(
@@ -924,8 +951,7 @@ class QueueService:
             )
         if await self._staff_source_exists(session, business):
             active_staff_ids = {
-                int(row["id"])
-                for row in await self._staff_rows(session, business)
+                int(row["id"]) for row in await self._staff_rows(session, business)
             }
             if provider.legacy_staff_id not in active_staff_ids:
                 raise ApiError(
@@ -1006,10 +1032,12 @@ class QueueService:
         session: AsyncSession,
         business: BusinessProfile,
     ) -> bool:
-        return bool(await self._staff_repository.members(
-            session,
-            business.account_id,
-        ))
+        return bool(
+            await self._staff_repository.members(
+                session,
+                business.account_id,
+            )
+        )
 
     def _provider_read(
         self,

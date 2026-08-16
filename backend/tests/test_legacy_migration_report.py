@@ -72,4 +72,3 @@ def test_report_contains_only_safe_codes_and_counts():
 def test_report_rejects_private_fields(unsafe):
     with pytest.raises(UnsafeReportData, match="unsafe_report_key"):
         render_json(unsafe)
-

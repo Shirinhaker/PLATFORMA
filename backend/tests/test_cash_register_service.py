@@ -71,7 +71,9 @@ class AsyncStore:
             table = value.__table__.name
             highest = self.sequences.get(table)
             if highest is None:
-                highest = int(self.sync.scalar(select(func.max(value.__table__.c.id))) or 0)
+                highest = int(
+                    self.sync.scalar(select(func.max(value.__table__.c.id))) or 0
+                )
             highest += 1
             self.sequences[table] = highest
             value.id = highest
@@ -177,77 +179,79 @@ def cash_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            account(1),
-            account(2),
-            profile(1),
-            profile(2),
-            Debtor(
-                id=501,
-                business_account_id=1,
-                legacy_source_id=41,
-                name="Ali Valiyev",
-                phone="+998901234567",
-                note="",
-                due="",
-                created_by_staff_id=None,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            Debtor(
-                id=502,
-                business_account_id=2,
-                legacy_source_id=42,
-                name="Begona qarzdor",
-                phone="",
-                note="",
-                due="",
-                created_by_staff_id=None,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            catalog(11, 1, "Olma"),
-            catalog(21, 2, "Begona mahsulot"),
-            InventoryItem(
-                id=101,
-                business_account_id=1,
-                catalog_item_id=11,
-                legacy_source_id=11,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("5"),
-                cost_price=100,
-                min_qty=Decimal("1"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            InventoryItem(
-                id=201,
-                business_account_id=2,
-                catalog_item_id=21,
-                legacy_source_id=21,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("9"),
-                cost_price=50,
-                min_qty=Decimal("1"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            StockBatch(
-                id=1001,
-                business_account_id=1,
-                inventory_item_id=101,
-                legacy_source_id=None,
-                qty_in=Decimal("5"),
-                qty_remaining=Decimal("5"),
-                unit_cost=100,
-                source_move_id=None,
-                created_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                account(1),
+                account(2),
+                profile(1),
+                profile(2),
+                Debtor(
+                    id=501,
+                    business_account_id=1,
+                    legacy_source_id=41,
+                    name="Ali Valiyev",
+                    phone="+998901234567",
+                    note="",
+                    due="",
+                    created_by_staff_id=None,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                Debtor(
+                    id=502,
+                    business_account_id=2,
+                    legacy_source_id=42,
+                    name="Begona qarzdor",
+                    phone="",
+                    note="",
+                    due="",
+                    created_by_staff_id=None,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                catalog(11, 1, "Olma"),
+                catalog(21, 2, "Begona mahsulot"),
+                InventoryItem(
+                    id=101,
+                    business_account_id=1,
+                    catalog_item_id=11,
+                    legacy_source_id=11,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("5"),
+                    cost_price=100,
+                    min_qty=Decimal("1"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                InventoryItem(
+                    id=201,
+                    business_account_id=2,
+                    catalog_item_id=21,
+                    legacy_source_id=21,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("9"),
+                    cost_price=50,
+                    min_qty=Decimal("1"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                StockBatch(
+                    id=1001,
+                    business_account_id=1,
+                    inventory_item_id=101,
+                    legacy_source_id=None,
+                    qty_in=Decimal("5"),
+                    qty_remaining=Decimal("5"),
+                    unit_cost=100,
+                    source_move_id=None,
+                    created_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -392,9 +396,11 @@ async def test_business_scope_permissions_dates_and_debt_guard(cash_context):
             actor_staff_id=None,
             actor_name="",
             permissions=None,
-            body=CashReceiptCreate(items=[
-                CashSaleLineCreate(catalog_item_id=21, qty=1, price=100),
-            ]),
+            body=CashReceiptCreate(
+                items=[
+                    CashSaleLineCreate(catalog_item_id=21, qty=1, price=100),
+                ]
+            ),
         )
     assert foreign.value.code == "cash_catalog_item_not_found"
 
@@ -428,9 +434,7 @@ async def test_business_scope_permissions_dates_and_debt_guard(cash_context):
             actor_staff_id=None,
             actor_name="",
             permissions=None,
-            body=receipt_body(pay_type="qarz").model_copy(
-                update={"debtor_id": 502}
-            ),
+            body=receipt_body(pay_type="qarz").model_copy(update={"debtor_id": 502}),
         )
     assert foreign_debtor.value.code == "debt_debtor_required"
 
@@ -442,9 +446,7 @@ async def test_debt_receipt_and_payment_share_atomic_cash_ledger(cash_context):
         actor_staff_id=None,
         actor_name="Rahbar",
         permissions=None,
-        body=receipt_body(pay_type="qarz").model_copy(
-            update={"debtor_id": 501}
-        ),
+        body=receipt_body(pay_type="qarz").model_copy(update={"debtor_id": 501}),
     )
 
     detail = await debts.get_debtor(
@@ -484,11 +486,13 @@ async def test_debt_receipt_and_payment_share_atomic_cash_ledger(cash_context):
         permissions=None,
         receipt_id=payment_receipt.id,
     )
-    assert (await debts.get_debtor(
-        business_account_id=1,
-        permissions=None,
-        debtor_id=501,
-    )).balance == 650
+    assert (
+        await debts.get_debtor(
+            business_account_id=1,
+            permissions=None,
+            debtor_id=501,
+        )
+    ).balance == 650
 
     await service.delete_receipt(
         business_account_id=1,
@@ -496,11 +500,13 @@ async def test_debt_receipt_and_payment_share_atomic_cash_ledger(cash_context):
         permissions=None,
         receipt_id=created.id,
     )
-    assert (await debts.get_debtor(
-        business_account_id=1,
-        permissions=None,
-        debtor_id=501,
-    )).balance == 0
+    assert (
+        await debts.get_debtor(
+            business_account_id=1,
+            permissions=None,
+            debtor_id=501,
+        )
+    ).balance == 0
     with Session(engine) as session:
         assert session.scalar(select(func.count(DebtTransaction.id))) == 0
         assert session.get(InventoryItem, 101).stock_qty == Decimal("5.000")
@@ -514,10 +520,12 @@ async def test_backdated_debt_sale_and_payment_keep_the_selected_day(cash_contex
         actor_staff_id=None,
         actor_name="Rahbar",
         permissions=None,
-        body=receipt_body(pay_type="qarz").model_copy(update={
-            "debtor_id": 501,
-            "sale_date": selected_day,
-        }),
+        body=receipt_body(pay_type="qarz").model_copy(
+            update={
+                "debtor_id": 501,
+                "sale_date": selected_day,
+            }
+        ),
     )
     await debts.add_transaction(
         business_account_id=1,
@@ -641,30 +649,28 @@ async def test_order_posting_is_idempotent_and_debt_payment_is_reversible(
             updated_at=NOW,
         )
         seed.add(order)
-        seed.add(OrderItem(
-            id=401,
-            order_id=301,
-            legacy_source_id=902,
-            catalog_item_id=11,
-            item_name="Olma",
-            price_text="300 so'm",
-            qty=Decimal("2"),
-            unit="dona",
-            line_total=600,
-            note="",
-            kind="product",
-            created_at=NOW,
-        ))
+        seed.add(
+            OrderItem(
+                id=401,
+                order_id=301,
+                legacy_source_id=902,
+                catalog_item_id=11,
+                item_name="Olma",
+                price_text="300 so'm",
+                qty=Decimal("2"),
+                unit="dona",
+                line_total=600,
+                note="",
+                kind="product",
+                created_at=NOW,
+            )
+        )
         seed.commit()
 
     async with sessions() as session:
         order = await session.get(Order, 301)
-        first = await service.post_order(
-            session, order=order, actor_staff_id=None
-        )
-        second = await service.post_order(
-            session, order=order, actor_staff_id=None
-        )
+        first = await service.post_order(session, order=order, actor_staff_id=None)
+        second = await service.post_order(session, order=order, actor_staff_id=None)
         await session.commit()
         assert first is not None and second is not None and first.id == second.id
 
@@ -684,11 +690,13 @@ async def test_order_posting_is_idempotent_and_debt_payment_is_reversible(
         body=CashPaymentUpdate(pay_type="qarz", debtor_id=501),
     )
     assert updated.pay_type == "qarz"
-    assert (await _debts.get_debtor(
-        business_account_id=1,
-        permissions=None,
-        debtor_id=501,
-    )).balance == 600
+    assert (
+        await _debts.get_debtor(
+            business_account_id=1,
+            permissions=None,
+            debtor_id=501,
+        )
+    ).balance == 600
 
     updated = await service.update_order_payment(
         business_account_id=1,
@@ -698,11 +706,13 @@ async def test_order_posting_is_idempotent_and_debt_payment_is_reversible(
         body=CashPaymentUpdate(pay_type="karta"),
     )
     assert updated.pay_type == "karta"
-    assert (await _debts.get_debtor(
-        business_account_id=1,
-        permissions=None,
-        debtor_id=501,
-    )).balance == 0
+    assert (
+        await _debts.get_debtor(
+            business_account_id=1,
+            permissions=None,
+            debtor_id=501,
+        )
+    ).balance == 0
 
 
 async def test_postgresql_receipt_counter_is_atomic():

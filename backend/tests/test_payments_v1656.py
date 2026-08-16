@@ -71,9 +71,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -102,40 +100,42 @@ def payments():
         ),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            Account(
-                id=SHOP,
-                account_type=AccountType.BUSINESS,
-                login="shop",
-                password_hash="hash",
-                telegram_user_id=None,
-                status="active",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            Account(
-                id=ADMIN,
-                account_type=AccountType.BUSINESS,
-                login="admin",
-                password_hash="hash",
-                telegram_user_id=None,
-                status="active",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            PaymentMethod(
-                id=1,
-                method_type="manual_card",
-                name="Bank kartasi",
-                details={},
-                recipient_name="",
-                instructions="",
-                sort_order=0,
-                active=1,
-                created_at=STAMP,
-                updated_at=STAMP,
-            ),
-        ))
+        seed.add_all(
+            (
+                Account(
+                    id=SHOP,
+                    account_type=AccountType.BUSINESS,
+                    login="shop",
+                    password_hash="hash",
+                    telegram_user_id=None,
+                    status="active",
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                Account(
+                    id=ADMIN,
+                    account_type=AccountType.BUSINESS,
+                    login="admin",
+                    password_hash="hash",
+                    telegram_user_id=None,
+                    status="active",
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                PaymentMethod(
+                    id=1,
+                    method_type="manual_card",
+                    name="Bank kartasi",
+                    details={},
+                    recipient_name="",
+                    instructions="",
+                    sort_order=0,
+                    active=1,
+                    created_at=STAMP,
+                    updated_at=STAMP,
+                ),
+            )
+        )
         seed.add_all(
             PlatformPrice(
                 price_code=code,
@@ -353,9 +353,7 @@ async def test_resubmit_supersedes_the_old_receipt(payments):
     again = await service.resubmit(
         account_id=SHOP,
         payment_id=created.id,
-        body=PaymentResubmit(receipt=RECEIPT.model_copy(
-            update={"sha256": "b" * 64}
-        )),
+        body=PaymentResubmit(receipt=RECEIPT.model_copy(update={"sha256": "b" * 64})),
     )
 
     assert again.status == "pending"
@@ -379,9 +377,7 @@ async def test_same_plan_extends_the_existing_subscription(payments):
         decision="approved",
     )
     with Session(engine) as check:
-        first_expiry = check.scalars(
-            select(BusinessSubscription.expires_at)
-        ).one()
+        first_expiry = check.scalars(select(BusinessSubscription.expires_at)).one()
 
     second = await _make_request(service)
     await service.review(
@@ -456,18 +452,20 @@ async def test_expired_subscription_moves_to_history_on_read(payments):
     """Monolit kabi muddati tugagan faol tarif o'qishda tarixga o'tadi."""
     service, engine = payments
     with Session(engine) as seed:
-        seed.add(BusinessSubscription(
-            business_account_id=SHOP,
-            legacy_source_id=None,
-            plan_code="pro",
-            duration_months=1,
-            starts_at=STAMP - 100,
-            expires_at=STAMP,
-            status="active",
-            is_demo=0,
-            payment_request_id=None,
-            created_at=STAMP - 100,
-        ))
+        seed.add(
+            BusinessSubscription(
+                business_account_id=SHOP,
+                legacy_source_id=None,
+                plan_code="pro",
+                duration_months=1,
+                starts_at=STAMP - 100,
+                expires_at=STAMP,
+                status="active",
+                is_demo=0,
+                payment_request_id=None,
+                created_at=STAMP - 100,
+            )
+        )
         seed.commit()
 
     summary = await service.subscription(

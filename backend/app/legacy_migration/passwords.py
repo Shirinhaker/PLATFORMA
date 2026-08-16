@@ -2,9 +2,7 @@ import hashlib
 import hmac
 import re
 
-_LEGACY_PBKDF2 = re.compile(
-    r"(?P<salt>[0-9a-fA-F]{32})\$(?P<digest>[0-9a-fA-F]{64})"
-)
+_LEGACY_PBKDF2 = re.compile(r"(?P<salt>[0-9a-fA-F]{32})\$(?P<digest>[0-9a-fA-F]{64})")
 
 
 def verify_legacy_pbkdf2(encoded: str, raw: str) -> bool:

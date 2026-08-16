@@ -64,24 +64,16 @@ class EducationGroup(Base):
     room_name: Mapped[str] = mapped_column(
         String(80), nullable=False, server_default=""
     )
-    capacity: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="0"
-    )
-    weekdays: Mapped[str] = mapped_column(
-        String(64), nullable=False, server_default=""
-    )
+    capacity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    weekdays: Mapped[str] = mapped_column(String(64), nullable=False, server_default="")
     lesson_from: Mapped[str] = mapped_column(
         String(5), nullable=False, server_default=""
     )
-    lesson_to: Mapped[str] = mapped_column(
-        String(5), nullable=False, server_default=""
-    )
+    lesson_to: Mapped[str] = mapped_column(String(5), nullable=False, server_default="")
     start_date: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=""
     )
-    end_date: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default=""
-    )
+    end_date: Mapped[str] = mapped_column(String(20), nullable=False, server_default="")
     billing_type: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="monthly"
     )
@@ -127,9 +119,7 @@ class EducationStudent(Base):
     full_name: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
-    phone: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=""
-    )
+    phone: Mapped[str] = mapped_column(String(40), nullable=False, server_default="")
     parent_name: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
@@ -219,9 +209,7 @@ class CourseEnrollment(Base):
     customer_name: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
-    phone: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=""
-    )
+    phone: Mapped[str] = mapped_column(String(40), nullable=False, server_default="")
     note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="new"
@@ -290,9 +278,7 @@ class EducationPayment(Base):
     payment_month: Mapped[str] = mapped_column(
         String(7), nullable=False, server_default=""
     )
-    amount: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
+    amount: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     pay_type: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="naqd"
     )
@@ -304,9 +290,7 @@ class EducationPayment(Base):
     )
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     legacy_voided_by: Mapped[int | None] = mapped_column(BigInteger)
-    void_reason: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
+    void_reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -339,9 +323,7 @@ class EducationTeacher(Base):
     full_name: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
-    phone: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=""
-    )
+    phone: Mapped[str] = mapped_column(String(40), nullable=False, server_default="")
     specialty: Mapped[str] = mapped_column(
         String(160), nullable=False, server_default=""
     )
@@ -369,9 +351,7 @@ class EducationTeacher(Base):
 class EducationTeacherPayment(Base):
     __tablename__ = "education_teacher_payments"
     __table_args__ = (
-        CheckConstraint(
-            "amount >= 0", name="ck_education_teacher_payments_amount"
-        ),
+        CheckConstraint("amount >= 0", name="ck_education_teacher_payments_amount"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -390,9 +370,7 @@ class EducationTeacherPayment(Base):
     payment_month: Mapped[str] = mapped_column(
         String(7), nullable=False, server_default=""
     )
-    amount: Mapped[int] = mapped_column(
-        BigInteger, nullable=False, server_default="0"
-    )
+    amount: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
     pay_type: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="naqd"
     )
@@ -462,12 +440,8 @@ Index(
     CourseEnrollment.course_item_id,
     CourseEnrollment.user_account_id,
     unique=True,
-    postgresql_where=text(
-        f"user_account_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"
-    ),
-    sqlite_where=text(
-        f"user_account_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"
-    ),
+    postgresql_where=text(f"user_account_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"),
+    sqlite_where=text(f"user_account_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"),
 )
 Index(
     "uq_course_enrollments_active_legacy_user",
@@ -475,12 +449,8 @@ Index(
     CourseEnrollment.course_item_id,
     CourseEnrollment.legacy_user_id,
     unique=True,
-    postgresql_where=text(
-        f"legacy_user_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"
-    ),
-    sqlite_where=text(
-        f"legacy_user_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"
-    ),
+    postgresql_where=text(f"legacy_user_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"),
+    sqlite_where=text(f"legacy_user_id IS NOT NULL AND {ACTIVE_ENROLLMENT_SQL}"),
 )
 Index(
     "ix_education_attendance_business_date",

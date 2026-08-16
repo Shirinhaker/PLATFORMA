@@ -53,21 +53,23 @@ class FakePublicDiscoveryService:
         self.home_map_district = district
         self.home_map_actor = (account_id, account_type)
         return {
-            "businesses": [{
-                "id": 41,
-                "public_id": "b_public",
-                "name": "Koprik Savdo",
-                "yon": "Savdo",
-                "tur": "Do‘kon",
-                "lat": 37.82,
-                "lng": 67.58,
-                "logo_file": "",
-                "logo_x": 50,
-                "logo_y": 50,
-                "logo_zoom": 1,
-                "address": "Qumqo‘rg‘on",
-                "source": "public",
-            }],
+            "businesses": [
+                {
+                    "id": 41,
+                    "public_id": "b_public",
+                    "name": "Koprik Savdo",
+                    "yon": "Savdo",
+                    "tur": "Do‘kon",
+                    "lat": 37.82,
+                    "lng": 67.58,
+                    "logo_file": "",
+                    "logo_x": 50,
+                    "logo_y": 50,
+                    "logo_zoom": 1,
+                    "address": "Qumqo‘rg‘on",
+                    "source": "public",
+                }
+            ],
             "specialists": [],
         }
 
@@ -155,9 +157,7 @@ def test_public_search_rejects_oversized_pages():
 
 def test_product_search_returns_only_content_capability_fields():
     app = create_app(Settings(environment="test"))
-    app.state.public_discovery_service = FakePublicDiscoveryService(
-        content=True
-    )
+    app.state.public_discovery_service = FakePublicDiscoveryService(content=True)
 
     response = TestClient(app).get(
         "/api/v1/public/search",
@@ -197,10 +197,12 @@ def test_public_home_map_and_district_offers_match_v1656_contract():
 
 
 def test_public_features_expose_server_flags_without_authentication():
-    app = create_app(Settings(
-        environment="test",
-        listings_enabled=True,
-    ))
+    app = create_app(
+        Settings(
+            environment="test",
+            listings_enabled=True,
+        )
+    )
 
     response = TestClient(app).get("/api/v1/public/features")
 
@@ -224,9 +226,7 @@ def test_followed_profiles_require_and_use_the_active_actor():
         session_token="test-session",
     )
 
-    response = TestClient(app).get(
-        "/api/v1/public/home/followed-profiles"
-    )
+    response = TestClient(app).get("/api/v1/public/home/followed-profiles")
 
     assert response.status_code == 200
     assert response.json()[0]["name"] == "Koprik Savdo"
@@ -258,9 +258,7 @@ def test_public_profile_opens_from_its_safe_public_id():
     app.state.public_discovery_service = service
     public_id = "b_0123456789abcdef"
 
-    response = TestClient(app).get(
-        f"/api/v1/public/profiles/business/{public_id}"
-    )
+    response = TestClient(app).get(f"/api/v1/public/profiles/business/{public_id}")
 
     assert response.status_code == 200
     assert response.json()["name"] == "Koprik Savdo"

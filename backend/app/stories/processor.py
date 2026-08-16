@@ -108,8 +108,14 @@ def probe_video_seconds(path: Path) -> float:
     try:
         result = subprocess.run(
             [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=nw=1:nk=1", str(path),
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=nw=1:nk=1",
+                str(path),
             ],
             capture_output=True,
             text=True,
@@ -130,11 +136,27 @@ def transcode_video(source: Path, output: Path, thumbnail: Path) -> None:
     try:
         subprocess.run(
             [
-                "ffmpeg", "-loglevel", "error", "-y", "-i", str(source),
-                "-t", "60", "-vf",
+                "ffmpeg",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(source),
+                "-t",
+                "60",
+                "-vf",
                 "scale=720:-2:force_original_aspect_ratio=decrease",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "27",
-                "-c:a", "aac", "-movflags", "+faststart", str(output),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "27",
+                "-c:a",
+                "aac",
+                "-movflags",
+                "+faststart",
+                str(output),
             ],
             capture_output=True,
             timeout=180,
@@ -142,8 +164,18 @@ def transcode_video(source: Path, output: Path, thumbnail: Path) -> None:
         )
         subprocess.run(
             [
-                "ffmpeg", "-loglevel", "error", "-y", "-ss", "0", "-i",
-                str(output), "-frames:v", "1", "-vf", "scale=480:-2",
+                "ffmpeg",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                "0",
+                "-i",
+                str(output),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=480:-2",
                 str(thumbnail),
             ],
             capture_output=True,
@@ -201,9 +233,7 @@ class StoryMediaProcessor:
             with source.open("rb") as stream:
                 actual_type = sniff_media_type(stream.read(32))
             duration = (
-                probe_video_seconds(source)
-                if actual_type.startswith("video/")
-                else 0.0
+                probe_video_seconds(source) if actual_type.startswith("video/") else 0.0
             )
             validated = validate_story_upload(
                 claimed_type=claimed_type,

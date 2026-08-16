@@ -24,7 +24,20 @@ SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 NowProvider = Callable[[], datetime]
 UZBEKISTAN_TZ = timezone(timedelta(hours=5))
 PERIODS = ("kun", "hafta", "oy", "chorak", "yarim", "yil")
-MONTH_LABELS = ("Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek")
+MONTH_LABELS = (
+    "Yan",
+    "Fev",
+    "Mar",
+    "Apr",
+    "May",
+    "Iyn",
+    "Iyl",
+    "Avg",
+    "Sen",
+    "Okt",
+    "Noy",
+    "Dek",
+)
 WEEKDAY_LABELS = ("Du", "Se", "Cho", "Pa", "Ju", "Sha", "Ya")
 
 
@@ -132,10 +145,14 @@ class StatisticsService:
         sales_count = 0
         for row in payment_sources:
             value = int(row.total or 0)
-            pay_key = row.pay_type if row.pay_type in {"naqd", "karta", "qarz"} else "order"
+            pay_key = (
+                row.pay_type if row.pay_type in {"naqd", "karta", "qarz"} else "order"
+            )
             setattr(pay, pay_key, getattr(pay, pay_key) + value)
-            source_key = "internal" if row.source == "dining" else (
-                "external" if row.source == "order" else "manual"
+            source_key = (
+                "internal"
+                if row.source == "dining"
+                else ("external" if row.source == "order" else "manual")
             )
             source_value = getattr(source_split, source_key)
             source_value.total += value
@@ -175,9 +192,7 @@ class StatisticsService:
                 exp=bucket_expenses[index],
                 cogs=bucket_cogs[index],
                 profit=(
-                    bucket_revenue[index]
-                    - bucket_cogs[index]
-                    - bucket_expenses[index]
+                    bucket_revenue[index] - bucket_cogs[index] - bucket_expenses[index]
                 ),
             )
             for index, bucket in enumerate(window.buckets)
@@ -207,7 +222,8 @@ class StatisticsService:
                     cost_total=int(row.cost_total or 0),
                     margin=(
                         int(row.total or 0) - int(row.cost_total or 0)
-                        if int(row.cost_total or 0) > 0 else None
+                        if int(row.cost_total or 0) > 0
+                        else None
                     ),
                 )
                 for row in product_rows
@@ -238,7 +254,8 @@ class StatisticsService:
                 for row in waiter_rows
             ],
             sales_count=sales_count,
-            can_next=window.end <= _local_start(
+            can_next=window.end
+            <= _local_start(
                 self._now_provider().astimezone(UZBEKISTAN_TZ).date()
             ).astimezone(UTC),
         )
@@ -293,21 +310,25 @@ class StatisticsService:
             local = _local_start(selected)
             for hour in range(24):
                 bucket_start = local + timedelta(hours=hour)
-                buckets.append(PeriodBucket(
-                    start=bucket_start.astimezone(UTC),
-                    end=(bucket_start + timedelta(hours=1)).astimezone(UTC),
-                    label=f"{hour:02d}",
-                ))
+                buckets.append(
+                    PeriodBucket(
+                        start=bucket_start.astimezone(UTC),
+                        end=(bucket_start + timedelta(hours=1)).astimezone(UTC),
+                        label=f"{hour:02d}",
+                    )
+                )
             label = selected.isoformat()
         elif normalized == "hafta":
             week_start = selected - timedelta(days=selected.weekday())
             for index, weekday in enumerate(WEEKDAY_LABELS):
                 bucket_start = _local_start(week_start + timedelta(days=index))
-                buckets.append(PeriodBucket(
-                    start=bucket_start.astimezone(UTC),
-                    end=(bucket_start + timedelta(days=1)).astimezone(UTC),
-                    label=weekday,
-                ))
+                buckets.append(
+                    PeriodBucket(
+                        start=bucket_start.astimezone(UTC),
+                        end=(bucket_start + timedelta(days=1)).astimezone(UTC),
+                        label=weekday,
+                    )
+                )
             label = week_start.strftime("%d.%m") + " hafta"
         else:
             if normalized == "oy":
@@ -316,11 +337,13 @@ class StatisticsService:
                 current = period_start
                 while current < period_end:
                     bucket_start = _local_start(current)
-                    buckets.append(PeriodBucket(
-                        start=bucket_start.astimezone(UTC),
-                        end=(bucket_start + timedelta(days=1)).astimezone(UTC),
-                        label=str(current.day),
-                    ))
+                    buckets.append(
+                        PeriodBucket(
+                            start=bucket_start.astimezone(UTC),
+                            end=(bucket_start + timedelta(days=1)).astimezone(UTC),
+                            label=str(current.day),
+                        )
+                    )
                     current += timedelta(days=1)
                 label = f"{MONTH_LABELS[period_start.month - 1]} {period_start.year}"
             else:
@@ -335,15 +358,21 @@ class StatisticsService:
                 period_end = _add_months(period_start, size)
                 for index in range(size):
                     month_start = _add_months(period_start, index)
-                    buckets.append(PeriodBucket(
-                        start=_local_start(month_start).astimezone(UTC),
-                        end=_local_start(_add_months(month_start, 1)).astimezone(UTC),
-                        label=MONTH_LABELS[month_start.month - 1],
-                    ))
+                    buckets.append(
+                        PeriodBucket(
+                            start=_local_start(month_start).astimezone(UTC),
+                            end=_local_start(_add_months(month_start, 1)).astimezone(
+                                UTC
+                            ),
+                            label=MONTH_LABELS[month_start.month - 1],
+                        )
+                    )
                 if normalized == "chorak":
                     label = f"{(first_month - 1) // 3 + 1}-chorak {selected.year}"
                 elif normalized == "yarim":
-                    label = f"{'1' if first_month == 1 else '2'}-yarim yil {selected.year}"
+                    label = (
+                        f"{'1' if first_month == 1 else '2'}-yarim yil {selected.year}"
+                    )
                 else:
                     label = str(selected.year)
 

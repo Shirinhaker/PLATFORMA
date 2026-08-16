@@ -100,13 +100,9 @@ async def _run_command(args) -> int:
             if args.environment == "production":
                 approval = ProductionApproval(
                     typed_environment=args.confirm_environment or "",
-                    typed_snapshot_sha256=(
-                        args.confirm_snapshot_sha256 or ""
-                    ),
+                    typed_snapshot_sha256=(args.confirm_snapshot_sha256 or ""),
                     maintenance_enabled=args.maintenance_enabled,
-                    approved_staging_run_id=(
-                        args.approved_staging_run_id or 0
-                    ),
+                    approved_staging_run_id=(args.approved_staging_run_id or 0),
                 )
             runner = build_database_runner(
                 database,
@@ -133,9 +129,7 @@ async def _report_command(database: Database, args) -> int:
             raise SystemExit("migration_run_not_found")
         issue_rows = (
             await session.scalars(
-                select(MigrationIssue).where(
-                    MigrationIssue.migration_run_id == run.id
-                )
+                select(MigrationIssue).where(MigrationIssue.migration_run_id == run.id)
             )
         ).all()
     verify_payload = run.counters_json.get("verify") or {
@@ -144,10 +138,7 @@ async def _report_command(database: Database, args) -> int:
     }
     verification = VerificationReport(
         passed=bool(verify_payload.get("passed")),
-        gates=[
-            GateResult(**gate)
-            for gate in verify_payload.get("gates", [])
-        ],
+        gates=[GateResult(**gate) for gate in verify_payload.get("gates", [])],
     )
     if args.command == "verify":
         print(json.dumps(asdict(verification), sort_keys=True))

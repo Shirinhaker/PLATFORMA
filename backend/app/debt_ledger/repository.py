@@ -22,26 +22,37 @@ class DebtLedgerRepository:
         if lock:
             statement = statement.with_for_update()
         return await session.scalar(statement)
+
     async def debtors_with_balances(
         self,
         session: AsyncSession,
         *,
         business_account_id: int,
     ):
-        balance = func.coalesce(func.sum(case(
-            (DebtTransaction.transaction_type == "debt", DebtTransaction.amount),
-            else_=-DebtTransaction.amount,
-        )), 0)
-        return (await session.execute(
-            select(Debtor, balance.label("balance"))
-            .outerjoin(
-                DebtTransaction,
-                DebtTransaction.debtor_id == Debtor.id,
+        balance = func.coalesce(
+            func.sum(
+                case(
+                    (
+                        DebtTransaction.transaction_type == "debt",
+                        DebtTransaction.amount,
+                    ),
+                    else_=-DebtTransaction.amount,
+                )
+            ),
+            0,
+        )
+        return (
+            await session.execute(
+                select(Debtor, balance.label("balance"))
+                .outerjoin(
+                    DebtTransaction,
+                    DebtTransaction.debtor_id == Debtor.id,
+                )
+                .where(Debtor.business_account_id == business_account_id)
+                .group_by(Debtor.id)
+                .order_by(Debtor.created_at.desc(), Debtor.id.desc())
             )
-            .where(Debtor.business_account_id == business_account_id)
-            .group_by(Debtor.id)
-            .order_by(Debtor.created_at.desc(), Debtor.id.desc())
-        )).all()
+        ).all()
 
     async def transactions(
         self,
@@ -50,17 +61,21 @@ class DebtLedgerRepository:
         business_account_id: int,
         debtor_id: int,
     ) -> list[DebtTransaction]:
-        return list((await session.scalars(
-            select(DebtTransaction)
-            .where(
-                DebtTransaction.business_account_id == business_account_id,
-                DebtTransaction.debtor_id == debtor_id,
-            )
-            .order_by(
-                DebtTransaction.transaction_date,
-                DebtTransaction.id,
-            )
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(DebtTransaction)
+                    .where(
+                        DebtTransaction.business_account_id == business_account_id,
+                        DebtTransaction.debtor_id == debtor_id,
+                    )
+                    .order_by(
+                        DebtTransaction.transaction_date,
+                        DebtTransaction.id,
+                    )
+                )
+            ).all()
+        )
 
     async def balance(
         self,
@@ -70,10 +85,20 @@ class DebtLedgerRepository:
         debtor_id: int,
     ) -> int:
         value = await session.scalar(
-            select(func.coalesce(func.sum(case(
-                (DebtTransaction.transaction_type == "debt", DebtTransaction.amount),
-                else_=-DebtTransaction.amount,
-            )), 0)).where(
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                DebtTransaction.transaction_type == "debt",
+                                DebtTransaction.amount,
+                            ),
+                            else_=-DebtTransaction.amount,
+                        )
+                    ),
+                    0,
+                )
+            ).where(
                 DebtTransaction.business_account_id == business_account_id,
                 DebtTransaction.debtor_id == debtor_id,
             )

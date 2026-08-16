@@ -73,7 +73,9 @@ class AsyncStore:
             table = value.__table__.name
             highest = self.sequences.get(table)
             if highest is None:
-                highest = int(self.sync.scalar(select(func.max(value.__table__.c.id))) or 0)
+                highest = int(
+                    self.sync.scalar(select(func.max(value.__table__.c.id))) or 0
+                )
             highest += 1
             self.sequences[table] = highest
             value.id = highest
@@ -155,66 +157,79 @@ def management():
         ),
     )
     with Session(engine) as seed:
-        seed.add_all((_account(BUSINESS_ID), _account(8), _profile(BUSINESS_ID), _profile(8, "Savdo")))
-        seed.add(EducationTeacher(
-            id=1,
-            business_account_id=BUSINESS_ID,
-            legacy_source_id=101,
-            full_name="Aziza Ustoz",
-            phone="",
-            specialty="Ingliz tili",
-            hired_date="2026-07-01",
-            salary_type="monthly",
-            salary_amount=1_000,
-            note="",
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ))
-        seed.add(EducationGroup(
-            id=1,
-            business_account_id=BUSINESS_ID,
-            legacy_source_id=11,
-            course_item_id=51,
-            name="Starter",
-            teacher_id=1,
-            legacy_teacher_id=101,
-            teacher_name="Aziza Ustoz",
-            room_name="A1",
-            capacity=12,
-            weekdays="mon,wed,fri",
-            lesson_from="09:00",
-            lesson_to="10:00",
-            start_date="2026-07-01",
-            end_date="",
-            billing_type="monthly",
-            package_lessons=0,
-            package_price=0,
-            status="active",
-            created_at=1,
-            updated_at=1,
-        ))
-        seed.add(EducationStudent(
-            id=1,
-            business_account_id=BUSINESS_ID,
-            legacy_source_id=21,
-            group_id=1,
-            user_account_id=None,
-            legacy_user_id=None,
-            full_name="Ali Valiyev",
-            phone="+99890",
-            parent_name="",
-            parent_phone="",
-            birth_date="",
-            joined_date="2026-07-10",
-            payment_start_date="2026-07-10",
-            lesson_package_override=0,
-            note="",
-            monthly_fee=500,
-            status="active",
-            created_at=1,
-            updated_at=1,
-        ))
+        seed.add_all(
+            (
+                _account(BUSINESS_ID),
+                _account(8),
+                _profile(BUSINESS_ID),
+                _profile(8, "Savdo"),
+            )
+        )
+        seed.add(
+            EducationTeacher(
+                id=1,
+                business_account_id=BUSINESS_ID,
+                legacy_source_id=101,
+                full_name="Aziza Ustoz",
+                phone="",
+                specialty="Ingliz tili",
+                hired_date="2026-07-01",
+                salary_type="monthly",
+                salary_amount=1_000,
+                note="",
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        seed.add(
+            EducationGroup(
+                id=1,
+                business_account_id=BUSINESS_ID,
+                legacy_source_id=11,
+                course_item_id=51,
+                name="Starter",
+                teacher_id=1,
+                legacy_teacher_id=101,
+                teacher_name="Aziza Ustoz",
+                room_name="A1",
+                capacity=12,
+                weekdays="mon,wed,fri",
+                lesson_from="09:00",
+                lesson_to="10:00",
+                start_date="2026-07-01",
+                end_date="",
+                billing_type="monthly",
+                package_lessons=0,
+                package_price=0,
+                status="active",
+                created_at=1,
+                updated_at=1,
+            )
+        )
+        seed.add(
+            EducationStudent(
+                id=1,
+                business_account_id=BUSINESS_ID,
+                legacy_source_id=21,
+                group_id=1,
+                user_account_id=None,
+                legacy_user_id=None,
+                full_name="Ali Valiyev",
+                phone="+99890",
+                parent_name="",
+                parent_phone="",
+                birth_date="",
+                joined_date="2026-07-10",
+                payment_start_date="2026-07-10",
+                lesson_package_override=0,
+                note="",
+                monthly_fee=500,
+                status="active",
+                created_at=1,
+                updated_at=1,
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -228,7 +243,9 @@ def management():
 
 async def test_schedule_and_attendance_are_relational_and_tenant_scoped(management):
     service, engine = management
-    groups = await service.list_groups(business_account_id=BUSINESS_ID, permissions=None)
+    groups = await service.list_groups(
+        business_account_id=BUSINESS_ID, permissions=None
+    )
     assert [(row.name, row.course_name, row.student_count) for row in groups] == [
         ("Starter", "Ingliz tili", 1)
     ]
@@ -251,7 +268,10 @@ async def test_schedule_and_attendance_are_relational_and_tenant_scoped(manageme
     )
     assert read.students[0].attendance_status == "present"
     with Session(engine) as check:
-        assert check.scalars(select(EducationAttendance)).one().business_account_id == BUSINESS_ID
+        assert (
+            check.scalars(select(EducationAttendance)).one().business_account_id
+            == BUSINESS_ID
+        )
 
 
 async def test_group_student_crud_card_and_transfer_are_typed(management):
@@ -281,7 +301,9 @@ async def test_group_student_crud_card_and_transfer_are_typed(management):
         business_account_id=BUSINESS_ID,
         permissions=None,
     )
-    assert any(row.id == created_student.id and row.group_name == "Starter" for row in students)
+    assert any(
+        row.id == created_student.id and row.group_name == "Starter" for row in students
+    )
 
     moved = await service.transfer_student(
         business_account_id=BUSINESS_ID,
@@ -348,7 +370,11 @@ async def test_student_payment_creates_cash_receipt_and_owner_can_void(managemen
         payment = check.get(EducationPayment, created.id)
         receipt = check.get(CashReceipt, payment.cash_receipt_id)
         line = check.scalars(select(CashReceiptLine)).one()
-        assert (receipt.source, receipt.pay_type, line.total) == ("education", "karta", 500)
+        assert (receipt.source, receipt.pay_type, line.total) == (
+            "education",
+            "karta",
+            500,
+        )
 
     result = await service.void_payment(
         business_account_id=BUSINESS_ID,

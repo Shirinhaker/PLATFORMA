@@ -194,9 +194,7 @@ async def profile_clients():
 
 
 async def test_user_cannot_read_business_profile(profile_clients):
-    response = await profile_clients.first_user.get(
-        "/api/v1/business-profile"
-    )
+    response = await profile_clients.first_user.get("/api/v1/business-profile")
     assert response.status_code == 403
 
 
@@ -218,9 +216,7 @@ async def test_profile_reads_normalize_non_finite_legacy_values(profile_clients)
         "items": [{"price": float("-inf")}],
     }
 
-    user_response = await profile_clients.first_user.get(
-        "/api/v1/user-profile"
-    )
+    user_response = await profile_clients.first_user.get("/api/v1/user-profile")
 
     assert user_response.status_code == 200, user_response.text
     user_body = user_response.json()
@@ -242,9 +238,7 @@ async def test_profile_reads_normalize_non_finite_legacy_values(profile_clients)
     business.work_hours = {"monday": float("nan")}
     business.cabinet_payload = {"sales": [{"total": float("inf")}]}
 
-    business_response = await profile_clients.business.get(
-        "/api/v1/business-profile"
-    )
+    business_response = await profile_clients.business.get("/api/v1/business-profile")
 
     assert business_response.status_code == 200, business_response.text
     business_body = business_response.json()
@@ -258,9 +252,7 @@ async def test_profile_reads_normalize_non_finite_legacy_values(profile_clients)
 
 
 async def test_partial_profile_update_preserves_unsent_fields(profile_clients):
-    before = (
-        await profile_clients.first_user.get("/api/v1/user-profile")
-    ).json()
+    before = (await profile_clients.first_user.get("/api/v1/user-profile")).json()
     response = await profile_clients.first_user.put(
         "/api/v1/user-profile",
         headers={"X-CSRF-Token": profile_clients.first_user.csrf},
@@ -310,9 +302,7 @@ async def test_me_returns_exact_role_specific_identity(profile_clients):
 
 async def test_me_populates_profile_summary_cache(profile_clients):
     response = await profile_clients.first_user.get("/api/v1/me")
-    cached = await profile_clients.redis.get(
-        "profile:me:v1:user:1"
-    )
+    cached = await profile_clients.redis.get("profile:me:v1:user:1")
 
     assert response.status_code == 200
     assert response.json()["name"] == "Ali"
@@ -322,9 +312,7 @@ async def test_me_populates_profile_summary_cache(profile_clients):
 async def test_user_profile_update_invalidates_cached_me(profile_clients):
     before = await profile_clients.first_user.get("/api/v1/me")
     assert before.json()["name"] == "Ali"
-    assert await profile_clients.redis.get(
-        "profile:me:v1:user:1"
-    ) is not None
+    assert await profile_clients.redis.get("profile:me:v1:user:1") is not None
 
     updated = await profile_clients.first_user.put(
         "/api/v1/user-profile",
@@ -377,8 +365,7 @@ async def test_user_avatar_update_invalidates_cached_me(profile_clients):
         headers={"X-CSRF-Token": profile_clients.first_user.csrf},
         json={
             "object_key": (
-                "private/user/1/avatar/"
-                "0123456789abcdef0123456789abcdef.webp"
+                "private/user/1/avatar/0123456789abcdef0123456789abcdef.webp"
             ),
             "x": 50,
             "y": 50,
@@ -409,8 +396,7 @@ async def test_business_logo_update_invalidates_cached_me(profile_clients):
         headers={"X-CSRF-Token": profile_clients.business.csrf},
         json={
             "object_key": (
-                "private/business/3/logo/"
-                "0123456789abcdef0123456789abcdef.webp"
+                "private/business/3/logo/0123456789abcdef0123456789abcdef.webp"
             ),
             "x": 50,
             "y": 50,

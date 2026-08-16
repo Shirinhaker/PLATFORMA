@@ -100,9 +100,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_cors_origins(cls, value: str) -> str:
         origins = [
-            origin.strip().rstrip("/")
-            for origin in value.split(",")
-            if origin.strip()
+            origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()
         ]
 
         for origin in origins:

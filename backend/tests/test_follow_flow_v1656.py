@@ -23,10 +23,10 @@ from app.public_ids import build_profile_public_id
 
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 STAMP = 1785200000
-READER = 70          # obuna bo'luvchi oddiy foydalanuvchi
-AUTHOR = 71          # boshqa oddiy foydalanuvchi
-SHOP = 7             # biznes
-READER_SHOP = 8      # READER ga bog'langan biznes
+READER = 70  # obuna bo'luvchi oddiy foydalanuvchi
+AUTHOR = 71  # boshqa oddiy foydalanuvchi
+SHOP = 7  # biznes
+READER_SHOP = 8  # READER ga bog'langan biznes
 
 
 class FakeNotificationRepository:
@@ -41,11 +41,13 @@ class FakeNotificationRepository:
         account_type: str,
         row: dict[str, object],
     ) -> None:
-        self.rows.append({
-            "account_id": account_id,
-            "account_type": account_type,
-            **row,
-        })
+        self.rows.append(
+            {
+                "account_id": account_id,
+                "account_type": account_type,
+                **row,
+            }
+        )
 
 
 class AsyncStore:
@@ -77,9 +79,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -178,24 +178,28 @@ def follows():
         ),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            _account(READER, AccountType.USER),
-            _account(AUTHOR, AccountType.USER),
-            _account(SHOP, AccountType.BUSINESS),
-            _account(READER_SHOP, AccountType.BUSINESS),
-        ))
+        seed.add_all(
+            (
+                _account(READER, AccountType.USER),
+                _account(AUTHOR, AccountType.USER),
+                _account(SHOP, AccountType.BUSINESS),
+                _account(READER_SHOP, AccountType.BUSINESS),
+            )
+        )
         seed.flush()
-        seed.add_all((
-            _user(READER, "Ali"),
-            _user(AUTHOR, "Vali"),
-            _business(SHOP),
-            _business(READER_SHOP),
-            ProfileLink(
-                user_account_id=READER,
-                business_account_id=READER_SHOP,
-                created_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                _user(READER, "Ali"),
+                _user(AUTHOR, "Vali"),
+                _business(SHOP),
+                _business(READER_SHOP),
+                ProfileLink(
+                    user_account_id=READER,
+                    business_account_id=READER_SHOP,
+                    created_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -204,12 +208,15 @@ def follows():
             yield AsyncStore(sync)
 
     notifications = FakeNotificationRepository()
-    yield FollowService(
-        sessions,
-        now=lambda: STAMP,
-        image_url_provider=lambda key: f"https://cdn.example/{key}" if key else "",
-        notification_repository=notifications,
-    ), engine
+    yield (
+        FollowService(
+            sessions,
+            now=lambda: STAMP,
+            image_url_provider=lambda key: f"https://cdn.example/{key}" if key else "",
+            notification_repository=notifications,
+        ),
+        engine,
+    )
     engine.dispose()
 
 
@@ -378,12 +385,8 @@ async def test_followers_list_contains_user_and_business_profiles(follows):
     assert result.count == 2
     # v1656 avval oddiy, so'ng biznes obunachilarni chiqaradi.
     assert [row.kind for row in result.items] == ["user", "business"]
-    assert result.items[0].public_id == build_profile_public_id(
-        "user", READER
-    )
-    assert result.items[1].public_id == build_profile_public_id(
-        "business", READER_SHOP
-    )
+    assert result.items[0].public_id == build_profile_public_id("user", READER)
+    assert result.items[1].public_id == build_profile_public_id("business", READER_SHOP)
     # Oddiy foydalanuvchining tumani ro'yxat API'siga chiqarilmaydi.
     assert result.items[0].info == "@user70"
 

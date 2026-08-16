@@ -72,9 +72,7 @@ class AsyncStore:
                 continue
             table = value.__table__.name
             if table not in self.sequences:
-                highest = self.sync.scalar(
-                    select(func.max(value.__table__.c.id))
-                )
+                highest = self.sync.scalar(select(func.max(value.__table__.c.id)))
                 self.sequences[table] = int(highest or 0)
             self.sequences[table] += 1
             value.id = self.sequences[table]
@@ -203,41 +201,47 @@ def education(request):
         ),
     )
     payload = {
-        "items": [{
-            "id": LEGACY_COURSE_ID,
-            "name": "Ingliz tili",
-            "kind": "service",
-            "enrollment_status": enrollment_status,
-        }],
+        "items": [
+            {
+                "id": LEGACY_COURSE_ID,
+                "name": "Ingliz tili",
+                "kind": "service",
+                "enrollment_status": enrollment_status,
+            }
+        ],
     }
     with Session(engine) as seed:
-        seed.add_all((
-            _account(BUSINESS_ID, AccountType.BUSINESS),
-            _account(USER_ID, AccountType.USER),
-            _account(LINKED_BUSINESS_ID, AccountType.BUSINESS),
-        ))
+        seed.add_all(
+            (
+                _account(BUSINESS_ID, AccountType.BUSINESS),
+                _account(USER_ID, AccountType.USER),
+                _account(LINKED_BUSINESS_ID, AccountType.BUSINESS),
+            )
+        )
         seed.flush()
-        seed.add_all((
-            _business(BUSINESS_ID, payload),
-            _user(USER_ID),
-            _course(enrollment_status),
-            ProfileLink(
-                user_account_id=USER_ID,
-                business_account_id=LINKED_BUSINESS_ID,
-                created_at=NOW,
-            ),
-            EducationGroup(
-                id=1,
-                business_account_id=BUSINESS_ID,
-                legacy_source_id=11,
-                course_item_id=LEGACY_COURSE_ID,
-                name="Kechki guruh",
-                teacher_id=None,
-                status="active",
-                created_at=STAMP,
-                updated_at=STAMP,
-            ),
-        ))
+        seed.add_all(
+            (
+                _business(BUSINESS_ID, payload),
+                _user(USER_ID),
+                _course(enrollment_status),
+                ProfileLink(
+                    user_account_id=USER_ID,
+                    business_account_id=LINKED_BUSINESS_ID,
+                    created_at=NOW,
+                ),
+                EducationGroup(
+                    id=1,
+                    business_account_id=BUSINESS_ID,
+                    legacy_source_id=11,
+                    course_item_id=LEGACY_COURSE_ID,
+                    name="Kechki guruh",
+                    teacher_id=None,
+                    status="active",
+                    created_at=STAMP,
+                    updated_at=STAMP,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -277,12 +281,14 @@ async def test_enrollment_is_one_insert_without_touching_the_profile(education):
 
     assert created.ok is True
     inserts = [
-        text for text in statements
+        text
+        for text in statements
         if text.lstrip().upper().startswith("INSERT INTO COURSE_ENROLLMENTS")
     ]
     assert len(inserts) == 1
     assert not [
-        text for text in statements
+        text
+        for text in statements
         if "business_profiles" in text and text.lstrip().upper().startswith("UPDATE")
     ]
     with Session(engine) as check:
@@ -457,12 +463,26 @@ async def test_list_rows_keep_the_v1656_field_names(education):
 
     assert rows is not None and len(rows) == 1
     assert set(rows[0]) >= {
-        "id", "business_id", "course_item_id", "user_id", "user_account_id",
-        "user_legacy_id", "customer_name", "phone", "note", "status",
-        "created_at", "updated_at",
+        "id",
+        "business_id",
+        "course_item_id",
+        "user_id",
+        "user_account_id",
+        "user_legacy_id",
+        "customer_name",
+        "phone",
+        "note",
+        "status",
+        "created_at",
+        "updated_at",
     }
     assert rows[0]["status"] == "new"
     assert groups is not None
     assert set(groups[0]) >= {
-        "id", "course_item_id", "name", "status", "created_at", "updated_at",
+        "id",
+        "course_item_id",
+        "name",
+        "status",
+        "created_at",
+        "updated_at",
     }

@@ -124,14 +124,19 @@ def test_target_specificity_requires_location_match():
 
 
 def test_target_specificity_normalizes_legacy_uzbek_location_names():
-    assert target_specificity(
-        [{
-            "region": "Surxondaryo viloyati",
-            "district": "Qumqo'rg'on tumani",
-        }],
-        "Surxondaryo",
-        "Qumqo‘rg‘on",
-    ) == 2
+    assert (
+        target_specificity(
+            [
+                {
+                    "region": "Surxondaryo viloyati",
+                    "district": "Qumqo'rg'on tumani",
+                }
+            ],
+            "Surxondaryo",
+            "Qumqo‘rg‘on",
+        )
+        == 2
+    )
 
 
 class FakeAdvertisementService:
@@ -185,9 +190,7 @@ def test_public_advertisement_views_and_clicks_use_public_ids():
         "/api/v1/public/advertisements/views",
         json={"ids": ["a_0123456789abcdef", "a_fedcba9876543210"]},
     )
-    click = client.post(
-        "/api/v1/public/advertisements/a_0123456789abcdef/click"
-    )
+    click = client.post("/api/v1/public/advertisements/a_0123456789abcdef/click")
 
     assert views.status_code == 204
     assert click.status_code == 204

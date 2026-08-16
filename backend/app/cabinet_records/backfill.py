@@ -60,7 +60,11 @@ async def backfill_all_profiles(
 
     try:
         user_profiles = list(
-            (await session.scalars(select(UserProfile).order_by(UserProfile.account_id))).all()
+            (
+                await session.scalars(
+                    select(UserProfile).order_by(UserProfile.account_id)
+                )
+            ).all()
         )
         business_profiles = list(
             (
@@ -107,7 +111,9 @@ async def backfill_all_profiles(
         source_digest = payload_digest(source_bundle)
         target_digest = payload_digest(target_bundle)
         if source_digest != target_digest:
-            raise NormalizationParityError("cabinet_normalization_global_digest_mismatch")
+            raise NormalizationParityError(
+                "cabinet_normalization_global_digest_mismatch"
+            )
 
         run.status = "verified"
         run.completed_at = datetime.now(UTC)

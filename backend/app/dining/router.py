@@ -310,9 +310,7 @@ async def open_dining_problem(
     )
 
 
-@router.post(
-    "/orders/{order_id}/problem/resolve", response_model=DiningOrderRead
-)
+@router.post("/orders/{order_id}/problem/resolve", response_model=DiningOrderRead)
 async def resolve_dining_problem(
     order_id: OrderId,
     current: CurrentWrite,

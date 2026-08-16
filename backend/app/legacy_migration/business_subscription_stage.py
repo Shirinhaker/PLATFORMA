@@ -124,10 +124,7 @@ async def import_business_subscriptions(
             counters["created"] += 1
             continue
 
-        changed = any(
-            getattr(existing, key) != value
-            for key, value in values.items()
-        )
+        changed = any(getattr(existing, key) != value for key, value in values.items())
         for key, value in values.items():
             setattr(existing, key, value)
         counters["updated" if changed else "reused"] += 1
@@ -150,10 +147,13 @@ async def _payment_request_id(
 
 
 def _table_exists(source: sqlite3.Connection, table: str) -> bool:
-    return source.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    ).fetchone() is not None
+    return (
+        source.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        is not None
+    )
 
 
 def _rows(
@@ -162,10 +162,7 @@ def _rows(
 ) -> list[dict[str, object]]:
     cursor = source.execute(f'SELECT * FROM "{table}" ORDER BY id')
     columns = [item[0] for item in cursor.description or ()]
-    return [
-        dict(zip(columns, values, strict=True))
-        for values in cursor.fetchall()
-    ]
+    return [dict(zip(columns, values, strict=True)) for values in cursor.fetchall()]
 
 
 def _truthy(value: object) -> bool:

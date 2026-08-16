@@ -399,9 +399,7 @@ async def test_mismatched_account_type_is_quarantined(store):
         login="shared_login",
         telegram_user_id=None,
     )
-    source = legacy_source(
-        [{"id": 5, "role": "user", "login": "shared_login"}]
-    )
+    source = legacy_source([{"id": 5, "role": "user", "login": "shared_login"}])
 
     result = await reconcile_accounts(db, source, run)
 
@@ -496,19 +494,11 @@ async def test_taken_user_public_username_does_not_block_account_migration(
     assert linked.target_id != existing.id
     assert migrated.name == "Muhabbat"
     assert migrated.public_username == ""
-    assert (
-        await db.get(UserProfile, existing.id)
-    ).public_username == "Choriyeva73"
+    assert (await db.get(UserProfile, existing.id)).public_username == "Choriyeva73"
     assert "profile.public_username_conflict" in await issue_codes(db)
-    assert (
-        await db.scalar(select(func.count()).select_from(Account))
-    ) == 2
-    assert (
-        await db.scalar(select(func.count()).select_from(UserProfile))
-    ) == 2
-    assert (
-        await db.scalar(select(func.count()).select_from(MigrationIssue))
-    ) == 1
+    assert (await db.scalar(select(func.count()).select_from(Account))) == 2
+    assert (await db.scalar(select(func.count()).select_from(UserProfile))) == 2
+    assert (await db.scalar(select(func.count()).select_from(MigrationIssue))) == 1
 
 
 @pytest.mark.asyncio
@@ -543,9 +533,7 @@ async def test_business_profile_is_linked_to_separate_business_account(store):
     assert profile.direction == "Savdo"
     assert profile.activity_type == "Mebel"
     assert profile.work_hours == {"monday": ["09:00", "18:00"]}
-    assert (
-        await db.scalar(select(func.count()).select_from(Account))
-    ) == 2
+    assert (await db.scalar(select(func.count()).select_from(Account))) == 2
 
 
 @pytest.mark.asyncio
@@ -619,19 +607,11 @@ async def test_taken_business_public_username_does_not_block_migration(
     assert linked.target_id != existing.id
     assert migrated.name == "Yangi Turon"
     assert migrated.public_username == ""
-    assert (
-        await db.get(BusinessProfile, existing.id)
-    ).public_username == "Turon_Savdo"
+    assert (await db.get(BusinessProfile, existing.id)).public_username == "Turon_Savdo"
     assert "profile.public_username_conflict" in await issue_codes(db)
-    assert (
-        await db.scalar(select(func.count()).select_from(Account))
-    ) == 3
-    assert (
-        await db.scalar(select(func.count()).select_from(BusinessProfile))
-    ) == 2
-    assert (
-        await db.scalar(select(func.count()).select_from(MigrationIssue))
-    ) == 1
+    assert (await db.scalar(select(func.count()).select_from(Account))) == 3
+    assert (await db.scalar(select(func.count()).select_from(BusinessProfile))) == 2
+    assert (await db.scalar(select(func.count()).select_from(MigrationIssue))) == 1
 
 
 @pytest.mark.asyncio
@@ -1036,9 +1016,7 @@ async def test_existing_business_account_restores_legacy_credentials(store):
     assert linked.target_id == business_account.id
     assert business_account.login == "b_original"
     assert business_account.password_hash == "original-business-hash"
-    assert (
-        await db.scalar(select(func.count()).select_from(Account))
-    ) == 2
+    assert (await db.scalar(select(func.count()).select_from(Account))) == 2
 
 
 @pytest.mark.asyncio

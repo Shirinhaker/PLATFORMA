@@ -32,17 +32,13 @@ class UserProfile(Base):
     public_id: Mapped[str | None] = mapped_column(String(18))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
-    public_username: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=""
-    )
+    public_username: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     region: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     district: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     mahalla: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
-    location_exact: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    location_exact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     avatar_object_key: Mapped[str] = mapped_column(
         String(1024), nullable=False, default=""
     )
@@ -98,18 +94,10 @@ class BusinessProfile(Base):
     public_id: Mapped[str | None] = mapped_column(String(18))
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     phone: Mapped[str] = mapped_column(String(32), nullable=False, default="")
-    description: Mapped[str] = mapped_column(
-        String(2000), nullable=False, default=""
-    )
-    public_username: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=""
-    )
-    direction: Mapped[str] = mapped_column(
-        String(120), nullable=False, default=""
-    )
-    activity_type: Mapped[str] = mapped_column(
-        String(120), nullable=False, default=""
-    )
+    description: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    public_username: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    direction: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    activity_type: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     address: Mapped[str] = mapped_column(String(300), nullable=False, default="")
     latitude: Mapped[float | None] = mapped_column(Float)
     longitude: Mapped[float | None] = mapped_column(Float)
@@ -117,15 +105,11 @@ class BusinessProfile(Base):
         JSON, nullable=False, default=dict
     )
     pay_card: Mapped[str] = mapped_column(String(64), nullable=False, default="")
-    pay_holder: Mapped[str] = mapped_column(
-        String(160), nullable=False, default=""
-    )
+    pay_holder: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     pay_qr_object_key: Mapped[str] = mapped_column(
         String(1024), nullable=False, default=""
     )
-    director: Mapped[str] = mapped_column(
-        String(160), nullable=False, default=""
-    )
+    director: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     tax_id: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     logo_object_key: Mapped[str] = mapped_column(
         String(1024), nullable=False, default=""

@@ -42,8 +42,12 @@ class DocumentCounterparty(Base):
     bank: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     mfo: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     note: Mapped[str] = mapped_column(String(300), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class BusinessDocument(Base):
@@ -54,8 +58,7 @@ class BusinessDocument(Base):
             name="ck_business_documents_direction",
         ),
         CheckConstraint(
-            "status IN ('', 'yuborilgan', 'kutilmoqda', "
-            "'qabul qilindi', 'rad etildi')",
+            "status IN ('', 'yuborilgan', 'kutilmoqda', 'qabul qilindi', 'rad etildi')",
             name="ck_business_documents_status",
         ),
     )
@@ -84,17 +87,19 @@ class BusinessDocument(Base):
     sender_name_snapshot: Mapped[str] = mapped_column(
         String(120), nullable=False, default=""
     )
-    receiver_tax_id: Mapped[str] = mapped_column(
-        String(20), nullable=False, default=""
-    )
+    receiver_tax_id: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="")
     source_document_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("business_documents.id", ondelete="SET NULL"),
     )
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 Index(

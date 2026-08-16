@@ -176,9 +176,7 @@ class MigrationRunner:
                     else bool(payload.get("passed"))
                 )
                 run.status = (
-                    MigrationStatus.COMPLETED
-                    if passed
-                    else MigrationStatus.FAILED
+                    MigrationStatus.COMPLETED if passed else MigrationStatus.FAILED
                 )
                 run.finished_at = datetime.now(UTC)
                 if idempotency_mode and passed:
@@ -193,13 +191,9 @@ class MigrationRunner:
 
     def _validate_snapshot(self, snapshot: SnapshotInfo) -> None:
         if file_sha256(snapshot.path) != snapshot.database_sha256:
-            raise SnapshotFingerprintError(
-                "snapshot_database_fingerprint_mismatch"
-            )
+            raise SnapshotFingerprintError("snapshot_database_fingerprint_mismatch")
         if file_sha256(snapshot.manifest_path) != snapshot.manifest_sha256:
-            raise SnapshotFingerprintError(
-                "snapshot_manifest_fingerprint_mismatch"
-            )
+            raise SnapshotFingerprintError("snapshot_manifest_fingerprint_mismatch")
 
     async def _validate_production(
         self,
@@ -210,17 +204,11 @@ class MigrationRunner:
         if environment != "production":
             return
         if approval is None:
-            raise ProductionGateError(
-                "production_confirmation_required"
-            )
+            raise ProductionGateError("production_confirmation_required")
         if approval.typed_environment != "production":
-            raise ProductionGateError(
-                "production_environment_confirmation_mismatch"
-            )
+            raise ProductionGateError("production_environment_confirmation_mismatch")
         if approval.typed_snapshot_sha256 != snapshot.database_sha256:
-            raise ProductionGateError(
-                "production_snapshot_confirmation_mismatch"
-            )
+            raise ProductionGateError("production_snapshot_confirmation_mismatch")
         if not approval.maintenance_enabled:
             raise ProductionGateError("production_maintenance_required")
         if self.validate_staging is None:
@@ -238,10 +226,7 @@ class MigrationRunner:
         self,
         run: MigrationRun,
     ) -> tuple[StageDefinition, ...]:
-        if (
-            run.status is MigrationStatus.FAILED
-            and run.stage is MigrationStage.VERIFY
-        ):
+        if run.status is MigrationStatus.FAILED and run.stage is MigrationStage.VERIFY:
             return STAGES[-2:]
         if run.stage is MigrationStage.SNAPSHOT:
             return STAGES
@@ -278,13 +263,10 @@ def build_database_runner(
             existing = await session.scalar(
                 select(MigrationRun)
                 .where(
-                    MigrationRun.source_database_sha256
-                    == snapshot.database_sha256,
-                    MigrationRun.media_manifest_sha256
-                    == snapshot.manifest_sha256,
+                    MigrationRun.source_database_sha256 == snapshot.database_sha256,
+                    MigrationRun.media_manifest_sha256 == snapshot.manifest_sha256,
                     MigrationRun.environment == target_environment,
-                    MigrationRun.schema_version
-                    == MIGRATION_SCHEMA_VERSION,
+                    MigrationRun.schema_version == MIGRATION_SCHEMA_VERSION,
                 )
                 .order_by(MigrationRun.id.desc())
                 .limit(1)
@@ -304,9 +286,7 @@ def build_database_runner(
                 counters_json={},
                 error_count=0,
                 approved_staging_run_id=(
-                    approval.approved_staging_run_id
-                    if approval is not None
-                    else None
+                    approval.approved_staging_run_id if approval is not None else None
                 ),
                 started_at=datetime.now(UTC),
             )

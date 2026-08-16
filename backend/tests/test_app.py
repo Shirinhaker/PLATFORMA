@@ -28,9 +28,7 @@ def test_v1_build_identifies_foundation_without_changing_legacy_build():
 
 def test_cors_allows_only_the_configured_frontend_origin():
     origin = "https://frontend-staging.up.railway.app"
-    app = create_app(
-        Settings(environment="test", cors_origins=origin)
-    )
+    app = create_app(Settings(environment="test", cors_origins=origin))
     client = TestClient(app)
 
     preflight = client.options(

@@ -56,10 +56,12 @@ async def navigate_statistics(
     anchor: Annotated[str, Query(max_length=10)] = "",
     direction: Annotated[int, Query(alias="dir")] = -1,
 ) -> StatisticsNavigationRead:
-    return StatisticsNavigationRead(anchor=await service.navigation(
-        business_account_id=_business_id(current),
-        permissions=_permissions(current),
-        period=period,
-        anchor=anchor,
-        direction=direction,
-    ))
+    return StatisticsNavigationRead(
+        anchor=await service.navigation(
+            business_account_id=_business_id(current),
+            permissions=_permissions(current),
+            period=period,
+            anchor=anchor,
+            direction=direction,
+        )
+    )

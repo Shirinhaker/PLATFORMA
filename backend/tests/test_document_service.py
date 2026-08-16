@@ -98,12 +98,14 @@ def document_context():
         ),
     )
     with Session(engine) as seed:
-        seed.add_all((
-            account(1),
-            account(2),
-            profile(1, "Turon Savdo", "309-111-222"),
-            profile(2, "Olma Savdo", "309 333 444"),
-        ))
+        seed.add_all(
+            (
+                account(1),
+                account(2),
+                profile(1, "Turon Savdo", "309-111-222"),
+                profile(2, "Olma Savdo", "309 333 444"),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -139,10 +141,12 @@ async def test_counterparties_are_owner_mutated_and_business_scoped(
     assert rows.count == 1
     assert rows.counterparties[0].id == created.id
     assert rows.counterparties[0].name == "Olma Savdo MChJ"
-    assert (await service.list_counterparties(
-        business_account_id=2,
-        permissions=None,
-    )).count == 0
+    assert (
+        await service.list_counterparties(
+            business_account_id=2,
+            permissions=None,
+        )
+    ).count == 0
 
     with pytest.raises(ApiError) as staff_mutation:
         await service.create_counterparty(
@@ -230,26 +234,28 @@ async def test_incoming_document_is_read_only_and_send_is_validated(
 ):
     service, engine = document_context
     with Session(engine) as seed:
-        seed.add(BusinessDocument(
-            id=20,
-            business_account_id=1,
-            legacy_source_id=20,
-            direction="kiruvchi",
-            doc_type="Xat",
-            title="",
-            number="1",
-            doc_date="2026-08-10",
-            contractor_id=None,
-            body="O'zgarmas matn",
-            sender_business_id=2,
-            sender_name_snapshot="Olma Savdo",
-            receiver_tax_id="309111222",
-            status="kutilmoqda",
-            source_document_id=None,
-            responded_at=None,
-            created_at=NOW,
-            updated_at=NOW,
-        ))
+        seed.add(
+            BusinessDocument(
+                id=20,
+                business_account_id=1,
+                legacy_source_id=20,
+                direction="kiruvchi",
+                doc_type="Xat",
+                title="",
+                number="1",
+                doc_date="2026-08-10",
+                contractor_id=None,
+                body="O'zgarmas matn",
+                sender_business_id=2,
+                sender_name_snapshot="Olma Savdo",
+                receiver_tax_id="309111222",
+                status="kutilmoqda",
+                source_document_id=None,
+                responded_at=None,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
         seed.commit()
 
     replacement = DocumentWrite(

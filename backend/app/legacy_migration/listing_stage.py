@@ -68,9 +68,7 @@ async def import_listings(
             "visibility": _text(row.get("visibility")) or "all",
             "status": _text(row.get("status")) or "active",
             "review_state": (
-                ReviewState.REVIEW_REQUIRED
-                if issue_codes
-                else ReviewState.READY
+                ReviewState.REVIEW_REQUIRED if issue_codes else ReviewState.READY
             ),
             "migration_run_id": run.id,
             "created_at": created_at,
@@ -116,11 +114,7 @@ async def _import_listing_media(
     for row in rows:
         legacy_id = int(row["id"])
         raw_media_type = _text(row.get("mtype"))
-        media_type = (
-            raw_media_type
-            if raw_media_type in {"photo", "video"}
-            else "photo"
-        )
+        media_type = raw_media_type if raw_media_type in {"photo", "video"} else "photo"
         if raw_media_type not in {"photo", "video"}:
             counters["issues"] += await _ensure_issue(
                 session,

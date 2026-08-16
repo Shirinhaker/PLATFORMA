@@ -81,14 +81,16 @@ def business_profile() -> BusinessProfile:
         recent_activity=[],
         cabinet_payload={
             "items": [{"id": 4, "name": "Eski mahsulot", "price": 10000}],
-            "orders": [{
-                "id": 44,
-                "title": "Muhr",
-                "status": "new",
-                "order_type": "product",
-                "total_amount": 15000,
-                "created_at": 100,
-            }],
+            "orders": [
+                {
+                    "id": 44,
+                    "title": "Muhr",
+                    "status": "new",
+                    "order_type": "product",
+                    "total_amount": 15000,
+                    "created_at": 100,
+                }
+            ],
             "notifications": [{"id": 7, "title": "Yangi", "is_read": 0}],
             "business_reviews": [{"id": 8, "rating": 5, "text": "Yaxshi"}],
             "followers": [{"id": 9, "name": "Vali"}],
@@ -223,16 +225,20 @@ async def test_online_actions_update_dashboard_and_keep_nested_order_data():
 @pytest.mark.asyncio
 async def test_claude_review_online_actions_match_v1656_contracts():
     profile = business_profile()
-    profile.cabinet_payload["subscription_payments"] = [{
-        "id": 5,
-        "status": "rejected",
-        "reason": "Chek xira",
-        "attempts": [],
-    }]
-    profile.cabinet_payload["orders"][0].update({
-        "status": "accepted",
-        "payment_status": "submitted",
-    })
+    profile.cabinet_payload["subscription_payments"] = [
+        {
+            "id": 5,
+            "status": "rejected",
+            "reason": "Chek xira",
+            "attempts": [],
+        }
+    ]
+    profile.cabinet_payload["orders"][0].update(
+        {
+            "status": "accepted",
+            "payment_status": "submitted",
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     payment, _ = await service.apply_action(
@@ -356,18 +362,22 @@ async def test_advertisement_quote_and_create_use_v1656_hourly_tariff():
 @pytest.mark.asyncio
 async def test_push_preferences_are_loaded_and_persisted():
     profile = business_profile()
-    profile.cabinet_payload["push_preferences"] = [{
-        "id": 1,
-        "enabled": 0,
-        "orders_enabled": 0,
-    }]
+    profile.cabinet_payload["push_preferences"] = [
+        {
+            "id": 1,
+            "enabled": 0,
+            "orders_enabled": 0,
+        }
+    ]
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
-    assert await service.read_resource(7, "push_preferences") == [{
-        "id": 1,
-        "enabled": 0,
-        "orders_enabled": 0,
-    }]
+    assert await service.read_resource(7, "push_preferences") == [
+        {
+            "id": 1,
+            "enabled": 0,
+            "orders_enabled": 0,
+        }
+    ]
     preference, _ = await service.apply_action(
         7,
         "notifications",
@@ -408,18 +418,22 @@ async def test_unknown_resource_is_not_exposed():
 async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
     profile = business_profile()
     profile.direction = "Umumiy ovqatlanish"
-    profile.cabinet_payload.update({
-        "items": [{
-            "id": 21,
-            "name": "Tuxum barak",
-            "price": 20000,
-            "unit": "dona",
-            "stock_type": "ready_food",
-        }],
-        "dining_places": [],
-        "dining_orders": [],
-        "notifications": [],
-    })
+    profile.cabinet_payload.update(
+        {
+            "items": [
+                {
+                    "id": 21,
+                    "name": "Tuxum barak",
+                    "price": 20000,
+                    "unit": "dona",
+                    "stock_type": "ready_food",
+                }
+            ],
+            "dining_places": [],
+            "dining_orders": [],
+            "notifications": [],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     place, places = await service.create_record(
@@ -428,8 +442,7 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
         {"kind": "table", "name": "Stol 1", "seats": 4},
     )
     assert {
-        key: place[key]
-        for key in ("id", "kind", "name", "seats", "x", "y", "locked")
+        key: place[key] for key in ("id", "kind", "name", "seats", "x", "y", "locked")
     } == {
         "id": 1,
         "kind": "table",
@@ -477,14 +490,16 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
     orders = profile.cabinet_payload["dining_orders"]
     assert orders[1]["id"] == order_id
     assert orders[1]["waiter_name"] == "Muhr"
-    assert orders[1]["items"] == [{
-        "item_id": 21,
-        "name": "Tuxum barak",
-        "qty": 2.0,
-        "unit": "dona",
-        "price": 20000,
-        "total": 40000,
-    }]
+    assert orders[1]["items"] == [
+        {
+            "item_id": 21,
+            "name": "Tuxum barak",
+            "qty": 2.0,
+            "unit": "dona",
+            "price": 20000,
+            "total": 40000,
+        }
+    ]
     assert places[0]["active_id"] == order_id
 
     updated_order, _ = await service.apply_action(
@@ -510,25 +525,31 @@ async def test_dining_flow_matches_v1656_place_booking_and_order_contract():
 async def test_dining_price_snapshot_matches_v1656_twelve_digit_cap():
     profile = business_profile()
     profile.direction = "Umumiy ovqatlanish"
-    profile.cabinet_payload.update({
-        "items": [{
-            "id": 21,
-            "name": "Etalon narx",
-            "price": "1 234 567 890 123 so'm",
-            "stock_type": "ready_food",
-        }],
-        "dining_places": [{
-            "id": 5,
-            "kind": "table",
-            "name": "Stol 1",
-            "seats": 4,
-            "x": 4,
-            "y": 4,
-            "locked": 1,
-        }],
-        "dining_orders": [],
-        "notifications": [],
-    })
+    profile.cabinet_payload.update(
+        {
+            "items": [
+                {
+                    "id": 21,
+                    "name": "Etalon narx",
+                    "price": "1 234 567 890 123 so'm",
+                    "stock_type": "ready_food",
+                }
+            ],
+            "dining_places": [
+                {
+                    "id": 5,
+                    "kind": "table",
+                    "name": "Stol 1",
+                    "seats": 4,
+                    "x": 4,
+                    "y": 4,
+                    "locked": 1,
+                }
+            ],
+            "dining_orders": [],
+            "notifications": [],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     ordered, _ = await service.apply_action(
@@ -557,27 +578,33 @@ async def test_dining_direction_clear_guard_and_delete_cascade_match_v1656():
     )
 
     profile.direction = "Umumiy ovqatlanish"
-    profile.cabinet_payload.update({
-        "dining_places": [{
-            "id": 5,
-            "kind": "table",
-            "name": "Stol 1",
-            "seats": 4,
-            "x": 4,
-            "y": 4,
-            "locked": 1,
-        }],
-        "dining_orders": [{
-            "id": 41,
-            "place_id": 5,
-            "kind": "order",
-            "status": "active",
-            "kitchen_status": "preparing",
-            "payment_status": "open",
-            "total": 20000,
-            "items": [],
-        }],
-    })
+    profile.cabinet_payload.update(
+        {
+            "dining_places": [
+                {
+                    "id": 5,
+                    "kind": "table",
+                    "name": "Stol 1",
+                    "seats": 4,
+                    "x": 4,
+                    "y": 4,
+                    "locked": 1,
+                }
+            ],
+            "dining_orders": [
+                {
+                    "id": 41,
+                    "place_id": 5,
+                    "kind": "order",
+                    "status": "active",
+                    "kitchen_status": "preparing",
+                    "payment_status": "open",
+                    "total": 20000,
+                    "items": [],
+                }
+            ],
+        }
+    )
 
     with pytest.raises(ApiError) as unfinished:
         await service.apply_action(
@@ -589,14 +616,15 @@ async def test_dining_direction_clear_guard_and_delete_cascade_match_v1656():
         )
     assert unfinished.value.status_code == 409
     assert unfinished.value.message == (
-        "Stolni bo'shatish uchun taom tayyor va to'lov tasdiqlangan "
-        "bo'lishi kerak."
+        "Stolni bo'shatish uchun taom tayyor va to'lov tasdiqlangan bo'lishi kerak."
     )
 
-    profile.cabinet_payload["dining_orders"][0].update({
-        "kitchen_status": "done",
-        "payment_status": "confirmed",
-    })
+    profile.cabinet_payload["dining_orders"][0].update(
+        {
+            "kitchen_status": "done",
+            "payment_status": "confirmed",
+        }
+    )
     cleared, _ = await service.apply_action(
         7,
         "dining_places",
@@ -616,49 +644,53 @@ async def test_dining_direction_clear_guard_and_delete_cascade_match_v1656():
 async def test_medical_provider_create_update_and_safe_setup_match_v1656():
     profile = business_profile()
     profile.direction = "Tibbiy xizmatlar"
-    profile.cabinet_payload.update({
-        "staff": [
-            {
-                "id": 11,
-                "name": "Ali Valiyev",
-                "profession": "Terapevt",
-                "status": "active",
-                "password_hash": "sir",
-            },
-            {
-                "id": 12,
-                "name": "Nofaol",
-                "profession": "Hamshira",
-                "status": "inactive",
-            },
-        ],
-        "items": [
-            {
-                "id": 31,
-                "name": "Qabul",
-                "kind": "service",
-                "queue_enabled": 1,
-            },
-            {
-                "id": 32,
-                "name": "Navbatsiz",
-                "kind": "service",
-                "queue_enabled": 0,
-            },
-        ],
-        "medical_doctors": [],
-        "medical_doctor_services": [],
-        "medical_queue": [],
-        "medical_queue_history": [],
-    })
+    profile.cabinet_payload.update(
+        {
+            "staff": [
+                {
+                    "id": 11,
+                    "name": "Ali Valiyev",
+                    "profession": "Terapevt",
+                    "status": "active",
+                    "password_hash": "sir",
+                },
+                {
+                    "id": 12,
+                    "name": "Nofaol",
+                    "profession": "Hamshira",
+                    "status": "inactive",
+                },
+            ],
+            "items": [
+                {
+                    "id": 31,
+                    "name": "Qabul",
+                    "kind": "service",
+                    "queue_enabled": 1,
+                },
+                {
+                    "id": 32,
+                    "name": "Navbatsiz",
+                    "kind": "service",
+                    "queue_enabled": 0,
+                },
+            ],
+            "medical_doctors": [],
+            "medical_doctor_services": [],
+            "medical_queue": [],
+            "medical_queue_history": [],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
-    assert await service.read_resource(7, "medical_staff") == [{
-        "id": 11,
-        "name": "Ali Valiyev",
-        "profession": "Terapevt",
-        "status": "active",
-    }]
+    assert await service.read_resource(7, "medical_staff") == [
+        {
+            "id": 11,
+            "name": "Ali Valiyev",
+            "profession": "Terapevt",
+            "status": "active",
+        }
+    ]
 
     doctor, rows = await service.create_record(
         7,
@@ -685,13 +717,15 @@ async def test_medical_provider_create_update_and_safe_setup_match_v1656():
     assert doctor["item_ids"] == [31]
     assert doctor["name"] == "Ali Valiyev"
     assert rows == [doctor]
-    assert profile.cabinet_payload["medical_doctor_services"] == [{
-        "business_id": 7,
-        "staff_id": 11,
-        "item_id": 31,
-        "active": 1,
-        "duration_minutes": 20,
-    }]
+    assert profile.cabinet_payload["medical_doctor_services"] == [
+        {
+            "business_id": 7,
+            "staff_id": 11,
+            "item_id": 31,
+            "active": 1,
+            "duration_minutes": 20,
+        }
+    ]
 
     updated, rows = await service.patch_record(
         7,
@@ -708,9 +742,9 @@ async def test_medical_provider_create_update_and_safe_setup_match_v1656():
     assert updated["room"] == "15-xona"
     assert updated["avg_minutes"] == 30
     assert rows[0]["item_ids"] == [31]
-    assert profile.cabinet_payload["medical_doctor_services"][0][
-        "duration_minutes"
-    ] == 30
+    assert (
+        profile.cabinet_payload["medical_doctor_services"][0]["duration_minutes"] == 30
+    )
 
     with pytest.raises(ApiError) as invalid_item:
         await service.patch_record(
@@ -726,44 +760,46 @@ async def test_medical_provider_create_update_and_safe_setup_match_v1656():
 async def test_medical_lists_keep_the_v1656_database_order():
     profile = business_profile()
     profile.direction = "Tibbiy xizmatlar"
-    profile.cabinet_payload.update({
-        "staff": [
-            {"id": 12, "name": "Zafar", "status": "active"},
-            {"id": 11, "name": "Ali", "status": "active"},
-        ],
-        "items": [
-            {"id": 32, "name": "UZI", "kind": "service", "queue_enabled": 1},
-            {"id": 31, "name": "Qabul", "kind": "service", "queue_enabled": 1},
-        ],
-        "medical_doctors": [
-            {"id": 2, "staff_id": 12, "status": "inactive"},
-            {"id": 1, "staff_id": 11, "status": "active"},
-        ],
-        "medical_doctor_services": [],
-        "medical_queue": [
-            {
-                "id": 43,
-                "staff_id": 12,
-                "item_id": 32,
-                "queue_no": 1,
-                "queue_date": TODAY,
-            },
-            {
-                "id": 42,
-                "staff_id": 11,
-                "item_id": 31,
-                "queue_no": 2,
-                "queue_date": TODAY,
-            },
-            {
-                "id": 41,
-                "staff_id": 11,
-                "item_id": 31,
-                "queue_no": 1,
-                "queue_date": TODAY,
-            },
-        ],
-    })
+    profile.cabinet_payload.update(
+        {
+            "staff": [
+                {"id": 12, "name": "Zafar", "status": "active"},
+                {"id": 11, "name": "Ali", "status": "active"},
+            ],
+            "items": [
+                {"id": 32, "name": "UZI", "kind": "service", "queue_enabled": 1},
+                {"id": 31, "name": "Qabul", "kind": "service", "queue_enabled": 1},
+            ],
+            "medical_doctors": [
+                {"id": 2, "staff_id": 12, "status": "inactive"},
+                {"id": 1, "staff_id": 11, "status": "active"},
+            ],
+            "medical_doctor_services": [],
+            "medical_queue": [
+                {
+                    "id": 43,
+                    "staff_id": 12,
+                    "item_id": 32,
+                    "queue_no": 1,
+                    "queue_date": TODAY,
+                },
+                {
+                    "id": 42,
+                    "staff_id": 11,
+                    "item_id": 31,
+                    "queue_no": 2,
+                    "queue_date": TODAY,
+                },
+                {
+                    "id": 41,
+                    "staff_id": 11,
+                    "item_id": 31,
+                    "queue_no": 1,
+                    "queue_date": TODAY,
+                },
+            ],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     staff = await service.read_resource(7, "medical_staff")
@@ -809,66 +845,76 @@ async def test_medical_direction_guard_matches_all_fourteen_v1656_directions():
 async def test_medical_offline_status_notifications_and_swap_match_v1656():
     profile = business_profile()
     profile.direction = "Tibbiy xizmatlar"
-    profile.cabinet_payload.update({
-        "staff": [{
-            "id": 11,
-            "name": "Ali Valiyev",
-            "profession": "Terapevt",
-            "status": "active",
-        }],
-        "items": [{
-            "id": 31,
-            "name": "Qabul",
-            "kind": "service",
-            "queue_enabled": 1,
-        }],
-        "medical_doctors": [{
-            "id": 5,
-            "staff_id": 11,
-            "status": "active",
-            "mode": "live",
-            "work_days": "1,2,3,4,5,6",
-            "work_start": "08:00",
-            "work_end": "17:00",
-            "avg_minutes": 20,
-        }],
-        "medical_doctor_services": [{
-            "business_id": 7,
-            "staff_id": 11,
-            "item_id": 31,
-            "active": 1,
-            "duration_minutes": 20,
-        }],
-        "medical_queue": [
-            {
-                "id": 41,
-                "item_id": 31,
-                "staff_id": 11,
-                "user_id": 70,
-                "patient_name": "Vali",
-                "queue_date": TODAY,
-                "queue_no": 1,
-                "queue_code": "QAB-001",
-                "source": "online",
-                "status": "waiting",
-                "slot_time": "",
-            },
-            {
-                "id": 42,
-                "item_id": 31,
-                "staff_id": 11,
-                "user_id": 71,
-                "patient_name": "Hasan",
-                "queue_date": TODAY,
-                "queue_no": 2,
-                "queue_code": "QAB-002",
-                "source": "online",
-                "status": "waiting",
-                "slot_time": "",
-            },
-        ],
-        "medical_queue_history": [],
-    })
+    profile.cabinet_payload.update(
+        {
+            "staff": [
+                {
+                    "id": 11,
+                    "name": "Ali Valiyev",
+                    "profession": "Terapevt",
+                    "status": "active",
+                }
+            ],
+            "items": [
+                {
+                    "id": 31,
+                    "name": "Qabul",
+                    "kind": "service",
+                    "queue_enabled": 1,
+                }
+            ],
+            "medical_doctors": [
+                {
+                    "id": 5,
+                    "staff_id": 11,
+                    "status": "active",
+                    "mode": "live",
+                    "work_days": "1,2,3,4,5,6",
+                    "work_start": "08:00",
+                    "work_end": "17:00",
+                    "avg_minutes": 20,
+                }
+            ],
+            "medical_doctor_services": [
+                {
+                    "business_id": 7,
+                    "staff_id": 11,
+                    "item_id": 31,
+                    "active": 1,
+                    "duration_minutes": 20,
+                }
+            ],
+            "medical_queue": [
+                {
+                    "id": 41,
+                    "item_id": 31,
+                    "staff_id": 11,
+                    "user_id": 70,
+                    "patient_name": "Vali",
+                    "queue_date": TODAY,
+                    "queue_no": 1,
+                    "queue_code": "QAB-001",
+                    "source": "online",
+                    "status": "waiting",
+                    "slot_time": "",
+                },
+                {
+                    "id": 42,
+                    "item_id": 31,
+                    "staff_id": 11,
+                    "user_id": 71,
+                    "patient_name": "Hasan",
+                    "queue_date": TODAY,
+                    "queue_no": 2,
+                    "queue_code": "QAB-002",
+                    "source": "online",
+                    "status": "waiting",
+                    "slot_time": "",
+                },
+            ],
+            "medical_queue_history": [],
+        }
+    )
     users = {
         70: user_profile(70, "Vali"),
         71: user_profile(71, "Hasan"),
@@ -961,22 +1007,39 @@ async def test_medical_offline_status_notifications_and_swap_match_v1656():
 @pytest.mark.asyncio
 async def test_education_enrollments_are_guarded_enriched_and_sorted_like_v1656():
     profile = business_profile()
-    profile.cabinet_payload.update({
-        "items": [
-            {"id": 51, "name": "Ingliz tili"},
-            {"id": 52, "name": "Matematika"},
-        ],
-        "education_groups": [
-            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
-            {"id": 62, "name": "O'chirilgan", "course_item_id": 51, "status": "deleted"},
-        ],
-        "education_students": [],
-        "education_enrollments": [
-            {"id": 72, "course_item_id": 52, "status": "accepted", "group_id": None},
-            {"id": 71, "course_item_id": 51, "status": "new", "group_id": 61},
-            {"id": 73, "course_item_id": 51, "status": "new", "group_id": None},
-        ],
-    })
+    profile.cabinet_payload.update(
+        {
+            "items": [
+                {"id": 51, "name": "Ingliz tili"},
+                {"id": 52, "name": "Matematika"},
+            ],
+            "education_groups": [
+                {
+                    "id": 61,
+                    "name": "English A1",
+                    "course_item_id": 51,
+                    "status": "active",
+                },
+                {
+                    "id": 62,
+                    "name": "O'chirilgan",
+                    "course_item_id": 51,
+                    "status": "deleted",
+                },
+            ],
+            "education_students": [],
+            "education_enrollments": [
+                {
+                    "id": 72,
+                    "course_item_id": 52,
+                    "status": "accepted",
+                    "group_id": None,
+                },
+                {"id": 71, "course_item_id": 51, "status": "new", "group_id": 61},
+                {"id": 73, "course_item_id": 51, "status": "new", "group_id": None},
+            ],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     with pytest.raises(ApiError) as forbidden:
@@ -1001,34 +1064,46 @@ async def test_education_enrollments_are_guarded_enriched_and_sorted_like_v1656(
 async def test_education_enrollment_accept_and_reject_match_v1656_student_flow():
     profile = business_profile()
     profile.direction = "Ta'lim faoliyati"
-    profile.cabinet_payload.update({
-        "items": [{"id": 51, "name": "Ingliz tili"}],
-        "education_groups": [
-            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
-            {"id": 62, "name": "Boshqa kurs", "course_item_id": 52, "status": "active"},
-        ],
-        "education_students": [],
-        "education_enrollments": [
-            {
-                "id": 71,
-                "course_item_id": 51,
-                "user_id": 70,
-                "customer_name": "Ali Valiyev",
-                "phone": "+998901234567",
-                "note": "Kechki guruh",
-                "status": "new",
-            },
-            {
-                "id": 72,
-                "course_item_id": 51,
-                "user_id": 71,
-                "customer_name": "Vali",
-                "phone": "+998909876543",
-                "note": "",
-                "status": "new",
-            },
-        ],
-    })
+    profile.cabinet_payload.update(
+        {
+            "items": [{"id": 51, "name": "Ingliz tili"}],
+            "education_groups": [
+                {
+                    "id": 61,
+                    "name": "English A1",
+                    "course_item_id": 51,
+                    "status": "active",
+                },
+                {
+                    "id": 62,
+                    "name": "Boshqa kurs",
+                    "course_item_id": 52,
+                    "status": "active",
+                },
+            ],
+            "education_students": [],
+            "education_enrollments": [
+                {
+                    "id": 71,
+                    "course_item_id": 51,
+                    "user_id": 70,
+                    "customer_name": "Ali Valiyev",
+                    "phone": "+998901234567",
+                    "note": "Kechki guruh",
+                    "status": "new",
+                },
+                {
+                    "id": 72,
+                    "course_item_id": 51,
+                    "user_id": 71,
+                    "customer_name": "Vali",
+                    "phone": "+998909876543",
+                    "note": "",
+                    "status": "new",
+                },
+            ],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     with pytest.raises(ApiError) as mismatch:
@@ -1088,31 +1163,42 @@ async def test_education_enrollment_accept_and_reject_match_v1656_student_flow()
 async def test_education_accept_does_not_confuse_new_account_with_legacy_user_id():
     profile = business_profile()
     profile.direction = "Ta'lim faoliyati"
-    profile.cabinet_payload.update({
-        "items": [{"id": 51, "name": "Ingliz tili"}],
-        "education_groups": [
-            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
-        ],
-        "education_students": [{
-            "id": 81,
-            "group_id": 61,
-            "user_id": 700,
-            "full_name": "Eski o'quvchi",
-            "phone": "+998900000001",
-            "status": "active",
-        }],
-        "education_enrollments": [{
-            "id": 71,
-            "course_item_id": 51,
-            "user_id": 700,
-            "user_account_id": 700,
-            "user_legacy_id": 0,
-            "customer_name": "Yangi o'quvchi",
-            "phone": "+998900000002",
-            "note": "",
-            "status": "new",
-        }],
-    })
+    profile.cabinet_payload.update(
+        {
+            "items": [{"id": 51, "name": "Ingliz tili"}],
+            "education_groups": [
+                {
+                    "id": 61,
+                    "name": "English A1",
+                    "course_item_id": 51,
+                    "status": "active",
+                },
+            ],
+            "education_students": [
+                {
+                    "id": 81,
+                    "group_id": 61,
+                    "user_id": 700,
+                    "full_name": "Eski o'quvchi",
+                    "phone": "+998900000001",
+                    "status": "active",
+                }
+            ],
+            "education_enrollments": [
+                {
+                    "id": 71,
+                    "course_item_id": 51,
+                    "user_id": 700,
+                    "user_account_id": 700,
+                    "user_legacy_id": 0,
+                    "customer_name": "Yangi o'quvchi",
+                    "phone": "+998900000002",
+                    "note": "",
+                    "status": "new",
+                }
+            ],
+        }
+    )
     service = BusinessOnlineService(FakeDatabase(profile).session)
 
     accepted, _rows = await service.apply_action(

@@ -29,9 +29,7 @@ def test_nested_cabinet_records_round_trip_without_json_blob() -> None:
                 {"id": 1, "name": "Non", "qty": 2, "price": 5000},
                 {"id": 2, "name": "Choy", "qty": 1, "price": 5000},
             ],
-            "messages": [
-                {"id": 8, "text": "Assalomu alaykum", "sender_kind": "user"}
-            ],
+            "messages": [{"id": 8, "text": "Assalomu alaykum", "sender_kind": "user"}],
         }
     ]
 
@@ -140,4 +138,6 @@ def test_digest_is_stable_for_key_order_but_not_data_changes() -> None:
 
     assert payload_digest(first) == payload_digest(reordered)
     assert payload_digest(first) != payload_digest(changed)
-    assert payload_digest(first) == hashlib.sha256(canonical(first).encode()).hexdigest()
+    assert (
+        payload_digest(first) == hashlib.sha256(canonical(first).encode()).hexdigest()
+    )

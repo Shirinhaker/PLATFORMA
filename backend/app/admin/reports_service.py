@@ -78,13 +78,9 @@ class AdminReportsService:
     ) -> dict[str, Any]:
         """Foydalanuvchi shikoyati — admin sessiyasi talab qilinmaydi."""
         if content_kind not in CONTENT_KINDS:
-            raise ApiError(
-                400, "admin_content_kind_invalid", "Kontent turi noto‘g‘ri."
-            )
+            raise ApiError(400, "admin_content_kind_invalid", "Kontent turi noto‘g‘ri.")
         if reason_code not in REPORT_REASONS:
-            raise ApiError(
-                400, "report_reason_invalid", "Shikoyat sababi noto‘g‘ri."
-            )
+            raise ApiError(400, "report_reason_invalid", "Shikoyat sababi noto‘g‘ri.")
         now = self._now()
         async with self._session_factory() as session:
             # Bir foydalanuvchi bitta kontentga takror shikoyat yozmaydi.
@@ -120,9 +116,7 @@ class AdminReportsService:
         self, *, status: str = "", limit: int = 100
     ) -> list[dict[str, Any]]:
         if status and status not in REPORT_STATUSES:
-            raise ApiError(
-                400, "report_status_invalid", "Shikoyat holati noto‘g‘ri."
-            )
+            raise ApiError(400, "report_status_invalid", "Shikoyat holati noto‘g‘ri.")
         statement = select(ModerationReport)
         if status:
             statement = statement.where(ModerationReport.status == status)
@@ -139,9 +133,7 @@ class AdminReportsService:
         async with self._session_factory() as session:
             report = await session.get(ModerationReport, report_id)
             if report is None:
-                raise ApiError(
-                    404, "report_not_found", "Shikoyat topilmadi."
-                )
+                raise ApiError(404, "report_not_found", "Shikoyat topilmadi.")
             result = _report_row(report)
             await session.rollback()
         return result
@@ -188,14 +180,10 @@ class AdminReportsService:
         meta: dict[str, str] | None,
     ) -> dict[str, Any]:
         if decision not in {"resolved", "dismissed"}:
-            raise ApiError(
-                400, "report_decision_invalid", "Qaror turi noto‘g‘ri."
-            )
+            raise ApiError(400, "report_decision_invalid", "Qaror turi noto‘g‘ri.")
         resolution = resolution.strip()
         if not resolution:
-            raise ApiError(
-                400, "admin_reason_required", "Sabab kiritilishi shart."
-            )
+            raise ApiError(400, "admin_reason_required", "Sabab kiritilishi shart.")
         now = self._now()
         async with self._session_factory() as session:
             report = await self._lock(session, report_id)
@@ -239,9 +227,7 @@ class AdminReportsService:
         if action:
             statement = statement.where(AdminAuditLog.action == action)
         if admin_tg_id:
-            statement = statement.where(
-                AdminAuditLog.admin_tg_id == admin_tg_id
-            )
+            statement = statement.where(AdminAuditLog.admin_tg_id == admin_tg_id)
         statement = statement.order_by(
             AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc()
         ).limit(max(1, min(500, limit)))
@@ -264,20 +250,29 @@ class AdminReportsService:
         rows = await self.list_audit(action=action, limit=limit)
         buffer = io.StringIO()
         writer = csv.writer(buffer)
-        writer.writerow([
-            "id", "created_at", "admin_tg_id", "action",
-            "target_kind", "target_id", "reason",
-        ])
+        writer.writerow(
+            [
+                "id",
+                "created_at",
+                "admin_tg_id",
+                "action",
+                "target_kind",
+                "target_id",
+                "reason",
+            ]
+        )
         for row in rows:
-            writer.writerow([
-                row["id"],
-                datetime.fromtimestamp(row["created_at"], UTC).isoformat(),
-                row["admin_tg_id"],
-                row["action"],
-                row["target_kind"],
-                row["target_id"],
-                row["reason"],
-            ])
+            writer.writerow(
+                [
+                    row["id"],
+                    datetime.fromtimestamp(row["created_at"], UTC).isoformat(),
+                    row["admin_tg_id"],
+                    row["action"],
+                    row["target_kind"],
+                    row["target_id"],
+                    row["reason"],
+                ]
+            )
         return buffer.getvalue()
 
     # ------------------------------------------------------------ yordamchi
@@ -302,9 +297,7 @@ class AdminReportsService:
         return result
 
     @staticmethod
-    async def _lock(
-        session: AsyncSession, report_id: int
-    ) -> ModerationReport:
+    async def _lock(session: AsyncSession, report_id: int) -> ModerationReport:
         report = await session.scalar(
             select(ModerationReport)
             .where(ModerationReport.id == report_id)

@@ -122,16 +122,24 @@ class PaymentService:
 
     async def catalog(self) -> PaymentCatalogRead:
         async with self._session_factory() as session:
-            prices = list((await session.scalars(
-                select(PlatformPrice)
-                .where(PlatformPrice.active == 1)
-                .order_by(PlatformPrice.service_type, PlatformPrice.amount_uzs)
-            )).all())
-            methods = list((await session.scalars(
-                select(PaymentMethod)
-                .where(PaymentMethod.active == 1)
-                .order_by(PaymentMethod.sort_order, PaymentMethod.id)
-            )).all())
+            prices = list(
+                (
+                    await session.scalars(
+                        select(PlatformPrice)
+                        .where(PlatformPrice.active == 1)
+                        .order_by(PlatformPrice.service_type, PlatformPrice.amount_uzs)
+                    )
+                ).all()
+            )
+            methods = list(
+                (
+                    await session.scalars(
+                        select(PaymentMethod)
+                        .where(PaymentMethod.active == 1)
+                        .order_by(PaymentMethod.sort_order, PaymentMethod.id)
+                    )
+                ).all()
+            )
             response = PaymentCatalogRead(
                 prices=[
                     PaymentPriceRead(
@@ -193,11 +201,9 @@ class PaymentService:
             config = price.config or {}
             if body.service_type == "subscription":
                 # v1656: tarif parametrlari kod bilan mos kelishi shart.
-                if (
-                    body.plan_code != str(config.get("plan_code") or "")
-                    or body.duration_months
-                    != int(config.get("duration_months") or 0)
-                ):
+                if body.plan_code != str(
+                    config.get("plan_code") or ""
+                ) or body.duration_months != int(config.get("duration_months") or 0):
                     raise ApiError(
                         400,
                         "payment_price_mismatch",
@@ -275,28 +281,37 @@ class PaymentService:
         account_id: int,
     ) -> list[PaymentRequestRead]:
         async with self._session_factory() as session:
-            requests = list((await session.scalars(
-                select(PaymentRequest)
-                .where(PaymentRequest.account_id == account_id)
-                .order_by(PaymentRequest.created_at.desc(), PaymentRequest.id.desc())
-                .limit(200)
-            )).all())
+            requests = list(
+                (
+                    await session.scalars(
+                        select(PaymentRequest)
+                        .where(PaymentRequest.account_id == account_id)
+                        .order_by(
+                            PaymentRequest.created_at.desc(), PaymentRequest.id.desc()
+                        )
+                        .limit(200)
+                    )
+                ).all()
+            )
             attempts: dict[int, list[PaymentAttempt]] = {}
             if requests:
-                rows = list((await session.scalars(
-                    select(PaymentAttempt)
-                    .where(
-                        PaymentAttempt.payment_request_id.in_(
-                            [request.id for request in requests]
+                rows = list(
+                    (
+                        await session.scalars(
+                            select(PaymentAttempt)
+                            .where(
+                                PaymentAttempt.payment_request_id.in_(
+                                    [request.id for request in requests]
+                                )
+                            )
+                            .order_by(PaymentAttempt.attempt_no)
                         )
-                    )
-                    .order_by(PaymentAttempt.attempt_no)
-                )).all())
+                    ).all()
+                )
                 for row in rows:
                     attempts.setdefault(row.payment_request_id, []).append(row)
             response = [
-                _row(request, attempts.get(request.id, []))
-                for request in requests
+                _row(request, attempts.get(request.id, [])) for request in requests
             ]
             await session.rollback()
             return response
@@ -326,11 +341,15 @@ class PaymentService:
                 )
                 .values(status="expired")
             )
-            rows = list((await session.scalars(
-                select(BusinessSubscription)
-                .where(BusinessSubscription.business_account_id == account_id)
-                .order_by(BusinessSubscription.id.desc())
-            )).all())
+            rows = list(
+                (
+                    await session.scalars(
+                        select(BusinessSubscription)
+                        .where(BusinessSubscription.business_account_id == account_id)
+                        .order_by(BusinessSubscription.id.desc())
+                    )
+                ).all()
+            )
             current = next((row for row in rows if row.status == "active"), None)
             response = BusinessSubscriptionSummary(
                 current=(
@@ -339,9 +358,7 @@ class PaymentService:
                     else _virtual_free_subscription()
                 ),
                 history=[
-                    _subscription_row(row)
-                    for row in rows
-                    if row.status != "active"
+                    _subscription_row(row) for row in rows if row.status != "active"
                 ],
             )
             if expired.rowcount:
@@ -421,9 +438,7 @@ class PaymentService:
         """
         reason = reason.strip()
         if decision not in {"approved", "rejected", "cancelled"}:
-            raise ApiError(
-                400, "payment_decision_invalid", "Qaror turi noto‘g‘ri."
-            )
+            raise ApiError(400, "payment_decision_invalid", "Qaror turi noto‘g‘ri.")
         if decision in {"rejected", "cancelled"} and not reason:
             raise ApiError(
                 400,
@@ -553,24 +568,25 @@ class PaymentService:
             await session.execute(
                 BusinessSubscription.__table__.update()
                 .where(
-                    BusinessSubscription.business_account_id
-                    == request.account_id,
+                    BusinessSubscription.business_account_id == request.account_id,
                     BusinessSubscription.status == "active",
                 )
                 .values(status="superseded")
             )
-        session.add(BusinessSubscription(
-            business_account_id=request.account_id,
-            legacy_source_id=None,
-            plan_code=request.plan_code,
-            duration_months=request.duration_months,
-            starts_at=now,
-            expires_at=_add_months(base, request.duration_months),
-            status="active",
-            is_demo=0,
-            payment_request_id=request.id,
-            created_at=now,
-        ))
+        session.add(
+            BusinessSubscription(
+                business_account_id=request.account_id,
+                legacy_source_id=None,
+                plan_code=request.plan_code,
+                duration_months=request.duration_months,
+                starts_at=now,
+                expires_at=_add_months(base, request.duration_months),
+                status="active",
+                is_demo=0,
+                payment_request_id=request.id,
+                created_at=now,
+            )
+        )
 
     async def _owned(
         self,
@@ -596,11 +612,15 @@ class PaymentService:
         session: AsyncSession,
         payment_id: int,
     ) -> list[PaymentAttempt]:
-        return list((await session.scalars(
-            select(PaymentAttempt)
-            .where(PaymentAttempt.payment_request_id == payment_id)
-            .order_by(PaymentAttempt.attempt_no)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(PaymentAttempt)
+                    .where(PaymentAttempt.payment_request_id == payment_id)
+                    .order_by(PaymentAttempt.attempt_no)
+                )
+            ).all()
+        )
 
     @staticmethod
     def _add_attempt(
@@ -611,16 +631,18 @@ class PaymentService:
         attempt_no: int,
         now: int,
     ) -> None:
-        session.add(PaymentAttempt(
-            payment_request_id=request.id,
-            attempt_no=attempt_no,
-            receipt_object_key=receipt.object_key,
-            receipt_filename=receipt.filename,
-            receipt_mime=receipt.mime,
-            receipt_sha256=receipt.sha256,
-            submitted_at=now,
-            review_status="pending",
-        ))
+        session.add(
+            PaymentAttempt(
+                payment_request_id=request.id,
+                attempt_no=attempt_no,
+                receipt_object_key=receipt.object_key,
+                receipt_filename=receipt.filename,
+                receipt_mime=receipt.mime,
+                receipt_sha256=receipt.sha256,
+                submitted_at=now,
+                review_status="pending",
+            )
+        )
 
     @staticmethod
     def _add_event(
@@ -634,16 +656,18 @@ class PaymentService:
         now: int,
         reason: str = "",
     ) -> None:
-        session.add(PaymentEvent(
-            payment_request_id=request.id,
-            from_status=from_status,
-            to_status=to_status,
-            actor_kind=actor_kind,
-            actor_id=actor_id,
-            reason=reason,
-            event_metadata={},
-            created_at=now,
-        ))
+        session.add(
+            PaymentEvent(
+                payment_request_id=request.id,
+                from_status=from_status,
+                to_status=to_status,
+                actor_kind=actor_kind,
+                actor_id=actor_id,
+                reason=reason,
+                event_metadata={},
+                created_at=now,
+            )
+        )
 
 
 def _add_months(stamp: int, months: int) -> int:

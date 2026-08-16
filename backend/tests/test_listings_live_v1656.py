@@ -84,86 +84,88 @@ def listing_store():
         ),
     )
     session = Session(engine, expire_on_commit=False)
-    session.add_all((
-        Account(
-            id=7,
-            account_type=AccountType.BUSINESS,
-            login="business_7",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        Account(
-            id=5,
-            account_type=AccountType.USER,
-            login="user_5",
-            password_hash="hash",
-            telegram_user_id=None,
-            status="active",
-            created_at=NOW,
-            updated_at=NOW,
-        ),
-        BusinessProfile(
-            account_id=7,
-            name="Muhr",
-            phone="",
-            description="",
-            public_username="muhr",
-            direction="Savdo",
-            activity_type="Do‘kon",
-            address="Qumqo‘rg‘on",
-            latitude=37.82,
-            longitude=67.58,
-            work_hours={},
-            pay_card="",
-            pay_holder="",
-            pay_qr_object_key="",
-            director="",
-            tax_id="",
-            logo_object_key="",
-            logo_x=50,
-            logo_y=50,
-            logo_zoom=1,
-            followers_count=0,
-            following_count=0,
-            rating_sum=0,
-            rating_count=0,
-            map_visible=True,
-            dashboard_snapshot={},
-            recent_activity=[],
-            cabinet_payload={},
-        ),
-        UserProfile(
-            account_id=5,
-            name="Ali",
-            phone="",
-            public_username="ali",
-            region="Surxondaryo viloyati",
-            district="Qumqo‘rg‘on tumani",
-            mahalla="",
-            latitude=37.82,
-            longitude=67.58,
-            location_exact=True,
-            avatar_object_key="",
-            avatar_x=50,
-            avatar_y=50,
-            avatar_zoom=1,
-            followers_count=0,
-            following_count=0,
-            has_business=False,
-            dashboard_snapshot={},
-            recent_activity=[],
-            specialist_profile={},
-            cabinet_payload={},
-        ),
-        ProfileLink(
-            user_account_id=5,
-            business_account_id=7,
-            created_at=NOW,
-        ),
-    ))
+    session.add_all(
+        (
+            Account(
+                id=7,
+                account_type=AccountType.BUSINESS,
+                login="business_7",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            Account(
+                id=5,
+                account_type=AccountType.USER,
+                login="user_5",
+                password_hash="hash",
+                telegram_user_id=None,
+                status="active",
+                created_at=NOW,
+                updated_at=NOW,
+            ),
+            BusinessProfile(
+                account_id=7,
+                name="Muhr",
+                phone="",
+                description="",
+                public_username="muhr",
+                direction="Savdo",
+                activity_type="Do‘kon",
+                address="Qumqo‘rg‘on",
+                latitude=37.82,
+                longitude=67.58,
+                work_hours={},
+                pay_card="",
+                pay_holder="",
+                pay_qr_object_key="",
+                director="",
+                tax_id="",
+                logo_object_key="",
+                logo_x=50,
+                logo_y=50,
+                logo_zoom=1,
+                followers_count=0,
+                following_count=0,
+                rating_sum=0,
+                rating_count=0,
+                map_visible=True,
+                dashboard_snapshot={},
+                recent_activity=[],
+                cabinet_payload={},
+            ),
+            UserProfile(
+                account_id=5,
+                name="Ali",
+                phone="",
+                public_username="ali",
+                region="Surxondaryo viloyati",
+                district="Qumqo‘rg‘on tumani",
+                mahalla="",
+                latitude=37.82,
+                longitude=67.58,
+                location_exact=True,
+                avatar_object_key="",
+                avatar_x=50,
+                avatar_y=50,
+                avatar_zoom=1,
+                followers_count=0,
+                following_count=0,
+                has_business=False,
+                dashboard_snapshot={},
+                recent_activity=[],
+                specialist_profile={},
+                cabinet_payload={},
+            ),
+            ProfileLink(
+                user_account_id=5,
+                business_account_id=7,
+                created_at=NOW,
+            ),
+        )
+    )
     session.commit()
     try:
         yield AsyncStore(session)
@@ -186,22 +188,26 @@ def test_live_listing_models_are_not_tied_to_a_migration_run():
 @pytest.mark.asyncio
 async def test_business_cabinet_listing_is_live_synced_to_public_table(listing_store):
     payload = {
-        "listings": [{
-            "id": 11,
-            "cat": "uy",
-            "title": "3 xonali kvartira",
-            "price": "Kelishilgan",
-            "description": "Markazda",
-            "address": "Qumqo‘rg‘on",
-            "lat": 37.82,
-            "lng": 67.58,
-            "visibility": "all",
-            "status": "active",
-            "media": [{
-                "type": "photo",
-                "object_key": "private/business/7/listing_photo/a.webp",
-            }],
-        }],
+        "listings": [
+            {
+                "id": 11,
+                "cat": "uy",
+                "title": "3 xonali kvartira",
+                "price": "Kelishilgan",
+                "description": "Markazda",
+                "address": "Qumqo‘rg‘on",
+                "lat": 37.82,
+                "lng": 67.58,
+                "visibility": "all",
+                "status": "active",
+                "media": [
+                    {
+                        "type": "photo",
+                        "object_key": "private/business/7/listing_photo/a.webp",
+                    }
+                ],
+            }
+        ],
     }
 
     await sync_business_listings(
@@ -238,18 +244,25 @@ async def _activate(store, account_id: int) -> None:
         yield store
 
     service = ListingActivationService(sessions)
-    rows = list((await store.scalars(
-        _select(Listing).where(
-            Listing.status == "payment_pending",
-            or_(
-                Listing.owner_user_account_id == account_id,
-                Listing.owner_business_account_id == account_id,
-            ),
-        )
-    )).all())
+    rows = list(
+        (
+            await store.scalars(
+                _select(Listing).where(
+                    Listing.status == "payment_pending",
+                    or_(
+                        Listing.owner_user_account_id == account_id,
+                        Listing.owner_business_account_id == account_id,
+                    ),
+                )
+            )
+        ).all()
+    )
     for row in rows:
         await service.activate_paid(
-            store, listing_id=row.id, account_id=account_id, now=1_785_000_000,
+            store,
+            listing_id=row.id,
+            account_id=account_id,
+            now=1_785_000_000,
         )
     await store.commit()
 
@@ -272,10 +285,12 @@ async def test_user_can_create_save_and_delete_listing_with_real_media(listing_s
             lat=37.82,
             lng=67.58,
             visibility="own",
-            media=[{
-                "type": "photo",
-                "object_key": "private/user/5/listing_photo/a.webp",
-            }],
+            media=[
+                {
+                    "type": "photo",
+                    "object_key": "private/user/5/listing_photo/a.webp",
+                }
+            ],
         ),
     )
 
@@ -283,28 +298,41 @@ async def test_user_can_create_save_and_delete_listing_with_real_media(listing_s
     assert created.media[0].url.endswith("listing_photo/a.webp")
     # To'lovsiz e'lon public ro'yxatga tushmaydi.
     assert created.status == "payment_pending"
-    assert await service.list_public(
-        category="moshina", query="Nexia", current_account_id=5,
-    ) == []
+    assert (
+        await service.list_public(
+            category="moshina",
+            query="Nexia",
+            current_account_id=5,
+        )
+        == []
+    )
 
     await _activate(listing_store, 5)
-    assert (await service.list_public(
-        category="moshina",
-        query="Nexia",
-        current_account_id=5,
-    ))[0].title == "Nexia 3 sotiladi"
+    assert (
+        await service.list_public(
+            category="moshina",
+            query="Nexia",
+            current_account_id=5,
+        )
+    )[0].title == "Nexia 3 sotiladi"
 
-    assert await service.toggle_save(
-        public_id=created.public_id,
-        account_id=5,
-        account_type=AccountType.USER,
-    ) is True
+    assert (
+        await service.toggle_save(
+            public_id=created.public_id,
+            account_id=5,
+            account_type=AccountType.USER,
+        )
+        is True
+    )
     assert (await service.list_saved(account_id=5))[0].is_saved is True
-    assert await service.toggle_save(
-        public_id=created.public_id,
-        account_id=5,
-        account_type=AccountType.USER,
-    ) is False
+    assert (
+        await service.toggle_save(
+            public_id=created.public_id,
+            account_id=5,
+            account_type=AccountType.USER,
+        )
+        is False
+    )
 
     await service.delete(
         public_id=created.public_id,
@@ -375,11 +403,14 @@ async def test_business_mode_saves_to_its_linked_user_cabinet(listing_store):
 
     # Saqlash uchun e'lon public bo'lishi kerak — to'lov tasdiqlanadi.
     await _activate(listing_store, 5)
-    assert await service.toggle_save(
-        public_id=created.public_id,
-        account_id=7,
-        account_type=AccountType.BUSINESS,
-    ) is True
+    assert (
+        await service.toggle_save(
+            public_id=created.public_id,
+            account_id=7,
+            account_type=AccountType.BUSINESS,
+        )
+        is True
+    )
     saved = (await listing_store.scalars(select(ListingSave))).one()
     assert saved.owner_user_account_id == 5
     rows = await service.list_public(

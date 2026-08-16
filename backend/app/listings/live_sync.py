@@ -24,12 +24,16 @@ async def sync_business_listings(
         return
 
     rows = _rows(payload)
-    existing = list((await session.scalars(
-        select(Listing).where(
-            Listing.owner_business_account_id == account_id,
-            Listing.source_record_key.is_not(None),
-        )
-    )).all())
+    existing = list(
+        (
+            await session.scalars(
+                select(Listing).where(
+                    Listing.owner_business_account_id == account_id,
+                    Listing.source_record_key.is_not(None),
+                )
+            )
+        ).all()
+    )
     by_source = {
         str(listing.source_record_key): listing
         for listing in existing
@@ -98,9 +102,13 @@ async def _replace_media(
     listing: Listing,
     row: dict[str, Any],
 ) -> None:
-    current = list((await session.scalars(
-        select(ListingMedia).where(ListingMedia.listing_id == listing.id)
-    )).all())
+    current = list(
+        (
+            await session.scalars(
+                select(ListingMedia).where(ListingMedia.listing_id == listing.id)
+            )
+        ).all()
+    )
     for media in current:
         await session.delete(media)
     await session.flush()
@@ -114,14 +122,16 @@ async def _replace_media(
         )
         if not object_key:
             continue
-        session.add(ListingMedia(
-            listing_id=listing.id,
-            media_type="video" if media.get("type") == "video" else "photo",
-            object_key=object_key,
-            position=position,
-            migration_state="copied",
-            migration_run_id=None,
-        ))
+        session.add(
+            ListingMedia(
+                listing_id=listing.id,
+                media_type="video" if media.get("type") == "video" else "photo",
+                object_key=object_key,
+                position=position,
+                migration_state="copied",
+                migration_run_id=None,
+            )
+        )
     await session.flush()
 
 

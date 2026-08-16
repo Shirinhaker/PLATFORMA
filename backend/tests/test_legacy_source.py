@@ -119,8 +119,7 @@ def test_snapshot_manifest_contains_only_safe_relative_media_metadata(tmp_path):
         {
             "reference": "root_0/catalog/item.webp",
             "sha256": (
-                "44e65465e5e82733c8e5499cdd2fb106b8b703ea3f28da3b7da7f3"
-                "a661267d6e"
+                "44e65465e5e82733c8e5499cdd2fb106b8b703ea3f28da3b7da7f3a661267d6e"
             ),
             "size_bytes": 12,
         }

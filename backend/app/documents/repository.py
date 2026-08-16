@@ -30,14 +30,20 @@ class DocumentRepository:
         *,
         business_account_id: int,
     ) -> list[DocumentCounterparty]:
-        return list((await session.scalars(
-            select(DocumentCounterparty)
-            .where(DocumentCounterparty.business_account_id == business_account_id)
-            .order_by(
-                func.lower(DocumentCounterparty.name),
-                DocumentCounterparty.id,
-            )
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(DocumentCounterparty)
+                    .where(
+                        DocumentCounterparty.business_account_id == business_account_id
+                    )
+                    .order_by(
+                        func.lower(DocumentCounterparty.name),
+                        DocumentCounterparty.id,
+                    )
+                )
+            ).all()
+        )
 
     async def counterparty(
         self,
@@ -72,9 +78,9 @@ class DocumentRepository:
         )
         if direction:
             statement = statement.where(BusinessDocument.direction == direction)
-        rows = (await session.execute(
-            statement.order_by(BusinessDocument.id.desc())
-        )).all()
+        rows = (
+            await session.execute(statement.order_by(BusinessDocument.id.desc()))
+        ).all()
         return [(row[0], row[1] or "") for row in rows]
 
     async def document(
@@ -107,16 +113,20 @@ class DocumentRepository:
         *,
         tax_id_digits: str,
     ) -> list[BusinessProfile]:
-        return list((await session.scalars(
-            select(BusinessProfile)
-            .join(Account, Account.id == BusinessProfile.account_id)
-            .where(
-                Account.status == "active",
-                _tax_id_digits(BusinessProfile.tax_id) == tax_id_digits,
-            )
-            .order_by(BusinessProfile.account_id)
-            .limit(2)
-        )).all())
+        return list(
+            (
+                await session.scalars(
+                    select(BusinessProfile)
+                    .join(Account, Account.id == BusinessProfile.account_id)
+                    .where(
+                        Account.status == "active",
+                        _tax_id_digits(BusinessProfile.tax_id) == tax_id_digits,
+                    )
+                    .order_by(BusinessProfile.account_id)
+                    .limit(2)
+                )
+            ).all()
+        )
 
     async def source_document(
         self,

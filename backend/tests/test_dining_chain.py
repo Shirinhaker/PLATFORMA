@@ -179,89 +179,91 @@ def dining_context():
         ),
     )
     with Session(engine, expire_on_commit=False) as seed:
-        seed.add_all((
-            Account(
-                id=BUSINESS,
-                account_type=AccountType.BUSINESS,
-                login="choyxona",
-                password_hash="hash",
-                telegram_user_id=None,
-                status="active",
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            StaffMember(
-                id=WAITER,
-                business_account_id=BUSINESS,
-                legacy_source_id=None,
-                name="Dilnoza",
-                profession="Ofitsiant",
-                phone="",
-                salary=0,
-                hire_date=None,
-                status="active",
-                note="",
-                login=None,
-                password_hash=None,
-                can_login=True,
-                permissions=["dining_places", "dining_internal"],
-                schedule={},
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            Debtor(
-                id=901,
-                business_account_id=BUSINESS,
-                legacy_source_id=None,
-                name="Anvar aka",
-                phone="+998901112233",
-                note="",
-                due="",
-                created_by_staff_id=None,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            _catalog(OSH, "Osh", "12000 so'm"),
-            _catalog(NON, "Non", "2000 so'm"),
-            InventoryItem(
-                id=101,
-                business_account_id=BUSINESS,
-                catalog_item_id=OSH,
-                legacy_source_id=None,
-                track_stock=True,
-                stock_type="ready_food",
-                stock_qty=Decimal("10"),
-                cost_price=4000,
-                min_qty=Decimal("0"),
-                fifo_initialized=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-            StockBatch(
-                id=1001,
-                business_account_id=BUSINESS,
-                inventory_item_id=101,
-                legacy_source_id=None,
-                qty_in=Decimal("10"),
-                qty_remaining=Decimal("10"),
-                unit_cost=4000,
-                source_move_id=None,
-                created_at=NOW,
-            ),
-            DiningPlace(
-                id=PLACE,
-                business_account_id=BUSINESS,
-                legacy_source_id=None,
-                kind="table",
-                name="1-stol",
-                seats=4,
-                x=4,
-                y=4,
-                locked=True,
-                created_at=NOW,
-                updated_at=NOW,
-            ),
-        ))
+        seed.add_all(
+            (
+                Account(
+                    id=BUSINESS,
+                    account_type=AccountType.BUSINESS,
+                    login="choyxona",
+                    password_hash="hash",
+                    telegram_user_id=None,
+                    status="active",
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                StaffMember(
+                    id=WAITER,
+                    business_account_id=BUSINESS,
+                    legacy_source_id=None,
+                    name="Dilnoza",
+                    profession="Ofitsiant",
+                    phone="",
+                    salary=0,
+                    hire_date=None,
+                    status="active",
+                    note="",
+                    login=None,
+                    password_hash=None,
+                    can_login=True,
+                    permissions=["dining_places", "dining_internal"],
+                    schedule={},
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                Debtor(
+                    id=901,
+                    business_account_id=BUSINESS,
+                    legacy_source_id=None,
+                    name="Anvar aka",
+                    phone="+998901112233",
+                    note="",
+                    due="",
+                    created_by_staff_id=None,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                _catalog(OSH, "Osh", "12000 so'm"),
+                _catalog(NON, "Non", "2000 so'm"),
+                InventoryItem(
+                    id=101,
+                    business_account_id=BUSINESS,
+                    catalog_item_id=OSH,
+                    legacy_source_id=None,
+                    track_stock=True,
+                    stock_type="ready_food",
+                    stock_qty=Decimal("10"),
+                    cost_price=4000,
+                    min_qty=Decimal("0"),
+                    fifo_initialized=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+                StockBatch(
+                    id=1001,
+                    business_account_id=BUSINESS,
+                    inventory_item_id=101,
+                    legacy_source_id=None,
+                    qty_in=Decimal("10"),
+                    qty_remaining=Decimal("10"),
+                    unit_cost=4000,
+                    source_move_id=None,
+                    created_at=NOW,
+                ),
+                DiningPlace(
+                    id=PLACE,
+                    business_account_id=BUSINESS,
+                    legacy_source_id=None,
+                    kind="table",
+                    name="1-stol",
+                    seats=4,
+                    x=4,
+                    y=4,
+                    locked=True,
+                    created_at=NOW,
+                    updated_at=NOW,
+                ),
+            )
+        )
         seed.commit()
 
     @asynccontextmanager
@@ -332,9 +334,7 @@ async def test_full_chain_frees_the_table(dining_context):
     assert finalized.status == "done"
 
     # Stol endi bo'sh — zal rejasida band ko'rinmaydi.
-    places = await service.list_places(
-        business_account_id=BUSINESS, permissions=None
-    )
+    places = await service.list_places(business_account_id=BUSINESS, permissions=None)
     assert [place.occupied for place in places] == [False]
     with Session(engine) as check:
         stored = check.get(DiningOrder, order.id)
@@ -382,9 +382,7 @@ async def test_table_cannot_be_cleared_before_kitchen_and_payment(dining_context
     await service.clear_place(
         business_account_id=BUSINESS, permissions=None, place_id=PLACE
     )
-    places = await service.list_places(
-        business_account_id=BUSINESS, permissions=None
-    )
+    places = await service.list_places(business_account_id=BUSINESS, permissions=None)
     assert places[0].occupied is False
 
 
@@ -525,9 +523,9 @@ async def test_payment_is_idempotent(dining_context):
     assert second.receipt_no == first.receipt_no
     with Session(engine) as check:
         assert check.scalar(select(func.count()).select_from(CashReceipt)) == 1
-        assert check.scalar(select(InventoryItem.stock_qty).where(
-            InventoryItem.id == 101
-        )) == Decimal("8.000")
+        assert check.scalar(
+            select(InventoryItem.stock_qty).where(InventoryItem.id == 101)
+        ) == Decimal("8.000")
 
 
 # ---------------------------------------------------------------- kassir ishi
@@ -557,17 +555,17 @@ async def test_cashier_edits_and_deletes_lines(dining_context):
         business_account_id=BUSINESS,
         permissions=None,
         order_id=order.id,
-        body=DiningCashierItemsUpdate(items=[
-            DiningCashierLine(line_id=osh_line.id, qty=Decimal(1)),
-            DiningCashierLine(line_id=non_line.id, qty=Decimal(0)),
-        ]),
+        body=DiningCashierItemsUpdate(
+            items=[
+                DiningCashierLine(line_id=osh_line.id, qty=Decimal(1)),
+                DiningCashierLine(line_id=non_line.id, qty=Decimal(0)),
+            ]
+        ),
     )
     assert updated.total == 12000
     assert [line.name for line in updated.items] == ["Osh"]
     with Session(engine) as check:
-        assert check.scalar(
-            select(func.count()).select_from(DiningOrderItem)
-        ) == 1
+        assert check.scalar(select(func.count()).select_from(DiningOrderItem)) == 1
 
 
 async def test_cashier_cannot_empty_the_bill(dining_context):
@@ -580,18 +578,18 @@ async def test_cashier_cannot_empty_the_bill(dining_context):
             business_account_id=BUSINESS,
             permissions=None,
             order_id=order.id,
-            body=DiningCashierItemsUpdate(items=[
-                DiningCashierLine(line_id=line.id, qty=Decimal(0)),
-            ]),
+            body=DiningCashierItemsUpdate(
+                items=[
+                    DiningCashierLine(line_id=line.id, qty=Decimal(0)),
+                ]
+            ),
         )
     assert failure.value.status_code == 400
     assert failure.value.code == "dining_order_empty"
 
     # Rollback qatorni qaytargan bo'lishi kerak.
     with Session(engine) as check:
-        assert check.scalar(
-            select(func.count()).select_from(DiningOrderItem)
-        ) == 1
+        assert check.scalar(select(func.count()).select_from(DiningOrderItem)) == 1
         assert check.get(DiningOrder, order.id).total == 24000
 
 
@@ -620,9 +618,11 @@ async def test_paid_bill_cannot_be_edited_or_cancelled(dining_context):
             business_account_id=BUSINESS,
             permissions=None,
             order_id=order.id,
-            body=DiningItemsAdd(items=[
-                DiningItemInput(item_id=NON, qty=Decimal(1)),
-            ]),
+            body=DiningItemsAdd(
+                items=[
+                    DiningItemInput(item_id=NON, qty=Decimal(1)),
+                ]
+            ),
         )
     assert added.value.status_code == 400
 
@@ -640,9 +640,7 @@ async def test_cancel_requires_reason_and_frees_the_table(dining_context):
     assert cancelled.status == "cancelled"
     assert cancelled.problem_note == "Mijoz voz kechdi"
 
-    places = await service.list_places(
-        business_account_id=BUSINESS, permissions=None
-    )
+    places = await service.list_places(business_account_id=BUSINESS, permissions=None)
     assert places[0].occupied is False
     with Session(engine) as check:
         assert check.scalar(select(func.count()).select_from(CashReceipt)) == 0
@@ -762,9 +760,7 @@ async def test_only_kitchen_staff_marks_food_ready(
         (("dining_internal",), False),
     ],
 )
-async def test_only_cashier_confirms_payment(
-    dining_context, permissions, allowed
-):
+async def test_only_cashier_confirms_payment(dining_context, permissions, allowed):
     service, _engine = dining_context
     order = await _open_order(service)
 
@@ -847,9 +843,11 @@ async def test_adding_items_reopens_the_kitchen(dining_context):
         business_account_id=BUSINESS,
         permissions=None,
         order_id=order.id,
-        body=DiningItemsAdd(items=[
-            DiningItemInput(item_id=NON, qty=Decimal(3)),
-        ]),
+        body=DiningItemsAdd(
+            items=[
+                DiningItemInput(item_id=NON, qty=Decimal(3)),
+            ]
+        ),
     )
     assert updated.kitchen_status == "preparing"
     assert updated.total == 30000

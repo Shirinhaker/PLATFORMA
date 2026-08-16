@@ -67,9 +67,7 @@ class AdminAuthService:
                 "Bu Telegram ID adminlar ro‘yxatida yo‘q.",
             )
         now = self._now()
-        expires_at = now + timedelta(
-            seconds=self._settings.admin_challenge_ttl_seconds
-        )
+        expires_at = now + timedelta(seconds=self._settings.admin_challenge_ttl_seconds)
         async with self._session_factory() as session:
             challenge = AdminAuthChallenge(
                 telegram_user_id=telegram_user_id,
@@ -151,22 +149,21 @@ class AdminAuthService:
             if not hmac.compare_digest(expected, challenge.code_hash):
                 challenge.attempts += 1
                 await session.commit()
-                raise ApiError(
-                    400, "admin_code_invalid", "Tasdiqlash kodi noto‘g‘ri."
-                )
+                raise ApiError(400, "admin_code_invalid", "Tasdiqlash kodi noto‘g‘ri.")
 
             raw_token = secrets.token_urlsafe(48)
             challenge.consumed_at = now
-            session.add(AdminSession(
-                telegram_user_id=challenge.telegram_user_id,
-                token_hash=sha256_token(raw_token),
-                created_at=now,
-                last_used_at=now,
-                expires_at=now + timedelta(
-                    seconds=self._settings.admin_session_ttl_seconds
-                ),
-                revoked_at=None,
-            ))
+            session.add(
+                AdminSession(
+                    telegram_user_id=challenge.telegram_user_id,
+                    token_hash=sha256_token(raw_token),
+                    created_at=now,
+                    last_used_at=now,
+                    expires_at=now
+                    + timedelta(seconds=self._settings.admin_session_ttl_seconds),
+                    revoked_at=None,
+                )
+            )
             await session.flush()
             await session.commit()
         return raw_token

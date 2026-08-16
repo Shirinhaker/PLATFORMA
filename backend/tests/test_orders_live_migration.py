@@ -53,7 +53,7 @@ def test_order_migration_backfills_v7_orders_items_and_messages_idempotently():
 def test_order_migration_does_not_write_tizimlashtirish_modules_and_is_reversible():
     source = MIGRATION.read_text(encoding="utf-8")
     lowered = source.casefold()
-    downgrade = source[source.index("def downgrade() -> None:"):]
+    downgrade = source[source.index("def downgrade() -> None:") :]
 
     assert "kassa" not in lowered
     assert "ombor" not in lowered

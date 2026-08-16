@@ -74,7 +74,9 @@ class FakeCabinetRecordRepository:
         resource,
         rows,
     ):
-        self.payload.setdefault((account_id, account_type), {})[resource] = deepcopy(rows)
+        self.payload.setdefault((account_id, account_type), {})[resource] = deepcopy(
+            rows
+        )
         self.replacements.append(resource)
 
 
@@ -88,7 +90,9 @@ class FakeNotificationRepository:
 
     async def append(self, session, *, account_id, account_type, row):
         key = (account_id, account_type)
-        if any(item["event_key"] == row["event_key"] for item in self.rows.get(key, [])):
+        if any(
+            item["event_key"] == row["event_key"] for item in self.rows.get(key, [])
+        ):
             return
         saved = deepcopy(dict(row))
         saved["id"] = len(self.rows.get(key, [])) + 101
@@ -100,7 +104,13 @@ class FakeNotificationRepository:
         return deepcopy(self.rows.get((account_id, account_type), []))
 
     async def mark_read(
-        self, session, *, account_id, account_type, notification_id, read_at,
+        self,
+        session,
+        *,
+        account_id,
+        account_type,
+        notification_id,
+        read_at,
     ):
         for row in self.rows.get((account_id, account_type), []):
             if int(row["id"]) == notification_id:
@@ -115,8 +125,7 @@ class FakeNotificationRepository:
     async def delete(self, session, *, account_id, account_type, notification_id):
         key = (account_id, account_type)
         self.rows[key] = [
-            row for row in self.rows.get(key, [])
-            if int(row["id"]) != notification_id
+            row for row in self.rows.get(key, []) if int(row["id"]) != notification_id
         ]
         self.calls.append(("delete", account_id, account_type))
 
@@ -134,12 +143,14 @@ class FakeCatalogSync:
         payload,
         changed_resources,
     ):
-        self.calls.append({
-            "account_id": account_id,
-            "owner_name": owner_name,
-            "payload": deepcopy(payload),
-            "changed_resources": set(changed_resources),
-        })
+        self.calls.append(
+            {
+                "account_id": account_id,
+                "owner_name": owner_name,
+                "payload": deepcopy(payload),
+                "changed_resources": set(changed_resources),
+            }
+        )
 
 
 class FakeInventorySync:
@@ -154,11 +165,13 @@ class FakeInventorySync:
         payload,
         changed_resources,
     ):
-        self.calls.append({
-            "account_id": account_id,
-            "payload": deepcopy(payload),
-            "changed_resources": set(changed_resources),
-        })
+        self.calls.append(
+            {
+                "account_id": account_id,
+                "payload": deepcopy(payload),
+                "changed_resources": set(changed_resources),
+            }
+        )
 
 
 def profile() -> BusinessProfile:
@@ -190,13 +203,15 @@ def profile() -> BusinessProfile:
         recent_activity=[],
         cabinet_payload={
             "items": [{"id": 4, "name": "Eski mahsulot", "price": 10000}],
-            "orders": [{
-                "id": 44,
-                "title": "Muhr",
-                "status": "new",
-                "order_type": "product",
-                "created_at": 100,
-            }],
+            "orders": [
+                {
+                    "id": 44,
+                    "title": "Muhr",
+                    "status": "new",
+                    "order_type": "product",
+                    "created_at": 100,
+                }
+            ],
             "notifications": [{"id": 7, "title": "Yangi", "is_read": 0}],
             "business_subscriptions": [],
             "subscription_payments": [],
@@ -326,15 +341,17 @@ async def test_notification_resource_uses_dedicated_table_without_json_rewrite()
     database = FakeDatabase(business)
     cabinet_repository = FakeCabinetRecordRepository()
     notifications = FakeNotificationRepository()
-    notifications.rows[(7, "business")] = [{
-        "id": 101,
-        "event_key": "order:44:created",
-        "title": "Yangi buyurtma keldi",
-        "body": "Buyurtmani ko'rib, qabul qiling.",
-        "order_id": 44,
-        "is_read": 0,
-        "created_at": 100,
-    }]
+    notifications.rows[(7, "business")] = [
+        {
+            "id": 101,
+            "event_key": "order:44:created",
+            "title": "Yangi buyurtma keldi",
+            "body": "Buyurtmani ko'rib, qabul qiling.",
+            "order_id": 44,
+            "is_read": 0,
+            "created_at": 100,
+        }
+    ]
     service = BusinessOnlineService(
         database.session,
         cabinet_repository,
@@ -377,15 +394,20 @@ async def test_medical_user_notification_uses_dedicated_table_without_user_json_
         notification_repository=notifications,
     )
 
-    await service._persist_user_notifications(database.session_value, [{
-        "user_id": 70,
-        "event_key": "medical:41:called",
-        "title": "Navbatingiz chaqirildi",
-        "body": "QAB-001 navbat xizmatga chaqirildi.",
-        "medical_queue_id": 41,
-        "action_type": "medical_queue_called",
-        "created_at": 100,
-    }])
+    await service._persist_user_notifications(
+        database.session_value,
+        [
+            {
+                "user_id": 70,
+                "event_key": "medical:41:called",
+                "title": "Navbatingiz chaqirildi",
+                "body": "QAB-001 navbat xizmatga chaqirildi.",
+                "medical_queue_id": 41,
+                "action_type": "medical_queue_called",
+                "created_at": 100,
+            }
+        ],
+    )
 
     rows = notifications.rows[(70, "user")]
     assert rows[0]["event_key"] == "medical:41:called"
@@ -398,26 +420,32 @@ async def test_medical_user_notification_uses_dedicated_table_without_user_json_
 async def test_dining_notifications_do_not_grow_business_json():
     business = profile()
     business.direction = "Umumiy ovqatlanish"
-    business.cabinet_payload.update({
-        "items": [{
-            "id": 21,
-            "name": "Tuxum barak",
-            "price": 20000,
-            "unit": "dona",
-            "stock_type": "ready_food",
-        }],
-        "dining_places": [{
-            "id": 5,
-            "kind": "table",
-            "name": "Stol 1",
-            "seats": 4,
-            "x": 4,
-            "y": 4,
-            "locked": 1,
-        }],
-        "dining_orders": [],
-        "notifications": [],
-    })
+    business.cabinet_payload.update(
+        {
+            "items": [
+                {
+                    "id": 21,
+                    "name": "Tuxum barak",
+                    "price": 20000,
+                    "unit": "dona",
+                    "stock_type": "ready_food",
+                }
+            ],
+            "dining_places": [
+                {
+                    "id": 5,
+                    "kind": "table",
+                    "name": "Stol 1",
+                    "seats": 4,
+                    "x": 4,
+                    "y": 4,
+                    "locked": 1,
+                }
+            ],
+            "dining_orders": [],
+            "notifications": [],
+        }
+    )
     database = FakeDatabase(business)
     cabinet_repository = FakeCabinetRecordRepository()
     notifications = FakeNotificationRepository()
@@ -448,26 +476,32 @@ async def test_dining_notifications_do_not_grow_business_json():
 async def test_dining_action_and_delete_persist_all_relational_resources():
     business = profile()
     business.direction = "Umumiy ovqatlanish"
-    business.cabinet_payload.update({
-        "items": [{
-            "id": 21,
-            "name": "Tuxum barak",
-            "price": 20000,
-            "unit": "dona",
-            "stock_type": "ready_food",
-        }],
-        "dining_places": [{
-            "id": 5,
-            "kind": "table",
-            "name": "Stol 1",
-            "seats": 4,
-            "x": 4,
-            "y": 4,
-            "locked": 1,
-        }],
-        "dining_orders": [],
-        "notifications": [],
-    })
+    business.cabinet_payload.update(
+        {
+            "items": [
+                {
+                    "id": 21,
+                    "name": "Tuxum barak",
+                    "price": 20000,
+                    "unit": "dona",
+                    "stock_type": "ready_food",
+                }
+            ],
+            "dining_places": [
+                {
+                    "id": 5,
+                    "kind": "table",
+                    "name": "Stol 1",
+                    "seats": 4,
+                    "x": 4,
+                    "y": 4,
+                    "locked": 1,
+                }
+            ],
+            "dining_orders": [],
+            "notifications": [],
+        }
+    )
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
     service = BusinessOnlineService(database.session, repository)
@@ -503,36 +537,44 @@ async def test_dining_action_and_delete_persist_all_relational_resources():
 async def test_medical_relational_flow_persists_links_history_and_user_notification():
     business = profile()
     business.direction = "Tibbiy xizmatlar"
-    business.cabinet_payload.update({
-        "staff": [{
-            "id": 11,
-            "name": "Ali Valiyev",
-            "profession": "Terapevt",
-            "status": "active",
-        }],
-        "items": [{
-            "id": 31,
-            "name": "Qabul",
-            "kind": "service",
-            "queue_enabled": 1,
-        }],
-        "medical_doctors": [],
-        "medical_doctor_services": [],
-        "medical_queue": [{
-            "id": 41,
-            "item_id": 31,
-            "staff_id": 11,
-            "user_id": 70,
-            "patient_name": "Vali",
-            "queue_date": "2026-08-01",
-            "queue_no": 1,
-            "queue_code": "QAB-001",
-            "source": "online",
-            "status": "waiting",
-            "slot_time": "",
-        }],
-        "medical_queue_history": [],
-    })
+    business.cabinet_payload.update(
+        {
+            "staff": [
+                {
+                    "id": 11,
+                    "name": "Ali Valiyev",
+                    "profession": "Terapevt",
+                    "status": "active",
+                }
+            ],
+            "items": [
+                {
+                    "id": 31,
+                    "name": "Qabul",
+                    "kind": "service",
+                    "queue_enabled": 1,
+                }
+            ],
+            "medical_doctors": [],
+            "medical_doctor_services": [],
+            "medical_queue": [
+                {
+                    "id": 41,
+                    "item_id": 31,
+                    "staff_id": 11,
+                    "user_id": 70,
+                    "patient_name": "Vali",
+                    "queue_date": "2026-08-01",
+                    "queue_no": 1,
+                    "queue_code": "QAB-001",
+                    "source": "online",
+                    "status": "waiting",
+                    "slot_time": "",
+                }
+            ],
+            "medical_queue_history": [],
+        }
+    )
     user = user_profile(70, "Vali")
     database = FakeDatabase(business, {70: user})
     repository = FakeCabinetRecordRepository()
@@ -570,9 +612,10 @@ async def test_medical_relational_flow_persists_links_history_and_user_notificat
         "medical_queue_history",
         "notifications",
     }
-    assert repository.payload[(70, "user")]["notifications"][0][
-        "action_type"
-    ] == "medical_queue_called"
+    assert (
+        repository.payload[(70, "user")]["notifications"][0]["action_type"]
+        == "medical_queue_called"
+    )
     assert user.cabinet_payload["notifications"][0]["medical_queue_id"] == 41
 
 
@@ -580,22 +623,31 @@ async def test_medical_relational_flow_persists_links_history_and_user_notificat
 async def test_education_accept_persists_enrollment_and_student_in_both_stores():
     business = profile()
     business.direction = "Ta'lim faoliyati"
-    business.cabinet_payload.update({
-        "items": [{"id": 51, "name": "Ingliz tili"}],
-        "education_groups": [
-            {"id": 61, "name": "English A1", "course_item_id": 51, "status": "active"},
-        ],
-        "education_students": [],
-        "education_enrollments": [{
-            "id": 71,
-            "course_item_id": 51,
-            "user_id": 70,
-            "customer_name": "Ali Valiyev",
-            "phone": "+998901234567",
-            "note": "Kechki guruh",
-            "status": "new",
-        }],
-    })
+    business.cabinet_payload.update(
+        {
+            "items": [{"id": 51, "name": "Ingliz tili"}],
+            "education_groups": [
+                {
+                    "id": 61,
+                    "name": "English A1",
+                    "course_item_id": 51,
+                    "status": "active",
+                },
+            ],
+            "education_students": [],
+            "education_enrollments": [
+                {
+                    "id": 71,
+                    "course_item_id": 51,
+                    "user_id": 70,
+                    "customer_name": "Ali Valiyev",
+                    "phone": "+998901234567",
+                    "note": "Kechki guruh",
+                    "status": "new",
+                }
+            ],
+        }
+    )
     database = FakeDatabase(business)
     repository = FakeCabinetRecordRepository()
     service = BusinessOnlineService(database.session, repository)
@@ -615,9 +667,7 @@ async def test_education_accept_persists_enrollment_and_student_in_both_stores()
         "education_enrollments",
         "education_students",
     }
-    stored_enrollment = repository.payload[(7, "business")][
-        "education_enrollments"
-    ][0]
+    stored_enrollment = repository.payload[(7, "business")]["education_enrollments"][0]
     assert stored_enrollment["id"] == rows[0]["id"]
     assert stored_enrollment["status"] == "accepted"
     assert stored_enrollment["group_id"] == 61

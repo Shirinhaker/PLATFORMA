@@ -123,8 +123,7 @@ async def select_active_advertisements(
         )
     )
     return [
-        _public_advertisement(candidate, image_url_provider)
-        for _, candidate in ranked
+        _public_advertisement(candidate, image_url_provider) for _, candidate in ranked
     ]
 
 
@@ -150,12 +149,8 @@ def _public_advertisement(
             else ""
         ),
         owner_kind=owner_kind.value if owner_kind is not None else None,
-        desktop_image_url=image_url_provider(
-            advertisement.desktop_image_object_key
-        ),
-        mobile_image_url=image_url_provider(
-            advertisement.mobile_image_object_key
-        ),
+        desktop_image_url=image_url_provider(advertisement.desktop_image_object_key),
+        mobile_image_url=image_url_provider(advertisement.mobile_image_object_key),
         crop_x=advertisement.crop_x,
         crop_y=advertisement.crop_y,
         crop_zoom=advertisement.crop_zoom,
@@ -165,9 +160,7 @@ def _public_advertisement(
 class AdvertisementService:
     def __init__(
         self,
-        session_factory: Callable[
-            [], AbstractAsyncContextManager[AsyncSession]
-        ],
+        session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]],
         image_url_provider: ImageUrlProvider,
     ) -> None:
         self._session_factory = session_factory
@@ -225,9 +218,7 @@ class AdvertisementService:
             ]
             if matched:
                 column = (
-                    Advertisement.views
-                    if metric == "views"
-                    else Advertisement.clicks
+                    Advertisement.views if metric == "views" else Advertisement.clicks
                 )
                 await session.execute(
                     update(Advertisement)

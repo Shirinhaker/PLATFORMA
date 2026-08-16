@@ -89,10 +89,7 @@ def test_public_search_params_normalize_filters_and_limit_pagination():
 
 def test_public_search_params_accept_all_result_types():
     assert PublicSearchParams().result_type is PublicResultType.ALL
-    assert (
-        PublicSearchParams(result_type="all").result_type
-        is PublicResultType.ALL
-    )
+    assert PublicSearchParams(result_type="all").result_type is PublicResultType.ALL
     assert (
         PublicSearchParams(result_type="product").result_type
         is PublicResultType.PRODUCT

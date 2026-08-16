@@ -78,8 +78,12 @@ async def verify_existing_normalization(
         )
         for marker in markers:
             value = target_payload.get(marker.resource)
-            expected_count = len(value) if isinstance(value, list) else (0 if value is None else 1)
-            if marker.record_count != expected_count or marker.digest != payload_digest(value):
+            expected_count = (
+                len(value) if isinstance(value, list) else (0 if value is None else 1)
+            )
+            if marker.record_count != expected_count or marker.digest != payload_digest(
+                value
+            ):
                 marker_mismatches += 1
 
     source_digest = aggregate_profile_digest(source_entries)
