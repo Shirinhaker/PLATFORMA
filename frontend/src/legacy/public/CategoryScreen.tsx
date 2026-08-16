@@ -9,7 +9,7 @@ import type { PublicCatalogItem, PublicSearchItem } from "../../api/types";
 import { CatalogItemCard } from "./CatalogItemCard";
 import { findCatalogDirection } from "./catalog-data";
 import { PublicSearchResults } from "./PublicSearchResults";
-import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
+import type { QueueBookingTarget } from "../../queues/QueueBooking";
 
 interface CategoryScreenProps {
   categoryId: string;

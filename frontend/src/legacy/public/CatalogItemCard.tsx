@@ -1,5 +1,5 @@
 import type { PublicCatalogItem } from "../../api/types";
-import type { QueueBookingTarget } from "../../queues/QueueBookingV1656";
+import type { QueueBookingTarget } from "../../queues/QueueBooking";
 
 
 interface CatalogItemCardProps {

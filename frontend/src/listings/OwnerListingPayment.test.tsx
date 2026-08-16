@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ListingRead, PaymentCatalog } from "../api/types";
-import { OwnerListingsV1656 } from "./OwnerListingsV1656";
+import { OwnerListings } from "./OwnerListings";
 
 // Xarita tanlovi formaning majburiy qadami — u Leafletsiz ishlamaydi.
 const leaflet = vi.hoisted(() => {
@@ -86,7 +86,7 @@ function makeApi(overrides: Record<string, unknown> = {}) {
 
 describe("e'lon to'lovsiz ko'rinmaydi", () => {
   it("kutilayotgan e'lon holati ko'rsatiladi", async () => {
-    render(<OwnerListingsV1656 api={makeApi()} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={makeApi()} actor="user" onBack={vi.fn()} />);
 
     expect(await screen.findByText(/To‘lov kutilmoqda/)).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("e'lon to'lovsiz ko'rinmaydi", () => {
   it("«To‘lov qilish» oynani ochadi va tarifni ko'rsatadi", async () => {
     const user = userEvent.setup();
     const api = makeApi();
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
@@ -110,7 +110,7 @@ describe("e'lon to'lovsiz ko'rinmaydi", () => {
       getMyListings: vi.fn().mockResolvedValue([]),
       createListing: vi.fn().mockResolvedValue(PENDING),
     });
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "+ E'lon joylash" }));
     await user.type(
@@ -141,7 +141,7 @@ describe("e'lon to'lovsiz ko'rinmaydi", () => {
       uploadGrantedFile: vi.fn().mockResolvedValue(undefined),
       createPaymentRequest: vi.fn().mockResolvedValue({}),
     });
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
     await user.upload(
@@ -170,7 +170,7 @@ describe("e'lon to'lovsiz ko'rinmaydi", () => {
     const api = makeApi({
       getPaymentCatalog: vi.fn().mockRejectedValue(new Error("Tariflar yuklanmadi.")),
     });
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     await user.click(await screen.findByRole("button", { name: "To‘lov qilish" }));
 
@@ -182,7 +182,7 @@ describe("e'lon to'lovsiz ko'rinmaydi", () => {
     const api = makeApi();
     delete (api as Record<string, unknown>).getPaymentCatalog;
     delete (api as Record<string, unknown>).createPaymentRequest;
-    render(<OwnerListingsV1656 api={api} actor="user" onBack={vi.fn()} />);
+    render(<OwnerListings api={api} actor="user" onBack={vi.fn()} />);
 
     expect(await screen.findByText(/To‘lov kutilmoqda/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "To‘lov qilish" })).toBeNull();
