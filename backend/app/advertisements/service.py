@@ -41,8 +41,8 @@ from app.advertisements.pricing import (
     schedule_end_at,
     shift_schedule_start,
 )
+from app.core.enums import ReviewState
 from app.core.errors import ApiError
-from app.legacy_migration.model import ReviewState
 from app.payments.model import PlatformPrice
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]

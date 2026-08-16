@@ -13,13 +13,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, attributes, mapped_column
 
+from app.core.enums import OWNER_STATE_ENUM, REVIEW_STATE_ENUM, OwnerState, ReviewState
 from app.db.base import Base
-from app.legacy_migration.model import (
-    OWNER_STATE_ENUM,
-    REVIEW_STATE_ENUM,
-    OwnerState,
-    ReviewState,
-)
 from app.public_ids import build_content_public_id
 
 

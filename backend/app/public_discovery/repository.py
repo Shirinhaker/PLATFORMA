@@ -23,8 +23,8 @@ from sqlalchemy.orm import aliased
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.catalog.model import CatalogGroup, CatalogItem
+from app.core.enums import ReviewState
 from app.follows.model import ProfileFollow
-from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.payments.model import BusinessSubscription
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile

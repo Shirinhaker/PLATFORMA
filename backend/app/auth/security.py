@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 from app.accounts.model import AccountType
-from app.legacy_migration.passwords import verify_legacy_pbkdf2
+from app.auth.legacy_passwords import verify_legacy_pbkdf2
 
 try:
     from argon2 import PasswordHasher
