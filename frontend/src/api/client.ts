@@ -1,4 +1,7 @@
 import type { AuthContext } from "../auth/adapter";
+import { ApiTransport } from "./http";
+import { createOrdersClient, type OrdersClient } from "./orders-client";
+import { createQueuesClient, type QueuesClient } from "./queues-client";
 import type {
   BusinessOnlineActionInput,
   BusinessOnlineMutationRead,
@@ -8,7 +11,6 @@ import type {
 } from "./business-online-types";
 import type {
   AccountType,
-  ApiErrorBody,
   Authenticated,
   BuildInfo,
   BusinessSubscriptionSummary,
@@ -66,11 +68,6 @@ import type {
   EducationStudentWrite,
   EducationTeacher,
   EducationTeacherWrite,
-  BusinessQueueEntry,
-  BusinessQueueOfflineCreate,
-  BusinessQueueProvider,
-  BusinessQueueProviderWrite,
-  BusinessQueueSetup,
   CabinetSwitch,
   ChallengeResent,
   ChallengeStarted,
@@ -82,15 +79,6 @@ import type {
   PaymentReceiptRef,
   PaymentRequestBody,
   PaymentRequestRecord,
-  OrderCreate,
-  OrderCreateResponse,
-  OrderChatRead,
-  OrderMessageRead,
-  OrderPaymentStatus,
-  OrderProblemReason,
-  OrderProblemSolution,
-  OrderRead,
-  OrderStatus,
   ProfileImageAttachment,
   PublicAdvertisement,
   PublicAdvertisementParams,
@@ -144,11 +132,6 @@ import type {
   UploadGrantRequest,
   UserProfile,
   UserProfilePatch,
-  QueueEntryStatus,
-  QueueCreate,
-  QueueOptions,
-  QueueNotificationRead,
-  QueueSlots,
   ReviewListRead,
   ReviewMutationRead,
   ReviewRead,
@@ -186,32 +169,19 @@ import type {
   AdvertisementRates,
 } from "./advertisement-types";
 
+export { ApiClientError } from "./http";
+
 type SessionResponse = Omit<SessionIdentity, "name"> & { name?: string };
 type LoginStart = { login: string; password: string; cabinet_type?: AccountType };
 
-export class ApiClientError extends Error {
-  readonly code: string;
-  readonly requestId: string;
-
-  constructor(
-    readonly status: number,
-    body: ApiErrorBody,
-  ) {
-    super(body.message);
-    this.name = "ApiClientError";
-    this.code = body.code;
-    this.requestId = body.request_id;
-  }
-}
-
 export class ApiClient {
-  private csrfToken = "";
+  private readonly transport: ApiTransport;
 
-  constructor(
-    private readonly baseUrl: string,
-    private readonly fetcher: typeof fetch,
-    private readonly auth: AuthContext,
-  ) {}
+  constructor(baseUrl: string, fetcher: typeof fetch, auth: AuthContext) {
+    this.transport = new ApiTransport(baseUrl, fetcher, auth);
+    Object.assign(this, createOrdersClient(this.transport));
+    Object.assign(this, createQueuesClient(this.transport));
+  }
 
   private async request<T>(
     method: string,
@@ -219,57 +189,7 @@ export class ApiClient {
     body?: unknown,
     authenticated = false,
   ): Promise<T> {
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (this.auth.kind === "telegram") {
-      headers["X-Telegram-Init-Data"] = this.auth.initData;
-    }
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    if (authenticated && method !== "GET") {
-      if (!this.csrfToken) {
-        throw new ApiClientError(403, {
-          code: "csrf_unavailable",
-          message: "Sessiya xavfsizlik ma’lumoti topilmadi.",
-          request_id: "",
-        });
-      }
-      headers["X-CSRF-Token"] = this.csrfToken;
-    }
-
-    const response = await this.fetcher(`${this.baseUrl.replace(/\/+$/, "")}${path}`, {
-      method,
-      credentials: "include",
-      headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    if (response.status === 204) return undefined as T;
-
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      payload = null;
-    }
-    if (!response.ok) {
-      const fallback: ApiErrorBody = {
-        code: "http_error",
-        message: `API xatosi: ${response.status}`,
-        request_id: "",
-      };
-      const error =
-        payload && typeof payload === "object"
-          ? ({ ...fallback, ...payload } as ApiErrorBody)
-          : fallback;
-      throw new ApiClientError(response.status, error);
-    }
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "csrf_token" in payload &&
-      typeof payload.csrf_token === "string"
-    ) {
-      this.csrfToken = payload.csrf_token;
-    }
-    return payload as T;
+    return this.transport.request(method, path, body, authenticated);
   }
 
   getBuild(): Promise<BuildInfo> {
@@ -325,125 +245,10 @@ export class ApiClient {
     );
   }
 
-  getQueueOptions(
-    businessPublicId: string,
-    itemPublicId: string,
-    queueDate: string,
-  ): Promise<QueueOptions> {
-    const query = new URLSearchParams({
-      business_public_id: businessPublicId,
-      item_public_id: itemPublicId,
-      queue_date: queueDate,
-    });
-    return this.request("GET", `/api/v1/queues/options?${query.toString()}`);
-  }
-
-  getQueueSlots(
-    businessPublicId: string,
-    itemPublicId: string,
-    providerId: number,
-    queueDate: string,
-  ): Promise<QueueSlots> {
-    const query = new URLSearchParams({
-      business_public_id: businessPublicId,
-      item_public_id: itemPublicId,
-      provider_id: String(providerId),
-      queue_date: queueDate,
-    });
-    return this.request("GET", `/api/v1/queues/slots?${query.toString()}`);
-  }
-
-  createQueue(body: QueueCreate): Promise<BusinessQueueEntry> {
-    return this.request("POST", "/api/v1/queues", body, true);
-  }
-
   createCourseEnrollment(
     body: CourseEnrollmentCreate,
   ): Promise<CourseEnrollmentCreated> {
     return this.request("POST", "/api/v1/education/enrollments", body, true);
-  }
-
-  getMyQueues(): Promise<BusinessQueueEntry[]> {
-    return this.request("GET", "/api/v1/queues/mine", undefined, true);
-  }
-
-  cancelMyQueue(queueId: number): Promise<BusinessQueueEntry> {
-    return this.request("POST", `/api/v1/queues/${queueId}/cancel`, undefined, true);
-  }
-
-  markQueueNotificationRead(notificationId: number): Promise<QueueNotificationRead> {
-    return this.request(
-      "POST",
-      `/api/v1/queues/notifications/${notificationId}/read`,
-      undefined,
-      true,
-    );
-  }
-
-  getBusinessQueueSetup(): Promise<BusinessQueueSetup> {
-    return this.request("GET", "/api/v1/queues/business/setup", undefined, true);
-  }
-
-  getBusinessQueueProviders(): Promise<BusinessQueueProvider[]> {
-    return this.request("GET", "/api/v1/queues/business/providers", undefined, true);
-  }
-
-  createBusinessQueueProvider(
-    body: BusinessQueueProviderWrite,
-  ): Promise<BusinessQueueProvider> {
-    return this.request("POST", "/api/v1/queues/business/providers", body, true);
-  }
-
-  updateBusinessQueueProvider(
-    providerId: number,
-    body: BusinessQueueProviderWrite,
-  ): Promise<BusinessQueueProvider> {
-    return this.request(
-      "PUT",
-      `/api/v1/queues/business/providers/${providerId}`,
-      body,
-      true,
-    );
-  }
-
-  getBusinessQueueEntries(queueDate: string): Promise<BusinessQueueEntry[]> {
-    const query = new URLSearchParams({ queue_date: queueDate });
-    return this.request(
-      "GET",
-      `/api/v1/queues/business/entries?${query.toString()}`,
-      undefined,
-      true,
-    );
-  }
-
-  createBusinessOfflineQueue(
-    body: BusinessQueueOfflineCreate,
-  ): Promise<BusinessQueueEntry> {
-    return this.request("POST", "/api/v1/queues/business/entries", body, true);
-  }
-
-  changeBusinessQueueStatus(
-    queueId: number,
-    status: QueueEntryStatus,
-  ): Promise<BusinessQueueEntry> {
-    return this.request(
-      "PUT",
-      `/api/v1/queues/business/entries/${queueId}/status`,
-      { status },
-      true,
-    );
-  }
-
-  swapBusinessQueues(
-    queueId: number,
-    otherQueueId: number,
-  ): Promise<BusinessQueueEntry> {
-    return this.request(
-      "POST",
-      `/api/v1/queues/business/entries/${queueId}/swap`,
-      { other_queue_id: otherQueueId },
-      true,
-    );
   }
 
   getAdvertisements(
@@ -735,118 +540,6 @@ export class ApiClient {
     return this.request("DELETE", "/api/v1/notifications/devices", { token }, true);
   }
 
-  createOrder(body: OrderCreate): Promise<OrderCreateResponse> {
-    return this.request("POST", "/api/v1/orders", body, true);
-  }
-
-  getMyOrders(): Promise<OrderRead[]> {
-    return this.request("GET", "/api/v1/orders/my", undefined, true);
-  }
-
-  getOrderInbox(): Promise<OrderRead[]> {
-    return this.request("GET", "/api/v1/orders/inbox", undefined, true);
-  }
-
-  markOrderSeen(orderId: number): Promise<OrderRead> {
-    return this.request("PUT", `/api/v1/orders/${orderId}/seen`, {}, true);
-  }
-
-  changeOrderStatus(orderId: number, status: OrderStatus): Promise<OrderRead> {
-    return this.request("PUT", `/api/v1/orders/${orderId}/status`, { status }, true);
-  }
-
-  submitOrderPayment(orderId: number): Promise<OrderRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/payment/submit`, {}, true);
-  }
-
-  decideOrderPayment(
-    orderId: number,
-    status: OrderPaymentStatus,
-    debtorId: number | null = null,
-  ): Promise<OrderRead> {
-    return this.request(
-      "POST",
-      `/api/v1/orders/${orderId}/payment`,
-      { status, ...(debtorId ? { debtor_id: debtorId } : {}) },
-      true,
-    );
-  }
-
-  openOrderProblem(
-    orderId: number,
-    body: { reason: OrderProblemReason; note: string },
-  ): Promise<OrderRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/problem`, body, true);
-  }
-
-  chooseOrderProblemSolution(
-    orderId: number,
-    solution: OrderProblemSolution,
-  ): Promise<OrderRead> {
-    return this.request(
-      "PUT",
-      `/api/v1/orders/${orderId}/problem/solution`,
-      { solution },
-      true,
-    );
-  }
-
-  handoffOrder(orderId: number): Promise<OrderRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/handoff`, {}, true);
-  }
-
-  receiveOrder(orderId: number): Promise<OrderRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/received`, {}, true);
-  }
-
-  getOrderChat(orderId: number): Promise<OrderChatRead> {
-    return this.request("GET", `/api/v1/orders/${orderId}/chat`, undefined, true);
-  }
-
-  sendOrderChatMessage(
-    orderId: number,
-    body: { text: string; reply_to_id: number | null },
-  ): Promise<OrderMessageRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/chat`, body, true);
-  }
-
-  sendOrderChatImage(
-    orderId: number,
-    body: {
-      object_key: string;
-      file_name: string;
-      text?: string;
-      reply_to_id?: number | null;
-    },
-  ): Promise<OrderMessageRead> {
-    return this.request("POST", `/api/v1/orders/${orderId}/chat/image`, body, true);
-  }
-
-  editOrderChatMessage(
-    orderId: number,
-    messageId: number,
-    text: string,
-  ): Promise<OrderMessageRead> {
-    return this.request(
-      "PUT",
-      `/api/v1/orders/${orderId}/chat/${messageId}`,
-      { text },
-      true,
-    );
-  }
-
-  deleteOrderChatMessage(
-    orderId: number,
-    messageId: number,
-  ): Promise<OrderMessageRead> {
-    return this.request(
-      "DELETE",
-      `/api/v1/orders/${orderId}/chat/${messageId}`,
-      undefined,
-      true,
-    );
-  }
-
   recordAdvertisementViews(publicIds: string[]): Promise<void> {
     return this.request("POST", "/api/v1/public/advertisements/views", {
       ids: publicIds,
@@ -897,7 +590,7 @@ export class ApiClient {
 
   async logout(): Promise<void> {
     await this.request<void>("POST", "/api/v1/auth/logout", undefined, true);
-    this.csrfToken = "";
+    this.transport.clearCsrfToken();
   }
 
   getBusinessCredentials(): Promise<BusinessCredentials> {
@@ -1626,13 +1319,12 @@ export class ApiClient {
   }
 
   async uploadGrantedFile(grant: UploadGrant, file: File): Promise<void> {
-    const response = await this.fetcher(grant.upload_url, {
-      method: grant.method,
-      credentials: "omit",
-      headers: grant.headers,
-      body: file,
-    });
-    if (!response.ok) throw new Error("Rasm obyekt saqlash xizmatiga yuklanmadi.");
+    await this.transport.uploadFile(
+      grant.upload_url,
+      grant.method,
+      grant.headers,
+      file,
+    );
   }
 
   attachUserAvatar(body: ProfileImageAttachment): Promise<UserProfile> {
@@ -1859,5 +1551,7 @@ export class ApiClient {
     );
   }
 }
+
+export interface ApiClient extends OrdersClient, QueuesClient {}
 
 export type { BuildInfo } from "./types";
