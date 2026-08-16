@@ -9,7 +9,6 @@ BASELINE: dict[str, int] = {
     "backend/app/admin/moderation_service.py": 566,
     "backend/app/admin/router.py": 535,
     "backend/app/auth/service.py": 865,
-    "backend/app/business_online/payload_service.py": 2159,
     "backend/app/business_online/service.py": 834,
     "backend/app/cash_register/service.py": 676,
     "backend/app/dining/service.py": 1290,
