@@ -31,7 +31,6 @@ BASELINE: dict[str, int] = {
     "frontend/src/messages/Messages.tsx": 683,
     "frontend/src/notifications/Notifications.tsx": 549,
     "frontend/src/profiles/BusinessItemsView.tsx": 535,
-    "frontend/src/profiles/BusinessMedicalView.tsx": 932,
     "frontend/src/profiles/BusinessOnlineCrudEditorView/CrudEditorView.tsx": 698,
     "frontend/src/profiles/BusinessOnlineScreen/BusinessOnlineScreen.tsx": 795,
     "frontend/src/profiles/BusinessProfileEditorV2.tsx": 802,
