@@ -8,10 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.profiles.model import BusinessProfile
 from app.queues.model import QueueEntry, QueueProvider
-from app.queues.repository import QueueRepository
+from app.queues.repository_parts import QueueRepository
 from app.queues.service_parts.helpers import (
     QUEUE_DIRECTIONS,
     UZBEKISTAN_TZ,

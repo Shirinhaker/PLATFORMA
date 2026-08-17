@@ -27,7 +27,7 @@ from app.dining.service_parts.helpers import (
 )
 from app.inventory.service_parts import InventoryService
 from app.notifications.model import Notification
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.staff.model import StaffMember
 
 

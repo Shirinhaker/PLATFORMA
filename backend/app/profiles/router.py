@@ -23,7 +23,7 @@ from app.business_online.service_parts import (
 from app.cabinet_records.repository import CabinetRecordRepository
 from app.core.errors import ApiError
 from app.education.repository import EducationEnrollmentRepository
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.profiles.model import ProfileLink
 from app.profiles.repository import (
     get_business_profile,

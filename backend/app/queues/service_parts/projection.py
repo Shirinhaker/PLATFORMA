@@ -13,7 +13,7 @@ from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
 from app.public_ids import build_content_public_id
 from app.queues.model import QueueEntry, QueueProvider
-from app.queues.repository import ACTIVE_STATUSES
+from app.queues.repository_parts import ACTIVE_STATUSES
 from app.queues.schemas import (
     QueueEntryRead,
     QueueProviderRead,

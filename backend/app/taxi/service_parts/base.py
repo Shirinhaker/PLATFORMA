@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 
 from app.core.errors import ApiError
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.taxi.model import (
     DRIVER_ACTIVE_STATUSES,
     TaxiDriver,

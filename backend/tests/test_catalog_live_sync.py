@@ -10,7 +10,7 @@ from app.catalog.model import CatalogGroup, CatalogItem
 from app.db.base import Base
 from app.legacy_migration.model import ReviewState
 from app.profiles.model import BusinessProfile
-from app.public_discovery.repository import search_public_profiles
+from app.public_discovery.queries.search import search_public_profiles
 from app.public_discovery.schemas import PublicSearchParams
 
 NOW = datetime(2026, 8, 1, tzinfo=UTC)

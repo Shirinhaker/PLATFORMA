@@ -11,13 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.core.config import Settings
-from app.public_discovery.repository import (
-    load_followed_profiles,
-    load_public_district_offers,
-    load_public_home_map,
-    load_public_profile,
-    search_public_profiles,
-)
+from app.public_discovery.queries.following import load_followed_profiles
+from app.public_discovery.queries.home_map import load_public_home_map
+from app.public_discovery.queries.offers import load_public_district_offers
+from app.public_discovery.queries.profile import load_public_profile
+from app.public_discovery.queries.search import search_public_profiles
 from app.public_discovery.schemas import (
     PublicDistrictOffersResponse,
     PublicFollowedProfile,

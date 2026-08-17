@@ -13,7 +13,7 @@ from app.orders.schemas import (
     OrderMessageRead,
 )
 from app.orders.service_parts.base import OrderServiceBase
-from app.public_discovery.repository import build_public_id
+from app.public_discovery.queries import build_public_id
 from app.public_discovery.schemas import PublicResultKind
 
 

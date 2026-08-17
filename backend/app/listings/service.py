@@ -20,7 +20,7 @@ from app.listings.schemas import (
     ListingPatch,
     ListingRead,
 )
-from app.public_discovery.repository import build_listing_public_id, build_public_id
+from app.public_discovery.queries import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]

@@ -45,7 +45,7 @@ from app.orders.schemas import (
 from app.orders.service_parts import OrderService
 from app.outbox.model import OutboxEvent
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-from app.public_discovery.repository import build_listing_public_id, build_public_id
+from app.public_discovery.queries import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
 from app.staff.model import StaffMember
 
