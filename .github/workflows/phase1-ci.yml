@@ -25,10 +25,21 @@ jobs:
         working-directory: backend
         run: ruff check .
 
-      # Qarz faqat kamayadi: yangi katta fayl qo'shib bo'lmaydi va
-      # ro'yxatdagi fayl o'sa olmaydi. Batafsil: scripts/check_file_length.py
-      - name: File length ratchet
+      # Qo'riqchi qarzni `origin/main` bilan solishtiradi, shuning uchun
+      # o'sha shox mavjud bo'lishi kerak. `actions/checkout` standart
+      # holatda faqat bitta commit oladi.
+      - name: Fetch main for the length ratchet
+        run: git fetch --no-tags --depth=1 origin main
+
+      # Qarz faqat kamayadi: fayl ham, funksiya ham chegaradan oshmasin;
+      # allaqachon oshgani esa o'smasin. Batafsil: scripts/check_file_length.py
+      - name: Length ratchet
         run: python scripts/check_file_length.py
+
+      # Hujjatdagi hajm raqamlari qo'lda yozilsa, birinchi refaktordayoq
+      # eskiradi. Batafsil: scripts/update_architecture_stats.py
+      - name: Architecture stats freshness
+        run: python scripts/update_architecture_stats.py --check
 
       - uses: actions/setup-node@v4
         with:

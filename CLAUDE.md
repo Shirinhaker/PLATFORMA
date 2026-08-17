@@ -24,26 +24,32 @@ branch yoki `docs/` dagi migratsiya dalillari orqali qilinadi.
 
 Bu qoidalar avtomatik tekshiriladi — eslab qolish shart emas, CI aytadi.
 
-### 1. Bitta fayl 500 qatordan oshmasin
+### 1. Uzunlik chegaralari
 
-Oshsa, uni papkaga bo'ling va eski fayl faqat qayta-eksport qilsin:
+| O'lchov | Chegara |
+|---|---:|
+| Ishlab chiqarish fayli | 500 qator |
+| Test fayli | 900 qator |
+| Python funksiyasi | 120 qator |
 
-```ts
-// api/types.ts
-export * from "./types/orders";
-export * from "./types/education";
-```
+Fayl oshsa — uni mavzuli modullarga bo'ling. Klass bo'lsa mixin'larga
+ajrating: klass nomi va metod nomlari o'zgarmaydi, ya'ni chaqiruv
+joylariga tegilmaydi.
 
-Shunda chaqiruv joylari umuman o'zgarmaydi.
+**Qayta-eksport qobig'i qoldirmang.** Eski faylni `export *` yoki
+`import *` bilan tirik saqlash vaqtinchalik yechimga o'xshaydi, lekin
+keyin alohida qarzga aylanadi va yangi dasturchi eski yo'ldan yurib
+haqiqiy tuzilishni ko'rmay qoladi. Chaqiruv joylarini darrov yangilang.
 
 ```
 python scripts/check_file_length.py            # tekshirish
-python scripts/check_file_length.py --report   # hozirgi holat
-python scripts/check_file_length.py --update   # fayl bo'lingandan keyin
+python scripts/check_file_length.py --report   # hozirgi qarz
 ```
 
-Hozirgi qarz `scripts/file_length_baseline.py` da. U **faqat kamayadi**:
-yangi katta fayl qo'shib bo'lmaydi, ro'yxatdagi fayl o'sa olmaydi.
+Qoida bitta: **hozirgi ≤ max(chegara, `origin/main` dagi qiymat)**.
+Ya'ni chegaradan past narsa oshmasin, oshib ketgani esa faqat
+kichraysin. Saqlanadigan ro'yxat yo'q — o'lchov `origin/main` ning
+o'zidan olinadi, shuning uchun merge konflikti chiqmaydi.
 
 ### 2. `router.py` da biznes-mantiq bo'lmasin
 
@@ -60,7 +66,19 @@ qilishini aytsin: `BusinessProfileEditor`, `BusinessProfileEditorV2` emas.
 > ko'rinish mosligini ta'minlaydi — o'zgartirilsa sayt buziladi
 > (bir marta buzilgan, PR #182 da orqaga qaytarilgan).
 
-### 4. `app/legacy_migration/` dan import qilmang
+### 4. `ARCHITECTURE.md` dagi raqamlarni qo'lda yozmang
+
+Modul hajmlari `<!-- STATS:boshlanish ... -->` belgilari ichida va
+avtomatik yangilanadi:
+
+```
+python scripts/update_architecture_stats.py           # yangilash
+python scripts/update_architecture_stats.py --check   # CI shuni chaqiradi
+```
+
+Izoh matnlariga tegilmaydi — faqat raqamlar almashadi.
+
+### 5. `app/legacy_migration/` dan import qilmang
 
 Bu paket — v1656 dan bir martalik ko'chirish. Jonli kod unga bog'lanmasin.
 Umumiy narsa kerak bo'lsa `app/core/` ga chiqaring.
@@ -74,7 +92,10 @@ PR yuborishdan oldin:
 - `cd frontend && npm test`
 - `cd frontend && npx tsc --noEmit`
 - `cd frontend && npm run build`
-- `python scripts/check_file_length.py`
+- `git fetch origin main && python scripts/check_file_length.py`
+- `python scripts/update_architecture_stats.py --check`
+
+Oxirgisi eskirgan bo'lsa, bayroqsiz chaqiring — raqamlarni o'zi tuzatadi.
 
 Testni shunchaki yashil qilish uchun `skip`/`todo` ishlatilmaydi.
 Faol modular funksiyaning qoplamasi olib tashlanmaydi.

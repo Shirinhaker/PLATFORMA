@@ -114,69 +114,73 @@ Namuna sifatida `app/catalog/` ni o'qing — eng toza modul (955 qator, 8 fayl).
 
 Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 
+<!-- STATS:boshlanish backend/app -->
+
 ### Ommaviy qism (login talab qilinmaydi)
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `platform` | `/` | 59 | healthcheck, versiya, umumiy ma'lumot |
-| `public_discovery` | `/api/v1/public` | 2 094 | ommaviy qidiruv va kashfiyot |
-| `catalog` | `/api/v1/public/catalog` | 955 | mahsulot/xizmatlar katalogi |
-| `advertisements` | `/api/v1/public`, `/advertisements` | 1 446 | reklama e'lonlari + narxlash |
-| `listings` | `/api/v1` | 1 307 | e'lonlar, aktivatsiya |
-| `stories` | `/api/v1/stories` | 1 530 | stories (video/rasm), processor |
-| `media` | `/api/v1/media` | 406 | R2 ga yuklash, download URL |
+| `platform` | `/` | 55 | healthcheck, versiya, umumiy ma'lumot |
+| `public_discovery` | `/api/v1/public` | 2 341 | ommaviy qidiruv va kashfiyot |
+| `catalog` | `/api/v1/public/catalog` | 937 | mahsulot/xizmatlar katalogi |
+| `advertisements` | `/api/v1/public`, `/advertisements` | 1 545 | reklama e'lonlari + narxlash |
+| `listings` | `/api/v1` | 1 354 | e'lonlar, aktivatsiya |
+| `stories` | `/api/v1/stories` | 1 639 | stories (video/rasm), processor |
+| `media` | `/api/v1/media` | 450 | R2 ga yuklash, download URL |
 
 ### Foydalanuvchi va profil
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `auth` | `/api/v1/auth` | 2 133 | Telegram auth, sessiya, xavfsizlik, shared login |
-| `accounts` | — | 129 | account modeli (router yo'q) |
-| `profiles` | `/api/v1` | 1 236 | foydalanuvchi/biznes profillari |
-| `account_settings` | `/api/v1/account-settings` | 268 | sozlamalar |
-| `follows` | `/api/v1/follows` | 601 | obuna, kuzatuvchilar |
-| `messages` | `/api/v1/messages` | 1 131 | xabarlar |
-| `reviews` | `/api/v1/reviews` | 825 | sharhlar, reyting |
-| `notifications` | `/api/v1/notifications` | 1 990 | bildirishnomalar + push worker |
+| `auth` | `/api/v1/auth` | 2 305 | Telegram auth, sessiya, xavfsizlik, shared login |
+| `accounts` | — | 128 | account modeli (router yo'q) |
+| `profiles` | `/api/v1` | 1 207 | foydalanuvchi/biznes profillari |
+| `account_settings` | `/api/v1/account-settings` | 266 | sozlamalar |
+| `follows` | `/api/v1/follows` | 599 | obuna, kuzatuvchilar |
+| `messages` | `/api/v1/messages` | 1 143 | xabarlar |
+| `reviews` | `/api/v1/reviews` | 833 | sharhlar, reyting |
+| `notifications` | `/api/v1/notifications` | 2 128 | bildirishnomalar + push worker |
 
 ### Biznes kabineti
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `business_opening` | `/api/v1/business-opening` | 276 | biznes ochish oqimi |
-| `business_online` | `/api/v1/business-online` | 3 261 | biznes onlayn vitrinasi ⚠️ |
-| `orders` | `/api/v1/orders` | 2 143 | buyurtmalar, status, bildirishnoma |
-| `queues` | `/api/v1/queues` | 2 542 | elektron navbat |
-| `dining` | `/api/v1/dining` | 2 245 | umumiy ovqatlanish (menyu, stol) |
-| `specialists` | `/api/v1/specialists` | 918 | mutaxassislar, bandlik |
-| `staff` | `/api/v1` | 1 596 | xodimlar, ruxsatlar (`permissions.py`) |
-| `inventory` | `/api/v1/warehouse` | 2 060 | ombor |
-| `cash_register` | `/api/v1/cash-register` | 1 252 | kassa |
-| `debt_ledger` | `/api/v1/debt-ledger` | 894 | qarzlar daftari |
-| `expenses` | `/api/v1/expenses` | 669 | xarajatlar |
-| `statistics` | `/api/v1/statistics` | 879 | biznes statistikasi |
-| `documents` | `/api/v1/documents` | 1 135 | hujjatlar |
-| `education` | `/api/v1/education` | 5 519 | ta'lim markazlari ⚠️ (eng katta modul) |
-| `taxi` | `/api/v1/taxi` | 1 388 | taksi |
-| `ai_assistant` | `/api/v1/ai-assistant` | 1 000 | AI yordamchi |
-| `cabinet_records` | — | 1 609 | kabinet yozuvlari (dual-write, codec) |
+| `business_opening` | `/api/v1/business-opening` | 278 | biznes ochish oqimi |
+| `business_online` | `/api/v1/business-online` | 3 764 | biznes onlayn vitrinasi ⚠️ |
+| `orders` | `/api/v1/orders` | 2 656 | buyurtmalar, status, bildirishnoma |
+| `queues` | `/api/v1/queues` | 2 783 | elektron navbat |
+| `dining` | `/api/v1/dining` | 2 328 | umumiy ovqatlanish (menyu, stol) |
+| `specialists` | `/api/v1/specialists` | 1 040 | mutaxassislar, bandlik |
+| `staff` | `/api/v1` | 1 819 | xodimlar, ruxsatlar (`permissions.py`) |
+| `inventory` | `/api/v1/warehouse` | 2 272 | ombor |
+| `cash_register` | `/api/v1/cash-register` | 1 360 | kassa |
+| `debt_ledger` | `/api/v1/debt-ledger` | 907 | qarzlar daftari |
+| `expenses` | `/api/v1/expenses` | 679 | xarajatlar |
+| `statistics` | `/api/v1/statistics` | 935 | biznes statistikasi |
+| `documents` | `/api/v1/documents` | 1 252 | hujjatlar |
+| `education` | `/api/v1/education` | 5 833 | ta'lim markazlari ⚠️ (eng katta modul) |
+| `taxi` | `/api/v1/taxi` | 1 673 | taksi |
+| `ai_assistant` | `/api/v1/ai-assistant` | 1 145 | AI yordamchi |
+| `cabinet_records` | — | 1 629 | kabinet yozuvlari (dual-write, codec) |
 
 ### To'lov va admin
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `payments` | `/api/v1/payments` | 1 259 | to'lovlar, obunalar |
-| `admin` | `/api/v1/admin`, `/reports` | 2 685 | admin panel, moderatsiya, audit, hisobotlar |
+| `payments` | `/api/v1/payments` | 1 364 | to'lovlar, obunalar |
+| `admin` | `/api/v1/admin`, `/reports` | 2 789 | admin panel, moderatsiya, audit, hisobotlar |
 
 ### Infratuzilma (biznes-mantiq emas)
 
 | Modul | Qator | Nima qiladi |
 |---|---|---|
-| `core` | 239 | `config.py`, `errors.py` (ApiError), `logging.py`, `middleware.py` |
+| `core` | 319 | `config.py`, `errors.py` (ApiError), `logging.py`, `middleware.py` |
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
-| `cache` | 73 | Redis client, rate limit |
-| `outbox` | 421 | outbox jadvali + fon worker |
-| `legacy_migration` | 7 533 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+| `cache` | 72 | Redis client, rate limit |
+| `outbox` | 413 | outbox jadvali + fon worker |
+| `legacy_migration` | 7 424 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+
+<!-- STATS:tugadi -->
 
 ---
 
@@ -209,16 +213,20 @@ src/
 
 Domen papkalari va hajmi:
 
+<!-- STATS:boshlanish frontend/src -->
+
 | Papka | Qator | Papka | Qator |
 |---|---|---|---|
-| `profiles` | 28 036 ⚠️ | `orders` | 2 654 |
-| `legacy/public` | 9 036 ⚠️ | `dining` | 2 388 |
-| `api` | 6 222 | `listings` | 2 007 |
-| `admin` | 3 733 | `taxi` | 1 935 |
-| `app` | 2 806 | `queues` | 1 767 |
-| `auth` | 1 583 | `education` | 1 387 |
-| `documents` | 1 584 | `messages` | 1 106 |
+| `profiles` | 33 630⚠️ | `orders` | 4 963 |
+| `legacy/public` | 9 093⚠️ | `dining` | 2 323 |
+| `api` | 6 383 | `listings` | 2 787 |
+| `admin` | 3 848 | `taxi` | 2 703 |
+| `app` | 3 131 | `queues` | 1 802 |
+| `auth` | 1 623 | `education` | 4 073 |
+| `documents` | 2 080 | `messages` | 1 451 |
 | qolganlari | har biri < 1 000 | | |
+
+<!-- STATS:tugadi -->
 
 ---
 
