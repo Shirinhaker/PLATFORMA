@@ -217,7 +217,7 @@ Domen papkalari va hajmi:
 
 | Papka | Qator | Papka | Qator |
 |---|---|---|---|
-| `profiles` | 33 630⚠️ | `orders` | 4 963 |
+| `profiles` | 33 685⚠️ | `orders` | 4 963 |
 | `legacy/public` | 9 093⚠️ | `dining` | 2 323 |
 | `api` | 6 383 | `listings` | 2 787 |
 | `admin` | 3 848 | `taxi` | 2 703 |
