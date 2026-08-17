@@ -12,11 +12,8 @@ import type { QueueBookingTarget } from "../../queues/QueueBooking";
 import type { CourseEnrollmentTarget } from "../../education/CourseEnrollment";
 import { PublicProfileStories } from "../../stories/PublicProfileStories";
 import type { StoryViewerApi } from "../../stories/StoryFeed";
-import {
-  PublicReviews,
-  type PublicReviewsApi,
-} from "../../reviews/Reviews";
-
+import { PublicReviews, type PublicReviewsApi } from "../../reviews/Reviews";
+import { PublicProfileSpecialistSections } from "./PublicProfileSpecialistSections";
 
 interface PublicProfileProps {
   kind: "user" | "business";
@@ -60,7 +57,6 @@ const QUEUE_DIRECTIONS = new Set([
   "Import-eksport",
 ]);
 
-
 function cropStyle(profile: PublicProfileDetail) {
   const zoom = Number.isFinite(profile.crop_zoom) ? profile.crop_zoom : 1;
   const x = Number.isFinite(profile.crop_x) ? profile.crop_x : 50;
@@ -73,7 +69,6 @@ function cropStyle(profile: PublicProfileDetail) {
   };
 }
 
-
 function itemGroups(items: PublicProfileItem[]) {
   const groups = new Map<string, PublicProfileItem[]>();
   items.forEach((item) => {
@@ -82,7 +77,6 @@ function itemGroups(items: PublicProfileItem[]) {
   });
   return Array.from(groups.entries());
 }
-
 
 export function PublicProfile({
   kind,
@@ -121,9 +115,7 @@ export function PublicProfile({
       })
       .catch((reason: unknown) => {
         if (!active) return;
-        setError(
-          reason instanceof Error ? reason.message : "Profil topilmadi.",
-        );
+        setError(reason instanceof Error ? reason.message : "Profil topilmadi.");
       });
     return () => {
       active = false;
@@ -164,9 +156,7 @@ export function PublicProfile({
   }
 
   const initial = profile.name.trim().charAt(0).toUpperCase() || "K";
-  const meta = [profile.direction, profile.activity_type]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = [profile.direction, profile.activity_type].filter(Boolean).join(" · ");
   const groups = itemGroups(profile.items);
   const business = profile.kind === "business";
   const providerPublicId = profile.public_id;
@@ -175,9 +165,9 @@ export function PublicProfile({
   const education = profileDirection === "Ta'lim faoliyati";
   const queueSupported = business && QUEUE_DIRECTIONS.has(profileDirection);
   const queueTotal = Math.max(0, Number(profile.queue_total) || 0);
-  const hasQueueService = profile.items.some((item) => (
-    item.kind === "service" && item.queue_enabled
-  ));
+  const hasQueueService = profile.items.some(
+    (item) => item.kind === "service" && item.queue_enabled,
+  );
   const cartLines = Object.keys(cart?.items ?? {}).length;
   const cartTotal = cart ? cartReceiptTotal(cart) : 0;
 
@@ -198,13 +188,15 @@ export function PublicProfile({
               courseName: item.name || "Kurs",
             });
           }}
-        >Kursga yozilish</button>
+        >
+          Kursga yozilish
+        </button>
       );
     }
     if (
-      QUEUE_DIRECTIONS.has(profileDirection)
-      && item.kind === "service"
-      && item.queue_enabled
+      QUEUE_DIRECTIONS.has(profileDirection) &&
+      item.kind === "service" &&
+      item.queue_enabled
     ) {
       return (
         <button
@@ -212,9 +204,11 @@ export function PublicProfile({
           type="button"
           onClick={() => {
             if (Math.max(0, Number(item.queue_provider_count) || 0) < 1) {
-              onQueueMessage?.(profileDirection === "Tibbiy xizmatlar"
-                ? "Shifokor hali biriktirilmagan."
-                : "Xizmat ko'rsatuvchi hali biriktirilmagan.");
+              onQueueMessage?.(
+                profileDirection === "Tibbiy xizmatlar"
+                  ? "Shifokor hali biriktirilmagan."
+                  : "Xizmat ko'rsatuvchi hali biriktirilmagan.",
+              );
               return;
             }
             if (!authenticated) {
@@ -228,7 +222,9 @@ export function PublicProfile({
               direction: profileDirection,
             });
           }}
-        >Navbat olish</button>
+        >
+          Navbat olish
+        </button>
       );
     }
     const quantity = cart?.items[item.public_id]?.qty ?? 0;
@@ -247,7 +243,9 @@ export function PublicProfile({
               name: providerName,
             });
           }}
-        >{quantity > 0 ? `✓ Savatda: ${formatQuantity(quantity)}` : "+ Savatga"}</button>
+        >
+          {quantity > 0 ? `✓ Savatda: ${formatQuantity(quantity)}` : "+ Savatga"}
+        </button>
       </div>
     );
   }
@@ -259,14 +257,29 @@ export function PublicProfile({
     >
       {business && cartLines > 0 ? (
         <div id="bizCartBar">
-          <button className="btn btn-amber btn-block" id="bizCartBarBtn" type="button" onClick={onOpenCart}>
-            <span>🛒 Savatcha: <b id="bizCartBarCount">{cartLines}</b> ta{cartTotal > 0 ? <> · <b id="bizCartBarTotal">{moneyText(cartTotal)}</b></> : null}</span>
+          <button
+            className="btn btn-amber btn-block"
+            id="bizCartBarBtn"
+            type="button"
+            onClick={onOpenCart}
+          >
+            <span>
+              🛒 Savatcha: <b id="bizCartBarCount">{cartLines}</b> ta
+              {cartTotal > 0 ? (
+                <>
+                  {" "}
+                  · <b id="bizCartBarTotal">{moneyText(cartTotal)}</b>
+                </>
+              ) : null}
+            </span>
             <span>Ko'rish →</span>
           </button>
         </div>
       ) : null}
       <section className="public-profile-hero koprik-profile-surface">
-        <div className={`public-profile-avatar${profile.image_url ? " has-photo" : ""}`}>
+        <div
+          className={`public-profile-avatar${profile.image_url ? " has-photo" : ""}`}
+        >
           <span>{initial}</span>
           {profile.image_url ? (
             <img alt="" src={profile.image_url} style={cropStyle(profile)} />
@@ -300,14 +313,18 @@ export function PublicProfile({
               }
               onMessage(kind, publicId, profile.name);
             }}
-          >✍️ Xabar yozish</button>
+          >
+            ✍️ Xabar yozish
+          </button>
         ) : null}
         {queueSupported && (queueTotal > 0 || hasQueueService) ? (
           <div
             className="idesc"
             data-biz-queue-total
             style={{ marginTop: 10, color: "var(--primary)", fontWeight: 800 }}
-          >👥 Bugungi jami navbat: {queueTotal} ta</div>
+          >
+            👥 Bugungi jami navbat: {queueTotal} ta
+          </div>
         ) : null}
       </section>
 
@@ -326,78 +343,7 @@ export function PublicProfile({
       ) : null}
 
       {profile.specialist ? (
-        <>
-          <section className="specialist-card">
-            <b>{profile.specialist.profession || "Mutaxasis"}</b>
-            {profile.specialist.description ? (
-              <div className="idesc">{profile.specialist.description}</div>
-            ) : null}
-          </section>
-          {(profile.specialist.credentials ?? []).length ? (
-            <section className="public-profile-section public-specialist-section">
-              <div className="sec-head">
-                <h2>Tasdiqlovchi hujjatlar</h2>
-                <span className="link">{profile.specialist.credentials?.length} ta</span>
-              </div>
-              <div className="public-specialist-rail">
-                {profile.specialist.credentials?.map((item) => (
-                  <div className="sp-media-card" key={item.id}>
-                    <img alt="Tasdiqlovchi hujjat" loading="lazy" src={item.image_url} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-          {(profile.specialist.offers ?? []).length ? (
-            <section className="public-profile-section public-specialist-section">
-              <div className="sec-head">
-                <h2>Xizmatlar va mahsulotlar</h2>
-                <span className="link">{profile.specialist.offers?.length} ta</span>
-              </div>
-              <div className="public-specialist-rail">
-                {profile.specialist.offers?.map((item) => (
-                  <article className="sp-offer-card" key={item.id}>
-                    <div className="sp-offer-img">
-                      {item.image_url
-                        ? <img alt="" loading="lazy" src={item.image_url} />
-                        : item.kind === "product" ? "📦" : "🧰"}
-                    </div>
-                    <div className="sp-offer-body">
-                      <div className="sp-offer-kind">
-                        {item.kind === "product" ? "Mahsulot" : "Xizmat"}
-                      </div>
-                      <div className="sp-offer-name">{item.name}</div>
-                      {item.price_text ? <div className="sp-offer-price">{item.price_text}</div> : null}
-                      {item.note ? <div className="idesc">{item.note}</div> : null}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-          {(profile.specialist.portfolio ?? []).length ? (
-            <section className="public-profile-section public-specialist-section">
-              <div className="sec-head">
-                <h2>Bajargan ishlari</h2>
-                <span className="link">{profile.specialist.portfolio?.length} ta</span>
-              </div>
-              <div className="public-specialist-rail">
-                {profile.specialist.portfolio?.map((item) => (
-                  <div className="sp-media-card" key={item.id}>
-                    {item.media_type === "video" ? (
-                      <>
-                        <video controls playsInline preload="metadata" src={item.media_url} />
-                        <span className="sp-media-type">▶ VIDEO</span>
-                      </>
-                    ) : (
-                      <img alt="Ish namunasi" loading="lazy" src={item.media_url} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-        </>
+        <PublicProfileSpecialistSections specialist={profile.specialist} />
       ) : null}
 
       {business && profile.items.length ? (
@@ -419,13 +365,9 @@ export function PublicProfile({
               <div className="item-hrow">
                 {items.map((item) => {
                   const focused = item.public_id === focusItemPublicId;
-                  const queueEnabled = queueSupported
-                    && item.kind === "service"
-                    && item.queue_enabled;
-                  const queueCount = Math.max(
-                    0,
-                    Number(item.today_queue_count) || 0,
-                  );
+                  const queueEnabled =
+                    queueSupported && item.kind === "service" && item.queue_enabled;
+                  const queueCount = Math.max(0, Number(item.today_queue_count) || 0);
                   return (
                     <article
                       aria-current={focused ? "true" : undefined}
@@ -436,10 +378,16 @@ export function PublicProfile({
                       tabIndex={focused ? -1 : undefined}
                     >
                       <div className="item-card2-img">
-                        {item.image_url ? <img alt="" src={item.image_url} /> : <span>📦</span>}
+                        {item.image_url ? (
+                          <img alt="" src={item.image_url} />
+                        ) : (
+                          <span>📦</span>
+                        )}
                       </div>
                       <div className="name">{item.name}</div>
-                      <div className="price">{item.price_text || "Narx kelishiladi"}</div>
+                      <div className="price">
+                        {item.price_text || "Narx kelishiladi"}
+                      </div>
                       {item.note ? <div className="note">{item.note}</div> : null}
                       {education ? (
                         <>
@@ -470,8 +418,14 @@ export function PublicProfile({
                         <div
                           className="idesc"
                           data-medical-queue-count={queueCount}
-                          style={{ color: "var(--primary)", fontWeight: 800, marginTop: 3 }}
-                        >👥 Bugungi navbat: {queueCount} ta</div>
+                          style={{
+                            color: "var(--primary)",
+                            fontWeight: 800,
+                            marginTop: 3,
+                          }}
+                        >
+                          👥 Bugungi navbat: {queueCount} ta
+                        </div>
                       ) : null}
                       {itemAction(item)}
                     </article>
@@ -497,12 +451,20 @@ export function PublicProfile({
               onClick={() => onOpenListing?.(listing.public_id)}
             >
               <div className="li-thumb">
-                {listing.image_url ? <img alt="" src={listing.image_url} /> : <span>📦</span>}
+                {listing.image_url ? (
+                  <img alt="" src={listing.image_url} />
+                ) : (
+                  <span>📦</span>
+                )}
               </div>
               <div className="li-main">
                 <div className="li-title">{listing.title}</div>
-                {listing.price_text ? <div className="iprice">{listing.price_text}</div> : null}
-                {listing.address ? <div className="li-meta">{listing.address}</div> : null}
+                {listing.price_text ? (
+                  <div className="iprice">{listing.price_text}</div>
+                ) : null}
+                {listing.address ? (
+                  <div className="li-meta">{listing.address}</div>
+                ) : null}
               </div>
             </button>
           ))}
