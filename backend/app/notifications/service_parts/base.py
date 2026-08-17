@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.accounts.model import AccountType
 from app.listings.model import Listing
 from app.notifications.model import NotificationFilter
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.notifications.schemas import (
     NotificationFilterRead,
     NotificationRead,

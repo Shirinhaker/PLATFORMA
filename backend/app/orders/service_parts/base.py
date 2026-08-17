@@ -13,7 +13,7 @@ from app.cash_register.service_parts import CashRegisterService
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError
 from app.debt_ledger.service import DebtLedgerService
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.orders.model import Order, OrderItem
 from app.orders.repository import OrderRepository
 from app.orders.schemas import (
@@ -26,7 +26,7 @@ from app.orders.service_parts.helpers import (
 )
 from app.outbox.repository import enqueue_event
 from app.profiles.model import BusinessProfile, UserProfile
-from app.public_discovery.repository import build_listing_public_id, build_public_id
+from app.public_discovery.queries import build_listing_public_id, build_public_id
 from app.public_discovery.schemas import PublicResultKind
 
 

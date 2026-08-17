@@ -16,7 +16,7 @@ from app.catalog.model import CatalogItem
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
 from app.queues.model import QueueProvider, QueueProviderService
-from app.queues.repository import QueueRepository
+from app.queues.repository_parts import QueueRepository
 
 MIGRATION = (
     Path(__file__).resolve().parents[1]

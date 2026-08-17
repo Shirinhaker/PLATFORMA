@@ -25,7 +25,7 @@ from app.follows.schemas import (
     FollowResult,
     FollowToggle,
 )
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_ids import build_profile_public_id
 

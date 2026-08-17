@@ -19,7 +19,7 @@ from app.notifications.model import (
     PushOutbox,
 )
 from app.notifications.push_worker import PendingPush, process_push_batch
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.notifications.schemas import (
     NotificationFilterWrite,
     NotificationPreferenceWrite,

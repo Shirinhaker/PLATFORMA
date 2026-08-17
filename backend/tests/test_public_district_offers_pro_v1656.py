@@ -19,10 +19,10 @@ from app.payments.model import (
     PaymentRequest,
 )
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
+from app.public_discovery.queries.offers import load_public_district_offers
 from app.public_discovery.queries.subscriptions import (
     _active_home_offer_business_ids,
 )
-from app.public_discovery.repository import load_public_district_offers
 
 NOW = datetime(2026, 8, 12, tzinfo=UTC)
 

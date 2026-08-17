@@ -11,10 +11,10 @@ from app.catalog.schemas import (
 )
 from app.core.enums import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
-from app.public_discovery.repository import build_public_id
+from app.public_discovery.queries import build_public_id
 from app.public_discovery.schemas import PublicResultKind
 from app.public_ids import build_content_public_id as _build_content_public_id
-from app.queues.repository import active_provider_count
+from app.queues.repository_parts import active_provider_count
 
 ImageUrlProvider = Callable[[str], str]
 

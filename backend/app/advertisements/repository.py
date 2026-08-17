@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.advertisements.model import Advertisement
 from app.advertisements.schemas import PublicAdvertisement
 from app.core.enums import ReviewState
-from app.public_discovery.repository import build_public_id
+from app.public_discovery.queries import build_public_id
 from app.public_discovery.schemas import PublicResultKind
 
 ImageUrlProvider = Callable[[str], str]

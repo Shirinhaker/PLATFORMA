@@ -18,7 +18,7 @@ from app.education.management.helpers import (
     NowProvider,
     SessionFactory,
 )
-from app.education.management_repository import EducationManagementRepository
+from app.education.management_repository_parts import EducationManagementRepository
 from app.education.repository import EducationEnrollmentRepository
 from app.education.schemas import (
     EducationGroupRead,

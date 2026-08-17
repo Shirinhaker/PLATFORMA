@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from app.accounts.model import AccountType
 from app.core.errors import ApiError
-from app.queues.repository import ACTIVE_STATUSES
+from app.queues.repository_parts import ACTIVE_STATUSES
 from app.queues.schemas import (
     QueueEntryRead,
     QueueNotificationRead,

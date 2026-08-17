@@ -19,7 +19,7 @@ from app.notifications.model import (
     PushDevice,
     PushOutbox,
 )
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.orders.model import Order as _Order  # noqa: F401
 from app.profiles.model import ProfileLink
 from app.profiles.router import (
